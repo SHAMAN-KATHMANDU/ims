@@ -1,6 +1,6 @@
 import express from "express";
-import router from "./router.config"
-import dbConnect from "./dbConnect";
+import router from "@/config/router.config"
+import dbConnect from "@/config/dbConnect";
 
 dbConnect();
 

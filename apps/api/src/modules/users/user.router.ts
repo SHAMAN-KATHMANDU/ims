@@ -1,8 +1,7 @@
 import { Router } from "express";
-import { Request, Response } from "express";
-import verifyToken from "../../middlewares/authMiddleware";
-import authorizeRoles from "../../middlewares/roleMiddleware";
-import userController from "./user.controller";
+import verifyToken from "@/middlewares/authMiddleware";
+import authorizeRoles from "@/middlewares/roleMiddleware";
+import userController from "@/modules/users/user.controller";
 
 const userRouter = Router();
 
