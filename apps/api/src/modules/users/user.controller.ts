@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import User, { Role } from "../../models/userModel";
-const bcrypt = require("bcryptjs");
+import User, { Role } from "@/models/userModel";
+import bcrypt from "bcryptjs";
 
 class UserController {
   // Create user (only superAdmin)

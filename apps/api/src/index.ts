@@ -1,7 +1,7 @@
 import http from "http";
-import app from "./config/express.config"
+import app from "@/config/express.config"
 import dotenv from "dotenv";
-import prisma from "./config/prisma";
+import prisma from "@/config/prisma";
 
 dotenv.config();
 

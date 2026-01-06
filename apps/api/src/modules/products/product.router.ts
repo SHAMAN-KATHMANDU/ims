@@ -1,7 +1,7 @@
 import { Router } from "express";
-import verifyToken from "../../middlewares/authMiddleware";
-import authorizeRoles from "../../middlewares/roleMiddleware";
-import productController from "./product.controller";
+import verifyToken from "@/middlewares/authMiddleware";
+import authorizeRoles from "@/middlewares/roleMiddleware";
+import productController from "@/modules/products/product.controller";
 
 const productRouter = Router();
 
