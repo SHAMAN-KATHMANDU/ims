@@ -1,13 +1,34 @@
-import express from "express";
+import http from "http";
+import app from "./config/express.config"
+import dotenv from "dotenv";
+import prisma from "./config/prisma";
 
-const app = express();
+dotenv.config();
 
-app.get("/", (_req, res) => {
-  res.send("Get Method Called on Backend");
+const httpServer = http.createServer(app)
+
+const PORT: number = 9000;
+const HOST: string = "localhost";
+
+httpServer.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
 });
 
-const PORT = 9000;
-const HOST = "localhost";
-app.listen(PORT, HOST, () => {
-  console.log(`Server running on http://${HOST}:${PORT}`);
+// Graceful shutdown
+process.on('SIGINT', async () => {
+  console.log('Shutting down gracefully...');
+  await prisma.$disconnect();
+  httpServer.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
+});
+
+process.on('SIGTERM', async () => {
+  console.log('Shutting down gracefully...');
+  await prisma.$disconnect();
+  httpServer.close(() => {
+    console.log('Server closed');
+    process.exit(0);
+  });
 });
