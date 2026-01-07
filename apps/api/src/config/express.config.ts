@@ -1,8 +1,5 @@
 import express from "express";
 import router from "@/config/router.config"
-import dbConnect from "@/config/dbConnect";
-
-dbConnect();
 
 const app = express();
 

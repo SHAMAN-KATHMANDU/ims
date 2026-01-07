@@ -50,13 +50,12 @@ class AuthController {
         return res.status(401).json({ message: "No token, authorization denied" });
       }
 
-      jwt.verify(token, process.env.JWT_SECRET!, (err: any, decoded: any) => {
-        if (err) {
-          return res.status(401).json({ message: "Token is not valid" });
-        }
-      });
-
-      res.status(200).json({ message: "Logout successful" });
+      try {
+        jwt.verify(token, process.env.JWT_SECRET!);
+        res.status(200).json({ message: "Logout successful" });
+      } catch (err: any) {
+        return res.status(401).json({ message: "Token is not valid" });
+      }
     } catch (error) {
       console.error("Logout error:", error);
       res.status(500).json({ message: "Internal server error" });
