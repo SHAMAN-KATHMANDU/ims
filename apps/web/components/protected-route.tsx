@@ -1,10 +1,9 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { getAuthToken } from "@/utils/auth"
+import { getAuthToken, getCurrentUser, getAuthUser, setAuthUser } from "@/utils/auth"
 import { LoadingPage } from "./loading-page"
 
 export function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -13,16 +12,34 @@ export function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    // Check for JWT token (placeholder)
-    const token = getAuthToken()
+    const checkAuthentication = async () => {
+      const token = getAuthToken()
 
-    if (!token) {
-      router.push("/401")
-    } else {
-      // In a real app, you would verify the token here
+      if (!token) {
+        router.push("/login")
+        return
+      }
+
+      // Verify token and get user info
+      let user = getAuthUser()
+      
+      // If no user in localStorage, fetch from API
+      if (!user) {
+        user = await getCurrentUser()
+        if (user) {
+          setAuthUser(user)
+        } else {
+          // Token is invalid, clear it and redirect
+          router.push("/login")
+          return
+        }
+      }
+
       setIsAuthenticated(true)
+      setIsLoading(false)
     }
-    setIsLoading(false)
+
+    checkAuthentication()
   }, [router])
 
   if (isLoading) {

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { setAuthToken } from "@/utils/auth"
+import { login, setAuthToken, setAuthUser } from "@/utils/auth"
 
 export default function LoginForm() {
   const router = useRouter()
@@ -22,18 +22,29 @@ export default function LoginForm() {
     setError("")
     setIsLoading(true)
 
-    // Simulate login process (placeholder for backend connection)
-    setTimeout(() => {
-      if (username && password) {
-        // Placeholder JWT token
-        const mockToken = "mock-jwt-token-" + Date.now()
-        setAuthToken(mockToken)
-        router.push("/dashboard")
-      } else {
+    try {
+      if (!username || !password) {
         setError("Please enter both username and password")
         setIsLoading(false)
+        return
       }
-    }, 800)
+
+      // Normalize username (trim whitespace and convert to lowercase)
+      const normalizedUsername = username.trim().toLowerCase()
+      const { token, user } = await login(normalizedUsername, password)
+      
+      // Store token and user info
+      setAuthToken(token)
+      setAuthUser(user)
+      
+      // Redirect to dashboard
+      router.push("/dashboard")
+      router.refresh() // Refresh to ensure state updates
+    } catch (err: any) {
+      console.error("Login error:", err)
+      setError(err.message || "Login failed. Please check your credentials and ensure the API is running.")
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -68,7 +79,14 @@ export default function LoginForm() {
               required
             />
           </div>
-          {error && <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">{error}</div>}
+          {error && (
+            <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
+              {error}
+              <div className="mt-2 text-xs text-muted-foreground">
+                API URL: {process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"}
+              </div>
+            </div>
+          )}
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Logging in..." : "Login"}
           </Button>
