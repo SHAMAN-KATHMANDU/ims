@@ -1,18 +1,52 @@
-version: "3.9"
-
 services:
   postgres:
     image: postgres:16
-    container_name: postgres-db
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: soumya
-      POSTGRES_PASSWORD: soumya1234
-      POSTGRES_DB: shaman
+    container_name: postgres
+    restart: always
+    env_file:
+      - .env
     ports:
-      - "5433:5432"
+      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: api
+    restart: always
+    env_file:
+      - .env
+      - apps/api/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    environment:
+      - NODE_ENV=production
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: web
+    restart: always
+    env_file:
+      - .env
+      - apps/web/.env
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
 
 volumes:
   postgres_data:
