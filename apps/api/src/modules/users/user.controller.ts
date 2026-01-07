@@ -1,0 +1,212 @@
+import { Request, Response } from "express";
+import User, { Role } from "@/models/userModel";
+import bcrypt from "bcryptjs";
+
+class UserController {
+  // Create user (only superAdmin)
+  async createUser(req: Request, res: Response) {
+    try {
+      const { username, password, role } = req.body;
+
+      // Validate required fields
+      if (!username || !password || !role) {
+        return res.status(400).json({ 
+          message: "Username, password, and role are required",
+          received: { username: !!username, password: !!password, role: !!role }
+        });
+      }
+
+      // Validate role
+      if (!["superAdmin", "admin", "user"].includes(role)) {
+        return res.status(400).json({ message: "Invalid role. Must be superAdmin, admin, or user" });
+      }
+
+      // Check if user already exists
+      const existingUser = await User.findUnique({
+        where: { username }
+      });
+
+      if (existingUser) {
+        return res.status(409).json({ message: "User with this username already exists" });
+      }
+
+      // Hash the password before storing
+      // Note: Standard practice is to hash passwords on the backend for security
+      const hashedPassword = await bcrypt.hash(password, 10);
+
+      const newUser = await User.create({
+        data: {
+          username,
+          password: hashedPassword,
+          role: role as Role
+        }
+      });
+
+      // Don't send password in response
+      const { password: _, ...userWithoutPassword } = newUser;
+
+      res.status(201).json({ 
+        message: `User created successfully with username ${username}`,
+        user: userWithoutPassword
+      });
+    } catch (error: any) {
+      console.error("Create user error:", error);
+      res.status(500).json({ message: "Error creating user", error: error.message });
+    }
+  }
+
+  // Get all users (only superAdmin)
+  async getAllUsers(req: Request, res: Response) {
+    try {
+      const users = await User.findMany({
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      });
+
+      res.status(200).json({ 
+        message: "Users fetched successfully",
+        users 
+      });
+    } catch (error: any) {
+      console.error("Get all users error:", error);
+      res.status(500).json({ message: "Error fetching users", error: error.message });
+    }
+  }
+
+  // Get user by ID (only superAdmin)
+  async getUserById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const user = await User.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.status(200).json({ 
+        message: "User fetched successfully",
+        user 
+      });
+    } catch (error: any) {
+      console.error("Get user by ID error:", error);
+      res.status(500).json({ message: "Error fetching user", error: error.message });
+    }
+  }
+
+  // Update user (only superAdmin)
+  async updateUser(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { username, password, role } = req.body;
+
+      // Check if user exists
+      const existingUser = await User.findUnique({
+        where: { id }
+      });
+
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Prepare update data
+      const updateData: any = {};
+      
+      if (username) {
+        // Check if new username is already taken by another user
+        const usernameExists = await User.findUnique({
+          where: { username }
+        });
+        
+        if (usernameExists && usernameExists.id !== id) {
+          return res.status(409).json({ message: "Username already taken" });
+        }
+        
+        updateData.username = username;
+      }
+
+      if (password) {
+        // Hash the new password
+        updateData.password = await bcrypt.hash(password, 10);
+      }
+
+      if (role) {
+        if (!["superAdmin", "admin", "user"].includes(role)) {
+          return res.status(400).json({ message: "Invalid role. Must be superAdmin, admin, or user" });
+        }
+        updateData.role = role as Role;
+      }
+
+      const updatedUser = await User.update({
+        where: { id },
+        data: updateData,
+        select: {
+          id: true,
+          username: true,
+          role: true,
+          createdAt: true,
+          updatedAt: true
+        }
+      });
+
+      res.status(200).json({ 
+        message: "User updated successfully",
+        user: updatedUser
+      });
+    } catch (error: any) {
+      console.error("Update user error:", error);
+      res.status(500).json({ message: "Error updating user", error: error.message });
+    }
+  }
+
+  // Delete user (only superAdmin)
+  async deleteUser(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      // Check if user exists
+      const existingUser = await User.findUnique({
+        where: { id }
+      });
+
+      if (!existingUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      // Prevent deleting yourself
+      if (req.user && req.user.id === id) {
+        return res.status(400).json({ message: "You cannot delete your own account" });
+      }
+
+      await User.delete({
+        where: { id }
+      });
+
+      res.status(200).json({ 
+        message: "User deleted successfully"
+      });
+    } catch (error: any) {
+      console.error("Delete user error:", error);
+      res.status(500).json({ message: "Error deleting user", error: error.message });
+    }
+  }
+}
+
+export default new UserController();
