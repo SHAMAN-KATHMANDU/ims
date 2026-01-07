@@ -6,8 +6,8 @@ import dbConnect from "@/config/dbConnect";
 
 dotenv.config();
 
-const PORT: number = 9000;
-const HOST: string = "localhost";
+const PORT: number = parseInt(process.env.PORT || "4000", 10);
+const HOST: string = process.env.HOST || "0.0.0.0";
 
 // Graceful shutdown
 let httpServer: http.Server | null = null;
