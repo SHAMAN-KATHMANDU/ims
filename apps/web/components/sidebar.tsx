@@ -3,14 +3,24 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { Home, Package, BarChart3, Settings, ChevronLeft } from "lucide-react"
+import { Home, Package, BarChart3, Settings, ChevronLeft, Shield } from "lucide-react"
 import { Button } from "./ui/button"
+import { getUserRole, type UserRole } from "@/utils/auth"
+import { useMemo } from "react"
 
-const navItems = [
-  { href: "/dashboard", label: "Home", icon: Home },
-  { href: "/dashboard/product", label: "Product", icon: Package },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3 },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+interface NavItem {
+  href: string
+  label: string
+  icon: React.ComponentType<{ className?: string }>
+  roles: UserRole[]
+}
+
+const allNavItems: NavItem[] = [
+  { href: "/dashboard", label: "Home", icon: Home, roles: ["user", "admin", "superAdmin"] },
+  { href: "/dashboard/product", label: "Product", icon: Package, roles: ["user", "admin", "superAdmin"] },
+  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["admin", "superAdmin"] },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: ["user", "admin", "superAdmin"] },
+  { href: "/dashboard/admin", label: "Admin", icon: Shield, roles: ["superAdmin"] },
 ]
 
 interface SidebarProps {
@@ -20,6 +30,13 @@ interface SidebarProps {
 
 export function Sidebar({ isOpen, onToggle }: SidebarProps) {
   const pathname = usePathname()
+  const userRole = getUserRole()
+
+  // Filter nav items based on user role
+  const navItems = useMemo(() => {
+    if (!userRole) return []
+    return allNavItems.filter(item => item.roles.includes(userRole))
+  }, [userRole])
 
   return (
     <aside

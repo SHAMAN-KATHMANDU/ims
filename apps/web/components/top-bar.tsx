@@ -12,14 +12,23 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu"
 import { Moon, Sun, LogOut, Menu } from "lucide-react"
-import { removeAuthToken } from "@/utils/auth"
+import { logout, getAuthUser } from "@/utils/auth"
+import { useEffect, useState } from "react"
 
 export function TopBar() {
   const router = useRouter()
   const { theme, setTheme } = useTheme()
+  const [username, setUsername] = useState<string>("")
 
-  const handleLogout = () => {
-    removeAuthToken()
+  useEffect(() => {
+    const user = getAuthUser()
+    if (user) {
+      setUsername(user.username)
+    }
+  }, [])
+
+  const handleLogout = async () => {
+    await logout()
     router.push("/login")
   }
 
@@ -45,12 +54,16 @@ export function TopBar() {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" className="relative">
               <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                <span className="text-sm font-medium text-primary">U</span>
+                <span className="text-sm font-medium text-primary">
+                  {username ? username.charAt(0).toUpperCase() : "U"}
+                </span>
               </div>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>My Account</DropdownMenuLabel>
+            <DropdownMenuLabel>
+              {username ? `@${username}` : "My Account"}
+            </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
