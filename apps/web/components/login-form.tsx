@@ -1,94 +1,102 @@
 "use client"
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useAuth } from "@/hooks/useAuth"
+import { useForm } from "@/hooks/useForm"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { login, setAuthToken, setAuthUser } from "@/utils/auth"
 
+interface LoginFormValues {
+  username: string
+  password: string
+}
+
+/**
+ * Login Form Component - Dumb component
+ * 
+ * Design decisions:
+ * - No API calls (handled by useAuth)
+ * - No validation logic (handled by useForm)
+ * - Only UI rendering and event binding
+ * - All logic lives in hooks
+ */
 export default function LoginForm() {
-  const router = useRouter()
-  const [username, setUsername] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [isLoading, setIsLoading] = useState(false)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setIsLoading(true)
-
-    try {
-      if (!username || !password) {
-        setError("Please enter both username and password")
-        setIsLoading(false)
-        return
+  const { login } = useAuth()
+  
+  const form = useForm<LoginFormValues>({
+    initialValues: {
+      username: "",
+      password: "",
+    },
+    validate: (values) => {
+      const errors: Record<string, string> = {}
+      if (!values.username.trim()) {
+        errors.username = "Username is required"
       }
-
-      // Normalize username (trim whitespace and convert to lowercase)
-      const normalizedUsername = username.trim().toLowerCase()
-      const { token, user } = await login(normalizedUsername, password)
-      
-      // Store token and user info
-      setAuthToken(token)
-      setAuthUser(user)
-      
-      // Redirect to dashboard
-      router.push("/dashboard")
-      router.refresh() // Refresh to ensure state updates
-    } catch (err: any) {
-      console.error("Login error:", err)
-      setError(err.message || "Login failed. Please check your credentials and ensure the API is running.")
-      setIsLoading(false)
-    }
-  }
+      if (!values.password) {
+        errors.password = "Password is required"
+      }
+      return Object.keys(errors).length > 0 ? errors : null
+    },
+    onSubmit: async (values) => {
+      await login({
+        username: values.username,
+        password: values.password,
+      })
+    },
+  })
 
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
-        <CardDescription className="text-center">Enter your credentials to access your dashboard</CardDescription>
+        <CardDescription className="text-center">
+          Enter your credentials to access your dashboard
+        </CardDescription>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={form.handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
             <Input
               id="username"
               type="text"
               placeholder="Enter your username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={isLoading}
+              value={form.values.username}
+              onChange={(e) => form.handleChange("username", e.target.value)}
+              disabled={form.isLoading}
               required
             />
+            {form.errors.username && (
+              <p className="text-sm text-destructive">{form.errors.username}</p>
+            )}
           </div>
+
           <div className="space-y-2">
             <Label htmlFor="password">Password</Label>
             <Input
               id="password"
               type="password"
               placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={isLoading}
+              value={form.values.password}
+              onChange={(e) => form.handleChange("password", e.target.value)}
+              disabled={form.isLoading}
               required
             />
+            {form.errors.password && (
+              <p className="text-sm text-destructive">{form.errors.password}</p>
+            )}
           </div>
-          {error && (
+
+          {form.errors._form && (
             <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md">
-              {error}
-              <div className="mt-2 text-xs text-muted-foreground">
-                API URL: {process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1"}
-              </div>
+              {form.errors._form}
             </div>
           )}
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? "Logging in..." : "Login"}
+
+          <Button type="submit" className="w-full" disabled={form.isLoading}>
+            {form.isLoading ? "Logging in..." : "Login"}
           </Button>
         </form>
       </CardContent>
