@@ -1,0 +1,75 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile.dev
+    container_name: api-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+      - apps/api/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    volumes:
+      # Mount source code for hot reload
+      - ./apps/api:/app/apps/api
+      - ./packages:/app/packages
+      # Exclude node_modules to use container's installed dependencies
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/packages/*/node_modules
+    environment:
+      - NODE_ENV=development
+    command: pnpm --filter api dev
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile.dev
+    container_name: web-dev
+    restart: unless-stopped
+    env_file:
+      - .env
+      - apps/web/.env
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source code for hot reload
+      - ./apps/web:/app/apps/web
+      - ./packages:/app/packages
+      # Exclude node_modules to use container's installed dependencies
+      - /app/node_modules
+      - /app/apps/api/node_modules
+      - /app/apps/web/node_modules
+      - /app/apps/web/.next
+      - /app/packages/*/node_modules
+    environment:
+      - NODE_ENV=development
+      - WATCHPACK_POLLING=true
+    command: pnpm --filter web dev
+
+volumes:
+  postgres_data:
+

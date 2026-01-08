@@ -8,6 +8,7 @@ const authRouter = Router();
 authRouter.post('/login', authController.logIn);
 
 // Protected routes
+authRouter.get('/me', verifyToken, authController.getCurrentUser);
 authRouter.post('/logout', verifyToken, authController.logOut);
 
 export default authRouter;

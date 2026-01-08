@@ -1,14 +1,14 @@
 import { ProtectedRoute } from "@/components/protected-route"
 import { RoleProtectedRoute } from "@/components/role-protected-route"
 import { DashboardLayout } from "@/components/dashboard-layout"
-import { SettingsPage } from "@/components/pages/settings"
+import { AdminSettings } from "@/components/pages/admin-settings"
 
-export default function Settings() {
+export default function AdminPage() {
   return (
     <ProtectedRoute>
-      <RoleProtectedRoute allowedRoles={["user", "admin", "superAdmin"]}>
+      <RoleProtectedRoute allowedRoles={["superAdmin"]} fallbackPath="/dashboard">
         <DashboardLayout>
-          <SettingsPage />
+          <AdminSettings />
         </DashboardLayout>
       </RoleProtectedRoute>
     </ProtectedRoute>
