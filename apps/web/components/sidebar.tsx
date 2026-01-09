@@ -9,34 +9,57 @@ import { getUserRole, type UserRole } from "@/utils/auth"
 import { useMemo } from "react"
 
 interface NavItem {
-  href: string
+  path: string // Relative path (e.g., "", "product", "analytics")
   label: string
   icon: React.ComponentType<{ className?: string }>
   roles: UserRole[]
 }
 
-const allNavItems: NavItem[] = [
-  { href: "/dashboard", label: "Home", icon: Home, roles: ["user", "admin", "superAdmin"] },
-  { href: "/dashboard/product", label: "Product", icon: Package, roles: ["user", "admin", "superAdmin"] },
-  { href: "/dashboard/analytics", label: "Analytics", icon: BarChart3, roles: ["admin", "superAdmin"] },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings, roles: ["user", "admin", "superAdmin"] },
-  { href: "/dashboard/admin", label: "Admin", icon: Shield, roles: ["superAdmin"] },
+// Define nav items with relative paths
+const navItemConfigs: NavItem[] = [
+  { path: "", label: "Home", icon: Home, roles: ["user", "admin", "superAdmin"] },
+  { path: "product", label: "Product", icon: Package, roles: ["user", "admin", "superAdmin"] },
+  { path: "analytics", label: "Analytics", icon: BarChart3, roles: ["admin", "superAdmin"] },
+  { path: "settings", label: "Settings", icon: Settings, roles: ["user", "admin", "superAdmin"] },
+  { path: "admin-controls", label: "Admin Controls", icon: Shield, roles: ["superAdmin"] },
 ]
 
 interface SidebarProps {
   isOpen: boolean
   onToggle: () => void
+  basePath?: string // Optional: can be passed explicitly, otherwise auto-detected
 }
 
-export function Sidebar({ isOpen, onToggle }: SidebarProps) {
+export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const pathname = usePathname()
   const userRole = getUserRole()
 
-  // Filter nav items based on user role
+  // Detect base path from current pathname if not provided
+  const detectedBasePath = useMemo(() => {
+    if (basePath) return basePath
+    
+    // Auto-detect: check if we're in /admin/dashboard or /dashboard
+    if (pathname.startsWith("/admin/dashboard")) {
+      return "/admin/dashboard"
+    } else if (pathname.startsWith("/dashboard")) {
+      return "/dashboard"
+    }
+    
+    // Default fallback
+    return "/dashboard"
+  }, [pathname, basePath])
+
+  // Build nav items with full paths based on detected base path
   const navItems = useMemo(() => {
     if (!userRole) return []
-    return allNavItems.filter(item => item.roles.includes(userRole))
-  }, [userRole])
+    
+    return navItemConfigs
+      .filter(item => item.roles.includes(userRole))
+      .map(item => ({
+        ...item,
+        href: `${detectedBasePath}${item.path ? `/${item.path}` : ""}`,
+      }))
+  }, [userRole, detectedBasePath])
 
   return (
     <aside
@@ -54,7 +77,7 @@ export function Sidebar({ isOpen, onToggle }: SidebarProps) {
       <nav className="flex-1 space-y-2 p-4">
         {navItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href
+          const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
           return (
             <Link
               key={item.href}
