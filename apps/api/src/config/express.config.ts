@@ -1,12 +1,14 @@
 import express from "express";
 import router from "@/config/router.config"
+import swaggerUi from "swagger-ui-express";
+import { swaggerSpec } from "@/config/swagger.config";
 
 const app = express();
 
 // CORS middleware - must be before other middleware
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  
+
   // Allow all localhost origins for development
   const allowedOrigins = [
     "http://localhost:3000",
@@ -42,6 +44,13 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Swagger Documentation
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: "IMS API Documentation"
+}));
+
+// API Routes
 app.use("/api/v1", router);
 
 export default app;

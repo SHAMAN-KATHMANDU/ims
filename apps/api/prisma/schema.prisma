@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,6 +7,10 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================
+// USER MODEL
+// ============================================
+
 model User {
   id        String   @id @default(uuid())
   username  String   @unique
@@ -18,22 +19,111 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  // Relations
+  productsCreated Product[] @relation("ProductCreator")
+
   @@map("users")
-}
-
-model Product {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  price       Float?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("products")
 }
 
 enum Role {
   superAdmin
   admin
   user
+}
+
+// ============================================
+// PRODUCT MODELS
+// ============================================
+
+model Category {
+  id          String   @id @default(uuid()) @map("category_id")
+  name        String   @unique @map("category_name") @db.VarChar(255)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  products Product[]
+
+  @@map("categories")
+}
+
+model Product {
+  id           String   @id @default(uuid()) @map("product_id")
+  imsCode      String   @unique @map("ims_code") @db.VarChar(100)
+  name         String   @map("product_name") @db.VarChar(255)
+  categoryId   String   @map("category_id")
+  description  String?  @db.Text
+  length       Decimal? @db.Decimal(10, 2)
+  breadth      Decimal? @db.Decimal(10, 2)
+  height       Decimal? @db.Decimal(10, 2)
+  weight       Decimal? @db.Decimal(10, 2)
+  costPrice    Decimal  @map("cost_price") @db.Decimal(10, 2)
+  mrp          Decimal  @db.Decimal(10, 2)
+  createdById  String   @map("created_by_id")
+  dateCreated  DateTime @default(now()) @map("date_created")
+  dateModified DateTime @updatedAt @map("date_modified")
+
+  category   Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy  User               @relation("ProductCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  variations ProductVariation[]
+  discounts  ProductDiscount[]
+
+  @@map("products")
+}
+
+model ProductVariation {
+  id            String   @id @default(uuid()) @map("variation_id")
+  productId     String   @map("product_id")
+  color         String   @db.VarChar(100)
+  stockQuantity Int      @default(0) @map("stock_quantity")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  product Product          @relation(fields: [productId], references: [id], onDelete: Cascade)
+  photos  VariationPhoto[]
+
+  @@unique([productId, color])
+  @@map("product_variations")
+}
+
+model VariationPhoto {
+  id          String   @id @default(uuid()) @map("photo_id")
+  variationId String   @map("variation_id")
+  photoUrl    String   @map("photo_url") @db.VarChar(500)
+  isPrimary   Boolean  @default(false) @map("is_primary")
+  uploadDate  DateTime @default(now()) @map("upload_date")
+
+  variation ProductVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
+
+  @@map("variation_photos")
+}
+
+model DiscountType {
+  id          String   @id @default(uuid()) @map("discount_type_id")
+  name        String   @unique @map("type_name") @db.VarChar(100)
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  productDiscounts ProductDiscount[]
+
+  @@map("discount_types")
+}
+
+model ProductDiscount {
+  id                 String    @id @default(uuid()) @map("discount_id")
+  productId          String    @map("product_id")
+  discountTypeId     String    @map("discount_type_id")
+  discountPercentage Decimal   @map("discount_percentage") @db.Decimal(5, 2)
+  startDate          DateTime? @map("start_date")
+  endDate            DateTime? @map("end_date")
+  isActive           Boolean   @default(true) @map("is_active")
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  product      Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  discountType DiscountType @relation(fields: [discountTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([productId, discountTypeId])
+  @@map("product_discounts")
 }
