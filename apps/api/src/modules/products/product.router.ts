@@ -133,6 +133,44 @@ productRouter.get(
 
 /**
  * @swagger
+ * /products/categories/list:
+ *   get:
+ *     summary: Get all categories (helper endpoint)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Categories retrieved successfully
+ */
+productRouter.get(
+  '/categories/list',
+  verifyToken,
+  authorizeRoles("admin", "user", "superAdmin"),
+  productController.getAllCategories
+);
+
+/**
+ * @swagger
+ * /products/discount-types/list:
+ *   get:
+ *     summary: Get all discount types (helper endpoint)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Discount types retrieved successfully
+ */
+productRouter.get(
+  '/discount-types/list',
+  verifyToken,
+  authorizeRoles("admin", "user", "superAdmin"),
+  productController.getAllDiscountTypes
+);
+
+/**
+ * @swagger
  * /products/{id}:
  *   get:
  *     summary: Get product by ID
@@ -227,44 +265,6 @@ productRouter.delete(
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
   productController.deleteProduct
-);
-
-/**
- * @swagger
- * /products/categories/list:
- *   get:
- *     summary: Get all categories (helper endpoint)
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Categories retrieved successfully
- */
-productRouter.get(
-  '/categories/list',
-  verifyToken,
-  authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllCategories
-);
-
-/**
- * @swagger
- * /products/discount-types/list:
- *   get:
- *     summary: Get all discount types (helper endpoint)
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Discount types retrieved successfully
- */
-productRouter.get(
-  '/discount-types/list',
-  verifyToken,
-  authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllDiscountTypes
 );
 
 export default productRouter;

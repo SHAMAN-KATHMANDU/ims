@@ -74,6 +74,8 @@ export function ProductPage() {
   const [productDiscounts, setProductDiscounts] = useState<Array<{
     discountTypeName: string
     discountPercentage: string
+    startDate: string
+    endDate: string
     isActive: boolean
   }>>([])
   
@@ -179,6 +181,8 @@ export function ProductPage() {
           data.discounts = productDiscounts.map(d => ({
             discountTypeName: d.discountTypeName,
             discountPercentage: Number(d.discountPercentage) || 0,
+            startDate: d.startDate && d.startDate.trim() !== "" ? d.startDate : undefined,
+            endDate: d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
             isActive: d.isActive
           }))
         } else {
@@ -198,13 +202,19 @@ export function ProductPage() {
             data.discounts = productDiscounts.map(d => ({
               discountTypeName: d.discountTypeName,
               discountPercentage: Number(d.discountPercentage) || 0,
+              startDate: d.startDate && d.startDate.trim() !== "" ? d.startDate : undefined,
+              endDate: d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
               isActive: d.isActive
             }))
           }
         }
 
         if (isEditing) {
-          await updateProduct(editingProduct!.id, data)
+          if (!editingProduct?.id) {
+            throw new Error("Product ID is missing. Please try editing the product again.")
+          }
+          console.log(`Updating product with ID: ${editingProduct.id}`, data);
+          await updateProduct(editingProduct.id, data)
           toast({ title: "Product updated successfully" })
         } else {
           await addProduct(data)
@@ -217,9 +227,11 @@ export function ProductPage() {
         setProductDiscounts([])
         productForm.reset()
       } catch (error: any) {
+        console.error("Product save error:", error);
+        const errorMessage = error.response?.data?.message || error.message || "Failed to save product";
         toast({
           title: "Error",
-          description: error.message || "Failed to save product",
+          description: errorMessage,
           variant: "destructive",
         })
       }
@@ -268,6 +280,16 @@ export function ProductPage() {
   const getProductName = (id: string) => products.find((p) => p.id === id)?.name || "Unknown"
 
   const handleEditProduct = (product: Product) => {
+    if (!product || !product.id) {
+      toast({
+        title: "Error",
+        description: "Invalid product data. Please refresh the page and try again.",
+        variant: "destructive",
+      })
+      return
+    }
+    
+    console.log(`Editing product: ${product.name} (ID: ${product.id})`)
     setEditingProduct(product)
     productForm.values.imsCode = product.imsCode
     productForm.values.name = product.name
@@ -301,6 +323,8 @@ export function ProductPage() {
         (product as any).discounts.map((d: any) => ({
           discountTypeName: d.discountType?.name || "",
           discountPercentage: (d.discountPercentage || 0).toString(),
+          startDate: d.startDate ? new Date(d.startDate).toISOString().split('T')[0] : "",
+          endDate: d.endDate ? new Date(d.endDate).toISOString().split('T')[0] : "",
           isActive: d.isActive !== undefined ? d.isActive : true
         }))
       )
@@ -389,18 +413,20 @@ export function ProductPage() {
   }
 
   const addDiscountToForm = () => {
-    setProductDiscounts([...productDiscounts, { discountTypeName: "", discountPercentage: "0", isActive: true }])
+    setProductDiscounts([...productDiscounts, { discountTypeName: "", discountPercentage: "0", startDate: "", endDate: "", isActive: true }])
   }
 
   const removeDiscountFromForm = (index: number) => {
     setProductDiscounts(productDiscounts.filter((_, i) => i !== index))
   }
 
-  const updateDiscountInForm = (index: number, field: "discountTypeName" | "discountPercentage" | "isActive", value: string | boolean) => {
+  const updateDiscountInForm = (index: number, field: "discountTypeName" | "discountPercentage" | "startDate" | "endDate" | "isActive", value: string | boolean) => {
     const updated = [...productDiscounts]
     updated[index] = {
       discountTypeName: field === "discountTypeName" ? (value as string) : (updated[index]?.discountTypeName || ""),
       discountPercentage: field === "discountPercentage" ? (value as string) : (updated[index]?.discountPercentage || "0"),
+      startDate: field === "startDate" ? (value as string) : (updated[index]?.startDate || ""),
+      endDate: field === "endDate" ? (value as string) : (updated[index]?.endDate || ""),
       isActive: field === "isActive" ? (value as boolean) : (updated[index]?.isActive !== undefined ? updated[index].isActive : true)
     }
     setProductDiscounts(updated)
@@ -694,58 +720,93 @@ export function ProductPage() {
                       </Button>
                     </div>
                     {productDiscounts.length > 0 && (
-                      <div className="space-y-2 border rounded-lg p-4">
+                      <div className="space-y-4 border rounded-lg p-4">
                         {productDiscounts.map((discount, index) => (
-                          <div key={index} className="flex gap-2 items-end">
-                            <div className="flex-1 space-y-1">
-                              <Label htmlFor={`disc-type-${index}`} className="text-xs">Discount Type</Label>
-                              <Select
-                                value={discount.discountTypeName}
-                                onValueChange={(value) => updateDiscountInForm(index, "discountTypeName", value)}
-                              >
-                                <SelectTrigger id={`disc-type-${index}`}>
-                                  <SelectValue placeholder="Select discount type" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {discountTypes.map((dt) => (
-                                    <SelectItem key={dt.id} value={dt.name}>
-                                      {dt.name}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
+                          <div key={index} className="space-y-3 border-b pb-4 last:border-b-0 last:pb-0">
+                            <div className="grid grid-cols-3 gap-2">
+                              <div className="space-y-1">
+                                <Label htmlFor={`disc-type-${index}`} className="text-xs">Discount Type *</Label>
+                                <Select
+                                  value={discount.discountTypeName}
+                                  onValueChange={(value) => updateDiscountInForm(index, "discountTypeName", value)}
+                                >
+                                  <SelectTrigger id={`disc-type-${index}`}>
+                                    <SelectValue placeholder="Select type" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {discountTypes.length > 0 ? (
+                                      discountTypes.map((dt) => (
+                                        <SelectItem key={dt.id} value={dt.name}>
+                                          {dt.name}
+                                        </SelectItem>
+                                      ))
+                                    ) : (
+                                      <>
+                                        <SelectItem value="Normal">Normal</SelectItem>
+                                        <SelectItem value="Special">Special</SelectItem>
+                                        <SelectItem value="Member">Member</SelectItem>
+                                        <SelectItem value="Wholesale">Wholesale</SelectItem>
+                                      </>
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor={`disc-percent-${index}`} className="text-xs">Discount % *</Label>
+                                <Input
+                                  id={`disc-percent-${index}`}
+                                  type="number"
+                                  placeholder="0"
+                                  min="0"
+                                  max="100"
+                                  step="0.01"
+                                  value={discount.discountPercentage}
+                                  onChange={(e) => updateDiscountInForm(index, "discountPercentage", e.target.value)}
+                                />
+                              </div>
+                              <div className="flex items-end gap-2">
+                                <div className="flex-1 flex items-center gap-2 space-y-1">
+                                  <input
+                                    id={`disc-active-${index}`}
+                                    type="checkbox"
+                                    checked={discount.isActive}
+                                    onChange={(e) => updateDiscountInForm(index, "isActive", e.target.checked)}
+                                    className="h-4 w-4"
+                                  />
+                                  <Label htmlFor={`disc-active-${index}`} className="text-xs cursor-pointer">Active</Label>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => removeDiscountFromForm(index)}
+                                  className="mb-0"
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
                             </div>
-                            <div className="flex-1 space-y-1">
-                              <Label htmlFor={`disc-percent-${index}`} className="text-xs">Discount %</Label>
-                              <Input
-                                id={`disc-percent-${index}`}
-                                type="number"
-                                placeholder="0"
-                                min="0"
-                                max="100"
-                                value={discount.discountPercentage}
-                                onChange={(e) => updateDiscountInForm(index, "discountPercentage", e.target.value)}
-                              />
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="space-y-1">
+                                <Label htmlFor={`disc-start-${index}`} className="text-xs">Start Date (Optional)</Label>
+                                <Input
+                                  id={`disc-start-${index}`}
+                                  type="date"
+                                  value={discount.startDate}
+                                  onChange={(e) => updateDiscountInForm(index, "startDate", e.target.value)}
+                                />
+                              </div>
+                              <div className="space-y-1">
+                                <Label htmlFor={`disc-end-${index}`} className="text-xs">End Date (Optional)</Label>
+                                <Input
+                                  id={`disc-end-${index}`}
+                                  type="date"
+                                  value={discount.endDate}
+                                  min={discount.startDate || undefined}
+                                  onChange={(e) => updateDiscountInForm(index, "endDate", e.target.value)}
+                                />
+                              </div>
                             </div>
-                            <div className="flex items-center gap-2 space-y-1">
-                              <Label htmlFor={`disc-active-${index}`} className="text-xs">Active</Label>
-                              <input
-                                id={`disc-active-${index}`}
-                                type="checkbox"
-                                checked={discount.isActive}
-                                onChange={(e) => updateDiscountInForm(index, "isActive", e.target.checked)}
-                                className="h-4 w-4"
-                              />
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeDiscountFromForm(index)}
-                              className="mb-0"
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
                           </div>
                         ))}
                       </div>
