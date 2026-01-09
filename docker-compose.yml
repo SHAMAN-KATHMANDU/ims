@@ -1,12 +1,14 @@
 services:
   postgres:
     image: postgres:16
-    container_name: postgres
-    restart: always
-    env_file:
-      - .env
+    container_name: projectx-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-projectx}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -14,39 +16,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-
-  api:
-    build:
-      context: .
-      dockerfile: apps/api/Dockerfile
-    container_name: api
-    restart: always
-    env_file:
-      - .env
-      - apps/api/.env
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "4000:4000"
-    environment:
-      - NODE_ENV=production
-
-  web:
-    build:
-      context: .
-      dockerfile: apps/web/Dockerfile
-    container_name: web
-    restart: always
-    env_file:
-      - .env
-      - apps/web/.env
-    depends_on:
-      - api
-    ports:
-      - "3000:3000"
-    environment:
-      - NODE_ENV=production
 
 volumes:
   postgres_data:
