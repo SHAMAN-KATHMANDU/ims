@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Button } from "@/components/ui/button"
@@ -21,6 +21,9 @@ import {
   type Category,
   type ProductVariation,
 } from "@/hooks/useProduct"
+import { getUserRole, isAdmin } from "@/utils/auth"
+import { useAxios } from "@/hooks/useAxios"
+import { ProductService } from "@/services/productService"
 
 type ProductFormValues = {
   imsCode: string
@@ -40,30 +43,70 @@ type CategoryFormValues = {
   description: string
 }
 
-type VariationFormValues = {
-  productId: string
-  color: string
-  stockQuantity: string
-}
 
 export function ProductPage() {
   // ============================================
   // HOOKS - Connect your data here
   // ============================================
-  const { products, addProduct, updateProduct, deleteProduct } = useProducts()
-  const { categories, addCategory, updateCategory, deleteCategory } = useCategories()
-  const { variations, addVariation, updateVariation, deleteVariation } = useVariations()
+  const { products, addProduct, updateProduct, deleteProduct, refreshProducts } = useProducts()
+  const { categories, addCategory, updateCategory, deleteCategory, refreshCategories } = useCategories()
   const { toast } = useToast()
+  const userRole = getUserRole()
+  const canManageProducts = isAdmin() // admin and superAdmin can manage products
+  const axios = useAxios() // Get axios instance at component level
 
   // Dialog states
   const [productDialog, setProductDialog] = useState(false)
   const [categoryDialog, setCategoryDialog] = useState(false)
-  const [variationDialog, setVariationDialog] = useState(false)
 
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
   const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  const [editingVariation, setEditingVariation] = useState<ProductVariation | null>(null)
+  
+  // Variations state for product form
+  const [productVariations, setProductVariations] = useState<Array<{ 
+    color: string
+    stockQuantity: string
+    photos: Array<{ photoUrl: string; isPrimary: boolean }>
+  }>>([])
+  
+  // Discounts state for product form
+  const [productDiscounts, setProductDiscounts] = useState<Array<{
+    discountTypeName: string
+    discountPercentage: string
+    isActive: boolean
+  }>>([])
+  
+  // Discount types state
+  const [discountTypes, setDiscountTypes] = useState<Array<{ id: string; name: string }>>([])
+  
+  // Helper to get all variations from all products for display
+  const allVariations = products.flatMap((product) => 
+    (product.variations || []).map(v => ({ ...v, productName: product.name }))
+  )
+  
+  // Helper to get all discounts from all products for display
+  const allDiscounts = products.flatMap((product) => 
+    ((product as any).discounts || []).map((d: any) => ({ 
+      ...d, 
+      productName: product.name,
+      productId: product.id
+    }))
+  )
+  
+  // Fetch discount types using ProductService
+  useEffect(() => {
+    const fetchDiscountTypes = async () => {
+      try {
+        const productService = new ProductService(axios)
+        const types = await productService.getAllDiscountTypes()
+        setDiscountTypes(types)
+      } catch (error) {
+        console.error("Error fetching discount types:", error)
+      }
+    }
+    fetchDiscountTypes()
+  }, [axios])
 
   // ============================================
   // ============================================
@@ -84,14 +127,6 @@ export function ProductPage() {
     return Object.keys(errors).length > 0 ? errors : null
   }
 
-  const validateVariation = (values: VariationFormValues) => {
-    const errors: Record<string, string> = {}
-    if (!values.productId) errors.productId = "Product is required"
-    if (!values.color?.trim()) errors.color = "Color is required"
-    if (!values.stockQuantity || Number(values.stockQuantity) < 0)
-      errors.stockQuantity = "Valid stock quantity is required"
-    return Object.keys(errors).length > 0 ? errors : null
-  }
 
   // ============================================
   // ============================================
@@ -111,29 +146,83 @@ export function ProductPage() {
     },
     validate: validateProduct,
     onSubmit: async (values) => {
-      const data = {
-        imsCode: values.imsCode,
-        name: values.name,
-        categoryId: values.categoryId,
-        description: values.description,
-        length: values.length ? Number(values.length) : undefined,
-        breadth: values.breadth ? Number(values.breadth) : undefined,
-        height: values.height ? Number(values.height) : undefined,
-        weight: values.weight ? Number(values.weight) : undefined,
-        costPrice: Number(values.costPrice),
-        mrp: Number(values.mrp),
-      }
+      try {
+        const isEditing = !!editingProduct
+        
+        const data: any = {
+          imsCode: values.imsCode,
+          name: values.name,
+          categoryId: values.categoryId,
+          description: values.description,
+          length: values.length ? Number(values.length) : undefined,
+          breadth: values.breadth ? Number(values.breadth) : undefined,
+          height: values.height ? Number(values.height) : undefined,
+          weight: values.weight ? Number(values.weight) : undefined,
+          costPrice: Number(values.costPrice),
+          mrp: Number(values.mrp),
+        }
 
-      if (editingProduct) {
-        await updateProduct(editingProduct.id, data)
-        toast({ title: "Product updated successfully" })
-      } else {
-        await addProduct(data)
-        toast({ title: "Product added successfully" })
+        // Always include variations when editing (even if empty, to clear existing ones)
+        // When creating, only include if there are variations
+        if (isEditing) {
+          // When editing, always send variations array (even if empty) so backend can update/clear them
+          data.variations = productVariations.map(v => ({
+            color: v.color,
+            stockQuantity: Number(v.stockQuantity) || 0,
+            photos: v.photos && v.photos.length > 0 ? v.photos.map(p => ({
+              photoUrl: p.photoUrl,
+              isPrimary: p.isPrimary
+            })) : undefined,
+          }))
+          
+          // Always send discounts array when editing (even if empty) so backend can update/clear them
+          data.discounts = productDiscounts.map(d => ({
+            discountTypeName: d.discountTypeName,
+            discountPercentage: Number(d.discountPercentage) || 0,
+            isActive: d.isActive
+          }))
+        } else {
+          // When creating, only include if there are variations/discounts
+          if (productVariations.length > 0) {
+            data.variations = productVariations.map(v => ({
+              color: v.color,
+              stockQuantity: Number(v.stockQuantity) || 0,
+              photos: v.photos && v.photos.length > 0 ? v.photos.map(p => ({
+                photoUrl: p.photoUrl,
+                isPrimary: p.isPrimary
+              })) : undefined,
+            }))
+          }
+          
+          if (productDiscounts.length > 0) {
+            data.discounts = productDiscounts.map(d => ({
+              discountTypeName: d.discountTypeName,
+              discountPercentage: Number(d.discountPercentage) || 0,
+              isActive: d.isActive
+            }))
+          }
+        }
+
+        if (isEditing) {
+          await updateProduct(editingProduct!.id, data)
+          toast({ title: "Product updated successfully" })
+        } else {
+          await addProduct(data)
+          toast({ title: "Product added successfully" })
+        }
+        await refreshProducts()
+        setProductDialog(false)
+        setEditingProduct(null)
+        setProductVariations([])
+        setProductDiscounts([])
+        productForm.reset()
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to save product",
+          variant: "destructive",
+        })
       }
-      setProductDialog(false)
-      setEditingProduct(null)
-      productForm.reset()
     },
   })
 
@@ -141,47 +230,41 @@ export function ProductPage() {
     initialValues: { name: "", description: "" },
     validate: validateCategory,
     onSubmit: async (values) => {
-      if (editingCategory) {
-        await updateCategory(editingCategory.id, values)
-        toast({ title: "Category updated successfully" })
-      } else {
-        await addCategory(values)
-        toast({ title: "Category added successfully" })
+      try {
+        if (editingCategory) {
+          await updateCategory(editingCategory.id, values)
+          toast({ title: "Category updated successfully" })
+        } else {
+          await addCategory(values)
+          toast({ title: "Category added successfully" })
+        }
+        await refreshCategories()
+        setCategoryDialog(false)
+        setEditingCategory(null)
+        categoryForm.reset()
+      } catch (error: any) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to save category",
+          variant: "destructive",
+        })
       }
-      setCategoryDialog(false)
-      setEditingCategory(null)
-      categoryForm.reset()
     },
   })
 
-  const variationForm = useForm<VariationFormValues>({
-    initialValues: { productId: "", color: "", stockQuantity: "" },
-    validate: validateVariation,
-    onSubmit: async (values) => {
-      const data = {
-        productId: values.productId,
-        color: values.color,
-        stockQuantity: Number(values.stockQuantity),
-      }
-
-      if (editingVariation) {
-        await updateVariation(editingVariation.id, data)
-        toast({ title: "Variation updated successfully" })
-      } else {
-        await addVariation(data)
-        toast({ title: "Variation added successfully" })
-      }
-      setVariationDialog(false)
-      setEditingVariation(null)
-      variationForm.reset()
-    },
-  })
 
   // ============================================
   // HELPER FUNCTIONS
   // ============================================
 
-  const getCategoryName = (id: string) => categories.find((c) => c.id === id)?.name || "Unknown"
+  const getCategoryName = (id: string, product?: Product) => {
+    // First check if product has category object
+    if (product?.category?.name) {
+      return product.category.name
+    }
+    // Fallback to categories list
+    return categories.find((c) => c.id === id)?.name || "Unknown"
+  }
   const getProductName = (id: string) => products.find((p) => p.id === id)?.name || "Unknown"
 
   const handleEditProduct = (product: Product) => {
@@ -196,6 +279,35 @@ export function ProductPage() {
     productForm.values.weight = product.weight?.toString() || ""
     productForm.values.costPrice = product.costPrice.toString()
     productForm.values.mrp = product.mrp.toString()
+    // Load existing variations
+    if (product.variations && product.variations.length > 0) {
+      setProductVariations(
+        product.variations.map(v => ({
+          color: v.color || "",
+          stockQuantity: (v.stockQuantity || 0).toString(),
+          photos: (v.photos || []).map(p => ({
+            photoUrl: p.photoUrl,
+            isPrimary: p.isPrimary || false
+          }))
+        }))
+      )
+    } else {
+      setProductVariations([])
+    }
+    
+    // Load existing discounts
+    if ((product as any).discounts && (product as any).discounts.length > 0) {
+      setProductDiscounts(
+        (product as any).discounts.map((d: any) => ({
+          discountTypeName: d.discountType?.name || "",
+          discountPercentage: (d.discountPercentage || 0).toString(),
+          isActive: d.isActive !== undefined ? d.isActive : true
+        }))
+      )
+    } else {
+      setProductDiscounts([])
+    }
+    
     setProductDialog(true)
   }
 
@@ -206,12 +318,92 @@ export function ProductPage() {
     setCategoryDialog(true)
   }
 
-  const handleEditVariation = (variation: ProductVariation) => {
-    setEditingVariation(variation)
-    variationForm.values.productId = variation.productId
-    variationForm.values.color = variation.color
-    variationForm.values.stockQuantity = variation.stockQuantity.toString()
-    setVariationDialog(true)
+  const addVariationToForm = () => {
+    setProductVariations([...productVariations, { color: "", stockQuantity: "0", photos: [] }])
+  }
+
+  const removeVariationFromForm = (index: number) => {
+    setProductVariations(productVariations.filter((_, i) => i !== index))
+  }
+
+  const updateVariationInForm = (index: number, field: "color" | "stockQuantity", value: string) => {
+    const updated = [...productVariations]
+    updated[index] = { 
+      color: field === "color" ? value : (updated[index]?.color || ""),
+      stockQuantity: field === "stockQuantity" ? value : (updated[index]?.stockQuantity || "0"),
+      photos: updated[index]?.photos || []
+    }
+    setProductVariations(updated)
+  }
+
+  const addPhotoToVariation = (variationIndex: number, photoUrl: string) => {
+    const updated = [...productVariations]
+    const variation = updated[variationIndex]
+    if (!variation) return
+    
+    const photos = variation.photos || []
+    // If this is the first photo, make it primary
+    const isPrimary = photos.length === 0
+    updated[variationIndex] = {
+      color: variation.color || "",
+      stockQuantity: variation.stockQuantity || "0",
+      photos: [...photos, { photoUrl, isPrimary }]
+    }
+    setProductVariations(updated)
+  }
+
+  const removePhotoFromVariation = (variationIndex: number, photoIndex: number) => {
+    const updated = [...productVariations]
+    const variation = updated[variationIndex]
+    if (!variation) return
+    
+    const photos = variation.photos || []
+    const newPhotos = photos.filter((_, i) => i !== photoIndex)
+    // If we removed the primary photo and there are other photos, make the first one primary
+    if (photos[photoIndex]?.isPrimary && newPhotos.length > 0 && newPhotos[0]) {
+      newPhotos[0].isPrimary = true
+    }
+    updated[variationIndex] = {
+      color: variation.color || "",
+      stockQuantity: variation.stockQuantity || "0",
+      photos: newPhotos
+    }
+    setProductVariations(updated)
+  }
+
+  const setPrimaryPhoto = (variationIndex: number, photoIndex: number) => {
+    const updated = [...productVariations]
+    const variation = updated[variationIndex]
+    if (!variation) return
+    
+    const photos = [...(variation.photos || [])]
+    photos.forEach((photo, i) => {
+      photo.isPrimary = i === photoIndex
+    })
+    updated[variationIndex] = {
+      color: variation.color || "",
+      stockQuantity: variation.stockQuantity || "0",
+      photos: photos
+    }
+    setProductVariations(updated)
+  }
+
+  const addDiscountToForm = () => {
+    setProductDiscounts([...productDiscounts, { discountTypeName: "", discountPercentage: "0", isActive: true }])
+  }
+
+  const removeDiscountFromForm = (index: number) => {
+    setProductDiscounts(productDiscounts.filter((_, i) => i !== index))
+  }
+
+  const updateDiscountInForm = (index: number, field: "discountTypeName" | "discountPercentage" | "isActive", value: string | boolean) => {
+    const updated = [...productDiscounts]
+    updated[index] = {
+      discountTypeName: field === "discountTypeName" ? (value as string) : (updated[index]?.discountTypeName || ""),
+      discountPercentage: field === "discountPercentage" ? (value as string) : (updated[index]?.discountPercentage || "0"),
+      isActive: field === "isActive" ? (value as boolean) : (updated[index]?.isActive !== undefined ? updated[index].isActive : true)
+    }
+    setProductDiscounts(updated)
   }
 
   return (
@@ -226,24 +418,28 @@ export function ProductPage() {
           <TabsTrigger value="products">Products</TabsTrigger>
           <TabsTrigger value="categories">Categories</TabsTrigger>
           <TabsTrigger value="variations">Variations</TabsTrigger>
+          <TabsTrigger value="discounts">Discounts</TabsTrigger>
         </TabsList>
 
         {/* PRODUCTS TAB */}
         <TabsContent value="products" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Product Catalog</h2>
-            <Dialog open={productDialog} onOpenChange={setProductDialog}>
-              <DialogTrigger asChild>
-                <Button
+            {canManageProducts && (
+              <Dialog open={productDialog} onOpenChange={setProductDialog}>
+                <DialogTrigger asChild>
+                  <Button
                   onClick={() => {
                     setEditingProduct(null)
+                    setProductVariations([])
+                    setProductDiscounts([])
                     productForm.reset()
                   }}
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Add Product
-                </Button>
-              </DialogTrigger>
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" /> Add Product
+                  </Button>
+                </DialogTrigger>
               <DialogContent className="max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>{editingProduct ? "Edit Product" : "Add Product"}</DialogTitle>
@@ -361,6 +557,204 @@ export function ProductPage() {
                       {productForm.errors.mrp && <p className="text-sm text-destructive">{productForm.errors.mrp}</p>}
                     </div>
                   </div>
+                  
+                  {/* Variations Section */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label>Variations (Optional)</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addVariationToForm}
+                        className="gap-1"
+                      >
+                        <Plus className="h-3 w-3" /> Add Variation
+                      </Button>
+                    </div>
+                    {productVariations.length > 0 && (
+                      <div className="space-y-4 border rounded-lg p-4">
+                        {productVariations.map((variation, index) => (
+                          <div key={index} className="space-y-3 border-b pb-4 last:border-b-0 last:pb-0">
+                            <div className="flex gap-2 items-end">
+                              <div className="flex-1 space-y-1">
+                                <Label htmlFor={`var-color-${index}`} className="text-xs">Color</Label>
+                                <Input
+                                  id={`var-color-${index}`}
+                                  placeholder="e.g., Red, Blue"
+                                  value={variation.color}
+                                  onChange={(e) => updateVariationInForm(index, "color", e.target.value)}
+                                />
+                              </div>
+                              <div className="flex-1 space-y-1">
+                                <Label htmlFor={`var-stock-${index}`} className="text-xs">Stock Quantity</Label>
+                                <Input
+                                  id={`var-stock-${index}`}
+                                  type="number"
+                                  placeholder="0"
+                                  value={variation.stockQuantity}
+                                  onChange={(e) => updateVariationInForm(index, "stockQuantity", e.target.value)}
+                                />
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeVariationFromForm(index)}
+                                className="mb-0"
+                              >
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </div>
+                            
+                            {/* Photos Section for this variation */}
+                            <div className="space-y-2">
+                              <div className="flex justify-between items-center">
+                                <Label className="text-xs">Photos (Optional)</Label>
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => {
+                                    const photoUrl = prompt("Enter photo URL:")
+                                    if (photoUrl && photoUrl.trim()) {
+                                      addPhotoToVariation(index, photoUrl.trim())
+                                    }
+                                  }}
+                                  className="h-7 text-xs"
+                                >
+                                  <Plus className="h-3 w-3 mr-1" /> Add Photo
+                                </Button>
+                              </div>
+                              {variation.photos && variation.photos.length > 0 && (
+                                <div className="grid grid-cols-3 gap-2">
+                                  {variation.photos.map((photo, photoIndex) => (
+                                    <div key={photoIndex} className="relative group">
+                                      <img
+                                        src={photo.photoUrl}
+                                        alt={`Variation ${index + 1} photo ${photoIndex + 1}`}
+                                        className="h-20 w-full rounded border object-cover"
+                                        onError={(e) => {
+                                          (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='12'%3EInvalid%3C/text%3E%3C/svg%3E"
+                                        }}
+                                      />
+                                      {photo.isPrimary && (
+                                        <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-1 rounded">
+                                          Primary
+                                        </span>
+                                      )}
+                                      <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
+                                        {!photo.isPrimary && (
+                                          <Button
+                                            type="button"
+                                            variant="secondary"
+                                            size="sm"
+                                            onClick={() => setPrimaryPhoto(index, photoIndex)}
+                                            className="h-6 text-xs"
+                                          >
+                                            Set Primary
+                                          </Button>
+                                        )}
+                                        <Button
+                                          type="button"
+                                          variant="destructive"
+                                          size="sm"
+                                          onClick={() => removePhotoFromVariation(index, photoIndex)}
+                                          className="h-6 text-xs"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Add color variations and stock quantities for this product
+                    </p>
+                  </div>
+                  
+                  {/* Discounts Section */}
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                      <Label>Discounts (Optional)</Label>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addDiscountToForm}
+                        className="gap-1"
+                      >
+                        <Plus className="h-3 w-3" /> Add Discount
+                      </Button>
+                    </div>
+                    {productDiscounts.length > 0 && (
+                      <div className="space-y-2 border rounded-lg p-4">
+                        {productDiscounts.map((discount, index) => (
+                          <div key={index} className="flex gap-2 items-end">
+                            <div className="flex-1 space-y-1">
+                              <Label htmlFor={`disc-type-${index}`} className="text-xs">Discount Type</Label>
+                              <Select
+                                value={discount.discountTypeName}
+                                onValueChange={(value) => updateDiscountInForm(index, "discountTypeName", value)}
+                              >
+                                <SelectTrigger id={`disc-type-${index}`}>
+                                  <SelectValue placeholder="Select discount type" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {discountTypes.map((dt) => (
+                                    <SelectItem key={dt.id} value={dt.name}>
+                                      {dt.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex-1 space-y-1">
+                              <Label htmlFor={`disc-percent-${index}`} className="text-xs">Discount %</Label>
+                              <Input
+                                id={`disc-percent-${index}`}
+                                type="number"
+                                placeholder="0"
+                                min="0"
+                                max="100"
+                                value={discount.discountPercentage}
+                                onChange={(e) => updateDiscountInForm(index, "discountPercentage", e.target.value)}
+                              />
+                            </div>
+                            <div className="flex items-center gap-2 space-y-1">
+                              <Label htmlFor={`disc-active-${index}`} className="text-xs">Active</Label>
+                              <input
+                                id={`disc-active-${index}`}
+                                type="checkbox"
+                                checked={discount.isActive}
+                                onChange={(e) => updateDiscountInForm(index, "isActive", e.target.checked)}
+                                className="h-4 w-4"
+                              />
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeDiscountFromForm(index)}
+                              className="mb-0"
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground">
+                      Add discount types and percentages for this product
+                    </p>
+                  </div>
+                  
                   {productForm.errors._form && <p className="text-sm text-destructive">{productForm.errors._form}</p>}
                   <div className="flex gap-2 justify-end">
                     <Button
@@ -368,6 +762,8 @@ export function ProductPage() {
                       variant="outline"
                       onClick={() => {
                         setProductDialog(false)
+                        setProductVariations([])
+                        setProductDiscounts([])
                         productForm.reset()
                       }}
                     >
@@ -380,6 +776,7 @@ export function ProductPage() {
                 </form>
               </DialogContent>
             </Dialog>
+            )}
           </div>
 
           <Card>
@@ -404,23 +801,38 @@ export function ProductPage() {
                     <TableRow key={product.id}>
                       <TableCell className="font-mono">{product.imsCode}</TableCell>
                       <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{getCategoryName(product.categoryId)}</TableCell>
+                      <TableCell>{getCategoryName(product.categoryId, product)}</TableCell>
                       <TableCell>Rs. {product.costPrice}</TableCell>
                       <TableCell>Rs. {product.mrp}</TableCell>
                       <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            deleteProduct(product.id)
-                            toast({ title: "Product deleted" })
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
+                        {canManageProducts ? (
+                          <>
+                            <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
+                              <Edit2 className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={async () => {
+                                try {
+                                  await deleteProduct(product.id)
+                                  await refreshProducts()
+                                  toast({ title: "Product deleted" })
+                                } catch (error: any) {
+                                  toast({
+                                    title: "Error",
+                                    description: error.message || "Failed to delete product",
+                                    variant: "destructive",
+                                  })
+                                }
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">View only</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -434,18 +846,19 @@ export function ProductPage() {
         <TabsContent value="categories" className="space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-semibold">Categories</h2>
-            <Dialog open={categoryDialog} onOpenChange={setCategoryDialog}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={() => {
-                    setEditingCategory(null)
-                    categoryForm.reset()
-                  }}
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Add Category
-                </Button>
-              </DialogTrigger>
+            {canManageProducts && (
+              <Dialog open={categoryDialog} onOpenChange={setCategoryDialog}>
+                <DialogTrigger asChild>
+                  <Button
+                    onClick={() => {
+                      setEditingCategory(null)
+                      categoryForm.reset()
+                    }}
+                    className="gap-2"
+                  >
+                    <Plus className="h-4 w-4" /> Add Category
+                  </Button>
+                </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>{editingCategory ? "Edit Category" : "Add Category"}</DialogTitle>
@@ -487,6 +900,7 @@ export function ProductPage() {
                 </form>
               </DialogContent>
             </Dialog>
+            )}
           </div>
 
           <Card>
@@ -500,7 +914,7 @@ export function ProductPage() {
                   <TableRow>
                     <TableHead>Name</TableHead>
                     <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    {canManageProducts && <TableHead className="text-right">Actions</TableHead>}
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -508,21 +922,32 @@ export function ProductPage() {
                     <TableRow key={category.id}>
                       <TableCell className="font-medium">{category.name}</TableCell>
                       <TableCell className="text-muted-foreground">{category.description || "-"}</TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => {
-                            deleteCategory(category.id)
-                            toast({ title: "Category deleted" })
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
+                      {canManageProducts && (
+                        <TableCell className="text-right">
+                          <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={async () => {
+                              try {
+                                await deleteCategory(category.id)
+                                await refreshCategories()
+                                toast({ title: "Category deleted" })
+                              } catch (error: any) {
+                                toast({
+                                  title: "Error",
+                                  description: error.message || "Failed to delete category",
+                                  variant: "destructive",
+                                })
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      )}
                     </TableRow>
                   ))}
                 </TableBody>
@@ -531,98 +956,23 @@ export function ProductPage() {
           </Card>
         </TabsContent>
 
-        {/* VARIATIONS TAB */}
+        {/* VARIATIONS TAB - Read-only view */}
         <TabsContent value="variations" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Variations</h2>
-            <Dialog open={variationDialog} onOpenChange={setVariationDialog}>
-              <DialogTrigger asChild>
-                <Button
-                  onClick={() => {
-                    setEditingVariation(null)
-                    variationForm.reset()
-                  }}
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Add Variation
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{editingVariation ? "Edit Variation" : "Add Variation"}</DialogTitle>
-                </DialogHeader>
-                <form onSubmit={variationForm.handleSubmit} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="var-productId">Product</Label>
-                    <Select
-                      value={variationForm.values.productId}
-                      onValueChange={(value) => variationForm.handleChange("productId", value)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select product" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {products.map((prod) => (
-                          <SelectItem key={prod.id} value={prod.id}>
-                            {prod.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {variationForm.errors.productId && (
-                      <p className="text-sm text-destructive">{variationForm.errors.productId}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="var-color">Color</Label>
-                    <Input
-                      id="var-color"
-                      value={variationForm.values.color}
-                      onChange={(e) => variationForm.handleChange("color", e.target.value)}
-                    />
-                    {variationForm.errors.color && (
-                      <p className="text-sm text-destructive">{variationForm.errors.color}</p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="var-stock">Stock Quantity</Label>
-                    <Input
-                      id="var-stock"
-                      type="number"
-                      value={variationForm.values.stockQuantity}
-                      onChange={(e) => variationForm.handleChange("stockQuantity", e.target.value)}
-                    />
-                    {variationForm.errors.stockQuantity && (
-                      <p className="text-sm text-destructive">{variationForm.errors.stockQuantity}</p>
-                    )}
-                  </div>
-                  {variationForm.errors._form && (
-                    <p className="text-sm text-destructive">{variationForm.errors._form}</p>
-                  )}
-                  <div className="flex gap-2 justify-end">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setVariationDialog(false)
-                        variationForm.reset()
-                      }}
-                    >
-                      Cancel
-                    </Button>
-                    <Button type="submit" disabled={variationForm.isLoading}>
-                      {variationForm.isLoading ? "Saving..." : editingVariation ? "Update" : "Add"}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
+            <div>
+              <h2 className="text-xl font-semibold">Product Variations</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Variations are managed when creating or editing products. Edit a product to add or modify variations.
+              </p>
+            </div>
           </div>
 
           <Card>
             <CardHeader>
               <CardTitle>All Variations</CardTitle>
-              <CardDescription>Total: {variations.length}</CardDescription>
+              <CardDescription>
+                Showing variations from all products. To add/edit variations, edit the product.
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Table>
@@ -630,37 +980,124 @@ export function ProductPage() {
                   <TableRow>
                     <TableHead>Product</TableHead>
                     <TableHead>Color</TableHead>
-                    <TableHead>Stock</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead>Stock Quantity</TableHead>
+                    <TableHead>Photos</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {variations.length === 0 ? (
+                  {allVariations.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-                        No variations yet. Add one to get started.
+                        No variations found. Add variations when creating or editing a product.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    variations.map((variation) => (
-                      <TableRow key={variation.id}>
-                        <TableCell className="font-medium">{getProductName(variation.productId)}</TableCell>
-                        <TableCell>{variation.color}</TableCell>
-                        <TableCell>{variation.stockQuantity}</TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => handleEditVariation(variation)}>
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => {
-                              deleteVariation(variation.id)
-                              toast({ title: "Variation deleted" })
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
+                    allVariations.map((variation) => {
+                      const photos = variation.photos || []
+                      const primaryPhoto = photos.find(p => p.isPrimary) || photos[0]
+                      
+                      return (
+                        <TableRow key={variation.id}>
+                          <TableCell className="font-medium">{(variation as any).productName}</TableCell>
+                          <TableCell>{variation.color}</TableCell>
+                          <TableCell>{variation.stockQuantity}</TableCell>
+                          <TableCell>
+                            {photos.length > 0 ? (
+                              <div className="flex items-center gap-2">
+                                {primaryPhoto && (
+                                  <div className="relative">
+                                    <img
+                                      src={primaryPhoto.photoUrl}
+                                      alt={`${variation.color} variation`}
+                                      className="h-10 w-10 rounded object-cover border"
+                                      onError={(e) => {
+                                        (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect fill='%23ddd' width='40' height='40'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='10'%3ENo Image%3C/text%3E%3C/svg%3E"
+                                      }}
+                                    />
+                                    {photos.length > 1 && (
+                                      <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                                        {photos.length}
+                                      </span>
+                                    )}
+                                  </div>
+                                )}
+                                <span className="text-xs text-muted-foreground">
+                                  {photos.length} photo{photos.length !== 1 ? 's' : ''}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">No photos</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* DISCOUNTS TAB - Read-only view */}
+        <TabsContent value="discounts" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-semibold">Product Discounts</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Discounts are managed when creating or editing products. Edit a product to add or modify discounts.
+              </p>
+            </div>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>All Discounts</CardTitle>
+              <CardDescription>
+                Showing discounts from all products. To add/edit discounts, edit the product.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Discount Type</TableHead>
+                    <TableHead>Discount %</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>End Date</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {allDiscounts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No discounts found. Add discounts when creating or editing a product.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    allDiscounts.map((discount) => (
+                      <TableRow key={discount.id}>
+                        <TableCell className="font-medium">{(discount as any).productName}</TableCell>
+                        <TableCell>
+                          {discount.discountType?.name || "Unknown"}
+                        </TableCell>
+                        <TableCell className="font-medium">{discount.discountPercentage}%</TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            discount.isActive 
+                              ? "bg-green-100 text-green-700" 
+                              : "bg-gray-100 text-gray-700"
+                          }`}>
+                            {discount.isActive ? "Active" : "Inactive"}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          {discount.startDate ? new Date(discount.startDate).toLocaleDateString() : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {discount.endDate ? new Date(discount.endDate).toLocaleDateString() : "-"}
                         </TableCell>
                       </TableRow>
                     ))
