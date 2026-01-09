@@ -9,8 +9,10 @@
     "start": "node -r tsconfig-paths/register dist/index.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
+    "prisma:migrate:deploy": "prisma migrate deploy",
     "prisma:studio": "prisma studio",
-    "prisma:seed": "ts-node prisma/seed.ts"
+    "prisma:seed": "ts-node prisma/seed.ts",
+    "prisma:reset": "prisma migrate reset --force"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
