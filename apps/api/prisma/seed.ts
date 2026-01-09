@@ -50,6 +50,33 @@ async function main() {
   console.log(`   Role: ${superAdmin.role}`);
   console.log(`   ID: ${superAdmin.id}`);
 
+  // Create Discount Types (if they don't exist)
+  const discountTypeNames = ['Normal', 'Special', 'Member', 'Wholesale'];
+  const discountTypeDescriptions: Record<string, string> = {
+    'Normal': 'Regular discount for all customers',
+    'Special': 'Special promotional discount',
+    'Member': 'Discount for registered members',
+    'Wholesale': 'Bulk purchase discount',
+  };
+
+  for (const name of discountTypeNames) {
+    const existing = await prisma.discountType.findUnique({
+      where: { name },
+    });
+
+    if (!existing) {
+      await prisma.discountType.create({
+        data: {
+          name,
+          description: discountTypeDescriptions[name] || null,
+        },
+      });
+      console.log(`✅ Created discount type: ${name}`);
+    } else {
+      console.log(`⚠️  Discount type "${name}" already exists. Skipping.`);
+    }
+  }
+
   console.log('\n🎉 Seeding completed successfully!');
   console.log('📝 You can now log in with the credentials from your .env file');
 }

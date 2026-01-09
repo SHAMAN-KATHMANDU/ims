@@ -114,9 +114,30 @@ class ProductController {
             });
           }
           
+          // Handle date parsing - only set dates if they are valid strings
+          let startDate = null;
+          let endDate = null;
+          
+          if (discount.startDate && discount.startDate.trim() !== "") {
+            const parsedStartDate = new Date(discount.startDate);
+            if (!isNaN(parsedStartDate.getTime())) {
+              startDate = parsedStartDate;
+            }
+          }
+          
+          if (discount.endDate && discount.endDate.trim() !== "") {
+            const parsedEndDate = new Date(discount.endDate);
+            if (!isNaN(parsedEndDate.getTime())) {
+              endDate = parsedEndDate;
+            }
+          }
+          
           resolvedDiscounts.push({
-            ...discount,
-            discountTypeId: discountType.id
+            discountTypeId: discountType.id,
+            discountPercentage: parseFloat(discount.discountPercentage.toString()),
+            startDate: startDate,
+            endDate: endDate,
+            isActive: discount.isActive !== undefined ? discount.isActive : true
           });
         }
       }
@@ -151,13 +172,33 @@ class ProductController {
           } : undefined,
           // Add discounts (use resolved discounts with actual UUIDs)
           discounts: resolvedDiscounts.length > 0 ? {
-            create: resolvedDiscounts.map((discount: any) => ({
-              discountTypeId: discount.discountTypeId,
-              discountPercentage: parseFloat(discount.discountPercentage.toString()),
-              startDate: discount.startDate ? new Date(discount.startDate) : null,
-              endDate: discount.endDate ? new Date(discount.endDate) : null,
-              isActive: discount.isActive !== undefined ? discount.isActive : true
-            }))
+            create: resolvedDiscounts.map((discount: any) => {
+              // Handle date parsing - only set dates if they are valid strings
+              let startDate = null;
+              let endDate = null;
+              
+              if (discount.startDate && discount.startDate.trim && discount.startDate.trim() !== "") {
+                const parsedStartDate = new Date(discount.startDate);
+                if (!isNaN(parsedStartDate.getTime())) {
+                  startDate = parsedStartDate;
+                }
+              }
+              
+              if (discount.endDate && discount.endDate.trim && discount.endDate.trim() !== "") {
+                const parsedEndDate = new Date(discount.endDate);
+                if (!isNaN(parsedEndDate.getTime())) {
+                  endDate = parsedEndDate;
+                }
+              }
+              
+              return {
+                discountTypeId: discount.discountTypeId,
+                discountPercentage: parseFloat(discount.discountPercentage.toString()),
+                startDate: startDate,
+                endDate: endDate,
+                isActive: discount.isActive !== undefined ? discount.isActive : true
+              };
+            })
           } : undefined
         },
         include: {
@@ -301,14 +342,22 @@ class ProductController {
         discounts
       } = req.body;
 
+      console.log(`[UpdateProduct] Attempting to update product with ID: ${id}`);
+      
       // Check if product exists
       const existingProduct = await prisma.product.findUnique({
         where: { id }
       });
 
       if (!existingProduct) {
-        return res.status(404).json({ message: "Product not found" });
+        console.log(`[UpdateProduct] Product with ID ${id} not found in database`);
+        return res.status(404).json({ 
+          message: "Product not found",
+          productId: id
+        });
       }
+
+      console.log(`[UpdateProduct] Product found: ${existingProduct.name} (${existingProduct.imsCode})`);
 
       // If categoryId is being updated, validate it exists
       if (categoryId !== undefined) {
@@ -425,11 +474,29 @@ class ProductController {
               });
             }
             
+            // Handle date parsing - only set dates if they are valid strings
+            let startDate = null;
+            let endDate = null;
+            
+            if (discount.startDate && discount.startDate.trim() !== "") {
+              const parsedStartDate = new Date(discount.startDate);
+              if (!isNaN(parsedStartDate.getTime())) {
+                startDate = parsedStartDate;
+              }
+            }
+            
+            if (discount.endDate && discount.endDate.trim() !== "") {
+              const parsedEndDate = new Date(discount.endDate);
+              if (!isNaN(parsedEndDate.getTime())) {
+                endDate = parsedEndDate;
+              }
+            }
+            
             resolvedDiscounts.push({
               discountTypeId: discountType.id,
               discountPercentage: parseFloat(discount.discountPercentage.toString()),
-              startDate: discount.startDate ? new Date(discount.startDate) : null,
-              endDate: discount.endDate ? new Date(discount.endDate) : null,
+              startDate: startDate,
+              endDate: endDate,
               isActive: discount.isActive !== undefined ? discount.isActive : true
             });
           }
