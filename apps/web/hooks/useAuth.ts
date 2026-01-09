@@ -74,8 +74,12 @@ export function useAuth() {
       setUser(user)
       setIsAuthenticated(true)
 
-      // Redirect to admin dashboard
-      router.push("/admin")
+      // Redirect based on user role
+      if (user.role === "superAdmin" || user.role === "admin") {
+        router.push("/admin/dashboard")
+      } else {
+        router.push("/admin/dashboard") // Regular users also go to dashboard but with limited access
+      }
       router.refresh()
 
       return { token, user }

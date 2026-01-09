@@ -1,19 +1,15 @@
-import type React from "react"
 import { ProtectedRoute } from "@/components/protected-route"
 import { RoleProtectedRoute } from "@/components/role-protected-route"
 import { DashboardLayout } from "@/components/dashboard-layout"
+import { UsersPage } from "@/components/pages/users"
 
-export default function AdminLayout({
-  children,
-}: {
-  children: React.ReactNode
-}) {
+export default function UsersManagementPage() {
   return (
     <ProtectedRoute>
-      <RoleProtectedRoute allowedRoles={["user", "admin", "superAdmin"]}>
-        <>
-          {children}
-        </>
+      <RoleProtectedRoute allowedRoles={["superAdmin"]} fallbackPath="/401">
+        <DashboardLayout>
+          <UsersPage />
+        </DashboardLayout>
       </RoleProtectedRoute>
     </ProtectedRoute>
   )

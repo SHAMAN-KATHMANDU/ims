@@ -211,6 +211,16 @@ class ProductController {
               username: true,
               role: true
             }
+          },
+          variations: {
+            include: {
+              photos: true
+            }
+          },
+          discounts: {
+            include: {
+              discountType: true
+            }
           }
         },
         orderBy: {
@@ -286,7 +296,9 @@ class ProductController {
         height, 
         weight, 
         costPrice, 
-        mrp 
+        mrp,
+        variations,
+        discounts
       } = req.body;
 
       // Check if product exists
@@ -343,6 +355,93 @@ class ProductController {
         updateData.mrp = parseFloat(mrp);
       }
 
+      // Handle variations update if provided
+      if (variations !== undefined) {
+        // Delete existing variations and create new ones
+        await prisma.productVariation.deleteMany({
+          where: { productId: id }
+        });
+        
+        if (Array.isArray(variations) && variations.length > 0) {
+          updateData.variations = {
+            create: variations.map((variation: any) => ({
+              color: variation.color,
+              stockQuantity: variation.stockQuantity || 0,
+              photos: variation.photos && Array.isArray(variation.photos) ? {
+                create: variation.photos.map((photo: any) => ({
+                  photoUrl: photo.photoUrl,
+                  isPrimary: photo.isPrimary || false
+                }))
+              } : undefined
+            }))
+          };
+        }
+      }
+
+      // Handle discounts update if provided
+      if (discounts !== undefined) {
+        // Get all discount types for lookup
+        const allDiscountTypes = await prisma.discountType.findMany({ select: { id: true, name: true } });
+        
+        // Delete existing discounts and create new ones
+        await prisma.productDiscount.deleteMany({
+          where: { productId: id }
+        });
+        
+        if (Array.isArray(discounts) && discounts.length > 0) {
+          const resolvedDiscounts = [];
+          
+          for (const discount of discounts) {
+            let discountType = null;
+            
+            // Try by ID first
+            if (discount.discountTypeId) {
+              discountType = await prisma.discountType.findUnique({
+                where: { id: discount.discountTypeId }
+              });
+            }
+            
+            // If not found by ID, try by name
+            if (!discountType && discount.discountTypeName) {
+              discountType = await prisma.discountType.findUnique({
+                where: { name: discount.discountTypeName }
+              });
+            }
+            
+            // If still not found, try using discountTypeId as name (for convenience)
+            if (!discountType && discount.discountTypeId && !discount.discountTypeId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
+              discountType = await prisma.discountType.findUnique({
+                where: { name: discount.discountTypeId }
+              });
+            }
+            
+            if (!discountType) {
+              return res.status(404).json({ 
+                message: "Discount type not found",
+                providedDiscountTypeId: discount.discountTypeId,
+                providedDiscountTypeName: discount.discountTypeName,
+                hint: "You can use either discountTypeId (UUID) or discountTypeName (string like 'Normal', 'Member', etc.)",
+                availableDiscountTypes: allDiscountTypes.map(dt => ({ id: dt.id, name: dt.name }))
+              });
+            }
+            
+            resolvedDiscounts.push({
+              discountTypeId: discountType.id,
+              discountPercentage: parseFloat(discount.discountPercentage.toString()),
+              startDate: discount.startDate ? new Date(discount.startDate) : null,
+              endDate: discount.endDate ? new Date(discount.endDate) : null,
+              isActive: discount.isActive !== undefined ? discount.isActive : true
+            });
+          }
+          
+          if (resolvedDiscounts.length > 0) {
+            updateData.discounts = {
+              create: resolvedDiscounts
+            };
+          }
+        }
+      }
+
       const updatedProduct = await prisma.product.update({
         where: { id },
         data: updateData,
@@ -353,6 +452,16 @@ class ProductController {
               id: true,
               username: true,
               role: true
+            }
+          },
+          variations: {
+            include: {
+              photos: true
+            }
+          },
+          discounts: {
+            include: {
+              discountType: true
             }
           }
         }
