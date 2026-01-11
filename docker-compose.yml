@@ -3,8 +3,10 @@ services:
     image: postgres:16
     container_name: postgres
     restart: always
-    env_file:
-      - .env
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-ims}
     ports:
       - "5432:5432"
     volumes:
@@ -21,16 +23,17 @@ services:
       dockerfile: apps/api/Dockerfile
     container_name: api
     restart: always
-    env_file:
-      - .env
-      - apps/api/.env
     depends_on:
       postgres:
         condition: service_healthy
     ports:
       - "4000:4000"
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-ims}
+      JWT_SECRET: ${JWT_SECRET:-change-this-secret-in-production}
 
   web:
     build:
@@ -38,15 +41,13 @@ services:
       dockerfile: apps/web/Dockerfile
     container_name: web
     restart: always
-    env_file:
-      - .env
-      - apps/web/.env
     depends_on:
       - api
     ports:
       - "3000:3000"
     environment:
-      - NODE_ENV=production
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api:4000}
 
 volumes:
   postgres_data:

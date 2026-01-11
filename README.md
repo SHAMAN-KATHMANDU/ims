@@ -1,135 +1,261 @@
-# Turborepo starter
+# IMS - Inventory Management System
 
-This Turborepo starter is maintained by the Turborepo core team.
+A full-stack inventory management system built with Next.js, Express, Prisma, and PostgreSQL in a Turborepo monorepo.
 
-## Using this example
+## 📋 Table of Contents
 
-Run the following command:
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Development Setup](#development-setup)
+- [Docker Setup](#docker-setup)
+- [CI/CD](#cicd)
+- [Project Structure](#project-structure)
+- [Available Scripts](#available-scripts)
 
-```sh
-npx create-turbo@latest
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** >= 18
+- **pnpm** >= 9.0.0 (`npm install -g pnpm`)
+- **Docker** & **Docker Compose** (for containerized development)
+- **PostgreSQL** (if running locally without Docker)
+
+## Quick Start
+
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd ims
+
+# 2. Install dependencies (this also sets up Husky git hooks)
+pnpm install
+
+# 3. Copy environment files
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+
+# 4. Start development with Docker
+docker-compose -f docker-compose.dev.yml up --build
+
+# Or start without Docker (requires local PostgreSQL)
+pnpm dev
 ```
 
-## What's inside?
+## Development Setup
 
-This Turborepo includes the following packages/apps:
+### 1. Install Dependencies
 
-### Apps and Packages
-
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
-
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
-
-### Utilities
-
-This Turborepo has some additional tools already setup for you:
-
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build
-yarn dlx turbo build
-pnpm exec turbo build
+```bash
+pnpm install
 ```
 
-You can build a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+This command will:
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo build --filter=docs
+- Install all workspace dependencies
+- **Automatically set up Husky git hooks** (via the `prepare` script)
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo build --filter=docs
-yarn exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-```
+### 2. Git Hooks (Husky)
 
-### Develop
+Husky is configured to run pre-commit checks automatically. After `pnpm install`, the hooks are ready.
 
-To develop all apps and packages, run the following command:
+**What happens on commit:**
 
-```
-cd my-turborepo
+- ✨ **Prettier** formats staged files
+- 🔎 **ESLint** checks for code issues
+- 📝 **TypeScript** validates types across all packages
 
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev
+**If you need to reinstall Husky manually:**
 
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev
-yarn exec turbo dev
-pnpm exec turbo dev
+```bash
+# This runs automatically on `pnpm install`, but if needed:
+pnpm prepare
 ```
 
-You can develop a specific package by using a [filter](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters):
+**To skip hooks temporarily (not recommended):**
 
-```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+```bash
+git commit --no-verify -m "your message"
 ```
 
-### Remote Caching
+### 3. Environment Variables
 
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
+Create `.env` files from examples:
 
-Turborepo can use a technique known as [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
+```bash
+# Root level (for Docker)
+cp .env.example .env
 
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
+# API
+cp apps/api/.env.example apps/api/.env
 
-```
-cd my-turborepo
-
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo login
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo login
-yarn exec turbo login
-pnpm exec turbo login
+# Web (if needed)
+cp apps/web/.env.example apps/web/.env
 ```
 
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
+**Required environment variables:**
 
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
+| Variable              | Description                  | Example                                             |
+| --------------------- | ---------------------------- | --------------------------------------------------- |
+| `DATABASE_URL`        | PostgreSQL connection string | `postgresql://postgres:postgres@localhost:5432/ims` |
+| `JWT_SECRET`          | Secret for JWT tokens        | `your-secret-key`                                   |
+| `NEXT_PUBLIC_API_URL` | API URL for frontend         | `http://localhost:4000`                             |
+
+### 4. Database Setup
+
+```bash
+# Generate Prisma client
+pnpm --filter api prisma generate
+
+# Run migrations
+pnpm --filter api prisma migrate dev
+
+# Seed the database (optional)
+pnpm --filter api prisma:seed
+```
+
+## Docker Setup
+
+### Development (with hot reload)
+
+```bash
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+Services:
+
+- **Web**: http://localhost:3000
+- **API**: http://localhost:4000
+- **PostgreSQL**: localhost:5432
+
+### Production (local build)
+
+```bash
+docker-compose up --build
+```
+
+### Production (from Docker Hub)
+
+```bash
+# Copy and configure environment
+cp .env.prod.example .env
+
+# Start services (includes Watchtower for auto-updates)
+docker-compose -f docker-compose.prod.yml up -d
+```
+
+## CI/CD
+
+### GitHub Actions
+
+The project includes a CI/CD pipeline that automatically builds and pushes Docker images to Docker Hub.
+
+**Setup:**
+
+1. Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions**
+
+2. Add these secrets:
+
+   | Secret               | Description              |
+   | -------------------- | ------------------------ |
+   | `DOCKERHUB_USERNAME` | Your Docker Hub username |
+   | `DOCKERHUB_TOKEN`    | Docker Hub access token  |
+
+3. Push to `main` branch to trigger the build
+
+**What it does:**
+
+- Builds `api` and `web` Docker images
+- Pushes to Docker Hub with tags: `latest`, branch name, commit SHA
+- Watchtower on your server auto-pulls new images
+
+## Project Structure
 
 ```
-# With [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation) installed (recommended)
-turbo link
-
-# Without [global `turbo`](https://turborepo.com/docs/getting-started/installation#global-installation), use your package manager
-npx turbo link
-yarn exec turbo link
-pnpm exec turbo link
+ims/
+├── apps/
+│   ├── api/                 # Express.js API server
+│   │   ├── prisma/          # Database schema & migrations
+│   │   └── src/             # API source code
+│   └── web/                 # Next.js frontend
+│       ├── app/             # App router pages
+│       ├── components/      # React components
+│       └── hooks/           # Custom hooks
+├── packages/
+│   ├── eslint-config/       # Shared ESLint configs
+│   ├── typescript-config/   # Shared TypeScript configs
+│   └── ui/                  # Shared UI components
+├── .github/workflows/       # CI/CD pipelines
+├── docker-compose.yml       # Production Docker (local build)
+├── docker-compose.dev.yml   # Development Docker
+└── docker-compose.prod.yml  # Production Docker (from Docker Hub)
 ```
 
-## Useful Links
+## Available Scripts
 
-Learn more about the power of Turborepo:
+Run from the root directory:
 
-- [Tasks](https://turborepo.com/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.com/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.com/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.com/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.com/docs/reference/configuration)
-- [CLI Usage](https://turborepo.com/docs/reference/command-line-reference)
+| Command            | Description                        |
+| ------------------ | ---------------------------------- |
+| `pnpm install`     | Install dependencies & setup Husky |
+| `pnpm dev`         | Start all apps in development mode |
+| `pnpm build`       | Build all apps for production      |
+| `pnpm lint`        | Run ESLint across all packages     |
+| `pnpm check-types` | Run TypeScript type checking       |
+| `pnpm format`      | Format code with Prettier          |
+
+### API-specific commands
+
+```bash
+# Database
+pnpm --filter api prisma generate    # Generate Prisma client
+pnpm --filter api prisma migrate dev # Run migrations
+pnpm --filter api prisma studio      # Open Prisma Studio
+pnpm --filter api prisma:seed        # Seed database
+```
+
+## Troubleshooting
+
+### Husky hooks not running
+
+```bash
+# Reinstall Husky
+pnpm prepare
+
+# Check if .husky folder exists
+ls -la .husky/
+```
+
+### Docker build fails with lightningcss error
+
+The Dockerfiles are configured to handle this automatically. If you still encounter issues:
+
+```bash
+# Rebuild without cache
+docker-compose -f docker-compose.dev.yml build --no-cache
+```
+
+### TypeScript errors on commit
+
+The pre-commit hook runs type checking. Fix errors before committing:
+
+```bash
+# Check what's failing
+pnpm check-types
+
+# Fix and try again
+git add .
+git commit -m "your message"
+```
+
+## Contributing
+
+1. Create a feature branch
+2. Make your changes
+3. Commit (hooks will run automatically)
+4. Push and create a PR
+
+## License
+
+MIT

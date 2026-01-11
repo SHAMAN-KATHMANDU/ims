@@ -7,7 +7,6 @@ WORKDIR /app
 # Install system dependencies for Prisma and native modules
 RUN apt-get update && apt-get install -y \
     openssl \
-    netcat-openbsd \
     python3 \
     make \
     g++ \
@@ -15,6 +14,11 @@ RUN apt-get update && apt-get install -y \
 
 # Enable pnpm
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+
+# Configure pnpm for Linux binaries and faster downloads
+RUN pnpm config set supportedArchitectures.os "linux" && \
+    pnpm config set supportedArchitectures.cpu "x64" && \
+    pnpm config set network-concurrency 16
 
 # Copy workspace configuration files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -27,27 +31,20 @@ COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/ui/package.json ./packages/ui/
 
 # Install dependencies
-# Increase network concurrency for faster downloads
-RUN pnpm config set network-concurrency 16 && \
-    pnpm install --frozen-lockfile
+RUN pnpm install --frozen-lockfile
 
-# Copy Prisma schema
+# Copy Prisma schema and generate client
 COPY apps/api/prisma ./apps/api/prisma/
-
-# Generate Prisma client
 RUN pnpm --filter api prisma generate
 
 # Copy application source code
 COPY . .
 
-# Make entrypoint script executable
-RUN chmod +x apps/api/entrypoint.sh
+# Build TypeScript for production
+RUN pnpm --filter api build
 
 # Expose port
 EXPOSE 4000
 
-# Use entrypoint script
-ENTRYPOINT ["sh", "apps/api/entrypoint.sh"]
-
-# Default command
-CMD ["pnpm", "--filter", "api", "dev"]
+# Start production server
+CMD ["pnpm", "--filter", "api", "start"]
