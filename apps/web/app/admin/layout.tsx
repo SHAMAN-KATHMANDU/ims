@@ -1,20 +1,17 @@
-import type React from "react"
-import { ProtectedRoute } from "@/components/protected-route"
-import { RoleProtectedRoute } from "@/components/role-protected-route"
-import { DashboardLayout } from "@/components/dashboard-layout"
+import type React from "react";
+import { ProtectedRoute } from "@/components/protected-route";
+import { RoleProtectedRoute } from "@/components/role-protected-route";
 
 export default function AdminLayout({
   children,
 }: {
-  children: React.ReactNode
+  children: React.ReactNode;
 }) {
   return (
     <ProtectedRoute>
       <RoleProtectedRoute allowedRoles={["admin", "superAdmin"]}>
-        <>
-          {children}
-        </>
+        <>{children}</>
       </RoleProtectedRoute>
     </ProtectedRoute>
-  )
+  );
 }

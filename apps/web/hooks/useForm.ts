@@ -1,80 +1,81 @@
-"use client"
+"use client";
 
-import { useState, useCallback, type FormEvent } from "react"
+import { useState, useCallback, type FormEvent } from "react";
 
 interface UseFormOptions<T> {
-  onSubmit: (values: T) => Promise<void> | void
-  initialValues?: Partial<T>
-  validate?: (values: T) => Record<string, string> | null
+  onSubmit: (values: T) => Promise<void> | void;
+  initialValues?: Partial<T>;
+  validate?: (values: T) => Record<string, string> | null;
 }
 
 interface UseFormReturn<T> {
-  values: T
-  errors: Record<string, string>
-  isLoading: boolean
-  handleChange: (name: keyof T, value: string) => void
-  handleSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>
-  reset: () => void
+  values: T;
+  errors: Record<string, string>;
+  isLoading: boolean;
+  handleChange: (name: keyof T, value: string) => void;
+  handleSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
+  reset: () => void;
 }
 
 /**
  * Generic form state management hook
  */
-export function useForm<T extends Record<string, string>>({
+export function useForm<T extends object>({
   onSubmit,
   initialValues = {},
   validate,
 }: UseFormOptions<T>): UseFormReturn<T> {
-  const [values, setValues] = useState<T>(initialValues as T)
-  const [errors, setErrors] = useState<Record<string, string>>({})
-  const [isLoading, setIsLoading] = useState(false)
+  const [values, setValues] = useState<T>(initialValues as T);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = useCallback(
     (name: keyof T, value: string) => {
-      setValues((prev) => ({ ...prev, [name]: value } as T))
+      setValues((prev) => ({ ...prev, [name]: value }) as T);
       if (errors[name as string]) {
         setErrors((prev) => {
-          const newErrors = { ...prev }
-          delete newErrors[name as string]
-          return newErrors
-        })
+          const newErrors = { ...prev };
+          delete newErrors[name as string];
+          return newErrors;
+        });
       }
     },
-    [errors]
-  )
+    [errors],
+  );
 
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
-      e.preventDefault()
-      setErrors({})
+      e.preventDefault();
+      setErrors({});
 
       if (validate) {
-        const validationErrors = validate(values)
+        const validationErrors = validate(values);
         if (validationErrors) {
-          setErrors(validationErrors)
-          return
+          setErrors(validationErrors);
+          return;
         }
       }
 
-      setIsLoading(true)
+      setIsLoading(true);
       try {
-        await onSubmit(values)
-      } catch (error: any) {
+        await onSubmit(values);
+      } catch (error: unknown) {
+        const err = error as { message?: string };
         setErrors({
-          _form: error.message || "An error occurred. Please try again.",
-        })
+          _form: err.message || "An error occurred. Please try again.",
+        });
       } finally {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     },
-    [values, validate, onSubmit]
-  )
+    [values, validate, onSubmit],
+  );
 
   const reset = useCallback(() => {
-    setValues(initialValues as T)
-    setErrors({})
-    setIsLoading(false)
-  }, [initialValues])
+    setValues(initialValues as T);
+    setErrors({});
+    setIsLoading(false);
+  }, [initialValues]);
 
   return {
     values,
@@ -83,5 +84,5 @@ export function useForm<T extends Record<string, string>>({
     handleChange,
     handleSubmit,
     reset,
-  }
+  };
 }
