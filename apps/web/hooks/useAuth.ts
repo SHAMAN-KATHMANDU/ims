@@ -61,7 +61,7 @@ export function useAuth() {
       // Normalize username
       const normalizedUsername = credentials.username.trim().toLowerCase()
       
-      const response = await axios.post<LoginResponse>("api/v1/auth/login", {
+      const response = await axios.post<LoginResponse>("auth/login", {
         username: normalizedUsername,
         password: credentials.password,
       })
