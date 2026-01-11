@@ -30,6 +30,17 @@ import {
 import { getUserRole, isAdmin } from "@/utils/auth"
 import { useAxios } from "@/hooks/useAxios"
 import { ProductService } from "@/services/productService"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+
 
 
 type ProductFormValues = {
@@ -52,6 +63,8 @@ type CategoryFormValues = {
 
 
 export function ProductPage() {
+
+  // 
   // ============================================
   // HOOKS - Connect your data here
   // ============================================
@@ -68,9 +81,14 @@ export function ProductPage() {
   const canManageProducts = isAdmin() // admin and superAdmin can manage products
   const axios = useAxios() // Get axios instance at component level
 
-  // Dialog states
+  // Dialog states (for create/edit forms)
   const [productDialog, setProductDialog] = useState(false)
   const [categoryDialog, setCategoryDialog] = useState(false)
+
+  // Delete confirmation states (for deletion dialogs)
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null)
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
+
 
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -884,7 +902,7 @@ export function ProductPage() {
                             <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
                               <Edit2 className="h-4 w-4" />
                             </Button>
-                            <Button
+                            {/* <Button
                               variant="ghost"
                               size="icon"
                               onClick={async () => {
@@ -902,6 +920,9 @@ export function ProductPage() {
                               }}
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button> */}
+                            <Button variant="ghost" size="icon" onClick={() => setProductToDelete(product)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />   
                             </Button>
                           </>
                         ) : (
@@ -915,6 +936,39 @@ export function ProductPage() {
             </CardContent>
           </Card>
         </TabsContent>
+                   {/* Product Delete Confirmation Dialog */}
+        <AlertDialog open={!!productToDelete} onOpenChange={(open) => !open && setProductToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete "{productToDelete?.name}". This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={async () => {
+                  if (!productToDelete) return
+                  try {
+                    await deleteProductMutation.mutateAsync(productToDelete.id)
+                    toast({ title: "Product deleted successfully" })
+                    setProductToDelete(null)
+                  } catch (error: any) {
+                    toast({
+                      title: "Error",
+                      description: error.message || "Failed to delete product",
+                      variant: "destructive",
+                    })
+                  }
+                }}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* CATEGORIES TAB */}
         <TabsContent value="categories" className="space-y-4">
@@ -1001,22 +1055,7 @@ export function ProductPage() {
                           <Button variant="ghost" size="icon" onClick={() => handleEditCategory(category)}>
                             <Edit2 className="h-4 w-4" />
                           </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={async () => {
-                              try {
-                                await deleteCategoryMutation.mutateAsync(category.id)
-                                toast({ title: "Category deleted" })
-                              } catch (error: any) {
-                                toast({
-                                  title: "Error",
-                                  description: error.message || "Failed to delete category",
-                                  variant: "destructive",
-                                })
-                              }
-                            }}
-                          >
+                                                    <Button variant="ghost" size="icon" onClick={() => setCategoryToDelete(category)}>
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>
                         </TableCell>
@@ -1029,6 +1068,39 @@ export function ProductPage() {
           </Card>
         </TabsContent>
 
+{/* Category Delete Confirmation Dialog */}
+<AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+  <AlertDialogContent>
+    <AlertDialogHeader>
+      <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+      <AlertDialogDescription>
+        This will permanently delete "{categoryToDelete?.name}". This action cannot be undone.
+      </AlertDialogDescription>
+    </AlertDialogHeader>
+    <AlertDialogFooter>
+      <AlertDialogCancel>Cancel</AlertDialogCancel>
+      <AlertDialogAction
+        onClick={async () => {
+          if (!categoryToDelete) return
+          try {
+            await deleteCategoryMutation.mutateAsync(categoryToDelete.id)
+            toast({ title: "Category deleted successfully" })
+            setCategoryToDelete(null)
+          } catch (error: any) {
+            toast({
+              title: "Error",
+              description: error.message || "Failed to delete category",
+              variant: "destructive",
+            })
+          }
+        }}
+        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+      >
+        Delete
+      </AlertDialogAction>
+    </AlertDialogFooter>
+  </AlertDialogContent>
+</AlertDialog>
         {/* VARIATIONS TAB - Read-only view */}
         <TabsContent value="variations" className="space-y-4">
           <div className="flex justify-between items-center">
