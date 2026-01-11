@@ -1,224 +1,208 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAxios } from "./useAxios"
-import { ProductService, type Product, type Category, type ProductVariation, type CreateProductData, type UpdateProductData } from "@/services/productService"
-import { CategoryService, type CreateCategoryData, type UpdateCategoryData } from "@/services/categoryService"
+import {
+  ProductService,
+  type Product,
+  type Category,
+  type ProductVariation,
+  type CreateProductData,
+  type UpdateProductData,
+} from "@/services/productService"
+import {
+  CategoryService,
+  type CreateCategoryData,
+  type UpdateCategoryData,
+} from "@/services/categoryService"
 
 // Re-export types for convenience
 export type { Product, Category, ProductVariation }
 
+// Query keys
+export const productKeys = {
+  all: ["products"] as const,
+  lists: () => [...productKeys.all, "list"] as const,
+  list: (filters: string) => [...productKeys.lists(), { filters }] as const,
+  details: () => [...productKeys.all, "detail"] as const,
+  detail: (id: string) => [...productKeys.details(), id] as const,
+}
+
+export const categoryKeys = {
+  all: ["categories"] as const,
+  lists: () => [...categoryKeys.all, "list"] as const,
+  list: (filters: string) => [...categoryKeys.lists(), { filters }] as const,
+  details: () => [...categoryKeys.all, "detail"] as const,
+  detail: (id: string) => [...categoryKeys.details(), id] as const,
+}
+
 // ============================================
-// HOOK: useProducts
-// Uses ProductService for API calls
+// PRODUCT HOOKS
 // ============================================
 
 export function useProducts() {
   const axios = useAxios()
-  const [products, setProducts] = useState<Product[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const productService = new ProductService(axios)
 
-  // Fetch products on mount
-  useEffect(() => {
-    const fetchProducts = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const data = await productService.getAllProducts()
-        setProducts(data)
-      } catch (err: any) {
-        setError(err.response?.data?.message || err.message || "Failed to fetch products")
-        console.error("Error fetching products:", err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchProducts()
-  }, [])
+  return useQuery({
+    queryKey: productKeys.lists(),
+    queryFn: async () => {
+      return await productService.getAllProducts()
+    },
+  })
+}
 
-  const addProduct = useCallback(async (data: CreateProductData) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const newProduct = await productService.createProduct(data)
-      setProducts((prev) => [...prev, newProduct])
-      return newProduct
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to create product"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [productService])
+export function useProduct(id: string) {
+  const axios = useAxios()
+  const productService = new ProductService(axios)
 
-  const updateProduct = useCallback(async (id: string, data: UpdateProductData) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const updatedProduct = await productService.updateProduct(id, data)
-      setProducts((prev) => prev.map((p) => (p.id === id ? updatedProduct : p)))
-      return updatedProduct
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to update product"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [productService])
+  return useQuery({
+    queryKey: productKeys.detail(id),
+    queryFn: async () => {
+      return await productService.getProductById(id)
+    },
+    enabled: !!id,
+  })
+}
 
-  const deleteProduct = useCallback(async (id: string) => {
-    setIsLoading(true)
-    setError(null)
-    try {
+export function useCreateProduct() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const productService = new ProductService(axios)
+
+  return useMutation({
+    mutationFn: async (data: CreateProductData) => {
+      return await productService.createProduct(data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() })
+    },
+  })
+}
+
+export function useUpdateProduct() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const productService = new ProductService(axios)
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateProductData }) => {
+      return await productService.updateProduct(id, data)
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: productKeys.detail(variables.id) })
+    },
+  })
+}
+
+export function useDeleteProduct() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const productService = new ProductService(axios)
+
+  return useMutation({
+    mutationFn: async (id: string) => {
       await productService.deleteProduct(id)
-      setProducts((prev) => prev.filter((p) => p.id !== id))
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to delete product"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [productService])
-
-  const refreshProducts = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await productService.getAllProducts()
-      setProducts(data)
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to refresh products")
-      console.error("Error refreshing products:", err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [productService])
-
-  return { products, isLoading, error, addProduct, updateProduct, deleteProduct, refreshProducts }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() })
+    },
+  })
 }
 
 // ============================================
-// HOOK: useCategories
+// CATEGORY HOOKS
 // ============================================
 
 export function useCategories() {
   const axios = useAxios()
-  const [categories, setCategories] = useState<Category[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const categoryService = new CategoryService(axios)
 
-  // Fetch categories on mount
-  useEffect(() => {
-    const fetchCategories = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const data = await categoryService.getAllCategories()
-        setCategories(data)
-      } catch (err: any) {
-        setError(err.response?.data?.message || err.message || "Failed to fetch categories")
-        console.error("Error fetching categories:", err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchCategories()
-  }, [])
+  return useQuery({
+    queryKey: categoryKeys.lists(),
+    queryFn: async () => {
+      return await categoryService.getAllCategories()
+    },
+  })
+}
 
-  const addCategory = useCallback(async (data: CreateCategoryData) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const newCategory = await categoryService.createCategory(data)
-      setCategories((prev) => [...prev, newCategory])
-      return newCategory
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to create category"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [categoryService])
+export function useCategory(id: string) {
+  const axios = useAxios()
+  const categoryService = new CategoryService(axios)
 
-  const updateCategory = useCallback(async (id: string, data: UpdateCategoryData) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const updatedCategory = await categoryService.updateCategory(id, data)
-      setCategories((prev) => prev.map((c) => (c.id === id ? updatedCategory : c)))
-      return updatedCategory
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to update category"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [categoryService])
+  return useQuery({
+    queryKey: categoryKeys.detail(id),
+    queryFn: async () => {
+      return await categoryService.getCategoryById(id)
+    },
+    enabled: !!id,
+  })
+}
 
-  const deleteCategory = useCallback(async (id: string) => {
-    setIsLoading(true)
-    setError(null)
-    try {
+export function useCreateCategory() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const categoryService = new CategoryService(axios)
+
+  return useMutation({
+    mutationFn: async (data: CreateCategoryData) => {
+      return await categoryService.createCategory(data)
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() })
+    },
+  })
+}
+
+export function useUpdateCategory() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const categoryService = new CategoryService(axios)
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateCategoryData }) => {
+      return await categoryService.updateCategory(id, data)
+    },
+    onSuccess: (data, variables) => {
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: categoryKeys.detail(variables.id) })
+    },
+  })
+}
+
+export function useDeleteCategory() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const categoryService = new CategoryService(axios)
+
+  return useMutation({
+    mutationFn: async (id: string) => {
       await categoryService.deleteCategory(id)
-      setCategories((prev) => prev.filter((c) => c.id !== id))
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to delete category"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [categoryService])
-
-  const refreshCategories = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await categoryService.getAllCategories()
-      setCategories(data)
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to refresh categories")
-      console.error("Error refreshing categories:", err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [categoryService])
-
-  return { categories, isLoading, error, addCategory, updateCategory, deleteCategory, refreshCategories }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() })
+    },
+  })
 }
 
 // ============================================
-// HOOK: useVariations
-// Note: Variations are part of products, not separate entities
+// VARIATIONS (kept for backward compatibility)
 // ============================================
 
 export function useVariations() {
-  const [variations, setVariations] = useState<ProductVariation[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-
   // Variations are managed through products
-  // This hook is kept for backward compatibility
-  const addVariation = async (data: Omit<ProductVariation, "id" | "createdAt">) => {
-    throw new Error("Variations should be added through product creation/update")
+  return {
+    variations: [] as ProductVariation[],
+    isLoading: false,
+    addVariation: async () => {
+      throw new Error("Variations should be added through product creation/update")
+    },
+    updateVariation: async () => {
+      throw new Error("Variations should be updated through product update")
+    },
+    deleteVariation: async () => {
+      throw new Error("Variations should be deleted through product update")
+    },
   }
-
-  const updateVariation = async (id: string, data: Partial<ProductVariation>) => {
-    throw new Error("Variations should be updated through product update")
-  }
-
-  const deleteVariation = async (id: string) => {
-    throw new Error("Variations should be deleted through product update")
-  }
-
-  return { variations, isLoading, addVariation, updateVariation, deleteVariation }
 }
