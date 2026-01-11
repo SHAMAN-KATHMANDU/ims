@@ -35,7 +35,6 @@ const navSections: NavSection[] = [
     items: [
       { path: "product", label: "Product", icon: Package, roles: ["user", "admin", "superAdmin"] },
       { path: "analytics", label: "Analytics", icon: BarChart3, roles: ["admin", "superAdmin"] },
-      { path: "settings", label: "Settings", icon: Settings, roles: ["user", "admin", "superAdmin"] },
       { path: "admin-controls", label: "Admin Controls", icon: Shield, roles: ["superAdmin"] },
     ],
   },
@@ -111,7 +110,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
         {isOpen && (
           <div className="flex items-center gap-2">
             <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">M</span>
+              <span className="text-primary-foreground font-bold text-lg">S</span>
             </div>
           </div>
         )}
