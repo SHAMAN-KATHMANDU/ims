@@ -7,23 +7,46 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Trash2, Edit2, Plus } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useForm } from "@/hooks/useForm"
-import { useUsers, type User, type CreateUserData, type UpdateUserData } from "@/hooks/useUser"
-import { getUserRole } from "@/utils/auth"
+import { 
+  useUsers, 
+  useCreateUser, 
+  useUpdateUser, 
+  useDeleteUser,
+  type User, 
+  type CreateUserData, 
+  type UpdateUserData 
+} from "@/hooks/useUser"
+import { getUserRole, getAuthUser } from "@/utils/auth"
 
 type UserFormValues = {
   username: string
   password: string
   role: "superAdmin" | "admin" | "user"
+  [key: string]: string // Add index signature
 }
 
 export function UsersPage() {
-  const { users, isLoading, createUser, updateUser, deleteUser } = useUsers()
+  const { data: users = [], isLoading } = useUsers()
+  const createUserMutation = useCreateUser()
+  const updateUserMutation = useUpdateUser()
+  const deleteUserMutation = useDeleteUser()
   const { toast } = useToast()
   const userRole = getUserRole()
+  const currentUser = getAuthUser()
 
   // Only superAdmin can access this page
   if (userRole !== "superAdmin") {
@@ -41,6 +64,7 @@ export function UsersPage() {
 
   const [userDialog, setUserDialog] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
+  const [userToDelete, setUserToDelete] = useState<User | null>(null)
 
   const validateUser = (values: UserFormValues) => {
     const errors: Record<string, string> = {}
@@ -72,7 +96,7 @@ export function UsersPage() {
           if (values.password) {
             updateData.password = values.password
           }
-          await updateUser(editingUser.id, updateData)
+          await updateUserMutation.mutateAsync({ id: editingUser.id, data: updateData })
           toast({ title: "User updated successfully" })
         } else {
           const createData: CreateUserData = {
@@ -80,7 +104,7 @@ export function UsersPage() {
             password: values.password,
             role: values.role,
           }
-          await createUser(createData)
+          await createUserMutation.mutateAsync(createData)
           toast({ title: "User created successfully" })
         }
         setUserDialog(false)
@@ -104,19 +128,17 @@ export function UsersPage() {
     setUserDialog(true)
   }
 
-  const handleDeleteUser = async (id: string) => {
-    if (confirm("Are you sure you want to delete this user?")) {
-      try {
-        await deleteUser(id)
-        toast({ title: "User deleted successfully" })
-      } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to delete user",
-          variant: "destructive",
-        })
-      }
+  const handleDeleteClick = (user: User) => {
+    // Prevent superAdmin from deleting themselves
+    if (currentUser && user.id === currentUser.id) {
+      toast({
+        title: "Cannot delete yourself",
+        description: "You cannot delete your own account. Please ask another superAdmin to do it.",
+        variant: "destructive",
+      })
+      return
     }
+    setUserToDelete(user)
   }
 
   return (
@@ -252,7 +274,7 @@ export function UsersPage() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDeleteUser(user.id)}
+                          onClick={() => handleDeleteClick(user)}
                         >
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
@@ -265,6 +287,40 @@ export function UsersPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* User Delete Confirmation Dialog */}
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete user "{userToDelete?.username}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={async () => {
+                if (!userToDelete) return
+                try {
+                  await deleteUserMutation.mutateAsync(userToDelete.id)
+                  toast({ title: "User deleted successfully" })
+                  setUserToDelete(null)
+                } catch (error: any) {
+                  toast({
+                    title: "Error",
+                    description: error.message || "Failed to delete user",
+                    variant: "destructive",
+                  })
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
