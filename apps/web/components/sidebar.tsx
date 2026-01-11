@@ -77,7 +77,10 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       <nav className="flex-1 space-y-2 p-4">
         {navItems.map((item) => {
           const Icon = item.icon
-          const isActive = pathname === item.href || pathname.startsWith(item.href + "/")
+          // More precise active check
+          const isActive = item.path === ""
+            ? pathname === item.href // Home: exact match only
+            : pathname === item.href || pathname.startsWith(item.href + "/")
           return (
             <Link
               key={item.href}
@@ -87,7 +90,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
                 isActive ? "bg-sidebar-primary text-sidebar-primary-foreground" : "text-sidebar-foreground",
               )}
             >
-              <Icon className="h-5 w-5 flex-shrink-0" />
+              <Icon className="h-5 w-5 shrink-0" />
               {isOpen && <span>{item.label}</span>}
             </Link>
           )
