@@ -10,8 +10,8 @@ on:
 env:
   REGISTRY: docker.io
   # Change these to your Docker Hub username/organization
-  API_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ims-api
-  WEB_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/ims-web
+  API_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/dev-api-ims
+  WEB_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/dev-web-ims
 
 jobs:
   build-and-push:
