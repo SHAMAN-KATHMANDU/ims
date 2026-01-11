@@ -10,7 +10,7 @@ import { getAuthToken, removeAuthToken } from "@/utils/auth"
  * Design decisions:
  * - Single instance per component to avoid global state
  * - Interceptors handle auth automatically
- * - 401 responses trigger logout and redirect
+ * - 401 responses trigger logout and redirect (except for login endpoint)
  * - Base URL from env var for flexibility
  */
 export function useAxios(): AxiosInstance {
@@ -34,14 +34,21 @@ export function useAxios(): AxiosInstance {
       (error) => Promise.reject(error)
     )
 
-    // Response interceptor: Handle 401 globally
+    // Response interceptor: Handle 401 globally (except for login endpoint)
     instance.interceptors.response.use(
       (response) => response,
       (error) => {
         if (error.response?.status === 401) {
-          removeAuthToken()
-          if (typeof window !== "undefined") {
-            window.location.href = "/login"
+          // Don't redirect on login endpoint or if already on login page
+          const requestUrl = error.config?.url || ""
+          const isLoginEndpoint = requestUrl.includes("auth/login") || requestUrl.endsWith("/auth/login")
+          const isOnLoginPage = typeof window !== "undefined" && window.location.pathname === "/login"
+          
+          if (!isLoginEndpoint && !isOnLoginPage) {
+            removeAuthToken()
+            if (typeof window !== "undefined") {
+              window.location.href = "/login"
+            }
           }
         }
         return Promise.reject(error)
