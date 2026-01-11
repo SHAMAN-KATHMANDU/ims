@@ -1,0 +1,185 @@
+"use client"
+
+import { useState, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react"
+import { GeneralTab } from "./form-tabs/GeneralTab"
+import { DimensionsTab } from "./form-tabs/DimensionsTab"
+import { VariationsTab } from "./form-tabs/VariationsTab"
+import { DiscountsTab } from "./form-tabs/DiscountsTab"
+import type { ProductFormValues, ProductVariationForm, ProductDiscountForm } from "../types"
+import type { UseFormReturn } from "@/hooks/useForm"
+import type { Product, Category } from "@/hooks/useProduct"
+
+interface ProductFormProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  form: UseFormReturn<ProductFormValues>
+  editingProduct: Product | null
+  categories: Category[]
+  variations: ProductVariationForm[]
+  discounts: ProductDiscountForm[]
+  discountTypes: Array<{ id: string; name: string }>
+  onReset: () => void
+  onAddVariation: () => void
+  onRemoveVariation: (index: number) => void
+  onUpdateVariation: (index: number, field: "color" | "stockQuantity", value: string) => void
+  onAddPhoto: (variationIndex: number, photoUrl: string) => void
+  onRemovePhoto: (variationIndex: number, photoIndex: number) => void
+  onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void
+  onAddDiscount: () => void
+  onRemoveDiscount: (index: number) => void
+  onUpdateDiscount: (index: number, field: "discountTypeName" | "discountPercentage" | "startDate" | "endDate" | "isActive", value: string | boolean) => void
+}
+
+export function ProductForm({
+  open,
+  onOpenChange,
+  form,
+  editingProduct,
+  categories,
+  variations,
+  discounts,
+  discountTypes,
+  onReset,
+  onAddVariation,
+  onRemoveVariation,
+  onUpdateVariation,
+  onAddPhoto,
+  onRemovePhoto,
+  onSetPrimaryPhoto,
+  onAddDiscount,
+  onRemoveDiscount,
+  onUpdateDiscount,
+}: ProductFormProps) {
+  const [dialogTab, setDialogTab] = useState("general")
+
+  // Reset dialog tab when dialog opens/closes
+  useEffect(() => {
+    if (!open) {
+      setDialogTab("general")
+    }
+  }, [open])
+
+  // Tab navigation functions
+  const tabs = ["general", "dimensions", "variations", "discounts"]
+  const currentTabIndex = tabs.indexOf(dialogTab)
+  const canGoNext = currentTabIndex < tabs.length - 1
+  const canGoPrev = currentTabIndex > 0
+
+  const handleNext = () => {
+    if (canGoNext) {
+      const nextTab = tabs[currentTabIndex + 1]
+      if (nextTab) setDialogTab(nextTab)
+    }
+  }
+
+  const handlePrev = () => {
+    if (canGoPrev) {
+      const prevTab = tabs[currentTabIndex - 1]
+      if (prevTab) setDialogTab(prevTab)
+    }
+  }
+
+  const handleCancel = () => {
+    onOpenChange(false)
+    onReset()
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogTrigger asChild>
+        <Button
+          onClick={() => {
+            onReset()
+          }}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" /> Add Product
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl">
+        <DialogHeader>
+          <DialogTitle>{editingProduct ? "Edit Product" : "Add Product"}</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={form.handleSubmit}>
+          <Tabs value={dialogTab} onValueChange={setDialogTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-4">
+              <TabsTrigger value="general">General</TabsTrigger>
+              <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
+              <TabsTrigger value="variations">Variations</TabsTrigger>
+              <TabsTrigger value="discounts">Discounts</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="general" className="space-y-4 mt-4">
+              <GeneralTab form={form} categories={categories} />
+            </TabsContent>
+            
+            <TabsContent value="dimensions" className="space-y-4 mt-4">
+              <DimensionsTab form={form} />
+            </TabsContent>
+            
+            <TabsContent value="variations" className="space-y-4 mt-4">
+              <VariationsTab
+                variations={variations}
+                form={form}
+                onAdd={onAddVariation}
+                onRemove={onRemoveVariation}
+                onUpdate={onUpdateVariation}
+                onAddPhoto={onAddPhoto}
+                onRemovePhoto={onRemovePhoto}
+                onSetPrimaryPhoto={onSetPrimaryPhoto}
+              />
+            </TabsContent>
+            
+            <TabsContent value="discounts" className="space-y-4 mt-4">
+              <DiscountsTab
+                discounts={discounts}
+                discountTypes={discountTypes}
+                onAdd={onAddDiscount}
+                onRemove={onRemoveDiscount}
+                onUpdate={onUpdateDiscount}
+              />
+            </TabsContent>
+          </Tabs>
+          
+          {form.errors._form && <p className="text-sm text-destructive mt-4">{form.errors._form}</p>}
+          <div className="flex gap-2 justify-between mt-6">
+            <div className="flex gap-2">
+              {canGoPrev && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handlePrev}
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleCancel}
+              >
+                Cancel
+              </Button>
+              {canGoNext ? (
+                <Button type="button" onClick={handleNext}>
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              ) : (
+                <Button type="submit" disabled={form.isLoading}>
+                  {form.isLoading ? "Saving..." : editingProduct ? "Update" : "Add"}
+                </Button>
+              )}
+            </div>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
