@@ -69,14 +69,18 @@ export function ProductForm({
   const canGoNext = currentTabIndex < tabs.length - 1
   const canGoPrev = currentTabIndex > 0
 
-  const handleNext = () => {
+  const handleNext = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault()
+    e?.stopPropagation()
     if (canGoNext) {
       const nextTab = tabs[currentTabIndex + 1]
       if (nextTab) setDialogTab(nextTab)
     }
   }
 
-  const handlePrev = () => {
+  const handlePrev = (e?: React.MouseEvent<HTMLButtonElement>) => {
+    e?.preventDefault()
+    e?.stopPropagation()
     if (canGoPrev) {
       const prevTab = tabs[currentTabIndex - 1]
       if (prevTab) setDialogTab(prevTab)
@@ -104,7 +108,17 @@ export function ProductForm({
         <DialogHeader>
           <DialogTitle>{editingProduct ? "Edit Product" : "Add Product"}</DialogTitle>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit}>
+        <form 
+          onSubmit={(e) => {
+            // Only submit if we're on the last tab (discounts)
+            if (dialogTab !== "discounts") {
+              e.preventDefault()
+              handleNext()
+              return
+            }
+            form.handleSubmit(e)
+          }}
+        >
           <Tabs value={dialogTab} onValueChange={setDialogTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">General</TabsTrigger>
