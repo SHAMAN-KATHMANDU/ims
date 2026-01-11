@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
@@ -81,7 +81,7 @@ export function ProductTable({
               <TableHead>MRP</TableHead>
               {!canSeeCostPrice && (
                 <>
-                  <TableHead>General Price</TableHead>
+                  <TableHead>Normal Price</TableHead>
                   <TableHead>Special Price</TableHead>
                   <TableHead>Member Price</TableHead>
                   <TableHead>Wholesale Price</TableHead>
@@ -107,9 +107,8 @@ export function ProductTable({
                 const productDiscounts = product.discounts || []
 
                 return (
-                  <>
+                  <React.Fragment key={product.id}>
                     <TableRow 
-                      key={product.id}
                       className={hasVariations ? "cursor-pointer hover:bg-muted/50" : ""}
                       onClick={hasVariations ? () => {
                         setExpandedProductId(isExpanded ? null : product.id)
@@ -125,11 +124,11 @@ export function ProductTable({
                       {!canSeeCostPrice && (
                         <>
                           <TableCell>
-                            {discountedPrices.general ? (
+                            {discountedPrices.normal ? (
                               <div>
-                                <div className="font-medium">Rs. {discountedPrices.general.price.toFixed(2)}</div>
+                                <div className="font-medium">Rs. {discountedPrices.normal.price.toFixed(2)}</div>
                                 <div className="text-xs text-muted-foreground">
-                                  ({discountedPrices.general.percentage}% off)
+                                  ({discountedPrices.normal.percentage}% off)
                                 </div>
                               </div>
                             ) : (
@@ -269,7 +268,7 @@ export function ProductTable({
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </React.Fragment>
                 )
               })
             )}

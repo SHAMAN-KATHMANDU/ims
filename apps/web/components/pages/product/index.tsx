@@ -75,7 +75,7 @@ export function ProductPage() {
   useEffect(() => {
     if (productDialog && productDiscounts.length === 0 && !editingProduct) {
       const defaultDiscounts = [
-        { discountTypeName: "General", discountPercentage: "10", startDate: "", endDate: "", isActive: true },
+        { discountTypeName: "Normal", discountPercentage: "10", startDate: "", endDate: "", isActive: true },
         { discountTypeName: "Special", discountPercentage: "15", startDate: "", endDate: "", isActive: true },
         { discountTypeName: "Member", discountPercentage: "20", startDate: "", endDate: "", isActive: true },
         { discountTypeName: "Wholesale", discountPercentage: "40", startDate: "", endDate: "", isActive: true },

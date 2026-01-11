@@ -24,7 +24,7 @@ export function DiscountsTab({
   onRemove,
   onUpdate,
 }: DiscountsTabProps) {
-  const defaultTypes = ["General", "Special", "Member", "Wholesale"]
+  const defaultTypes = ["Normal", "Special", "Member", "Wholesale"]
 
   return (
     <div className="space-y-2">
@@ -81,7 +81,7 @@ export function DiscountsTab({
                             ))
                           ) : (
                             <>
-                              <SelectItem value="General">General</SelectItem>
+                              <SelectItem value="Normal">Normal</SelectItem>
                               <SelectItem value="Special">Special</SelectItem>
                               <SelectItem value="Member">Member</SelectItem>
                               <SelectItem value="Wholesale">Wholesale</SelectItem>
