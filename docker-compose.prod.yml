@@ -1,0 +1,86 @@
+# Production Docker Compose - Uses images from Docker Hub
+# Watchtower will auto-pull new images when they're pushed
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: ims-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ims}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ims-network
+
+  api:
+    # Replace YOUR_DOCKERHUB_USERNAME with your actual Docker Hub username
+    image: ${DOCKERHUB_USERNAME:-your-username}/dev-api-ims:latest
+    container_name: ims-api
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "4000:4000"
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      HOST: 0.0.0.0
+      DATABASE_URL: postgresql://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-ims}
+      JWT_SECRET: ${JWT_SECRET}
+    networks:
+      - ims-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  web:
+    # Replace YOUR_DOCKERHUB_USERNAME with your actual Docker Hub username
+    image: ${DOCKERHUB_USERNAME:-your-username}/dev-web-ims:latest
+    container_name: ims-web
+    restart: always
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://api:4000}
+    networks:
+      - ims-network
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  # Watchtower - Auto-updates containers when new images are pushed
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      # Check for updates every 5 minutes
+      WATCHTOWER_POLL_INTERVAL: 300
+      # Only update containers with the watchtower.enable label
+      WATCHTOWER_LABEL_ENABLE: "true"
+      # Clean up old images after updating
+      WATCHTOWER_CLEANUP: "true"
+      # Optional: Send notifications (uncomment and configure)
+      # WATCHTOWER_NOTIFICATIONS: slack
+      # WATCHTOWER_NOTIFICATION_SLACK_HOOK_URL: ${SLACK_WEBHOOK_URL}
+    networks:
+      - ims-network
+
+networks:
+  ims-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
