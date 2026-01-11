@@ -17,6 +17,12 @@ import {
   useProducts,
   useCategories,
   useVariations,
+  useCreateProduct,
+  useUpdateProduct,
+  useDeleteProduct,
+  useCreateCategory,
+  useUpdateCategory,
+  useDeleteCategory,
   type Product,
   type Category,
   type ProductVariation,
@@ -24,6 +30,7 @@ import {
 import { getUserRole, isAdmin } from "@/utils/auth"
 import { useAxios } from "@/hooks/useAxios"
 import { ProductService } from "@/services/productService"
+
 
 type ProductFormValues = {
   imsCode: string
@@ -48,8 +55,14 @@ export function ProductPage() {
   // ============================================
   // HOOKS - Connect your data here
   // ============================================
-  const { products, addProduct, updateProduct, deleteProduct, refreshProducts } = useProducts()
-  const { categories, addCategory, updateCategory, deleteCategory, refreshCategories } = useCategories()
+  const { data: products = [], isLoading: isLoadingProducts, error: productsError, refetch: refetchProducts } = useProducts()
+  const { data: categories = [], isLoading: isLoadingCategories, error: categoriesError } = useCategories()
+  const createProductMutation = useCreateProduct()
+  const updateProductMutation = useUpdateProduct()
+  const deleteProductMutation = useDeleteProduct()
+  const createCategoryMutation = useCreateCategory()
+  const updateCategoryMutation = useUpdateCategory()
+  const deleteCategoryMutation = useDeleteCategory()
   const { toast } = useToast()
   const userRole = getUserRole()
   const canManageProducts = isAdmin() // admin and superAdmin can manage products
@@ -83,19 +96,18 @@ export function ProductPage() {
   const [discountTypes, setDiscountTypes] = useState<Array<{ id: string; name: string }>>([])
   
   // Helper to get all variations from all products for display
-  const allVariations = products.flatMap((product) => 
+  const allVariations = products.flatMap((product: Product) => 
     (product.variations || []).map(v => ({ ...v, productName: product.name }))
   )
   
   // Helper to get all discounts from all products for display
-  const allDiscounts = products.flatMap((product) => 
-    ((product as any).discounts || []).map((d: any) => ({ 
+  const allDiscounts = products.flatMap((product: Product) => 
+    (product.discounts || []).map((d) => ({ 
       ...d, 
       productName: product.name,
       productId: product.id
     }))
   )
-  
   // Fetch discount types using ProductService
   useEffect(() => {
     const fetchDiscountTypes = async () => {
@@ -214,13 +226,13 @@ export function ProductPage() {
             throw new Error("Product ID is missing. Please try editing the product again.")
           }
           console.log(`Updating product with ID: ${editingProduct.id}`, data);
-          await updateProduct(editingProduct.id, data)
+          await updateProductMutation.mutateAsync({ id: editingProduct.id, data })
           toast({ title: "Product updated successfully" })
         } else {
-          await addProduct(data)
+          await createProductMutation.mutateAsync(data)
           toast({ title: "Product added successfully" })
         }
-        await refreshProducts()
+        // Remove: await refreshProducts() - not needed, auto-refetches on success
         setProductDialog(false)
         setEditingProduct(null)
         setProductVariations([])
@@ -244,13 +256,13 @@ export function ProductPage() {
     onSubmit: async (values) => {
       try {
         if (editingCategory) {
-          await updateCategory(editingCategory.id, values)
+          await updateCategoryMutation.mutateAsync({ id: editingCategory.id, data: values })
           toast({ title: "Category updated successfully" })
         } else {
-          await addCategory(values)
+          await createCategoryMutation.mutateAsync(values)
           toast({ title: "Category added successfully" })
         }
-        await refreshCategories()
+        // Remove: await refreshCategories() - not needed, auto-refetches on success
         setCategoryDialog(false)
         setEditingCategory(null)
         categoryForm.reset()
@@ -772,6 +784,7 @@ export function ProductPage() {
                                     checked={discount.isActive}
                                     onChange={(e) => updateDiscountInForm(index, "isActive", e.target.checked)}
                                     className="h-4 w-4"
+                                    aria-label="Active discount"
                                   />
                                   <Label htmlFor={`disc-active-${index}`} className="text-xs cursor-pointer">Active</Label>
                                 </div>
@@ -876,8 +889,8 @@ export function ProductPage() {
                               size="icon"
                               onClick={async () => {
                                 try {
-                                  await deleteProduct(product.id)
-                                  await refreshProducts()
+                                  await deleteProductMutation.mutateAsync(product.id)
+                                  // Remove: await refreshProducts() - not needed, auto-refetches on success
                                   toast({ title: "Product deleted" })
                                 } catch (error: any) {
                                   toast({
@@ -993,8 +1006,7 @@ export function ProductPage() {
                             size="icon"
                             onClick={async () => {
                               try {
-                                await deleteCategory(category.id)
-                                await refreshCategories()
+                                await deleteCategoryMutation.mutateAsync(category.id)
                                 toast({ title: "Category deleted" })
                               } catch (error: any) {
                                 toast({

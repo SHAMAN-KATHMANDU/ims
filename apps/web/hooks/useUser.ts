@@ -1,103 +1,106 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { useAxios } from "./useAxios"
 import { UserService, type User, type CreateUserData, type UpdateUserData } from "@/services/userService"
 
 // Re-export types for convenience
 export type { User, CreateUserData, UpdateUserData }
 
+// Query keys
+export const userKeys = {
+  all: ["users"] as const,
+  lists: () => [...userKeys.all, "list"] as const,
+  list: (filters: string) => [...userKeys.lists(), { filters }] as const,
+  details: () => [...userKeys.all, "detail"] as const,
+  detail: (id: string) => [...userKeys.details(), id] as const,
+}
+
 /**
- * Hook for user management operations
- * Uses UserService for API calls
- * Only accessible to superAdmin role
+ * Hook for fetching all users
  */
 export function useUsers() {
   const axios = useAxios()
-  const [users, setUsers] = useState<User[]>([])
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-
   const userService = new UserService(axios)
 
-  // Fetch users on mount
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setIsLoading(true)
-      setError(null)
-      try {
-        const data = await userService.getAllUsers()
-        setUsers(data)
-      } catch (err: any) {
-        setError(err.response?.data?.message || err.message || "Failed to fetch users")
-        console.error("Error fetching users:", err)
-      } finally {
-        setIsLoading(false)
-      }
-    }
-    fetchUsers()
-  }, [])
+  return useQuery({
+    queryKey: userKeys.lists(),
+    queryFn: async () => {
+      return await userService.getAllUsers()
+    },
+  })
+}
 
-  const createUser = useCallback(async (data: CreateUserData) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const newUser = await userService.createUser(data)
-      setUsers((prev) => [...prev, newUser])
-      return newUser
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to create user"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userService])
+/**
+ * Hook for fetching a single user by ID
+ */
+export function useUser(id: string) {
+  const axios = useAxios()
+  const userService = new UserService(axios)
 
-  const updateUser = useCallback(async (id: string, data: UpdateUserData) => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const updatedUser = await userService.updateUser(id, data)
-      setUsers((prev) => prev.map((u) => (u.id === id ? updatedUser : u)))
-      return updatedUser
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to update user"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userService])
+  return useQuery({
+    queryKey: userKeys.detail(id),
+    queryFn: async () => {
+      return await userService.getUserById(id)
+    },
+    enabled: !!id, // Only fetch if id is provided
+  })
+}
 
-  const deleteUser = useCallback(async (id: string) => {
-    setIsLoading(true)
-    setError(null)
-    try {
+/**
+ * Hook for creating a new user
+ */
+export function useCreateUser() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const userService = new UserService(axios)
+
+  return useMutation({
+    mutationFn: async (data: CreateUserData) => {
+      return await userService.createUser(data)
+    },
+    onSuccess: () => {
+      // Invalidate and refetch users list
+      queryClient.invalidateQueries({ queryKey: userKeys.lists() })
+    },
+  })
+}
+
+/**
+ * Hook for updating a user
+ */
+export function useUpdateUser() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const userService = new UserService(axios)
+
+  return useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: UpdateUserData }) => {
+      return await userService.updateUser(id, data)
+    },
+    onSuccess: (data, variables) => {
+      // Invalidate both list and detail queries
+      queryClient.invalidateQueries({ queryKey: userKeys.lists() })
+      queryClient.invalidateQueries({ queryKey: userKeys.detail(variables.id) })
+    },
+  })
+}
+
+/**
+ * Hook for deleting a user
+ */
+export function useDeleteUser() {
+  const axios = useAxios()
+  const queryClient = useQueryClient()
+  const userService = new UserService(axios)
+
+  return useMutation({
+    mutationFn: async (id: string) => {
       await userService.deleteUser(id)
-      setUsers((prev) => prev.filter((u) => u.id !== id))
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Failed to delete user"
-      setError(errorMessage)
-      throw new Error(errorMessage)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userService])
-
-  const refreshUsers = useCallback(async () => {
-    setIsLoading(true)
-    setError(null)
-    try {
-      const data = await userService.getAllUsers()
-      setUsers(data)
-    } catch (err: any) {
-      setError(err.response?.data?.message || err.message || "Failed to refresh users")
-      console.error("Error refreshing users:", err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [userService])
-
-  return { users, isLoading, error, createUser, updateUser, deleteUser, refreshUsers }
+    },
+    onSuccess: () => {
+      // Invalidate users list
+      queryClient.invalidateQueries({ queryKey: userKeys.lists() })
+    },
+  })
 }
