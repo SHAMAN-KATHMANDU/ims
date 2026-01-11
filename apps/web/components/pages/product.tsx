@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
-import { Trash2, Edit2, Plus } from "lucide-react"
+import { Trash2, Edit2, Plus, Search } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useForm } from "@/hooks/useForm"
 import {
@@ -89,6 +89,8 @@ export function ProductPage() {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
 
+// Search state
+const [searchQuery, setSearchQuery] = useState("")
 
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -307,6 +309,22 @@ export function ProductPage() {
     // Fallback to categories list
     return categories.find((c) => c.id === id)?.name || "Unknown"
   }
+
+  const filteredProducts = products.filter((product) => {
+    if (!searchQuery.trim()) return true
+    
+    const query = searchQuery.toLowerCase().trim()
+    const categoryName = getCategoryName(product.categoryId, product).toLowerCase()
+    
+    return (
+      product.imsCode?.toLowerCase().includes(query) ||
+      product.name?.toLowerCase().includes(query) ||
+      categoryName.includes(query) ||
+      product.description?.toLowerCase().includes(query) ||
+      product.costPrice?.toString().includes(query) ||
+      product.mrp?.toString().includes(query)
+    )
+  })
   const getProductName = (id: string) => products.find((p) => p.id === id)?.name || "Unknown"
 
   const handleEditProduct = (product: Product) => {
@@ -871,10 +889,30 @@ export function ProductPage() {
             )}
           </div>
 
+          
           <Card>
             <CardHeader>
-              <CardTitle>All Products</CardTitle>
-              <CardDescription>Total: {products.length}</CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                  <CardTitle>All Products</CardTitle>
+                  <CardDescription>
+                    {searchQuery 
+                      ? `Showing ${filteredProducts.length} of ${products.length} products`
+                      : `Total: ${products.length} products`
+                    }
+                  </CardDescription>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    type="text"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <Table>
@@ -889,48 +927,37 @@ export function ProductPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {products.map((product) => (
-                    <TableRow key={product.id}>
-                      <TableCell className="font-mono">{product.imsCode}</TableCell>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{getCategoryName(product.categoryId, product)}</TableCell>
-                      <TableCell>Rs. {product.costPrice}</TableCell>
-                      <TableCell>Rs. {product.mrp}</TableCell>
-                      <TableCell className="text-right">
-                        {canManageProducts ? (
-                          <>
-                            <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            {/* <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={async () => {
-                                try {
-                                  await deleteProductMutation.mutateAsync(product.id)
-                                  // Remove: await refreshProducts() - not needed, auto-refetches on success
-                                  toast({ title: "Product deleted" })
-                                } catch (error: any) {
-                                  toast({
-                                    title: "Error",
-                                    description: error.message || "Failed to delete product",
-                                    variant: "destructive",
-                                  })
-                                }
-                              }}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button> */}
-                            <Button variant="ghost" size="icon" onClick={() => setProductToDelete(product)}>
-                                <Trash2 className="h-4 w-4 text-destructive" />   
-                            </Button>
-                          </>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">View only</span>
-                        )}
+                  {filteredProducts.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        {searchQuery ? "No products found matching your search." : "No products found."}
                       </TableCell>
                     </TableRow>
-                  ))}
+                  ) : (
+                    filteredProducts.map((product) => (
+                      <TableRow key={product.id}>
+                        <TableCell className="font-mono">{product.imsCode}</TableCell>
+                        <TableCell className="font-medium">{product.name}</TableCell>
+                        <TableCell>{getCategoryName(product.categoryId, product)}</TableCell>
+                        <TableCell>Rs. {product.costPrice}</TableCell>
+                        <TableCell>Rs. {product.mrp}</TableCell>
+                        <TableCell className="text-right">
+                          {canManageProducts ? (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => handleEditProduct(product)}>
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => setProductToDelete(product)}>
+                                <Trash2 className="h-4 w-4 text-destructive" />   
+                              </Button>
+                            </>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">View only</span>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
                 </TableBody>
               </Table>
             </CardContent>
