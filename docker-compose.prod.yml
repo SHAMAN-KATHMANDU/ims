@@ -22,7 +22,7 @@ services:
 
   api:
     # Replace YOUR_DOCKERHUB_USERNAME with your actual Docker Hub username
-    image: ${DOCKERHUB_USERNAME:-your-username}/ims-api:latest
+    image: ${DOCKERHUB_USERNAME:-your-username}/dev-api-ims:latest
     container_name: ims-api
     restart: always
     depends_on:
@@ -43,7 +43,7 @@ services:
 
   web:
     # Replace YOUR_DOCKERHUB_USERNAME with your actual Docker Hub username
-    image: ${DOCKERHUB_USERNAME:-your-username}/ims-web:latest
+    image: ${DOCKERHUB_USERNAME:-your-username}/dev-web-ims:latest
     container_name: ims-web
     restart: always
     depends_on:
