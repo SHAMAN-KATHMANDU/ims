@@ -36,10 +36,12 @@ RUN pnpm install --frozen-lockfile
 # Copy application source code
 COPY . .
 
-# Generate Prisma client (after copying all files)
-RUN pnpm --filter api prisma generate
+# Generate Prisma client from the api directory
+WORKDIR /app/apps/api
+RUN npx prisma generate
 
 # Build TypeScript for production
+WORKDIR /app
 RUN pnpm --filter api build
 
 # Expose port
