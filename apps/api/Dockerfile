@@ -33,12 +33,11 @@ COPY packages/ui/package.json ./packages/ui/
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
-# Copy Prisma schema and generate client
-COPY apps/api/prisma ./apps/api/prisma/
-RUN pnpm --filter api prisma generate
-
 # Copy application source code
 COPY . .
+
+# Generate Prisma client (after copying all files)
+RUN pnpm --filter api prisma generate
 
 # Build TypeScript for production
 RUN pnpm --filter api build
