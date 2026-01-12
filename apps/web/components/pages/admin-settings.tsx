@@ -1,9 +1,15 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Button } from "@/components/ui/button"
+import { useState } from "react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -11,16 +17,36 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Trash2, Edit2, Plus } from "lucide-react"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Trash2, Edit2, Plus } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 
 // Validation schema for user form
 const userSchema = z.object({
@@ -28,17 +54,17 @@ const userSchema = z.object({
   email: z.string().email("Invalid email address"),
   role: z.enum(["admin", "user", "viewer"]),
   status: z.enum(["active", "inactive"]),
-})
+});
 
-type UserFormData = z.infer<typeof userSchema>
+type UserFormData = z.infer<typeof userSchema>;
 
 interface User {
-  id: string
-  name: string
-  email: string
-  role: "admin" | "user" | "viewer"
-  status: "active" | "inactive"
-  createdAt: string
+  id: string;
+  name: string;
+  email: string;
+  role: "admin" | "user" | "viewer";
+  status: "active" | "inactive";
+  createdAt: string;
 }
 
 export function AdminSettings() {
@@ -59,10 +85,10 @@ export function AdminSettings() {
       status: "active",
       createdAt: "2024-01-05",
     },
-  ])
+  ]);
 
-  const [isOpen, setIsOpen] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
@@ -72,26 +98,28 @@ export function AdminSettings() {
       role: "user",
       status: "active",
     },
-  })
+  });
 
   const onSubmit = (data: UserFormData) => {
     if (editingId) {
       // Edit existing user
-      setUsers(users.map((user) => 
-        user.id === editingId 
-          ? { 
-              ...user, 
-              name: data.name as string,
-              email: data.email as string,
-              role: data.role as "admin" | "user" | "viewer",
-              status: data.status as "active" | "inactive",
-            } 
-          : user
-      ))
-      setEditingId(null)
+      setUsers(
+        users.map((user) =>
+          user.id === editingId
+            ? {
+                ...user,
+                name: data.name as string,
+                email: data.email as string,
+                role: data.role as "admin" | "user" | "viewer",
+                status: data.status as "active" | "inactive",
+              }
+            : user,
+        ),
+      );
+      setEditingId(null);
     } else {
       // Add new user
-      const createdAt: string = new Date().toISOString().substring(0, 10)
+      const createdAt: string = new Date().toISOString().substring(0, 10);
       const newUser: User = {
         id: Date.now().toString(),
         name: data.name as string,
@@ -99,12 +127,12 @@ export function AdminSettings() {
         role: data.role as "admin" | "user" | "viewer",
         status: data.status as "active" | "inactive",
         createdAt,
-      }
-      setUsers([...users, newUser])
+      };
+      setUsers([...users, newUser]);
     }
-    form.reset()
-    setIsOpen(false)
-  }
+    form.reset();
+    setIsOpen(false);
+  };
 
   const handleEdit = (user: User) => {
     form.reset({
@@ -112,20 +140,22 @@ export function AdminSettings() {
       email: user.email,
       role: user.role,
       status: user.status,
-    })
-    setEditingId(user.id)
-    setIsOpen(true)
-  }
+    });
+    setEditingId(user.id);
+    setIsOpen(true);
+  };
 
   const handleDelete = (id: string) => {
-    setUsers(users.filter((user) => user.id !== id))
-  }
+    setUsers(users.filter((user) => user.id !== id));
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-balance">Admin Settings</h1>
-        <p className="text-muted-foreground mt-2">Manage system-wide settings and user accounts</p>
+        <p className="text-muted-foreground mt-2">
+          Manage system-wide settings and user accounts
+        </p>
       </div>
 
       <Tabs defaultValue="users" className="w-full">
@@ -143,8 +173,8 @@ export function AdminSettings() {
               <DialogTrigger asChild>
                 <Button
                   onClick={() => {
-                    setEditingId(null)
-                    form.reset()
+                    setEditingId(null);
+                    form.reset();
                   }}
                   className="gap-2"
                 >
@@ -154,13 +184,20 @@ export function AdminSettings() {
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{editingId ? "Edit User" : "Add New User"}</DialogTitle>
+                  <DialogTitle>
+                    {editingId ? "Edit User" : "Add New User"}
+                  </DialogTitle>
                   <DialogDescription>
-                    {editingId ? "Update user information" : "Create a new user account"}
+                    {editingId
+                      ? "Update user information"
+                      : "Create a new user account"}
                   </DialogDescription>
                 </DialogHeader>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <form
+                    onSubmit={form.handleSubmit(onSubmit)}
+                    className="space-y-4"
+                  >
                     <FormField
                       control={form.control}
                       name="name"
@@ -181,7 +218,11 @@ export function AdminSettings() {
                         <FormItem>
                           <FormLabel>Email Address</FormLabel>
                           <FormControl>
-                            <Input type="email" placeholder="john@example.com" {...field} />
+                            <Input
+                              type="email"
+                              placeholder="john@example.com"
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -193,7 +234,10 @@ export function AdminSettings() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Role</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value ?? "user"}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value ?? "user"}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a role" />
@@ -215,7 +259,10 @@ export function AdminSettings() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Status</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value ?? "active"}>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value ?? "active"}
+                          >
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a status" />
@@ -235,14 +282,16 @@ export function AdminSettings() {
                         type="button"
                         variant="outline"
                         onClick={() => {
-                          setIsOpen(false)
-                          setEditingId(null)
-                          form.reset()
+                          setIsOpen(false);
+                          setEditingId(null);
+                          form.reset();
                         }}
                       >
                         Cancel
                       </Button>
-                      <Button type="submit">{editingId ? "Update User" : "Add User"}</Button>
+                      <Button type="submit">
+                        {editingId ? "Update User" : "Add User"}
+                      </Button>
                     </div>
                   </form>
                 </Form>
@@ -280,7 +329,9 @@ export function AdminSettings() {
                       <TableCell>
                         <span
                           className={`px-2 py-1 rounded-full text-xs font-medium ${
-                            user.status === "active" ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-700"
+                            user.status === "active"
+                              ? "bg-green-100 text-green-700"
+                              : "bg-gray-100 text-gray-700"
                           }`}
                         >
                           {user.status}
@@ -288,7 +339,12 @@ export function AdminSettings() {
                       </TableCell>
                       <TableCell>{user.createdAt}</TableCell>
                       <TableCell className="text-right space-x-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleEdit(user)} className="gap-1">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleEdit(user)}
+                          className="gap-1"
+                        >
                           <Edit2 className="h-4 w-4" />
                         </Button>
                         <Button
@@ -313,21 +369,29 @@ export function AdminSettings() {
           <Card className="shadow-sm">
             <CardHeader>
               <CardTitle>Roles & Permissions</CardTitle>
-              <CardDescription>Configure role-based access control</CardDescription>
+              <CardDescription>
+                Configure role-based access control
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-4">
                 <div className="border rounded-lg p-4">
                   <h3 className="font-semibold mb-2">Admin</h3>
-                  <p className="text-sm text-muted-foreground">Full access to all system features</p>
+                  <p className="text-sm text-muted-foreground">
+                    Full access to all system features
+                  </p>
                 </div>
                 <div className="border rounded-lg p-4">
                   <h3 className="font-semibold mb-2">User</h3>
-                  <p className="text-sm text-muted-foreground">Access to dashboard and basic features</p>
+                  <p className="text-sm text-muted-foreground">
+                    Access to dashboard and basic features
+                  </p>
                 </div>
                 <div className="border rounded-lg p-4">
                   <h3 className="font-semibold mb-2">Viewer</h3>
-                  <p className="text-sm text-muted-foreground">Read-only access to analytics and reports</p>
+                  <p className="text-sm text-muted-foreground">
+                    Read-only access to analytics and reports
+                  </p>
                 </div>
               </div>
             </CardContent>
@@ -360,5 +424,5 @@ export function AdminSettings() {
         </TabsContent>
       </Tabs>
     </div>
-  )
+  );
 }
