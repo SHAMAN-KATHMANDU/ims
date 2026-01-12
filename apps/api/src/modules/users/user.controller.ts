@@ -84,7 +84,7 @@ class UserController {
   // Get user by ID (only superAdmin)
   async getUserById(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
       const user = await User.findUnique({
         where: { id },
@@ -114,7 +114,7 @@ class UserController {
   // Update user (only superAdmin)
   async updateUser(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
       const { username, password, role } = req.body;
 
       // Check if user exists
@@ -179,7 +179,7 @@ class UserController {
   // Delete user (only superAdmin)
   async deleteUser(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
       // Check if user exists
       const existingUser = await User.findUnique({
