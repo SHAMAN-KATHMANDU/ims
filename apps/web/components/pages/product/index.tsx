@@ -26,6 +26,7 @@ import { CategoryTable } from "./components/CategoryTable"
 import { DiscountsTab } from "./components/DiscountsTab"
 import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog"
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog"
+import { ErrorDialog } from "./components/dialogs/ErrorDialog"
 import type { ProductFormValues, CategoryFormValues, ProductVariationForm, ProductDiscountForm } from "./types"
 
 export function ProductPage() {
@@ -47,6 +48,10 @@ export function ProductPage() {
   const [categoryDialog, setCategoryDialog] = useState(false)
   const [productToDelete, setProductToDelete] = useState<Product | null>(null)
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
+  const [errorDialog, setErrorDialog] = useState<{ open: boolean; title?: string; message: string }>({
+    open: false,
+    message: "",
+  })
 
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null)
@@ -87,12 +92,35 @@ export function ProductPage() {
   // Validation functions
   const validateProduct = (values: ProductFormValues) => {
     const errors: Record<string, string> = {}
+    
+    // Required field validations
     if (!values.imsCode?.trim()) errors.imsCode = "IMS Code is required"
     if (!values.name?.trim()) errors.name = "Product name is required"
     if (!values.categoryId) errors.categoryId = "Category is required"
-    if (!values.costPrice || Number(values.costPrice) <= 0) errors.costPrice = "Valid cost price is required"
-    if (!values.mrp || Number(values.mrp) <= 0) errors.mrp = "Valid MRP is required"
     
+    // Cost price validation
+    const costPrice = Number(values.costPrice)
+    if (!values.costPrice || isNaN(costPrice)) {
+      errors.costPrice = "Cost price is required"
+    } else if (costPrice < 0) {
+      errors.costPrice = "Cost price cannot be negative"
+    } else if (costPrice === 0) {
+      errors.costPrice = "Cost price must be greater than 0"
+    }
+    
+    // MRP validation
+    const mrp = Number(values.mrp)
+    if (!values.mrp || isNaN(mrp)) {
+      errors.mrp = "MRP is required"
+    } else if (mrp < 0) {
+      errors.mrp = "MRP cannot be negative"
+    } else if (mrp === 0) {
+      errors.mrp = "MRP must be greater than 0"
+    } else if (costPrice > 0 && mrp < costPrice) {
+      errors.mrp = "MRP must be greater than or equal to cost price"
+    }
+    
+    // Variations validation
     if (productVariations.length === 0) {
       errors._form = "At least one variation is required"
     } else {
@@ -100,8 +128,13 @@ export function ProductPage() {
         if (!variation.color?.trim()) {
           errors[`variation_${index}_color`] = "Color is required"
         }
-        if (!variation.stockQuantity || Number(variation.stockQuantity) < 0) {
-          errors[`variation_${index}_stock`] = "Valid stock quantity is required"
+        const stockQuantity = Number(variation.stockQuantity)
+        if (variation.stockQuantity === undefined || variation.stockQuantity === null || variation.stockQuantity === "") {
+          errors[`variation_${index}_stock`] = "Stock quantity is required"
+        } else if (isNaN(stockQuantity)) {
+          errors[`variation_${index}_stock`] = "Stock quantity must be a valid number"
+        } else if (stockQuantity < 0) {
+          errors[`variation_${index}_stock`] = "Stock quantity cannot be negative"
         }
       })
     }
@@ -132,6 +165,55 @@ export function ProductPage() {
     validate: validateProduct,
     onSubmit: async (values) => {
       try {
+        // Additional validation before submission
+        if (!values.imsCode?.trim() || !values.name?.trim() || !values.categoryId) {
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            message: "Please fill in all required fields (IMS Code, Name, and Category).",
+          })
+          return
+        }
+
+        if (productVariations.length === 0) {
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            message: "At least one product variation is required. Please add a variation before submitting.",
+          })
+          return
+        }
+
+        const costPrice = Number(values.costPrice)
+        const mrp = Number(values.mrp)
+
+        if (isNaN(costPrice) || costPrice <= 0) {
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            message: "Please enter a valid cost price greater than 0.",
+          })
+          return
+        }
+
+        if (isNaN(mrp) || mrp <= 0) {
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            message: "Please enter a valid MRP greater than 0.",
+          })
+          return
+        }
+
+        if (mrp < costPrice) {
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            message: "MRP must be greater than or equal to the cost price.",
+          })
+          return
+        }
+
         const isEditing = !!editingProduct
         
         const data: any = {
@@ -143,8 +225,8 @@ export function ProductPage() {
           breadth: values.breadth ? Number(values.breadth) : undefined,
           height: values.height ? Number(values.height) : undefined,
           weight: values.weight ? Number(values.weight) : undefined,
-          costPrice: Number(values.costPrice),
-          mrp: Number(values.mrp),
+          costPrice: costPrice,
+          mrp: mrp,
         }
 
         if (isEditing) {
@@ -204,10 +286,10 @@ export function ProductPage() {
         productForm.reset()
       } catch (error: any) {
         const errorMessage = error.response?.data?.message || error.message || "Failed to save product"
-        toast({
-          title: "Error",
-          description: errorMessage,
-          variant: "destructive",
+        setErrorDialog({
+          open: true,
+          title: "Error Saving Product",
+          message: errorMessage,
         })
       }
     },
@@ -219,6 +301,15 @@ export function ProductPage() {
     validate: validateCategory,
     onSubmit: async (values) => {
       try {
+        if (!values.name?.trim()) {
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            message: "Category name is required. Please enter a category name.",
+          })
+          return
+        }
+
         if (editingCategory) {
           await updateCategoryMutation.mutateAsync({ id: editingCategory.id, data: values })
           toast({ title: "Category updated successfully" })
@@ -230,10 +321,11 @@ export function ProductPage() {
         setEditingCategory(null)
         categoryForm.reset()
       } catch (error: any) {
-        toast({
-          title: "Error",
-          description: error.message || "Failed to save category",
-          variant: "destructive",
+        const errorMessage = error.response?.data?.message || error.message || "Failed to save category"
+        setErrorDialog({
+          open: true,
+          title: "Error Saving Category",
+          message: errorMessage,
         })
       }
     },
@@ -491,6 +583,16 @@ export function ProductPage() {
         category={categoryToDelete}
         onClose={() => setCategoryToDelete(null)}
         onDelete={deleteCategoryMutation.mutateAsync}
+      />
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => setErrorDialog({ ...errorDialog, open })}
+        title={errorDialog.title}
+        message={errorDialog.message}
+        onGoBack={() => {
+          // Keep dialog open on error so user can fix issues
+        }}
       />
     </div>
   )
