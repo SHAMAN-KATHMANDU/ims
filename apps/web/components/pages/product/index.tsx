@@ -532,6 +532,8 @@ export function ProductPage() {
                 onAddDiscount={addDiscountToForm}
                 onRemoveDiscount={removeDiscountFromForm}
                 onUpdateDiscount={updateDiscountInForm}
+                onShowError={(title, message) => setErrorDialog({ open: true, title, message })}
+                validateProduct={validateProduct}
               />
             )}
           </div>

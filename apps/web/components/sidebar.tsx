@@ -86,6 +86,10 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   }, [userRole, detectedBasePath])
 
   const toggleSection = (sectionTitle: string) => {
+    // Don't toggle sections when sidebar is minimized on desktop
+    if (!isMobile && !isOpen) {
+      return
+    }
     setOpenSections(prev => ({
       ...prev,
       [sectionTitle]: !prev[sectionTitle],
@@ -125,7 +129,13 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
           <Collapsible
             key={section.title}
             open={openSections[section.title] ?? true}
-            onOpenChange={() => toggleSection(section.title)}
+            onOpenChange={() => {
+              // Prevent toggling sections when sidebar is minimized on desktop
+              if (!isMobile && !isOpen) {
+                return
+              }
+              toggleSection(section.title)
+            }}
           >
             <div className="space-y-2">
               {isOpen ? (
@@ -183,7 +193,14 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
                                       ? "text-foreground font-medium"
                                       : "text-muted-foreground hover:text-foreground"
                                   )}
-                                  onClick={() => isMobile && onToggle()}
+                                  onClick={(e) => {
+                                    // Only close sidebar on mobile, never change state on desktop
+                                    if (isMobile) {
+                                      onToggle()
+                                    }
+                                    // Stop propagation to prevent Collapsible from responding
+                                    e.stopPropagation()
+                                  }}
                                 >
                                   <span className="h-1 w-1 rounded-full bg-current" />
                                   <span>{child.label}</span>
@@ -205,7 +222,14 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
                             ? "bg-muted text-foreground"
                             : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                         )}
-                        onClick={() => isMobile && onToggle()}
+                        onClick={(e) => {
+                          // Only close sidebar on mobile, never change state on desktop
+                          if (isMobile) {
+                            onToggle()
+                          }
+                          // Stop propagation to prevent Collapsible from responding
+                          e.stopPropagation()
+                        }}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
                         {isOpen && <span>{item.label}</span>}

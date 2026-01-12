@@ -7,18 +7,40 @@ import { Sidebar } from "./sidebar"
 import { TopBar } from "./top-bar"
 import { useIsMobile } from "@/hooks/use-mobile"
 
+const SIDEBAR_STORAGE_KEY = "sidebar_open_state"
+
+// Get initial sidebar state from localStorage (only for desktop)
+function getInitialSidebarState(): boolean {
+  if (typeof window === "undefined") {
+    return true // SSR default
+  }
+  const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+  return stored !== null ? stored === "true" : true // Default to open if not stored
+}
+
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile()
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(() => getInitialSidebarState())
 
-  // Close sidebar on mobile by default, keep open on desktop
+  // Update sidebar state when mobile state changes
   useEffect(() => {
     if (isMobile) {
       setSidebarOpen(false)
     } else {
-      setSidebarOpen(true)
+      // On desktop, load from localStorage
+      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY)
+      if (stored !== null) {
+        setSidebarOpen(stored === "true")
+      }
     }
   }, [isMobile])
+
+  // Persist sidebar state to localStorage when it changes (only for desktop)
+  useEffect(() => {
+    if (typeof window !== "undefined" && !isMobile) {
+      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarOpen))
+    }
+  }, [sidebarOpen, isMobile])
 
   const handleMenuClick = () => {
     setSidebarOpen(!sidebarOpen)
