@@ -104,7 +104,7 @@ export function ProductForm({
           <Plus className="h-4 w-4" /> Add Product
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl">
+      <DialogContent className="max-h-[90vh] max-w-4xl">
         <DialogHeader>
           <DialogTitle>{editingProduct ? "Edit Product" : "Add Product"}</DialogTitle>
         </DialogHeader>
@@ -116,10 +116,12 @@ export function ProductForm({
               handleNext()
               return
             }
+            // On the last tab, call the form's submit handler
             form.handleSubmit(e)
           }}
         >
-          <Tabs value={dialogTab} onValueChange={setDialogTab} className="w-full">
+          <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
+            <Tabs value={dialogTab} onValueChange={setDialogTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
@@ -158,9 +160,10 @@ export function ProductForm({
               />
             </TabsContent>
           </Tabs>
+          </div>
           
           {form.errors._form && <p className="text-sm text-destructive mt-4">{form.errors._form}</p>}
-          <div className="flex gap-2 justify-between mt-6">
+          <div className="flex gap-2 justify-between mt-6 border-t pt-4">
             <div className="flex gap-2">
               {canGoPrev && (
                 <Button
