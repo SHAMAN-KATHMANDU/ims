@@ -1,143 +1,143 @@
 /**
  * Product Service
- * 
+ *
  * Service layer for product management operations
  * Follows MVC pattern - this is the Model/Controller layer
  * Handles all API calls related to products
  */
 
-import { useAxios } from "@/hooks/useAxios"
+import { useAxios } from "@/hooks/useAxios";
 
 export interface Category {
-  id: string
-  name: string
-  description?: string
-  createdAt?: string
+  id: string;
+  name: string;
+  description?: string;
+  createdAt?: string;
 }
 
 export interface ProductVariation {
-  id: string
-  productId: string
-  color: string
-  stockQuantity: number
-  createdAt?: string
+  id: string;
+  productId: string;
+  color: string;
+  stockQuantity: number;
+  createdAt?: string;
   photos?: Array<{
-    id: string
-    photoUrl: string
-    isPrimary: boolean
-  }>
+    id: string;
+    photoUrl: string;
+    isPrimary: boolean;
+  }>;
 }
 
 export interface Product {
-  id: string
-  imsCode: string
-  name: string
-  categoryId: string
-  description?: string
-  length?: number
-  breadth?: number
-  height?: number
-  weight?: number
-  costPrice: number
-  mrp: number
-  createdById: string
-  dateCreated: string
-  category?: Category
+  id: string;
+  imsCode: string;
+  name: string;
+  categoryId: string;
+  description?: string;
+  length?: number;
+  breadth?: number;
+  height?: number;
+  weight?: number;
+  costPrice: number;
+  mrp: number;
+  createdById: string;
+  dateCreated: string;
+  category?: Category;
   createdBy?: {
-    id: string
-    username: string
-    role: string
-  }
-  variations?: ProductVariation[]
+    id: string;
+    username: string;
+    role: string;
+  };
+  variations?: ProductVariation[];
   discounts?: Array<{
-    id: string
-    discountTypeId: string
-    discountPercentage: number
-    startDate?: string
-    endDate?: string
-    isActive: boolean
+    id: string;
+    discountTypeId: string;
+    discountPercentage: number;
+    startDate?: string;
+    endDate?: string;
+    isActive: boolean;
     discountType?: {
-      id: string
-      name: string
-      description?: string
-    }
-  }>
+      id: string;
+      name: string;
+      description?: string;
+    };
+  }>;
 }
 
 export interface CreateProductData {
-  imsCode: string
-  name: string
-  categoryId?: string
-  categoryName?: string
-  description?: string
-  length?: number
-  breadth?: number
-  height?: number
-  weight?: number
-  costPrice: number
-  mrp: number
+  imsCode: string;
+  name: string;
+  categoryId?: string;
+  categoryName?: string;
+  description?: string;
+  length?: number;
+  breadth?: number;
+  height?: number;
+  weight?: number;
+  costPrice: number;
+  mrp: number;
   variations?: Array<{
-    color: string
-    stockQuantity?: number
+    color: string;
+    stockQuantity?: number;
     photos?: Array<{
-      photoUrl: string
-      isPrimary?: boolean
-    }>
-  }>
+      photoUrl: string;
+      isPrimary?: boolean;
+    }>;
+  }>;
   discounts?: Array<{
-    discountTypeId?: string
-    discountTypeName?: string
-    discountPercentage: number
-    startDate?: string
-    endDate?: string
-    isActive?: boolean
-  }>
+    discountTypeId?: string;
+    discountTypeName?: string;
+    discountPercentage: number;
+    startDate?: string;
+    endDate?: string;
+    isActive?: boolean;
+  }>;
 }
 
 export interface UpdateProductData {
-  imsCode?: string
-  name?: string
-  categoryId?: string
-  description?: string
-  length?: number
-  breadth?: number
-  height?: number
-  weight?: number
-  costPrice?: number
-  mrp?: number
+  imsCode?: string;
+  name?: string;
+  categoryId?: string;
+  description?: string;
+  length?: number;
+  breadth?: number;
+  height?: number;
+  weight?: number;
+  costPrice?: number;
+  mrp?: number;
   variations?: Array<{
-    color: string
-    stockQuantity?: number
+    color: string;
+    stockQuantity?: number;
     photos?: Array<{
-      photoUrl: string
-      isPrimary?: boolean
-    }>
-  }>
+      photoUrl: string;
+      isPrimary?: boolean;
+    }>;
+  }>;
   discounts?: Array<{
-    discountTypeId?: string
-    discountTypeName?: string
-    discountPercentage: number
-    startDate?: string
-    endDate?: string
-    isActive?: boolean
-  }>
+    discountTypeId?: string;
+    discountTypeName?: string;
+    discountPercentage: number;
+    startDate?: string;
+    endDate?: string;
+    isActive?: boolean;
+  }>;
 }
 
 export interface ProductsResponse {
-  message: string
-  products: Product[]
-  count: number
+  message: string;
+  products: Product[];
+  count: number;
 }
 
 export interface ProductResponse {
-  message: string
-  product: Product
+  message: string;
+  product: Product;
 }
 
 export interface CategoriesResponse {
-  message: string
-  categories: Category[]
-  count: number
+  message: string;
+  categories: Category[];
+  count: number;
 }
 
 /**
@@ -145,10 +145,10 @@ export interface CategoriesResponse {
  * Provides methods for all product-related API operations
  */
 export class ProductService {
-  private axios: ReturnType<typeof useAxios>
+  private axios: ReturnType<typeof useAxios>;
 
   constructor(axiosInstance: ReturnType<typeof useAxios>) {
-    this.axios = axiosInstance
+    this.axios = axiosInstance;
   }
 
   /**
@@ -156,47 +156,59 @@ export class ProductService {
    */
   async getAllProducts(): Promise<Product[]> {
     try {
-      const response = await this.axios.get<ProductsResponse>("/products")
-      
+      const response = await this.axios.get<ProductsResponse>("/products");
+
       if (!response?.data) {
-        throw new Error("Invalid response from server")
+        throw new Error("Invalid response from server");
       }
-      
+
       if (!Array.isArray(response.data.products)) {
-        throw new Error("Invalid response format: products array not found")
+        throw new Error("Invalid response format: products array not found");
       }
-      
-      return response.data.products
-    } catch (error: any) {
+
+      return response.data.products;
+    } catch (error: unknown) {
       // Handle network errors
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        throw new Error("Cannot connect to server. Please check your network connection.")
+      const err = error as {
+        name?: string;
+        message?: string;
+        response?: { status?: number; data?: { message?: string } };
+      };
+      if (err.name === "TypeError" && err.message?.includes("fetch")) {
+        throw new Error(
+          "Cannot connect to server. Please check your network connection.",
+        );
       }
-      
+
       // Handle axios errors
-      if (error.response) {
-        const status = error.response.status
-        const message = error.response.data?.message || error.message || "Failed to fetch products"
-        
+      if (err.response) {
+        const status = err.response.status;
+        const message =
+          err.response.data?.message ||
+          err.message ||
+          "Failed to fetch products";
+
         if (status === 401) {
-          throw new Error("Unauthorized: Please log in to access products")
+          throw new Error("Unauthorized: Please log in to access products");
         } else if (status === 403) {
-          throw new Error("Forbidden: You don't have permission to access products")
+          throw new Error(
+            "Forbidden: You don't have permission to access products",
+          );
         } else if (status === 404) {
-          throw new Error("Products endpoint not found")
-        } else if (status >= 500) {
-          throw new Error("Server error: Please try again later")
+          throw new Error("Products endpoint not found");
+        } else if (status && status >= 500) {
+          throw new Error("Server error: Please try again later");
         }
-        
-        throw new Error(message)
+
+        throw new Error(message);
       }
-      
+
       // Re-throw if it's already a known error
       if (error instanceof Error) {
-        throw error
+        throw error;
       }
-      
-      throw new Error("An unexpected error occurred while fetching products")
+
+      throw new Error("An unexpected error occurred while fetching products");
     }
   }
 
@@ -206,50 +218,66 @@ export class ProductService {
   async getProductById(id: string): Promise<Product> {
     try {
       if (!id || typeof id !== "string" || id.trim() === "") {
-        throw new Error("Product ID is required and must be a non-empty string")
+        throw new Error(
+          "Product ID is required and must be a non-empty string",
+        );
       }
-      
-      const response = await this.axios.get<ProductResponse>(`/products/${id}`)
-      
+
+      const response = await this.axios.get<ProductResponse>(`/products/${id}`);
+
       if (!response?.data) {
-        throw new Error("Invalid response from server")
+        throw new Error("Invalid response from server");
       }
-      
+
       if (!response.data.product) {
-        throw new Error("Product not found in response")
+        throw new Error("Product not found in response");
       }
-      
-      return response.data.product
-    } catch (error: any) {
+
+      return response.data.product;
+    } catch (error: unknown) {
       // Handle network errors
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        throw new Error("Cannot connect to server. Please check your network connection.")
+      const err = error as {
+        name?: string;
+        message?: string;
+        response?: { status?: number; data?: { message?: string } };
+      };
+      if (err.name === "TypeError" && err.message?.includes("fetch")) {
+        throw new Error(
+          "Cannot connect to server. Please check your network connection.",
+        );
       }
-      
+
       // Handle axios errors
-      if (error.response) {
-        const status = error.response.status
-        const message = error.response.data?.message || error.message || "Failed to fetch product"
-        
+      if (err.response) {
+        const status = err.response.status;
+        const message =
+          err.response.data?.message ||
+          err.message ||
+          "Failed to fetch product";
+
         if (status === 401) {
-          throw new Error("Unauthorized: Please log in to access this product")
+          throw new Error("Unauthorized: Please log in to access this product");
         } else if (status === 403) {
-          throw new Error("Forbidden: You don't have permission to access this product")
+          throw new Error(
+            "Forbidden: You don't have permission to access this product",
+          );
         } else if (status === 404) {
-          throw new Error(`Product with ID "${id}" not found`)
-        } else if (status >= 500) {
-          throw new Error("Server error: Please try again later")
+          throw new Error(`Product with ID "${id}" not found`);
+        } else if (status && status >= 500) {
+          throw new Error("Server error: Please try again later");
         }
-        
-        throw new Error(message)
+
+        throw new Error(message);
       }
-      
+
       // Re-throw if it's already a known error
       if (error instanceof Error) {
-        throw error
+        throw error;
       }
-      
-      throw new Error("An unexpected error occurred while fetching the product")
+
+      throw new Error(
+        "An unexpected error occurred while fetching the product",
+      );
     }
   }
 
@@ -259,72 +287,107 @@ export class ProductService {
   async createProduct(data: CreateProductData): Promise<Product> {
     try {
       if (!data) {
-        throw new Error("Product data is required")
+        throw new Error("Product data is required");
       }
-      
-      if (!data.imsCode || typeof data.imsCode !== "string" || data.imsCode.trim() === "") {
-        throw new Error("Product IMS code is required and must be a non-empty string")
+
+      if (
+        !data.imsCode ||
+        typeof data.imsCode !== "string" ||
+        data.imsCode.trim() === ""
+      ) {
+        throw new Error(
+          "Product IMS code is required and must be a non-empty string",
+        );
       }
-      
-      if (!data.name || typeof data.name !== "string" || data.name.trim() === "") {
-        throw new Error("Product name is required and must be a non-empty string")
+
+      if (
+        !data.name ||
+        typeof data.name !== "string" ||
+        data.name.trim() === ""
+      ) {
+        throw new Error(
+          "Product name is required and must be a non-empty string",
+        );
       }
-      
+
       if (typeof data.costPrice !== "number" || data.costPrice < 0) {
-        throw new Error("Product cost price is required and must be a non-negative number")
+        throw new Error(
+          "Product cost price is required and must be a non-negative number",
+        );
       }
-      
+
       if (typeof data.mrp !== "number" || data.mrp < 0) {
-        throw new Error("Product MRP is required and must be a non-negative number")
+        throw new Error(
+          "Product MRP is required and must be a non-negative number",
+        );
       }
-      
+
       if (data.mrp < data.costPrice) {
-        throw new Error("Product MRP cannot be less than cost price")
+        throw new Error("Product MRP cannot be less than cost price");
       }
-      
-      const response = await this.axios.post<ProductResponse>("/products", data)
-      
+
+      const response = await this.axios.post<ProductResponse>(
+        "/products",
+        data,
+      );
+
       if (!response?.data) {
-        throw new Error("Invalid response from server")
+        throw new Error("Invalid response from server");
       }
-      
+
       if (!response.data.product) {
-        throw new Error("Product not found in response")
+        throw new Error("Product not found in response");
       }
-      
-      return response.data.product
-    } catch (error: any) {
+
+      return response.data.product;
+    } catch (error: unknown) {
       // Handle network errors
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        throw new Error("Cannot connect to server. Please check your network connection.")
+      const err = error as {
+        name?: string;
+        message?: string;
+        response?: { status?: number; data?: { message?: string } };
+      };
+      if (err.name === "TypeError" && err.message?.includes("fetch")) {
+        throw new Error(
+          "Cannot connect to server. Please check your network connection.",
+        );
       }
-      
+
       // Handle axios errors
-      if (error.response) {
-        const status = error.response.status
-        const message = error.response.data?.message || error.message || "Failed to create product"
-        
+      if (err.response) {
+        const status = err.response.status;
+        const message =
+          err.response.data?.message ||
+          err.message ||
+          "Failed to create product";
+
         if (status === 400) {
-          throw new Error(message || "Invalid product data provided")
+          throw new Error(message || "Invalid product data provided");
         } else if (status === 401) {
-          throw new Error("Unauthorized: Please log in to create products")
+          throw new Error("Unauthorized: Please log in to create products");
         } else if (status === 403) {
-          throw new Error("Forbidden: You don't have permission to create products")
+          throw new Error(
+            "Forbidden: You don't have permission to create products",
+          );
         } else if (status === 409) {
-          throw new Error(message || "A product with this IMS code already exists")
-        } else if (status >= 500) {
-          throw new Error("Server error: Please try again later")
+          throw new Error(
+            message || "A product with this IMS code already exists",
+          );
+        } else if (status && status >= 500) {
+          throw new Error("Server error: Please try again later");
         }
-        
-        throw new Error(message)
+
+        throw new Error(message);
       }
-      
+
       // Re-throw if it's already a known error
       if (error instanceof Error) {
-        throw error
+        throw error;
       }
-      
-      throw new Error("An unexpected error occurred while creating the product")
+
+      throw new Error(
+        "An unexpected error occurred while creating the product",
+      );
     }
   }
 
@@ -334,76 +397,119 @@ export class ProductService {
   async updateProduct(id: string, data: UpdateProductData): Promise<Product> {
     try {
       if (!id || typeof id !== "string" || id.trim() === "") {
-        throw new Error("Product ID is required and must be a non-empty string")
+        throw new Error(
+          "Product ID is required and must be a non-empty string",
+        );
       }
-      
+
       if (!data || Object.keys(data).length === 0) {
-        throw new Error("Update data is required and must contain at least one field")
+        throw new Error(
+          "Update data is required and must contain at least one field",
+        );
       }
-      
-      if (data.imsCode !== undefined && (typeof data.imsCode !== "string" || data.imsCode.trim() === "")) {
-        throw new Error("Product IMS code must be a non-empty string if provided")
+
+      if (
+        data.imsCode !== undefined &&
+        (typeof data.imsCode !== "string" || data.imsCode.trim() === "")
+      ) {
+        throw new Error(
+          "Product IMS code must be a non-empty string if provided",
+        );
       }
-      
-      if (data.name !== undefined && (typeof data.name !== "string" || data.name.trim() === "")) {
-        throw new Error("Product name must be a non-empty string if provided")
+
+      if (
+        data.name !== undefined &&
+        (typeof data.name !== "string" || data.name.trim() === "")
+      ) {
+        throw new Error("Product name must be a non-empty string if provided");
       }
-      
-      if (data.costPrice !== undefined && (typeof data.costPrice !== "number" || data.costPrice < 0)) {
-        throw new Error("Product cost price must be a non-negative number if provided")
+
+      if (
+        data.costPrice !== undefined &&
+        (typeof data.costPrice !== "number" || data.costPrice < 0)
+      ) {
+        throw new Error(
+          "Product cost price must be a non-negative number if provided",
+        );
       }
-      
-      if (data.mrp !== undefined && (typeof data.mrp !== "number" || data.mrp < 0)) {
-        throw new Error("Product MRP must be a non-negative number if provided")
+
+      if (
+        data.mrp !== undefined &&
+        (typeof data.mrp !== "number" || data.mrp < 0)
+      ) {
+        throw new Error(
+          "Product MRP must be a non-negative number if provided",
+        );
       }
-      
-      if (data.costPrice !== undefined && data.mrp !== undefined && data.mrp < data.costPrice) {
-        throw new Error("Product MRP cannot be less than cost price")
+
+      if (
+        data.costPrice !== undefined &&
+        data.mrp !== undefined &&
+        data.mrp < data.costPrice
+      ) {
+        throw new Error("Product MRP cannot be less than cost price");
       }
-      
-      const response = await this.axios.put<ProductResponse>(`/products/${id}`, data)
-      
+
+      const response = await this.axios.put<ProductResponse>(
+        `/products/${id}`,
+        data,
+      );
+
       if (!response?.data) {
-        throw new Error("Invalid response from server")
+        throw new Error("Invalid response from server");
       }
-      
+
       if (!response.data.product) {
-        throw new Error("Product not found in response")
+        throw new Error("Product not found in response");
       }
-      
-      return response.data.product
-    } catch (error: any) {
+
+      return response.data.product;
+    } catch (error: unknown) {
       // Handle network errors
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        throw new Error("Cannot connect to server. Please check your network connection.")
+      const err = error as {
+        name?: string;
+        message?: string;
+        response?: { status?: number; data?: { message?: string } };
+      };
+      if (err.name === "TypeError" && err.message?.includes("fetch")) {
+        throw new Error(
+          "Cannot connect to server. Please check your network connection.",
+        );
       }
-      
+
       // Handle axios errors
-      if (error.response) {
-        const status = error.response.status
-        const message = error.response.data?.message || error.message || "Failed to update product"
-        
+      if (err.response) {
+        const status = err.response.status;
+        const message =
+          err.response.data?.message ||
+          err.message ||
+          "Failed to update product";
+
         if (status === 400) {
-          throw new Error(message || "Invalid product data provided")
+          throw new Error(message || "Invalid product data provided");
         } else if (status === 401) {
-          throw new Error("Unauthorized: Please log in to update products")
+          throw new Error("Unauthorized: Please log in to update products");
         } else if (status === 403) {
-          throw new Error("Forbidden: You don't have permission to update products")
+          throw new Error(
+            "Forbidden: You don't have permission to update products",
+          );
         } else if (status === 404) {
-          throw new Error(`Product with ID "${id}" not found`)
-        } else if (status >= 500) {
-          throw new Error("Server error: Please try again later")
+          throw new Error(`Product with ID "${id}" not found`);
+        } else if (status && status >= 500) {
+          throw new Error("Server error: Please try again later");
         }
-        
-        throw new Error(message)
+
+        throw new Error(message);
       }
-      
+
       // Re-throw if it's already a known error
       if (error instanceof Error) {
-        throw error
+        throw error;
       }
-      
-      throw new Error("An unexpected error occurred while updating the product")
+
+      throw new Error(
+        "An unexpected error occurred while updating the product",
+      );
     }
   }
 
@@ -413,42 +519,58 @@ export class ProductService {
   async deleteProduct(id: string): Promise<void> {
     try {
       if (!id || typeof id !== "string" || id.trim() === "") {
-        throw new Error("Product ID is required and must be a non-empty string")
+        throw new Error(
+          "Product ID is required and must be a non-empty string",
+        );
       }
-      
-      await this.axios.delete(`/products/${id}`)
-    } catch (error: any) {
+
+      await this.axios.delete(`/products/${id}`);
+    } catch (error: unknown) {
       // Handle network errors
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        throw new Error("Cannot connect to server. Please check your network connection.")
+      const err = error as {
+        name?: string;
+        message?: string;
+        response?: { status?: number; data?: { message?: string } };
+      };
+      if (err.name === "TypeError" && err.message?.includes("fetch")) {
+        throw new Error(
+          "Cannot connect to server. Please check your network connection.",
+        );
       }
-      
+
       // Handle axios errors
-      if (error.response) {
-        const status = error.response.status
-        const message = error.response.data?.message || error.message || "Failed to delete product"
-        
+      if (err.response) {
+        const status = err.response.status;
+        const message =
+          err.response.data?.message ||
+          err.message ||
+          "Failed to delete product";
+
         if (status === 401) {
-          throw new Error("Unauthorized: Please log in to delete products")
+          throw new Error("Unauthorized: Please log in to delete products");
         } else if (status === 403) {
-          throw new Error("Forbidden: You don't have permission to delete products")
+          throw new Error(
+            "Forbidden: You don't have permission to delete products",
+          );
         } else if (status === 404) {
-          throw new Error(`Product with ID "${id}" not found`)
+          throw new Error(`Product with ID "${id}" not found`);
         } else if (status === 409) {
-          throw new Error(message || "Cannot delete product: It may be in use")
-        } else if (status >= 500) {
-          throw new Error("Server error: Please try again later")
+          throw new Error(message || "Cannot delete product: It may be in use");
+        } else if (status && status >= 500) {
+          throw new Error("Server error: Please try again later");
         }
-        
-        throw new Error(message)
+
+        throw new Error(message);
       }
-      
+
       // Re-throw if it's already a known error
       if (error instanceof Error) {
-        throw error
+        throw error;
       }
-      
-      throw new Error("An unexpected error occurred while deleting the product")
+
+      throw new Error(
+        "An unexpected error occurred while deleting the product",
+      );
     }
   }
 
@@ -457,100 +579,138 @@ export class ProductService {
    */
   async getAllCategories(): Promise<Category[]> {
     try {
-      const response = await this.axios.get<CategoriesResponse>("/products/categories/list")
-      
+      const response = await this.axios.get<CategoriesResponse>(
+        "/products/categories/list",
+      );
+
       if (!response?.data) {
-        throw new Error("Invalid response from server")
+        throw new Error("Invalid response from server");
       }
-      
+
       if (!Array.isArray(response.data.categories)) {
-        throw new Error("Invalid response format: categories array not found")
+        throw new Error("Invalid response format: categories array not found");
       }
-      
-      return response.data.categories
-    } catch (error: any) {
+
+      return response.data.categories;
+    } catch (error: unknown) {
       // Handle network errors
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        throw new Error("Cannot connect to server. Please check your network connection.")
+      const err = error as {
+        name?: string;
+        message?: string;
+        response?: { status?: number; data?: { message?: string } };
+      };
+      if (err.name === "TypeError" && err.message?.includes("fetch")) {
+        throw new Error(
+          "Cannot connect to server. Please check your network connection.",
+        );
       }
-      
+
       // Handle axios errors
-      if (error.response) {
-        const status = error.response.status
-        const message = error.response.data?.message || error.message || "Failed to fetch categories"
-        
+      if (err.response) {
+        const status = err.response.status;
+        const message =
+          err.response.data?.message ||
+          err.message ||
+          "Failed to fetch categories";
+
         if (status === 401) {
-          throw new Error("Unauthorized: Please log in to access categories")
+          throw new Error("Unauthorized: Please log in to access categories");
         } else if (status === 403) {
-          throw new Error("Forbidden: You don't have permission to access categories")
+          throw new Error(
+            "Forbidden: You don't have permission to access categories",
+          );
         } else if (status === 404) {
-          throw new Error("Categories endpoint not found")
-        } else if (status >= 500) {
-          throw new Error("Server error: Please try again later")
+          throw new Error("Categories endpoint not found");
+        } else if (status && status >= 500) {
+          throw new Error("Server error: Please try again later");
         }
-        
-        throw new Error(message)
+
+        throw new Error(message);
       }
-      
+
       // Re-throw if it's already a known error
       if (error instanceof Error) {
-        throw error
+        throw error;
       }
-      
-      throw new Error("An unexpected error occurred while fetching categories")
+
+      throw new Error("An unexpected error occurred while fetching categories");
     }
   }
 
   /**
    * Get all discount types (helper endpoint)
    */
-  async getAllDiscountTypes(): Promise<Array<{ id: string; name: string; description?: string }>> {
+  async getAllDiscountTypes(): Promise<
+    Array<{ id: string; name: string; description?: string }>
+  > {
     try {
       const response = await this.axios.get<{
-        message: string
-        discountTypes: Array<{ id: string; name: string; description?: string }>
-        count: number
-      }>("/products/discount-types/list")
-      
+        message: string;
+        discountTypes: Array<{
+          id: string;
+          name: string;
+          description?: string;
+        }>;
+        count: number;
+      }>("/products/discount-types/list");
+
       if (!response?.data) {
-        throw new Error("Invalid response from server")
+        throw new Error("Invalid response from server");
       }
-      
+
       if (!Array.isArray(response.data.discountTypes)) {
-        throw new Error("Invalid response format: discountTypes array not found")
+        throw new Error(
+          "Invalid response format: discountTypes array not found",
+        );
       }
-      
-      return response.data.discountTypes
-    } catch (error: any) {
+
+      return response.data.discountTypes;
+    } catch (error: unknown) {
       // Handle network errors
-      if (error.name === "TypeError" && error.message.includes("fetch")) {
-        throw new Error("Cannot connect to server. Please check your network connection.")
+      const err = error as {
+        name?: string;
+        message?: string;
+        response?: { status?: number; data?: { message?: string } };
+      };
+      if (err.name === "TypeError" && err.message?.includes("fetch")) {
+        throw new Error(
+          "Cannot connect to server. Please check your network connection.",
+        );
       }
-      
+
       // Handle axios errors
-      if (error.response) {
-        const status = error.response.status
-        const message = error.response.data?.message || error.message || "Failed to fetch discount types"
-        
+      if (err.response) {
+        const status = err.response.status;
+        const message =
+          err.response.data?.message ||
+          err.message ||
+          "Failed to fetch discount types";
+
         if (status === 401) {
-          throw new Error("Unauthorized: Please log in to access discount types")
+          throw new Error(
+            "Unauthorized: Please log in to access discount types",
+          );
         } else if (status === 403) {
-          throw new Error("Forbidden: You don't have permission to access discount types")
+          throw new Error(
+            "Forbidden: You don't have permission to access discount types",
+          );
         } else if (status === 404) {
-          throw new Error("Discount types endpoint not found")
-        } else if (status >= 500) {
-          throw new Error("Server error: Please try again later")
+          throw new Error("Discount types endpoint not found");
+        } else if (status && status >= 500) {
+          throw new Error("Server error: Please try again later");
         }
-        
-        throw new Error(message)
+
+        throw new Error(message);
       }
-      
+
       // Re-throw if it's already a known error
       if (error instanceof Error) {
-        throw error
+        throw error;
       }
-      
-      throw new Error("An unexpected error occurred while fetching discount types")
+
+      throw new Error(
+        "An unexpected error occurred while fetching discount types",
+      );
     }
   }
 }

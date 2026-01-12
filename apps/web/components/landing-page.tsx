@@ -1,7 +1,7 @@
-"use client"
+"use client";
 
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
 
 export function LandingPage() {
   return (
@@ -13,7 +13,9 @@ export function LandingPage() {
         </div>
 
         {/* Brand Name */}
-        <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">SHAMAN Kathmandu</h1>
+        <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">
+          SHAMAN Kathmandu
+        </h1>
 
         {/* Login Button */}
         <Link href="/login" className="mt-4">
@@ -23,5 +25,5 @@ export function LandingPage() {
         </Link>
       </div>
     </main>
-  )
+  );
 }

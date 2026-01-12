@@ -1,4 +1,4 @@
-import { DateTime } from 'luxon';
+import { DateTime } from "luxon";
 
 export function parseDate(dateString: string): DateTime | null {
   if (!dateString || dateString.trim() === "") {
