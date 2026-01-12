@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import { parseDate } from "shared";
 
 class ProductController {
   // Create product (admin and superAdmin only)
@@ -114,23 +115,9 @@ class ProductController {
             });
           }
           
-          // Handle date parsing - only set dates if they are valid strings
-          let startDate = null;
-          let endDate = null;
-          
-          if (discount.startDate && discount.startDate.trim() !== "") {
-            const parsedStartDate = new Date(discount.startDate);
-            if (!isNaN(parsedStartDate.getTime())) {
-              startDate = parsedStartDate;
-            }
-          }
-          
-          if (discount.endDate && discount.endDate.trim() !== "") {
-            const parsedEndDate = new Date(discount.endDate);
-            if (!isNaN(parsedEndDate.getTime())) {
-              endDate = parsedEndDate;
-            }
-          }
+          // parseDate utility
+          const startDate = discount.startDate ? parseDate(discount.startDate)?.toJSDate() || null : null;
+          const endDate = discount.endDate ? parseDate(discount.endDate)?.toJSDate() || null : null;
           
           resolvedDiscounts.push({
             discountTypeId: discountType.id,
@@ -172,33 +159,13 @@ class ProductController {
           } : undefined,
           // Add discounts (use resolved discounts with actual UUIDs)
           discounts: resolvedDiscounts.length > 0 ? {
-            create: resolvedDiscounts.map((discount: any) => {
-              // Handle date parsing - only set dates if they are valid strings
-              let startDate = null;
-              let endDate = null;
-              
-              if (discount.startDate && discount.startDate.trim && discount.startDate.trim() !== "") {
-                const parsedStartDate = new Date(discount.startDate);
-                if (!isNaN(parsedStartDate.getTime())) {
-                  startDate = parsedStartDate;
-                }
-              }
-              
-              if (discount.endDate && discount.endDate.trim && discount.endDate.trim() !== "") {
-                const parsedEndDate = new Date(discount.endDate);
-                if (!isNaN(parsedEndDate.getTime())) {
-                  endDate = parsedEndDate;
-                }
-              }
-              
-              return {
-                discountTypeId: discount.discountTypeId,
-                discountPercentage: parseFloat(discount.discountPercentage.toString()),
-                startDate: startDate,
-                endDate: endDate,
-                isActive: discount.isActive !== undefined ? discount.isActive : true
-              };
-            })
+            create: resolvedDiscounts.map((discount: any) => ({
+              discountTypeId: discount.discountTypeId,
+              discountPercentage: parseFloat(discount.discountPercentage.toString()),
+              startDate: discount.startDate ? parseDate(discount.startDate)?.toJSDate() || null : null,
+              endDate: discount.endDate ? parseDate(discount.endDate)?.toJSDate() || null : null,
+              isActive: discount.isActive !== undefined ? discount.isActive : true
+            }))
           } : undefined
         },
         include: {
@@ -283,7 +250,7 @@ class ProductController {
   // Get product by ID (all authenticated users can view)
   async getProductById(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
       const product = await prisma.product.findUnique({
         where: { id },
@@ -326,7 +293,7 @@ class ProductController {
   // Update product (admin and superAdmin only)
   async updateProduct(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
       const { 
         imsCode, 
         name, 
@@ -427,70 +394,47 @@ class ProductController {
         }
       }
 
-      // Handle discounts update if provided
-      if (discounts !== undefined) {
-        // Get all discount types for lookup
-        const allDiscountTypes = await prisma.discountType.findMany({ select: { id: true, name: true } });
-        
-        // Delete existing discounts and create new ones
-        await prisma.productDiscount.deleteMany({
-          where: { productId: id }
+// Handle discounts update if provided
+if (discounts !== undefined) {
+  // Get all discount types for lookup
+  const allDiscountTypes = await prisma.discountType.findMany({ 
+    select: { id: true, name: true } 
+  });
+  
+  // Delete existing discounts and create new ones
+  await prisma.productDiscount.deleteMany({
+    where: { productId: id }
+  });
+  
+  if (Array.isArray(discounts) && discounts.length > 0) {
+    const resolvedDiscounts = [];
+    
+    for (const discount of discounts) {
+      // Try to find discount type by ID or name
+      const identifier = discount.discountTypeId || discount.discountTypeName;
+      
+      const discountType = await prisma.discountType.findFirst({
+        where: {
+          OR: [
+            { id: identifier },
+            { name: identifier }
+          ]
+        }
+      });
+      
+      if (!discountType) {
+        return res.status(404).json({ 
+          message: "Discount type not found",
+          providedDiscountTypeId: discount.discountTypeId,
+          providedDiscountTypeName: discount.discountTypeName,
+          hint: "You can use either discountTypeId (UUID) or discountTypeName (string like 'Normal', 'Member', etc.)",
+          availableDiscountTypes: allDiscountTypes.map(dt => ({ id: dt.id, name: dt.name }))
         });
-        
-        if (Array.isArray(discounts) && discounts.length > 0) {
-          const resolvedDiscounts = [];
-          
-          for (const discount of discounts) {
-            let discountType = null;
-            
-            // Try by ID first
-            if (discount.discountTypeId) {
-              discountType = await prisma.discountType.findUnique({
-                where: { id: discount.discountTypeId }
-              });
-            }
-            
-            // If not found by ID, try by name
-            if (!discountType && discount.discountTypeName) {
-              discountType = await prisma.discountType.findUnique({
-                where: { name: discount.discountTypeName }
-              });
-            }
-            
-            // If still not found, try using discountTypeId as name (for convenience)
-            if (!discountType && discount.discountTypeId && !discount.discountTypeId.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)) {
-              discountType = await prisma.discountType.findUnique({
-                where: { name: discount.discountTypeId }
-              });
-            }
-            
-            if (!discountType) {
-              return res.status(404).json({ 
-                message: "Discount type not found",
-                providedDiscountTypeId: discount.discountTypeId,
-                providedDiscountTypeName: discount.discountTypeName,
-                hint: "You can use either discountTypeId (UUID) or discountTypeName (string like 'Normal', 'Member', etc.)",
-                availableDiscountTypes: allDiscountTypes.map(dt => ({ id: dt.id, name: dt.name }))
-              });
-            }
-            
-            // Handle date parsing - only set dates if they are valid strings
-            let startDate = null;
-            let endDate = null;
-            
-            if (discount.startDate && discount.startDate.trim() !== "") {
-              const parsedStartDate = new Date(discount.startDate);
-              if (!isNaN(parsedStartDate.getTime())) {
-                startDate = parsedStartDate;
-              }
-            }
-            
-            if (discount.endDate && discount.endDate.trim() !== "") {
-              const parsedEndDate = new Date(discount.endDate);
-              if (!isNaN(parsedEndDate.getTime())) {
-                endDate = parsedEndDate;
-              }
-            }
+      }
+
+            // Handle date parsing using parseDate utility
+            const startDate = discount.startDate ? parseDate(discount.startDate)?.toJSDate() || null : null;
+            const endDate = discount.endDate ? parseDate(discount.endDate)?.toJSDate() || null : null;
             
             resolvedDiscounts.push({
               discountTypeId: discountType.id,
@@ -554,7 +498,7 @@ class ProductController {
   // Delete product (admin and superAdmin only)
   async deleteProduct(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
       // Check if product exists
       const existingProduct = await prisma.product.findUnique({
