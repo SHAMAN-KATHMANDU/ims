@@ -87,7 +87,11 @@ class CategoryController {
   // Get category by ID (all authenticated users can view)
   async getCategoryById(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+
+      if (!id) {
+        return res.status(400).json({ message: "Category ID is required" });
+      }
 
       const category = await prisma.category.findUnique({
         where: { id },
@@ -127,8 +131,12 @@ class CategoryController {
   // Update category (admin and superAdmin only)
   async updateCategory(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
       const { name, description } = req.body;
+
+      if (!id) {
+        return res.status(400).json({ message: "Category ID is required" });
+      }
 
       // Check if category exists
       const existingCategory = await prisma.category.findUnique({
@@ -192,12 +200,21 @@ class CategoryController {
   // Delete category (admin and superAdmin only)
   async deleteCategory(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
-      // Check if category exists
+      if (!id) {
+        return res.status(400).json({ message: "Category ID is required" });
+      }
+
+      // Check if category exists and get product count
       const existingCategory = await prisma.category.findUnique({
         where: { id },
-        include: {
+        select: {
+          id: true,
+          name: true,
+          description: true,
+          createdAt: true,
+          updatedAt: true,
           _count: {
             select: {
               products: true
