@@ -7,12 +7,12 @@
  */
 
 import { useAxios } from "@/hooks/useAxios"
-import type { AuthUser } from "@/utils/auth"
+import { type UserRoleType } from "shared"
 
 export interface User {
   id: string
   username: string
-  role: "superAdmin" | "admin" | "user"
+  role: UserRoleType
   createdAt: string
   updatedAt: string
 }
@@ -20,13 +20,13 @@ export interface User {
 export interface CreateUserData {
   username: string
   password: string
-  role: "superAdmin" | "admin" | "user"
+  role: UserRoleType
 }
 
 export interface UpdateUserData {
   username?: string
   password?: string
-  role?: "superAdmin" | "admin" | "user"
+  role?: UserRoleType
 }
 
 export interface UsersResponse {
