@@ -30,13 +30,15 @@ import {
   type CreateUserData, 
   type UpdateUserData 
 } from "@/hooks/useUser"
-import { getUserRole, getAuthUser } from "@/utils/auth"
+import { getAuthUser } from "@/utils/auth"
+import { RoleGuard } from "@/components/role-guard"
+import { UserRole, type UserRoleType } from "shared"
 
 type UserFormValues = {
   username: string
   password: string
-  role: "superAdmin" | "admin" | "user"
-  [key: string]: string // Add index signature
+  role: UserRoleType
+  [key: string]: string | UserRoleType // Add index signature
 }
 
 export function UsersPage() {
@@ -45,22 +47,7 @@ export function UsersPage() {
   const updateUserMutation = useUpdateUser()
   const deleteUserMutation = useDeleteUser()
   const { toast } = useToast()
-  const userRole = getUserRole()
   const currentUser = getAuthUser()
-
-  // Only superAdmin can access this page
-  if (userRole !== "superAdmin") {
-    return (
-      <div className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Access Denied</CardTitle>
-            <CardDescription>You do not have permission to access this page.</CardDescription>
-          </CardHeader>
-        </Card>
-      </div>
-    )
-  }
 
   const [userDialog, setUserDialog] = useState(false)
   const [editingUser, setEditingUser] = useState<User | null>(null)
@@ -83,7 +70,7 @@ export function UsersPage() {
     initialValues: {
       username: "",
       password: "",
-      role: "user",
+      role: UserRole.USER,
     },
     validate: validateUser,
     onSubmit: async (values) => {
@@ -142,11 +129,15 @@ export function UsersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">User Management</h1>
-        <p className="text-muted-foreground mt-2">Manage users and their roles</p>
-      </div>
+    <RoleGuard 
+      allowedRoles={["superAdmin"]}
+      message="Only super administrators can access user management."
+    >
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-bold">User Management</h1>
+          <p className="text-muted-foreground mt-2">Manage users and their roles</p>
+        </div>
 
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">All Users</h2>
@@ -196,7 +187,7 @@ export function UsersPage() {
                 <Label htmlFor="role">Role</Label>
                 <Select
                   value={userForm.values.role}
-                  onValueChange={(value) => userForm.handleChange("role", value as "superAdmin" | "admin" | "user")}
+                  onValueChange={(value) => userForm.handleChange("role", value as UserRoleType)}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Select role" />
@@ -321,6 +312,7 @@ export function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+      </div>
+    </RoleGuard>
   )
 }
