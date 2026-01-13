@@ -14,7 +14,7 @@ export function LandingPage() {
 
         {/* Brand Name */}
         <h1 className="text-4xl md:text-6xl font-bold tracking-tight text-foreground">
-          SHAMAN Kathmandu
+          SHAMAN KATHMANDU
         </h1>
 
         {/* Login Button */}
