@@ -93,10 +93,10 @@ const productRouter = Router();
  *         description: Category or discount type not found
  */
 productRouter.post(
-  '/',
+  "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  productController.createProduct
+  productController.createProduct,
 );
 
 /**
@@ -125,10 +125,10 @@ productRouter.post(
  *                   type: number
  */
 productRouter.get(
-  '/',
+  "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllProducts
+  productController.getAllProducts,
 );
 
 /**
@@ -144,10 +144,10 @@ productRouter.get(
  *         description: Categories retrieved successfully
  */
 productRouter.get(
-  '/categories/list',
+  "/categories/list",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllCategories
+  productController.getAllCategories,
 );
 
 /**
@@ -163,10 +163,10 @@ productRouter.get(
  *         description: Discount types retrieved successfully
  */
 productRouter.get(
-  '/discount-types/list',
+  "/discount-types/list",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllDiscountTypes
+  productController.getAllDiscountTypes,
 );
 
 /**
@@ -191,10 +191,10 @@ productRouter.get(
  *         description: Product not found
  */
 productRouter.get(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getProductById
+  productController.getProductById,
 );
 
 /**
@@ -233,10 +233,10 @@ productRouter.get(
  *         description: Product not found
  */
 productRouter.put(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  productController.updateProduct
+  productController.updateProduct,
 );
 
 /**
@@ -261,10 +261,10 @@ productRouter.put(
  *         description: Product not found
  */
 productRouter.delete(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  productController.deleteProduct
+  productController.deleteProduct,
 );
 
 export default productRouter;

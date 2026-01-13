@@ -39,6 +39,7 @@ pnpm prisma:migrate
 ```
 
 Or manually:
+
 ```bash
 npx prisma generate
 npx prisma migrate dev
@@ -53,28 +54,30 @@ pnpm prisma:seed
 ```
 
 Or manually:
+
 ```bash
 npx ts-node prisma/seed.ts
 ```
 
 **Default Credentials:**
-- Username:  set `SUPERADMIN_USERNAME` in `.env`
+
+- Username: set `SUPERADMIN_USERNAME` in `.env`
 - Password: set `SUPERADMIN_PASSWORD` in `.env`
 
 **⚠️ Important:** Change the default password immediately after first login!
-
-
 
 **Note:** The seed script will skip creating a superAdmin if one already exists with the same username.
 
 ### 6. Start the Server
 
 For development:
+
 ```bash
 pnpm dev
 ```
 
 For production:
+
 ```bash
 pnpm build
 pnpm start
@@ -83,11 +86,13 @@ pnpm start
 ## API Endpoints
 
 ### Authentication
+
 - `POST /api/v1/auth/login` - Login (public)
 - `GET /api/v1/auth/me`
 - `POST /api/v1/auth/logout` - Logout (requires authentication)
 
 ### Users (superAdmin only)
+
 - `POST /api/v1/users` - Create user
 - `GET /api/v1/users` - Get all users
 - `GET /api/v1/users/:id` - Get user by ID
@@ -95,6 +100,7 @@ pnpm start
 - `DELETE /api/v1/users/:id` - Delete user
 
 ### Products
+
 - `POST /api/v1/products` - Create product (superAdmin and admin only)
 - `GET /api/v1/products` - Get all products (superAdmin, admin & user)
 - `GET /api/v1/products/:id` - Get product by ID (superAdmin & admin, user)
@@ -102,6 +108,7 @@ pnpm start
 - `DELETE /api/v1/products/:id` - Delete product (superAdmin & admin only)
 
 ### Categories
+
 - `POST /api/v1/categories` - Create category (superAdmin and admin only)
 - `GET /api/v1/categories` - get all categeroes
 - `GET /api/v1/categories/{id}` - Get category by ID

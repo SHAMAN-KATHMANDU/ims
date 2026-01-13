@@ -1,12 +1,15 @@
-"use client"
+"use client";
 
-import { useMemo } from "react"
-import axios, { type AxiosInstance, type InternalAxiosRequestConfig } from "axios"
-import { getAuthToken, removeAuthToken } from "@/utils/auth"
+import { useMemo } from "react";
+import axios, {
+  type AxiosInstance,
+  type InternalAxiosRequestConfig,
+} from "axios";
+import { getAuthToken, removeAuthToken } from "@/utils/auth";
 
 /**
  * Custom hook that returns a configured Axios instance
- * 
+ *
  * Design decisions:
  * - Single instance per component to avoid global state
  * - Interceptors handle auth automatically
@@ -16,23 +19,24 @@ import { getAuthToken, removeAuthToken } from "@/utils/auth"
 export function useAxios(): AxiosInstance {
   return useMemo(() => {
     const instance = axios.create({
-      baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1",
+      baseURL:
+        process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1",
       headers: {
         "Content-Type": "application/json",
       },
-    })
+    });
 
     // Request interceptor: Attach JWT token to all requests
     instance.interceptors.request.use(
       (config: InternalAxiosRequestConfig) => {
-        const token = getAuthToken()
+        const token = getAuthToken();
         if (token && config.headers) {
-          config.headers.Authorization = `Bearer ${token}`
+          config.headers.Authorization = `Bearer ${token}`;
         }
-        return config
+        return config;
       },
-      (error) => Promise.reject(error)
-    )
+      (error) => Promise.reject(error),
+    );
 
     // Response interceptor: Handle 401 globally (except for login endpoint)
     instance.interceptors.response.use(
@@ -40,21 +44,25 @@ export function useAxios(): AxiosInstance {
       (error) => {
         if (error.response?.status === 401) {
           // Don't redirect on login endpoint or if already on login page
-          const requestUrl = error.config?.url || ""
-          const isLoginEndpoint = requestUrl.includes("auth/login") || requestUrl.endsWith("/auth/login")
-          const isOnLoginPage = typeof window !== "undefined" && window.location.pathname === "/login"
-          
+          const requestUrl = error.config?.url || "";
+          const isLoginEndpoint =
+            requestUrl.includes("auth/login") ||
+            requestUrl.endsWith("/auth/login");
+          const isOnLoginPage =
+            typeof window !== "undefined" &&
+            window.location.pathname === "/login";
+
           if (!isLoginEndpoint && !isOnLoginPage) {
-            removeAuthToken()
+            removeAuthToken();
             if (typeof window !== "undefined") {
-              window.location.href = "/login"
+              window.location.href = "/login";
             }
           }
         }
-        return Promise.reject(error)
-      }
-    )
+        return Promise.reject(error);
+      },
+    );
 
-    return instance
-  }, [])
+    return instance;
+  }, []);
 }

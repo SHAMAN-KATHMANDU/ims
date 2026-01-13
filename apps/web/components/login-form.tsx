@@ -1,23 +1,29 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { useAuth } from "@/hooks/useAuth"
-import { useForm } from "@/hooks/useForm"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Eye, EyeOff } from "lucide-react"
+import { useState } from "react";
+import { useAuth } from "@/hooks/useAuth";
+import { useForm } from "@/hooks/useForm";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Eye, EyeOff } from "lucide-react";
 
 interface LoginFormValues {
-  username: string
-  password: string
-  [key: string]: string // Add index signature
+  username: string;
+  password: string;
+  [key: string]: string; // Add index signature
 }
 
 /**
  * Login Form Component - Dumb component
- * 
+ *
  * Design decisions:
  * - No API calls (handled by useAuth)
  * - No validation logic (handled by useForm)
@@ -25,36 +31,38 @@ interface LoginFormValues {
  * - All logic lives in hooks
  */
 export default function LoginForm() {
-  const { login } = useAuth()
-  const [showPassword, setShowPassword] = useState(false)
-  
+  const { login } = useAuth();
+  const [showPassword, setShowPassword] = useState(false);
+
   const form = useForm<LoginFormValues>({
     initialValues: {
       username: "",
       password: "",
     },
     validate: (values) => {
-      const errors: Record<string, string> = {}
+      const errors: Record<string, string> = {};
       if (!values.username.trim()) {
-        errors.username = "Username is required"
+        errors.username = "Username is required";
       }
       if (!values.password) {
-        errors.password = "Password is required"
+        errors.password = "Password is required";
       }
-      return Object.keys(errors).length > 0 ? errors : null
+      return Object.keys(errors).length > 0 ? errors : null;
     },
     onSubmit: async (values) => {
       await login({
         username: values.username,
         password: values.password,
-      })
+      });
     },
-  })
+  });
 
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">Welcome Back</CardTitle>
+        <CardTitle className="text-2xl font-bold text-center">
+          Welcome Back
+        </CardTitle>
         <CardDescription className="text-center">
           Enter your credentials to access your dashboard
         </CardDescription>
@@ -123,5 +131,5 @@ export default function LoginForm() {
         </form>
       </CardContent>
     </Card>
-  )
+  );
 }

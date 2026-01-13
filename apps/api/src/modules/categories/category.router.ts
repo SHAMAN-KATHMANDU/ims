@@ -50,10 +50,10 @@ const categoryRouter = Router();
  *         description: Category with this name already exists
  */
 categoryRouter.post(
-  '/',
+  "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  categoryController.createCategory
+  categoryController.createCategory,
 );
 
 /**
@@ -82,10 +82,10 @@ categoryRouter.post(
  *                   type: number
  */
 categoryRouter.get(
-  '/',
+  "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  categoryController.getAllCategories
+  categoryController.getAllCategories,
 );
 
 /**
@@ -111,10 +111,10 @@ categoryRouter.get(
  *         description: Category not found
  */
 categoryRouter.get(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  categoryController.getCategoryById
+  categoryController.getCategoryById,
 );
 
 /**
@@ -153,10 +153,10 @@ categoryRouter.get(
  *         description: Category name already exists
  */
 categoryRouter.put(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  categoryController.updateCategory
+  categoryController.updateCategory,
 );
 
 /**
@@ -183,10 +183,10 @@ categoryRouter.put(
  *         description: Category not found
  */
 categoryRouter.delete(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  categoryController.deleteCategory
+  categoryController.deleteCategory,
 );
 
 export default categoryRouter;

@@ -8,20 +8,20 @@ import categoryRouter from "@/modules/categories/category.router";
 
 const router = Router();
 
-router.get('/', (req: Request, res: Response) => {
-  res.status(200).json({ 
+router.get("/", (req: Request, res: Response) => {
+  res.status(200).json({
     message: "API is running",
     version: "1.0.0",
-      endpoints: {
-        auth: "/api/v1/auth",
-        users: "/api/v1/users",
-        products: "/api/v1/products",
-        categories: "/api/v1/categories",
-        analytics: "/api/v1/analytics",
-        home: "/api/v1/home"
-      }
+    endpoints: {
+      auth: "/api/v1/auth",
+      users: "/api/v1/users",
+      products: "/api/v1/products",
+      categories: "/api/v1/categories",
+      analytics: "/api/v1/analytics",
+      home: "/api/v1/home",
+    },
   });
-})
+});
 
 router.use("/auth", authRouter);
 router.use("/users", userRouter);
@@ -31,6 +31,3 @@ router.use("/categories", categoryRouter);
 // router.use("/home", homeRouter);
 
 export default router;
-
-
-
