@@ -1,310 +1,93 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt'; // or your preferred hashing library
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+import dotenv from "dotenv";
+import * as path from "path";
+
+// Load environment variables from project root
+// seed.ts is in apps/api/prisma/, so we go up 3 levels to reach project root
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting seed...');
+  console.log("🌱 Starting seed...");
 
-  // Clean existing data (optional - only for dev)
-  await prisma.productDiscount.deleteMany();
-  await prisma.variationPhoto.deleteMany();
-  await prisma.productVariation.deleteMany();
-  await prisma.product.deleteMany();
-  await prisma.category.deleteMany();
-  await prisma.discountType.deleteMany();
-  await prisma.user.deleteMany();
+  // Get superAdmin credentials from environment variables
+  const superAdminUsername = process.env.SUPERADMIN_USERNAME;
+  const superAdminPassword = process.env.SUPERADMIN_PASSWORD;
 
-  console.log('✅ Cleaned existing data');
+  if (!superAdminUsername || !superAdminPassword) {
+    throw new Error(
+      "❌ Missing required environment variables: SUPERADMIN_USERNAME and SUPERADMIN_PASSWORD must be set in .env file",
+    );
+  }
 
-  // Create Users
-  const hashedPassword = await bcrypt.hash('password123', 10);
+  // Check if superAdmin already exists
+  const existingSuperAdmin = await prisma.user.findUnique({
+    where: { username: superAdminUsername },
+  });
 
+  if (existingSuperAdmin) {
+    console.log(
+      `⚠️  User "${superAdminUsername}" already exists. Skipping creation.`,
+    );
+    console.log(
+      "💡 To recreate the superAdmin, delete the user first or use prisma:reset",
+    );
+    return;
+  }
+
+  // Hash the password
+  const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
+
+  // Create superAdmin user
   const superAdmin = await prisma.user.create({
     data: {
-      username: 'superadmin',
+      username: superAdminUsername,
       password: hashedPassword,
-      role: 'superAdmin',
+      role: "superAdmin",
     },
   });
 
-  const admin = await prisma.user.create({
-    data: {
-      username: 'admin',
-      password: hashedPassword,
-      role: 'admin',
-    },
-  });
+  console.log("✅ Created superAdmin user");
+  console.log(`   Username: ${superAdmin.username}`);
+  console.log(`   Role: ${superAdmin.role}`);
+  console.log(`   ID: ${superAdmin.id}`);
 
-  const user = await prisma.user.create({
-    data: {
-      username: 'user',
-      password: hashedPassword,
-      role: 'user',
-    },
-  });
-
-  console.log('✅ Created users');
-
-  // Create Categories
-  const electronics = await prisma.category.create({
-    data: {
-      name: 'Electronics',
-      description: 'Electronic gadgets and devices',
-    },
-  });
-
-  const furniture = await prisma.category.create({
-    data: {
-      name: 'Furniture',
-      description: 'Home and office furniture',
-    },
-  });
-
-  const clothing = await prisma.category.create({
-    data: {
-      name: 'Clothing',
-      description: 'Apparel and fashion items',
-    },
-  });
-
-  console.log('✅ Created categories');
-
-  // Create Discount Types
-  const discountTypes = await prisma.discountType.createMany({
-    data: [
-      { name: 'Normal', description: 'Regular discount for all customers' },
-      { name: 'Special', description: 'Special promotional discount' },
-      { name: 'Member', description: 'Discount for registered members' },
-      { name: 'Wholesale', description: 'Bulk purchase discount' },
-    ],
-  });
-
-  console.log('✅ Created discount types');
-
-  // Get discount types for reference
-  const normalDiscount = await prisma.discountType.findUnique({
-    where: { name: 'Normal' },
-  });
-  const memberDiscount = await prisma.discountType.findUnique({
-    where: { name: 'Member' },
-  });
-
-  // Create Products
-  const smartphone = await prisma.product.create({
-    data: {
-      imsCode: 'IMS-PHONE-001',
-      name: 'Smartphone XYZ Pro',
-      categoryId: electronics.id,
-      createdById: admin.id,
-      description: 'Latest flagship smartphone with advanced features',
-      length: 15.5,
-      breadth: 7.5,
-      height: 0.8,
-      weight: 0.185,
-      costPrice: 45000,
-      mrp: 65000,
-      variations: {
-        create: [
-          {
-            color: 'Midnight Black',
-            stockQuantity: 50,
-            photos: {
-              create: [
-                {
-                  photoUrl: '/uploads/phone-black-front.jpg',
-                  isPrimary: true,
-                },
-                {
-                  photoUrl: '/uploads/phone-black-back.jpg',
-                  isPrimary: false,
-                },
-              ],
-            },
-          },
-          {
-            color: 'Arctic White',
-            stockQuantity: 35,
-            photos: {
-              create: [
-                {
-                  photoUrl: '/uploads/phone-white-front.jpg',
-                  isPrimary: true,
-                },
-              ],
-            },
-          },
-          {
-            color: 'Ocean Blue',
-            stockQuantity: 25,
-            photos: {
-              create: [
-                {
-                  photoUrl: '/uploads/phone-blue-front.jpg',
-                  isPrimary: true,
-                },
-              ],
-            },
-          },
-        ],
-      },
-      discounts: {
-        create: [
-          {
-            discountTypeId: normalDiscount!.id,
-            discountPercentage: 10,
-            isActive: true,
-          },
-          {
-            discountTypeId: memberDiscount!.id,
-            discountPercentage: 15,
-            isActive: true,
-          },
-        ],
-      },
-    },
-  });
-
-  const laptop = await prisma.product.create({
-    data: {
-      imsCode: 'IMS-LAPTOP-001',
-      name: 'Gaming Laptop Pro',
-      categoryId: electronics.id,
-      createdById: superAdmin.id,
-      description: 'High-performance gaming laptop',
-      length: 35.5,
-      breadth: 24.5,
-      height: 2.5,
-      weight: 2.3,
-      costPrice: 85000,
-      mrp: 120000,
-      variations: {
-        create: [
-          {
-            color: 'Space Gray',
-            stockQuantity: 15,
-            photos: {
-              create: [
-                {
-                  photoUrl: '/uploads/laptop-gray-1.jpg',
-                  isPrimary: true,
-                },
-              ],
-            },
-          },
-          {
-            color: 'Silver',
-            stockQuantity: 10,
-            photos: {
-              create: [
-                {
-                  photoUrl: '/uploads/laptop-silver-1.jpg',
-                  isPrimary: true,
-                },
-              ],
-            },
-          },
-        ],
-      },
-      discounts: {
-        create: [
-          {
-            discountTypeId: normalDiscount!.id,
-            discountPercentage: 8,
-            isActive: true,
-          },
-        ],
-      },
-    },
-  });
-
-  const chair = await prisma.product.create({
-    data: {
-      imsCode: 'IMS-CHAIR-001',
-      name: 'Executive Office Chair',
-      categoryId: furniture.id,
-      createdById: user.id,
-      description: 'Ergonomic office chair with lumbar support',
-      length: 60,
-      breadth: 60,
-      height: 120,
-      weight: 15.5,
-      costPrice: 8000,
-      mrp: 15000,
-      variations: {
-        create: [
-          {
-            color: 'Black Leather',
-            stockQuantity: 20,
-            photos: {
-              create: [
-                {
-                  photoUrl: '/uploads/chair-black-1.jpg',
-                  isPrimary: true,
-                },
-              ],
-            },
-          },
-          {
-            color: 'Brown Leather',
-            stockQuantity: 12,
-            photos: {
-              create: [
-                {
-                  photoUrl: '/uploads/chair-brown-1.jpg',
-                  isPrimary: true,
-                },
-              ],
-            },
-          },
-        ],
-      },
-      discounts: {
-        create: [
-          {
-            discountTypeId: normalDiscount!.id,
-            discountPercentage: 12,
-            isActive: true,
-          },
-          {
-            discountTypeId: memberDiscount!.id,
-            discountPercentage: 18,
-            isActive: true,
-          },
-        ],
-      },
-    },
-  });
-
-  console.log('✅ Created products with variations and discounts');
-
-  // Summary
-  const counts = {
-    users: await prisma.user.count(),
-    categories: await prisma.category.count(),
-    products: await prisma.product.count(),
-    variations: await prisma.productVariation.count(),
-    photos: await prisma.variationPhoto.count(),
-    discountTypes: await prisma.discountType.count(),
-    discounts: await prisma.productDiscount.count(),
+  // Create Discount Types (if they don't exist)
+  const discountTypeNames = ["Normal", "Special", "Member", "Wholesale"];
+  const discountTypeDescriptions: Record<string, string> = {
+    Normal: "Regular discount for all customers",
+    Special: "Special promotional discount",
+    Member: "Discount for registered members",
+    Wholesale: "Bulk purchase discount",
   };
 
-  console.log('\n📊 Seed Summary:');
-  console.log('================');
-  console.log(`Users: ${counts.users}`);
-  console.log(`Categories: ${counts.categories}`);
-  console.log(`Products: ${counts.products}`);
-  console.log(`Variations: ${counts.variations}`);
-  console.log(`Photos: ${counts.photos}`);
-  console.log(`Discount Types: ${counts.discountTypes}`);
-  console.log(`Active Discounts: ${counts.discounts}`);
-  console.log('================');
-  console.log('🎉 Seeding completed successfully!');
+  for (const name of discountTypeNames) {
+    const existing = await prisma.discountType.findUnique({
+      where: { name },
+    });
+
+    if (!existing) {
+      await prisma.discountType.create({
+        data: {
+          name,
+          description: discountTypeDescriptions[name] || null,
+        },
+      });
+      console.log(`✅ Created discount type: ${name}`);
+    } else {
+      console.log(`⚠️  Discount type "${name}" already exists. Skipping.`);
+    }
+  }
+
+  console.log("\n🎉 Seeding completed successfully!");
+  console.log("📝 You can now log in with the credentials from your .env file");
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error("❌ Seed failed:", e);
     process.exit(1);
   })
   .finally(async () => {

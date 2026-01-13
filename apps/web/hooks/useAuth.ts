@@ -62,7 +62,7 @@ export function useAuth() {
         // Normalize username
         const normalizedUsername = credentials.username.trim().toLowerCase();
 
-        const response = await axios.post<LoginResponse>("auth/login", {
+        const response = await axios.post<LoginResponse>("/auth/login", {
           username: normalizedUsername,
           password: credentials.password,
         });
@@ -74,6 +74,14 @@ export function useAuth() {
         setAuthUser(user);
         setUser(user);
         setIsAuthenticated(true);
+
+        // Redirect based on user role
+        if (user.role === "superAdmin" || user.role === "admin") {
+          router.push("/admin/dashboard");
+        } else {
+          router.push("/admin/dashboard"); // Regular users also go to dashboard but with limited access
+        }
+        router.refresh();
 
         // Redirect to admin dashboard
         router.push("/admin");

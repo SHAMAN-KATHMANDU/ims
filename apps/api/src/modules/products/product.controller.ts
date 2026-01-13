@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import { parseDate } from "shared";
 
 class ProductController {
   // Create product (admin and superAdmin only)
@@ -131,9 +132,23 @@ class ProductController {
             });
           }
 
+          // parseDate utility
+          const startDate = discount.startDate
+            ? parseDate(discount.startDate)?.toJSDate() || null
+            : null;
+          const endDate = discount.endDate
+            ? parseDate(discount.endDate)?.toJSDate() || null
+            : null;
+
           resolvedDiscounts.push({
-            ...discount,
             discountTypeId: discountType.id,
+            discountPercentage: parseFloat(
+              discount.discountPercentage.toString(),
+            ),
+            startDate: startDate,
+            endDate: endDate,
+            isActive:
+              discount.isActive !== undefined ? discount.isActive : true,
           });
         }
       }
@@ -181,10 +196,10 @@ class ProductController {
                       discount.discountPercentage.toString(),
                     ),
                     startDate: discount.startDate
-                      ? new Date(discount.startDate)
+                      ? parseDate(discount.startDate)?.toJSDate() || null
                       : null,
                     endDate: discount.endDate
-                      ? new Date(discount.endDate)
+                      ? parseDate(discount.endDate)?.toJSDate() || null
                       : null,
                     isActive:
                       discount.isActive !== undefined
@@ -248,6 +263,16 @@ class ProductController {
               role: true,
             },
           },
+          variations: {
+            include: {
+              photos: true,
+            },
+          },
+          discounts: {
+            include: {
+              discountType: true,
+            },
+          },
         },
         orderBy: {
           dateCreated: "desc",
@@ -270,7 +295,9 @@ class ProductController {
   // Get product by ID (all authenticated users can view)
   async getProductById(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
 
       const product = await prisma.product.findUnique({
         where: { id },
@@ -315,7 +342,9 @@ class ProductController {
   // Update product (admin and superAdmin only)
   async updateProduct(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
       const {
         imsCode,
         name,
@@ -327,7 +356,13 @@ class ProductController {
         weight,
         costPrice,
         mrp,
+        variations,
+        discounts,
       } = req.body;
+
+      console.log(
+        `[UpdateProduct] Attempting to update product with ID: ${id}`,
+      );
 
       // Check if product exists
       const existingProduct = await prisma.product.findUnique({
@@ -335,8 +370,18 @@ class ProductController {
       });
 
       if (!existingProduct) {
-        return res.status(404).json({ message: "Product not found" });
+        console.log(
+          `[UpdateProduct] Product with ID ${id} not found in database`,
+        );
+        return res.status(404).json({
+          message: "Product not found",
+          productId: id,
+        });
       }
+
+      console.log(
+        `[UpdateProduct] Product found: ${existingProduct.name} (${existingProduct.imsCode})`,
+      );
 
       // If categoryId is being updated, validate it exists
       if (categoryId !== undefined) {
@@ -383,6 +428,99 @@ class ProductController {
         updateData.mrp = parseFloat(mrp);
       }
 
+      // Handle variations update if provided
+      if (variations !== undefined) {
+        // Delete existing variations and create new ones
+        await prisma.productVariation.deleteMany({
+          where: { productId: id },
+        });
+
+        if (Array.isArray(variations) && variations.length > 0) {
+          updateData.variations = {
+            create: variations.map((variation: any) => ({
+              color: variation.color,
+              stockQuantity: variation.stockQuantity || 0,
+              photos:
+                variation.photos && Array.isArray(variation.photos)
+                  ? {
+                      create: variation.photos.map((photo: any) => ({
+                        photoUrl: photo.photoUrl,
+                        isPrimary: photo.isPrimary || false,
+                      })),
+                    }
+                  : undefined,
+            })),
+          };
+        }
+      }
+
+      // Handle discounts update if provided
+      if (discounts !== undefined) {
+        // Get all discount types for lookup
+        const allDiscountTypes = await prisma.discountType.findMany({
+          select: { id: true, name: true },
+        });
+
+        // Delete existing discounts and create new ones
+        await prisma.productDiscount.deleteMany({
+          where: { productId: id },
+        });
+
+        if (Array.isArray(discounts) && discounts.length > 0) {
+          const resolvedDiscounts = [];
+
+          for (const discount of discounts) {
+            // Try to find discount type by ID or name
+            const identifier =
+              discount.discountTypeId || discount.discountTypeName;
+
+            const discountType = await prisma.discountType.findFirst({
+              where: {
+                OR: [{ id: identifier }, { name: identifier }],
+              },
+            });
+
+            if (!discountType) {
+              return res.status(404).json({
+                message: "Discount type not found",
+                providedDiscountTypeId: discount.discountTypeId,
+                providedDiscountTypeName: discount.discountTypeName,
+                hint: "You can use either discountTypeId (UUID) or discountTypeName (string like 'Normal', 'Member', etc.)",
+                availableDiscountTypes: allDiscountTypes.map((dt) => ({
+                  id: dt.id,
+                  name: dt.name,
+                })),
+              });
+            }
+
+            // Handle date parsing using parseDate utility
+            const startDate = discount.startDate
+              ? parseDate(discount.startDate)?.toJSDate() || null
+              : null;
+            const endDate = discount.endDate
+              ? parseDate(discount.endDate)?.toJSDate() || null
+              : null;
+
+            resolvedDiscounts.push({
+              discountTypeId: discountType.id,
+              discountPercentage: parseFloat(
+                discount.discountPercentage.toString(),
+              ),
+              startDate: startDate,
+              endDate: endDate,
+              isActive:
+                discount.isActive !== undefined ? discount.isActive : true,
+            });
+          }
+
+          if (resolvedDiscounts.length > 0) {
+            updateData.discounts = {
+              create: resolvedDiscounts,
+            };
+          }
+        }
+      }
+
       const updatedProduct = await prisma.product.update({
         where: { id },
         data: updateData,
@@ -393,6 +531,16 @@ class ProductController {
               id: true,
               username: true,
               role: true,
+            },
+          },
+          variations: {
+            include: {
+              photos: true,
+            },
+          },
+          discounts: {
+            include: {
+              discountType: true,
             },
           },
         },
@@ -420,7 +568,9 @@ class ProductController {
   // Delete product (admin and superAdmin only)
   async deleteProduct(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
 
       // Check if product exists
       const existingProduct = await prisma.product.findUnique({

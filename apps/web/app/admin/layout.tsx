@@ -9,7 +9,7 @@ export default function AdminLayout({
 }) {
   return (
     <ProtectedRoute>
-      <RoleProtectedRoute allowedRoles={["admin", "superAdmin"]}>
+      <RoleProtectedRoute allowedRoles={["user", "admin", "superAdmin"]}>
         <>{children}</>
       </RoleProtectedRoute>
     </ProtectedRoute>

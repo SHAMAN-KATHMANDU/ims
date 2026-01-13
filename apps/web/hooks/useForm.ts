@@ -27,11 +27,13 @@ export function useForm<T extends object>({
 }: UseFormOptions<T>): UseFormReturn<T> {
   const [values, setValues] = useState<T>(initialValues as T);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string>(""); // Separate state for form-level errors
   const [isLoading, setIsLoading] = useState(false);
 
   const handleChange = useCallback(
     (name: keyof T, value: string) => {
       setValues((prev) => ({ ...prev, [name]: value }) as T);
+      // Clear field-specific errors when user types
       if (errors[name as string]) {
         setErrors((prev) => {
           const newErrors = { ...prev };
@@ -39,6 +41,7 @@ export function useForm<T extends object>({
           return newErrors;
         });
       }
+      // Don't clear formError - it persists until next submit
     },
     [errors],
   );
@@ -46,7 +49,9 @@ export function useForm<T extends object>({
   const handleSubmit = useCallback(
     async (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
+      // Clear all errors at start of submit
       setErrors({});
+      setFormError("");
 
       if (validate) {
         const validationErrors = validate(values);
@@ -59,11 +64,13 @@ export function useForm<T extends object>({
       setIsLoading(true);
       try {
         await onSubmit(values);
+        // Clear errors on success
+        setErrors({});
+        setFormError("");
       } catch (error: unknown) {
         const err = error as { message?: string };
-        setErrors({
-          _form: err.message || "An error occurred. Please try again.",
-        });
+        // Set form-level error separately
+        setFormError(err.message || "An error occurred. Please try again.");
       } finally {
         setIsLoading(false);
       }
@@ -74,12 +81,13 @@ export function useForm<T extends object>({
   const reset = useCallback(() => {
     setValues(initialValues as T);
     setErrors({});
+    setFormError("");
     setIsLoading(false);
   }, [initialValues]);
 
   return {
     values,
-    errors,
+    errors: { ...errors, _form: formError }, // Merge formError into errors object
     isLoading,
     handleChange,
     handleSubmit,
