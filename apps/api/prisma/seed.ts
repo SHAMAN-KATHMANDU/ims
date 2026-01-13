@@ -1,16 +1,16 @@
-import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
-import dotenv from 'dotenv';
-import * as path from 'path';
+import { PrismaClient } from "@prisma/client";
+import bcrypt from "bcrypt";
+import dotenv from "dotenv";
+import * as path from "path";
 
 // Load environment variables from project root
 // seed.ts is in apps/api/prisma/, so we go up 3 levels to reach project root
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') });
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log('🌱 Starting seed...');
+  console.log("🌱 Starting seed...");
 
   // Get superAdmin credentials from environment variables
   const superAdminUsername = process.env.SUPERADMIN_USERNAME;
@@ -18,7 +18,7 @@ async function main() {
 
   if (!superAdminUsername || !superAdminPassword) {
     throw new Error(
-      '❌ Missing required environment variables: SUPERADMIN_USERNAME and SUPERADMIN_PASSWORD must be set in .env file'
+      "❌ Missing required environment variables: SUPERADMIN_USERNAME and SUPERADMIN_PASSWORD must be set in .env file",
     );
   }
 
@@ -28,8 +28,12 @@ async function main() {
   });
 
   if (existingSuperAdmin) {
-    console.log(`⚠️  User "${superAdminUsername}" already exists. Skipping creation.`);
-    console.log('💡 To recreate the superAdmin, delete the user first or use prisma:reset');
+    console.log(
+      `⚠️  User "${superAdminUsername}" already exists. Skipping creation.`,
+    );
+    console.log(
+      "💡 To recreate the superAdmin, delete the user first or use prisma:reset",
+    );
     return;
   }
 
@@ -41,22 +45,22 @@ async function main() {
     data: {
       username: superAdminUsername,
       password: hashedPassword,
-      role: 'superAdmin',
+      role: "superAdmin",
     },
   });
 
-  console.log('✅ Created superAdmin user');
+  console.log("✅ Created superAdmin user");
   console.log(`   Username: ${superAdmin.username}`);
   console.log(`   Role: ${superAdmin.role}`);
   console.log(`   ID: ${superAdmin.id}`);
 
   // Create Discount Types (if they don't exist)
-  const discountTypeNames = ['Normal', 'Special', 'Member', 'Wholesale'];
+  const discountTypeNames = ["Normal", "Special", "Member", "Wholesale"];
   const discountTypeDescriptions: Record<string, string> = {
-    'Normal': 'Regular discount for all customers',
-    'Special': 'Special promotional discount',
-    'Member': 'Discount for registered members',
-    'Wholesale': 'Bulk purchase discount',
+    Normal: "Regular discount for all customers",
+    Special: "Special promotional discount",
+    Member: "Discount for registered members",
+    Wholesale: "Bulk purchase discount",
   };
 
   for (const name of discountTypeNames) {
@@ -77,13 +81,13 @@ async function main() {
     }
   }
 
-  console.log('\n🎉 Seeding completed successfully!');
-  console.log('📝 You can now log in with the credentials from your .env file');
+  console.log("\n🎉 Seeding completed successfully!");
+  console.log("📝 You can now log in with the credentials from your .env file");
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Seed failed:', e);
+    console.error("❌ Seed failed:", e);
     process.exit(1);
   })
   .finally(async () => {
