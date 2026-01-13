@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   AlertDialog,
@@ -9,33 +9,38 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { useToast } from "@/hooks/use-toast"
-import type { Product } from "@/hooks/useProduct"
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import type { Product } from "@/hooks/useProduct";
 
 interface ProductDeleteDialogProps {
-  product: Product | null
-  onClose: () => void
-  onDelete: (id: string) => Promise<void>
+  product: Product | null;
+  onClose: () => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export function ProductDeleteDialog({ product, onClose, onDelete }: ProductDeleteDialogProps) {
-  const { toast } = useToast()
+export function ProductDeleteDialog({
+  product,
+  onClose,
+  onDelete,
+}: ProductDeleteDialogProps) {
+  const { toast } = useToast();
 
   const handleDelete = async () => {
-    if (!product) return
+    if (!product) return;
     try {
-      await onDelete(product.id)
-      toast({ title: "Product deleted successfully" })
-      onClose()
-    } catch (error: any) {
+      await onDelete(product.id);
+      toast({ title: "Product deleted successfully" });
+      onClose();
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       toast({
         title: "Error",
-        description: error.message || "Failed to delete product",
+        description: err.message || "Failed to delete product",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   return (
     <AlertDialog open={!!product} onOpenChange={(open) => !open && onClose()}>
@@ -43,7 +48,8 @@ export function ProductDeleteDialog({ product, onClose, onDelete }: ProductDelet
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete "{product?.name}". This action cannot be undone.
+            This will permanently delete &quot;{product?.name}&quot;. This
+            action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -57,6 +63,5 @@ export function ProductDeleteDialog({ product, onClose, onDelete }: ProductDelet
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }
-

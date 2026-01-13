@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import {
   AlertDialog,
@@ -9,33 +9,38 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { useToast } from "@/hooks/use-toast"
-import type { Category } from "@/hooks/useProduct"
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import type { Category } from "@/hooks/useProduct";
 
 interface CategoryDeleteDialogProps {
-  category: Category | null
-  onClose: () => void
-  onDelete: (id: string) => Promise<void>
+  category: Category | null;
+  onClose: () => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export function CategoryDeleteDialog({ category, onClose, onDelete }: CategoryDeleteDialogProps) {
-  const { toast } = useToast()
+export function CategoryDeleteDialog({
+  category,
+  onClose,
+  onDelete,
+}: CategoryDeleteDialogProps) {
+  const { toast } = useToast();
 
   const handleDelete = async () => {
-    if (!category) return
+    if (!category) return;
     try {
-      await onDelete(category.id)
-      toast({ title: "Category deleted successfully" })
-      onClose()
-    } catch (error: any) {
+      await onDelete(category.id);
+      toast({ title: "Category deleted successfully" });
+      onClose();
+    } catch (error: unknown) {
+      const err = error as { message?: string };
       toast({
         title: "Error",
-        description: error.message || "Failed to delete category",
+        description: err.message || "Failed to delete category",
         variant: "destructive",
-      })
+      });
     }
-  }
+  };
 
   return (
     <AlertDialog open={!!category} onOpenChange={(open) => !open && onClose()}>
@@ -43,7 +48,8 @@ export function CategoryDeleteDialog({ category, onClose, onDelete }: CategoryDe
         <AlertDialogHeader>
           <AlertDialogTitle>Are you sure?</AlertDialogTitle>
           <AlertDialogDescription>
-            This will permanently delete "{category?.name}". This action cannot be undone.
+            This will permanently delete &quot;{category?.name}&quot;. This
+            action cannot be undone.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
@@ -57,6 +63,5 @@ export function CategoryDeleteDialog({ category, onClose, onDelete }: CategoryDe
         </AlertDialogFooter>
       </AlertDialogContent>
     </AlertDialog>
-  )
+  );
 }
-

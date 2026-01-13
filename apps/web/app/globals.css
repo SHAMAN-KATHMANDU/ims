@@ -7,9 +7,13 @@
    EARTHY LIGHT MODE
    ========================= */
 :root {
+  /* Fonts - These will be populated by Next.js font loader */
+  --font-geist-sans: var(--font-geist-sans);
+  --font-geist-mono: var(--font-geist-mono);
+
   /* Backgrounds */
-  --background: oklch(0.985 0.005 95);        /* warm paper */
-  --foreground: oklch(0.18 0.01 95);          /* soft charcoal */
+  --background: oklch(0.985 0.005 95); /* warm paper */
+  --foreground: oklch(0.18 0.01 95); /* soft charcoal */
 
   --card: oklch(0.99 0.004 95);
   --card-foreground: oklch(0.18 0.01 95);
@@ -33,8 +37,7 @@
 
   /* Feedback */
   --destructive: oklch(0.58 0.18 25);
---destructive-foreground: oklch(0.99 0 0); /* pure white */
-
+  --destructive-foreground: oklch(0.99 0 0); /* pure white */
 
   /* UI chrome */
   --border: oklch(0.9 0.01 95);
@@ -59,7 +62,7 @@
    EARTHY DARK MODE
    ========================= */
 .dark {
-  --background: oklch(0.18 0.01 95);          /* warm dark gray */
+  --background: oklch(0.18 0.01 95); /* warm dark gray */
   --foreground: oklch(0.95 0.005 95);
 
   --card: oklch(0.22 0.01 95);
@@ -81,8 +84,7 @@
   --accent-foreground: oklch(0.92 0.01 150);
 
   --destructive: oklch(0.45 0.16 25);
---destructive-foreground: oklch(0.98 0 0); /* near white */
-
+  --destructive-foreground: oklch(0.98 0 0); /* near white */
 
   --border: oklch(0.32 0.01 95);
   --input: oklch(0.32 0.01 95);
@@ -102,8 +104,12 @@
    TAILWIND THEME MAP
    ========================= */
 @theme inline {
-  --font-sans: "Geist", "Geist Fallback";
-  --font-mono: "Geist Mono", "Geist Mono Fallback";
+  --font-sans:
+    var(--font-geist-sans), "Geist", "Geist Fallback", system-ui, -apple-system,
+    BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    var(--font-geist-mono), "Geist Mono", "Geist Mono Fallback", "SF Mono",
+    Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -152,5 +158,27 @@
 
   body {
     @apply bg-background text-foreground antialiased;
+    font-family:
+      var(--font-geist-sans),
+      system-ui,
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      Roboto,
+      "Helvetica Neue",
+      Arial,
+      sans-serif;
+  }
+
+  /* Hide spinner controls for number inputs */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+    appearance: textfield;
   }
 }

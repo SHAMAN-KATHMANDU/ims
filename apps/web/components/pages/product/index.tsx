@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useState, useEffect } from "react"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { useToast } from "@/hooks/use-toast"
-import { useForm } from "@/hooks/useForm"
+import { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from "@/hooks/use-toast";
+import { useForm } from "@/hooks/useForm";
 import {
   useProducts,
   useCategories,
@@ -15,105 +15,148 @@ import {
   useDeleteCategory,
   type Product,
   type Category,
-} from "@/hooks/useProduct"
-import { isAdmin } from "@/utils/auth"
-import { useAxios } from "@/hooks/useAxios"
-import { ProductService } from "@/services/productService"
-import { ProductForm } from "./components/ProductForm"
-import { CategoryForm } from "./components/CategoryForm"
-import { ProductTable } from "./components/ProductTable"
-import { CategoryTable } from "./components/CategoryTable"
-import { DiscountsTab } from "./components/DiscountsTab"
-import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog"
-import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog"
-import type { ProductFormValues, CategoryFormValues, ProductVariationForm, ProductDiscountForm } from "./types"
+} from "@/hooks/useProduct";
+import { isAdmin } from "@/utils/auth";
+import { useAxios } from "@/hooks/useAxios";
+import {
+  ProductService,
+  type CreateProductData,
+} from "@/services/productService";
+import { ProductForm } from "./components/ProductForm";
+import { CategoryForm } from "./components/CategoryForm";
+import { ProductTable } from "./components/ProductTable";
+import { CategoryTable } from "./components/CategoryTable";
+import { DiscountsTab } from "./components/DiscountsTab";
+import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
+import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
+import type {
+  ProductFormValues,
+  CategoryFormValues,
+  ProductVariationForm,
+  ProductDiscountForm,
+} from "./types";
 
 export function ProductPage() {
-  const { data: products = [] } = useProducts()
-  const { data: categories = [] } = useCategories()
-  const createProductMutation = useCreateProduct()
-  const updateProductMutation = useUpdateProduct()
-  const deleteProductMutation = useDeleteProduct()
-  const createCategoryMutation = useCreateCategory()
-  const updateCategoryMutation = useUpdateCategory()
-  const deleteCategoryMutation = useDeleteCategory()
-  const { toast } = useToast()
-  const canManageProducts = isAdmin()
-  const canSeeCostPrice = isAdmin()
-  const axios = useAxios()
+  const { data: products = [] } = useProducts();
+  const { data: categories = [] } = useCategories();
+  const createProductMutation = useCreateProduct();
+  const updateProductMutation = useUpdateProduct();
+  const deleteProductMutation = useDeleteProduct();
+  const createCategoryMutation = useCreateCategory();
+  const updateCategoryMutation = useUpdateCategory();
+  const deleteCategoryMutation = useDeleteCategory();
+  const { toast } = useToast();
+  const canManageProducts = isAdmin();
+  const canSeeCostPrice = isAdmin();
+  const axios = useAxios();
 
   // Dialog states
-  const [productDialog, setProductDialog] = useState(false)
-  const [categoryDialog, setCategoryDialog] = useState(false)
-  const [productToDelete, setProductToDelete] = useState<Product | null>(null)
-  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(null)
+  const [productDialog, setProductDialog] = useState(false);
+  const [categoryDialog, setCategoryDialog] = useState(false);
+  const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
+    null,
+  );
 
   // Edit states
-  const [editingProduct, setEditingProduct] = useState<Product | null>(null)
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null)
-  
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
   // Form states
-  const [productVariations, setProductVariations] = useState<ProductVariationForm[]>([])
-  const [productDiscounts, setProductDiscounts] = useState<ProductDiscountForm[]>([])
-  const [discountTypes, setDiscountTypes] = useState<Array<{ id: string; name: string }>>([])
+  const [productVariations, setProductVariations] = useState<
+    ProductVariationForm[]
+  >([]);
+  const [productDiscounts, setProductDiscounts] = useState<
+    ProductDiscountForm[]
+  >([]);
+  const [discountTypes, setDiscountTypes] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
 
   // Fetch discount types
   useEffect(() => {
     const fetchDiscountTypes = async () => {
       try {
-        const productService = new ProductService(axios)
-        const types = await productService.getAllDiscountTypes()
-        setDiscountTypes(types)
+        const productService = new ProductService(axios);
+        const types = await productService.getAllDiscountTypes();
+        setDiscountTypes(types);
       } catch (error) {
-        console.error("Error fetching discount types:", error)
+        console.error("Error fetching discount types:", error);
       }
-    }
-    fetchDiscountTypes()
-  }, [axios])
+    };
+    fetchDiscountTypes();
+  }, [axios]);
 
   // Initialize default discounts when opening product dialog for new products
   useEffect(() => {
     if (productDialog && productDiscounts.length === 0 && !editingProduct) {
       const defaultDiscounts = [
-        { discountTypeName: "Normal", discountPercentage: "10", startDate: "", endDate: "", isActive: true },
-        { discountTypeName: "Special", discountPercentage: "15", startDate: "", endDate: "", isActive: true },
-        { discountTypeName: "Member", discountPercentage: "20", startDate: "", endDate: "", isActive: true },
-        { discountTypeName: "Wholesale", discountPercentage: "40", startDate: "", endDate: "", isActive: true },
-      ]
-      setProductDiscounts(defaultDiscounts)
+        {
+          discountTypeName: "Normal",
+          discountPercentage: "10",
+          startDate: "",
+          endDate: "",
+          isActive: true,
+        },
+        {
+          discountTypeName: "Special",
+          discountPercentage: "15",
+          startDate: "",
+          endDate: "",
+          isActive: true,
+        },
+        {
+          discountTypeName: "Member",
+          discountPercentage: "20",
+          startDate: "",
+          endDate: "",
+          isActive: true,
+        },
+        {
+          discountTypeName: "Wholesale",
+          discountPercentage: "40",
+          startDate: "",
+          endDate: "",
+          isActive: true,
+        },
+      ];
+      setProductDiscounts(defaultDiscounts);
     }
-  }, [productDialog, editingProduct, productDiscounts.length])
+  }, [productDialog, editingProduct, productDiscounts.length]);
 
   // Validation functions
   const validateProduct = (values: ProductFormValues) => {
-    const errors: Record<string, string> = {}
-    if (!values.imsCode?.trim()) errors.imsCode = "IMS Code is required"
-    if (!values.name?.trim()) errors.name = "Product name is required"
-    if (!values.categoryId) errors.categoryId = "Category is required"
-    if (!values.costPrice || Number(values.costPrice) <= 0) errors.costPrice = "Valid cost price is required"
-    if (!values.mrp || Number(values.mrp) <= 0) errors.mrp = "Valid MRP is required"
-    
+    const errors: Record<string, string> = {};
+    if (!values.imsCode?.trim()) errors.imsCode = "IMS Code is required";
+    if (!values.name?.trim()) errors.name = "Product name is required";
+    if (!values.categoryId) errors.categoryId = "Category is required";
+    if (!values.costPrice || Number(values.costPrice) <= 0)
+      errors.costPrice = "Valid cost price is required";
+    if (!values.mrp || Number(values.mrp) <= 0)
+      errors.mrp = "Valid MRP is required";
+
     if (productVariations.length === 0) {
-      errors._form = "At least one variation is required"
+      errors._form = "At least one variation is required";
     } else {
       productVariations.forEach((variation, index) => {
         if (!variation.color?.trim()) {
-          errors[`variation_${index}_color`] = "Color is required"
+          errors[`variation_${index}_color`] = "Color is required";
         }
         if (!variation.stockQuantity || Number(variation.stockQuantity) < 0) {
-          errors[`variation_${index}_stock`] = "Valid stock quantity is required"
+          errors[`variation_${index}_stock`] =
+            "Valid stock quantity is required";
         }
-      })
+      });
     }
-    
-    return Object.keys(errors).length > 0 ? errors : null
-  }
+
+    return Object.keys(errors).length > 0 ? errors : null;
+  };
 
   const validateCategory = (values: CategoryFormValues) => {
-    const errors: Record<string, string> = {}
-    if (!values.name?.trim()) errors.name = "Category name is required"
-    return Object.keys(errors).length > 0 ? errors : null
-  }
+    const errors: Record<string, string> = {};
+    if (!values.name?.trim()) errors.name = "Category name is required";
+    return Object.keys(errors).length > 0 ? errors : null;
+  };
 
   // Product form
   const productForm = useForm<ProductFormValues>({
@@ -132,9 +175,9 @@ export function ProductPage() {
     validate: validateProduct,
     onSubmit: async (values) => {
       try {
-        const isEditing = !!editingProduct
-        
-        const data: any = {
+        const isEditing = !!editingProduct;
+
+        const data: CreateProductData = {
           imsCode: values.imsCode,
           name: values.name,
           categoryId: values.categoryId,
@@ -145,73 +188,99 @@ export function ProductPage() {
           weight: values.weight ? Number(values.weight) : undefined,
           costPrice: Number(values.costPrice),
           mrp: Number(values.mrp),
-        }
+        };
 
         if (isEditing) {
-          data.variations = productVariations.map(v => ({
+          data.variations = productVariations.map((v) => ({
             color: v.color,
             stockQuantity: Number(v.stockQuantity) || 0,
-            photos: v.photos && v.photos.length > 0 ? v.photos.map(p => ({
-              photoUrl: p.photoUrl,
-              isPrimary: p.isPrimary
-            })) : undefined,
-          }))
-          
-          data.discounts = productDiscounts.map(d => ({
+            photos:
+              v.photos && v.photos.length > 0
+                ? v.photos.map((p) => ({
+                    photoUrl: p.photoUrl,
+                    isPrimary: p.isPrimary,
+                  }))
+                : undefined,
+          }));
+
+          data.discounts = productDiscounts.map((d) => ({
             discountTypeName: d.discountTypeName,
             discountPercentage: Number(d.discountPercentage) || 0,
-            startDate: d.startDate && d.startDate.trim() !== "" ? d.startDate : undefined,
-            endDate: d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-            isActive: d.isActive
-          }))
+            startDate:
+              d.startDate && d.startDate.trim() !== ""
+                ? d.startDate
+                : undefined,
+            endDate:
+              d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
+            isActive: d.isActive,
+          }));
         } else {
           if (productVariations.length > 0) {
-            data.variations = productVariations.map(v => ({
+            data.variations = productVariations.map((v) => ({
               color: v.color,
               stockQuantity: Number(v.stockQuantity) || 0,
-              photos: v.photos && v.photos.length > 0 ? v.photos.map(p => ({
-                photoUrl: p.photoUrl,
-                isPrimary: p.isPrimary
-              })) : undefined,
-            }))
+              photos:
+                v.photos && v.photos.length > 0
+                  ? v.photos.map((p) => ({
+                      photoUrl: p.photoUrl,
+                      isPrimary: p.isPrimary,
+                    }))
+                  : undefined,
+            }));
           }
-          
+
           if (productDiscounts.length > 0) {
-            data.discounts = productDiscounts.map(d => ({
+            data.discounts = productDiscounts.map((d) => ({
               discountTypeName: d.discountTypeName,
               discountPercentage: Number(d.discountPercentage) || 0,
-              startDate: d.startDate && d.startDate.trim() !== "" ? d.startDate : undefined,
-              endDate: d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-              isActive: d.isActive
-            }))
+              startDate:
+                d.startDate && d.startDate.trim() !== ""
+                  ? d.startDate
+                  : undefined,
+              endDate:
+                d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
+              isActive: d.isActive,
+            }));
           }
         }
 
         if (isEditing) {
           if (!editingProduct?.id) {
-            throw new Error("Product ID is missing. Please try editing the product again.")
+            throw new Error(
+              "Product ID is missing. Please try editing the product again.",
+            );
           }
-          await updateProductMutation.mutateAsync({ id: editingProduct.id, data })
-          toast({ title: "Product updated successfully" })
+          await updateProductMutation.mutateAsync({
+            id: editingProduct.id,
+            data,
+          });
+          toast({ title: "Product updated successfully" });
         } else {
-          await createProductMutation.mutateAsync(data)
-          toast({ title: "Product added successfully" })
+          await createProductMutation.mutateAsync(data);
+          toast({ title: "Product added successfully" });
         }
-        setProductDialog(false)
-        setEditingProduct(null)
-        setProductVariations([])
-        setProductDiscounts([])
-        productForm.reset()
-      } catch (error: any) {
-        const errorMessage = error.response?.data?.message || error.message || "Failed to save product"
+        setProductDialog(false);
+        setEditingProduct(null);
+        setProductVariations([]);
+        setProductDiscounts([]);
+        productForm.reset();
+      } catch (error: unknown) {
+        const err = error as {
+          response?: { data?: { message?: string } };
+          message?: string;
+        };
+        const errorMessage =
+          err.response?.data?.message ||
+          err.message ||
+          "Failed to save product";
         toast({
           title: "Error",
           description: errorMessage,
           variant: "destructive",
-        })
+        });
       }
     },
-  })
+  });
 
   // Category form
   const categoryForm = useForm<CategoryFormValues>({
@@ -220,194 +289,253 @@ export function ProductPage() {
     onSubmit: async (values) => {
       try {
         if (editingCategory) {
-          await updateCategoryMutation.mutateAsync({ id: editingCategory.id, data: values })
-          toast({ title: "Category updated successfully" })
+          await updateCategoryMutation.mutateAsync({
+            id: editingCategory.id,
+            data: values,
+          });
+          toast({ title: "Category updated successfully" });
         } else {
-          await createCategoryMutation.mutateAsync(values)
-          toast({ title: "Category added successfully" })
+          await createCategoryMutation.mutateAsync(values);
+          toast({ title: "Category added successfully" });
         }
-        setCategoryDialog(false)
-        setEditingCategory(null)
-        categoryForm.reset()
-      } catch (error: any) {
+        setCategoryDialog(false);
+        setEditingCategory(null);
+        categoryForm.reset();
+      } catch (error: unknown) {
+        const err = error as { message?: string };
         toast({
           title: "Error",
-          description: error.message || "Failed to save category",
+          description: err.message || "Failed to save category",
           variant: "destructive",
-        })
+        });
       }
     },
-  })
+  });
 
   // Handlers
   const handleEditProduct = (product: Product) => {
     if (!product || !product.id) {
       toast({
         title: "Error",
-        description: "Invalid product data. Please refresh the page and try again.",
+        description:
+          "Invalid product data. Please refresh the page and try again.",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
-    
-    setEditingProduct(product)
-    productForm.values.imsCode = product.imsCode
-    productForm.values.name = product.name
-    productForm.values.categoryId = product.categoryId
-    productForm.values.description = product.description || ""
-    productForm.values.length = product.length?.toString() || ""
-    productForm.values.breadth = product.breadth?.toString() || ""
-    productForm.values.height = product.height?.toString() || ""
-    productForm.values.weight = product.weight?.toString() || ""
-    productForm.values.costPrice = product.costPrice.toString()
-    productForm.values.mrp = product.mrp.toString()
-    
+
+    setEditingProduct(product);
+    productForm.values.imsCode = product.imsCode;
+    productForm.values.name = product.name;
+    productForm.values.categoryId = product.categoryId;
+    productForm.values.description = product.description || "";
+    productForm.values.length = product.length?.toString() || "";
+    productForm.values.breadth = product.breadth?.toString() || "";
+    productForm.values.height = product.height?.toString() || "";
+    productForm.values.weight = product.weight?.toString() || "";
+    productForm.values.costPrice = product.costPrice.toString();
+    productForm.values.mrp = product.mrp.toString();
+
     if (product.variations && product.variations.length > 0) {
       setProductVariations(
-        product.variations.map(v => ({
+        product.variations.map((v) => ({
           color: v.color || "",
           stockQuantity: (v.stockQuantity || 0).toString(),
-          photos: (v.photos || []).map(p => ({
+          photos: (v.photos || []).map((p) => ({
             photoUrl: p.photoUrl,
-            isPrimary: p.isPrimary || false
-          }))
-        }))
-      )
+            isPrimary: p.isPrimary || false,
+          })),
+        })),
+      );
     } else {
-      setProductVariations([])
+      setProductVariations([]);
     }
-    
-    if ((product as any).discounts && (product as any).discounts.length > 0) {
+
+    if (product.discounts && product.discounts.length > 0) {
       setProductDiscounts(
-        (product as any).discounts.map((d: any) => ({
-          discountTypeName: d.discountType?.name || "",
-          discountPercentage: (d.discountPercentage || 0).toString(),
-          startDate: d.startDate ? new Date(d.startDate).toISOString().split('T')[0] : "",
-          endDate: d.endDate ? new Date(d.endDate).toISOString().split('T')[0] : "",
-          isActive: d.isActive !== undefined ? d.isActive : true
-        }))
-      )
+        product.discounts.map(
+          (d): ProductDiscountForm => ({
+            discountTypeName: d.discountType?.name || "",
+            discountPercentage: (d.discountPercentage || 0).toString(),
+            startDate: d.startDate
+              ? new Date(d.startDate).toISOString().split("T")[0] || ""
+              : "",
+            endDate: d.endDate
+              ? new Date(d.endDate).toISOString().split("T")[0] || ""
+              : "",
+            isActive: d.isActive !== undefined ? d.isActive : true,
+          }),
+        ),
+      );
     } else {
-      setProductDiscounts([])
+      setProductDiscounts([]);
     }
-    
-    setProductDialog(true)
-  }
+
+    setProductDialog(true);
+  };
 
   const handleEditCategory = (category: Category) => {
-    setEditingCategory(category)
-    categoryForm.values.name = category.name
-    categoryForm.values.description = category.description || ""
-    setCategoryDialog(true)
-  }
+    setEditingCategory(category);
+    categoryForm.values.name = category.name;
+    categoryForm.values.description = category.description || "";
+    setCategoryDialog(true);
+  };
 
   const handleResetProduct = () => {
-    setEditingProduct(null)
-    setProductVariations([])
-    setProductDiscounts([])
-    productForm.reset()
-  }
+    setEditingProduct(null);
+    setProductVariations([]);
+    setProductDiscounts([]);
+    productForm.reset();
+  };
 
   const handleResetCategory = () => {
-    setEditingCategory(null)
-    categoryForm.reset()
-  }
+    setEditingCategory(null);
+    categoryForm.reset();
+  };
 
   // Variation handlers
   const addVariationToForm = () => {
-    setProductVariations([...productVariations, { color: "", stockQuantity: "0", photos: [] }])
-  }
+    setProductVariations([
+      ...productVariations,
+      { color: "", stockQuantity: "0", photos: [] },
+    ]);
+  };
 
   const removeVariationFromForm = (index: number) => {
-    setProductVariations(productVariations.filter((_, i) => i !== index))
-  }
+    setProductVariations(productVariations.filter((_, i) => i !== index));
+  };
 
-  const updateVariationInForm = (index: number, field: "color" | "stockQuantity", value: string) => {
-    const updated = [...productVariations]
-    updated[index] = { 
-      color: field === "color" ? value : (updated[index]?.color || ""),
-      stockQuantity: field === "stockQuantity" ? value : (updated[index]?.stockQuantity || "0"),
-      photos: updated[index]?.photos || []
-    }
-    setProductVariations(updated)
-  }
+  const updateVariationInForm = (
+    index: number,
+    field: "color" | "stockQuantity",
+    value: string,
+  ) => {
+    const updated = [...productVariations];
+    updated[index] = {
+      color: field === "color" ? value : updated[index]?.color || "",
+      stockQuantity:
+        field === "stockQuantity"
+          ? value
+          : updated[index]?.stockQuantity || "0",
+      photos: updated[index]?.photos || [],
+    };
+    setProductVariations(updated);
+  };
 
   const addPhotoToVariation = (variationIndex: number, photoUrl: string) => {
-    const updated = [...productVariations]
-    const variation = updated[variationIndex]
-    if (!variation) return
-    
-    const photos = variation.photos || []
-    const isPrimary = photos.length === 0
-    updated[variationIndex] = {
-      color: variation.color || "",
-      stockQuantity: variation.stockQuantity || "0",
-      photos: [...photos, { photoUrl, isPrimary }]
-    }
-    setProductVariations(updated)
-  }
+    const updated = [...productVariations];
+    const variation = updated[variationIndex];
+    if (!variation) return;
 
-  const removePhotoFromVariation = (variationIndex: number, photoIndex: number) => {
-    const updated = [...productVariations]
-    const variation = updated[variationIndex]
-    if (!variation) return
-    
-    const photos = variation.photos || []
-    const newPhotos = photos.filter((_, i) => i !== photoIndex)
+    const photos = variation.photos || [];
+    const isPrimary = photos.length === 0;
+    updated[variationIndex] = {
+      color: variation.color || "",
+      stockQuantity: variation.stockQuantity || "0",
+      photos: [...photos, { photoUrl, isPrimary }],
+    };
+    setProductVariations(updated);
+  };
+
+  const removePhotoFromVariation = (
+    variationIndex: number,
+    photoIndex: number,
+  ) => {
+    const updated = [...productVariations];
+    const variation = updated[variationIndex];
+    if (!variation) return;
+
+    const photos = variation.photos || [];
+    const newPhotos = photos.filter((_, i) => i !== photoIndex);
     if (photos[photoIndex]?.isPrimary && newPhotos.length > 0 && newPhotos[0]) {
-      newPhotos[0].isPrimary = true
+      newPhotos[0].isPrimary = true;
     }
     updated[variationIndex] = {
       color: variation.color || "",
       stockQuantity: variation.stockQuantity || "0",
-      photos: newPhotos
-    }
-    setProductVariations(updated)
-  }
+      photos: newPhotos,
+    };
+    setProductVariations(updated);
+  };
 
   const setPrimaryPhoto = (variationIndex: number, photoIndex: number) => {
-    const updated = [...productVariations]
-    const variation = updated[variationIndex]
-    if (!variation) return
-    
-    const photos = [...(variation.photos || [])]
+    const updated = [...productVariations];
+    const variation = updated[variationIndex];
+    if (!variation) return;
+
+    const photos = [...(variation.photos || [])];
     photos.forEach((photo, i) => {
-      photo.isPrimary = i === photoIndex
-    })
+      photo.isPrimary = i === photoIndex;
+    });
     updated[variationIndex] = {
       color: variation.color || "",
       stockQuantity: variation.stockQuantity || "0",
-      photos: photos
-    }
-    setProductVariations(updated)
-  }
+      photos: photos,
+    };
+    setProductVariations(updated);
+  };
 
   // Discount handlers
   const addDiscountToForm = () => {
-    setProductDiscounts([...productDiscounts, { discountTypeName: "", discountPercentage: "0", startDate: "", endDate: "", isActive: true }])
-  }
+    setProductDiscounts([
+      ...productDiscounts,
+      {
+        discountTypeName: "",
+        discountPercentage: "0",
+        startDate: "",
+        endDate: "",
+        isActive: true,
+      },
+    ]);
+  };
 
   const removeDiscountFromForm = (index: number) => {
-    setProductDiscounts(productDiscounts.filter((_, i) => i !== index))
-  }
+    setProductDiscounts(productDiscounts.filter((_, i) => i !== index));
+  };
 
-  const updateDiscountInForm = (index: number, field: "discountTypeName" | "discountPercentage" | "startDate" | "endDate" | "isActive", value: string | boolean) => {
-    const updated = [...productDiscounts]
+  const updateDiscountInForm = (
+    index: number,
+    field:
+      | "discountTypeName"
+      | "discountPercentage"
+      | "startDate"
+      | "endDate"
+      | "isActive",
+    value: string | boolean,
+  ) => {
+    const updated = [...productDiscounts];
     updated[index] = {
-      discountTypeName: field === "discountTypeName" ? (value as string) : (updated[index]?.discountTypeName || ""),
-      discountPercentage: field === "discountPercentage" ? (value as string) : (updated[index]?.discountPercentage || "0"),
-      startDate: field === "startDate" ? (value as string) : (updated[index]?.startDate || ""),
-      endDate: field === "endDate" ? (value as string) : (updated[index]?.endDate || ""),
-      isActive: field === "isActive" ? (value as boolean) : (updated[index]?.isActive !== undefined ? updated[index].isActive : true)
-    }
-    setProductDiscounts(updated)
-  }
+      discountTypeName:
+        field === "discountTypeName"
+          ? (value as string)
+          : updated[index]?.discountTypeName || "",
+      discountPercentage:
+        field === "discountPercentage"
+          ? (value as string)
+          : updated[index]?.discountPercentage || "0",
+      startDate:
+        field === "startDate"
+          ? (value as string)
+          : updated[index]?.startDate || "",
+      endDate:
+        field === "endDate" ? (value as string) : updated[index]?.endDate || "",
+      isActive:
+        field === "isActive"
+          ? (value as boolean)
+          : updated[index]?.isActive !== undefined
+            ? updated[index].isActive
+            : true,
+    };
+    setProductDiscounts(updated);
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Products</h1>
-        <p className="text-muted-foreground mt-2">Manage products, categories, and variations</p>
+        <p className="text-muted-foreground mt-2">
+          Manage products, categories, and variations
+        </p>
       </div>
 
       <Tabs defaultValue="products" className="w-full">
@@ -493,6 +621,5 @@ export function ProductPage() {
         onDelete={deleteCategoryMutation.mutateAsync}
       />
     </div>
-  )
+  );
 }
-

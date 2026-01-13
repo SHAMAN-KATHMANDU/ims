@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useRouter, usePathname } from "next/navigation"
-import { useTheme } from "next-themes"
-import Link from "next/link"
-import { Button } from "./ui/button"
+import { useRouter, usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
+import Link from "next/link";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,34 +11,34 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu"
-import { Moon, Sun, LogOut, Menu, Settings } from "lucide-react"
-import { logout, getAuthUser } from "@/utils/auth"
-import { useEffect, useState } from "react"
+} from "./ui/dropdown-menu";
+import { Moon, Sun, LogOut, Menu, Settings } from "lucide-react";
+import { logout, getAuthUser } from "@/utils/auth";
+import { useEffect, useState } from "react";
 
 export function TopBar() {
-  const router = useRouter()
-  const pathname = usePathname()
-  const { theme, setTheme } = useTheme()
-  const [username, setUsername] = useState<string>("")
+  const router = useRouter();
+  const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const [username, setUsername] = useState<string>("");
 
   useEffect(() => {
-    const user = getAuthUser()
+    const user = getAuthUser();
     if (user) {
-      setUsername(user.username)
+      setUsername(user.username);
     }
-  }, [])
+  }, []);
 
   const handleLogout = async () => {
-    await logout()
-    router.push("/login")
-  }
+    await logout();
+    router.push("/login");
+  };
 
   // Detect base path for settings link
-  const basePath = pathname.startsWith("/admin/dashboard") 
-    ? "/admin/dashboard" 
-    : "/dashboard"
-  const settingsPath = `${basePath}/settings`
+  const basePath = pathname.startsWith("/admin/dashboard")
+    ? "/admin/dashboard"
+    : "/dashboard";
+  const settingsPath = `${basePath}/settings`;
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
@@ -88,5 +88,5 @@ export function TopBar() {
         </DropdownMenu>
       </div>
     </header>
-  )
+  );
 }

@@ -1,258 +1,261 @@
-# IMS (Inventory Management System)
+# IMS - Inventory Management System
 
-A modern, full-stack inventory management system built with a Turborepo monorepo architecture.
+A full-stack inventory management system built with Next.js, Express, Prisma, and PostgreSQL in a Turborepo monorepo.
 
-## Tech Stack
+## 📋 Table of Contents
 
-- **Framework**: Turborepo monorepo
-- **API**: Node.js/Express (runs on port 4000)
-- **Web**: Next.js (runs on port 3000)
-- **Database**: PostgreSQL 16 (runs on port 5432)
-- **ORM**: Prisma
-- **Package Manager**: pnpm
+- [Prerequisites](#prerequisites)
+- [Quick Start](#quick-start)
+- [Development Setup](#development-setup)
+- [Docker Setup](#docker-setup)
+- [CI/CD](#cicd)
+- [Project Structure](#project-structure)
+- [Available Scripts](#available-scripts)
 
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
 
-- [Node.js](https://nodejs.org/) (v18 or higher)
-- [pnpm](https://pnpm.io/) (v8 or higher)
-- [Docker](https://www.docker.com/) and Docker Compose
+- **Node.js** >= 18
+- **pnpm** >= 9.0.0 (`npm install -g pnpm`)
+- **Docker** & **Docker Compose** (for containerized development)
+- **PostgreSQL** (if running locally without Docker)
 
-## Project Structure
+## Quick Start
 
+```bash
+# 1. Clone the repository
+git clone <your-repo-url>
+cd ims
+
+# 2. Install dependencies (this also sets up Husky git hooks)
+pnpm install
+
+# 3. Copy environment files
+cp .env.example .env
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+
+# 4. Start development with Docker
+docker-compose -f docker-compose.dev.yml up --build
+
+# Or start without Docker (requires local PostgreSQL)
+pnpm dev
 ```
-.
-├── apps/
-│   ├── api/          # Backend API (Port 4000)
-│   └── web/          # Frontend application (Port 3000)
-├── packages/         # Shared packages
-├── docker-compose.yml
-├── .env
-└── README.md
-```
 
-## Getting Started
-
-Follow these steps to set up the project on a new machine:
+## Development Setup
 
 ### 1. Install Dependencies
 
 ```bash
-pnpm i
+pnpm install
 ```
 
-This installs all dependencies for the monorepo and its workspace packages.
+This command will:
 
-### 2. Start PostgreSQL with Docker
+- Install all workspace dependencies
+- **Automatically set up Husky git hooks** (via the `prepare` script)
+
+### 2. Git Hooks (Husky)
+
+Husky is configured to run pre-commit checks automatically. After `pnpm install`, the hooks are ready.
+
+**What happens on commit:**
+
+- ✨ **Prettier** formats staged files
+- 🔎 **ESLint** checks for code issues
+- 📝 **TypeScript** validates types across all packages
+
+**If you need to reinstall Husky manually:**
 
 ```bash
-docker-compose up -d
+# This runs automatically on `pnpm install`, but if needed:
+pnpm prepare
 ```
 
-This command:
-- Starts a PostgreSQL 16 container
-- Creates the database with credentials defined in `.env`
-- Exposes PostgreSQL on port 5432 (default)
-- Sets up the superadmin username and password from environment variables
-
-### 3. Generate Prisma Client
+**To skip hooks temporarily (not recommended):**
 
 ```bash
-pnpm prisma:generate
+git commit --no-verify -m "your message"
 ```
 
-**What this does:**
-- Reads your `prisma/schema.prisma` file
-- Generates a type-safe Prisma Client based on your database schema
-- Creates TypeScript types for your models
-- Must be run whenever you modify your Prisma schema
+### 3. Environment Variables
 
-### 4. Run Database Migrations
-
-**For Development:**
-```bash
-pnpm prisma:migrate
-```
-
-**For Production/Deployment:**
-```bash
-pnpm prisma:migrate:deploy
-```
-
-**What this does:**
-- **Development mode** (`prisma:migrate`): 
-  - Creates new migration files based on schema changes
-  - Applies migrations to your database
-  - Updates your database schema (creates/modifies tables, columns, etc.)
-  - Ideal for active development with schema changes
-
-- **Production mode** (`prisma:migrate:deploy`):
-  - Only applies existing migrations
-  - Does not create new migration files
-  - Safer for production environments
-  - Used in CI/CD pipelines and production deployments
-
-### 5. Seed the Database
+Create `.env` files from examples:
 
 ```bash
-pnpm prisma:seed
+# Root level (for Docker)
+cp .env.example .env
+
+# API
+cp apps/api/.env.example apps/api/.env
+
+# Web (if needed)
+cp apps/web/.env.example apps/web/.env
 ```
 
-**What this does:**
-- Creates a superuser account with credentials defined in your `.env` file
-- Populates initial data required for the application
-- Uses `SUPERADMIN_USERNAME` and `SUPERADMIN_PASSWORD` from `.env`
+**Required environment variables:**
 
-### 6. Start Development Servers
+| Variable              | Description                  | Example                                             |
+| --------------------- | ---------------------------- | --------------------------------------------------- |
+| `DATABASE_URL`        | PostgreSQL connection string | `postgresql://postgres:postgres@localhost:5432/ims` |
+| `JWT_SECRET`          | Secret for JWT tokens        | `your-secret-key`                                   |
+| `NEXT_PUBLIC_API_URL` | API URL for frontend         | `http://localhost:4000`                             |
+
+### 4. Database Setup
 
 ```bash
-pnpm dev
+# Generate Prisma client
+pnpm --filter api prisma generate
+
+# Run migrations
+pnpm --filter api prisma migrate dev
+
+# Seed the database (optional)
+pnpm --filter api prisma:seed
 ```
 
-This starts all applications in development mode:
-- **API**: http://localhost:4000
+## Docker Setup
+
+### Development (with hot reload)
+
+```bash
+docker-compose -f docker-compose.dev.yml up --build
+```
+
+Services:
+
 - **Web**: http://localhost:3000
+- **API**: http://localhost:4000
 - **PostgreSQL**: localhost:5432
 
-## Environment Variables
-
-Create a `.env` file in the root directory with the following variables:
-
-```env
-# PostgreSQL Configuration
-POSTGRES_USER=your_username
-POSTGRES_PASSWORD=your_password
-POSTGRES_DB=your_database_name
-POSTGRES_PORT=5432
-
-# Database Connection URL
-DATABASE_URL=postgresql://your_username:your_password@localhost:5432/your_database_name?schema=public
-
-# Superadmin Credentials (for seeding)
-SUPERADMIN_USERNAME=superadmin
-SUPERADMIN_PASSWORD=secure_password_here
-
-# API Configuration
-PORT=4000
-JWT_SECRET=your_jwt_secret_key
-
-# Web/Frontend Configuration
-NEXT_PUBLIC_API_URL=http://localhost:4000/api/v1
-```
-
-## Port Configuration
-
-| Service    | Port | Description                |
-|------------|------|----------------------------|
-| PostgreSQL | 5432 | Database server            |
-| API        | 4000 | Backend REST API           |
-| Web        | 3000 | Frontend Next.js app       |
-
-## Common Commands
+### Production (local build)
 
 ```bash
-# Install dependencies
-pnpm i
-
-# Start all apps in development
-pnpm dev
-
-# Build all apps for production
-pnpm build
-
-# Run linting
-pnpm lint
-
-# Format code
-pnpm format
-
-# Clean all build outputs and node_modules
-pnpm clean
+docker-compose up --build
 ```
 
-## Database Commands
+### Production (from Docker Hub)
 
 ```bash
-# Generate Prisma Client
-pnpm prisma:generate
+# Copy and configure environment
+cp .env.prod.example .env
 
-# Create and apply migrations (development)
-pnpm prisma:migrate
-
-# Apply existing migrations (production)
-pnpm prisma:migrate:deploy
-
-# Seed the database
-pnpm prisma:seed
-
-# Open Prisma Studio (database GUI)
-pnpm prisma:studio
-
-# Reset database (WARNING: deletes all data)
-pnpm prisma:reset
+# Start services (includes Watchtower for auto-updates)
+docker-compose -f docker-compose.prod.yml up -d
 ```
 
-## Docker Commands
+## CI/CD
 
-```bash
-# Start PostgreSQL container
-docker-compose up -d
+### GitHub Actions
 
-# Stop PostgreSQL container
-docker-compose down
+The project includes a CI/CD pipeline that automatically builds and pushes Docker images to Docker Hub.
 
-# Stop and remove volumes (deletes all data)
-docker-compose down -v
+**Setup:**
 
-# View logs
-docker-compose logs -f postgres
+1. Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions**
 
-# Access PostgreSQL CLI
-docker exec -it projectx-postgres psql -U your_username -d your_database_name
+2. Add these secrets:
+
+   | Secret               | Description              |
+   | -------------------- | ------------------------ |
+   | `DOCKERHUB_USERNAME` | Your Docker Hub username |
+   | `DOCKERHUB_TOKEN`    | Docker Hub access token  |
+
+3. Push to `main` branch to trigger the build
+
+**What it does:**
+
+- Builds `api` and `web` Docker images
+- Pushes to Docker Hub with tags: `latest`, branch name, commit SHA
+- Watchtower on your server auto-pulls new images
+
+## Project Structure
+
+```
+ims/
+├── apps/
+│   ├── api/                 # Express.js API server
+│   │   ├── prisma/          # Database schema & migrations
+│   │   └── src/             # API source code
+│   └── web/                 # Next.js frontend
+│       ├── app/             # App router pages
+│       ├── components/      # React components
+│       └── hooks/           # Custom hooks
+├── packages/
+│   ├── eslint-config/       # Shared ESLint configs
+│   ├── typescript-config/   # Shared TypeScript configs
+│   └── ui/                  # Shared UI components
+├── .github/workflows/       # CI/CD pipelines
+├── docker-compose.yml       # Production Docker (local build)
+├── docker-compose.dev.yml   # Development Docker
+└── docker-compose.prod.yml  # Production Docker (from Docker Hub)
 ```
 
-## Testing on a Fresh Environment
+## Available Scripts
 
-To simulate a completely fresh setup:
+Run from the root directory:
+
+| Command            | Description                        |
+| ------------------ | ---------------------------------- |
+| `pnpm install`     | Install dependencies & setup Husky |
+| `pnpm dev`         | Start all apps in development mode |
+| `pnpm build`       | Build all apps for production      |
+| `pnpm lint`        | Run ESLint across all packages     |
+| `pnpm check-types` | Run TypeScript type checking       |
+| `pnpm format`      | Format code with Prettier          |
+
+### API-specific commands
 
 ```bash
-# Clean everything
-docker-compose down -v
-rm -rf node_modules
-rm pnpm-lock.yaml
-
-# Start from scratch
-pnpm i
-docker-compose up -d
-sleep 5  # Wait for PostgreSQL to initialize
-pnpm prisma:generate
-pnpm prisma:migrate
-pnpm prisma:seed
-pnpm dev
+# Database
+pnpm --filter api prisma generate    # Generate Prisma client
+pnpm --filter api prisma migrate dev # Run migrations
+pnpm --filter api prisma studio      # Open Prisma Studio
+pnpm --filter api prisma:seed        # Seed database
 ```
 
 ## Troubleshooting
 
-### Database Connection Issues
-- Ensure Docker is running: `docker ps`
-- Check if PostgreSQL is healthy: `docker-compose ps`
-- Verify `.env` credentials match `docker-compose.yml`
+### Husky hooks not running
 
-### Prisma Client Errors
-- Regenerate the client: `pnpm prisma:generate`
-- Check that migrations are applied: `pnpm prisma:migrate`
+```bash
+# Reinstall Husky
+pnpm prepare
 
-### Port Conflicts
-- Check if ports are already in use: `lsof -i :3000,4000,5432`
-- Modify ports in `.env` if needed
+# Check if .husky folder exists
+ls -la .husky/
+```
+
+### Docker build fails with lightningcss error
+
+The Dockerfiles are configured to handle this automatically. If you still encounter issues:
+
+```bash
+# Rebuild without cache
+docker-compose -f docker-compose.dev.yml build --no-cache
+```
+
+### TypeScript errors on commit
+
+The pre-commit hook runs type checking. Fix errors before committing:
+
+```bash
+# Check what's failing
+pnpm check-types
+
+# Fix and try again
+git add .
+git commit -m "your message"
+```
 
 ## Contributing
 
-1. Create a new branch: `git checkout -b feature/your-feature`
+1. Create a feature branch
 2. Make your changes
-3. Run tests: `pnpm test`
-4. Commit your changes: `git commit -m 'Add some feature'`
-5. Push to the branch: `git push origin feature/your-feature`
-6. Open a Pull Request
+3. Commit (hooks will run automatically)
+4. Push and create a PR
 
+## License
+
+MIT
