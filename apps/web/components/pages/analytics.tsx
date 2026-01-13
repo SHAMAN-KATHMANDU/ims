@@ -1,11 +1,19 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 
 export function AnalyticsPage() {
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-balance">Analytics</h1>
-        <p className="text-muted-foreground mt-2">Track your performance and insights</p>
+        <p className="text-muted-foreground mt-2">
+          Track your performance and insights
+        </p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
         {[1, 2, 3, 4].map((i) => (
@@ -23,5 +31,5 @@ export function AnalyticsPage() {
         ))}
       </div>
     </div>
-  )
+  );
 }
