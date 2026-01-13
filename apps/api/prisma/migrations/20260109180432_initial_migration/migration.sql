@@ -1,44 +1,17 @@
-/*
-  Warnings:
+-- CreateEnum
+CREATE TYPE "Role" AS ENUM ('superAdmin', 'admin', 'user');
 
-  - The primary key for the `products` table will be changed. If it partially fails, the table could be left without primary key constraint.
-  - You are about to drop the column `createdAt` on the `products` table. All the data in the column will be lost.
-  - You are about to drop the column `id` on the `products` table. All the data in the column will be lost.
-  - You are about to drop the column `name` on the `products` table. All the data in the column will be lost.
-  - You are about to drop the column `price` on the `products` table. All the data in the column will be lost.
-  - You are about to drop the column `updatedAt` on the `products` table. All the data in the column will be lost.
-  - A unique constraint covering the columns `[ims_code]` on the table `products` will be added. If there are existing duplicate values, this will fail.
-  - Added the required column `category_id` to the `products` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `cost_price` to the `products` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `created_by_id` to the `products` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `date_modified` to the `products` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `ims_code` to the `products` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `mrp` to the `products` table without a default value. This is not possible if the table is not empty.
-  - The required column `product_id` was added to the `products` table with a prisma-level default value. This is not possible if the table is not empty. Please add this column as optional, then populate it before making it required.
-  - Added the required column `product_name` to the `products` table without a default value. This is not possible if the table is not empty.
+-- CreateTable
+CREATE TABLE "users" (
+    "id" TEXT NOT NULL,
+    "username" TEXT NOT NULL,
+    "password" TEXT NOT NULL,
+    "role" "Role" NOT NULL DEFAULT 'user',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
 
-*/
--- AlterTable
-ALTER TABLE "products" DROP CONSTRAINT "products_pkey",
-DROP COLUMN "createdAt",
-DROP COLUMN "id",
-DROP COLUMN "name",
-DROP COLUMN "price",
-DROP COLUMN "updatedAt",
-ADD COLUMN     "breadth" DECIMAL(10,2),
-ADD COLUMN     "category_id" TEXT NOT NULL,
-ADD COLUMN     "cost_price" DECIMAL(10,2) NOT NULL,
-ADD COLUMN     "created_by_id" TEXT NOT NULL,
-ADD COLUMN     "date_created" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN     "date_modified" TIMESTAMP(3) NOT NULL,
-ADD COLUMN     "height" DECIMAL(10,2),
-ADD COLUMN     "ims_code" VARCHAR(100) NOT NULL,
-ADD COLUMN     "length" DECIMAL(10,2),
-ADD COLUMN     "mrp" DECIMAL(10,2) NOT NULL,
-ADD COLUMN     "product_id" TEXT NOT NULL,
-ADD COLUMN     "product_name" VARCHAR(255) NOT NULL,
-ADD COLUMN     "weight" DECIMAL(10,2),
-ADD CONSTRAINT "products_pkey" PRIMARY KEY ("product_id");
+    CONSTRAINT "users_pkey" PRIMARY KEY ("id")
+);
 
 -- CreateTable
 CREATE TABLE "categories" (
@@ -49,6 +22,26 @@ CREATE TABLE "categories" (
     "updated_at" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "categories_pkey" PRIMARY KEY ("category_id")
+);
+
+-- CreateTable
+CREATE TABLE "products" (
+    "product_id" TEXT NOT NULL,
+    "ims_code" VARCHAR(100) NOT NULL,
+    "product_name" VARCHAR(255) NOT NULL,
+    "category_id" TEXT NOT NULL,
+    "description" TEXT,
+    "length" DECIMAL(10,2),
+    "breadth" DECIMAL(10,2),
+    "height" DECIMAL(10,2),
+    "weight" DECIMAL(10,2),
+    "cost_price" DECIMAL(10,2) NOT NULL,
+    "mrp" DECIMAL(10,2) NOT NULL,
+    "created_by_id" TEXT NOT NULL,
+    "date_created" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "date_modified" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "products_pkey" PRIMARY KEY ("product_id")
 );
 
 -- CreateTable
@@ -101,7 +94,13 @@ CREATE TABLE "product_discounts" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "users_username_key" ON "users"("username");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "categories_category_name_key" ON "categories"("category_name");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "products_ims_code_key" ON "products"("ims_code");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "product_variations_product_id_color_key" ON "product_variations"("product_id", "color");
@@ -111,9 +110,6 @@ CREATE UNIQUE INDEX "discount_types_type_name_key" ON "discount_types"("type_nam
 
 -- CreateIndex
 CREATE UNIQUE INDEX "product_discounts_product_id_discount_type_id_key" ON "product_discounts"("product_id", "discount_type_id");
-
--- CreateIndex
-CREATE UNIQUE INDEX "products_ims_code_key" ON "products"("ims_code");
 
 -- AddForeignKey
 ALTER TABLE "products" ADD CONSTRAINT "products_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories"("category_id") ON DELETE RESTRICT ON UPDATE CASCADE;

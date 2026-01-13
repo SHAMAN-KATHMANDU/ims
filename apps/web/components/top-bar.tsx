@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { useRouter } from "next/navigation"
-import { useTheme } from "next-themes"
-import { Button } from "./ui/button"
+import { useRouter } from "next/navigation";
+import { useTheme } from "next-themes";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,27 +10,27 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu"
-import { Moon, Sun, LogOut, Menu } from "lucide-react"
-import { logout, getAuthUser } from "@/utils/auth"
-import { useEffect, useState } from "react"
+} from "./ui/dropdown-menu";
+import { Moon, Sun, LogOut, Menu } from "lucide-react";
+import { logout, getAuthUser } from "@/utils/auth";
+import { useEffect, useState } from "react";
 
 export function TopBar() {
-  const router = useRouter()
-  const { theme, setTheme } = useTheme()
-  const [username, setUsername] = useState<string>("")
+  const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const [username, setUsername] = useState<string>("");
 
   useEffect(() => {
-    const user = getAuthUser()
+    const user = getAuthUser();
     if (user) {
-      setUsername(user.username)
+      setUsername(user.username);
     }
-  }, [])
+  }, []);
 
   const handleLogout = async () => {
-    await logout()
-    router.push("/login")
-  }
+    await logout();
+    router.push("/login");
+  };
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
@@ -73,5 +73,5 @@ export function TopBar() {
         </DropdownMenu>
       </div>
     </header>
-  )
+  );
 }

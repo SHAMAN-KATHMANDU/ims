@@ -56,10 +56,10 @@ const userRouter = Router();
  *         description: User with this username already exists
  */
 userRouter.post(
-  '/',
+  "/",
   verifyToken,
   authorizeRoles("superAdmin"),
-  userController.createUser
+  userController.createUser,
 );
 
 /**
@@ -90,10 +90,10 @@ userRouter.post(
  *         description: Forbidden - SuperAdmin role required
  */
 userRouter.get(
-  '/',
+  "/",
   verifyToken,
   authorizeRoles("superAdmin"),
-  userController.getAllUsers
+  userController.getAllUsers,
 );
 
 /**
@@ -132,10 +132,10 @@ userRouter.get(
  *         description: User not found
  */
 userRouter.get(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("superAdmin"),
-  userController.getUserById
+  userController.getUserById,
 );
 
 /**
@@ -191,10 +191,10 @@ userRouter.get(
  *         description: Username already exists
  */
 userRouter.put(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("superAdmin"),
-  userController.updateUser
+  userController.updateUser,
 );
 
 /**
@@ -231,10 +231,10 @@ userRouter.put(
  *         description: User not found
  */
 userRouter.delete(
-  '/:id',
+  "/:id",
   verifyToken,
   authorizeRoles("superAdmin"),
-  userController.deleteUser
+  userController.deleteUser,
 );
 
 export default userRouter;
