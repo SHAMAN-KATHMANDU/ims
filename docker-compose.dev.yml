@@ -67,7 +67,7 @@ services:
       - /app/packages/ui/node_modules
     environment:
       NODE_ENV: development
-      NEXT_PUBLIC_API_URL: http://localhost:4000
+      NEXT_PUBLIC_API_URL: http://localhost:4000/api/v1
       WATCHPACK_POLLING: "true"
     command: pnpm --filter web dev
 
