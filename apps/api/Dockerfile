@@ -42,7 +42,7 @@ RUN npx prisma generate
 
 # Build TypeScript for production
 WORKDIR /app
-RUN pnpm --filter api build
+RUN pnpm --filter api... build
 
 # Expose port
 EXPOSE 4000
