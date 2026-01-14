@@ -1,0 +1,17 @@
+#!/bin/sh
+
+echo "🔍 Running pre-commit checks..."
+
+# Format staged files
+echo "✨ Formatting staged files..."
+pnpm lint-staged
+
+# Run linting
+echo "🔎 Running linter..."
+pnpm lint
+
+# Run type checking
+echo "📝 Checking types..."
+pnpm check-types
+
+echo "✅ All checks passed!"

@@ -1,7 +1,13 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ShieldAlert } from "lucide-react"
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { ShieldAlert } from "lucide-react";
 
 export function ErrorPage() {
   return (
@@ -11,9 +17,12 @@ export function ErrorPage() {
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-destructive/10">
             <ShieldAlert className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-2xl font-bold">Unauthorized Access</CardTitle>
+          <CardTitle className="text-2xl font-bold">
+            Unauthorized Access
+          </CardTitle>
           <CardDescription>
-            You don&apos;t have permission to access this page. Please log in to continue.
+            You don&apos;t have permission to access this page. Please log in to
+            continue.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -23,5 +32,5 @@ export function ErrorPage() {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }

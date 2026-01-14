@@ -1,21 +1,27 @@
-"use client"
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Trash2, Plus } from "lucide-react"
-import type { ProductVariationForm } from "../../types"
-import type { UseFormReturn } from "@/hooks/useForm"
+import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Trash2, Plus } from "lucide-react";
+import type { ProductVariationForm } from "../../types";
+import type { UseFormReturn } from "@/hooks/useForm";
+import type { ProductFormValues } from "../../types";
 
 interface VariationsTabProps {
-  variations: ProductVariationForm[]
-  form: UseFormReturn<any>
-  onAdd: () => void
-  onRemove: (index: number) => void
-  onUpdate: (index: number, field: "color" | "stockQuantity", value: string) => void
-  onAddPhoto: (variationIndex: number, photoUrl: string) => void
-  onRemovePhoto: (variationIndex: number, photoIndex: number) => void
-  onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void
+  variations: ProductVariationForm[];
+  form: UseFormReturn<ProductFormValues>;
+  onAdd: () => void;
+  onRemove: (index: number) => void;
+  onUpdate: (
+    index: number,
+    field: "color" | "stockQuantity",
+    value: string,
+  ) => void;
+  onAddPhoto: (variationIndex: number, photoUrl: string) => void;
+  onRemovePhoto: (variationIndex: number, photoIndex: number) => void;
+  onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
 }
 
 export function VariationsTab({
@@ -31,7 +37,9 @@ export function VariationsTab({
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <Label>Variations <span className="text-destructive">*</span></Label>
+        <Label>
+          Variations <span className="text-destructive">*</span>
+        </Label>
         <Button
           type="button"
           variant="outline"
@@ -43,12 +51,17 @@ export function VariationsTab({
         </Button>
       </div>
       {variations.length === 0 && (
-        <p className="text-sm text-destructive">At least one variation is required</p>
+        <p className="text-sm text-destructive">
+          At least one variation is required
+        </p>
       )}
       {variations.length > 0 && (
         <div className="space-y-4 border rounded-lg p-4">
           {variations.map((variation, index) => (
-            <div key={index} className="space-y-3 border-b pb-4 last:border-b-0 last:pb-0">
+            <div
+              key={index}
+              className="space-y-3 border-b pb-4 last:border-b-0 last:pb-0"
+            >
               {index === 0 && (
                 <div className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded">
                   Default Variation
@@ -56,7 +69,9 @@ export function VariationsTab({
               )}
               <div className="flex gap-2 items-end">
                 <div className="flex-1 space-y-1">
-                  <Label htmlFor={`var-color-${index}`} className="text-xs">Color</Label>
+                  <Label htmlFor={`var-color-${index}`} className="text-xs">
+                    Color
+                  </Label>
                   <Input
                     id={`var-color-${index}`}
                     placeholder="e.g., Red, Blue"
@@ -64,20 +79,28 @@ export function VariationsTab({
                     onChange={(e) => onUpdate(index, "color", e.target.value)}
                   />
                   {form.errors[`variation_${index}_color`] && (
-                    <p className="text-xs text-destructive">{form.errors[`variation_${index}_color`]}</p>
+                    <p className="text-xs text-destructive">
+                      {form.errors[`variation_${index}_color`]}
+                    </p>
                   )}
                 </div>
                 <div className="flex-1 space-y-1">
-                  <Label htmlFor={`var-stock-${index}`} className="text-xs">Stock Quantity</Label>
+                  <Label htmlFor={`var-stock-${index}`} className="text-xs">
+                    Stock Quantity
+                  </Label>
                   <Input
                     id={`var-stock-${index}`}
                     type="number"
                     placeholder="0"
                     value={variation.stockQuantity}
-                    onChange={(e) => onUpdate(index, "stockQuantity", e.target.value)}
+                    onChange={(e) =>
+                      onUpdate(index, "stockQuantity", e.target.value)
+                    }
                   />
                   {form.errors[`variation_${index}_stock`] && (
-                    <p className="text-xs text-destructive">{form.errors[`variation_${index}_stock`]}</p>
+                    <p className="text-xs text-destructive">
+                      {form.errors[`variation_${index}_stock`]}
+                    </p>
                   )}
                 </div>
                 <Button
@@ -91,7 +114,7 @@ export function VariationsTab({
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
-              
+
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
                   <Label className="text-xs">Photos (Optional)</Label>
@@ -100,9 +123,9 @@ export function VariationsTab({
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const photoUrl = prompt("Enter photo URL:")
+                      const photoUrl = prompt("Enter photo URL:");
                       if (photoUrl && photoUrl.trim()) {
-                        onAddPhoto(index, photoUrl.trim())
+                        onAddPhoto(index, photoUrl.trim());
                       }
                     }}
                     className="h-7 text-xs"
@@ -114,12 +137,15 @@ export function VariationsTab({
                   <div className="grid grid-cols-3 gap-2">
                     {variation.photos.map((photo, photoIndex) => (
                       <div key={photoIndex} className="relative group">
-                        <img
+                        <Image
                           src={photo.photoUrl}
                           alt={`Variation ${index + 1} photo ${photoIndex + 1}`}
+                          width={100}
+                          height={80}
                           className="h-20 w-full rounded border object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='12'%3EInvalid%3C/text%3E%3C/svg%3E"
+                            (e.target as HTMLImageElement).src =
+                              "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='12'%3EInvalid%3C/text%3E%3C/svg%3E";
                           }}
                         />
                         {photo.isPrimary && (
@@ -133,7 +159,9 @@ export function VariationsTab({
                               type="button"
                               variant="secondary"
                               size="sm"
-                              onClick={() => onSetPrimaryPhoto(index, photoIndex)}
+                              onClick={() =>
+                                onSetPrimaryPhoto(index, photoIndex)
+                              }
                               className="h-6 text-xs"
                             >
                               Set Primary
@@ -159,9 +187,9 @@ export function VariationsTab({
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        Add at least one variation (color and stock quantity). The first variation will be set as default.
+        Add at least one variation (color and stock quantity). The first
+        variation will be set as default.
       </p>
     </div>
-  )
+  );
 }
-

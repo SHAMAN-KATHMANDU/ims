@@ -1,19 +1,25 @@
-"use client"
+"use client";
 
-import { QueryClient, QueryClientProvider as TanStackQueryClientProvider } from "@tanstack/react-query"
-import { useState, type ReactNode } from "react"
-import dynamic from "next/dynamic"
+import {
+  QueryClient,
+  QueryClientProvider as TanStackQueryClientProvider,
+} from "@tanstack/react-query";
+import { useState, type ReactNode } from "react";
+import dynamic from "next/dynamic";
+
+// Check if we're in development mode
+const isDevelopment = process.env.NODE_ENV === "development";
 
 // Dynamically import devtools only in development and only if available
-const ReactQueryDevtools = process.env.NODE_ENV === "development"
+const ReactQueryDevtools = isDevelopment
   ? dynamic(
       () =>
         import("@tanstack/react-query-devtools").then((mod) => ({
           default: mod.ReactQueryDevtools,
         })),
-      { ssr: false }
+      { ssr: false },
     )
-  : () => null
+  : () => null;
 
 export function QueryClientProvider({ children }: { children: ReactNode }) {
   const [queryClient] = useState(
@@ -26,13 +32,13 @@ export function QueryClientProvider({ children }: { children: ReactNode }) {
             retry: 1,
           },
         },
-      })
-  )
+      }),
+  );
 
   return (
     <TanStackQueryClientProvider client={queryClient}>
       {children}
       <ReactQueryDevtools initialIsOpen={false} />
     </TanStackQueryClientProvider>
-  )
+  );
 }
