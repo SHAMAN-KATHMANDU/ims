@@ -486,10 +486,12 @@ class ProductController {
                 providedDiscountTypeId: discount.discountTypeId,
                 providedDiscountTypeName: discount.discountTypeName,
                 hint: "You can use either discountTypeId (UUID) or discountTypeName (string like 'Normal', 'Member', etc.)",
-                availableDiscountTypes: allDiscountTypes.map((dt) => ({
-                  id: dt.id,
-                  name: dt.name,
-                })),
+                availableDiscountTypes: allDiscountTypes.map(
+                  (dt: { id: string; name: string }) => ({
+                    id: dt.id,
+                    name: dt.name,
+                  }),
+                ),
               });
             }
 
