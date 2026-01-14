@@ -8,7 +8,7 @@ interface UseFormOptions<T> {
   validate?: (values: T) => Record<string, string> | null;
 }
 
-interface UseFormReturn<T> {
+export interface UseFormReturn<T> {
   values: T;
   errors: Record<string, string>;
   isLoading: boolean;

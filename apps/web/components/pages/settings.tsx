@@ -66,11 +66,11 @@ export function SettingsPage() {
             title: "Error",
             description: "User information not available. Please log in again.",
             variant: "destructive",
-          })
-          return
+          });
+          return;
         }
 
-        // Need to implement backend /auth/change-password 
+        // Need to implement backend /auth/change-password
         // Use the user update endpoint with current user's ID
         await axios.put(`/users/${currentUser.id}`, {
           password: values.newPassword,

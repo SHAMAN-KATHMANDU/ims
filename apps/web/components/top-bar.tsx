@@ -35,10 +35,10 @@ export function TopBar() {
   };
 
   // Detect base path for settings link
-  const basePath = pathname.startsWith("/admin/dashboard") 
-    ? "/admin/dashboard" 
-    : "/dashboard"
-  const settingsPath = `${basePath}/settings`
+  const basePath = pathname.startsWith("/admin/dashboard")
+    ? "/admin/dashboard"
+    : "/dashboard";
+  const settingsPath = `${basePath}/settings`;
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-6">
