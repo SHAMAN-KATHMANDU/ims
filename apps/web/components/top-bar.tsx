@@ -1,9 +1,9 @@
-"use client"
+"use client";
 
-import { useRouter, usePathname } from "next/navigation"
-import { useTheme } from "next-themes"
-import Link from "next/link"
-import { Button } from "./ui/button"
+import { useRouter, usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
+import Link from "next/link";
+import { Button } from "./ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -11,48 +11,48 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "./ui/dropdown-menu"
-import { Moon, Sun, LogOut, Menu, Settings } from "lucide-react"
-import { logout, getAuthUser } from "@/utils/auth"
-import { useEffect, useState } from "react"
-import { useIsMobile } from "@/hooks/use-mobile"
+} from "./ui/dropdown-menu";
+import { Moon, Sun, LogOut, Menu, Settings } from "lucide-react";
+import { logout, getAuthUser } from "@/utils/auth";
+import { useEffect, useState } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface TopBarProps {
-  onMenuClick?: () => void
+  onMenuClick?: () => void;
 }
 
 export function TopBar({ onMenuClick }: TopBarProps) {
-  const router = useRouter()
-  const pathname = usePathname()
-  const { theme, setTheme } = useTheme()
-  const [username, setUsername] = useState<string>("")
-  const isMobile = useIsMobile()
+  const router = useRouter();
+  const pathname = usePathname();
+  const { theme, setTheme } = useTheme();
+  const [username, setUsername] = useState<string>("");
+  const isMobile = useIsMobile();
 
   useEffect(() => {
-    const user = getAuthUser()
+    const user = getAuthUser();
     if (user) {
-      setUsername(user.username)
+      setUsername(user.username);
     }
-  }, [])
+  }, []);
 
   const handleLogout = async () => {
-    await logout()
-    router.push("/login")
-  }
+    await logout();
+    router.push("/login");
+  };
 
   // Detect base path for settings link
-  const basePath = pathname.startsWith("/admin/dashboard") 
-    ? "/admin/dashboard" 
-    : "/dashboard"
-  const settingsPath = `${basePath}/settings`
+  const basePath = pathname.startsWith("/admin/dashboard")
+    ? "/admin/dashboard"
+    : "/dashboard";
+  const settingsPath = `${basePath}/settings`;
 
   return (
     <header className="flex h-14 md:h-16 items-center justify-between border-b border-border bg-card px-3 md:px-6">
       <div className="flex items-center gap-2 md:gap-4">
         {isMobile && onMenuClick && (
-          <Button 
-            variant="ghost" 
-            size="icon" 
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={onMenuClick}
             className="h-9 w-9"
           >
@@ -73,7 +73,11 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         </Button>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="relative h-9 w-9 md:h-10 md:w-10">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="relative h-9 w-9 md:h-10 md:w-10"
+            >
               <div className="h-7 w-7 md:h-8 md:w-8 rounded-full bg-primary/10 flex items-center justify-center">
                 <span className="text-xs md:text-sm font-medium text-primary">
                   {username ? username.charAt(0).toUpperCase() : "U"}
@@ -101,5 +105,5 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         </DropdownMenu>
       </div>
     </header>
-  )
+  );
 }

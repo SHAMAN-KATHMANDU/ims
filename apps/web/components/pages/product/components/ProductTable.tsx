@@ -1,21 +1,40 @@
-"use client"
+"use client";
 
-import React, { useState } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
-import { Search, Edit2, Trash2 } from "lucide-react"
-import { getTotalStock, getDiscountedPrices, getCategoryName, calculateDiscountedPrice } from "../utils/helpers"
-import type { Product, Category } from "@/hooks/useProduct"
+import React, { useState } from "react";
+import Image from "next/image";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Search, Edit2, Trash2 } from "lucide-react";
+import {
+  getTotalStock,
+  getDiscountedPrices,
+  getCategoryName,
+  calculateDiscountedPrice,
+} from "../utils/helpers";
+import type { Product, Category } from "@/hooks/useProduct";
 
 interface ProductTableProps {
-  products: Product[]
-  categories: Category[]
-  canSeeCostPrice: boolean
-  canManageProducts: boolean
-  onEdit: (product: Product) => void
-  onDelete: (product: Product) => void
+  products: Product[];
+  categories: Category[];
+  canSeeCostPrice: boolean;
+  canManageProducts: boolean;
+  onEdit: (product: Product) => void;
+  onDelete: (product: Product) => void;
 }
 
 export function ProductTable({
@@ -26,15 +45,21 @@ export function ProductTable({
   onEdit,
   onDelete,
 }: ProductTableProps) {
-  const [searchQuery, setSearchQuery] = useState("")
-  const [expandedProductId, setExpandedProductId] = useState<string | null>(null)
+  const [searchQuery, setSearchQuery] = useState("");
+  const [expandedProductId, setExpandedProductId] = useState<string | null>(
+    null,
+  );
 
   const filteredProducts = products.filter((product) => {
-    if (!searchQuery.trim()) return true
-    
-    const query = searchQuery.toLowerCase().trim()
-    const categoryName = getCategoryName(product.categoryId, product, categories).toLowerCase()
-    
+    if (!searchQuery.trim()) return true;
+
+    const query = searchQuery.toLowerCase().trim();
+    const categoryName = getCategoryName(
+      product.categoryId,
+      product,
+      categories,
+    ).toLowerCase();
+
     return (
       product.imsCode?.toLowerCase().includes(query) ||
       product.name?.toLowerCase().includes(query) ||
@@ -42,8 +67,8 @@ export function ProductTable({
       product.description?.toLowerCase().includes(query) ||
       product.costPrice?.toString().includes(query) ||
       product.mrp?.toString().includes(query)
-    )
-  })
+    );
+  });
 
   return (
     <Card>
@@ -52,10 +77,9 @@ export function ProductTable({
           <div>
             <CardTitle>All Products</CardTitle>
             <CardDescription>
-              {searchQuery 
+              {searchQuery
                 ? `Showing ${filteredProducts.length} of ${products.length} products`
-                : `Total: ${products.length} products`
-              }
+                : `Total: ${products.length} products`}
             </CardDescription>
           </div>
           <div className="relative w-full sm:w-64">
@@ -94,29 +118,55 @@ export function ProductTable({
           <TableBody>
             {filteredProducts.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={canSeeCostPrice ? 7 : 10} className="text-center text-muted-foreground py-8">
-                  {searchQuery ? "No products found matching your search." : "No products found."}
+                <TableCell
+                  colSpan={canSeeCostPrice ? 7 : 10}
+                  className="text-center text-muted-foreground py-8"
+                >
+                  {searchQuery
+                    ? "No products found matching your search."
+                    : "No products found."}
                 </TableCell>
               </TableRow>
             ) : (
               filteredProducts.map((product) => {
-                const totalStock = getTotalStock(product)
-                const discountedPrices = !canSeeCostPrice ? getDiscountedPrices(product) : {}
-                const hasVariations = product.variations && product.variations.length > 0
-                const isExpanded = expandedProductId === product.id
-                const productDiscounts = product.discounts || []
+                const totalStock = getTotalStock(product);
+                const discountedPrices = !canSeeCostPrice
+                  ? getDiscountedPrices(product)
+                  : {};
+                const hasVariations =
+                  product.variations && product.variations.length > 0;
+                const isExpanded = expandedProductId === product.id;
+                const productDiscounts = product.discounts || [];
 
                 return (
                   <React.Fragment key={product.id}>
-                    <TableRow 
-                      className={hasVariations ? "cursor-pointer hover:bg-muted/50" : ""}
-                      onClick={hasVariations ? () => {
-                        setExpandedProductId(isExpanded ? null : product.id)
-                      } : undefined}
+                    <TableRow
+                      className={
+                        hasVariations ? "cursor-pointer hover:bg-muted/50" : ""
+                      }
+                      onClick={
+                        hasVariations
+                          ? () => {
+                              setExpandedProductId(
+                                isExpanded ? null : product.id,
+                              );
+                            }
+                          : undefined
+                      }
                     >
-                      <TableCell className="font-mono">{product.imsCode}</TableCell>
-                      <TableCell className="font-medium">{product.name}</TableCell>
-                      <TableCell>{getCategoryName(product.categoryId, product, categories)}</TableCell>
+                      <TableCell className="font-mono">
+                        {product.imsCode}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {product.name}
+                      </TableCell>
+                      <TableCell>
+                        {getCategoryName(
+                          product.categoryId,
+                          product,
+                          categories,
+                        )}
+                      </TableCell>
                       {canSeeCostPrice && (
                         <TableCell>Rs. {product.costPrice}</TableCell>
                       )}
@@ -126,7 +176,9 @@ export function ProductTable({
                           <TableCell>
                             {discountedPrices.normal ? (
                               <div>
-                                <div className="font-medium">Rs. {discountedPrices.normal.price.toFixed(2)}</div>
+                                <div className="font-medium">
+                                  Rs. {discountedPrices.normal.price.toFixed(2)}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
                                   ({discountedPrices.normal.percentage}% off)
                                 </div>
@@ -138,7 +190,10 @@ export function ProductTable({
                           <TableCell>
                             {discountedPrices.special ? (
                               <div>
-                                <div className="font-medium">Rs. {discountedPrices.special.price.toFixed(2)}</div>
+                                <div className="font-medium">
+                                  Rs.{" "}
+                                  {discountedPrices.special.price.toFixed(2)}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
                                   ({discountedPrices.special.percentage}% off)
                                 </div>
@@ -150,7 +205,9 @@ export function ProductTable({
                           <TableCell>
                             {discountedPrices.member ? (
                               <div>
-                                <div className="font-medium">Rs. {discountedPrices.member.price.toFixed(2)}</div>
+                                <div className="font-medium">
+                                  Rs. {discountedPrices.member.price.toFixed(2)}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
                                   ({discountedPrices.member.percentage}% off)
                                 </div>
@@ -162,7 +219,10 @@ export function ProductTable({
                           <TableCell>
                             {discountedPrices.wholesale ? (
                               <div>
-                                <div className="font-medium">Rs. {discountedPrices.wholesale.price.toFixed(2)}</div>
+                                <div className="font-medium">
+                                  Rs.{" "}
+                                  {discountedPrices.wholesale.price.toFixed(2)}
+                                </div>
                                 <div className="text-xs text-muted-foreground">
                                   ({discountedPrices.wholesale.percentage}% off)
                                 </div>
@@ -176,62 +236,98 @@ export function ProductTable({
                       <TableCell>
                         <span className="font-medium">{totalStock}</span>
                       </TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         {canManageProducts ? (
                           <>
-                            <Button variant="ghost" size="icon" onClick={() => onEdit(product)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onEdit(product)}
+                            >
                               <Edit2 className="h-4 w-4" />
                             </Button>
-                            <Button variant="ghost" size="icon" onClick={() => onDelete(product)}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => onDelete(product)}
+                            >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
                           </>
                         ) : (
-                          <span className="text-muted-foreground text-sm">View only</span>
+                          <span className="text-muted-foreground text-sm">
+                            View only
+                          </span>
                         )}
                       </TableCell>
                     </TableRow>
                     {hasVariations && isExpanded && (
                       <TableRow>
-                        <TableCell colSpan={canSeeCostPrice ? 7 : 10} className="p-4 bg-muted/30">
+                        <TableCell
+                          colSpan={canSeeCostPrice ? 7 : 10}
+                          className="p-4 bg-muted/30"
+                        >
                           <div className="space-y-4">
                             {/* Discounts Section */}
                             {productDiscounts.length > 0 && (
                               <div className="space-y-2">
-                                <div className="text-sm font-semibold">Available Discounts:</div>
+                                <div className="text-sm font-semibold">
+                                  Available Discounts:
+                                </div>
                                 <div className="flex flex-wrap gap-2">
                                   {productDiscounts
-                                    .filter(d => d.isActive)
+                                    .filter((d) => d.isActive)
                                     .map((discount) => {
-                                      const discountPrice = calculateDiscountedPrice(product.mrp, discount.discountPercentage)
+                                      const discountPrice =
+                                        calculateDiscountedPrice(
+                                          product.mrp,
+                                          discount.discountPercentage,
+                                        );
                                       return (
-                                        <div key={discount.id} className="border rounded-lg p-2 bg-background">
+                                        <div
+                                          key={discount.id}
+                                          className="border rounded-lg p-2 bg-background"
+                                        >
                                           <div className="text-xs font-medium">
-                                            {discount.discountType?.name || "Unknown"}
+                                            {discount.discountType?.name ||
+                                              "Unknown"}
                                           </div>
                                           <div className="text-xs text-muted-foreground">
-                                            {discount.discountPercentage}% off - Rs. {discountPrice.toFixed(2)}
+                                            {discount.discountPercentage}% off -
+                                            Rs. {discountPrice.toFixed(2)}
                                           </div>
                                         </div>
-                                      )
+                                      );
                                     })}
                                 </div>
                               </div>
                             )}
-                            
+
                             {/* Variations Section */}
                             <div className="space-y-2">
-                              <div className="text-sm font-semibold">Variations:</div>
+                              <div className="text-sm font-semibold">
+                                Variations:
+                              </div>
                               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {product.variations?.map((variation) => {
-                                  const photos = variation.photos || []
-                                  const primaryPhoto = photos.find(p => p.isPrimary) || photos[0]
-                                  
+                                  const photos = variation.photos || [];
+                                  const primaryPhoto =
+                                    photos.find((p) => p.isPrimary) ||
+                                    photos[0];
+
                                   return (
-                                    <div key={variation.id} className="border rounded-lg p-3 space-y-2">
+                                    <div
+                                      key={variation.id}
+                                      className="border rounded-lg p-3 space-y-2"
+                                    >
                                       <div className="flex items-center justify-between">
                                         <div>
-                                          <div className="font-medium text-sm">{variation.color}</div>
+                                          <div className="font-medium text-sm">
+                                            {variation.color}
+                                          </div>
                                           <div className="text-xs text-muted-foreground">
                                             Stock: {variation.stockQuantity}
                                           </div>
@@ -239,12 +335,17 @@ export function ProductTable({
                                       </div>
                                       {primaryPhoto && (
                                         <div className="relative">
-                                          <img
+                                          <Image
                                             src={primaryPhoto.photoUrl}
                                             alt={`${variation.color} variation`}
+                                            width={200}
+                                            height={128}
                                             className="w-full h-32 object-cover rounded border"
                                             onError={(e) => {
-                                              (e.target as HTMLImageElement).src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%23ddd' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E"
+                                              (
+                                                e.target as HTMLImageElement
+                                              ).src =
+                                                "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%23ddd' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
                                             }}
                                           />
                                           {photos.length > 1 && (
@@ -256,11 +357,13 @@ export function ProductTable({
                                       )}
                                       {photos.length === 0 && (
                                         <div className="w-full h-32 bg-muted rounded border flex items-center justify-center">
-                                          <span className="text-xs text-muted-foreground">No photos</span>
+                                          <span className="text-xs text-muted-foreground">
+                                            No photos
+                                          </span>
                                         </div>
                                       )}
                                     </div>
-                                  )
+                                  );
                                 })}
                               </div>
                             </div>
@@ -269,13 +372,12 @@ export function ProductTable({
                       </TableRow>
                     )}
                   </React.Fragment>
-                )
+                );
               })
             )}
           </TableBody>
         </Table>
       </CardContent>
     </Card>
-  )
+  );
 }
-

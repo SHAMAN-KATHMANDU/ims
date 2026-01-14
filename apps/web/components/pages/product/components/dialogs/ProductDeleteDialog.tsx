@@ -1,6 +1,6 @@
-"use client"
+"use client";
 
-import { useState } from "react"
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -10,51 +10,69 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
-import { useToast } from "@/hooks/use-toast"
-import { ErrorDialog } from "./ErrorDialog"
-import type { Product } from "@/hooks/useProduct"
+} from "@/components/ui/alert-dialog";
+import { useToast } from "@/hooks/use-toast";
+import { ErrorDialog } from "./ErrorDialog";
+import type { Product } from "@/hooks/useProduct";
 
 interface ProductDeleteDialogProps {
-  product: Product | null
-  onClose: () => void
-  onDelete: (id: string) => Promise<void>
+  product: Product | null;
+  onClose: () => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export function ProductDeleteDialog({ product, onClose, onDelete }: ProductDeleteDialogProps) {
-  const { toast } = useToast()
-  const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({
+export function ProductDeleteDialog({
+  product,
+  onClose,
+  onDelete,
+}: ProductDeleteDialogProps) {
+  const { toast } = useToast();
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    message: string;
+  }>({
     open: false,
     message: "",
-  })
-  const [isDeleting, setIsDeleting] = useState(false)
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
-    if (!product) return
-    setIsDeleting(true)
+    if (!product) return;
+    setIsDeleting(true);
     try {
-      await onDelete(product.id)
-      toast({ title: "Product deleted successfully" })
-      onClose()
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message || "Failed to delete product"
+      await onDelete(product.id);
+      toast({ title: "Product deleted successfully" });
+      onClose();
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to delete product";
       setErrorDialog({
         open: true,
         message: errorMessage,
-      })
+      });
     } finally {
-      setIsDeleting(false)
+      setIsDeleting(false);
     }
-  }
+  };
 
   return (
     <>
-      <AlertDialog open={!!product && !errorDialog.open} onOpenChange={(open) => !open && onClose()}>
+      <AlertDialog
+        open={!!product && !errorDialog.open}
+        onOpenChange={(open) => !open && onClose()}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete "{product?.name}". This action cannot be undone.
+              This will permanently delete &quot;{product?.name}&quot;. This
+              action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -73,9 +91,9 @@ export function ProductDeleteDialog({ product, onClose, onDelete }: ProductDelet
       <ErrorDialog
         open={errorDialog.open}
         onOpenChange={(open) => {
-          setErrorDialog({ ...errorDialog, open })
+          setErrorDialog({ ...errorDialog, open });
           if (!open) {
-            onClose()
+            onClose();
           }
         }}
         title="Error Deleting Product"
@@ -83,6 +101,5 @@ export function ProductDeleteDialog({ product, onClose, onDelete }: ProductDelet
         onGoBack={onClose}
       />
     </>
-  )
+  );
 }
-
