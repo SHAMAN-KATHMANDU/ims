@@ -1,6 +1,11 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
 import { parseDate } from "shared";
+import {
+  getPaginationParams,
+  createPaginationResult,
+  getPrismaOrderBy,
+} from "@/utils/pagination";
 
 class ProductController {
   // Create product (admin and superAdmin only)
@@ -253,36 +258,66 @@ class ProductController {
   // Get all products (all authenticated users can view)
   async getAllProducts(req: Request, res: Response) {
     try {
-      const products = await prisma.product.findMany({
-        include: {
-          category: true,
-          createdBy: {
-            select: {
-              id: true,
-              username: true,
-              role: true,
+      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+
+      // Allowed fields for sorting
+      const allowedSortFields = [
+        "id",
+        "imsCode",
+        "name",
+        "costPrice",
+        "mrp",
+        "dateCreated",
+        "dateModified",
+      ];
+
+      // Get orderBy for Prisma
+      const orderBy = getPrismaOrderBy(
+        sortBy,
+        sortOrder,
+        allowedSortFields,
+      ) || {
+        dateCreated: "desc",
+      };
+
+      // Calculate skip for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count and products in parallel
+      const [totalItems, products] = await Promise.all([
+        prisma.product.count(),
+        prisma.product.findMany({
+          include: {
+            category: true,
+            createdBy: {
+              select: {
+                id: true,
+                username: true,
+                role: true,
+              },
+            },
+            variations: {
+              include: {
+                photos: true,
+              },
+            },
+            discounts: {
+              include: {
+                discountType: true,
+              },
             },
           },
-          variations: {
-            include: {
-              photos: true,
-            },
-          },
-          discounts: {
-            include: {
-              discountType: true,
-            },
-          },
-        },
-        orderBy: {
-          dateCreated: "desc",
-        },
-      });
+          orderBy,
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const result = createPaginationResult(products, totalItems, page, limit);
 
       res.status(200).json({
         message: "Products fetched successfully",
-        products,
-        count: products.length,
+        ...result,
       });
     } catch (error: any) {
       console.error("Get all products error:", error);
@@ -601,21 +636,48 @@ class ProductController {
   // Get all categories (helper endpoint for dropdown/selection)
   async getAllCategories(req: Request, res: Response) {
     try {
-      const categories = await prisma.category.findMany({
-        select: {
-          id: true,
-          name: true,
-          description: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
-      });
+      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+
+      // Allowed fields for sorting
+      const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
+
+      // Get orderBy for Prisma
+      const orderBy = getPrismaOrderBy(
+        sortBy,
+        sortOrder,
+        allowedSortFields,
+      ) || {
+        name: "asc",
+      };
+
+      // Calculate skip for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count and categories in parallel
+      const [totalItems, categories] = await Promise.all([
+        prisma.category.count(),
+        prisma.category.findMany({
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+          orderBy,
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const result = createPaginationResult(
+        categories,
+        totalItems,
+        page,
+        limit,
+      );
 
       res.status(200).json({
         message: "Categories fetched successfully",
-        categories,
-        count: categories.length,
+        ...result,
       });
     } catch (error: any) {
       console.error("Get categories error:", error);
@@ -628,21 +690,48 @@ class ProductController {
   // Get all discount types (helper endpoint for dropdown/selection)
   async getAllDiscountTypes(req: Request, res: Response) {
     try {
-      const discountTypes = await prisma.discountType.findMany({
-        select: {
-          id: true,
-          name: true,
-          description: true,
-        },
-        orderBy: {
-          name: "asc",
-        },
-      });
+      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+
+      // Allowed fields for sorting
+      const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
+
+      // Get orderBy for Prisma
+      const orderBy = getPrismaOrderBy(
+        sortBy,
+        sortOrder,
+        allowedSortFields,
+      ) || {
+        name: "asc",
+      };
+
+      // Calculate skip for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count and discount types in parallel
+      const [totalItems, discountTypes] = await Promise.all([
+        prisma.discountType.count(),
+        prisma.discountType.findMany({
+          select: {
+            id: true,
+            name: true,
+            description: true,
+          },
+          orderBy,
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const result = createPaginationResult(
+        discountTypes,
+        totalItems,
+        page,
+        limit,
+      );
 
       res.status(200).json({
         message: "Discount types fetched successfully",
-        discountTypes,
-        count: discountTypes.length,
+        ...result,
       });
     } catch (error: any) {
       console.error("Get discount types error:", error);
