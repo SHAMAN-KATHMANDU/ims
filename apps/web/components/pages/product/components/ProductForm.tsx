@@ -32,6 +32,8 @@ interface ProductFormProps {
   onAddDiscount: () => void
   onRemoveDiscount: (index: number) => void
   onUpdateDiscount: (index: number, field: "discountTypeName" | "discountPercentage" | "startDate" | "endDate" | "isActive", value: string | boolean) => void
+  onShowError: (title: string, message: string) => void
+  validateProduct: (values: ProductFormValues) => Record<string, string> | null
 }
 
 export function ProductForm({
@@ -53,6 +55,8 @@ export function ProductForm({
   onAddDiscount,
   onRemoveDiscount,
   onUpdateDiscount,
+  onShowError,
+  validateProduct,
 }: ProductFormProps) {
   const [dialogTab, setDialogTab] = useState("general")
 
@@ -104,22 +108,65 @@ export function ProductForm({
           <Plus className="h-4 w-4" /> Add Product
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto max-w-4xl">
+      <DialogContent className="max-h-[90vh] max-w-4xl">
         <DialogHeader>
           <DialogTitle>{editingProduct ? "Edit Product" : "Add Product"}</DialogTitle>
         </DialogHeader>
         <form 
-          onSubmit={(e) => {
+          onSubmit={async (e) => {
             // Only submit if we're on the last tab (discounts)
             if (dialogTab !== "discounts") {
               e.preventDefault()
               handleNext()
               return
             }
-            form.handleSubmit(e)
+            
+            // Prevent default form submission
+            e.preventDefault()
+            
+            // Manually validate before submitting
+            if (validateProduct) {
+              const validationErrors = validateProduct(form.values)
+              
+              if (validationErrors) {
+                // Find the first tab with errors
+                let errorTab = "general"
+                if (validationErrors.imsCode || validationErrors.name || validationErrors.categoryId || validationErrors.costPrice || validationErrors.mrp) {
+                  errorTab = "general"
+                } else if (validationErrors.length || validationErrors.breadth || validationErrors.height || validationErrors.weight) {
+                  errorTab = "dimensions"
+                } else if (validationErrors._form || Object.keys(validationErrors).some(key => key.startsWith("variation_"))) {
+                  errorTab = "variations"
+                }
+                
+                // Navigate to the tab with errors
+                setDialogTab(errorTab)
+                
+                // Show error dialog
+                const errorMessages = Object.entries(validationErrors)
+                  .filter(([key]) => key !== "_form")
+                  .map(([, message]) => message)
+                  .filter(Boolean)
+                
+                const formError = validationErrors._form
+                const allErrors = formError ? [formError, ...errorMessages] : errorMessages
+                
+                onShowError(
+                  "Validation Error",
+                  allErrors.length > 0 
+                    ? allErrors.slice(0, 3).join(". ") + (allErrors.length > 3 ? "..." : "")
+                    : "Please fill in all required fields."
+                )
+                return
+              }
+            }
+            
+            // If validation passes, proceed with form submission
+            await form.handleSubmit(e)
           }}
         >
-          <Tabs value={dialogTab} onValueChange={setDialogTab} className="w-full">
+          <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
+            <Tabs value={dialogTab} onValueChange={setDialogTab} className="w-full">
             <TabsList className="grid w-full grid-cols-4">
               <TabsTrigger value="general">General</TabsTrigger>
               <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
@@ -158,9 +205,10 @@ export function ProductForm({
               />
             </TabsContent>
           </Tabs>
+          </div>
           
           {form.errors._form && <p className="text-sm text-destructive mt-4">{form.errors._form}</p>}
-          <div className="flex gap-2 justify-between mt-6">
+          <div className="flex gap-2 justify-between mt-6 border-t pt-4">
             <div className="flex gap-2">
               {canGoPrev && (
                 <Button

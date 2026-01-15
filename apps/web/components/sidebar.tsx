@@ -19,6 +19,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "./ui/collapsible";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "./ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface NavItem {
   path: string;
@@ -81,6 +83,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const pathname = usePathname();
   const userRole = getUserRole();
+  const isMobile = useIsMobile();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     OVERVIEW: true,
     MANAGEMENT: true,
@@ -116,6 +119,10 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   }, [userRole, detectedBasePath]);
 
   const toggleSection = (sectionTitle: string) => {
+    // Don't toggle sections when sidebar is minimized on desktop
+    if (!isMobile && !isOpen) {
+      return;
+    }
     setOpenSections((prev) => ({
       ...prev,
       [sectionTitle]: !prev[sectionTitle],
@@ -135,13 +142,8 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     return pathname === href || pathname.startsWith(href + "/");
   };
 
-  return (
-    <aside
-      className={cn(
-        "relative flex flex-col border-r border-border bg-background transition-all duration-300",
-        isOpen ? "w-64" : "w-20",
-      )}
-    >
+  const sidebarContent = (
+    <>
       {/* Header */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-border">
         {isOpen && (
@@ -153,19 +155,21 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
             </div>
           </div>
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={onToggle}
-          className="ml-auto h-8 w-8"
-        >
-          <ChevronLeft
-            className={cn(
-              "h-4 w-4 transition-transform",
-              !isOpen && "rotate-180",
-            )}
-          />
-        </Button>
+        {!isMobile && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onToggle}
+            className="ml-auto h-8 w-8"
+          >
+            <ChevronLeft
+              className={cn(
+                "h-4 w-4 transition-transform",
+                !isOpen && "rotate-180",
+              )}
+            />
+          </Button>
+        )}
       </div>
 
       {/* Navigation */}
@@ -174,7 +178,13 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
           <Collapsible
             key={section.title}
             open={openSections[section.title] ?? true}
-            onOpenChange={() => toggleSection(section.title)}
+            onOpenChange={() => {
+              // Prevent toggling sections when sidebar is minimized on desktop
+              if (!isMobile && !isOpen) {
+                return;
+              }
+              toggleSection(section.title);
+            }}
           >
             <div className="space-y-2">
               {isOpen ? (
@@ -249,6 +259,14 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
                                       ? "text-foreground font-medium"
                                       : "text-muted-foreground hover:text-foreground",
                                   )}
+                                  onClick={(e) => {
+                                    // Only close sidebar on mobile, never change state on desktop
+                                    if (isMobile) {
+                                      onToggle();
+                                    }
+                                    // Stop propagation to prevent Collapsible from responding
+                                    e.stopPropagation();
+                                  }}
                                 >
                                   <span className="h-1 w-1 rounded-full bg-current" />
                                   <span>{child.label}</span>
@@ -270,6 +288,14 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
                             ? "bg-muted text-foreground"
                             : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                         )}
+                        onClick={(e) => {
+                          // Only close sidebar on mobile, never change state on desktop
+                          if (isMobile) {
+                            onToggle();
+                          }
+                          // Stop propagation to prevent Collapsible from responding
+                          e.stopPropagation();
+                        }}
                       >
                         <Icon className="h-4 w-4 shrink-0" />
                         {isOpen && <span>{item.label}</span>}
@@ -282,6 +308,34 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
           </Collapsible>
         ))}
       </nav>
+    </>
+  );
+
+  // Mobile: Use Sheet drawer
+  if (isMobile) {
+    return (
+      <Sheet open={isOpen} onOpenChange={onToggle}>
+        <SheetContent side="left" className="w-64 p-0">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Navigation Menu</SheetTitle>
+          </SheetHeader>
+          <aside className="relative flex flex-col h-full border-r border-border bg-background">
+            {sidebarContent}
+          </aside>
+        </SheetContent>
+      </Sheet>
+    );
+  }
+
+  // Desktop: Regular sidebar
+  return (
+    <aside
+      className={cn(
+        "relative flex flex-col border-r border-border bg-background transition-all duration-300",
+        isOpen ? "w-64" : "w-20",
+      )}
+    >
+      {sidebarContent}
     </aside>
   );
 }

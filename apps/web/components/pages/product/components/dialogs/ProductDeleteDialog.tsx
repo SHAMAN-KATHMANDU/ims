@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,6 +12,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { ErrorDialog } from "./ErrorDialog";
 import type { Product } from "@/hooks/useProduct";
 
 interface ProductDeleteDialogProps {
@@ -25,43 +27,79 @@ export function ProductDeleteDialog({
   onDelete,
 }: ProductDeleteDialogProps) {
   const { toast } = useToast();
+  const [errorDialog, setErrorDialog] = useState<{
+    open: boolean;
+    message: string;
+  }>({
+    open: false,
+    message: "",
+  });
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const handleDelete = async () => {
     if (!product) return;
+    setIsDeleting(true);
     try {
       await onDelete(product.id);
       toast({ title: "Product deleted successfully" });
       onClose();
     } catch (error: unknown) {
-      const err = error as { message?: string };
-      toast({
-        title: "Error",
-        description: err.message || "Failed to delete product",
-        variant: "destructive",
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to delete product";
+      setErrorDialog({
+        open: true,
+        message: errorMessage,
       });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
   return (
-    <AlertDialog open={!!product} onOpenChange={(open) => !open && onClose()}>
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-          <AlertDialogDescription>
-            This will permanently delete &quot;{product?.name}&quot;. This
-            action cannot be undone.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDelete}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-          >
-            Delete
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    <>
+      <AlertDialog
+        open={!!product && !errorDialog.open}
+        onOpenChange={(open) => !open && onClose()}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{product?.name}&quot;. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <ErrorDialog
+        open={errorDialog.open}
+        onOpenChange={(open) => {
+          setErrorDialog({ ...errorDialog, open });
+          if (!open) {
+            onClose();
+          }
+        }}
+        title="Error Deleting Product"
+        message={errorDialog.message}
+        onGoBack={onClose}
+      />
+    </>
   );
 }
