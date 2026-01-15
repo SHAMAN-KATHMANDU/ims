@@ -2,58 +2,44 @@
 
 import type React from "react";
 
-import { useState, useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
 import { useIsMobile } from "@/hooks/use-mobile";
-
-const SIDEBAR_STORAGE_KEY = "sidebar_open_state";
-
-// Get initial sidebar state from localStorage (only for desktop)
-function getInitialSidebarState(): boolean {
-  if (typeof window === "undefined") {
-    return true; // SSR default
-  }
-  const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-  return stored !== null ? stored === "true" : true; // Default to open if not stored
-}
+import { useSidebarStore } from "@/stores/sidebar-store";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
-  const [sidebarOpen, setSidebarOpen] = useState(() =>
-    getInitialSidebarState(),
-  );
+  const { isOpen, setIsOpen, toggle, desktopSidebarOpen } = useSidebarStore();
+
+  // Determine the actual sidebar state based on device type
+  const sidebarOpen = useMemo(() => {
+    if (isMobile) {
+      // On mobile, use current state (controlled by user interaction)
+      return isOpen;
+    }
+    // On desktop, use persisted state
+    return desktopSidebarOpen;
+  }, [isMobile, isOpen, desktopSidebarOpen]);
 
   // Update sidebar state when mobile state changes
   useEffect(() => {
     if (isMobile) {
-      setSidebarOpen(false);
+      // On mobile, always start closed
+      setIsOpen(false, true);
     } else {
-      // On desktop, load from localStorage
-      const stored = localStorage.getItem(SIDEBAR_STORAGE_KEY);
-      if (stored !== null) {
-        setSidebarOpen(stored === "true");
-      }
+      // On desktop, restore persisted state
+      setIsOpen(desktopSidebarOpen, false);
     }
-  }, [isMobile]);
-
-  // Persist sidebar state to localStorage when it changes (only for desktop)
-  useEffect(() => {
-    if (typeof window !== "undefined" && !isMobile) {
-      localStorage.setItem(SIDEBAR_STORAGE_KEY, String(sidebarOpen));
-    }
-  }, [sidebarOpen, isMobile]);
+  }, [isMobile, setIsOpen, desktopSidebarOpen]);
 
   const handleMenuClick = () => {
-    setSidebarOpen(!sidebarOpen);
+    toggle(isMobile);
   };
 
   return (
     <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar
-        isOpen={sidebarOpen}
-        onToggle={() => setSidebarOpen(!sidebarOpen)}
-      />
+      <Sidebar isOpen={sidebarOpen} onToggle={toggle} />
       <div className="flex flex-1 flex-col overflow-hidden">
         <TopBar onMenuClick={handleMenuClick} />
         <main className="flex-1 overflow-y-auto p-4 md:p-6">{children}</main>
