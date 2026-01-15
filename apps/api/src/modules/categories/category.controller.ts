@@ -1,5 +1,10 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import {
+  getPaginationParams,
+  createPaginationResult,
+  getPrismaOrderBy,
+} from "@/utils/pagination";
 
 class CategoryController {
   // Create category (admin and superAdmin only)
@@ -57,28 +62,55 @@ class CategoryController {
   // Get all categories (all authenticated users can view)
   async getAllCategories(req: Request, res: Response) {
     try {
-      const categories = await prisma.category.findMany({
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          _count: {
-            select: {
-              products: true,
+      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+
+      // Allowed fields for sorting
+      const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
+
+      // Get orderBy for Prisma
+      const orderBy = getPrismaOrderBy(
+        sortBy,
+        sortOrder,
+        allowedSortFields,
+      ) || {
+        name: "asc",
+      };
+
+      // Calculate skip for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count and categories in parallel
+      const [totalItems, categories] = await Promise.all([
+        prisma.category.count(),
+        prisma.category.findMany({
+          select: {
+            id: true,
+            name: true,
+            description: true,
+            createdAt: true,
+            updatedAt: true,
+            _count: {
+              select: {
+                products: true,
+              },
             },
           },
-        },
-        orderBy: {
-          name: "asc",
-        },
-      });
+          orderBy,
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const result = createPaginationResult(
+        categories,
+        totalItems,
+        page,
+        limit,
+      );
 
       res.status(200).json({
         message: "Categories fetched successfully",
-        categories,
-        count: categories.length,
+        ...result,
       });
     } catch (error: any) {
       console.error("Get all categories error:", error);
