@@ -1,6 +1,12 @@
 import { Request, Response } from "express";
 import User, { Role } from "@/models/userModel";
 import bcrypt from "bcryptjs";
+import prisma from "@/config/prisma";
+import {
+  getPaginationParams,
+  createPaginationResult,
+  getPrismaOrderBy,
+} from "@/utils/pagination";
 
 class UserController {
   // Create user (only superAdmin)
@@ -68,22 +74,51 @@ class UserController {
   // Get all users (only superAdmin)
   async getAllUsers(req: Request, res: Response) {
     try {
-      const users = await User.findMany({
-        select: {
-          id: true,
-          username: true,
-          role: true,
-          createdAt: true,
-          updatedAt: true,
-        },
-        orderBy: {
-          createdAt: "desc",
-        },
-      });
+      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+
+      // Allowed fields for sorting
+      const allowedSortFields = [
+        "id",
+        "username",
+        "role",
+        "createdAt",
+        "updatedAt",
+      ];
+
+      // Get orderBy for Prisma
+      const orderBy = getPrismaOrderBy(
+        sortBy,
+        sortOrder,
+        allowedSortFields,
+      ) || {
+        createdAt: "desc",
+      };
+
+      // Calculate skip for pagination
+      const skip = (page - 1) * limit;
+
+      // Get total count and users in parallel
+      const [totalItems, users] = await Promise.all([
+        prisma.user.count(),
+        User.findMany({
+          select: {
+            id: true,
+            username: true,
+            role: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+          orderBy,
+          skip,
+          take: limit,
+        }),
+      ]);
+
+      const result = createPaginationResult(users, totalItems, page, limit);
 
       res.status(200).json({
         message: "Users fetched successfully",
-        users,
+        ...result,
       });
     } catch (error: any) {
       console.error("Get all users error:", error);
