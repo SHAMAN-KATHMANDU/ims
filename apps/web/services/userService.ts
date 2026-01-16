@@ -29,9 +29,19 @@ export interface UpdateUserData {
   role?: UserRoleType;
 }
 
+export interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export interface UsersResponse {
   message: string;
-  users: User[];
+  data: User[];
+  pagination: PaginationInfo;
 }
 
 export interface UserResponse {
@@ -55,7 +65,7 @@ export class UserService {
    */
   async getAllUsers(): Promise<User[]> {
     const response = await this.axios.get<UsersResponse>("/users");
-    return response.data.users;
+    return response.data.data || [];
   }
 
   /**
