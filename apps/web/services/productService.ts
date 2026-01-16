@@ -123,10 +123,19 @@ export interface UpdateProductData {
   }>;
 }
 
+export interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export interface ProductsResponse {
   message: string;
-  products: Product[];
-  count: number;
+  data: Product[];
+  pagination: PaginationInfo;
 }
 
 export interface ProductResponse {
@@ -162,11 +171,11 @@ export class ProductService {
         throw new Error("Invalid response from server");
       }
 
-      if (!Array.isArray(response.data.products)) {
-        throw new Error("Invalid response format: products array not found");
+      if (!Array.isArray(response.data.data)) {
+        throw new Error("Invalid response format: data array not found");
       }
 
-      return response.data.products;
+      return response.data.data || [];
     } catch (error: unknown) {
       // Handle network errors
       const err = error as {
@@ -646,25 +655,30 @@ export class ProductService {
     try {
       const response = await this.axios.get<{
         message: string;
-        discountTypes: Array<{
+        data: Array<{
           id: string;
           name: string;
           description?: string;
         }>;
-        count: number;
+        pagination: {
+          currentPage: number;
+          totalPages: number;
+          totalItems: number;
+          itemsPerPage: number;
+          hasNextPage: boolean;
+          hasPrevPage: boolean;
+        };
       }>("/products/discount-types/list");
 
       if (!response?.data) {
         throw new Error("Invalid response from server");
       }
 
-      if (!Array.isArray(response.data.discountTypes)) {
-        throw new Error(
-          "Invalid response format: discountTypes array not found",
-        );
+      if (!Array.isArray(response.data.data)) {
+        throw new Error("Invalid response format: data array not found");
       }
 
-      return response.data.discountTypes;
+      return response.data.data || [];
     } catch (error: unknown) {
       // Handle network errors
       const err = error as {
