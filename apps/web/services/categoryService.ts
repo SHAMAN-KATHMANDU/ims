@@ -25,10 +25,19 @@ export interface UpdateCategoryData {
   description?: string;
 }
 
+export interface PaginationInfo {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
 export interface CategoriesResponse {
   message: string;
-  categories: Category[];
-  count: number;
+  data: Category[];
+  pagination: PaginationInfo;
 }
 
 export interface CategoryResponse {
@@ -57,11 +66,11 @@ export class CategoryService {
         throw new Error("Invalid response from server");
       }
 
-      if (!Array.isArray(response.data.categories)) {
-        throw new Error("Invalid response format: categories array not found");
+      if (!Array.isArray(response.data.data)) {
+        throw new Error("Invalid response format: data array not found");
       }
 
-      return response.data.categories;
+      return response.data.data || [];
     } catch (error: unknown) {
       // Handle network errors
       const err = error as {
