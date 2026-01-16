@@ -74,7 +74,9 @@ class UserController {
   // Get all users (only superAdmin)
   async getAllUsers(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
+        req.query,
+      );
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -94,13 +96,23 @@ class UserController {
         createdAt: "desc",
       };
 
+      // Build search filter
+      const where: any = {};
+      if (search) {
+        where.OR = [
+          { username: { contains: search, mode: "insensitive" } },
+          { role: { contains: search, mode: "insensitive" } },
+        ];
+      }
+
       // Calculate skip for pagination
       const skip = (page - 1) * limit;
 
       // Get total count and users in parallel
       const [totalItems, users] = await Promise.all([
-        prisma.user.count(),
+        prisma.user.count({ where }),
         User.findMany({
+          where,
           select: {
             id: true,
             username: true,

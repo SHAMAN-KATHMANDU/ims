@@ -258,7 +258,9 @@ class ProductController {
   // Get all products (all authenticated users can view)
   async getAllProducts(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
+        req.query,
+      );
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -280,13 +282,29 @@ class ProductController {
         dateCreated: "desc",
       };
 
+      // Build search filter
+      const where: any = {};
+      if (search) {
+        where.OR = [
+          { imsCode: { contains: search, mode: "insensitive" } },
+          { name: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+          {
+            category: {
+              name: { contains: search, mode: "insensitive" },
+            },
+          },
+        ];
+      }
+
       // Calculate skip for pagination
       const skip = (page - 1) * limit;
 
       // Get total count and products in parallel
       const [totalItems, products] = await Promise.all([
-        prisma.product.count(),
+        prisma.product.count({ where }),
         prisma.product.findMany({
+          where,
           include: {
             category: true,
             createdBy: {
