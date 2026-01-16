@@ -62,7 +62,9 @@ class CategoryController {
   // Get all categories (all authenticated users can view)
   async getAllCategories(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
+        req.query,
+      );
 
       // Allowed fields for sorting
       const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
@@ -76,13 +78,23 @@ class CategoryController {
         name: "asc",
       };
 
+      // Build search filter
+      const where: any = {};
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: "insensitive" } },
+          { description: { contains: search, mode: "insensitive" } },
+        ];
+      }
+
       // Calculate skip for pagination
       const skip = (page - 1) * limit;
 
       // Get total count and categories in parallel
       const [totalItems, categories] = await Promise.all([
-        prisma.category.count(),
+        prisma.category.count({ where }),
         prisma.category.findMany({
+          where,
           select: {
             id: true,
             name: true,
