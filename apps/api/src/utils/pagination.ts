@@ -3,6 +3,7 @@ export interface PaginationParams {
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  search?: string;
 }
 
 export interface PaginationResult<T> {
@@ -22,8 +23,9 @@ export const getPaginationParams = (query: any): Required<PaginationParams> => {
   const limit = Math.min(100, Math.max(1, parseInt(query.limit) || 10));
   const sortBy = query.sortBy || "id";
   const sortOrder = query.sortOrder?.toLowerCase() === "desc" ? "desc" : "asc";
+  const search = query.search?.trim() || "";
 
-  return { page, limit, sortBy, sortOrder };
+  return { page, limit, sortBy, sortOrder, search };
 };
 
 export const createPaginationResult = <T>(
