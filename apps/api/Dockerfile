@@ -21,6 +21,10 @@ COPY apps/api ./apps/api
 # Install all dependencies, skip lifecycle scripts (husky)
 RUN pnpm install --frozen-lockfile --ignore-scripts
 
+# Build the shared package first (api depends on it)
+WORKDIR /app/packages/shared
+RUN pnpm build
+
 # Generate Prisma client
 WORKDIR /app/apps/api
 RUN pnpm prisma:generate
