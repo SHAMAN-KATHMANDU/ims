@@ -36,6 +36,14 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Redirect root path based on auth status
+  if (pathname === "/") {
+    if (hasToken) {
+      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    }
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
   // Check if current path matches protected routes
   const isProtectedRoute = protectedRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
