@@ -1,80 +1,61 @@
-# ============================================
-# Stage 1: Builder - Install dependencies and build
-# ============================================
-FROM node:20-alpine AS builder
+FROM node:20-alpine AS base
 
-# Install OpenSSL for Prisma
-RUN apk add --no-cache openssl
+# The web Dockerfile is copy-pasted into our main docs at /docs/handbook/deploying-with-docker.
+# Make sure you update this Dockerfile, the Dockerfile in the web workspace and copy that over to Dockerfile in the docs.
 
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
+FROM base AS builder
+# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
+RUN apk update
+RUN apk add --no-cache libc6-compat openssl
+# Set working directory
+WORKDIR /app
+RUN npm install -g turbo
+COPY . .
+RUN turbo prune api --docker
 
+# Add lockfile and package.json's of isolated subworkspace
+FROM base AS installer
+RUN apk update
+RUN apk add --no-cache libc6-compat openssl
+RUN npm install -g pnpm@8.14.1
 WORKDIR /app
 
-# Copy root workspace files
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Copy the shared package
-COPY packages/shared ./packages/shared
+# First install dependencies (as they change less often)
+COPY --from=builder /app/out/json/ .
+RUN pnpm install 
+COPY --from=builder /app/out/full/ .
 
-# Copy the api package
-COPY apps/api ./apps/api
+# Generate Prisma client
+RUN pnpm --filter api prisma:generate
 
-# Install all dependencies, skip lifecycle scripts (husky)
-RUN pnpm install --frozen-lockfile --ignore-scripts
+# Build the app
+RUN pnpm turbo build
 
-# Build the shared package first (api depends on it)
-WORKDIR /app/packages/shared
-RUN pnpm build
+# Clean up source files only (keep node_modules with Prisma client)
+RUN find apps/api -type f \
+    -not -path 'apps/api/dist/*' \
+    -not -path 'apps/api/prisma/*' \
+    -not -path 'apps/api/node_modules/*' \
+    -not -name 'package.json' \
+    -delete && rm -rf apps/api/test apps/api/src
 
-# Generate Prisma client and build API
-WORKDIR /app/apps/api
-RUN pnpm prisma:generate
-RUN pnpm build
+# Remove dev-only packages from node_modules to reduce size
+RUN pnpm prune --prod && pnpm store prune
 
-# ============================================
-# Stage 2: Runner - Production image (minimal)
-# ============================================
-FROM node:20-alpine AS runner
 
-# Install OpenSSL for Prisma runtime
-RUN apk add --no-cache openssl
-
-# Install pnpm (needed for workspace resolution)
-RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
-
+FROM base AS runner
+RUN apk update && apk add --no-cache openssl
 WORKDIR /app
 
-# Copy workspace configuration
-COPY --from=builder /app/package.json /app/pnpm-lock.yaml /app/pnpm-workspace.yaml ./
-
-# Copy shared package (only dist and package.json)
-COPY --from=builder /app/packages/shared/package.json ./packages/shared/
-COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
-
-# Copy API package (only what's needed to run)
-COPY --from=builder /app/apps/api/package.json ./apps/api/
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-
-# Copy Prisma schema, migrations, and seed script
-COPY --from=builder /app/apps/api/prisma/schema.prisma ./apps/api/prisma/
-COPY --from=builder /app/apps/api/prisma/migrations ./apps/api/prisma/migrations
-COPY --from=builder /app/apps/api/prisma/seed.ts ./apps/api/prisma/
-COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
-
-# Copy node_modules (includes generated Prisma client)
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=builder /app/packages/shared/node_modules ./packages/shared/node_modules
-
-# Copy entrypoint script
-COPY apps/api/docker-entrypoint.sh /app/apps/api/
-RUN chmod +x /app/apps/api/docker-entrypoint.sh
-
-WORKDIR /app/apps/api
-
-# Expose the port (app listens on 4000)
-EXPOSE 4000
-
-# Run migrations then start the application
-ENTRYPOINT ["./docker-entrypoint.sh"]
+# Create log directory and set permissions
+RUN mkdir -p /app/.log && chmod -R 777 /app/.log
+# Don't run production as root
+RUN addgroup --system --gid 1001 nestjs
+RUN adduser --system --uid 1001 nestjs
+USER nestjs
+COPY --from=installer /app .
+# Tag the final image
+LABEL stage="final"
+RUN docker rmi $(docker images -f "label=stage=intermediate" -q) || true
+CMD node apps/api/dist/index.js

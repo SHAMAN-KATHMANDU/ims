@@ -7,9 +7,15 @@ settings:
 importers:
   .:
     dependencies:
+      "@prisma/client":
+        specifier: ^5.20.0
+        version: 5.22.0(prisma@5.22.0)
       "@vercel/analytics":
         specifier: 1.3.1
         version: 1.3.1(next@16.1.0(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
+      prisma:
+        specifier: ^5.20.0
+        version: 5.22.0
     devDependencies:
       eslint:
         specifier: ^9.39.1
@@ -33,7 +39,7 @@ importers:
   apps/api:
     dependencies:
       "@prisma/client":
-        specifier: ^5.20.0
+        specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
       "@repo/shared":
         specifier: workspace:*
@@ -79,7 +85,7 @@ importers:
         specifier: ^3.1.11
         version: 3.1.11
       prisma:
-        specifier: ^5.20.0
+        specifier: ^5.22.0
         version: 5.22.0
       ts-node:
         specifier: ^10.9.2

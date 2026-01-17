@@ -3,12 +3,36 @@
   "ui": "tui",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["^build", "^prisma:generate"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
       "env": ["NODE_ENV"]
     },
     "lint": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": []
+    },
+    "prisma:generate": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": []
+    },
+    "prisma:migrate": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": []
+    },
+    "prisma:migrate:deploy": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": []
+    },
+    "prisma:studio": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": []
+    },
+    "prisma:seed": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": []
+    },
+    "prisma:reset": {
       "inputs": ["$TURBO_DEFAULT$"],
       "outputs": []
     },
