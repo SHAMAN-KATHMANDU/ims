@@ -50,6 +50,14 @@ app.use((req, res, next) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Health check endpoint for container orchestration
+app.get("/health", (req, res) => {
+  res.status(200).json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+  });
+});
+
 // Swagger Documentation
 app.use(
   "/api-docs",
