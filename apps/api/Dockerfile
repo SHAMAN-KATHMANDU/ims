@@ -1,51 +1,35 @@
-# Base image
-FROM node:20-bullseye-slim
+# Single stage Dockerfile
+FROM node:20-alpine
 
-# Set working directory
-WORKDIR /app
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
 
-# Install system dependencies for Prisma and native modules
-RUN apt-get update && apt-get install -y \
-    openssl \
-    python3 \
-    make \
-    g++ \
-    && rm -rf /var/lib/apt/lists/*
-
-# Enable pnpm
+# Install pnpm
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
-# Configure pnpm for Linux binaries and faster downloads
-RUN pnpm config set supportedArchitectures.os "linux" && \
-    pnpm config set supportedArchitectures.cpu "x64" && \
-    pnpm config set network-concurrency 16
+WORKDIR /app
 
-# Copy workspace configuration files
+# Copy root workspace files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 
-# Copy package.json files for all workspaces
-COPY apps/web/package.json ./apps/web/
-COPY apps/api/package.json ./apps/api/
-COPY packages/eslint-config/package.json ./packages/eslint-config/
-COPY packages/typescript-config/package.json ./packages/typescript-config/
-COPY packages/ui/package.json ./packages/ui/
+# Copy the shared package
+COPY packages/shared ./packages/shared
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Copy the api package
+COPY apps/api ./apps/api
 
-# Copy application source code
-COPY . .
+# Install all dependencies, skip lifecycle scripts (husky)
+RUN pnpm install --frozen-lockfile --ignore-scripts
 
-# Generate Prisma client from the api directory
+# Generate Prisma client
 WORKDIR /app/apps/api
-RUN npx prisma generate
+RUN pnpm prisma:generate
 
-# Build TypeScript for production
-WORKDIR /app
-RUN pnpm --filter api... build
+# Build the TypeScript application
+RUN pnpm build
 
-# Expose port
-EXPOSE 4000
+# Expose the port
+EXPOSE 3000
 
-# Start production server
-CMD ["pnpm", "--filter", "api", "start"]
+# Run the application
+CMD ["node", "dist/index.js"]

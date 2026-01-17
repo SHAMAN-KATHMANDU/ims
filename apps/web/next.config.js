@@ -1,7 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Note: We're using direct API calls to localhost:4000
-  // No rewrites needed - frontend calls API directly
+  // Standalone output for optimized Docker builds
+  // This creates a minimal production bundle with only necessary files
+  output: "standalone",
+
+  // Note: We're using direct API calls - no rewrites needed
 };
 
 export default nextConfig;
