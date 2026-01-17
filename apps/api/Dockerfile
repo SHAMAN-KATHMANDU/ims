@@ -56,19 +56,25 @@ COPY --from=builder /app/packages/shared/dist ./packages/shared/dist
 COPY --from=builder /app/apps/api/package.json ./apps/api/
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
 
-# Copy Prisma schema and migrations (needed for runtime and migrate deploy)
+# Copy Prisma schema, migrations, and seed script
 COPY --from=builder /app/apps/api/prisma/schema.prisma ./apps/api/prisma/
 COPY --from=builder /app/apps/api/prisma/migrations ./apps/api/prisma/migrations
+COPY --from=builder /app/apps/api/prisma/seed.ts ./apps/api/prisma/
+COPY --from=builder /app/apps/api/tsconfig.json ./apps/api/
 
 # Copy node_modules (includes generated Prisma client)
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/apps/api/node_modules ./apps/api/node_modules
 COPY --from=builder /app/packages/shared/node_modules ./packages/shared/node_modules
 
+# Copy entrypoint script
+COPY apps/api/docker-entrypoint.sh /app/apps/api/
+RUN chmod +x /app/apps/api/docker-entrypoint.sh
+
 WORKDIR /app/apps/api
 
 # Expose the port (app listens on 4000)
 EXPOSE 4000
 
-# Run the application
-CMD ["node", "dist/index.js"]
+# Run migrations then start the application
+ENTRYPOINT ["./docker-entrypoint.sh"]
