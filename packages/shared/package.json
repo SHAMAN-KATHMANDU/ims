@@ -1,19 +1,22 @@
 {
-  "name": "shared",
+  "name": "@repo/shared",
   "version": "1.0.0",
-  "description": "",
+  "description": "Shared utilities and types for the monorepo",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "scripts": {
     "build": "tsc",
-    "dev": "tsc --watch"
+    "dev": "tsc --watch",
+    "lint": "eslint . --max-warnings 0",
+    "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "luxon": "^3.7.2",
-    "nodemon": "^3.1.11"
+    "luxon": "^3.7.2"
   },
   "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
     "@types/luxon": "^3.7.1",
-    "typescript": "^5.9.3"
+    "nodemon": "^3.1.11",
+    "typescript": "5.9.2"
   }
 }

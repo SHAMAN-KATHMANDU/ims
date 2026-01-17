@@ -1,4 +1,4 @@
-import { ErrorPage } from "@/components/error-page";
+import { ErrorPage } from "@/components/layout/error-page";
 
 export default function UnauthorizedPage() {
   return <ErrorPage />;

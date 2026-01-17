@@ -1,129 +1,162 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useAxios } from "./useAxios";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  setAuthToken,
-  removeAuthToken,
-  setAuthUser,
-  getAuthUser,
-  getAuthToken,
-  type AuthUser,
-} from "@/utils/auth";
+  login as loginApi,
+  getCurrentUser,
+  logout as logoutApi,
+} from "@/services/authService";
+import {
+  useAuthStore,
+  selectUser,
+  selectToken,
+  selectIsAuthenticated,
+  selectIsHydrated,
+} from "@/stores/auth-store";
+
+// ============================================
+// Types
+// ============================================
 
 interface LoginCredentials {
   username: string;
   password: string;
 }
 
-interface LoginResponse {
-  token: string;
-  user: AuthUser;
-}
+// ============================================
+// Query Keys
+// ============================================
+
+export const authKeys = {
+  all: ["auth"] as const,
+  user: () => [...authKeys.all, "user"] as const,
+};
+
+// ============================================
+// Auth Hook
+// ============================================
 
 /**
  * Authentication hook
  *
- * Design decisions:
- * - All auth logic centralized here
- * - Uses useAxios for API calls
- * - Manages auth state (user, isAuthenticated)
- * - Handles redirects after login/logout
- * - No direct API calls in components
+ * Combines:
+ * - Zustand store for client-side auth state (token, user cache)
+ * - TanStack Query for server state (getCurrentUser, mutations)
  */
 export function useAuth() {
-  const axios = useAxios();
   const router = useRouter();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  // Initialize auth state from localStorage
-  useEffect(() => {
-    const token = getAuthToken();
-    const storedUser = getAuthUser();
+  // Zustand state (with selectors for performance)
+  const user = useAuthStore(selectUser);
+  const token = useAuthStore(selectToken);
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const isHydrated = useAuthStore(selectIsHydrated);
 
-    if (token && storedUser) {
-      setUser(storedUser);
-      setIsAuthenticated(true);
-    }
+  // Zustand actions
+  const setAuth = useAuthStore((s) => s.setAuth);
+  const clearAuth = useAuthStore((s) => s.clearAuth);
 
-    setIsLoading(false);
-  }, []);
+  // Query: Fetch current user (only when authenticated)
+  const {
+    data: currentUser,
+    isLoading: isLoadingUser,
+    refetch: refetchUser,
+  } = useQuery({
+    queryKey: authKeys.user(),
+    queryFn: getCurrentUser,
+    enabled: isAuthenticated && isHydrated,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: false,
+  });
 
-  /**
-   * Login function
-   * Normalizes username, calls API, stores token/user, redirects
-   */
-  const login = useCallback(
-    async (credentials: LoginCredentials) => {
-      try {
-        // Normalize username
-        const normalizedUsername = credentials.username.trim().toLowerCase();
-
-        const response = await axios.post<LoginResponse>("/auth/login", {
-          username: normalizedUsername,
-          password: credentials.password,
-        });
-
-        const { token, user } = response.data;
-
-        // Store auth data
-        setAuthToken(token);
-        setAuthUser(user);
-        setUser(user);
-        setIsAuthenticated(true);
-
-        // Redirect based on user role
-        if (user.role === "superAdmin" || user.role === "admin") {
-          router.push("/admin/dashboard");
-        } else {
-          router.push("/admin/dashboard"); // Regular users also go to dashboard but with limited access
-        }
-        router.refresh();
-
-        // Redirect to admin dashboard
-        router.push("/admin");
-        router.refresh();
-
-        return { token, user };
-      } catch (error: unknown) {
-        const err = error as {
-          response?: { data?: { message?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          err.response?.data?.message || err.message || "Login failed";
-        throw new Error(errorMessage);
-      }
+  // Mutation: Login
+  const loginMutation = useMutation({
+    mutationFn: (credentials: LoginCredentials) =>
+      loginApi(credentials.username, credentials.password),
+    onSuccess: ({ token, user }) => {
+      // Update Zustand store
+      setAuth(user, token);
+      // Invalidate user query to refetch
+      queryClient.invalidateQueries({ queryKey: authKeys.user() });
+      // Redirect
+      router.push("/admin/dashboard");
+      router.refresh();
     },
-    [axios, router],
-  );
+  });
 
-  /**
-   * Logout function
-   * Calls API, clears state, redirects to login
-   */
-  const logout = useCallback(async () => {
-    try {
-      await axios.post("/auth/logout");
-    } catch {
-      // Ignore logout errors - still clear local state
-    } finally {
-      removeAuthToken();
-      setUser(null);
-      setIsAuthenticated(false);
+  // Mutation: Logout
+  const logoutMutation = useMutation({
+    mutationFn: logoutApi,
+    onSettled: () => {
+      // Always clear auth, even if API fails
+      clearAuth();
+      // Clear all queries
+      queryClient.clear();
+      // Redirect
       router.push("/login");
       router.refresh();
+    },
+  });
+
+  // Wrapper functions for cleaner API
+  const login = useCallback(
+    async (credentials: LoginCredentials) => {
+      return loginMutation.mutateAsync(credentials);
+    },
+    [loginMutation],
+  );
+
+  const logout = useCallback(async () => {
+    return logoutMutation.mutateAsync();
+  }, [logoutMutation]);
+
+  const refreshUser = useCallback(async () => {
+    const result = await refetchUser();
+    if (result.data) {
+      setAuth(result.data, token!);
     }
-  }, [axios, router]);
+    return result.data ?? null;
+  }, [refetchUser, setAuth, token]);
 
   return {
+    // State
+    user: currentUser ?? user,
+    isAuthenticated,
+    isLoading: !isHydrated || isLoadingUser,
+    isHydrated,
+
+    // Actions
     login,
     logout,
-    user,
-    isAuthenticated,
-    isLoading,
+    refreshUser,
+
+    // Mutation states (for UI feedback)
+    isLoggingIn: loginMutation.isPending,
+    isLoggingOut: logoutMutation.isPending,
+    loginError: loginMutation.error,
   };
+}
+
+// ============================================
+// Convenience Hooks (for specific use cases)
+// ============================================
+
+/**
+ * Hook for just checking auth status (optimized)
+ */
+export function useIsAuthenticated() {
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const isHydrated = useAuthStore(selectIsHydrated);
+  return { isAuthenticated, isHydrated };
+}
+
+/**
+ * Hook for just getting user (optimized)
+ */
+export function useCurrentUser() {
+  const user = useAuthStore(selectUser);
+  return user;
 }

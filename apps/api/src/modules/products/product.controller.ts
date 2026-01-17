@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
-import { parseDate } from "shared";
+import { parseDate } from "@repo/shared";
 import {
   getPaginationParams,
   createPaginationResult,

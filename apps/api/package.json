@@ -31,7 +31,7 @@
     "jsonwebtoken": "^9.0.3",
     "luxon": "^3.7.2",
     "pg": "^8.13.1",
-    "shared": "workspace:*",
+    "@repo/shared": "workspace:*",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "tsconfig-paths": "^4.2.0"
