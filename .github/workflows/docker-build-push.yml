@@ -65,6 +65,10 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Create environment file for Web
+        run: |
+          tee ./apps/web/.env <<<"${{ vars.DEV_UI }}"
+
       - name: Build and push Web image
         uses: docker/build-push-action@v5
         with:
