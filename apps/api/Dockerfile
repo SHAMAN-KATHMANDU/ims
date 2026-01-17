@@ -28,8 +28,8 @@ RUN pnpm prisma:generate
 # Build the TypeScript application
 RUN pnpm build
 
-# Expose the port
-EXPOSE 3000
+# Expose the port (app listens on 4000)
+EXPOSE 4000
 
 # Run the application
 CMD ["node", "dist/index.js"]
