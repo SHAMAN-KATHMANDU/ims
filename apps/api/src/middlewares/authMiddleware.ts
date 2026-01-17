@@ -31,7 +31,6 @@ const verifyToken = (req: Request, res: Response, next: NextFunction) => {
       ...decoded,
     };
 
-    console.log("The decoded user is:", req.user);
     next();
   } catch (err: any) {
     console.error("Token verification error:", err);

@@ -1,5 +1,24 @@
 "use client";
 
+/**
+ * @deprecated This hook is deprecated. Use react-hook-form with zod instead.
+ *
+ * Example:
+ * ```tsx
+ * import { useForm } from "react-hook-form";
+ * import { zodResolver } from "@hookform/resolvers/zod";
+ * import { z } from "zod";
+ *
+ * const schema = z.object({ name: z.string().min(1) });
+ * const { register, handleSubmit, formState: { errors } } = useForm({
+ *   resolver: zodResolver(schema)
+ * });
+ * ```
+ *
+ * This hook is only kept for the product forms which need a larger refactor.
+ * TODO: Refactor product forms to use react-hook-form, then delete this file.
+ */
+
 import { useState, useCallback, type FormEvent } from "react";
 
 interface UseFormOptions<T> {
@@ -18,7 +37,7 @@ export interface UseFormReturn<T> {
 }
 
 /**
- * Generic form state management hook
+ * @deprecated Use react-hook-form instead
  */
 export function useForm<T extends object>({
   onSubmit,

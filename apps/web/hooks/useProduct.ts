@@ -1,29 +1,57 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAxios } from "./useAxios";
 import {
-  ProductService,
+  getProducts,
+  getAllProducts,
+  getProductById,
+  createProduct,
+  updateProduct,
+  deleteProduct,
+  getAllDiscountTypes,
   type Product,
-  type Category,
   type ProductVariation,
   type CreateProductData,
   type UpdateProductData,
+  type ProductListParams,
+  type PaginatedProductsResponse,
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
 } from "@/services/productService";
 import {
-  CategoryService,
+  getAllCategories,
+  getCategoryById,
+  createCategory,
+  updateCategory,
+  deleteCategory,
+  type Category,
   type CreateCategoryData,
   type UpdateCategoryData,
 } from "@/services/categoryService";
 
 // Re-export types for convenience
-export type { Product, Category, ProductVariation };
+export type {
+  Product,
+  Category,
+  ProductVariation,
+  ProductListParams,
+  PaginatedProductsResponse,
+  PaginationMeta,
+};
 
-// Query keys
+// Re-export defaults
+export { DEFAULT_PAGE, DEFAULT_LIMIT };
+
+// ============================================
+// Query Keys
+// ============================================
+
 export const productKeys = {
   all: ["products"] as const,
   lists: () => [...productKeys.all, "list"] as const,
-  list: (filters: string) => [...productKeys.lists(), { filters }] as const,
+  list: (params: ProductListParams) =>
+    [...productKeys.lists(), params] as const,
   details: () => [...productKeys.all, "detail"] as const,
   detail: (id: string) => [...productKeys.details(), id] as const,
 };
@@ -37,66 +65,69 @@ export const categoryKeys = {
 };
 
 // ============================================
-// PRODUCT HOOKS
+// Product Hooks
 // ============================================
 
-export function useProducts() {
-  const axios = useAxios();
-  const productService = new ProductService(axios);
+/**
+ * Hook for fetching paginated products with search support
+ *
+ * @param params - Pagination and search parameters
+ * @returns Query result with products data and pagination info
+ */
+export function useProductsPaginated(params: ProductListParams = {}) {
+  const normalizedParams: ProductListParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    search: params.search?.trim() || "",
+  };
 
   return useQuery({
+    queryKey: productKeys.list(normalizedParams),
+    queryFn: () => getProducts(normalizedParams),
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+/**
+ * Hook for fetching all products without pagination
+ * @deprecated Use useProductsPaginated for better performance
+ */
+export function useProducts() {
+  return useQuery({
     queryKey: productKeys.lists(),
-    queryFn: async () => {
-      return await productService.getAllProducts();
-    },
+    queryFn: getAllProducts,
   });
 }
 
 export function useProduct(id: string) {
-  const axios = useAxios();
-  const productService = new ProductService(axios);
-
   return useQuery({
     queryKey: productKeys.detail(id),
-    queryFn: async () => {
-      return await productService.getProductById(id);
-    },
+    queryFn: () => getProductById(id),
     enabled: !!id,
   });
 }
 
 export function useCreateProduct() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const productService = new ProductService(axios);
 
   return useMutation({
-    mutationFn: async (data: CreateProductData) => {
-      return await productService.createProduct(data);
-    },
+    mutationFn: (data: CreateProductData) => createProduct(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+      // Invalidate all product lists (paginated and non-paginated)
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
     },
   });
 }
 
 export function useUpdateProduct() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const productService = new ProductService(axios);
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: UpdateProductData;
-    }) => {
-      return await productService.updateProduct(id, data);
-    },
-    onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+    mutationFn: ({ id, data }: { id: string; data: UpdateProductData }) =>
+      updateProduct(id, data),
+    onSuccess: (_, variables) => {
+      // Invalidate all product lists and the specific product detail
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({
         queryKey: productKeys.detail(variables.id),
       });
@@ -105,58 +136,58 @@ export function useUpdateProduct() {
 }
 
 export function useDeleteProduct() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const productService = new ProductService(axios);
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      await productService.deleteProduct(id);
-    },
+    mutationFn: (id: string) => deleteProduct(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+      // Invalidate all product lists
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
     },
   });
 }
 
 // ============================================
-// CATEGORY HOOKS
+// Category Hooks
 // ============================================
 
 export function useCategories() {
-  const axios = useAxios();
-  const categoryService = new CategoryService(axios);
-
   return useQuery({
     queryKey: categoryKeys.lists(),
-    queryFn: async () => {
-      return await categoryService.getAllCategories();
-    },
+    queryFn: getAllCategories,
+  });
+}
+
+// ============================================
+// Discount Type Hooks
+// ============================================
+
+export const discountTypeKeys = {
+  all: ["discountTypes"] as const,
+  lists: () => [...discountTypeKeys.all, "list"] as const,
+};
+
+export function useDiscountTypes() {
+  return useQuery({
+    queryKey: discountTypeKeys.lists(),
+    queryFn: getAllDiscountTypes,
+    staleTime: 5 * 60 * 1000, // Cache for 5 minutes - discount types rarely change
   });
 }
 
 export function useCategory(id: string) {
-  const axios = useAxios();
-  const categoryService = new CategoryService(axios);
-
   return useQuery({
     queryKey: categoryKeys.detail(id),
-    queryFn: async () => {
-      return await categoryService.getCategoryById(id);
-    },
+    queryFn: () => getCategoryById(id),
     enabled: !!id,
   });
 }
 
 export function useCreateCategory() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const categoryService = new CategoryService(axios);
 
   return useMutation({
-    mutationFn: async (data: CreateCategoryData) => {
-      return await categoryService.createCategory(data);
-    },
+    mutationFn: (data: CreateCategoryData) => createCategory(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
     },
@@ -164,21 +195,12 @@ export function useCreateCategory() {
 }
 
 export function useUpdateCategory() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const categoryService = new CategoryService(axios);
 
   return useMutation({
-    mutationFn: async ({
-      id,
-      data,
-    }: {
-      id: string;
-      data: UpdateCategoryData;
-    }) => {
-      return await categoryService.updateCategory(id, data);
-    },
-    onSuccess: (data, variables) => {
+    mutationFn: ({ id, data }: { id: string; data: UpdateCategoryData }) =>
+      updateCategory(id, data),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: categoryKeys.detail(variables.id),
@@ -188,14 +210,10 @@ export function useUpdateCategory() {
 }
 
 export function useDeleteCategory() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const categoryService = new CategoryService(axios);
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      await categoryService.deleteCategory(id);
-    },
+    mutationFn: (id: string) => deleteCategory(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
     },
@@ -203,11 +221,10 @@ export function useDeleteCategory() {
 }
 
 // ============================================
-// VARIATIONS (kept for backward compatibility)
+// Variations (managed through products)
 // ============================================
 
 export function useVariations() {
-  // Variations are managed through products
   return {
     variations: [] as ProductVariation[],
     isLoading: false,

@@ -1,9 +1,12 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAxios } from "./useAxios";
 import {
-  UserService,
+  getAllUsers,
+  getUserById,
+  createUser,
+  updateUser,
+  deleteUser,
   type User,
   type CreateUserData,
   type UpdateUserData,
@@ -25,14 +28,9 @@ export const userKeys = {
  * Hook for fetching all users
  */
 export function useUsers() {
-  const axios = useAxios();
-  const userService = new UserService(axios);
-
   return useQuery({
     queryKey: userKeys.lists(),
-    queryFn: async () => {
-      return await userService.getAllUsers();
-    },
+    queryFn: getAllUsers,
   });
 }
 
@@ -40,15 +38,10 @@ export function useUsers() {
  * Hook for fetching a single user by ID
  */
 export function useUser(id: string) {
-  const axios = useAxios();
-  const userService = new UserService(axios);
-
   return useQuery({
     queryKey: userKeys.detail(id),
-    queryFn: async () => {
-      return await userService.getUserById(id);
-    },
-    enabled: !!id, // Only fetch if id is provided
+    queryFn: () => getUserById(id),
+    enabled: !!id,
   });
 }
 
@@ -56,16 +49,11 @@ export function useUser(id: string) {
  * Hook for creating a new user
  */
 export function useCreateUser() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const userService = new UserService(axios);
 
   return useMutation({
-    mutationFn: async (data: CreateUserData) => {
-      return await userService.createUser(data);
-    },
+    mutationFn: (data: CreateUserData) => createUser(data),
     onSuccess: () => {
-      // Invalidate and refetch users list
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
     },
   });
@@ -75,16 +63,12 @@ export function useCreateUser() {
  * Hook for updating a user
  */
 export function useUpdateUser() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const userService = new UserService(axios);
 
   return useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: UpdateUserData }) => {
-      return await userService.updateUser(id, data);
-    },
-    onSuccess: (data, variables) => {
-      // Invalidate both list and detail queries
+    mutationFn: ({ id, data }: { id: string; data: UpdateUserData }) =>
+      updateUser(id, data),
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: userKeys.detail(variables.id),
@@ -97,16 +81,11 @@ export function useUpdateUser() {
  * Hook for deleting a user
  */
 export function useDeleteUser() {
-  const axios = useAxios();
   const queryClient = useQueryClient();
-  const userService = new UserService(axios);
 
   return useMutation({
-    mutationFn: async (id: string) => {
-      await userService.deleteUser(id);
-    },
+    mutationFn: (id: string) => deleteUser(id),
     onSuccess: () => {
-      // Invalidate users list
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
     },
   });

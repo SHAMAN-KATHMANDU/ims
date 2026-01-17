@@ -2,8 +2,8 @@ import type React from "react";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
-import { ThemeProvider } from "@/components/theme-provider";
-import { QueryClientProvider } from "@/components/query-client-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
+import { QueryClientProvider } from "@/components/providers/query-client-provider";
 import "./globals.css";
 
 const geistSans = Geist({
