@@ -8,8 +8,13 @@ import {
   Package,
   BarChart3,
   ChevronLeft,
-  Shield,
   ChevronDown,
+  Warehouse,
+  ArrowLeftRight,
+  Settings,
+  Users,
+  Receipt,
+  UserCheck,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthStore, selectUserRole } from "@/stores/auth-store";
@@ -40,35 +45,85 @@ interface NavSection {
 // Define nav sections
 const navSections: NavSection[] = [
   {
-    title: "OVERVIEW",
+    title: "MAIN",
     items: [
       {
         path: "",
-        label: "Home",
+        label: "Dashboard",
         icon: Home,
         roles: ["user", "admin", "superAdmin"],
       },
     ],
   },
   {
-    title: "MANAGEMENT",
+    title: "SALES",
+    items: [
+      {
+        path: "sales",
+        label: "Sales",
+        icon: Receipt,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "members",
+        label: "Members",
+        icon: UserCheck,
+        roles: ["admin", "superAdmin"],
+      },
+    ],
+  },
+  {
+    title: "CATALOG",
     items: [
       {
         path: "product",
-        label: "Product",
+        label: "Products",
         icon: Package,
         roles: ["user", "admin", "superAdmin"],
       },
+    ],
+  },
+  {
+    title: "INVENTORY",
+    items: [
+      {
+        path: "locations",
+        label: "Locations",
+        icon: Warehouse,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "transfers",
+        label: "Transfers",
+        icon: ArrowLeftRight,
+        roles: ["user", "admin", "superAdmin"],
+      },
+    ],
+  },
+  {
+    title: "REPORTS",
+    items: [
       {
         path: "analytics",
         label: "Analytics",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
       },
+    ],
+  },
+  {
+    title: "SETTINGS",
+    items: [
+      {
+        path: "users",
+        label: "Users",
+        icon: Users,
+        roles: ["superAdmin"],
+      },
       {
         path: "admin-controls",
-        label: "Admin Controls",
-        icon: Shield,
+        label: "System",
+        icon: Settings,
         roles: ["superAdmin"],
       },
     ],
@@ -86,8 +141,12 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const userRole = useAuthStore(selectUserRole);
   const isMobile = useIsMobile();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
-    OVERVIEW: true,
-    MANAGEMENT: true,
+    MAIN: true,
+    SALES: true,
+    CATALOG: true,
+    INVENTORY: true,
+    REPORTS: true,
+    SETTINGS: true,
   });
 
   // Detect base path from current pathname if not provided

@@ -30,6 +30,7 @@ import { DiscountsTab } from "./components/DiscountsTab";
 import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
+import { LocationSelector } from "@/components/ui/location-selector";
 import type {
   ProductFormValues,
   CategoryFormValues,
@@ -45,6 +46,7 @@ export function ProductPage() {
     page: DEFAULT_PAGE,
     limit: DEFAULT_LIMIT,
     search: "",
+    locationId: undefined,
   });
 
   // Fetch paginated products
@@ -83,6 +85,14 @@ export function ProductPage() {
       ...prev,
       page: DEFAULT_PAGE, // Reset to first page when searching
       search: newSearch,
+    }));
+  }, []);
+
+  const handleLocationChange = useCallback((newLocationId: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE, // Reset to first page when changing location
+      locationId: newLocationId === "all" ? undefined : newLocationId,
     }));
   }, []);
   const createProductMutation = useCreateProduct();
@@ -688,8 +698,17 @@ export function ProductPage() {
         </TabsList>
 
         <TabsContent value="products" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Product Catalog</h2>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-4">
+              <h2 className="text-xl font-semibold">Product Catalog</h2>
+              <LocationSelector
+                value={paginationParams.locationId || "all"}
+                onChange={handleLocationChange}
+                placeholder="Filter by location"
+                allLabel="All Locations"
+                className="w-[200px]"
+              />
+            </div>
             {canManageProducts && (
               <ProductForm
                 open={productDialog}
