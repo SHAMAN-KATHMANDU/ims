@@ -262,6 +262,10 @@ class ProductController {
         req.query,
       );
 
+      // Parse optional locationId filter
+      const locationId = req.query.locationId as string | undefined;
+      const categoryId = req.query.categoryId as string | undefined;
+
       // Allowed fields for sorting
       const allowedSortFields = [
         "id",
@@ -297,8 +301,45 @@ class ProductController {
         ];
       }
 
+      // Add category filter
+      if (categoryId) {
+        where.categoryId = categoryId;
+      }
+
+      // If locationId is provided, filter products that have inventory at that location
+      if (locationId) {
+        where.variations = {
+          some: {
+            locationInventory: {
+              some: {
+                locationId,
+                quantity: { gt: 0 },
+              },
+            },
+          },
+        };
+      }
+
       // Calculate skip for pagination
       const skip = (page - 1) * limit;
+
+      // Build include object based on whether locationId is provided
+      const variationsInclude: any = {
+        photos: true,
+      };
+
+      // If locationId is provided, include location-specific inventory
+      if (locationId) {
+        variationsInclude.locationInventory = {
+          where: { locationId },
+          select: {
+            quantity: true,
+            location: {
+              select: { id: true, name: true, type: true },
+            },
+          },
+        };
+      }
 
       // Get total count and products in parallel
       const [totalItems, products] = await Promise.all([
@@ -315,9 +356,7 @@ class ProductController {
               },
             },
             variations: {
-              include: {
-                photos: true,
-              },
+              include: variationsInclude,
             },
             discounts: {
               include: {
@@ -335,6 +374,7 @@ class ProductController {
 
       res.status(200).json({
         message: "Products fetched successfully",
+        locationId: locationId || null,
         ...result,
       });
     } catch (error: any) {

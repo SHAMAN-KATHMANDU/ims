@@ -1,0 +1,154 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Plus } from "lucide-react";
+import type { Location, LocationType } from "@/hooks/useLocation";
+
+interface LocationFormProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  editingLocation: Location | null;
+  onSubmit: (data: {
+    name: string;
+    type: LocationType;
+    address: string;
+  }) => Promise<void>;
+  onReset: () => void;
+  isLoading?: boolean;
+}
+
+export function LocationForm({
+  open,
+  onOpenChange,
+  editingLocation,
+  onSubmit,
+  onReset,
+  isLoading,
+}: LocationFormProps) {
+  const [name, setName] = useState("");
+  const [type, setType] = useState<LocationType>("SHOWROOM");
+  const [address, setAddress] = useState("");
+
+  // Populate form when editing
+  useEffect(() => {
+    if (editingLocation) {
+      setName(editingLocation.name);
+      setType(editingLocation.type);
+      setAddress(editingLocation.address || "");
+    } else {
+      setName("");
+      setType("SHOWROOM");
+      setAddress("");
+    }
+  }, [editingLocation, open]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await onSubmit({ name, type, address });
+  };
+
+  const handleOpenChange = (newOpen: boolean) => {
+    if (!newOpen) {
+      onReset();
+    }
+    onOpenChange(newOpen);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Location
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>
+              {editingLocation ? "Edit Location" : "Add New Location"}
+            </DialogTitle>
+            <DialogDescription>
+              {editingLocation
+                ? "Update the location details below."
+                : "Create a new warehouse or showroom location."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Name *</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g., Main Warehouse"
+                required
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="type">Type *</Label>
+              <Select
+                value={type}
+                onValueChange={(value) => setType(value as LocationType)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
+                  <SelectItem value="SHOWROOM">Showroom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="address">Address</Label>
+              <Textarea
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Enter the location address..."
+                rows={3}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isLoading || !name.trim()}>
+              {isLoading
+                ? "Saving..."
+                : editingLocation
+                  ? "Update Location"
+                  : "Create Location"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

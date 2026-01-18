@@ -76,6 +76,8 @@ export interface ProductListParams {
   page?: number;
   limit?: number;
   search?: string;
+  locationId?: string;
+  categoryId?: string;
 }
 
 export interface PaginationMeta {
@@ -191,13 +193,25 @@ export const DEFAULT_SEARCH = "";
 export async function getProducts(
   params: ProductListParams = {},
 ): Promise<PaginatedProductsResponse> {
-  const { page = DEFAULT_PAGE, limit = DEFAULT_LIMIT, search = "" } = params;
+  const {
+    page = DEFAULT_PAGE,
+    limit = DEFAULT_LIMIT,
+    search = "",
+    locationId,
+    categoryId,
+  } = params;
 
   const queryParams = new URLSearchParams();
   queryParams.set("page", String(page));
   queryParams.set("limit", String(limit));
   if (search.trim()) {
     queryParams.set("search", search.trim());
+  }
+  if (locationId) {
+    queryParams.set("locationId", locationId);
+  }
+  if (categoryId) {
+    queryParams.set("categoryId", categoryId);
   }
 
   try {
