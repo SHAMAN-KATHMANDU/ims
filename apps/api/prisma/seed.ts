@@ -655,9 +655,407 @@ async function main() {
     );
   }
 
+  // ============================================
+  // 5. CREATE DEFAULT LOCATIONS (WAREHOUSE & SHOWROOMS)
+  // ============================================
+  const locationsData = [
+    {
+      name: "Main Warehouse",
+      type: "WAREHOUSE" as const,
+      address: "Central Distribution Center, Industrial Area",
+    },
+    {
+      name: "Showroom A",
+      type: "SHOWROOM" as const,
+      address: "Downtown Shopping Complex, Floor 1",
+    },
+    {
+      name: "Showroom B",
+      type: "SHOWROOM" as const,
+      address: "Mall of Commerce, Unit 25",
+    },
+  ];
+
+  const locations: Record<string, { id: string }> = {};
+
+  for (const loc of locationsData) {
+    let location = await prisma.location.findUnique({
+      where: { name: loc.name },
+    });
+
+    if (!location) {
+      location = await prisma.location.create({
+        data: loc,
+      });
+      console.log(`✅ Created location: ${loc.name} (${loc.type})`);
+    } else {
+      console.log(`⚠️  Location "${loc.name}" already exists. Skipping.`);
+    }
+    locations[loc.name] = { id: location.id };
+  }
+
+  // ============================================
+  // 6. MIGRATE STOCK TO LOCATION INVENTORY
+  // ============================================
+  // Get the main warehouse location
+  const mainWarehouse = locations["Main Warehouse"];
+
+  if (mainWarehouse) {
+    // Get all product variations
+    const allVariations = await prisma.productVariation.findMany({
+      select: { id: true, stockQuantity: true },
+    });
+
+    for (const variation of allVariations) {
+      // Check if inventory record already exists
+      const existingInventory = await prisma.locationInventory.findUnique({
+        where: {
+          locationId_variationId: {
+            locationId: mainWarehouse.id,
+            variationId: variation.id,
+          },
+        },
+      });
+
+      if (!existingInventory && variation.stockQuantity > 0) {
+        // Create inventory record for warehouse with current stock
+        await prisma.locationInventory.create({
+          data: {
+            locationId: mainWarehouse.id,
+            variationId: variation.id,
+            quantity: variation.stockQuantity,
+          },
+        });
+      }
+    }
+    console.log(
+      `✅ Migrated ${allVariations.length} variation stocks to Main Warehouse inventory`,
+    );
+  }
+
+  // ============================================
+  // 7. CREATE SAMPLE MEMBERS (CUSTOMERS)
+  // ============================================
+  const membersData = [
+    {
+      phone: "9841000001",
+      name: "Rajesh Sharma",
+      email: "rajesh.sharma@email.com",
+      notes: "VIP customer",
+    },
+    { phone: "9841000002", name: "Sunita Patel", email: "sunita.p@email.com" },
+    { phone: "9841000003", name: "Amit Kumar", email: "amit.kumar@email.com" },
+    {
+      phone: "9841000004",
+      name: "Priya Singh",
+      email: "priya.singh@email.com",
+      notes: "Corporate buyer",
+    },
+    { phone: "9841000005", name: "Bikash Thapa" },
+    { phone: "9841000006", name: "Anita Gurung", email: "anita.g@email.com" },
+    {
+      phone: "9841000007",
+      name: "Ramesh Adhikari",
+      email: "ramesh.a@email.com",
+    },
+    { phone: "9841000008", name: "Sita Rai" },
+    {
+      phone: "9841000009",
+      name: "Krishna Bhattarai",
+      email: "krishna.b@email.com",
+      notes: "Wholesale inquiries",
+    },
+    {
+      phone: "9841000010",
+      name: "Gita Shrestha",
+      email: "gita.shrestha@email.com",
+    },
+    { phone: "9841000011", name: "Hari Prasad", email: "hari.p@email.com" },
+    { phone: "9841000012", name: "Maya Tamang" },
+    {
+      phone: "9841000013",
+      name: "Prakash Karki",
+      email: "prakash.k@email.com",
+    },
+    { phone: "9841000014", name: "Kamala Devi", email: "kamala.d@email.com" },
+    { phone: "9841000015", name: "Suresh Lama", notes: "Frequent buyer" },
+  ];
+
+  const members: Record<string, { id: string; phone: string }> = {};
+
+  for (const memberData of membersData) {
+    let member = await prisma.member.findUnique({
+      where: { phone: memberData.phone },
+    });
+
+    if (!member) {
+      member = await prisma.member.create({
+        data: memberData,
+      });
+      console.log(
+        `✅ Created member: ${memberData.name} (${memberData.phone})`,
+      );
+    } else {
+      console.log(`⚠️  Member "${memberData.phone}" already exists. Skipping.`);
+    }
+    members[memberData.phone] = { id: member.id, phone: member.phone };
+  }
+
+  // ============================================
+  // 8. DISTRIBUTE STOCK TO SHOWROOMS
+  // ============================================
+  const showroomA = locations["Showroom A"];
+  const showroomB = locations["Showroom B"];
+
+  if (showroomA && showroomB && mainWarehouse) {
+    // Get all variations with warehouse inventory
+    const warehouseInventory = await prisma.locationInventory.findMany({
+      where: { locationId: mainWarehouse.id },
+      include: { variation: true },
+    });
+
+    let distributedCount = 0;
+
+    for (const inv of warehouseInventory) {
+      // Distribute some stock to showrooms (keep most in warehouse)
+      const warehouseStock = inv.quantity;
+      if (warehouseStock < 20) continue; // Skip if not enough stock
+
+      // Calculate distribution (20-40% to each showroom)
+      const toShowroomA = Math.floor(
+        warehouseStock * (0.2 + Math.random() * 0.2),
+      );
+      const toShowroomB = Math.floor(
+        warehouseStock * (0.15 + Math.random() * 0.15),
+      );
+
+      // Check if showroom inventory already exists
+      const existingA = await prisma.locationInventory.findUnique({
+        where: {
+          locationId_variationId: {
+            locationId: showroomA.id,
+            variationId: inv.variationId,
+          },
+        },
+      });
+
+      const existingB = await prisma.locationInventory.findUnique({
+        where: {
+          locationId_variationId: {
+            locationId: showroomB.id,
+            variationId: inv.variationId,
+          },
+        },
+      });
+
+      if (!existingA && toShowroomA > 0) {
+        await prisma.locationInventory.create({
+          data: {
+            locationId: showroomA.id,
+            variationId: inv.variationId,
+            quantity: toShowroomA,
+          },
+        });
+        distributedCount++;
+      }
+
+      if (!existingB && toShowroomB > 0) {
+        await prisma.locationInventory.create({
+          data: {
+            locationId: showroomB.id,
+            variationId: inv.variationId,
+            quantity: toShowroomB,
+          },
+        });
+        distributedCount++;
+      }
+    }
+
+    if (distributedCount > 0) {
+      console.log(
+        `✅ Distributed stock to showrooms (${distributedCount} inventory records)`,
+      );
+    }
+  }
+
+  // ============================================
+  // 9. CREATE SAMPLE SALES
+  // ============================================
+  // Helper to generate sale code
+  function generateSaleCode(index: number): string {
+    const date = new Date();
+    date.setDate(date.getDate() - Math.floor(Math.random() * 30)); // Random date in last 30 days
+    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+    const random = String(index).padStart(4, "0");
+    return `SL-${dateStr}-${random}`;
+  }
+
+  // Get showroom inventory for sales
+  const showroomAInventory = await prisma.locationInventory.findMany({
+    where: { locationId: showroomA?.id, quantity: { gt: 0 } },
+    include: {
+      variation: {
+        include: {
+          product: {
+            include: {
+              discounts: {
+                where: { isActive: true },
+                include: { discountType: true },
+              },
+            },
+          },
+        },
+      },
+    },
+    take: 50,
+  });
+
+  const showroomBInventory = await prisma.locationInventory.findMany({
+    where: { locationId: showroomB?.id, quantity: { gt: 0 } },
+    include: {
+      variation: {
+        include: {
+          product: {
+            include: {
+              discounts: {
+                where: { isActive: true },
+                include: { discountType: true },
+              },
+            },
+          },
+        },
+      },
+    },
+    take: 50,
+  });
+
+  // Check if sales already exist
+  const existingSalesCount = await prisma.sale.count();
+
+  if (
+    existingSalesCount === 0 &&
+    showroomAInventory.length > 0 &&
+    showroomBInventory.length > 0
+  ) {
+    const memberPhones = Object.keys(members);
+    let saleIndex = 1;
+
+    // Create 30 sales
+    for (let i = 0; i < 30; i++) {
+      // Randomly choose showroom
+      const isShowroomA = Math.random() > 0.5;
+      const locationId = isShowroomA ? showroomA!.id : showroomB!.id;
+      const inventory = isShowroomA ? showroomAInventory : showroomBInventory;
+
+      if (inventory.length === 0) continue;
+
+      // Randomly choose if this is a member sale (60% chance)
+      const isMemberSale = Math.random() < 0.6;
+      const memberPhone = isMemberSale
+        ? memberPhones[Math.floor(Math.random() * memberPhones.length)]
+        : null;
+      const member = memberPhone ? members[memberPhone] : null;
+
+      // Get member discount type
+      const memberDiscountType = await prisma.discountType.findUnique({
+        where: { name: "Member" },
+      });
+
+      // Select 1-4 random items for this sale
+      const numItems = 1 + Math.floor(Math.random() * 4);
+      const shuffledInventory = [...inventory].sort(() => Math.random() - 0.5);
+      const selectedItems = shuffledInventory.slice(0, numItems);
+
+      let subtotal = 0;
+      let totalDiscount = 0;
+      const saleItems: Array<{
+        variationId: string;
+        quantity: number;
+        unitPrice: number;
+        discountPercent: number;
+        lineTotal: number;
+      }> = [];
+
+      for (const item of selectedItems) {
+        const quantity = 1 + Math.floor(Math.random() * 3);
+        const unitPrice = Number(item.variation.product.mrp);
+
+        // Calculate discount
+        let discountPercent = 0;
+        if (isMemberSale && memberDiscountType) {
+          const memberDiscount = item.variation.product.discounts.find(
+            (d) => d.discountTypeId === memberDiscountType.id,
+          );
+          if (memberDiscount) {
+            discountPercent = Number(memberDiscount.discountPercentage);
+          }
+        }
+
+        const itemSubtotal = unitPrice * quantity;
+        const itemDiscount = itemSubtotal * (discountPercent / 100);
+        const lineTotal = itemSubtotal - itemDiscount;
+
+        subtotal += itemSubtotal;
+        totalDiscount += itemDiscount;
+
+        saleItems.push({
+          variationId: item.variationId,
+          quantity,
+          unitPrice,
+          discountPercent,
+          lineTotal,
+        });
+      }
+
+      const total = subtotal - totalDiscount;
+
+      // Create sale with random date in last 30 days
+      const saleDate = new Date();
+      saleDate.setDate(saleDate.getDate() - Math.floor(Math.random() * 30));
+      saleDate.setHours(9 + Math.floor(Math.random() * 10)); // Business hours
+      saleDate.setMinutes(Math.floor(Math.random() * 60));
+
+      try {
+        const sale = await prisma.sale.create({
+          data: {
+            saleCode: generateSaleCode(saleIndex),
+            type: isMemberSale ? "MEMBER" : "GENERAL",
+            locationId,
+            memberId: member?.id || null,
+            subtotal,
+            discount: totalDiscount,
+            total,
+            createdById: superAdmin.id,
+            createdAt: saleDate,
+            items: {
+              create: saleItems,
+            },
+          },
+        });
+
+        console.log(
+          `✅ Created sale: ${sale.saleCode} (${isMemberSale ? "Member" : "General"}) - ${saleItems.length} items - Rs.${total.toFixed(2)}`,
+        );
+        saleIndex++;
+      } catch (error) {
+        // Skip if duplicate sale code
+        continue;
+      }
+    }
+
+    console.log(`✅ Created ${saleIndex - 1} sample sales`);
+  } else if (existingSalesCount > 0) {
+    console.log(
+      `⚠️  Sales already exist (${existingSalesCount}). Skipping sales creation.`,
+    );
+  }
+
   console.log("\n🎉 Seeding completed successfully!");
   console.log("📝 You can now log in with the credentials from your .env file");
   console.log("📦 Sample products have been added to the database");
+  console.log("📍 Locations (Warehouse & Showrooms) have been created");
+  console.log("👥 Sample members (customers) have been created");
+  console.log("🧾 Sample sales have been generated");
 }
 
 main()

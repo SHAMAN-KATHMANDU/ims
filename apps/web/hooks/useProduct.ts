@@ -69,9 +69,9 @@ export const categoryKeys = {
 // ============================================
 
 /**
- * Hook for fetching paginated products with search support
+ * Hook for fetching paginated products with search and filter support
  *
- * @param params - Pagination and search parameters
+ * @param params - Pagination, search, and filter parameters
  * @returns Query result with products data and pagination info
  */
 export function useProductsPaginated(params: ProductListParams = {}) {
@@ -79,6 +79,8 @@ export function useProductsPaginated(params: ProductListParams = {}) {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
     search: params.search?.trim() || "",
+    locationId: params.locationId,
+    categoryId: params.categoryId,
   };
 
   return useQuery({
