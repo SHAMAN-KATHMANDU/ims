@@ -59,7 +59,7 @@ export function AnalyticsPage() {
   const maxDailyRevenue = Math.max(...(dailyStats?.map((s) => s.total) || [1]));
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0">
       <div>
         <h1 className="text-3xl font-bold text-balance">Analytics</h1>
         <p className="text-muted-foreground mt-2">
@@ -96,7 +96,7 @@ export function AnalyticsPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 min-w-0">
         <Card className="shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
@@ -185,7 +185,7 @@ export function AnalyticsPage() {
       </div>
 
       {/* Charts */}
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 min-w-0">
         {/* Sales by Location */}
         <Card className="shadow-sm">
           <CardHeader>
