@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckMember } from "@/hooks/useMember";
+import { useToast } from "@/hooks/useToast";
 import {
   getLocationInventory,
   type LocationInventoryItem,
@@ -99,6 +100,7 @@ export function NewSaleForm({
   const debouncedPhone = useDebounce(memberPhone, 500);
   const { data: memberCheck, isLoading: checkingMember } =
     useCheckMember(debouncedPhone);
+  const { toast } = useToast();
 
   // Get showrooms only
   const showrooms = locations.filter((l) => l.type === "SHOWROOM");
@@ -227,6 +229,11 @@ export function NewSaleForm({
     if (!locationId || items.length === 0) return;
 
     if (totalPayment <= 0 || Math.abs(totalPayment - subtotal) > 0.01) {
+      toast({
+        title: "Payment Error",
+        description: "Payment total must match the order total",
+        variant: "destructive",
+      });
       return;
     }
 

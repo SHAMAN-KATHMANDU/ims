@@ -209,16 +209,12 @@ class SaleController {
             const typeName = d.discountType.name.toLowerCase();
             if (saleType === "MEMBER") {
               return (
-                typeName.includes("member") ||
-                typeName.includes("normal") ||
-                typeName.includes("non-member")
+                typeName.includes("member") || typeName.includes("non-member")
               );
             }
             // Non-member sale
             return (
-              typeName.includes("normal") ||
-              typeName.includes("non-member") ||
-              typeName.includes("wholesale")
+              typeName.includes("non-member") || typeName.includes("wholesale")
             );
           });
 
@@ -454,9 +450,14 @@ class SaleController {
           });
         }
 
-        // Update member aggregation fields if this is a member sale
-        if (member) {
-          await tx.member.update({
+        return newSale;
+      });
+
+      // Update member aggregation fields if this is a member sale
+      // Done outside transaction to prevent sale creation failure if member update fails
+      if (member) {
+        try {
+          await prisma.member.update({
             where: { id: member.id },
             data: {
               totalSales: {
@@ -466,10 +467,11 @@ class SaleController {
               firstPurchase: member.firstPurchase ?? new Date(),
             },
           });
+        } catch (error) {
+          // Log error but don't fail the sale creation
+          console.error("Failed to update member aggregation fields:", error);
         }
-
-        return newSale;
-      });
+      }
 
       res.status(201).json({
         message: "Sale created successfully",
