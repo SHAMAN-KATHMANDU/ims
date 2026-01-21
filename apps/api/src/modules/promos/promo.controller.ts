@@ -293,7 +293,7 @@ class PromoController {
 
       // Update promo and related products in a transaction
       const promo = await prisma.$transaction(async (tx) => {
-        const updatedPromo = await tx.promoCode.update({
+        await tx.promoCode.update({
           where: { id },
           data,
         });
