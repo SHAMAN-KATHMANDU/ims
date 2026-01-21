@@ -49,7 +49,7 @@ interface SaleItem {
   unitPrice: number;
   quantity: number;
   maxQuantity: number;
-  discountPercent: number;
+  promoCode?: string;
 }
 
 interface NewSaleFormProps {
@@ -72,6 +72,11 @@ export function NewSaleForm({
   const [memberPhone, setMemberPhone] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SaleItem[]>([]);
+  const [cashAmount, setCashAmount] = useState("");
+  const [cardAmount, setCardAmount] = useState("");
+  const [chequeAmount, setChequeAmount] = useState("");
+  const [fonepayAmount, setFonepayAmount] = useState("");
+  const [qrAmount, setQrAmount] = useState("");
 
   // Inventory state
   const [inventory, setInventory] = useState<LocationInventoryItem[]>([]);
@@ -173,14 +178,14 @@ export function NewSaleForm({
     (sum, item) => sum + item.unitPrice * item.quantity,
     0,
   );
-  const totalDiscount = memberCheck?.isMember
-    ? items.reduce(
-        (sum, item) =>
-          sum + item.unitPrice * item.quantity * (item.discountPercent / 100),
-        0,
-      )
-    : 0;
-  const total = subtotal - totalDiscount;
+
+  const parsedCash = Number(cashAmount) || 0;
+  const parsedCard = Number(cardAmount) || 0;
+  const parsedCheque = Number(chequeAmount) || 0;
+  const parsedFonepay = Number(fonepayAmount) || 0;
+  const parsedQr = Number(qrAmount) || 0;
+  const totalPayment =
+    parsedCash + parsedCard + parsedCheque + parsedFonepay + parsedQr;
 
   // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
@@ -188,14 +193,26 @@ export function NewSaleForm({
 
     if (!locationId || items.length === 0) return;
 
+    if (totalPayment <= 0 || Math.abs(totalPayment - subtotal) > 0.01) {
+      return;
+    }
+
     await onSubmit({
       locationId,
       memberPhone: memberPhone.trim() || undefined,
       items: items.map((item) => ({
         variationId: item.variationId,
         quantity: item.quantity,
+        promoCode: item.promoCode?.trim() || undefined,
       })),
       notes: notes.trim() || undefined,
+      payments: [
+        parsedCash > 0 && { method: "CASH", amount: parsedCash },
+        parsedCard > 0 && { method: "CARD", amount: parsedCard },
+        parsedCheque > 0 && { method: "CHEQUE", amount: parsedCheque },
+        parsedFonepay > 0 && { method: "FONEPAY", amount: parsedFonepay },
+        parsedQr > 0 && { method: "QR", amount: parsedQr },
+      ].filter(Boolean) as CreateSaleData["payments"],
     });
 
     // Reset form
@@ -204,6 +221,11 @@ export function NewSaleForm({
     setNotes("");
     setItems([]);
     setProductSearch("");
+    setCashAmount("");
+    setCardAmount("");
+    setChequeAmount("");
+    setFonepayAmount("");
+    setQrAmount("");
   };
 
   // Reset form when dialog closes
@@ -214,6 +236,11 @@ export function NewSaleForm({
       setNotes("");
       setItems([]);
       setProductSearch("");
+      setCashAmount("");
+      setCardAmount("");
+      setChequeAmount("");
+      setFonepayAmount("");
+      setQrAmount("");
     }
     onOpenChange(newOpen);
   };
@@ -384,6 +411,22 @@ export function NewSaleForm({
                                 {formatCurrency(item.unitPrice * item.quantity)}
                               </span>
                             </div>
+                            <div className="mt-1 flex items-center gap-2">
+                              <Label className="text-xs">Promo Code</Label>
+                              <Input
+                                className="h-7 w-32 text-xs"
+                                value={item.promoCode ?? ""}
+                                onChange={(e) => {
+                                  const newItems = [...items];
+                                  newItems[index] = {
+                                    ...item,
+                                    promoCode: e.target.value,
+                                  };
+                                  setItems(newItems);
+                                }}
+                                placeholder="Optional"
+                              />
+                            </div>
                           </div>
                           <div className="ml-4 flex items-center gap-2">
                             <Button
@@ -426,22 +469,70 @@ export function NewSaleForm({
                 </div>
               )}
 
-              {/* Totals */}
+              {/* Payment Breakdown */}
               {items.length > 0 && (
-                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                <div className="bg-muted/50 rounded-lg p-4 space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span>Subtotal</span>
+                    <span>Total MRP</span>
                     <span>{formatCurrency(subtotal)}</span>
                   </div>
-                  {memberCheck?.isMember && totalDiscount > 0 && (
-                    <div className="flex justify-between text-sm text-green-600">
-                      <span>Member Discount</span>
-                      <span>-{formatCurrency(totalDiscount)}</span>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Cash</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={cashAmount}
+                        onChange={(e) => setCashAmount(e.target.value)}
+                        placeholder="0"
+                      />
                     </div>
-                  )}
-                  <div className="flex justify-between font-bold text-lg border-t pt-2">
-                    <span>Total</span>
-                    <span>{formatCurrency(total)}</span>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Card</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={cardAmount}
+                        onChange={(e) => setCardAmount(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Cheque</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={chequeAmount}
+                        onChange={(e) => setChequeAmount(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Fonepay</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={fonepayAmount}
+                        onChange={(e) => setFonepayAmount(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">QR</Label>
+                      <Input
+                        type="number"
+                        min="0"
+                        value={qrAmount}
+                        onChange={(e) => setQrAmount(e.target.value)}
+                        placeholder="0"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Payment Total</span>
+                    <span>{formatCurrency(totalPayment)}</span>
                   </div>
                 </div>
               )}
@@ -471,7 +562,13 @@ export function NewSaleForm({
             </Button>
             <Button
               type="submit"
-              disabled={isLoading || !locationId || items.length === 0}
+              disabled={
+                isLoading ||
+                !locationId ||
+                items.length === 0 ||
+                totalPayment <= 0 ||
+                Math.abs(totalPayment - subtotal) > 0.01
+              }
             >
               {isLoading ? (
                 <>

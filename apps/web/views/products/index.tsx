@@ -142,7 +142,7 @@ export function ProductPage() {
     if (productDialog && productDiscounts.length === 0 && !editingProduct) {
       const defaultDiscounts = [
         {
-          discountTypeName: "Normal",
+          discountTypeName: "Non-Member",
           discountPercentage: "10",
           startDate: "",
           endDate: "",

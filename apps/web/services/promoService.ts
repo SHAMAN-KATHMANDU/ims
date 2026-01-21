@@ -1,0 +1,179 @@
+import api from "@/lib/axios";
+import { handleApiError } from "@/lib/apiError";
+
+export type DiscountValueType = "PERCENTAGE" | "FLAT";
+export type PromoEligibility = "ALL" | "MEMBER" | "NON_MEMBER" | "WHOLESALE";
+
+export interface PromoCodeProduct {
+  id: string;
+  productId: string;
+  promoCodeId: string;
+  product: {
+    id: string;
+    name: string;
+    imsCode: string;
+  };
+}
+
+export interface PromoCode {
+  id: string;
+  code: string;
+  description?: string | null;
+  valueType: DiscountValueType;
+  value: number;
+  overrideDiscounts: boolean;
+  allowStacking: boolean;
+  eligibility: PromoEligibility;
+  validFrom?: string | null;
+  validTo?: string | null;
+  usageLimit?: number | null;
+  usageCount: number;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  products?: PromoCodeProduct[];
+}
+
+export interface PromoListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  isActive?: boolean;
+}
+
+export interface PaginationMeta {
+  currentPage: number;
+  totalPages: number;
+  totalItems: number;
+  itemsPerPage: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
+
+export interface PaginatedPromosResponse {
+  data: PromoCode[];
+  pagination: PaginationMeta;
+}
+
+export interface CreateOrUpdatePromoData {
+  code: string;
+  description?: string;
+  valueType: DiscountValueType;
+  value: number;
+  overrideDiscounts?: boolean;
+  allowStacking?: boolean;
+  eligibility?: PromoEligibility;
+  validFrom?: string | null;
+  validTo?: string | null;
+  usageLimit?: number | null;
+  isActive?: boolean;
+  productIds?: string[];
+}
+
+interface PromosApiResponse {
+  message: string;
+  data: PromoCode[];
+  pagination: PaginationMeta;
+}
+
+interface PromoResponse {
+  message: string;
+  promo: PromoCode;
+}
+
+export const DEFAULT_PAGE = 1;
+export const DEFAULT_LIMIT = 10;
+
+export async function getPromos(
+  params: PromoListParams = {},
+): Promise<PaginatedPromosResponse> {
+  const {
+    page = DEFAULT_PAGE,
+    limit = DEFAULT_LIMIT,
+    search,
+    isActive,
+  } = params;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search?.trim()) {
+    queryParams.set("search", search.trim());
+  }
+  if (typeof isActive === "boolean") {
+    queryParams.set("isActive", String(isActive));
+  }
+
+  try {
+    const response = await api.get<PromosApiResponse>(
+      `/promos?${queryParams.toString()}`,
+    );
+    return {
+      data: response.data.data || [],
+      pagination: response.data.pagination,
+    };
+  } catch (error) {
+    handleApiError(error, "fetch promo codes");
+  }
+}
+
+export async function getPromoById(id: string): Promise<PromoCode> {
+  if (!id?.trim()) {
+    throw new Error("Promo ID is required");
+  }
+  try {
+    const response = await api.get<PromoResponse>(`/promos/${id}`);
+    return response.data.promo;
+  } catch (error) {
+    handleApiError(error, `fetch promo "${id}"`);
+  }
+}
+
+export async function createPromo(
+  data: CreateOrUpdatePromoData,
+): Promise<PromoCode> {
+  if (!data.code?.trim()) {
+    throw new Error("Promo code is required");
+  }
+  if (!data.valueType) {
+    throw new Error("valueType is required");
+  }
+  if (data.value === undefined || data.value === null) {
+    throw new Error("value is required");
+  }
+
+  try {
+    const response = await api.post<PromoResponse>("/promos", data);
+    return response.data.promo;
+  } catch (error) {
+    handleApiError(error, "create promo code");
+  }
+}
+
+export async function updatePromo(
+  id: string,
+  data: Partial<CreateOrUpdatePromoData>,
+): Promise<PromoCode> {
+  if (!id?.trim()) {
+    throw new Error("Promo ID is required");
+  }
+
+  try {
+    const response = await api.put<PromoResponse>(`/promos/${id}`, data);
+    return response.data.promo;
+  } catch (error) {
+    handleApiError(error, `update promo "${id}"`);
+  }
+}
+
+export async function deletePromo(id: string): Promise<void> {
+  if (!id?.trim()) {
+    throw new Error("Promo ID is required");
+  }
+
+  try {
+    await api.delete(`/promos/${id}`);
+  } catch (error) {
+    handleApiError(error, `delete promo "${id}"`);
+  }
+}

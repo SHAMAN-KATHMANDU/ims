@@ -70,6 +70,12 @@ const navSections: NavSection[] = [
         icon: UserCheck,
         roles: ["admin", "superAdmin"],
       },
+      {
+        path: "promos",
+        label: "Promo Codes",
+        icon: Receipt,
+        roles: ["admin", "superAdmin"],
+      },
     ],
   },
   {
