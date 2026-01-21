@@ -18,7 +18,26 @@ class SaleController {
   // Create a new sale
   async createSale(req: Request, res: Response) {
     try {
-      const { locationId, memberPhone, items, notes } = req.body;
+      const {
+        locationId,
+        memberPhone,
+        items,
+        notes,
+        payments,
+      }: {
+        locationId: string;
+        memberPhone?: string;
+        items: Array<{
+          variationId: string;
+          quantity: number;
+          promoCode?: string;
+        }>;
+        notes?: string;
+        payments?: Array<{
+          method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+          amount: number;
+        }>;
+      } = req.body;
 
       // Validate user
       if (!req.user || !req.user.id) {
@@ -86,12 +105,14 @@ class SaleController {
         });
       }
 
-      // Process items and validate stock
+      // Process items and validate stock & discounts
       const processedItems: Array<{
         variationId: string;
         quantity: number;
         unitPrice: number;
+        totalMrp: number;
         discountPercent: number;
+        discountAmount: number;
         lineTotal: number;
       }> = [];
 
@@ -105,7 +126,7 @@ class SaleController {
           });
         }
 
-        // Get variation with product info
+        // Get variation with product info and active discounts
         const variation = await prisma.productVariation.findUnique({
           where: { id: item.variationId },
           include: {
@@ -161,37 +182,200 @@ class SaleController {
           });
         }
 
-        // Calculate price
+        // Base price is current MRP / final selling price
         const unitPrice = Number(variation.product.mrp);
+        const itemSubtotal = unitPrice * item.quantity;
         let discountPercent = 0;
+        let discountAmount = 0;
 
-        // Apply member discount if applicable
-        if (saleType === "MEMBER" && memberDiscountType) {
-          const memberDiscount = variation.product.discounts.find(
-            (d) => d.discountTypeId === memberDiscountType.id,
-          );
-          if (memberDiscount) {
-            discountPercent = Number(memberDiscount.discountPercentage);
+        // Determine base product discount based on sale type (member / non-member / wholesale)
+        const activeDiscounts = variation.product.discounts;
+        let baseDiscount:
+          | ((typeof activeDiscounts)[number] & {
+              discountType: { name: string };
+            })
+          | null = null;
+
+        // Helper to choose the highest-priority discount
+        if (activeDiscounts && activeDiscounts.length > 0) {
+          // Prioritise "Special", then by highest effective value
+          const withTypes = activeDiscounts as Array<
+            (typeof activeDiscounts)[number] & {
+              discountType: { name: string };
+            }
+          >;
+
+          const eligible = withTypes.filter((d) => {
+            const typeName = d.discountType.name.toLowerCase();
+            if (saleType === "MEMBER") {
+              return (
+                typeName.includes("member") ||
+                typeName.includes("normal") ||
+                typeName.includes("non-member")
+              );
+            }
+            // Non-member sale
+            return (
+              typeName.includes("normal") ||
+              typeName.includes("non-member") ||
+              typeName.includes("wholesale")
+            );
+          });
+
+          if (eligible.length > 0) {
+            eligible.sort((a, b) => {
+              const aIsSpecial =
+                a.discountType.name.toLowerCase() === "special" ? 1 : 0;
+              const bIsSpecial =
+                b.discountType.name.toLowerCase() === "special" ? 1 : 0;
+
+              if (aIsSpecial !== bIsSpecial) {
+                return bIsSpecial - aIsSpecial;
+              }
+
+              // Compare effective discount value (percentage vs flat)
+              const aValue =
+                a.valueType === "FLAT"
+                  ? Number(a.value)
+                  : (Number(a.value) / 100) * itemSubtotal;
+              const bValue =
+                b.valueType === "FLAT"
+                  ? Number(b.value)
+                  : (Number(b.value) / 100) * itemSubtotal;
+
+              return bValue - aValue;
+            });
+
+            baseDiscount = eligible[0];
           }
         }
 
-        const itemSubtotal = unitPrice * item.quantity;
-        const itemDiscount = itemSubtotal * (discountPercent / 100);
-        const lineTotal = itemSubtotal - itemDiscount;
+        if (baseDiscount) {
+          if (baseDiscount.valueType === "FLAT") {
+            discountAmount += Number(baseDiscount.value);
+          } else {
+            discountPercent += Number(baseDiscount.value);
+          }
+        }
+
+        // Apply promo code logic (per product, processed after base discounts)
+        if (item.promoCode) {
+          const promo = await prisma.promoCode.findUnique({
+            where: { code: item.promoCode },
+            include: {
+              products: {
+                include: { product: true },
+              },
+            },
+          });
+
+          if (promo && promo.isActive) {
+            const now = new Date();
+            if (
+              (!promo.validFrom || promo.validFrom <= now) &&
+              (!promo.validTo || promo.validTo >= now) &&
+              (!promo.usageLimit || promo.usageCount < promo.usageLimit)
+            ) {
+              const isProductEligible = promo.products.some(
+                (pp) => pp.productId === variation.productId,
+              );
+
+              let isCustomerEligible = false;
+              if (promo.eligibility === "ALL") {
+                isCustomerEligible = true;
+              } else if (promo.eligibility === "MEMBER") {
+                isCustomerEligible = saleType === "MEMBER";
+              } else if (promo.eligibility === "NON_MEMBER") {
+                isCustomerEligible = saleType === "GENERAL";
+              } else if (promo.eligibility === "WHOLESALE") {
+                // Placeholder for future wholesale logic
+                isCustomerEligible = false;
+              }
+
+              if (isProductEligible && isCustomerEligible) {
+                const baseAfterProductDiscount =
+                  itemSubtotal -
+                  (discountAmount + itemSubtotal * (discountPercent / 100));
+
+                let promoDiscountAmount = 0;
+                if (promo.valueType === "FLAT") {
+                  promoDiscountAmount = Number(promo.value);
+                } else {
+                  promoDiscountAmount =
+                    baseAfterProductDiscount * (Number(promo.value) / 100);
+                }
+
+                if (promo.overrideDiscounts) {
+                  // Promo overrides existing discounts
+                  discountAmount = promoDiscountAmount;
+                  discountPercent = 0;
+                } else if (promo.allowStacking) {
+                  // Promo stacks on top of existing discounts
+                  discountAmount += promoDiscountAmount;
+                } else {
+                  // Default behaviour: choose the better of base vs promo
+                  const baseTotalDiscount =
+                    discountAmount + itemSubtotal * (discountPercent / 100);
+                  if (promoDiscountAmount > baseTotalDiscount) {
+                    discountAmount = promoDiscountAmount;
+                    discountPercent = 0;
+                  }
+                }
+
+                // Increment promo usage
+                await prisma.promoCode.update({
+                  where: { id: promo.id },
+                  data: {
+                    usageCount: {
+                      increment: 1,
+                    },
+                  },
+                });
+              }
+            }
+          }
+        }
+
+        // Clamp discounts so they never exceed subtotal
+        const effectiveDiscount =
+          Math.min(
+            itemSubtotal,
+            discountAmount + itemSubtotal * (discountPercent / 100),
+          ) || 0;
+        const lineTotal = itemSubtotal - effectiveDiscount;
 
         subtotal += itemSubtotal;
-        totalDiscount += itemDiscount;
+        totalDiscount += effectiveDiscount;
 
         processedItems.push({
           variationId: item.variationId,
           quantity: item.quantity,
           unitPrice,
+          totalMrp: itemSubtotal,
           discountPercent,
+          discountAmount: effectiveDiscount,
           lineTotal,
         });
       }
 
       const total = subtotal - totalDiscount;
+
+      // Optional: validate payment breakdown matches total
+      if (payments && payments.length > 0) {
+        const paymentSum = payments.reduce(
+          (sum, p) => sum + Number(p.amount || 0),
+          0,
+        );
+        // Allow small floating point tolerance
+        if (Math.abs(paymentSum - total) > 0.01) {
+          return res.status(400).json({
+            message:
+              "Sum of payment sources must match final total (after discounts)",
+            total,
+            paymentSum,
+          });
+        }
+      }
 
       // Create sale with items in a transaction
       const sale = await prisma.$transaction(async (tx) => {
@@ -212,10 +396,21 @@ class SaleController {
                 variationId: item.variationId,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
+                totalMrp: item.totalMrp,
                 discountPercent: item.discountPercent,
+                discountAmount: item.discountAmount,
                 lineTotal: item.lineTotal,
               })),
             },
+            payments:
+              payments && payments.length > 0
+                ? {
+                    create: payments.map((p) => ({
+                      method: p.method,
+                      amount: p.amount,
+                    })),
+                  }
+                : undefined,
           },
           include: {
             location: {
@@ -238,6 +433,7 @@ class SaleController {
                 },
               },
             },
+            payments: true,
           },
         });
 
@@ -254,6 +450,20 @@ class SaleController {
               quantity: {
                 decrement: item.quantity,
               },
+            },
+          });
+        }
+
+        // Update member aggregation fields if this is a member sale
+        if (member) {
+          await tx.member.update({
+            where: { id: member.id },
+            data: {
+              totalSales: {
+                increment: total,
+              },
+              memberSince: member.createdAt ?? new Date(),
+              firstPurchase: member.firstPurchase ?? new Date(),
             },
           });
         }

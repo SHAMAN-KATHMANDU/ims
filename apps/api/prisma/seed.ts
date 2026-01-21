@@ -50,10 +50,10 @@ async function main() {
   // ============================================
   // 2. CREATE DISCOUNT TYPES
   // ============================================
-  const discountTypeNames = ["Normal", "Special", "Member", "Wholesale"];
+  const discountTypeNames = ["Non-Member", "Member", "Wholesale", "Special"];
   const discountTypeDescriptions: Record<string, string> = {
-    Normal: "Regular discount for all customers",
-    Special: "Special promotional discount",
+    "Non-Member": "Regular discount for walk-in / non-member customers",
+    Special: "Special product-specific discount with higher priority",
     Member: "Discount for registered members",
     Wholesale: "Bulk purchase discount",
   };
@@ -80,7 +80,70 @@ async function main() {
   }
 
   // ============================================
-  // 3. CREATE CATEGORIES
+  // 3. CREATE VENDORS
+  // ============================================
+  const vendorsData = [
+    {
+      name: "Global Electronics Ltd",
+      contact: "sales@globalelectronics.com",
+      phone: "+977-1-5550001",
+      address: "Industrial Area, Kathmandu",
+    },
+    {
+      name: "Comfort Furniture Co",
+      contact: "info@comfortfurniture.com",
+      phone: "+977-1-5550002",
+      address: "Furniture District, Lalitpur",
+    },
+    {
+      name: "Fashion Trends Inc",
+      contact: "orders@fashiontrends.com",
+      phone: "+977-1-5550003",
+      address: "Fashion Street, Kathmandu",
+    },
+    {
+      name: "Sports World Suppliers",
+      contact: "sales@sportsworld.com",
+      phone: "+977-1-5550004",
+      address: "Sports Complex Area, Bhaktapur",
+    },
+    {
+      name: "Book Publishers Nepal",
+      contact: "orders@bookpublishers.com",
+      phone: "+977-1-5550005",
+      address: "Publishing Hub, Kathmandu",
+    },
+  ];
+
+  const vendors: Record<string, { id: string }> = {};
+
+  for (const vendorData of vendorsData) {
+    let vendor = await prisma.vendor.findUnique({
+      where: { name: vendorData.name },
+    });
+
+    if (!vendor) {
+      vendor = await prisma.vendor.create({
+        data: vendorData,
+      });
+      console.log(`✅ Created vendor: ${vendorData.name}`);
+    } else {
+      console.log(`⚠️  Vendor "${vendorData.name}" already exists. Skipping.`);
+    }
+    vendors[vendorData.name] = { id: vendor.id };
+  }
+
+  // Map categories to vendors
+  const categoryVendorMap: Record<string, string> = {
+    Electronics: "Global Electronics Ltd",
+    Furniture: "Comfort Furniture Co",
+    Clothing: "Fashion Trends Inc",
+    Sports: "Sports World Suppliers",
+    Books: "Book Publishers Nepal",
+  };
+
+  // ============================================
+  // 4. CREATE CATEGORIES
   // ============================================
   const categoriesData = [
     { name: "Electronics", description: "Electronic devices and gadgets" },
@@ -109,7 +172,7 @@ async function main() {
   }
 
   // ============================================
-  // 4. CREATE PRODUCTS WITH VARIATIONS
+  // 5. CREATE PRODUCTS WITH VARIATIONS
   // ============================================
 
   // Product templates for bulk generation
@@ -479,17 +542,17 @@ async function main() {
 
   // Discount configurations
   const discountConfigs = [
-    [{ type: "Normal", percentage: 10 }],
+    [{ type: "Non-Member", percentage: 10 }],
     [
-      { type: "Normal", percentage: 10 },
+      { type: "Non-Member", percentage: 10 },
       { type: "Member", percentage: 15 },
     ],
     [
-      { type: "Normal", percentage: 8 },
+      { type: "Non-Member", percentage: 8 },
       { type: "Special", percentage: 20 },
     ],
     [
-      { type: "Normal", percentage: 10 },
+      { type: "Non-Member", percentage: 10 },
       { type: "Member", percentage: 20 },
       { type: "Wholesale", percentage: 30 },
     ],
@@ -616,6 +679,10 @@ async function main() {
       continue;
     }
 
+    // Get vendor for this category
+    const vendorName = categoryVendorMap[productData.category];
+    const vendorId = vendorName ? vendors[vendorName]?.id : null;
+
     // Create product with variations and discounts
     const product = await prisma.product.create({
       data: {
@@ -625,6 +692,8 @@ async function main() {
         description: productData.description,
         costPrice: productData.costPrice,
         mrp: productData.mrp,
+        finalSp: productData.mrp, // Default final SP to MRP
+        vendorId: vendorId || null,
         length: productData.length,
         breadth: productData.breadth,
         height: productData.height,
@@ -640,6 +709,8 @@ async function main() {
           create: productData.discounts.map((d) => ({
             discountTypeId: discountTypes[d.type].id,
             discountPercentage: d.percentage,
+            valueType: "PERCENTAGE",
+            value: d.percentage,
             isActive: true,
           })),
         },
@@ -656,7 +727,7 @@ async function main() {
   }
 
   // ============================================
-  // 5. CREATE DEFAULT LOCATIONS (WAREHOUSE & SHOWROOMS)
+  // 6. CREATE DEFAULT LOCATIONS (WAREHOUSE & SHOWROOMS)
   // ============================================
   const locationsData = [
     {
@@ -695,7 +766,7 @@ async function main() {
   }
 
   // ============================================
-  // 6. MIGRATE STOCK TO LOCATION INVENTORY
+  // 7. MIGRATE STOCK TO LOCATION INVENTORY
   // ============================================
   // Get the main warehouse location
   const mainWarehouse = locations["Main Warehouse"];
@@ -734,7 +805,7 @@ async function main() {
   }
 
   // ============================================
-  // 7. CREATE SAMPLE MEMBERS (CUSTOMERS)
+  // 8. CREATE SAMPLE MEMBERS (CUSTOMERS)
   // ============================================
   const membersData = [
     {
@@ -742,43 +813,151 @@ async function main() {
       name: "Rajesh Sharma",
       email: "rajesh.sharma@email.com",
       notes: "VIP customer",
+      gender: "Male",
+      age: 45,
+      address: "Thamel, Kathmandu",
+      birthday: new Date("1978-05-15"),
+      memberStatus: "VIP" as const,
     },
-    { phone: "9841000002", name: "Sunita Patel", email: "sunita.p@email.com" },
-    { phone: "9841000003", name: "Amit Kumar", email: "amit.kumar@email.com" },
+    {
+      phone: "9841000002",
+      name: "Sunita Patel",
+      email: "sunita.p@email.com",
+      gender: "Female",
+      age: 32,
+      address: "Patan, Lalitpur",
+      birthday: new Date("1991-08-22"),
+      memberStatus: "ACTIVE" as const,
+    },
+    {
+      phone: "9841000003",
+      name: "Amit Kumar",
+      email: "amit.kumar@email.com",
+      gender: "Male",
+      age: 28,
+      address: "Baneshwor, Kathmandu",
+      birthday: new Date("1995-11-10"),
+      memberStatus: "ACTIVE" as const,
+    },
     {
       phone: "9841000004",
       name: "Priya Singh",
       email: "priya.singh@email.com",
       notes: "Corporate buyer",
+      gender: "Female",
+      age: 35,
+      address: "New Road, Kathmandu",
+      birthday: new Date("1988-03-18"),
+      memberStatus: "ACTIVE" as const,
     },
-    { phone: "9841000005", name: "Bikash Thapa" },
-    { phone: "9841000006", name: "Anita Gurung", email: "anita.g@email.com" },
+    {
+      phone: "9841000005",
+      name: "Bikash Thapa",
+      gender: "Male",
+      age: 40,
+      address: "Koteshwor, Kathmandu",
+      birthday: new Date("1983-07-25"),
+      memberStatus: "ACTIVE" as const,
+    },
+    {
+      phone: "9841000006",
+      name: "Anita Gurung",
+      email: "anita.g@email.com",
+      gender: "Female",
+      age: 29,
+      address: "Bhaktapur",
+      birthday: new Date("1994-12-05"),
+      memberStatus: "ACTIVE" as const,
+    },
     {
       phone: "9841000007",
       name: "Ramesh Adhikari",
       email: "ramesh.a@email.com",
+      gender: "Male",
+      age: 38,
+      address: "Kalimati, Kathmandu",
+      birthday: new Date("1985-09-30"),
+      memberStatus: "ACTIVE" as const,
     },
-    { phone: "9841000008", name: "Sita Rai" },
+    {
+      phone: "9841000008",
+      name: "Sita Rai",
+      gender: "Female",
+      age: 26,
+      address: "Jawalakhel, Lalitpur",
+      birthday: new Date("1997-04-12"),
+      memberStatus: "ACTIVE" as const,
+    },
     {
       phone: "9841000009",
       name: "Krishna Bhattarai",
       email: "krishna.b@email.com",
       notes: "Wholesale inquiries",
+      gender: "Male",
+      age: 42,
+      address: "Gongabu, Kathmandu",
+      birthday: new Date("1981-06-20"),
+      memberStatus: "ACTIVE" as const,
     },
     {
       phone: "9841000010",
       name: "Gita Shrestha",
       email: "gita.shrestha@email.com",
+      gender: "Female",
+      age: 31,
+      address: "Buddhanagar, Kathmandu",
+      birthday: new Date("1992-10-08"),
+      memberStatus: "ACTIVE" as const,
     },
-    { phone: "9841000011", name: "Hari Prasad", email: "hari.p@email.com" },
-    { phone: "9841000012", name: "Maya Tamang" },
+    {
+      phone: "9841000011",
+      name: "Hari Prasad",
+      email: "hari.p@email.com",
+      gender: "Male",
+      age: 36,
+      address: "Maitidevi, Kathmandu",
+      birthday: new Date("1987-02-14"),
+      memberStatus: "ACTIVE" as const,
+    },
+    {
+      phone: "9841000012",
+      name: "Maya Tamang",
+      gender: "Female",
+      age: 24,
+      address: "Balaju, Kathmandu",
+      birthday: new Date("1999-01-28"),
+      memberStatus: "ACTIVE" as const,
+    },
     {
       phone: "9841000013",
       name: "Prakash Karki",
       email: "prakash.k@email.com",
+      gender: "Male",
+      age: 33,
+      address: "Tahachal, Kathmandu",
+      birthday: new Date("1990-09-15"),
+      memberStatus: "ACTIVE" as const,
     },
-    { phone: "9841000014", name: "Kamala Devi", email: "kamala.d@email.com" },
-    { phone: "9841000015", name: "Suresh Lama", notes: "Frequent buyer" },
+    {
+      phone: "9841000014",
+      name: "Kamala Devi",
+      email: "kamala.d@email.com",
+      gender: "Female",
+      age: 27,
+      address: "Chabahil, Kathmandu",
+      birthday: new Date("1996-07-03"),
+      memberStatus: "ACTIVE" as const,
+    },
+    {
+      phone: "9841000015",
+      name: "Suresh Lama",
+      notes: "Frequent buyer",
+      gender: "Male",
+      age: 39,
+      address: "Sankhamul, Kathmandu",
+      birthday: new Date("1984-11-19"),
+      memberStatus: "ACTIVE" as const,
+    },
   ];
 
   const members: Record<string, { id: string; phone: string }> = {};
@@ -789,8 +968,25 @@ async function main() {
     });
 
     if (!member) {
+      const memberSince = new Date();
+      memberSince.setDate(
+        memberSince.getDate() - Math.floor(Math.random() * 365),
+      ); // Random date in last year
+
       member = await prisma.member.create({
-        data: memberData,
+        data: {
+          phone: memberData.phone,
+          name: memberData.name || null,
+          email: memberData.email || null,
+          notes: memberData.notes || null,
+          gender: memberData.gender || null,
+          age: memberData.age || null,
+          address: memberData.address || null,
+          birthday: memberData.birthday || null,
+          memberStatus: memberData.memberStatus || "ACTIVE",
+          memberSince: memberSince,
+          totalSales: 0,
+        },
       });
       console.log(
         `✅ Created member: ${memberData.name} (${memberData.phone})`,
@@ -802,7 +998,114 @@ async function main() {
   }
 
   // ============================================
-  // 8. DISTRIBUTE STOCK TO SHOWROOMS
+  // 9. CREATE PROMO CODES
+  // ============================================
+  // Get some products for promo code associations
+  const allProducts = await prisma.product.findMany({
+    take: 20, // Use first 20 products for promo codes
+    select: { id: true },
+  });
+
+  const promoCodeData = [
+    {
+      code: "WELCOME10",
+      description: "Welcome discount for new customers",
+      valueType: "PERCENTAGE" as const,
+      value: 10,
+      overrideDiscounts: false,
+      allowStacking: true,
+      eligibility: "ALL" as const,
+      validFrom: new Date(),
+      validTo: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
+      usageLimit: 100,
+      isActive: true,
+      productIds: allProducts.slice(0, 10).map((p) => p.id), // First 10 products
+    },
+    {
+      code: "MEMBER20",
+      description: "Exclusive member discount",
+      valueType: "PERCENTAGE" as const,
+      value: 20,
+      overrideDiscounts: false,
+      allowStacking: false,
+      eligibility: "MEMBER" as const,
+      validFrom: new Date(),
+      validTo: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // 180 days
+      usageLimit: 50,
+      isActive: true,
+      productIds: allProducts.slice(5, 15).map((p) => p.id), // Products 5-15
+    },
+    {
+      code: "FLAT500",
+      description: "Flat Rs. 500 off on selected items",
+      valueType: "FLAT" as const,
+      value: 500,
+      overrideDiscounts: true,
+      allowStacking: false,
+      eligibility: "ALL" as const,
+      validFrom: new Date(),
+      validTo: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
+      usageLimit: 30,
+      isActive: true,
+      productIds: allProducts.slice(0, 5).map((p) => p.id), // First 5 products
+    },
+    {
+      code: "SUMMER25",
+      description: "Summer sale - 25% off",
+      valueType: "PERCENTAGE" as const,
+      value: 25,
+      overrideDiscounts: false,
+      allowStacking: true,
+      eligibility: "ALL" as const,
+      validFrom: new Date(),
+      validTo: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days
+      usageLimit: null, // Unlimited
+      isActive: true,
+      productIds: allProducts.map((p) => p.id), // All products
+    },
+  ];
+
+  const promoCodes: Record<string, { id: string }> = {};
+
+  for (const promoData of promoCodeData) {
+    let promo = await prisma.promoCode.findUnique({
+      where: { code: promoData.code },
+    });
+
+    if (!promo) {
+      promo = await prisma.promoCode.create({
+        data: {
+          code: promoData.code,
+          description: promoData.description,
+          valueType: promoData.valueType,
+          value: promoData.value,
+          overrideDiscounts: promoData.overrideDiscounts,
+          allowStacking: promoData.allowStacking,
+          eligibility: promoData.eligibility,
+          validFrom: promoData.validFrom,
+          validTo: promoData.validTo,
+          usageLimit: promoData.usageLimit,
+          isActive: promoData.isActive,
+          products: {
+            create: promoData.productIds.map((productId) => ({
+              productId,
+            })),
+          },
+        },
+      });
+      console.log(
+        `✅ Created promo code: ${promoData.code} (${promoData.productIds.length} products)`,
+      );
+    } else {
+      console.log(
+        `⚠️  Promo code "${promoData.code}" already exists. Skipping.`,
+      );
+    }
+    promoCodes[promoData.code] = { id: promo.id };
+  }
+
+  // ============================================
+  // 10. DISTRIBUTE STOCK TO SHOWROOMS
   // ============================================
   const showroomA = locations["Showroom A"];
   const showroomB = locations["Showroom B"];
@@ -879,7 +1182,7 @@ async function main() {
   }
 
   // ============================================
-  // 9. CREATE SAMPLE SALES
+  // 11. CREATE SAMPLE SALES
   // ============================================
   // Helper to generate sale code
   function generateSaleCode(index: number): string {
@@ -972,7 +1275,9 @@ async function main() {
         variationId: string;
         quantity: number;
         unitPrice: number;
+        totalMrp: number;
         discountPercent: number;
+        discountAmount: number;
         lineTotal: number;
       }> = [];
 
@@ -980,34 +1285,83 @@ async function main() {
         const quantity = 1 + Math.floor(Math.random() * 3);
         const unitPrice = Number(item.variation.product.mrp);
 
-        // Calculate discount
+        // Calculate discount (member discount if available)
         let discountPercent = 0;
+        let discountAmount = 0;
         if (isMemberSale && memberDiscountType) {
           const memberDiscount = item.variation.product.discounts.find(
             (d) => d.discountTypeId === memberDiscountType.id,
           );
           if (memberDiscount) {
-            discountPercent = Number(memberDiscount.discountPercentage);
+            if (memberDiscount.valueType === "FLAT") {
+              discountAmount = Number(memberDiscount.value);
+            } else {
+              discountPercent = Number(memberDiscount.value);
+            }
           }
         }
 
         const itemSubtotal = unitPrice * quantity;
-        const itemDiscount = itemSubtotal * (discountPercent / 100);
-        const lineTotal = itemSubtotal - itemDiscount;
+        const effectiveDiscount =
+          Math.min(
+            itemSubtotal,
+            discountAmount + itemSubtotal * (discountPercent / 100),
+          ) || 0;
+        const lineTotal = itemSubtotal - effectiveDiscount;
 
         subtotal += itemSubtotal;
-        totalDiscount += itemDiscount;
+        totalDiscount += effectiveDiscount;
 
         saleItems.push({
           variationId: item.variationId,
           quantity,
           unitPrice,
+          totalMrp: itemSubtotal,
           discountPercent,
+          discountAmount: effectiveDiscount,
           lineTotal,
         });
       }
 
       const total = subtotal - totalDiscount;
+
+      // Generate payment breakdown (mix of payment methods)
+      const paymentMethods: Array<
+        "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR"
+      > = ["CASH", "CARD", "FONEPAY", "QR"];
+      const payments: Array<{
+        method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+        amount: number;
+      }> = [];
+
+      if (total < 500) {
+        // Small amount - single payment method
+        payments.push({
+          method:
+            paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
+          amount: total,
+        });
+      } else {
+        // Larger amount - split payment
+        const numPayments = Math.random() > 0.7 ? 2 : 1; // 30% chance of split payment
+        if (numPayments === 2) {
+          const firstAmount = Math.floor(total * 0.6);
+          payments.push({
+            method: "CARD",
+            amount: firstAmount,
+          });
+          payments.push({
+            method: "CASH",
+            amount: total - firstAmount,
+          });
+        } else {
+          payments.push({
+            method:
+              paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
+            amount: total,
+          });
+        }
+      }
 
       // Create sale with random date in last 30 days
       const saleDate = new Date();
@@ -1030,8 +1384,31 @@ async function main() {
             items: {
               create: saleItems,
             },
+            payments: {
+              create: payments,
+            },
           },
         });
+
+        // Update member aggregation if this is a member sale
+        if (member) {
+          const fullMember = await prisma.member.findUnique({
+            where: { id: member.id },
+          });
+
+          await prisma.member.update({
+            where: { id: member.id },
+            data: {
+              totalSales: {
+                increment: total,
+              },
+              ...(fullMember &&
+                !fullMember.memberSince && { memberSince: saleDate }),
+              ...(fullMember &&
+                !fullMember.firstPurchase && { firstPurchase: saleDate }),
+            },
+          });
+        }
 
         console.log(
           `✅ Created sale: ${sale.saleCode} (${isMemberSale ? "Member" : "General"}) - ${saleItems.length} items - Rs.${total.toFixed(2)}`,
@@ -1052,10 +1429,14 @@ async function main() {
 
   console.log("\n🎉 Seeding completed successfully!");
   console.log("📝 You can now log in with the credentials from your .env file");
+  console.log("🏢 Vendors have been created");
   console.log("📦 Sample products have been added to the database");
   console.log("📍 Locations (Warehouse & Showrooms) have been created");
-  console.log("👥 Sample members (customers) have been created");
-  console.log("🧾 Sample sales have been generated");
+  console.log(
+    "👥 Sample members (customers) with full profile data have been created",
+  );
+  console.log("🎟️  Promo codes have been created");
+  console.log("🧾 Sample sales with payment breakdowns have been generated");
 }
 
 main()
