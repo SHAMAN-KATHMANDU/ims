@@ -3,6 +3,7 @@ import authRouter from "@/modules/auth/auth.router";
 import userRouter from "@/modules/users/user.router";
 import productRouter from "@/modules/products/product.router";
 import categoryRouter from "@/modules/categories/category.router";
+import vendorRouter from "@/modules/vendors/vendor.router";
 import locationRouter from "@/modules/locations/location.router";
 import inventoryRouter from "@/modules/inventory/inventory.router";
 import transferRouter from "@/modules/transfers/transfer.router";
@@ -29,6 +30,7 @@ router.get("/", (req: Request, res: Response) => {
       members: "/api/v1/members",
       sales: "/api/v1/sales",
       promos: "/api/v1/promos",
+      vendors: "/api/v1/vendors",
       analytics: "/api/v1/analytics",
       home: "/api/v1/home",
     },
@@ -39,6 +41,7 @@ router.use("/auth", authRouter);
 router.use("/users", userRouter);
 router.use("/products", productRouter);
 router.use("/categories", categoryRouter);
+router.use("/vendors", vendorRouter);
 router.use("/locations", locationRouter);
 router.use("/inventory", inventoryRouter);
 router.use("/transfers", transferRouter);

@@ -47,9 +47,24 @@ model Category {
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
-  products Product[]
+  products      Product[]
+  subCategories SubCategory[]
 
   @@map("categories")
+}
+
+model SubCategory {
+  id         String   @id @default(uuid()) @map("sub_category_id")
+  name       String   @db.VarChar(255)
+  categoryId String   @map("category_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  products Product[]
+
+  @@unique([categoryId, name])
+  @@map("sub_categories")
 }
 
 model Product {
@@ -57,8 +72,10 @@ model Product {
   imsCode      String   @unique @map("ims_code") @db.VarChar(100)
   name         String   @map("product_name") @db.VarChar(255)
   categoryId   String   @map("category_id")
-  /// Optional sub-category label for further grouping within a category
+  /// Optional sub-category label for further grouping within a category (denormalized name)
   subCategory  String?  @map("sub_category") @db.VarChar(255)
+  /// Optional relation to sub-category entity
+  subCategoryId String? @map("sub_category_id")
   description  String?  @db.Text
   length       Decimal? @db.Decimal(10, 2)
   breadth      Decimal? @db.Decimal(10, 2)
@@ -76,12 +93,13 @@ model Product {
   dateCreated  DateTime @default(now()) @map("date_created")
   dateModified DateTime @updatedAt @map("date_modified")
 
-  category   Category           @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  createdBy  User               @relation("ProductCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  vendor     Vendor?            @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  variations ProductVariation[]
-  discounts  ProductDiscount[]
-  promoCodes PromoCodeProduct[]
+  category     Category     @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy    User         @relation("ProductCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  vendor       Vendor?      @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  subCategoryRel SubCategory? @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  variations   ProductVariation[]
+  discounts    ProductDiscount[]
+  promoCodes   PromoCodeProduct[]
 
   @@map("products")
 }
