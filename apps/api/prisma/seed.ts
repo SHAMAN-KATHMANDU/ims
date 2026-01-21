@@ -172,6 +172,62 @@ async function main() {
   }
 
   // ============================================
+  // 4b. CREATE SUBCATEGORIES
+  // ============================================
+  const subCategoriesConfig: Record<string, string[]> = {
+    Electronics: [
+      "Headphones",
+      "Wearables",
+      "Chargers",
+      "Accessories",
+      "Speakers",
+    ],
+    Furniture: ["Chairs", "Desks", "Storage", "Tables"],
+    Clothing: ["T-Shirts", "Jackets", "Pants", "Shoes"],
+    Sports: ["Fitness", "Balls", "Outdoor"],
+    Books: ["Programming", "Databases", "Web", "Cloud"],
+  };
+
+  const subCategories: Record<
+    string,
+    { id: string; name: string; categoryName: string }
+  > = {};
+
+  for (const [catName, subs] of Object.entries(subCategoriesConfig)) {
+    const category = categories[catName];
+    if (!category) continue;
+
+    for (const subName of subs) {
+      let sub = await prisma.subCategory.findFirst({
+        where: {
+          name: subName,
+          categoryId: category.id,
+        },
+      });
+
+      if (!sub) {
+        sub = await prisma.subCategory.create({
+          data: {
+            name: subName,
+            categoryId: category.id,
+          },
+        });
+        console.log(`✅ Created subcategory: ${catName} / ${subName}`);
+      } else {
+        console.log(
+          `⚠️  Subcategory "${subName}" for "${catName}" already exists. Skipping.`,
+        );
+      }
+
+      subCategories[`${catName}:${subName}`] = {
+        id: sub.id,
+        name: sub.name,
+        categoryName: catName,
+      };
+    }
+  }
+
+  // ============================================
   // 5. CREATE PRODUCTS WITH VARIATIONS
   // ============================================
 
@@ -583,6 +639,7 @@ async function main() {
     imsCode: string;
     name: string;
     category: string;
+    subCategoryName?: string;
     description: string;
     costPrice: number;
     mrp: number;
@@ -649,10 +706,18 @@ async function main() {
         discountConfigs[Math.floor(Math.random() * discountConfigs.length)] ||
         [];
 
+      // Pick a subcategory for this product if available
+      const subConfig = subCategoriesConfig[category] || [];
+      const subCategoryName =
+        subConfig.length > 0
+          ? subConfig[(counter - 1) % subConfig.length]
+          : undefined;
+
       productsData.push({
         imsCode,
         name: productName,
         category,
+        subCategoryName,
         description: `High-quality ${productName.toLowerCase()} - ${category.toLowerCase()} category`,
         costPrice,
         mrp,
@@ -683,12 +748,24 @@ async function main() {
     const vendorName = categoryVendorMap[productData.category];
     const vendorId = vendorName ? vendors[vendorName]?.id : null;
 
+    // Resolve subcategory if configured
+    let subCategoryId: string | null = null;
+    if (productData.subCategoryName) {
+      const key = `${productData.category}:${productData.subCategoryName}`;
+      const sub = subCategories[key];
+      if (sub) {
+        subCategoryId = sub.id;
+      }
+    }
+
     // Create product with variations and discounts
     const product = await prisma.product.create({
       data: {
         imsCode: productData.imsCode,
         name: productData.name,
         categoryId: categories[productData.category].id,
+        subCategory: productData.subCategoryName || null,
+        subCategoryId,
         description: productData.description,
         costPrice: productData.costPrice,
         mrp: productData.mrp,
@@ -805,7 +882,125 @@ async function main() {
   }
 
   // ============================================
-  // 8. CREATE SAMPLE MEMBERS (CUSTOMERS)
+  // 8. CREATE SAMPLE TRANSFERS BETWEEN LOCATIONS
+  // ============================================
+  const showroomA = locations["Showroom A"];
+  const showroomB = locations["Showroom B"];
+
+  // Only seed transfers if we have the required locations
+  if (mainWarehouse && showroomA && showroomB) {
+    const existingTransfers = await prisma.transfer.count();
+
+    if (existingTransfers === 0) {
+      // Get some variations from warehouse inventory to use in transfers
+      const warehouseInventoryForTransfers =
+        await prisma.locationInventory.findMany({
+          where: { locationId: mainWarehouse.id, quantity: { gt: 30 } },
+          select: {
+            variationId: true,
+            quantity: true,
+          },
+          take: 15,
+        });
+
+      // Helper to generate transfer code
+      function generateTransferCode(index: number): string {
+        const date = new Date();
+        date.setDate(date.getDate() - Math.floor(Math.random() * 60)); // Last 60 days
+        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+        const random = String(index).padStart(3, "0");
+        return `TR-${dateStr}-${random}`;
+      }
+
+      let transferIndex = 1;
+
+      // Create a few example transfers:
+      //  - Warehouse -> Showroom A (COMPLETED)
+      //  - Warehouse -> Showroom B (COMPLETED)
+      //  - Showroom A -> Showroom B (PENDING)
+      const transferDefinitions: Array<{
+        fromId: string;
+        toId: string;
+        status: "PENDING" | "COMPLETED";
+        note: string;
+      }> = [
+        {
+          fromId: mainWarehouse.id,
+          toId: showroomA.id,
+          status: "COMPLETED",
+          note: "Initial stock allocation to Showroom A",
+        },
+        {
+          fromId: mainWarehouse.id,
+          toId: showroomB.id,
+          status: "COMPLETED",
+          note: "Initial stock allocation to Showroom B",
+        },
+        {
+          fromId: showroomA.id,
+          toId: showroomB.id,
+          status: "PENDING",
+          note: "Requested inter-showroom transfer",
+        },
+      ];
+
+      for (const def of transferDefinitions) {
+        // Pick 3–5 random variations for this transfer
+        const shuffled = [...warehouseInventoryForTransfers].sort(
+          () => Math.random() - 0.5,
+        );
+        const itemsForTransfer = shuffled.slice(
+          0,
+          3 + Math.floor(Math.random() * 3),
+        );
+
+        if (itemsForTransfer.length === 0) continue;
+
+        const transfer = await prisma.transfer.create({
+          data: {
+            transferCode: generateTransferCode(transferIndex++),
+            fromLocationId: def.fromId,
+            toLocationId: def.toId,
+            status: def.status,
+            notes: def.note,
+            createdById: superAdmin.id,
+            approvedById: def.status === "COMPLETED" ? superAdmin.id : null,
+            approvedAt: def.status === "COMPLETED" ? new Date() : null,
+            completedAt: def.status === "COMPLETED" ? new Date() : null,
+            items: {
+              create: itemsForTransfer.map((inv) => ({
+                variationId: inv.variationId,
+                // Move up to 10 units but never more than half the warehouse stock
+                quantity: Math.max(
+                  1,
+                  Math.min(10, Math.floor(inv.quantity / 2)),
+                ),
+              })),
+            },
+          },
+        });
+
+        await prisma.transferLog.create({
+          data: {
+            transferId: transfer.id,
+            action: def.status === "COMPLETED" ? "COMPLETED" : "CREATED",
+            details: {
+              seeded: true,
+              note: def.note,
+            },
+            userId: superAdmin.id,
+          },
+        });
+      }
+
+      console.log("✅ Created sample transfers between locations");
+    } else {
+      console.log("⚠️  Transfers already exist. Skipping transfer seeding.");
+    }
+  }
+
+  // ============================================
+  // 9. CREATE SAMPLE MEMBERS (CUSTOMERS)
   // ============================================
   const membersData = [
     {
@@ -1107,8 +1302,7 @@ async function main() {
   // ============================================
   // 10. DISTRIBUTE STOCK TO SHOWROOMS
   // ============================================
-  const showroomA = locations["Showroom A"];
-  const showroomB = locations["Showroom B"];
+  // showroomA and showroomB are already declared in section 8
 
   if (showroomA && showroomB && mainWarehouse) {
     // Get all variations with warehouse inventory

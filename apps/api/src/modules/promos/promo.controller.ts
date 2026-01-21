@@ -23,6 +23,9 @@ class PromoController {
         usageLimit,
         isActive,
         productIds,
+        applyToAll,
+        categoryIds,
+        subCategories,
       } = req.body;
 
       if (!code?.trim()) {
@@ -46,6 +49,13 @@ class PromoController {
           .json({ message: "Promo code with this code already exists" });
       }
 
+      const resolvedProductIds = await PromoController.resolveTargetProductIds({
+        applyToAll,
+        categoryIds,
+        subCategories,
+        explicitProductIds: Array.isArray(productIds) ? productIds : [],
+      });
+
       const promo = await prisma.promoCode.create({
         data: {
           code: code.trim(),
@@ -60,9 +70,9 @@ class PromoController {
           usageLimit: usageLimit !== undefined ? Number(usageLimit) : null,
           isActive: isActive !== undefined ? !!isActive : true,
           products:
-            Array.isArray(productIds) && productIds.length > 0
+            resolvedProductIds.length > 0
               ? {
-                  create: productIds.map((productId: string) => ({
+                  create: resolvedProductIds.map((productId: string) => ({
                     productId,
                   })),
                 }
@@ -227,6 +237,9 @@ class PromoController {
         usageLimit,
         isActive,
         productIds,
+        applyToAll,
+        categoryIds,
+        subCategories,
       } = req.body;
 
       const data: any = {};
@@ -285,15 +298,27 @@ class PromoController {
           data,
         });
 
-        if (Array.isArray(productIds)) {
-          // Reset assigned products
+        if (
+          productIds !== undefined ||
+          applyToAll !== undefined ||
+          categoryIds !== undefined ||
+          subCategories !== undefined
+        ) {
+          const resolvedProductIds =
+            await PromoController.resolveTargetProductIds({
+              applyToAll,
+              categoryIds,
+              subCategories,
+              explicitProductIds: Array.isArray(productIds) ? productIds : [],
+            });
+
           await tx.promoCodeProduct.deleteMany({
             where: { promoCodeId: id },
           });
 
-          if (productIds.length > 0) {
+          if (resolvedProductIds.length > 0) {
             await tx.promoCodeProduct.createMany({
-              data: productIds.map((productId: string) => ({
+              data: resolvedProductIds.map((productId) => ({
                 promoCodeId: id,
                 productId,
               })),
@@ -325,6 +350,48 @@ class PromoController {
         .status(500)
         .json({ message: "Error updating promo code", error: error.message });
     }
+  }
+
+  private static async resolveTargetProductIds(params: {
+    applyToAll?: boolean;
+    categoryIds?: string[];
+    subCategories?: string[];
+    explicitProductIds?: string[];
+  }): Promise<string[]> {
+    const {
+      applyToAll,
+      categoryIds,
+      subCategories,
+      explicitProductIds = [],
+    } = params;
+
+    const ids = new Set<string>(explicitProductIds);
+
+    if (applyToAll) {
+      const allProducts = await prisma.product.findMany({
+        select: { id: true },
+      });
+      allProducts.forEach((p) => ids.add(p.id));
+      return Array.from(ids);
+    }
+
+    const orConditions: any[] = [];
+    if (Array.isArray(categoryIds) && categoryIds.length > 0) {
+      orConditions.push({ categoryId: { in: categoryIds } });
+    }
+    if (Array.isArray(subCategories) && subCategories.length > 0) {
+      orConditions.push({ subCategory: { in: subCategories } });
+    }
+
+    if (orConditions.length > 0) {
+      const filteredProducts = await prisma.product.findMany({
+        where: { OR: orConditions },
+        select: { id: true },
+      });
+      filteredProducts.forEach((p) => ids.add(p.id));
+    }
+
+    return Array.from(ids);
   }
 
   // Soft delete / deactivate promo code
