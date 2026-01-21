@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
 import {
   usePromosPaginated,
@@ -12,7 +12,11 @@ import {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/usePromos";
-import { useProductsPaginated } from "@/hooks/useProduct";
+import {
+  useProductsPaginated,
+  useProducts,
+  useCategories,
+} from "@/hooks/useProduct";
 import {
   Card,
   CardContent,
@@ -47,11 +51,16 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Search } from "lucide-react";
+import {
+  DataTablePagination,
+  type PaginationState,
+} from "@/components/ui/data-table-pagination";
 
 export function PromoPage() {
   const { toast } = useToast();
 
   const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const [showActiveOnly, setShowActiveOnly] = useState(true);
 
@@ -60,7 +69,7 @@ export function PromoPage() {
 
   const { data: promosResponse, isLoading } = usePromosPaginated({
     page,
-    limit: DEFAULT_LIMIT,
+    limit: pageSize,
     search,
     isActive: showActiveOnly ? true : undefined,
   });
@@ -68,11 +77,22 @@ export function PromoPage() {
   const promos = promosResponse?.data ?? [];
   const pagination = promosResponse?.pagination;
 
+  const [productSearch, setProductSearch] = useState("");
+
   const { data: productsResponse } = useProductsPaginated({
     page: 1,
     limit: 200,
   });
-  const products = productsResponse?.data ?? [];
+  const { data: allProducts = [] } = useProducts();
+  const { data: categories = [] } = useCategories();
+
+  const allSubcategories = useMemo(() => {
+    const set = new Set<string>();
+    (allProducts ?? []).forEach((p) => {
+      if (p.subCategory) set.add(p.subCategory);
+    });
+    return Array.from(set).sort((a, b) => a.localeCompare(b));
+  }, [allProducts]);
 
   const createMutation = useCreatePromo();
   const updateMutation = useUpdatePromo();
@@ -91,6 +111,9 @@ export function PromoPage() {
     usageLimit: undefined,
     isActive: true,
     productIds: [],
+    applyToAll: false,
+    categoryIds: [],
+    subCategories: [],
   });
 
   const resetForm = () => {
@@ -108,6 +131,9 @@ export function PromoPage() {
       usageLimit: undefined,
       isActive: true,
       productIds: [],
+      applyToAll: false,
+      categoryIds: [],
+      subCategories: [],
     });
   };
 
@@ -179,6 +205,28 @@ export function PromoPage() {
   };
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
+
+  const filteredProducts = useMemo(() => {
+    const productsBase = productsResponse?.data ?? [];
+    if (!productSearch.trim()) return productsBase;
+    const term = productSearch.toLowerCase();
+    return productsBase.filter(
+      (p) =>
+        p.name.toLowerCase().includes(term) ||
+        p.imsCode.toLowerCase().includes(term),
+    );
+  }, [productsResponse, productSearch]);
+
+  const promoPagination: PaginationState | null = pagination
+    ? {
+        currentPage: pagination.currentPage,
+        totalPages: pagination.totalPages,
+        totalItems: pagination.totalItems,
+        itemsPerPage: pagination.itemsPerPage,
+        hasNextPage: pagination.hasNextPage,
+        hasPrevPage: pagination.hasPrevPage,
+      }
+    : null;
 
   return (
     <div className="space-y-6">
@@ -482,51 +530,169 @@ export function PromoPage() {
                     <label className="text-xs font-medium">
                       Products (apply to)
                     </label>
-                    <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
-                      {products.map((product) => {
-                        const isSelected =
-                          formData.productIds?.includes(product.id) ?? false;
-                        return (
-                          <button
-                            key={product.id}
-                            type="button"
-                            className={`w-full flex items-center justify-between px-2 py-1 text-sm rounded hover:bg-muted ${
-                              isSelected ? "bg-muted" : ""
-                            }`}
-                            onClick={() => {
-                              setFormData((prev) => {
-                                const current = prev.productIds || [];
-                                const exists = current.includes(product.id);
-                                return {
-                                  ...prev,
-                                  productIds: exists
-                                    ? current.filter((id) => id !== product.id)
-                                    : [...current, product.id],
-                                };
-                              });
-                            }}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            id="apply-all"
+                            checked={!!formData.applyToAll}
+                            onCheckedChange={(checked) =>
+                              setFormData((prev) => ({
+                                ...prev,
+                                applyToAll: checked,
+                              }))
+                            }
+                          />
+                          <label
+                            htmlFor="apply-all"
+                            className="text-xs text-muted-foreground"
                           >
-                            <span className="truncate">
-                              {product.name}{" "}
-                              <span className="text-xs text-muted-foreground">
-                                ({product.imsCode})
-                              </span>
-                            </span>
-                            {isSelected && (
-                              <Badge
-                                variant="outline"
-                                className="text-xs px-2 py-0"
-                              >
-                                Selected
-                              </Badge>
+                            Apply to all products
+                          </label>
+                        </div>
+                        {!formData.applyToAll && (
+                          <Input
+                            placeholder="Search products..."
+                            className="h-8 w-40 text-xs"
+                            onChange={(e) => setProductSearch(e.target.value)}
+                          />
+                        )}
+                      </div>
+
+                      {!formData.applyToAll && (
+                        <>
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">
+                              Filter by Category
+                            </label>
+                            <div className="flex flex-wrap gap-1">
+                              {categories.map((cat) => {
+                                const selected =
+                                  formData.categoryIds?.includes(cat.id) ??
+                                  false;
+                                return (
+                                  <button
+                                    key={cat.id}
+                                    type="button"
+                                    className={`px-2 py-0.5 rounded-full text-xs border ${
+                                      selected
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-muted text-muted-foreground"
+                                    }`}
+                                    onClick={() =>
+                                      setFormData((prev) => {
+                                        const current = prev.categoryIds || [];
+                                        const exists = current.includes(cat.id);
+                                        return {
+                                          ...prev,
+                                          categoryIds: exists
+                                            ? current.filter(
+                                                (id) => id !== cat.id,
+                                              )
+                                            : [...current, cat.id],
+                                        };
+                                      })
+                                    }
+                                  >
+                                    {cat.name}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="space-y-1">
+                            <label className="text-xs font-medium">
+                              Filter by Subcategory
+                            </label>
+                            <div className="flex flex-wrap gap-1">
+                              {allSubcategories.map((sub) => {
+                                const selected =
+                                  formData.subCategories?.includes(sub) ??
+                                  false;
+                                return (
+                                  <button
+                                    key={sub}
+                                    type="button"
+                                    className={`px-2 py-0.5 rounded-full text-xs border ${
+                                      selected
+                                        ? "bg-primary text-primary-foreground"
+                                        : "bg-muted text-muted-foreground"
+                                    }`}
+                                    onClick={() =>
+                                      setFormData((prev) => {
+                                        const current =
+                                          prev.subCategories || [];
+                                        const exists = current.includes(sub);
+                                        return {
+                                          ...prev,
+                                          subCategories: exists
+                                            ? current.filter((s) => s !== sub)
+                                            : [...current, sub],
+                                        };
+                                      })
+                                    }
+                                  >
+                                    {sub}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+
+                          <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
+                            {filteredProducts.map((product) => {
+                              const isSelected =
+                                formData.productIds?.includes(product.id) ??
+                                false;
+                              return (
+                                <button
+                                  key={product.id}
+                                  type="button"
+                                  className={`w-full flex items-center justify-between px-2 py-1 text-sm rounded hover:bg-muted ${
+                                    isSelected ? "bg-muted" : ""
+                                  }`}
+                                  onClick={() => {
+                                    setFormData((prev) => {
+                                      const current = prev.productIds || [];
+                                      const exists = current.includes(
+                                        product.id,
+                                      );
+                                      return {
+                                        ...prev,
+                                        productIds: exists
+                                          ? current.filter(
+                                              (id) => id !== product.id,
+                                            )
+                                          : [...current, product.id],
+                                      };
+                                    });
+                                  }}
+                                >
+                                  <span className="truncate">
+                                    {product.name}{" "}
+                                    <span className="text-xs text-muted-foreground">
+                                      ({product.imsCode})
+                                    </span>
+                                  </span>
+                                  {isSelected && (
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs px-2 py-0"
+                                    >
+                                      Selected
+                                    </Badge>
+                                  )}
+                                </button>
+                              );
+                            })}
+                            {filteredProducts.length === 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                No products available
+                              </p>
                             )}
-                          </button>
-                        );
-                      })}
-                      {products.length === 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          No products available
-                        </p>
+                          </div>
+                        </>
                       )}
                     </div>
                   </div>
@@ -682,6 +848,15 @@ export function PromoPage() {
           )}
         </CardContent>
       </Card>
+
+      {promoPagination && (
+        <DataTablePagination
+          pagination={promoPagination}
+          onPageChange={setPage}
+          onPageSizeChange={setPageSize}
+          isLoading={isLoading}
+        />
+      )}
     </div>
   );
 }

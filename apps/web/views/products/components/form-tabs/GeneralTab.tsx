@@ -13,6 +13,9 @@ import { Textarea } from "@/components/ui/textarea";
 import type { ProductFormValues } from "../../types";
 import type { Category } from "@/hooks/useProduct";
 import type { UseFormReturn } from "@/hooks/useForm";
+import { useVendorsPaginated } from "@/hooks/useVendors";
+import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { useCategorySubcategories } from "@/hooks/useProduct";
 
 interface GeneralTabProps {
   form: UseFormReturn<ProductFormValues>;
@@ -20,6 +23,17 @@ interface GeneralTabProps {
 }
 
 export function GeneralTab({ form, categories }: GeneralTabProps) {
+  const isAdmin = useAuthStore(selectIsAdmin);
+  const { data: vendorsResponse } = useVendorsPaginated({
+    page: 1,
+    limit: 100,
+  });
+  const vendors = vendorsResponse?.data ?? [];
+
+  const { data: subcategories = [] } = useCategorySubcategories(
+    form.values.categoryId ?? "",
+  );
+
   return (
     <div className="space-y-4">
       <div className="space-y-2">
@@ -65,6 +79,59 @@ export function GeneralTab({ form, categories }: GeneralTabProps) {
           <p className="text-sm text-destructive">{form.errors.categoryId}</p>
         )}
       </div>
+      <div className="space-y-2">
+        <Label htmlFor="subCategory">Sub-Category (Optional)</Label>
+        {form.values.categoryId && subcategories.length > 0 ? (
+          <Select
+            value={form.values.subCategory || "none"}
+            onValueChange={(value) =>
+              form.handleChange("subCategory", value === "none" ? "" : value)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select subcategory" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {subcategories.map((sub) => (
+                <SelectItem key={sub} value={sub}>
+                  {sub}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Input
+            id="subCategory"
+            value={form.values.subCategory}
+            onChange={(e) => form.handleChange("subCategory", e.target.value)}
+            placeholder="Enter subcategory (optional)"
+          />
+        )}
+      </div>
+      {isAdmin && (
+        <div className="space-y-2">
+          <Label htmlFor="vendorId">Vendor (Optional)</Label>
+          <Select
+            value={form.values.vendorId ?? "none"}
+            onValueChange={(value) =>
+              form.handleChange("vendorId", value === "none" ? "" : value)
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select vendor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">None</SelectItem>
+              {vendors.map((vendor) => (
+                <SelectItem key={vendor.id} value={vendor.id}>
+                  {vendor.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
       <div className="space-y-2">
         <Label htmlFor="description">Description</Label>
         <Textarea
