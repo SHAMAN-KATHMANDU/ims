@@ -226,8 +226,8 @@ export function NewSaleForm({
           New Sale
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh]">
-        <form onSubmit={handleSubmit}>
+      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
+        <form onSubmit={handleSubmit} className="flex h-full flex-col">
           <DialogHeader>
             <DialogTitle>Create New Sale</DialogTitle>
             <DialogDescription>
@@ -236,8 +236,8 @@ export function NewSaleForm({
             </DialogDescription>
           </DialogHeader>
 
-          <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="space-y-6 py-4">
+          <ScrollArea className="mt-2 flex-1 pr-4">
+            <div className="space-y-6 py-2">
               {/* Location Selection */}
               <div className="space-y-2">
                 <Label htmlFor="location">Showroom *</Label>
@@ -363,63 +363,66 @@ export function NewSaleForm({
                     <ShoppingCart className="inline-block h-4 w-4 mr-1" />
                     Cart ({items.length} items)
                   </Label>
-                  <div className="border rounded-md divide-y">
-                    {items.map((item, index) => (
-                      <div
-                        key={item.variationId}
-                        className="flex items-center justify-between p-3"
-                      >
-                        <div className="flex-1 min-w-0">
-                          <div className="font-medium truncate">
-                            {item.productName}
+                  <ScrollArea className="h-[220px] rounded-md border">
+                    <div className="divide-y">
+                      {items.map((item, index) => (
+                        <div
+                          key={item.variationId}
+                          className="flex items-center justify-between p-3"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="font-medium truncate">
+                              {item.productName}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {item.imsCode} - {item.color}
+                            </div>
+                            <div className="text-sm">
+                              {formatCurrency(item.unitPrice)} x {item.quantity}{" "}
+                              ={" "}
+                              <span className="font-medium">
+                                {formatCurrency(item.unitPrice * item.quantity)}
+                              </span>
+                            </div>
                           </div>
-                          <div className="text-sm text-muted-foreground">
-                            {item.imsCode} - {item.color}
-                          </div>
-                          <div className="text-sm">
-                            {formatCurrency(item.unitPrice)} x {item.quantity} ={" "}
-                            <span className="font-medium">
-                              {formatCurrency(item.unitPrice * item.quantity)}
+                          <div className="ml-4 flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleQuantityChange(index, -1)}
+                              disabled={item.quantity <= 1}
+                            >
+                              <Minus className="h-3 w-3" />
+                            </Button>
+                            <span className="w-8 text-center">
+                              {item.quantity}
                             </span>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => handleQuantityChange(index, 1)}
+                              disabled={item.quantity >= item.maxQuantity}
+                            >
+                              <Plus className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive"
+                              onClick={() => handleRemoveItem(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex items-center gap-2 ml-4">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleQuantityChange(index, -1)}
-                            disabled={item.quantity <= 1}
-                          >
-                            <Minus className="h-3 w-3" />
-                          </Button>
-                          <span className="w-8 text-center">
-                            {item.quantity}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon"
-                            className="h-8 w-8"
-                            onClick={() => handleQuantityChange(index, 1)}
-                            disabled={item.quantity >= item.maxQuantity}
-                          >
-                            <Plus className="h-3 w-3" />
-                          </Button>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => handleRemoveItem(index)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  </ScrollArea>
                 </div>
               )}
 
