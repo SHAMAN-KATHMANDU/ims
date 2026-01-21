@@ -15,6 +15,9 @@ import {
   Users,
   Receipt,
   UserCheck,
+  Factory,
+  Percent,
+  Tags,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthStore, selectUserRole } from "@/stores/auth-store";
@@ -70,22 +73,28 @@ const navSections: NavSection[] = [
         icon: UserCheck,
         roles: ["admin", "superAdmin"],
       },
-      {
-        path: "promos",
-        label: "Promo Codes",
-        icon: Receipt,
-        roles: ["admin", "superAdmin"],
-      },
     ],
   },
   {
-    title: "CATALOG",
+    title: "PRODUCTS",
     items: [
       {
         path: "product",
-        label: "Products",
+        label: "Catalog",
         icon: Package,
         roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "product/categories",
+        label: "Categories",
+        icon: Tags,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "product/discounts",
+        label: "Discounts",
+        icon: Percent,
+        roles: ["admin", "superAdmin"],
       },
     ],
   },
@@ -99,10 +108,27 @@ const navSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
       },
       {
+        path: "vendors",
+        label: "Vendors",
+        icon: Factory,
+        roles: ["admin", "superAdmin"],
+      },
+      {
         path: "transfers",
         label: "Transfers",
         icon: ArrowLeftRight,
         roles: ["user", "admin", "superAdmin"],
+      },
+    ],
+  },
+  {
+    title: "PROMOTIONS",
+    items: [
+      {
+        path: "promos",
+        label: "Promo Codes",
+        icon: Percent,
+        roles: ["admin", "superAdmin"],
       },
     ],
   },
@@ -149,8 +175,9 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     MAIN: true,
     SALES: true,
-    CATALOG: true,
+    PRODUCTS: true,
     INVENTORY: true,
+    PROMOTIONS: true,
     REPORTS: true,
     SETTINGS: true,
   });
@@ -203,6 +230,10 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       item.href || `${detectedBasePath}${item.path ? `/${item.path}` : ""}`;
 
     if (item.path === "") {
+      return pathname === href;
+    }
+    // Special-case product catalog so it doesn't stay active on nested product routes
+    if (item.path === "product") {
       return pathname === href;
     }
     return pathname === href || pathname.startsWith(href + "/");

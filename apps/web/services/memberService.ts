@@ -19,6 +19,14 @@ export interface Member {
   email?: string;
   notes?: string;
   isActive: boolean;
+  gender?: string;
+  age?: number;
+  address?: string;
+  birthday?: string;
+  totalSales?: number;
+  memberStatus?: "ACTIVE" | "INACTIVE" | "PROSPECT" | "VIP";
+  memberSince?: string | null;
+  firstPurchase?: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -67,6 +75,10 @@ export interface CreateMemberData {
   name?: string;
   email?: string;
   notes?: string;
+  gender?: string;
+  age?: number;
+  address?: string;
+  birthday?: string;
 }
 
 export interface UpdateMemberData {
@@ -75,6 +87,11 @@ export interface UpdateMemberData {
   email?: string;
   notes?: string;
   isActive?: boolean;
+  gender?: string;
+  age?: number;
+  address?: string;
+  birthday?: string;
+  memberStatus?: "ACTIVE" | "INACTIVE" | "PROSPECT" | "VIP";
 }
 
 export interface MemberCheckResult {

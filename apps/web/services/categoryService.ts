@@ -18,6 +18,7 @@ export interface Category {
   description?: string;
   createdAt?: string;
   updatedAt?: string;
+  subCategories?: { name: string }[];
 }
 
 export interface CreateCategoryData {
@@ -80,6 +81,22 @@ export async function getCategoryById(id: string): Promise<Category> {
   }
 }
 
+export async function getCategorySubcategories(id: string): Promise<string[]> {
+  if (!id?.trim()) {
+    throw new Error("Category ID is required");
+  }
+  try {
+    const response = await api.get<{
+      message: string;
+      categoryId: string;
+      subcategories: string[];
+    }>(`/categories/${id}/subcategories`);
+    return response.data.subcategories || [];
+  } catch (error) {
+    handleApiError(error, `fetch subcategories for category "${id}"`);
+  }
+}
+
 /**
  * Create a new category
  */
@@ -132,5 +149,43 @@ export async function deleteCategory(id: string): Promise<void> {
     await api.delete(`/categories/${id}`);
   } catch (error) {
     handleApiError(error, `delete category "${id}"`);
+  }
+}
+
+export async function createSubcategory(
+  categoryId: string,
+  name: string,
+): Promise<void> {
+  if (!categoryId?.trim()) {
+    throw new Error("Category ID is required");
+  }
+  if (!name?.trim()) {
+    throw new Error("Subcategory name is required");
+  }
+
+  try {
+    await api.post(`/categories/${categoryId}/subcategories`, { name });
+  } catch (error) {
+    handleApiError(error, "create subcategory");
+  }
+}
+
+export async function deleteSubcategory(
+  categoryId: string,
+  name: string,
+): Promise<void> {
+  if (!categoryId?.trim()) {
+    throw new Error("Category ID is required");
+  }
+  if (!name?.trim()) {
+    throw new Error("Subcategory name is required");
+  }
+
+  try {
+    await api.delete(`/categories/${categoryId}/subcategories`, {
+      data: { name },
+    });
+  } catch (error) {
+    handleApiError(error, "delete subcategory");
   }
 }

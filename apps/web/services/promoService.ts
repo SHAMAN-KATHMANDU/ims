@@ -68,6 +68,9 @@ export interface CreateOrUpdatePromoData {
   usageLimit?: number | null;
   isActive?: boolean;
   productIds?: string[];
+  applyToAll?: boolean;
+  categoryIds?: string[];
+  subCategories?: string[];
 }
 
 interface PromosApiResponse {

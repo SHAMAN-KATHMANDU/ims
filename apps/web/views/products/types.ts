@@ -2,6 +2,7 @@ export type ProductFormValues = {
   imsCode: string;
   name: string;
   categoryId: string;
+  subCategory: string;
   description: string;
   length: string;
   breadth: string;
@@ -9,6 +10,7 @@ export type ProductFormValues = {
   weight: string;
   costPrice: string;
   mrp: string;
+  vendorId?: string;
 };
 
 export type CategoryFormValues = {
