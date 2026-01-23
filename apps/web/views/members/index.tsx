@@ -17,14 +17,18 @@ import { MemberTable } from "./components/MemberTable";
 import { MemberForm } from "./components/MemberForm";
 import { MemberDetail } from "./components/MemberDetail";
 import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
+import {
+  DataTablePagination,
+  type PaginationState,
+} from "@/components/ui/data-table-pagination";
 
 export function MembersPage() {
   const { toast } = useToast();
 
   // Filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
 
   // Dialog state
@@ -36,11 +40,22 @@ export function MembersPage() {
   const { data: membersResponse, isLoading: membersLoading } =
     useMembersPaginated({
       page,
-      limit: DEFAULT_LIMIT,
+      limit: pageSize,
       search,
     });
 
   const members = membersResponse?.data ?? [];
+
+  const membersPagination: PaginationState | null = membersResponse?.pagination
+    ? {
+        currentPage: membersResponse.pagination.currentPage,
+        totalPages: membersResponse.pagination.totalPages,
+        totalItems: membersResponse.pagination.totalItems,
+        itemsPerPage: membersResponse.pagination.itemsPerPage,
+        hasNextPage: membersResponse.pagination.hasNextPage,
+        hasPrevPage: membersResponse.pagination.hasPrevPage,
+      }
+    : null;
 
   const { data: selectedMember, isLoading: memberLoading } = useMember(
     selectedMemberId || "",
@@ -109,6 +124,11 @@ export function MembersPage() {
   const isFormLoading =
     createMemberMutation.isPending || updateMemberMutation.isPending;
 
+  const handlePageSizeChange = useCallback((newSize: number) => {
+    setPageSize(newSize);
+    setPage(DEFAULT_PAGE);
+  }, []);
+
   return (
     <div className="space-y-6">
       <div>
@@ -146,31 +166,14 @@ export function MembersPage() {
       />
 
       {/* Pagination */}
-      {membersResponse?.pagination &&
-        membersResponse.pagination.totalPages > 1 && (
-          <div className="flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={!membersResponse.pagination.hasPrevPage}
-            >
-              Previous
-            </Button>
-            <span className="text-sm text-muted-foreground">
-              Page {membersResponse.pagination.currentPage} of{" "}
-              {membersResponse.pagination.totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setPage((p) => p + 1)}
-              disabled={!membersResponse.pagination.hasNextPage}
-            >
-              Next
-            </Button>
-          </div>
-        )}
+      {membersPagination && (
+        <DataTablePagination
+          pagination={membersPagination}
+          onPageChange={setPage}
+          onPageSizeChange={handlePageSizeChange}
+          isLoading={membersLoading}
+        />
+      )}
 
       {/* Member Detail Dialog */}
       <MemberDetail

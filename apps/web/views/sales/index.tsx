@@ -33,6 +33,10 @@ import {
 import { Search, CalendarIcon, X } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  DataTablePagination,
+  type PaginationState,
+} from "@/components/ui/data-table-pagination";
 
 const TYPE_OPTIONS: { value: SaleType | "ALL"; label: string }[] = [
   { value: "ALL", label: "All Types" },
@@ -45,6 +49,7 @@ export function SalesPage() {
 
   // Filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<SaleType | "ALL">("ALL");
   const [locationFilter, setLocationFilter] = useState<string>("ALL");
@@ -58,7 +63,7 @@ export function SalesPage() {
   // Data fetching
   const { data: salesResponse, isLoading: salesLoading } = useSalesPaginated({
     page,
-    limit: DEFAULT_LIMIT,
+    limit: pageSize,
     search,
     type: typeFilter === "ALL" ? undefined : typeFilter,
     locationId: locationFilter === "ALL" ? undefined : locationFilter,
@@ -67,6 +72,17 @@ export function SalesPage() {
   });
 
   const sales = salesResponse?.data ?? [];
+
+  const salesPagination: PaginationState | null = salesResponse?.pagination
+    ? {
+        currentPage: salesResponse.pagination.currentPage,
+        totalPages: salesResponse.pagination.totalPages,
+        totalItems: salesResponse.pagination.totalItems,
+        itemsPerPage: salesResponse.pagination.itemsPerPage,
+        hasNextPage: salesResponse.pagination.hasNextPage,
+        hasPrevPage: salesResponse.pagination.hasPrevPage,
+      }
+    : null;
 
   const { data: selectedSale, isLoading: saleLoading } = useSale(
     selectedSaleId || "",
@@ -94,6 +110,11 @@ export function SalesPage() {
 
   const handleLocationChange = useCallback((value: string) => {
     setLocationFilter(value);
+    setPage(DEFAULT_PAGE);
+  }, []);
+
+  const handlePageSizeChange = useCallback((newSize: number) => {
+    setPageSize(newSize);
     setPage(DEFAULT_PAGE);
   }, []);
 
@@ -255,29 +276,13 @@ export function SalesPage() {
       <SalesTable sales={sales} isLoading={salesLoading} onView={handleView} />
 
       {/* Pagination */}
-      {salesResponse?.pagination && salesResponse.pagination.totalPages > 1 && (
-        <div className="flex items-center justify-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => Math.max(1, p - 1))}
-            disabled={!salesResponse.pagination.hasPrevPage}
-          >
-            Previous
-          </Button>
-          <span className="text-sm text-muted-foreground">
-            Page {salesResponse.pagination.currentPage} of{" "}
-            {salesResponse.pagination.totalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setPage((p) => p + 1)}
-            disabled={!salesResponse.pagination.hasNextPage}
-          >
-            Next
-          </Button>
-        </div>
+      {salesPagination && (
+        <DataTablePagination
+          pagination={salesPagination}
+          onPageChange={setPage}
+          onPageSizeChange={handlePageSizeChange}
+          isLoading={salesLoading}
+        />
       )}
 
       {/* Sale Detail Dialog */}

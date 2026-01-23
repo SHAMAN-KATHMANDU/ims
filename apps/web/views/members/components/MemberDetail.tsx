@@ -10,6 +10,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Table,
   TableBody,
@@ -130,13 +131,13 @@ export function MemberDetail({
               </>
             )}
 
-            {/* Recent Purchases */}
+            {/* Sales History */}
             {member.sales && member.sales.length > 0 && (
               <>
                 <Separator />
                 <div>
-                  <h4 className="font-medium mb-2">Recent Purchases</h4>
-                  <div className="rounded-md border">
+                  <h4 className="font-medium mb-2">Sales History</h4>
+                  <ScrollArea className="h-[400px] rounded-md border">
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -163,7 +164,7 @@ export function MemberDetail({
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                  </ScrollArea>
                 </div>
               </>
             )}
