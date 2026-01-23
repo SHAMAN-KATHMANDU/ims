@@ -30,7 +30,17 @@ import { DiscountsTab } from "./components/DiscountsTab";
 import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
+import { BulkUploadDialog } from "./components/BulkUploadDialog";
 import { LocationSelector } from "@/components/ui/location-selector";
+import { Button } from "@/components/ui/button";
+import { Upload, Download, FileSpreadsheet, FileText } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { downloadProducts } from "@/services/productService";
 import type {
   ProductFormValues,
   CategoryFormValues,
@@ -109,6 +119,7 @@ export function ProductPage() {
   // Dialog states
   const [productDialog, setProductDialog] = useState(false);
   const [categoryDialog, setCategoryDialog] = useState(false);
+  const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [categoryToDelete, setCategoryToDelete] = useState<Category | null>(
     null,
@@ -125,6 +136,11 @@ export function ProductPage() {
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+
+  // Selection state
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Form states
   const [productVariations, setProductVariations] = useState<
@@ -681,6 +697,42 @@ export function ProductPage() {
     setProductDiscounts(updated);
   };
 
+  // Export handlers
+  const handleExport = useCallback(
+    async (format: "excel" | "csv") => {
+      try {
+        // Get selected product IDs or undefined (which means export all)
+        const productIdsToExport =
+          selectedProductIds.size > 0
+            ? Array.from(selectedProductIds)
+            : undefined;
+
+        // Call backend download endpoint
+        await downloadProducts(format, productIdsToExport);
+
+        const count =
+          productIdsToExport?.length || paginationInfo?.totalItems || 0;
+        toast({
+          title: "Download started",
+          description: `Downloading ${count} product(s) as ${format.toUpperCase()}`,
+        });
+
+        // Clear selection after export
+        if (selectedProductIds.size > 0) {
+          setSelectedProductIds(new Set());
+        }
+      } catch (error: unknown) {
+        const err = error as { message?: string };
+        toast({
+          title: "Download failed",
+          description: err.message || "Failed to download products",
+          variant: "destructive",
+        });
+      }
+    },
+    [selectedProductIds, paginationInfo?.totalItems, toast],
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -710,30 +762,68 @@ export function ProductPage() {
               />
             </div>
             {canManageProducts && (
-              <ProductForm
-                open={productDialog}
-                onOpenChange={setProductDialog}
-                form={productForm}
-                editingProduct={editingProduct}
-                categories={categories}
-                variations={productVariations}
-                discounts={productDiscounts}
-                discountTypes={discountTypes}
-                onReset={handleResetProduct}
-                onAddVariation={addVariationToForm}
-                onRemoveVariation={removeVariationFromForm}
-                onUpdateVariation={updateVariationInForm}
-                onAddPhoto={addPhotoToVariation}
-                onRemovePhoto={removePhotoFromVariation}
-                onSetPrimaryPhoto={setPrimaryPhoto}
-                onAddDiscount={addDiscountToForm}
-                onRemoveDiscount={removeDiscountFromForm}
-                onUpdateDiscount={updateDiscountInForm}
-                onShowError={(title, message) =>
-                  setErrorDialog({ open: true, title, message })
-                }
-                validateProduct={validateProduct}
-              />
+              <div className="flex items-center gap-2">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                      {selectedProductIds.size > 0 && (
+                        <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
+                          {selectedProductIds.size}
+                        </span>
+                      )}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleExport("excel")}
+                      disabled={isProductsLoading}
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Download as Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExport("csv")}
+                      disabled={isProductsLoading}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Download as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <Button
+                  variant="outline"
+                  onClick={() => setBulkUploadDialog(true)}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Upload
+                </Button>
+                <ProductForm
+                  open={productDialog}
+                  onOpenChange={setProductDialog}
+                  form={productForm}
+                  editingProduct={editingProduct}
+                  categories={categories}
+                  variations={productVariations}
+                  discounts={productDiscounts}
+                  discountTypes={discountTypes}
+                  onReset={handleResetProduct}
+                  onAddVariation={addVariationToForm}
+                  onRemoveVariation={removeVariationFromForm}
+                  onUpdateVariation={updateVariationInForm}
+                  onAddPhoto={addPhotoToVariation}
+                  onRemovePhoto={removePhotoFromVariation}
+                  onSetPrimaryPhoto={setPrimaryPhoto}
+                  onAddDiscount={addDiscountToForm}
+                  onRemoveDiscount={removeDiscountFromForm}
+                  onUpdateDiscount={updateDiscountInForm}
+                  onShowError={(title, message) =>
+                    setErrorDialog({ open: true, title, message })
+                  }
+                  validateProduct={validateProduct}
+                />
+              </div>
             )}
           </div>
 
@@ -767,6 +857,9 @@ export function ProductPage() {
             // Loading states
             isLoading={isProductsLoading}
             isFetching={isProductsFetching}
+            // Selection props
+            selectedProducts={selectedProductIds}
+            onSelectionChange={setSelectedProductIds}
           />
         </TabsContent>
 
@@ -817,6 +910,11 @@ export function ProductPage() {
         onGoBack={() => {
           // Keep dialog open on error so user can fix issues
         }}
+      />
+
+      <BulkUploadDialog
+        open={bulkUploadDialog}
+        onOpenChange={setBulkUploadDialog}
       />
     </div>
   );

@@ -2,6 +2,7 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import productController from "@/modules/products/product.controller";
+import { uploadSingle } from "@/config/multer.config";
 
 const productRouter = Router();
 
@@ -171,6 +172,51 @@ productRouter.get(
 
 /**
  * @swagger
+ * /products/download:
+ *   get:
+ *     summary: Download products as Excel or CSV
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: format
+ *         schema:
+ *           type: string
+ *           enum: [excel, csv]
+ *           default: excel
+ *         description: Export format (excel or csv)
+ *       - in: query
+ *         name: ids
+ *         schema:
+ *           type: string
+ *         description: Comma-separated list of product IDs to export. If not provided, exports all products.
+ *         example: "id1,id2,id3"
+ *     responses:
+ *       200:
+ *         description: File download
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *           text/csv:
+ *             schema:
+ *               type: string
+ *       400:
+ *         description: Invalid format
+ *       404:
+ *         description: No products found
+ */
+productRouter.get(
+  "/download",
+  verifyToken,
+  authorizeRoles("admin", "user", "superAdmin"),
+  productController.downloadProducts,
+);
+
+/**
+ * @swagger
  * /products/{id}:
  *   get:
  *     summary: Get product by ID
@@ -265,6 +311,75 @@ productRouter.delete(
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
   productController.deleteProduct,
+);
+
+/**
+ * @swagger
+ * /products/bulk-upload:
+ *   post:
+ *     summary: Bulk upload products from Excel file
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - file
+ *             properties:
+ *               file:
+ *                 type: string
+ *                 format: binary
+ *                 description: Excel file (.xlsx, .xls, .xlsm) containing product data
+ *     responses:
+ *       200:
+ *         description: Bulk upload completed
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 summary:
+ *                   type: object
+ *                   properties:
+ *                     total:
+ *                       type: number
+ *                     created:
+ *                       type: number
+ *                     skipped:
+ *                       type: number
+ *                     errors:
+ *                       type: number
+ *                 created:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 skipped:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                 errors:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *       400:
+ *         description: Bad request or validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden - Admin role required
+ */
+productRouter.post(
+  "/bulk-upload",
+  verifyToken,
+  authorizeRoles("admin", "superAdmin"),
+  uploadSingle,
+  productController.bulkUploadProducts,
 );
 
 export default productRouter;
