@@ -117,6 +117,30 @@ categoryRouter.get(
   categoryController.getCategoryById,
 );
 
+// Get distinct subcategories for a category
+categoryRouter.get(
+  "/:id/subcategories",
+  verifyToken,
+  authorizeRoles("admin", "user", "superAdmin"),
+  categoryController.getCategorySubcategories,
+);
+
+// Create subcategory for a category
+categoryRouter.post(
+  "/:id/subcategories",
+  verifyToken,
+  authorizeRoles("admin", "superAdmin"),
+  categoryController.createSubcategory,
+);
+
+// Delete subcategory for a category
+categoryRouter.delete(
+  "/:id/subcategories",
+  verifyToken,
+  authorizeRoles("admin", "superAdmin"),
+  categoryController.deleteSubcategory,
+);
+
 /**
  * @swagger
  * /categories/{id}:

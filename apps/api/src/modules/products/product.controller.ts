@@ -16,6 +16,7 @@ class ProductController {
         name,
         categoryId,
         description,
+        subCategory,
         length,
         breadth,
         height,
@@ -158,6 +159,20 @@ class ProductController {
         }
       }
 
+      // Handle vendorId if provided
+      const vendorId = req.body.vendorId as string | undefined;
+      if (vendorId) {
+        const vendor = await prisma.vendor.findUnique({
+          where: { id: vendorId },
+        });
+        if (!vendor) {
+          return res.status(404).json({
+            message: "Vendor not found",
+            providedVendorId: vendorId,
+          });
+        }
+      }
+
       // Create product
       const product = await prisma.product.create({
         data: {
@@ -165,12 +180,14 @@ class ProductController {
           name: name as string,
           categoryId: category.id,
           description: description || null,
+          subCategory: subCategory?.trim() || null,
           length: length ? parseFloat(length.toString()) : null,
           breadth: breadth ? parseFloat(breadth.toString()) : null,
           height: height ? parseFloat(height.toString()) : null,
           weight: weight ? parseFloat(weight.toString()) : null,
           costPrice: parseFloat(costPrice.toString()),
           mrp: parseFloat(mrp.toString()),
+          vendorId: vendorId || null,
           createdById: req.user.id,
           // Add variations (colors with photos)
           variations:
@@ -443,12 +460,14 @@ class ProductController {
         name,
         categoryId,
         description,
+        subCategory,
         length,
         breadth,
         height,
         weight,
         costPrice,
         mrp,
+        vendorId,
         variations,
         discounts,
       } = req.body;
@@ -502,6 +521,12 @@ class ProductController {
       if (description !== undefined) {
         updateData.description = description || null;
       }
+      if (subCategory !== undefined) {
+        updateData.subCategory =
+          subCategory && subCategory.trim().length > 0
+            ? subCategory.trim()
+            : null;
+      }
       if (length !== undefined) {
         updateData.length = length ? parseFloat(length) : null;
       }
@@ -519,6 +544,20 @@ class ProductController {
       }
       if (mrp !== undefined) {
         updateData.mrp = parseFloat(mrp);
+      }
+      if (vendorId !== undefined) {
+        if (vendorId) {
+          const vendor = await prisma.vendor.findUnique({
+            where: { id: vendorId },
+          });
+          if (!vendor) {
+            return res.status(404).json({
+              message: "Vendor not found",
+              providedVendorId: vendorId,
+            });
+          }
+        }
+        updateData.vendorId = vendorId || null;
       }
 
       // Handle variations update if provided

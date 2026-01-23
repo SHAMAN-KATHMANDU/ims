@@ -101,6 +101,11 @@ class CategoryController {
             description: true,
             createdAt: true,
             updatedAt: true,
+            subCategories: {
+              select: {
+                name: true,
+              },
+            },
             _count: {
               select: {
                 products: true,
@@ -177,6 +182,162 @@ class CategoryController {
       res
         .status(500)
         .json({ message: "Error fetching category", error: error.message });
+    }
+  }
+
+  // Get distinct subcategories for a category
+  async getCategorySubcategories(req: Request, res: Response) {
+    try {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+
+      if (!id) {
+        return res.status(400).json({ message: "Category ID is required" });
+      }
+
+      // Fetch from SubCategory table instead of inferring from products
+      const subcategoryRows = await prisma.subCategory.findMany({
+        where: {
+          categoryId: id,
+        },
+        select: {
+          name: true,
+        },
+        orderBy: {
+          name: "asc",
+        },
+      });
+
+      const subcategories = subcategoryRows.map((row) => row.name);
+
+      return res.status(200).json({
+        message: "Subcategories fetched successfully",
+        categoryId: id,
+        subcategories,
+      });
+    } catch (error: any) {
+      console.error("Get category subcategories error:", error);
+      res.status(500).json({
+        message: "Error fetching subcategories",
+        error: error.message,
+      });
+    }
+  }
+
+  // Create a new subcategory for a category
+  async createSubcategory(req: Request, res: Response) {
+    try {
+      const categoryId = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const { name } = req.body as { name?: string };
+
+      if (!categoryId) {
+        return res.status(400).json({ message: "Category ID is required" });
+      }
+      if (!name || !name.trim()) {
+        return res
+          .status(400)
+          .json({ message: "Subcategory name is required" });
+      }
+
+      const category = await prisma.category.findUnique({
+        where: { id: categoryId },
+      });
+      if (!category) {
+        return res.status(404).json({ message: "Category not found" });
+      }
+
+      const existing = await prisma.subCategory.findFirst({
+        where: {
+          categoryId,
+          name: name.trim(),
+        },
+      });
+      if (existing) {
+        return res.status(409).json({
+          message:
+            "Subcategory with this name already exists for this category",
+          subCategory: existing,
+        });
+      }
+
+      const subCategory = await prisma.subCategory.create({
+        data: {
+          name: name.trim(),
+          categoryId,
+        },
+      });
+
+      return res.status(201).json({
+        message: "Subcategory created successfully",
+        subCategory,
+      });
+    } catch (error: any) {
+      console.error("Create subcategory error:", error);
+      res.status(500).json({
+        message: "Error creating subcategory",
+        error: error.message,
+      });
+    }
+  }
+
+  // Delete a subcategory from a category
+  async deleteSubcategory(req: Request, res: Response) {
+    try {
+      const categoryId = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const { name } = req.body as { name?: string };
+
+      if (!categoryId) {
+        return res.status(400).json({ message: "Category ID is required" });
+      }
+      if (!name || !name.trim()) {
+        return res
+          .status(400)
+          .json({ message: "Subcategory name is required" });
+      }
+
+      const subCategory = await prisma.subCategory.findFirst({
+        where: {
+          categoryId,
+          name: name.trim(),
+        },
+      });
+
+      if (!subCategory) {
+        return res.status(404).json({
+          message: "Subcategory not found for this category",
+        });
+      }
+
+      // Prevent deletion if products are linked
+      const linkedProducts = await prisma.product.count({
+        where: { subCategoryId: subCategory.id },
+      });
+
+      if (linkedProducts > 0) {
+        return res.status(400).json({
+          message:
+            "Cannot delete subcategory that is linked to existing products",
+        });
+      }
+
+      await prisma.subCategory.delete({
+        where: { id: subCategory.id },
+      });
+
+      return res.status(200).json({
+        message: "Subcategory deleted successfully",
+      });
+    } catch (error: any) {
+      console.error("Delete subcategory error:", error);
+      res.status(500).json({
+        message: "Error deleting subcategory",
+        error: error.message,
+      });
     }
   }
 

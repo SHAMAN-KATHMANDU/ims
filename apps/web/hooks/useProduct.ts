@@ -22,9 +22,12 @@ import {
 import {
   getAllCategories,
   getCategoryById,
+  getCategorySubcategories,
   createCategory,
   updateCategory,
   deleteCategory,
+  createSubcategory,
+  deleteSubcategory,
   type Category,
   type CreateCategoryData,
   type UpdateCategoryData,
@@ -182,6 +185,44 @@ export function useCategory(id: string) {
     queryKey: categoryKeys.detail(id),
     queryFn: () => getCategoryById(id),
     enabled: !!id,
+  });
+}
+
+export function useCategorySubcategories(categoryId: string) {
+  return useQuery({
+    queryKey: categoryKeys.detail(`${categoryId}-subcategories`),
+    queryFn: () => getCategorySubcategories(categoryId),
+    enabled: !!categoryId,
+  });
+}
+
+export function useCreateSubcategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ categoryId, name }: { categoryId: string; name: string }) =>
+      createSubcategory(categoryId, name),
+    onSuccess: (_data, variables) => {
+      // Refresh category subcategories and category lists
+      queryClient.invalidateQueries({
+        queryKey: categoryKeys.detail(`${variables.categoryId}-subcategories`),
+      });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
+    },
+  });
+}
+
+export function useDeleteSubcategory() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({ categoryId, name }: { categoryId: string; name: string }) =>
+      deleteSubcategory(categoryId, name),
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: categoryKeys.detail(`${variables.categoryId}-subcategories`),
+      });
+    },
   });
 }
 
