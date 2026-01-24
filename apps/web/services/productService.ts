@@ -38,6 +38,7 @@ export interface Product {
   imsCode: string;
   name: string;
   categoryId: string;
+  subCategory?: string;
   description?: string;
   length?: number;
   breadth?: number;
@@ -101,12 +102,14 @@ export interface CreateProductData {
   categoryId?: string;
   categoryName?: string;
   description?: string;
+  subCategory?: string;
   length?: number;
   breadth?: number;
   height?: number;
   weight?: number;
   costPrice: number;
   mrp: number;
+  vendorId?: string;
   variations?: Array<{
     color: string;
     stockQuantity?: number;
@@ -130,12 +133,14 @@ export interface UpdateProductData {
   name?: string;
   categoryId?: string;
   description?: string;
+  subCategory?: string;
   length?: number;
   breadth?: number;
   height?: number;
   weight?: number;
   costPrice?: number;
   mrp?: number;
+  vendorId?: string;
   variations?: Array<{
     color: string;
     stockQuantity?: number;

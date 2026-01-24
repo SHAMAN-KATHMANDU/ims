@@ -168,13 +168,24 @@ class MemberController {
         include: {
           sales: {
             orderBy: { createdAt: "desc" },
-            take: 10,
             include: {
               location: {
                 select: { id: true, name: true },
               },
-              _count: {
-                select: { items: true },
+              items: {
+                include: {
+                  variation: {
+                    include: {
+                      product: {
+                        select: {
+                          id: true,
+                          name: true,
+                          imsCode: true,
+                        },
+                      },
+                    },
+                  },
+                },
               },
             },
           },

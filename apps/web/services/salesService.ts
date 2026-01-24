@@ -14,6 +14,13 @@ import { handleApiError } from "@/lib/apiError";
 
 export type SaleType = "GENERAL" | "MEMBER";
 
+export type PaymentMethod = "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+
+export interface SalePayment {
+  method: PaymentMethod;
+  amount: number;
+}
+
 export interface SaleItem {
   id: string;
   variationId: string;
@@ -99,6 +106,7 @@ export interface PaginatedSalesResponse {
 export interface CreateSaleItem {
   variationId: string;
   quantity: number;
+  promoCode?: string;
 }
 
 export interface CreateSaleData {
@@ -106,6 +114,7 @@ export interface CreateSaleData {
   memberPhone?: string;
   items: CreateSaleItem[];
   notes?: string;
+  payments?: SalePayment[];
 }
 
 export interface SalesSummary {
