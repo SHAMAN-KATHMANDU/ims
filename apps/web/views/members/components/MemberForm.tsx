@@ -42,6 +42,13 @@ export function MemberForm({
   const [email, setEmail] = useState("");
   const [notes, setNotes] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [gender, setGender] = useState("");
+  const [age, setAge] = useState("");
+  const [address, setAddress] = useState("");
+  const [birthday, setBirthday] = useState("");
+  const [memberStatus, setMemberStatus] = useState<
+    "" | "ACTIVE" | "INACTIVE" | "PROSPECT" | "VIP"
+  >("ACTIVE");
 
   const isEdit = !!member;
 
@@ -53,12 +60,26 @@ export function MemberForm({
       setEmail(member.email || "");
       setNotes(member.notes || "");
       setIsActive(member.isActive);
+      setGender(member.gender || "");
+      setAge(
+        member.age !== undefined && member.age !== null
+          ? String(member.age)
+          : "",
+      );
+      setAddress(member.address || "");
+      setBirthday(member.birthday ? member.birthday.slice(0, 10) : "");
+      setMemberStatus(member.memberStatus || "ACTIVE");
     } else if (!open) {
       setPhone("");
       setName("");
       setEmail("");
       setNotes("");
       setIsActive(true);
+      setGender("");
+      setAge("");
+      setAddress("");
+      setBirthday("");
+      setMemberStatus("ACTIVE");
     }
   }, [open, member]);
 
@@ -67,20 +88,26 @@ export function MemberForm({
 
     if (!phone.trim()) return;
 
+    const commonData = {
+      phone: phone.trim(),
+      name: name.trim() || undefined,
+      email: email.trim() || undefined,
+      notes: notes.trim() || undefined,
+      gender: gender.trim() || undefined,
+      age: age ? Number(age) : undefined,
+      address: address.trim() || undefined,
+      birthday: birthday || undefined,
+    };
+
     if (isEdit) {
       await onSubmit({
-        phone: phone.trim(),
-        name: name.trim() || undefined,
-        email: email.trim() || undefined,
-        notes: notes.trim() || undefined,
+        ...commonData,
         isActive,
+        memberStatus: memberStatus || undefined,
       });
     } else {
       await onSubmit({
-        phone: phone.trim(),
-        name: name.trim() || undefined,
-        email: email.trim() || undefined,
-        notes: notes.trim() || undefined,
+        ...commonData,
       });
     }
   };
@@ -156,15 +183,87 @@ export function MemberForm({
               />
             </div>
 
+            {/* Gender & Age */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="gender">Gender</Label>
+                <Input
+                  id="gender"
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  placeholder="e.g. Male, Female, Other"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="age">Age</Label>
+                <Input
+                  id="age"
+                  type="number"
+                  min="0"
+                  value={age}
+                  onChange={(e) => setAge(e.target.value)}
+                  placeholder="Age in years"
+                />
+              </div>
+            </div>
+
+            {/* Address */}
+            <div className="space-y-2">
+              <Label htmlFor="address">Address</Label>
+              <Textarea
+                id="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Customer address"
+                rows={2}
+              />
+            </div>
+
+            {/* Birthday */}
+            <div className="space-y-2">
+              <Label htmlFor="birthday">Birthday</Label>
+              <Input
+                id="birthday"
+                type="date"
+                value={birthday}
+                onChange={(e) => setBirthday(e.target.value)}
+              />
+            </div>
+
             {/* Active Status (only for edit) */}
             {isEdit && (
-              <div className="flex items-center justify-between">
-                <Label htmlFor="isActive">Active Status</Label>
-                <Switch
-                  id="isActive"
-                  checked={isActive}
-                  onCheckedChange={setIsActive}
-                />
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="isActive">Active Status</Label>
+                  <Switch
+                    id="isActive"
+                    checked={isActive}
+                    onCheckedChange={setIsActive}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="memberStatus">Member Status</Label>
+                  <select
+                    id="memberStatus"
+                    className="border rounded-md px-3 py-2 text-sm w-full bg-background"
+                    value={memberStatus}
+                    onChange={(e) =>
+                      setMemberStatus(
+                        e.target.value as
+                          | ""
+                          | "ACTIVE"
+                          | "INACTIVE"
+                          | "PROSPECT"
+                          | "VIP",
+                      )
+                    }
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="PROSPECT">Prospect</option>
+                    <option value="VIP">VIP</option>
+                  </select>
+                </div>
               </div>
             )}
           </div>
