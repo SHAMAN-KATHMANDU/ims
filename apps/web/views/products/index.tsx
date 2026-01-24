@@ -21,6 +21,11 @@ import {
   type ProductListParams,
 } from "@/hooks/useProduct";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import {
+  useProductSelectionStore,
+  selectSelectedProductIds,
+  selectClearSelection,
+} from "@/stores/product-selection-store";
 import { type CreateProductData } from "@/services/productService";
 import { ProductForm } from "./components/ProductForm";
 import { CategoryForm } from "./components/CategoryForm";
@@ -116,6 +121,13 @@ export function ProductPage() {
   const canManageProducts = isAdmin;
   const canSeeCostPrice = isAdmin;
 
+  // Zustand store for product selection
+  const selectedProductIds = useProductSelectionStore(selectSelectedProductIds);
+  const clearSelection = useProductSelectionStore(selectClearSelection);
+  const setSelectedProductIds = useProductSelectionStore(
+    (state) => state.setProducts,
+  );
+
   // Dialog states
   const [productDialog, setProductDialog] = useState(false);
   const [categoryDialog, setCategoryDialog] = useState(false);
@@ -136,11 +148,6 @@ export function ProductPage() {
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-
-  // Selection state
-  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(
-    new Set(),
-  );
 
   // Form states
   const [productVariations, setProductVariations] = useState<
@@ -719,7 +726,7 @@ export function ProductPage() {
 
         // Clear selection after export
         if (selectedProductIds.size > 0) {
-          setSelectedProductIds(new Set());
+          clearSelection();
         }
       } catch (error: unknown) {
         const err = error as { message?: string };
@@ -730,7 +737,7 @@ export function ProductPage() {
         });
       }
     },
-    [selectedProductIds, paginationInfo?.totalItems, toast],
+    [selectedProductIds, paginationInfo?.totalItems, toast, clearSelection],
   );
 
   return (
