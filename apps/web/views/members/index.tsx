@@ -2,6 +2,13 @@
 
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
+import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import {
+  useMemberSelectionStore,
+  selectSelectedMemberIds,
+  selectClearMemberSelection,
+} from "@/stores/member-selection-store";
+import { downloadMembers } from "@/services/memberService";
 import {
   useMembersPaginated,
   useMember,
@@ -16,8 +23,22 @@ import {
 import { MemberTable } from "./components/MemberTable";
 import { MemberForm } from "./components/MemberForm";
 import { MemberDetail } from "./components/MemberDetail";
+import { MemberBulkUploadDialog } from "./components/MemberBulkUploadDialog";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Search,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  FileText,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   DataTablePagination,
   type PaginationState,
@@ -25,6 +46,15 @@ import {
 
 export function MembersPage() {
   const { toast } = useToast();
+  const isAdmin = useAuthStore(selectIsAdmin);
+  const canManageMembers = isAdmin;
+
+  // Zustand store for member selection
+  const selectedMemberIds = useMemberSelectionStore(selectSelectedMemberIds);
+  const clearSelection = useMemberSelectionStore(selectClearMemberSelection);
+  const setSelectedMemberIds = useMemberSelectionStore(
+    (state) => state.setMembers,
+  );
 
   // Filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
@@ -33,6 +63,7 @@ export function MembersPage() {
 
   // Dialog state
   const [formOpen, setFormOpen] = useState(false);
+  const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
@@ -129,6 +160,49 @@ export function MembersPage() {
     setPage(DEFAULT_PAGE);
   }, []);
 
+  // Export handlers
+  const handleExport = useCallback(
+    async (format: "excel" | "csv") => {
+      try {
+        // Get selected member IDs or undefined (which means export all)
+        const memberIdsToExport =
+          selectedMemberIds.size > 0
+            ? Array.from(selectedMemberIds)
+            : undefined;
+
+        // Call backend download endpoint
+        await downloadMembers(format, memberIdsToExport);
+
+        const count =
+          memberIdsToExport?.length ||
+          membersResponse?.pagination?.totalItems ||
+          0;
+        toast({
+          title: "Download started",
+          description: `Downloading ${count} member(s) as ${format.toUpperCase()}`,
+        });
+
+        // Clear selection after export
+        if (selectedMemberIds.size > 0) {
+          clearSelection();
+        }
+      } catch (error: unknown) {
+        const err = error as { message?: string };
+        toast({
+          title: "Download failed",
+          description: err.message || "Failed to download members",
+          variant: "destructive",
+        });
+      }
+    },
+    [
+      selectedMemberIds,
+      membersResponse?.pagination?.totalItems,
+      toast,
+      clearSelection,
+    ],
+  );
+
   return (
     <div className="space-y-6">
       <div>
@@ -149,13 +223,52 @@ export function MembersPage() {
           />
         </div>
 
-        <MemberForm
-          open={formOpen}
-          onOpenChange={handleFormClose}
-          member={editingMember}
-          onSubmit={handleSubmitMember}
-          isLoading={isFormLoading}
-        />
+        <div className="flex items-center gap-2">
+          {canManageMembers && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download
+                  {selectedMemberIds.size > 0 && (
+                    <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
+                      {selectedMemberIds.size}
+                    </span>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() => handleExport("excel")}
+                  disabled={membersLoading}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Download as Excel
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => handleExport("csv")}
+                  disabled={membersLoading}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Download as CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {canManageMembers && (
+            <Button variant="outline" onClick={() => setBulkUploadDialog(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Bulk Upload
+            </Button>
+          )}
+          <MemberForm
+            open={formOpen}
+            onOpenChange={handleFormClose}
+            member={editingMember}
+            onSubmit={handleSubmitMember}
+            isLoading={isFormLoading}
+          />
+        </div>
       </div>
 
       <MemberTable
@@ -163,6 +276,9 @@ export function MembersPage() {
         isLoading={membersLoading}
         onView={handleView}
         onEdit={handleEdit}
+        // Selection props
+        selectedMembers={selectedMemberIds}
+        onSelectionChange={setSelectedMemberIds}
       />
 
       {/* Pagination */}
@@ -181,6 +297,11 @@ export function MembersPage() {
         onOpenChange={(open) => !open && setSelectedMemberId(null)}
         member={selectedMember || null}
         isLoading={memberLoading}
+      />
+
+      <MemberBulkUploadDialog
+        open={bulkUploadDialog}
+        onOpenChange={setBulkUploadDialog}
       />
     </div>
   );
