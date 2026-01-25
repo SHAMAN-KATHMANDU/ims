@@ -5,6 +5,14 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import ExcelJS from "exceljs";
+import fs from "fs";
+import { z } from "zod";
+import {
+  excelSaleRowSchema,
+  type ExcelSaleRow,
+  type ValidationError,
+} from "./bulkUpload.validation";
 
 // Generate a unique sale code
 function generateSaleCode(): string {
@@ -570,6 +578,11 @@ class SaleController {
             createdBy: {
               select: { id: true, username: true },
             },
+            payments: {
+              select: { method: true, amount: true },
+              take: 1, // Get first payment for method display
+              orderBy: { createdAt: "asc" },
+            },
             _count: {
               select: { items: true },
             },
@@ -605,6 +618,10 @@ class SaleController {
           member: true,
           createdBy: {
             select: { id: true, username: true, role: true },
+          },
+          payments: {
+            select: { method: true, amount: true, createdAt: true },
+            orderBy: { createdAt: "asc" },
           },
           items: {
             include: {
@@ -860,6 +877,782 @@ class SaleController {
       res
         .status(500)
         .json({ message: "Error fetching daily sales", error: error.message });
+    }
+  }
+
+  // Bulk upload sales from Excel file
+  async bulkUploadSales(req: Request, res: Response) {
+    const errors: ValidationError[] = [];
+    const createdSales: {
+      id: string;
+      saleCode: string;
+      itemsCount: number;
+    }[] = [];
+    const skippedSales: {
+      saleId: string | null;
+      reason: string;
+    }[] = [];
+
+    try {
+      if (!req.file) {
+        return res.status(400).json({
+          message: "No file uploaded",
+          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+          created: [],
+          skipped: [],
+          errors: [],
+        });
+      }
+
+      if (!req.user || !req.user.id) {
+        fs.unlinkSync(req.file.path);
+        return res.status(401).json({
+          message: "User not authenticated",
+          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+          created: [],
+          skipped: [],
+          errors: [],
+        });
+      }
+
+      const filePath = req.file.path;
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.readFile(filePath);
+
+      const worksheet = workbook.worksheets[0];
+      if (!worksheet) {
+        fs.unlinkSync(filePath);
+        return res.status(400).json({
+          message: "Excel file must contain at least one worksheet",
+          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+          created: [],
+          skipped: [],
+          errors: [],
+        });
+      }
+
+      const normalizeHeader = (header: string): string => {
+        return header
+          .toString()
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]/g, "")
+          .replace(/\s+/g, "");
+      };
+
+      const headerMappings: Record<string, string[]> = {
+        sn: ["sn", "sno", "serial", "serialnumber"],
+        saleId: ["saleid", "sale_id", "id"],
+        dateOfSale: [
+          "dateofsale",
+          "date_of_sale",
+          "date",
+          "saledate",
+          "sale_date",
+        ],
+        showroom: ["showroom", "location", "store"],
+        phone: [
+          "phonenumber",
+          "phone_number",
+          "phone",
+          "customerphone",
+          "customer_phone",
+          "mobile",
+          "contact",
+        ],
+        soldBy: ["soldby", "sold_by", "seller", "createdby", "created_by"],
+        productImsCode: [
+          "productimscode",
+          "product_ims_code",
+          "imscode",
+          "ims_code",
+          "ims",
+        ],
+        productName: [
+          "productname",
+          "product_name",
+          "name",
+          "product",
+          "productnamr",
+        ],
+        variation: ["variation", "color", "design", "variations"],
+        quantity: ["quantity", "qty", "qty"],
+        mrp: ["mrp", "price", "unitprice", "unit_price"],
+        discount: ["discount", "discountpercent", "discount_percent"],
+        finalAmount: [
+          "finalamount",
+          "final_amount",
+          "line_total",
+          "linetotal",
+          "amount",
+        ],
+        paymentMethod: ["paymentmethod", "payment_method", "method", "payment"],
+      };
+
+      const headerRow = worksheet.getRow(1);
+      const columnMap: Record<string, number> = {};
+
+      headerRow.eachCell((cell, colNumber) => {
+        if (cell.value) {
+          const headerValue = String(cell.value).trim();
+          const normalized = normalizeHeader(headerValue);
+
+          let bestMatch: { fieldName: string; priority: number } | null = null;
+
+          for (const [fieldName, variations] of Object.entries(
+            headerMappings,
+          )) {
+            if (columnMap[fieldName]) continue;
+            if (variations.some((v) => normalized === v)) {
+              bestMatch = { fieldName, priority: 2 };
+              break;
+            }
+            if (
+              !bestMatch &&
+              variations.some(
+                (v) => normalized.includes(v) || v.includes(normalized),
+              )
+            ) {
+              bestMatch = { fieldName, priority: 1 };
+            }
+          }
+
+          if (bestMatch) {
+            columnMap[bestMatch.fieldName] = colNumber;
+          }
+        }
+      });
+
+      const requiredColumns = [
+        "showroom",
+        "soldBy",
+        "productImsCode",
+        "productName",
+        "variation",
+        "quantity",
+        "mrp",
+        "finalAmount",
+      ];
+      const missingColumns = requiredColumns.filter((col) => !columnMap[col]);
+
+      if (missingColumns.length > 0) {
+        fs.unlinkSync(filePath);
+        return res.status(400).json({
+          message: "Missing required columns in Excel file",
+          missingColumns,
+          foundColumns: Object.keys(columnMap),
+          hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
+          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+          created: [],
+          skipped: [],
+          errors: [],
+        });
+      }
+
+      const rows: ExcelSaleRow[] = [];
+
+      worksheet.eachRow((row, rowIndex) => {
+        if (rowIndex === 1) return;
+
+        const getCellValue = (fieldName: string) => {
+          const colNumber = columnMap[fieldName];
+          return colNumber ? row.getCell(colNumber).value : undefined;
+        };
+
+        const rowData = {
+          sn: getCellValue("sn"),
+          saleId: getCellValue("saleId"),
+          dateOfSale: getCellValue("dateOfSale"),
+          showroom: getCellValue("showroom"),
+          phone: getCellValue("phone"),
+          soldBy: getCellValue("soldBy"),
+          productImsCode: getCellValue("productImsCode"),
+          productName: getCellValue("productName"),
+          variation: getCellValue("variation"),
+          quantity: getCellValue("quantity"),
+          mrp: getCellValue("mrp"),
+          discount: getCellValue("discount"),
+          finalAmount: getCellValue("finalAmount"),
+          paymentMethod: getCellValue("paymentMethod"),
+        };
+
+        const hasData = Object.values(rowData).some(
+          (v) =>
+            v !== null &&
+            v !== undefined &&
+            String(v).trim() !== "" &&
+            String(v) !== "-",
+        );
+        if (!hasData) return;
+
+        try {
+          const validated = excelSaleRowSchema.parse(rowData);
+          rows.push(validated);
+        } catch (error: any) {
+          if (error instanceof z.ZodError) {
+            error.errors.forEach((err: any) => {
+              const fieldValue = err.path.reduce(
+                (obj: any, key: string) => obj?.[key],
+                rowData,
+              );
+              errors.push({
+                row: rowIndex,
+                field: err.path.join("."),
+                message: err.message,
+                value: fieldValue,
+              });
+            });
+          } else {
+            errors.push({
+              row: rowIndex,
+              message: error.message || "Invalid row data",
+            });
+          }
+        }
+      });
+
+      // Group rows by sale_id (or by date + showroom + soldBy if no sale_id)
+      // Rows with the same sale_id should be grouped together
+      const saleGroups = new Map<
+        string,
+        {
+          saleId: string | null;
+          dateOfSale: Date | null;
+          showroom: string;
+          soldBy: string;
+          rows: ExcelSaleRow[];
+        }
+      >();
+
+      rows.forEach((row) => {
+        let groupKey: string;
+        if (row.saleId) {
+          // Group by sale_id
+          groupKey = `id:${row.saleId}`;
+        } else {
+          // Group by date + showroom + soldBy (same sale if all match)
+          const dateStr = row.dateOfSale
+            ? row.dateOfSale.toISOString().split("T")[0]
+            : "no-date";
+          groupKey = `group:${dateStr}-${row.showroom.toLowerCase()}-${row.soldBy.toLowerCase()}`;
+        }
+
+        if (!saleGroups.has(groupKey)) {
+          saleGroups.set(groupKey, {
+            saleId: row.saleId,
+            dateOfSale: row.dateOfSale,
+            showroom: row.showroom,
+            soldBy: row.soldBy,
+            rows: [],
+          });
+        }
+        saleGroups.get(groupKey)!.rows.push(row);
+      });
+
+      // Pre-fetch all locations, users, products, and variations for efficiency
+      const allLocations = await prisma.location.findMany({
+        where: { type: "SHOWROOM", isActive: true },
+        select: { id: true, name: true },
+      });
+      const locationMap = new Map(
+        allLocations.map((loc) => [loc.name.toLowerCase(), loc.id]),
+      );
+
+      const allUsers = await prisma.user.findMany({
+        select: { id: true, username: true },
+      });
+      const userMap = new Map(
+        allUsers.map((u) => [u.username.toLowerCase(), u.id]),
+      );
+
+      const allProducts = await prisma.product.findMany({
+        select: { id: true, imsCode: true, name: true },
+      });
+      const productMapByIms = new Map(
+        allProducts.map((p) => [p.imsCode.toLowerCase(), p]),
+      );
+      const productMapByName = new Map(
+        allProducts.map((p) => [p.name.toLowerCase(), p]),
+      );
+
+      // Process each sale group
+      for (const [groupKey, group] of saleGroups.entries()) {
+        try {
+          if (group.rows.length === 0) continue;
+
+          const firstRow = group.rows[0];
+
+          // Check if sale_id already exists
+          if (group.saleId) {
+            const existingSale = await prisma.sale.findUnique({
+              where: { id: group.saleId },
+            });
+            if (existingSale) {
+              skippedSales.push({
+                saleId: group.saleId,
+                reason: `Sale with ID "${group.saleId}" already exists`,
+              });
+              continue;
+            }
+          }
+
+          // Find location by showroom name
+          const showroomNameLower = firstRow.showroom.toLowerCase();
+          let locationId = locationMap.get(showroomNameLower);
+
+          if (!locationId) {
+            const location = allLocations.find(
+              (l) => l.name.toLowerCase() === showroomNameLower,
+            );
+            if (location) {
+              locationId = location.id;
+              locationMap.set(showroomNameLower, locationId);
+            } else {
+              errors.push({
+                row: rows.indexOf(firstRow) + 2,
+                field: "showroom",
+                message: `Showroom "${firstRow.showroom}" not found or is not active`,
+                value: firstRow.showroom,
+              });
+              skippedSales.push({
+                saleId: group.saleId,
+                reason: `Showroom "${firstRow.showroom}" not found`,
+              });
+              continue;
+            }
+          }
+
+          // Find user by username (sold by)
+          const soldByLower = firstRow.soldBy.toLowerCase();
+          let userId = userMap.get(soldByLower);
+
+          if (!userId) {
+            const user = allUsers.find(
+              (u) => u.username.toLowerCase() === soldByLower,
+            );
+            if (user) {
+              userId = user.id;
+              userMap.set(soldByLower, userId);
+            } else {
+              errors.push({
+                row: rows.indexOf(firstRow) + 2,
+                field: "soldBy",
+                message: `User "${firstRow.soldBy}" not found`,
+                value: firstRow.soldBy,
+              });
+              skippedSales.push({
+                saleId: group.saleId,
+                reason: `User "${firstRow.soldBy}" not found`,
+              });
+              continue;
+            }
+          }
+
+          // Phone number → member sale: find or create member, set type MEMBER
+          let memberId: string | null = null;
+          let saleType: "GENERAL" | "MEMBER" = "GENERAL";
+
+          const phoneVal = firstRow.phone;
+          if (phoneVal && phoneVal.length > 0) {
+            let member = await prisma.member.findUnique({
+              where: { phone: phoneVal },
+            });
+            if (!member) {
+              member = await prisma.member.create({
+                data: { phone: phoneVal },
+              });
+            }
+            memberId = member.id;
+            saleType = "MEMBER";
+          }
+
+          // Process items and find variations
+          const saleItems: Array<{
+            variationId: string;
+            quantity: number;
+            unitPrice: number;
+            discountPercent: number;
+            discountAmount: number;
+            lineTotal: number;
+          }> = [];
+
+          let subtotal = 0;
+          let totalDiscount = 0;
+
+          for (const itemRow of group.rows) {
+            // Find product by IMS code or name
+            const imsCodeLower = itemRow.productImsCode.toLowerCase();
+            const nameLower = itemRow.productName.toLowerCase();
+
+            let product =
+              productMapByIms.get(imsCodeLower) ||
+              productMapByName.get(nameLower);
+
+            if (!product) {
+              errors.push({
+                row: rows.indexOf(itemRow) + 2,
+                field: "productImsCode",
+                message: `Product with IMS code "${itemRow.productImsCode}" or name "${itemRow.productName}" not found`,
+                value: itemRow.productImsCode,
+              });
+              continue;
+            }
+
+            // Find variation by productId and color
+            const variation = await prisma.productVariation.findFirst({
+              where: {
+                productId: product.id,
+                color: {
+                  equals: itemRow.variation,
+                  mode: "insensitive",
+                },
+              },
+            });
+
+            if (!variation) {
+              errors.push({
+                row: rows.indexOf(itemRow) + 2,
+                field: "variation",
+                message: `Variation "${itemRow.variation}" not found for product "${itemRow.productName}"`,
+                value: itemRow.variation,
+              });
+              continue;
+            }
+
+            // Calculate values from Excel
+            const unitPrice = itemRow.mrp;
+            const quantity = itemRow.quantity;
+            const totalMrp = unitPrice * quantity; // Total MRP before discount
+            const discountPercent = itemRow.discount || 0;
+            const discountAmount = (totalMrp * discountPercent) / 100;
+            const lineTotal = itemRow.finalAmount; // Final amount after discount
+
+            subtotal += totalMrp;
+            totalDiscount += discountAmount;
+
+            saleItems.push({
+              variationId: variation.id,
+              quantity,
+              unitPrice,
+              discountPercent,
+              discountAmount,
+              lineTotal,
+            });
+          }
+
+          if (saleItems.length === 0) {
+            skippedSales.push({
+              saleId: group.saleId,
+              reason: "No valid items found for this sale",
+            });
+            continue;
+          }
+
+          const total = subtotal - totalDiscount;
+
+          // Determine payment method (use first row's payment method, or default to CASH)
+          const paymentMethods = group.rows
+            .map((r) => r.paymentMethod)
+            .filter(
+              (method): method is string =>
+                method !== null && method !== undefined,
+            );
+          const paymentMethod =
+            paymentMethods.length > 0
+              ? (paymentMethods[0] as
+                  | "CASH"
+                  | "CARD"
+                  | "CHEQUE"
+                  | "FONEPAY"
+                  | "QR")
+              : "CASH";
+
+          // Create sale
+          const sale = await prisma.sale.create({
+            data: {
+              ...(group.saleId && { id: group.saleId }),
+              saleCode: generateSaleCode(),
+              type: saleType,
+              locationId,
+              ...(memberId && { memberId }),
+              createdById: userId,
+              subtotal,
+              discount: totalDiscount,
+              total,
+              createdAt: group.dateOfSale || new Date(),
+              items: {
+                create: saleItems.map((item) => ({
+                  variationId: item.variationId,
+                  quantity: item.quantity,
+                  unitPrice: item.unitPrice,
+                  totalMrp: item.unitPrice * item.quantity,
+                  discountPercent: item.discountPercent,
+                  discountAmount: item.discountAmount,
+                  lineTotal: item.lineTotal,
+                })),
+              },
+              payments: {
+                create: [
+                  {
+                    method: paymentMethod,
+                    amount: total,
+                  },
+                ],
+              },
+            },
+            include: {
+              items: true,
+            },
+          });
+
+          createdSales.push({
+            id: sale.id,
+            saleCode: sale.saleCode,
+            itemsCount: sale.items.length,
+          });
+        } catch (error: any) {
+          errors.push({
+            row: rows.indexOf(group.rows[0]) + 2,
+            message: error.message || "Error creating sale",
+          });
+          skippedSales.push({
+            saleId: group.saleId,
+            reason: error.message || "Error creating sale",
+          });
+        }
+      }
+
+      try {
+        fs.unlinkSync(filePath);
+      } catch (e) {
+        console.error("Error cleaning up file:", e);
+      }
+
+      res.status(200).json({
+        message: "Bulk upload completed",
+        summary: {
+          total: saleGroups.size,
+          created: createdSales.length,
+          skipped: skippedSales.length,
+          errors: errors.length,
+        },
+        created: createdSales,
+        skipped: skippedSales,
+        errors,
+      });
+    } catch (error: any) {
+      if (req.file?.path) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (e) {
+          console.error("Error cleaning up file:", e);
+        }
+      }
+      console.error("Bulk upload sales error:", error);
+      res.status(500).json({
+        message: "Error processing bulk upload",
+        error: error.message,
+        summary: {
+          total: 0,
+          created: createdSales.length,
+          skipped: skippedSales.length,
+          errors: errors.length,
+        },
+        created: createdSales,
+        skipped: skippedSales,
+        errors,
+      });
+    }
+  }
+
+  // Download sales as Excel or CSV
+  async downloadSales(req: Request, res: Response) {
+    try {
+      const format = (req.query.format as string)?.toLowerCase() || "excel";
+      const idsParam = req.query.ids as string | undefined;
+
+      // Validate format
+      if (format !== "excel" && format !== "csv") {
+        return res.status(400).json({
+          message: "Invalid format. Supported formats: excel, csv",
+        });
+      }
+
+      // Parse sale IDs from query string
+      let saleIds: string[] | undefined;
+      if (idsParam) {
+        saleIds = idsParam
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean);
+      }
+
+      // Build where clause
+      const where: any = {};
+      if (saleIds && saleIds.length > 0) {
+        where.id = { in: saleIds };
+      }
+
+      // Fetch sales with relations
+      const sales = await prisma.sale.findMany({
+        where,
+        include: {
+          location: true,
+          member: true,
+          createdBy: {
+            select: {
+              id: true,
+              username: true,
+            },
+          },
+          items: {
+            include: {
+              variation: {
+                include: {
+                  product: {
+                    include: {
+                      category: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: {
+          createdAt: "desc",
+        },
+      });
+
+      if (sales.length === 0) {
+        return res.status(404).json({
+          message: "No sales found to export",
+        });
+      }
+
+      // Create workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sales");
+
+      // Define columns
+      const columns = [
+        { header: "Sale Code", key: "saleCode", width: 20 },
+        { header: "Type", key: "type", width: 12 },
+        { header: "Location", key: "location", width: 25 },
+        { header: "Member Phone", key: "memberPhone", width: 15 },
+        { header: "Member Name", key: "memberName", width: 25 },
+        { header: "Subtotal", key: "subtotal", width: 15 },
+        { header: "Discount", key: "discount", width: 15 },
+        { header: "Total", key: "total", width: 15 },
+        { header: "Items Count", key: "itemsCount", width: 12 },
+        { header: "Created By", key: "createdBy", width: 20 },
+        { header: "Date", key: "date", width: 20 },
+        { header: "Notes", key: "notes", width: 40 },
+      ];
+
+      worksheet.columns = columns;
+
+      // Style header row
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+
+      // Add data rows
+      sales.forEach((sale) => {
+        worksheet.addRow({
+          saleCode: sale.saleCode,
+          type: sale.type,
+          location: sale.location.name,
+          memberPhone: sale.member?.phone || "Walk-in",
+          memberName: sale.member?.name || "N/A",
+          subtotal: sale.subtotal,
+          discount: sale.discount,
+          total: sale.total,
+          itemsCount: sale.items?.length || 0,
+          createdBy: sale.createdBy.username,
+          date: new Date(sale.createdAt).toLocaleString(),
+          notes: sale.notes || "N/A",
+        });
+      });
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `sales_${timestamp}.${format === "excel" ? "xlsx" : "csv"}`;
+
+      // Set response headers
+      if (format === "excel") {
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
+
+        // Generate buffer and send
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.send(buffer);
+      } else {
+        // CSV format
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
+
+        // Helper function to escape CSV values
+        const escapeCsvValue = (value: any): string => {
+          if (value === null || value === undefined) {
+            return "";
+          }
+          const str = String(value);
+          if (str.includes(",") || str.includes("\n") || str.includes('"')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        };
+
+        // Build CSV rows
+        const csvRows: string[] = [];
+
+        // Header row
+        csvRows.push(
+          columns.map((col) => escapeCsvValue(col.header)).join(","),
+        );
+
+        // Data rows
+        sales.forEach((sale) => {
+          csvRows.push(
+            [
+              sale.saleCode,
+              sale.type,
+              sale.location.name,
+              sale.member?.phone || "Walk-in",
+              sale.member?.name || "N/A",
+              sale.subtotal,
+              sale.discount,
+              sale.total,
+              sale.items?.length || 0,
+              sale.createdBy.username,
+              new Date(sale.createdAt).toLocaleString(),
+              sale.notes || "N/A",
+            ]
+              .map(escapeCsvValue)
+              .join(","),
+          );
+        });
+
+        res.send(csvRows.join("\n"));
+      }
+    } catch (error: any) {
+      console.error("Download sales error:", error);
+      res
+        .status(500)
+        .json({ message: "Error downloading sales", error: error.message });
     }
   }
 }

@@ -93,7 +93,7 @@ export function SaleDetail({
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <User className="h-4 w-4" />
-                  Customer
+                  Sold To
                 </div>
                 {sale.member ? (
                   <div>
@@ -108,6 +108,15 @@ export function SaleDetail({
                   <p className="text-muted-foreground">Walk-in Customer</p>
                 )}
               </div>
+            </div>
+
+            {/* Sold By */}
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                <User className="h-4 w-4" />
+                Sold By
+              </div>
+              <p className="font-medium">{sale.createdBy.username}</p>
             </div>
 
             <Separator />
@@ -182,6 +191,23 @@ export function SaleDetail({
                 <span>Total</span>
                 <span>{formatCurrency(Number(sale.total))}</span>
               </div>
+              {sale.payments && sale.payments.length > 0 && (
+                <>
+                  <Separator />
+                  <div className="space-y-1">
+                    <div className="text-sm font-medium text-muted-foreground">
+                      Payment Method
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {sale.payments.map((payment, idx) => (
+                        <Badge key={idx} variant="outline">
+                          {payment.method}: {formatCurrency(payment.amount)}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Notes */}
@@ -191,12 +217,6 @@ export function SaleDetail({
                 <p className="text-sm text-muted-foreground">{sale.notes}</p>
               </div>
             )}
-
-            {/* Created By */}
-            <div className="text-sm text-muted-foreground pt-2 border-t">
-              Processed by{" "}
-              <span className="font-medium">{sale.createdBy.username}</span>
-            </div>
           </div>
         ) : (
           <div className="text-center text-muted-foreground py-8">
