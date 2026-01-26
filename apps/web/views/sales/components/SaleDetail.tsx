@@ -24,7 +24,14 @@ import {
   getSaleTypeColor,
   formatCurrency,
 } from "@/hooks/useSales";
-import { MapPin, User, Receipt, Calendar, Hash } from "lucide-react";
+import {
+  MapPin,
+  User,
+  Receipt,
+  Calendar,
+  Hash,
+  CreditCard,
+} from "lucide-react";
 
 interface SaleDetailProps {
   open: boolean;
@@ -183,6 +190,41 @@ export function SaleDetail({
                 <span>{formatCurrency(Number(sale.total))}</span>
               </div>
             </div>
+
+            {/* Payment Methods */}
+            {sale.payments && sale.payments.length > 0 && (
+              <>
+                <Separator />
+                <div>
+                  <h4 className="font-medium mb-2 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4" />
+                    Payment Methods
+                  </h4>
+                  <div className="rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Method</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {sale.payments.map((payment) => (
+                          <TableRow key={payment.id}>
+                            <TableCell>
+                              <Badge variant="outline">{payment.method}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {formatCurrency(Number(payment.amount))}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Notes */}
             {sale.notes && (
