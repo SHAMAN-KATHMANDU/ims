@@ -24,15 +24,28 @@ interface SalesTableProps {
   sales: Sale[];
   isLoading?: boolean;
   onView: (sale: Sale) => void;
+  currentPage?: number;
+  itemsPerPage?: number;
 }
 
-export function SalesTable({ sales, isLoading, onView }: SalesTableProps) {
+export function SalesTable({
+  sales,
+  isLoading,
+  onView,
+  currentPage = 1,
+  itemsPerPage = 10,
+}: SalesTableProps) {
+  // Calculate starting serial number for current page
+  const getSerialNumber = (index: number) => {
+    return (currentPage - 1) * itemsPerPage + index + 1;
+  };
   if (isLoading) {
     return (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>S.N.</TableHead>
               <TableHead>Sale Code</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Location</TableHead>
@@ -45,6 +58,9 @@ export function SalesTable({ sales, isLoading, onView }: SalesTableProps) {
           <TableBody>
             {[...Array(5)].map((_, i) => (
               <TableRow key={i}>
+                <TableCell>
+                  <Skeleton className="h-4 w-12" />
+                </TableCell>
                 <TableCell>
                   <Skeleton className="h-4 w-24" />
                 </TableCell>
@@ -80,6 +96,7 @@ export function SalesTable({ sales, isLoading, onView }: SalesTableProps) {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>S.N.</TableHead>
               <TableHead>Sale Code</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Location</TableHead>
@@ -91,7 +108,7 @@ export function SalesTable({ sales, isLoading, onView }: SalesTableProps) {
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8">
+              <TableCell colSpan={8} className="text-center py-8">
                 <p className="text-muted-foreground">No sales found</p>
               </TableCell>
             </TableRow>
@@ -106,6 +123,7 @@ export function SalesTable({ sales, isLoading, onView }: SalesTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>S.N.</TableHead>
             <TableHead>Sale Code</TableHead>
             <TableHead>Type</TableHead>
             <TableHead>Location</TableHead>
@@ -116,8 +134,11 @@ export function SalesTable({ sales, isLoading, onView }: SalesTableProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sales.map((sale) => (
+          {sales.map((sale, index) => (
             <TableRow key={sale.id}>
+              <TableCell className="text-muted-foreground">
+                {getSerialNumber(index)}
+              </TableCell>
               <TableCell className="font-medium">{sale.saleCode}</TableCell>
               <TableCell>
                 <Badge

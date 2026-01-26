@@ -273,7 +273,13 @@ export function SalesPage() {
         />
       </div>
 
-      <SalesTable sales={sales} isLoading={salesLoading} onView={handleView} />
+      <SalesTable
+        sales={sales}
+        isLoading={salesLoading}
+        onView={handleView}
+        currentPage={salesPagination?.currentPage || 1}
+        itemsPerPage={salesPagination?.itemsPerPage || DEFAULT_LIMIT}
+      />
 
       {/* Pagination */}
       {salesPagination && (

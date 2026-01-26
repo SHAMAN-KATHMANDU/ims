@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { z } from "zod";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckMember } from "@/hooks/useMember";
 import { useToast } from "@/hooks/useToast";
@@ -45,6 +46,17 @@ import {
   FileText,
 } from "lucide-react";
 
+// Zod schema for phone validation
+const phoneSchema = z
+  .string()
+  .optional()
+  .refine((val) => !val || /^\d+$/.test(val), {
+    message: "Phone number must contain only digits",
+  })
+  .refine((val) => !val || val.length >= 10, {
+    message: "Phone number must be at least 10 digits",
+  });
+
 interface SaleItem {
   variationId: string;
   productName: string;
@@ -84,6 +96,7 @@ export function NewSaleForm({
   // Form state
   const [locationId, setLocationId] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SaleItem[]>([]);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
@@ -228,6 +241,22 @@ export function NewSaleForm({
 
     if (!locationId || items.length === 0) return;
 
+    // Validate phone number if provided
+    if (memberPhone.trim()) {
+      const result = phoneSchema.safeParse(memberPhone.trim());
+      if (!result.success) {
+        setPhoneError(
+          result.error.errors[0]?.message || "Invalid phone number",
+        );
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid phone number",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
     if (totalPayment <= 0 || Math.abs(totalPayment - subtotal) > 0.01) {
       toast({
         title: "Payment Error",
@@ -255,6 +284,7 @@ export function NewSaleForm({
     // Reset form
     setLocationId("");
     setMemberPhone("");
+    setPhoneError(null);
     setNotes("");
     setItems([]);
     setProductSearch("");
@@ -268,6 +298,7 @@ export function NewSaleForm({
     if (!newOpen) {
       setLocationId("");
       setMemberPhone("");
+      setPhoneError(null);
       setNotes("");
       setItems([]);
       setProductSearch("");
@@ -344,13 +375,36 @@ export function NewSaleForm({
                     <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                     <Input
                       id="memberPhone"
+                      type="tel"
                       value={memberPhone}
-                      onChange={(e) => setMemberPhone(e.target.value)}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setMemberPhone(value);
+                        // Validate phone number
+                        if (value.trim()) {
+                          const result = phoneSchema.safeParse(value.trim());
+                          if (!result.success) {
+                            setPhoneError(
+                              result.error.errors[0]?.message ||
+                                "Invalid phone number",
+                            );
+                          } else {
+                            setPhoneError(null);
+                          }
+                        } else {
+                          setPhoneError(null);
+                        }
+                      }}
                       placeholder="Enter phone for member discount"
-                      className="pl-9"
+                      className={
+                        phoneError ? "pl-9 border-destructive" : "pl-9"
+                      }
                     />
                   </div>
-                  {memberPhone && (
+                  {phoneError && (
+                    <p className="text-sm text-destructive">{phoneError}</p>
+                  )}
+                  {memberPhone && !phoneError && (
                     <div className="flex items-center gap-2 text-sm">
                       {checkingMember ? (
                         <span className="text-muted-foreground">
@@ -687,7 +741,14 @@ export function NewSaleForm({
             <Button
               type="button"
               variant="outline"
-              className="mr-auto"
+              onClick={() => handleOpenChange(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => {
                 if (activeTab === "products") setActiveTab("payment");
                 else if (activeTab === "payment") setActiveTab("details");
@@ -703,14 +764,6 @@ export function NewSaleForm({
               }
             >
               Next
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancel
             </Button>
             <Button
               type="submit"
