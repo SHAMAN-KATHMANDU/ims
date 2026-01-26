@@ -48,6 +48,12 @@ export interface SaleItem {
   };
 }
 
+export interface SalePaymentDetail {
+  id: string;
+  method: PaymentMethod;
+  amount: number;
+}
+
 export interface Sale {
   id: string;
   saleCode: string;
@@ -74,6 +80,7 @@ export interface Sale {
     username: string;
   };
   items?: SaleItem[];
+  payments?: SalePaymentDetail[];
   _count?: {
     items: number;
   };
@@ -112,6 +119,7 @@ export interface CreateSaleItem {
 export interface CreateSaleData {
   locationId: string;
   memberPhone?: string;
+  memberName?: string;
   items: CreateSaleItem[];
   notes?: string;
   payments?: SalePayment[];
