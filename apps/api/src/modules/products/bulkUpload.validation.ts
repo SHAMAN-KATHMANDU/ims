@@ -1,51 +1,9 @@
 import { z } from "zod";
 
 /**
- * Helper function to parse numeric value from string that may contain units
- * Examples: "5 CM" -> 5, "100 GMS" -> 100, "10 PCS" -> 10
- */
-function parseNumericValue(
-  value: string | number | null | undefined,
-): number | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "number") return value;
-
-  const str = String(value).trim();
-  if (str === "" || str === "-") return null;
-
-  // Extract numeric part (handles decimals)
-  const match = str.match(/^([\d.]+)/);
-  if (match) {
-    return parseFloat(match[1]);
-  }
-  return null;
-}
-
-/**
- * Helper function to parse percentage value from string
- * Examples: "5%" -> 5, "10.0%" -> 10.0
- */
-function parsePercentage(
-  value: string | number | null | undefined,
-): number | null {
-  if (value === null || value === undefined) return null;
-  if (typeof value === "number") return value;
-
-  const str = String(value).trim();
-  if (str === "" || str === "-") return null;
-
-  // Remove % sign and extract numeric part
-  const cleaned = str.replace(/%/g, "").trim();
-  const match = cleaned.match(/^([\d.]+)/);
-  if (match) {
-    return parseFloat(match[1]);
-  }
-  return null;
-}
-
-/**
- * Zod schema for Excel row data validation
- * Maps Excel columns to product fields
+ * Zod schema for Excel/CSV row data validation
+ * Maps columns to product fields
+ * Users are expected to provide correct numeric values without units or percentage signs
  */
 export const excelProductRowSchema = z.object({
   // Column A: IMS CODE
@@ -100,29 +58,49 @@ export const excelProductRowSchema = z.object({
       return str === "" || str === "-" ? null : str;
     }),
 
-  // Column G: Length (e.g., "5 CM")
+  // Column G: Length
   length: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
-    .transform(parseNumericValue),
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === "number") return val;
+      const num = parseFloat(String(val));
+      return isNaN(num) ? null : num;
+    }),
 
-  // Column H: Breadth (e.g., "3 CM")
+  // Column H: Breadth
   breadth: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
-    .transform(parseNumericValue),
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === "number") return val;
+      const num = parseFloat(String(val));
+      return isNaN(num) ? null : num;
+    }),
 
-  // Column I: Height (e.g., "6 CM")
+  // Column I: Height
   height: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
-    .transform(parseNumericValue),
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === "number") return val;
+      const num = parseFloat(String(val));
+      return isNaN(num) ? null : num;
+    }),
 
-  // Column J: Weight (e.g., "100 GMS")
+  // Column J: Weight
   weight: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
-    .transform(parseNumericValue),
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === "number") return val;
+      const num = parseFloat(String(val));
+      return isNaN(num) ? null : num;
+    }),
 
   // Column K: VENDOR
   vendor: z
@@ -134,13 +112,15 @@ export const excelProductRowSchema = z.object({
       return str === "" || str === "-" ? null : str;
     }),
 
-  // Column L: QTY (e.g., "10 PCS")
+  // Column L: QTY
   quantity: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
     .transform((val) => {
-      const parsed = parseNumericValue(val);
-      return parsed !== null ? Math.floor(parsed) : 0; // Convert to integer
+      if (val === null || val === undefined) return 0;
+      if (typeof val === "number") return Math.floor(val);
+      const num = parseFloat(String(val));
+      return isNaN(num) ? 0 : Math.floor(num);
     }),
 
   // Column M: Cost Price
@@ -167,23 +147,38 @@ export const excelProductRowSchema = z.object({
       message: "Final SP must be greater than or equal to 0",
     }),
 
-  // Column O: NON MEMBER DISCOUNT (e.g., "5%")
+  // Column O: NON MEMBER DISCOUNT
   nonMemberDiscount: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
-    .transform(parsePercentage),
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === "number") return val;
+      const num = parseFloat(String(val));
+      return isNaN(num) ? null : num;
+    }),
 
-  // Column P: MEMBER DISCOUNT (e.g., "10.0%")
+  // Column P: MEMBER DISCOUNT
   memberDiscount: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
-    .transform(parsePercentage),
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === "number") return val;
+      const num = parseFloat(String(val));
+      return isNaN(num) ? null : num;
+    }),
 
-  // Column Q: WHOLESALE DISCOUNT (e.g., "20.0%")
+  // Column Q: WHOLESALE DISCOUNT
   wholesaleDiscount: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
-    .transform(parsePercentage),
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      if (typeof val === "number") return val;
+      const num = parseFloat(String(val));
+      return isNaN(num) ? null : num;
+    }),
 });
 
 export type ExcelProductRow = z.infer<typeof excelProductRowSchema>;
