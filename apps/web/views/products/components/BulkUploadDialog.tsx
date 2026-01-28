@@ -2,11 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  bulkUploadProducts,
-  type BulkUploadResponse,
-} from "@/services/productService";
+import { useBulkUploadProducts } from "@/hooks/useProduct";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +14,6 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/useToast";
 import {
   Upload,
   X,
@@ -38,55 +33,25 @@ export function BulkUploadDialog({
   open,
   onOpenChange,
 }: BulkUploadDialogProps) {
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadResult, setUploadResult] = useState<BulkUploadResponse | null>(
-    null,
-  );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+  const {
+    mutation: bulkUploadMutation,
+    uploadProgress,
+    uploadResult,
+    reset,
+    isUploading,
+  } = useBulkUploadProducts();
 
-  const bulkUploadMutation = useMutation({
-    mutationFn: async (file: File) => {
-      return bulkUploadProducts(file, (progress) => {
-        setUploadProgress(progress);
-      });
-    },
-    onSuccess: (data) => {
-      setUploadResult(data);
-      // Invalidate products query to refresh the list
-      queryClient.invalidateQueries({ queryKey: ["products"] });
-
-      if (data.summary.created > 0) {
-        toast({
-          title: "Bulk upload completed",
-          description: `Successfully created ${data.summary.created} product(s)`,
-        });
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0 && acceptedFiles[0]) {
+        const file = acceptedFiles[0];
+        setSelectedFile(file);
+        reset();
       }
     },
-    onError: (error: unknown) => {
-      const err = error as {
-        response?: { data?: { message?: string } };
-        message?: string;
-      };
-      const errorMessage =
-        err.response?.data?.message || err.message || "Failed to upload file";
-      toast({
-        title: "Upload failed",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    },
-  });
-
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0 && acceptedFiles[0]) {
-      const file = acceptedFiles[0];
-      setSelectedFile(file);
-      setUploadProgress(0);
-      setUploadResult(null);
-    }
-  }, []);
+    [reset],
+  );
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } =
     useDropzone({
@@ -97,6 +62,9 @@ export function BulkUploadDialog({
         ],
         "application/vnd.ms-excel": [".xls"],
         "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"],
+        "text/csv": [".csv"],
+        "application/csv": [".csv"],
+        "text/plain": [".csv"],
       },
       maxFiles: 1,
       maxSize: 10 * 1024 * 1024, // 10MB
@@ -108,16 +76,13 @@ export function BulkUploadDialog({
   };
 
   const handleClose = () => {
-    if (bulkUploadMutation.isPending) return; // Don't close during upload
+    if (isUploading) return; // Don't close during upload
 
     setSelectedFile(null);
-    setUploadProgress(0);
-    setUploadResult(null);
-    bulkUploadMutation.reset();
+    reset();
     onOpenChange(false);
   };
 
-  const isUploading = bulkUploadMutation.isPending;
   const hasResult = uploadResult !== null;
 
   return (
@@ -126,8 +91,8 @@ export function BulkUploadDialog({
         <DialogHeader>
           <DialogTitle>Bulk Upload Products</DialogTitle>
           <DialogDescription>
-            Upload an Excel file to create multiple products at once. The file
-            should contain product data with all required fields.
+            Upload an Excel or CSV file to create multiple products at once. The
+            file should contain product data with all required fields.
           </DialogDescription>
         </DialogHeader>
 
@@ -177,7 +142,7 @@ export function BulkUploadDialog({
                         : "Drag & drop an Excel file here, or click to select"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Supports .xlsx, .xls, .xlsm files (max 10MB)
+                      Supports .xlsx, .xls, .xlsm, .csv files (max 10MB)
                     </p>
                   </div>
                 )}
@@ -196,7 +161,7 @@ export function BulkUploadDialog({
                     {error.code === "file-too-large"
                       ? "File size exceeds 10MB limit"
                       : error.code === "file-invalid-type"
-                        ? "Invalid file type. Only Excel files are allowed."
+                        ? "Invalid file type. Only Excel (.xlsx, .xls, .xlsm) or CSV (.csv) files are allowed."
                         : error.message}
                   </div>
                 ))}
