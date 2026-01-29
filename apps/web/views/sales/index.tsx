@@ -3,6 +3,13 @@
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
 import { useActiveLocations } from "@/hooks/useLocation";
+import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import {
+  useSaleSelectionStore,
+  selectSelectedSaleIds,
+  selectClearSaleSelection,
+} from "@/stores/sale-selection-store";
+import { downloadSales } from "@/services/salesService";
 import {
   useSalesPaginated,
   useSale,
@@ -15,6 +22,7 @@ import {
 import { SalesTable } from "./components/SalesTable";
 import { NewSaleForm } from "./components/NewSaleForm";
 import { SaleDetail } from "./components/SaleDetail";
+import { SaleBulkUploadDialog } from "./components/SaleBulkUploadDialog";
 import {
   Select,
   SelectContent,
@@ -30,7 +38,21 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Search, CalendarIcon, X } from "lucide-react";
+import {
+  Search,
+  CalendarIcon,
+  X,
+  Download,
+  Upload,
+  FileSpreadsheet,
+  FileText,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -46,6 +68,13 @@ const TYPE_OPTIONS: { value: SaleType | "ALL"; label: string }[] = [
 
 export function SalesPage() {
   const { toast } = useToast();
+  const isAdmin = useAuthStore(selectIsAdmin);
+  const canManageSales = isAdmin;
+
+  // Zustand store for sale selection
+  const selectedSaleIds = useSaleSelectionStore(selectSelectedSaleIds);
+  const clearSelection = useSaleSelectionStore(selectClearSaleSelection);
+  const setSelectedSaleIds = useSaleSelectionStore((state) => state.setSales);
 
   // Filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
@@ -58,6 +87,7 @@ export function SalesPage() {
 
   // Dialog state
   const [formOpen, setFormOpen] = useState(false);
+  const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
 
   // Data fetching
@@ -145,6 +175,45 @@ export function SalesPage() {
     setEndDate(undefined);
     setPage(DEFAULT_PAGE);
   };
+
+  // Export handlers
+  const handleExport = useCallback(
+    async (format: "excel" | "csv") => {
+      try {
+        // Get selected sale IDs or undefined (which means export all)
+        const saleIdsToExport =
+          selectedSaleIds.size > 0 ? Array.from(selectedSaleIds) : undefined;
+
+        // Call backend download endpoint
+        await downloadSales(format, saleIdsToExport);
+
+        const count =
+          saleIdsToExport?.length || salesResponse?.pagination?.totalItems || 0;
+        toast({
+          title: "Download started",
+          description: `Downloading ${count} sale(s) as ${format.toUpperCase()}`,
+        });
+
+        // Clear selection after export
+        if (selectedSaleIds.size > 0) {
+          clearSelection();
+        }
+      } catch (error: unknown) {
+        const err = error as { message?: string };
+        toast({
+          title: "Download failed",
+          description: err.message || "Failed to download sales",
+          variant: "destructive",
+        });
+      }
+    },
+    [
+      selectedSaleIds,
+      salesResponse?.pagination?.totalItems,
+      toast,
+      clearSelection,
+    ],
+  );
 
   return (
     <div className="space-y-6">
@@ -264,16 +333,65 @@ export function SalesPage() {
           </div>
         </div>
 
-        <NewSaleForm
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          locations={locations}
-          onSubmit={handleCreateSale}
-          isLoading={createSaleMutation.isPending}
-        />
+        <div className="flex items-center gap-2">
+          {canManageSales && (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                    {selectedSaleIds.size > 0 && (
+                      <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
+                        {selectedSaleIds.size}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExport("excel")}
+                    disabled={salesLoading}
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Download as Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("csv")}
+                    disabled={salesLoading}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Download as CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="outline"
+                onClick={() => setBulkUploadDialog(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+            </>
+          )}
+          <NewSaleForm
+            open={formOpen}
+            onOpenChange={setFormOpen}
+            locations={locations}
+            onSubmit={handleCreateSale}
+            isLoading={createSaleMutation.isPending}
+          />
+        </div>
       </div>
 
-      <SalesTable sales={sales} isLoading={salesLoading} onView={handleView} />
+      <SalesTable
+        sales={sales}
+        isLoading={salesLoading}
+        onView={handleView}
+        // Selection props
+        selectedSales={selectedSaleIds}
+        onSelectionChange={setSelectedSaleIds}
+      />
 
       {/* Pagination */}
       {salesPagination && (
@@ -291,6 +409,11 @@ export function SalesPage() {
         onOpenChange={(open) => !open && setSelectedSaleId(null)}
         sale={selectedSale || null}
         isLoading={saleLoading}
+      />
+
+      <SaleBulkUploadDialog
+        open={bulkUploadDialog}
+        onOpenChange={setBulkUploadDialog}
       />
     </div>
   );
