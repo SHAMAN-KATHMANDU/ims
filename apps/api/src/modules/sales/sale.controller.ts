@@ -7,7 +7,9 @@ import {
 } from "@/utils/pagination";
 import ExcelJS from "exceljs";
 import fs from "fs";
+import path from "path";
 import { z } from "zod";
+import csvParser from "csv-parser";
 import {
   excelSaleRowSchema,
   type ExcelSaleRow,
@@ -880,7 +882,7 @@ class SaleController {
     }
   }
 
-  // Bulk upload sales from Excel file
+  // Bulk upload sales from Excel or CSV file
   async bulkUploadSales(req: Request, res: Response) {
     const errors: ValidationError[] = [];
     const createdSales: {
@@ -916,20 +918,8 @@ class SaleController {
       }
 
       const filePath = req.file.path;
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(filePath);
-
-      const worksheet = workbook.worksheets[0];
-      if (!worksheet) {
-        fs.unlinkSync(filePath);
-        return res.status(400).json({
-          message: "Excel file must contain at least one worksheet",
-          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-          created: [],
-          skipped: [],
-          errors: [],
-        });
-      }
+      const fileExt = path.extname(req.file.originalname).toLowerCase();
+      const isCSV = fileExt === ".csv";
 
       const normalizeHeader = (header: string): string => {
         return header
@@ -989,20 +979,49 @@ class SaleController {
         paymentMethod: ["paymentmethod", "payment_method", "method", "payment"],
       };
 
-      const headerRow = worksheet.getRow(1);
-      const columnMap: Record<string, number> = {};
+      const requiredColumns = [
+        "showroom",
+        "soldBy",
+        "productImsCode",
+        "productName",
+        "variation",
+        "quantity",
+        "mrp",
+        "finalAmount",
+      ];
+      let rows: ExcelSaleRow[] = [];
 
-      headerRow.eachCell((cell, colNumber) => {
-        if (cell.value) {
-          const headerValue = String(cell.value).trim();
-          const normalized = normalizeHeader(headerValue);
+      if (isCSV) {
+        const csvRows: Record<string, any>[] = [];
+        const csvColumnMap: Record<string, string> = {};
 
+        await new Promise<void>((resolve, reject) => {
+          fs.createReadStream(filePath)
+            .pipe(csvParser())
+            .on("data", (row: Record<string, any>) => csvRows.push(row))
+            .on("end", () => resolve())
+            .on("error", reject);
+        });
+
+        if (csvRows.length === 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "CSV file is empty or invalid",
+            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+            created: [],
+            skipped: [],
+            errors: [],
+          });
+        }
+
+        const csvHeaders = Object.keys(csvRows[0] || {});
+        for (const csvHeader of csvHeaders) {
+          const normalized = normalizeHeader(csvHeader);
           let bestMatch: { fieldName: string; priority: number } | null = null;
-
           for (const [fieldName, variations] of Object.entries(
             headerMappings,
           )) {
-            if (columnMap[fieldName]) continue;
+            if (csvColumnMap[fieldName]) continue;
             if (variations.some((v) => normalized === v)) {
               bestMatch = { fieldName, priority: 2 };
               break;
@@ -1016,100 +1035,196 @@ class SaleController {
               bestMatch = { fieldName, priority: 1 };
             }
           }
-
-          if (bestMatch) {
-            columnMap[bestMatch.fieldName] = colNumber;
-          }
+          if (bestMatch) csvColumnMap[bestMatch.fieldName] = csvHeader;
         }
-      });
 
-      const requiredColumns = [
-        "showroom",
-        "soldBy",
-        "productImsCode",
-        "productName",
-        "variation",
-        "quantity",
-        "mrp",
-        "finalAmount",
-      ];
-      const missingColumns = requiredColumns.filter((col) => !columnMap[col]);
-
-      if (missingColumns.length > 0) {
-        fs.unlinkSync(filePath);
-        return res.status(400).json({
-          message: "Missing required columns in Excel file",
-          missingColumns,
-          foundColumns: Object.keys(columnMap),
-          hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
-          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-          created: [],
-          skipped: [],
-          errors: [],
-        });
-      }
-
-      const rows: ExcelSaleRow[] = [];
-
-      worksheet.eachRow((row, rowIndex) => {
-        if (rowIndex === 1) return;
-
-        const getCellValue = (fieldName: string) => {
-          const colNumber = columnMap[fieldName];
-          return colNumber ? row.getCell(colNumber).value : undefined;
-        };
-
-        const rowData = {
-          sn: getCellValue("sn"),
-          saleId: getCellValue("saleId"),
-          dateOfSale: getCellValue("dateOfSale"),
-          showroom: getCellValue("showroom"),
-          phone: getCellValue("phone"),
-          soldBy: getCellValue("soldBy"),
-          productImsCode: getCellValue("productImsCode"),
-          productName: getCellValue("productName"),
-          variation: getCellValue("variation"),
-          quantity: getCellValue("quantity"),
-          mrp: getCellValue("mrp"),
-          discount: getCellValue("discount"),
-          finalAmount: getCellValue("finalAmount"),
-          paymentMethod: getCellValue("paymentMethod"),
-        };
-
-        const hasData = Object.values(rowData).some(
-          (v) =>
-            v !== null &&
-            v !== undefined &&
-            String(v).trim() !== "" &&
-            String(v) !== "-",
+        const missingColumns = requiredColumns.filter(
+          (col) => !csvColumnMap[col],
         );
-        if (!hasData) return;
+        if (missingColumns.length > 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Missing required columns in CSV file",
+            missingColumns,
+            foundColumns: Object.keys(csvColumnMap),
+            hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
+            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+            created: [],
+            skipped: [],
+            errors: [],
+          });
+        }
 
-        try {
-          const validated = excelSaleRowSchema.parse(rowData);
-          rows.push(validated);
-        } catch (error: any) {
-          if (error instanceof z.ZodError) {
-            error.errors.forEach((err: any) => {
-              const fieldValue = err.path.reduce(
-                (obj: any, key: string) => obj?.[key],
-                rowData,
-              );
+        csvRows.forEach((csvRow, rowIndex) => {
+          const getCellValue = (fieldName: string) => {
+            const col = csvColumnMap[fieldName];
+            if (!col) return undefined;
+            const value = csvRow[col];
+            return value === "" || value === null ? undefined : value;
+          };
+          const rowData = {
+            sn: getCellValue("sn"),
+            saleId: getCellValue("saleId"),
+            dateOfSale: getCellValue("dateOfSale"),
+            showroom: getCellValue("showroom"),
+            phone: getCellValue("phone"),
+            soldBy: getCellValue("soldBy"),
+            productImsCode: getCellValue("productImsCode"),
+            productName: getCellValue("productName"),
+            variation: getCellValue("variation"),
+            quantity: getCellValue("quantity"),
+            mrp: getCellValue("mrp"),
+            discount: getCellValue("discount"),
+            finalAmount: getCellValue("finalAmount"),
+            paymentMethod: getCellValue("paymentMethod"),
+          };
+          const hasData = Object.values(rowData).some(
+            (v) =>
+              v !== null &&
+              v !== undefined &&
+              String(v).trim() !== "" &&
+              String(v) !== "-",
+          );
+          if (!hasData) return;
+          try {
+            rows.push(excelSaleRowSchema.parse(rowData));
+          } catch (error: any) {
+            if (error instanceof z.ZodError) {
+              error.errors.forEach((err: any) => {
+                const fieldValue = err.path.reduce(
+                  (obj: any, key: string) => obj?.[key],
+                  rowData,
+                );
+                errors.push({
+                  row: rowIndex + 2,
+                  field: err.path.join("."),
+                  message: err.message,
+                  value: fieldValue,
+                });
+              });
+            } else {
+              errors.push({
+                row: rowIndex + 2,
+                message: error.message || "Invalid row data",
+              });
+            }
+          }
+        });
+      } else {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
+
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Excel file must contain at least one worksheet",
+            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+            created: [],
+            skipped: [],
+            errors: [],
+          });
+        }
+
+        const columnMap: Record<string, number> = {};
+        const headerRow = worksheet.getRow(1);
+        headerRow.eachCell((cell, colNumber) => {
+          if (cell.value) {
+            const headerValue = String(cell.value).trim();
+            const normalized = normalizeHeader(headerValue);
+            let bestMatch: { fieldName: string; priority: number } | null =
+              null;
+            for (const [fieldName, variations] of Object.entries(
+              headerMappings,
+            )) {
+              if (columnMap[fieldName]) continue;
+              if (variations.some((v) => normalized === v)) {
+                bestMatch = { fieldName, priority: 2 };
+                break;
+              }
+              if (
+                !bestMatch &&
+                variations.some(
+                  (v) => normalized.includes(v) || v.includes(normalized),
+                )
+              ) {
+                bestMatch = { fieldName, priority: 1 };
+              }
+            }
+            if (bestMatch) columnMap[bestMatch.fieldName] = colNumber;
+          }
+        });
+
+        const missingColumns = requiredColumns.filter((col) => !columnMap[col]);
+        if (missingColumns.length > 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Missing required columns in Excel file",
+            missingColumns,
+            foundColumns: Object.keys(columnMap),
+            hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
+            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+            created: [],
+            skipped: [],
+            errors: [],
+          });
+        }
+
+        worksheet.eachRow((row, rowIndex) => {
+          if (rowIndex === 1) return;
+          const getCellValue = (fieldName: string) => {
+            const colNumber = columnMap[fieldName];
+            return colNumber ? row.getCell(colNumber).value : undefined;
+          };
+          const rowData = {
+            sn: getCellValue("sn"),
+            saleId: getCellValue("saleId"),
+            dateOfSale: getCellValue("dateOfSale"),
+            showroom: getCellValue("showroom"),
+            phone: getCellValue("phone"),
+            soldBy: getCellValue("soldBy"),
+            productImsCode: getCellValue("productImsCode"),
+            productName: getCellValue("productName"),
+            variation: getCellValue("variation"),
+            quantity: getCellValue("quantity"),
+            mrp: getCellValue("mrp"),
+            discount: getCellValue("discount"),
+            finalAmount: getCellValue("finalAmount"),
+            paymentMethod: getCellValue("paymentMethod"),
+          };
+          const hasData = Object.values(rowData).some(
+            (v) =>
+              v !== null &&
+              v !== undefined &&
+              String(v).trim() !== "" &&
+              String(v) !== "-",
+          );
+          if (!hasData) return;
+          try {
+            rows.push(excelSaleRowSchema.parse(rowData));
+          } catch (error: any) {
+            if (error instanceof z.ZodError) {
+              error.errors.forEach((err: any) => {
+                const fieldValue = err.path.reduce(
+                  (obj: any, key: string) => obj?.[key],
+                  rowData,
+                );
+                errors.push({
+                  row: rowIndex,
+                  field: err.path.join("."),
+                  message: err.message,
+                  value: fieldValue,
+                });
+              });
+            } else {
               errors.push({
                 row: rowIndex,
-                field: err.path.join("."),
-                message: err.message,
-                value: fieldValue,
+                message: error.message || "Invalid row data",
               });
-            });
-          } else {
-            errors.push({
-              row: rowIndex,
-              message: error.message || "Invalid row data",
-            });
+            }
           }
-        }
-      });
+        });
+      }
 
       // Group rows by sale_id (or by date + showroom + soldBy if no sale_id)
       // Rows with the same sale_id should be grouped together

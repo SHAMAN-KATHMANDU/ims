@@ -7,7 +7,9 @@ import {
 } from "@/utils/pagination";
 import ExcelJS from "exceljs";
 import fs from "fs";
+import path from "path";
 import { z } from "zod";
+import csvParser from "csv-parser";
 import {
   excelMemberRowSchema,
   type ExcelMemberRow,
@@ -326,7 +328,7 @@ class MemberController {
     }
   }
 
-  // Bulk upload members from Excel file
+  // Bulk upload members from Excel or CSV file
   async bulkUploadMembers(req: Request, res: Response) {
     const errors: ValidationError[] = [];
     const createdMembers: { id: string; phone: string; name: string | null }[] =
@@ -360,20 +362,8 @@ class MemberController {
       }
 
       const filePath = req.file.path;
-      const workbook = new ExcelJS.Workbook();
-      await workbook.xlsx.readFile(filePath);
-
-      const worksheet = workbook.worksheets[0];
-      if (!worksheet) {
-        fs.unlinkSync(filePath);
-        return res.status(400).json({
-          message: "Excel file must contain at least one worksheet",
-          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-          created: [],
-          skipped: [],
-          errors: [],
-        });
-      }
+      const fileExt = path.extname(req.file.originalname).toLowerCase();
+      const isCSV = fileExt === ".csv";
 
       const normalizeHeader = (header: string): string => {
         return header
@@ -395,20 +385,40 @@ class MemberController {
         memberSince: ["membersince", "member_since"],
       };
 
-      const headerRow = worksheet.getRow(1);
-      const columnMap: Record<string, number> = {};
+      const requiredColumns = ["phone"];
+      let rows: ExcelMemberRow[] = [];
 
-      headerRow.eachCell((cell, colNumber) => {
-        if (cell.value) {
-          const headerValue = String(cell.value).trim();
-          const normalized = normalizeHeader(headerValue);
+      if (isCSV) {
+        const csvRows: Record<string, any>[] = [];
+        const csvColumnMap: Record<string, string> = {};
 
+        await new Promise<void>((resolve, reject) => {
+          fs.createReadStream(filePath)
+            .pipe(csvParser())
+            .on("data", (row: Record<string, any>) => csvRows.push(row))
+            .on("end", () => resolve())
+            .on("error", reject);
+        });
+
+        if (csvRows.length === 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "CSV file is empty or invalid",
+            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+            created: [],
+            skipped: [],
+            errors: [],
+          });
+        }
+
+        const csvHeaders = Object.keys(csvRows[0] || {});
+        for (const csvHeader of csvHeaders) {
+          const normalized = normalizeHeader(csvHeader);
           let bestMatch: { fieldName: string; priority: number } | null = null;
-
           for (const [fieldName, variations] of Object.entries(
             headerMappings,
           )) {
-            if (columnMap[fieldName]) continue;
+            if (csvColumnMap[fieldName]) continue;
             if (variations.some((v) => normalized === v)) {
               bestMatch = { fieldName, priority: 2 };
               break;
@@ -422,84 +432,184 @@ class MemberController {
               bestMatch = { fieldName, priority: 1 };
             }
           }
-
-          if (bestMatch) {
-            columnMap[bestMatch.fieldName] = colNumber;
-          }
+          if (bestMatch) csvColumnMap[bestMatch.fieldName] = csvHeader;
         }
-      });
 
-      const requiredColumns = ["phone"];
-      const missingColumns = requiredColumns.filter((col) => !columnMap[col]);
-      if (missingColumns.length > 0) {
-        fs.unlinkSync(filePath);
-        return res.status(400).json({
-          message: "Missing required columns in Excel file",
-          missingColumns,
-          foundColumns: Object.keys(columnMap),
-          hint: "Required: Phone number. Optional: SN, ID (maps to member_id; must be valid UUID), Name, Address, DoB, Notes, Member since.",
-          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-          created: [],
-          skipped: [],
-          errors: [],
-        });
-      }
-
-      const rows: ExcelMemberRow[] = [];
-
-      worksheet.eachRow((row, rowIndex) => {
-        if (rowIndex === 1) return;
-
-        const getCellValue = (fieldName: string) => {
-          const colNumber = columnMap[fieldName];
-          return colNumber ? row.getCell(colNumber).value : undefined;
-        };
-
-        const rowData = {
-          sn: getCellValue("sn"),
-          id: getCellValue("id"),
-          name: getCellValue("name"),
-          address: getCellValue("address"),
-          phone: getCellValue("phone"),
-          dob: getCellValue("dob"),
-          notes: getCellValue("notes"),
-          memberSince: getCellValue("memberSince"),
-        };
-
-        const hasData = Object.values(rowData).some(
-          (v) =>
-            v !== null &&
-            v !== undefined &&
-            String(v).trim() !== "" &&
-            String(v) !== "-",
+        const missingColumns = requiredColumns.filter(
+          (col) => !csvColumnMap[col],
         );
-        if (!hasData) return;
+        if (missingColumns.length > 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Missing required columns in CSV file",
+            missingColumns,
+            foundColumns: Object.keys(csvColumnMap),
+            hint: "Required: Phone number. Optional: SN, ID (maps to member_id; must be valid UUID), Name, Address, DoB, Notes, Member since.",
+            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+            created: [],
+            skipped: [],
+            errors: [],
+          });
+        }
 
-        try {
-          const validated = excelMemberRowSchema.parse(rowData);
-          rows.push(validated);
-        } catch (error: any) {
-          if (error instanceof z.ZodError) {
-            error.errors.forEach((err: any) => {
-              const fieldValue = err.path.reduce(
-                (obj: any, key: string) => obj?.[key],
-                rowData,
-              );
+        csvRows.forEach((csvRow, rowIndex) => {
+          const getCellValue = (fieldName: string) => {
+            const col = csvColumnMap[fieldName];
+            if (!col) return undefined;
+            const value = csvRow[col];
+            return value === "" || value === null ? undefined : value;
+          };
+          const rowData = {
+            sn: getCellValue("sn"),
+            id: getCellValue("id"),
+            name: getCellValue("name"),
+            address: getCellValue("address"),
+            phone: getCellValue("phone"),
+            dob: getCellValue("dob"),
+            notes: getCellValue("notes"),
+            memberSince: getCellValue("memberSince"),
+          };
+          const hasData = Object.values(rowData).some(
+            (v) =>
+              v !== null &&
+              v !== undefined &&
+              String(v).trim() !== "" &&
+              String(v) !== "-",
+          );
+          if (!hasData) return;
+          try {
+            rows.push(excelMemberRowSchema.parse(rowData));
+          } catch (error: any) {
+            if (error instanceof z.ZodError) {
+              error.errors.forEach((err: any) => {
+                const fieldValue = err.path.reduce(
+                  (obj: any, key: string) => obj?.[key],
+                  rowData,
+                );
+                errors.push({
+                  row: rowIndex + 2,
+                  field: err.path.join("."),
+                  message: err.message,
+                  value: fieldValue,
+                });
+              });
+            } else {
+              errors.push({
+                row: rowIndex + 2,
+                message: error.message || "Invalid row data",
+              });
+            }
+          }
+        });
+      } else {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
+
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Excel file must contain at least one worksheet",
+            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+            created: [],
+            skipped: [],
+            errors: [],
+          });
+        }
+
+        const columnMap: Record<string, number> = {};
+        const headerRow = worksheet.getRow(1);
+        headerRow.eachCell((cell, colNumber) => {
+          if (cell.value) {
+            const headerValue = String(cell.value).trim();
+            const normalized = normalizeHeader(headerValue);
+            let bestMatch: { fieldName: string; priority: number } | null =
+              null;
+            for (const [fieldName, variations] of Object.entries(
+              headerMappings,
+            )) {
+              if (columnMap[fieldName]) continue;
+              if (variations.some((v) => normalized === v)) {
+                bestMatch = { fieldName, priority: 2 };
+                break;
+              }
+              if (
+                !bestMatch &&
+                variations.some(
+                  (v) => normalized.includes(v) || v.includes(normalized),
+                )
+              ) {
+                bestMatch = { fieldName, priority: 1 };
+              }
+            }
+            if (bestMatch) columnMap[bestMatch.fieldName] = colNumber;
+          }
+        });
+
+        const missingColumns = requiredColumns.filter((col) => !columnMap[col]);
+        if (missingColumns.length > 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Missing required columns in Excel file",
+            missingColumns,
+            foundColumns: Object.keys(columnMap),
+            hint: "Required: Phone number. Optional: SN, ID (maps to member_id; must be valid UUID), Name, Address, DoB, Notes, Member since.",
+            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
+            created: [],
+            skipped: [],
+            errors: [],
+          });
+        }
+
+        worksheet.eachRow((row, rowIndex) => {
+          if (rowIndex === 1) return;
+          const getCellValue = (fieldName: string) => {
+            const colNumber = columnMap[fieldName];
+            return colNumber ? row.getCell(colNumber).value : undefined;
+          };
+          const rowData = {
+            sn: getCellValue("sn"),
+            id: getCellValue("id"),
+            name: getCellValue("name"),
+            address: getCellValue("address"),
+            phone: getCellValue("phone"),
+            dob: getCellValue("dob"),
+            notes: getCellValue("notes"),
+            memberSince: getCellValue("memberSince"),
+          };
+          const hasData = Object.values(rowData).some(
+            (v) =>
+              v !== null &&
+              v !== undefined &&
+              String(v).trim() !== "" &&
+              String(v) !== "-",
+          );
+          if (!hasData) return;
+          try {
+            rows.push(excelMemberRowSchema.parse(rowData));
+          } catch (error: any) {
+            if (error instanceof z.ZodError) {
+              error.errors.forEach((err: any) => {
+                const fieldValue = err.path.reduce(
+                  (obj: any, key: string) => obj?.[key],
+                  rowData,
+                );
+                errors.push({
+                  row: rowIndex,
+                  field: err.path.join("."),
+                  message: err.message,
+                  value: fieldValue,
+                });
+              });
+            } else {
               errors.push({
                 row: rowIndex,
-                field: err.path.join("."),
-                message: err.message,
-                value: fieldValue,
+                message: error.message || "Invalid row data",
               });
-            });
-          } else {
-            errors.push({
-              row: rowIndex,
-              message: error.message || "Invalid row data",
-            });
+            }
           }
-        }
-      });
+        });
+      }
 
       for (const r of rows) {
         try {
