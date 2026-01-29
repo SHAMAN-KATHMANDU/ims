@@ -906,17 +906,6 @@ class SaleController {
         });
       }
 
-      if (!req.user || !req.user.id) {
-        fs.unlinkSync(req.file.path);
-        return res.status(401).json({
-          message: "User not authenticated",
-          summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-          created: [],
-          skipped: [],
-          errors: [],
-        });
-      }
-
       const filePath = req.file.path;
       const fileExt = path.extname(req.file.originalname).toLowerCase();
       const isCSV = fileExt === ".csv";
