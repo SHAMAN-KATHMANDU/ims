@@ -204,6 +204,34 @@ saleRouter.get(
 
 /**
  * @swagger
+ * /sales/bulk-upload/template:
+ *   get:
+ *     summary: Download bulk upload template (Excel with headers)
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Excel template file
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+saleRouter.get(
+  "/bulk-upload/template",
+  verifyToken,
+  authorizeRoles("admin", "superAdmin"),
+  saleController.downloadBulkUploadTemplate,
+);
+
+/**
+ * @swagger
  * /sales/bulk-upload:
  *   post:
  *     summary: Bulk upload sales from Excel file
@@ -222,7 +250,7 @@ saleRouter.get(
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: Excel file (.xlsx, .xls, .xlsm) with columns: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount (required). Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR). If Phone number is provided, sale is marked as Member sale; member is found or created with that phone.
+ *                 description: "Excel file (.xlsx, .xls, .xlsm) with columns: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount (required). Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR). If Phone number is provided, sale is marked as Member sale; member is found or created with that phone."
  *     responses:
  *       200:
  *         description: Bulk upload completed

@@ -1511,6 +1511,87 @@ class ProductController {
     }
   }
 
+  // Download bulk upload template (headers only)
+  async downloadBulkUploadTemplate(req: Request, res: Response) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Products Template");
+
+      const headers = [
+        { header: "IMS Code", width: 15 },
+        { header: "Category", width: 18 },
+        { header: "Sub-Category", width: 15 },
+        { header: "Name of Product", width: 28 },
+        { header: "Variations (Designs/Colors)", width: 28 },
+        { header: "Material", width: 15 },
+        { header: "Length", width: 10 },
+        { header: "Breadth", width: 10 },
+        { header: "Height", width: 10 },
+        { header: "Weight", width: 10 },
+        { header: "Vendor", width: 15 },
+        { header: "Qty", width: 8 },
+        { header: "Cost Price", width: 12 },
+        { header: "Final SP", width: 12 },
+        { header: "Non Member Discount", width: 20 },
+        { header: "Member Discount", width: 18 },
+        { header: "Wholesale Discount", width: 20 },
+      ];
+      const requiredOptional = [
+        "Required",
+        "Required",
+        "Optional",
+        "Required",
+        "Required",
+        "Optional",
+        "Optional",
+        "Optional",
+        "Optional",
+        "Optional",
+        "Optional",
+        "Optional",
+        "Required",
+        "Required",
+        "Optional",
+        "Optional",
+        "Optional",
+      ];
+
+      worksheet.columns = headers.map((h) => ({
+        header: h.header,
+        width: h.width,
+      }));
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+      const row2 = worksheet.getRow(2);
+      requiredOptional.forEach((text, i) => {
+        row2.getCell(i + 1).value = text;
+      });
+      row2.font = { italic: true };
+
+      const filename = "products_bulk_upload_template.xlsx";
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`,
+      );
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Download template error:", error);
+      res.status(500).json({
+        message: "Error generating template",
+        error: error.message,
+      });
+    }
+  }
+
   // Download products as Excel or CSV
   async downloadProducts(req: Request, res: Response) {
     try {
