@@ -465,9 +465,32 @@ export async function bulkUploadProducts(
     );
 
     return response.data;
-  } catch (error) {
+  } catch (error: unknown) {
+    const axiosError = error as {
+      isAxiosError?: boolean;
+      response?: {
+        status?: number;
+        data?: {
+          message?: string;
+          missingColumns?: string[];
+          hint?: string;
+          foundColumns?: string[];
+        };
+      };
+    };
+    if (
+      axiosError?.isAxiosError &&
+      axiosError.response?.status === 400 &&
+      axiosError.response?.data
+    ) {
+      const data = axiosError.response.data;
+      const err = new Error(data?.message || "Validation failed") as Error & {
+        responseData?: typeof data;
+      };
+      err.responseData = data;
+      throw err;
+    }
     handleApiError(error, "bulk upload products");
-    throw error;
   }
 }
 
