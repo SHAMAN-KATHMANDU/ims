@@ -171,6 +171,46 @@ export function BulkUploadDialog({
             </Alert>
           )}
 
+          {/* Upload Error (e.g. wrong/missing columns) */}
+          {bulkUploadMutation.isError && bulkUploadMutation.error ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Upload failed</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>{(bulkUploadMutation.error as Error).message}</p>
+                {(
+                  bulkUploadMutation.error as Error & {
+                    responseData?: { missingColumns?: string[]; hint?: string };
+                  }
+                ).responseData?.missingColumns && (
+                  <p className="text-sm">
+                    <span className="font-medium">Missing columns: </span>
+                    {(
+                      bulkUploadMutation.error as Error & {
+                        responseData?: { missingColumns?: string[] };
+                      }
+                    ).responseData!.missingColumns!.join(", ")}
+                  </p>
+                )}
+                {(
+                  bulkUploadMutation.error as Error & {
+                    responseData?: { hint?: string };
+                  }
+                ).responseData?.hint && (
+                  <p className="text-sm text-muted-foreground">
+                    {
+                      (
+                        bulkUploadMutation.error as Error & {
+                          responseData?: { hint?: string };
+                        }
+                      ).responseData!.hint
+                    }
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : null}
+
           {/* Upload Progress */}
           {isUploading && (
             <div className="space-y-2">
