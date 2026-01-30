@@ -84,6 +84,8 @@ export function useSalesPaginated(params: SalesListParams = {}) {
     startDate: params.startDate,
     endDate: params.endDate,
     search: params.search?.trim() || "",
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   };
 
   return useQuery({
