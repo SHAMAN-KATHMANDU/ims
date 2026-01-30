@@ -11,12 +11,25 @@ export const calculateDiscountedPrice = (
 };
 
 /**
- * Get total stock quantity from all variations
+ * Get total stock for a single variation: sum of locationInventory when present, else stockQuantity
+ */
+function getVariationTotal(variation: {
+  stockQuantity?: number;
+  locationInventory?: Array<{ quantity: number }>;
+}): number {
+  if (variation.locationInventory && variation.locationInventory.length > 0) {
+    return variation.locationInventory.reduce((s, inv) => s + inv.quantity, 0);
+  }
+  return variation.stockQuantity ?? 0;
+}
+
+/**
+ * Get total stock quantity from all variations (uses locationInventory sum when available)
  */
 export const getTotalStock = (product: Product): number => {
   if (!product.variations || product.variations.length === 0) return 0;
   return product.variations.reduce(
-    (sum, variation) => sum + (variation.stockQuantity || 0),
+    (sum, variation) => sum + getVariationTotal(variation),
     0,
   );
 };

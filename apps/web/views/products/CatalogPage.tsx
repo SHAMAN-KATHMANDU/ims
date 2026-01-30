@@ -10,11 +10,13 @@ import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  useCategorySubcategories,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   type Product,
   type ProductListParams,
 } from "@/hooks/useProduct";
+import { useVendorsPaginated } from "@/hooks/useVendors";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import {
   useProductSelectionStore,
@@ -28,10 +30,23 @@ import { ProductTable } from "./components/ProductTable";
 import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./components/BulkUploadDialog";
-import { useActiveLocations } from "@/hooks/useLocation";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { LocationSelector } from "@/components/ui/location-selector";
 import { Button } from "@/components/ui/button";
-import { Upload, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Upload, Download, FileSpreadsheet, FileText, Filter } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,6 +68,13 @@ export function CatalogPage() {
     limit: DEFAULT_LIMIT,
     search: "",
     locationId: undefined,
+    categoryId: undefined,
+    subCategory: undefined,
+    vendorId: undefined,
+    dateFrom: undefined,
+    dateTo: undefined,
+    sortBy: "dateCreated",
+    sortOrder: "desc",
   });
 
   // Fetch paginated products
@@ -67,7 +89,11 @@ export function CatalogPage() {
   const paginationInfo = productsResponse?.pagination;
 
   const { data: categories = [] } = useCategories();
-  const { data: locations = [] } = useActiveLocations();
+  const { data: vendorsResponse } = useVendorsPaginated({ page: 1, limit: 200 });
+  const vendors = vendorsResponse?.data ?? [];
+  const { data: subcategories = [] } = useCategorySubcategories(
+    paginationParams.categoryId ?? "",
+  );
 
   // ============================================
   // Pagination Handlers
@@ -100,6 +126,56 @@ export function CatalogPage() {
       ...prev,
       page: DEFAULT_PAGE,
       locationId: newLocationId === "all" ? undefined : newLocationId,
+    }));
+  }, []);
+
+  const handleCategoryChange = useCallback((categoryId: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      categoryId: categoryId === "all" ? undefined : categoryId,
+      subCategory: undefined,
+    }));
+  }, []);
+
+  const handleSubCategoryChange = useCallback((subCategory: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      subCategory: subCategory === "all" ? undefined : subCategory,
+    }));
+  }, []);
+
+  const handleVendorChange = useCallback((vendorId: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      vendorId: vendorId === "all" ? undefined : vendorId,
+    }));
+  }, []);
+
+  const handleDateFromChange = useCallback((dateFrom: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      dateFrom: dateFrom || undefined,
+    }));
+  }, []);
+
+  const handleDateToChange = useCallback((dateTo: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      dateTo: dateTo || undefined,
+    }));
+  }, []);
+
+  const handleSortChange = useCallback((sortBy: string, sortOrder: "asc" | "desc") => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      sortBy,
+      sortOrder,
     }));
   }, []);
 
@@ -670,23 +746,7 @@ export function CatalogPage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="space-y-2">
-          <Tabs
-            value={paginationParams.locationId || "all"}
-            onValueChange={handleLocationChange}
-            className="w-full"
-          >
-            <TabsList className="flex flex-wrap">
-              <TabsTrigger value="all">All Locations</TabsTrigger>
-              {locations.map((location) => (
-                <TabsTrigger key={location.id} value={location.id}>
-                  {location.name}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
-        </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
         {canManageProducts && (
           <div className="flex items-center gap-2">
             <DropdownMenu>
@@ -757,6 +817,129 @@ export function CatalogPage() {
         canManageProducts={canManageProducts}
         onEdit={handleEditProduct}
         onDelete={setProductToDelete}
+        filterBar={
+          <>
+            <LocationSelector
+              value={paginationParams.locationId || "all"}
+              onChange={handleLocationChange}
+              placeholder="Location"
+              allLabel="All"
+              className="h-9 w-[130px] text-sm shrink-0"
+            />
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 gap-2 text-sm shrink-0">
+                  <Filter className="h-4 w-4" />
+                  Filters
+                </Button>
+              </PopoverTrigger>
+            <PopoverContent className="w-80 p-3" align="end">
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">Category & vendor</p>
+                <div className="grid gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Category</Label>
+                    <Select
+                      value={paginationParams.categoryId ?? "all"}
+                      onValueChange={handleCategoryChange}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        {categories.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Subcategory</Label>
+                    <Select
+                      value={paginationParams.subCategory ?? "all"}
+                      onValueChange={handleSubCategoryChange}
+                      disabled={!paginationParams.categoryId}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        {subcategories.map((name) => (
+                          <SelectItem key={name} value={name}>{name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Vendor</Label>
+                    <Select
+                      value={paginationParams.vendorId ?? "all"}
+                      onValueChange={handleVendorChange}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="All" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All</SelectItem>
+                        {vendors.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs font-medium text-muted-foreground pt-1">Date & sort</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">From</Label>
+                    <Input
+                      type="date"
+                      value={paginationParams.dateFrom ?? ""}
+                      onChange={(e) => handleDateFromChange(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">To</Label>
+                    <Input
+                      type="date"
+                      value={paginationParams.dateTo ?? ""}
+                      onChange={(e) => handleDateToChange(e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Sort</Label>
+                  <Select
+                    value={`${paginationParams.sortBy ?? "dateCreated"}-${paginationParams.sortOrder ?? "desc"}`}
+                    onValueChange={(v) => {
+                      const [sortBy, sortOrder] = v.split("-") as [string, "asc" | "desc"];
+                      handleSortChange(sortBy, sortOrder);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="dateCreated-desc">Newest first</SelectItem>
+                      <SelectItem value="dateCreated-asc">Oldest first</SelectItem>
+                      <SelectItem value="name-asc">Name A–Z</SelectItem>
+                      <SelectItem value="name-desc">Name Z–A</SelectItem>
+                      <SelectItem value="mrp-desc">MRP high–low</SelectItem>
+                      <SelectItem value="mrp-asc">MRP low–high</SelectItem>
+                      <SelectItem value="vendorname-asc">Vendor A–Z</SelectItem>
+                      <SelectItem value="vendorname-desc">Vendor Z–A</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+          </>
+        }
         pagination={{
           currentPage:
             paginationInfo?.currentPage ??

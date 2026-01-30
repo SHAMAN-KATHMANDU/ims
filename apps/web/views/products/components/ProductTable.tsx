@@ -52,6 +52,8 @@ interface ProductTableProps {
   // Search props (required for server-side search)
   searchQuery: string;
   onSearchChange: (search: string) => void;
+  // Optional filter bar rendered inside the table card (Location, Filters popover, etc.)
+  filterBar?: React.ReactNode;
   // Loading state
   isLoading?: boolean;
   isFetching?: boolean;
@@ -160,6 +162,7 @@ export function ProductTable({
   onPageSizeChange,
   searchQuery,
   onSearchChange,
+  filterBar,
   isLoading = false,
   isFetching = false,
   selectedProducts = new Set(),
@@ -232,24 +235,30 @@ export function ProductTable({
                 : `Total: ${pagination.totalItems} products`}
             </CardDescription>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="text"
-              placeholder="Search products..."
-              value={localSearch}
-              onChange={(e) => handleSearchChange(e.target.value)}
-              className="pl-9 pr-9"
-            />
-            {localSearch && (
-              <button
-                onClick={clearSearch}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                aria-label="Clear search"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            )}
+          <div className="flex flex-nowrap items-center gap-2 w-full sm:w-auto">
+            {/* Filter button/controls – always visible alongside search */}
+            {filterBar != null ? (
+              <div className="flex shrink-0 items-center gap-2">{filterBar}</div>
+            ) : null}
+            <div className="relative flex-1 min-w-[140px] max-w-[280px]">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+              <Input
+                type="text"
+                placeholder="Search products..."
+                value={localSearch}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="pl-9 pr-9"
+              />
+              {localSearch && (
+                <button
+                  onClick={clearSearch}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label="Clear search"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -504,6 +513,15 @@ export function ProductTable({
                                   const primaryPhoto =
                                     photos.find((p) => p.isPrimary) ||
                                     photos[0];
+                                  const hasLocationInventory =
+                                    variation.locationInventory &&
+                                    variation.locationInventory.length > 0;
+                                  const totalStock = hasLocationInventory
+                                    ? variation.locationInventory!.reduce(
+                                        (s, inv) => s + inv.quantity,
+                                        0,
+                                      )
+                                    : variation.stockQuantity ?? 0;
 
                                   return (
                                     <div
@@ -511,13 +529,37 @@ export function ProductTable({
                                       className="border rounded-lg p-3 space-y-2"
                                     >
                                       <div className="flex items-center justify-between">
-                                        <div>
+                                        <div className="space-y-2">
                                           <div className="font-medium text-sm">
                                             {variation.color}
                                           </div>
-                                          <div className="text-xs text-muted-foreground">
-                                            Stock: {variation.stockQuantity}
+                                          <div className="text-xs font-medium text-muted-foreground">
+                                            Total: {totalStock}
                                           </div>
+                                          {hasLocationInventory && (
+                                            <div className="space-y-1.5">
+                                              <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                By location
+                                              </div>
+                                              <div className="flex flex-wrap gap-2">
+                                                {variation.locationInventory!.map(
+                                                  (inv) => (
+                                                    <div
+                                                      key={inv.location.id}
+                                                      className="rounded-md border bg-muted/50 px-2.5 py-1.5 text-xs"
+                                                    >
+                                                      <span className="font-medium text-foreground">
+                                                        {inv.location.name}
+                                                      </span>
+                                                      <span className="ml-1.5 text-muted-foreground">
+                                                        {inv.quantity}
+                                                      </span>
+                                                    </div>
+                                                  ),
+                                                )}
+                                              </div>
+                                            </div>
+                                          )}
                                         </div>
                                       </div>
                                       {primaryPhoto && (

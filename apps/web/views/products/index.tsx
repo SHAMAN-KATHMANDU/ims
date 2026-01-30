@@ -14,12 +14,14 @@ import {
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
+  useCategorySubcategories,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   type Product,
   type Category,
   type ProductListParams,
 } from "@/hooks/useProduct";
+import { useVendorsPaginated } from "@/hooks/useVendors";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import {
   useProductSelectionStore,
@@ -38,7 +40,21 @@ import { ErrorDialog } from "./components/dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./components/BulkUploadDialog";
 import { LocationSelector } from "@/components/ui/location-selector";
 import { Button } from "@/components/ui/button";
-import { Upload, Download, FileSpreadsheet, FileText } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Upload, Download, FileSpreadsheet, FileText, Filter } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -62,6 +78,13 @@ export function ProductPage() {
     limit: DEFAULT_LIMIT,
     search: "",
     locationId: undefined,
+    categoryId: undefined,
+    subCategory: undefined,
+    vendorId: undefined,
+    dateFrom: undefined,
+    dateTo: undefined,
+    sortBy: "dateCreated",
+    sortOrder: "desc",
   });
 
   // Fetch paginated products
@@ -76,6 +99,11 @@ export function ProductPage() {
   const paginationInfo = productsResponse?.pagination;
 
   const { data: categories = [] } = useCategories();
+  const { data: vendorsResponse } = useVendorsPaginated({ page: 1, limit: 200 });
+  const vendors = vendorsResponse?.data ?? [];
+  const { data: subcategories = [] } = useCategorySubcategories(
+    paginationParams.categoryId ?? "",
+  );
 
   // ============================================
   // Pagination Handlers
@@ -106,10 +134,61 @@ export function ProductPage() {
   const handleLocationChange = useCallback((newLocationId: string) => {
     setPaginationParams((prev) => ({
       ...prev,
-      page: DEFAULT_PAGE, // Reset to first page when changing location
+      page: DEFAULT_PAGE,
       locationId: newLocationId === "all" ? undefined : newLocationId,
     }));
   }, []);
+
+  const handleCategoryChange = useCallback((categoryId: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      categoryId: categoryId === "all" ? undefined : categoryId,
+      subCategory: undefined,
+    }));
+  }, []);
+
+  const handleSubCategoryChange = useCallback((subCategory: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      subCategory: subCategory === "all" ? undefined : subCategory,
+    }));
+  }, []);
+
+  const handleVendorChange = useCallback((vendorId: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      vendorId: vendorId === "all" ? undefined : vendorId,
+    }));
+  }, []);
+
+  const handleDateFromChange = useCallback((dateFrom: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      dateFrom: dateFrom || undefined,
+    }));
+  }, []);
+
+  const handleDateToChange = useCallback((dateTo: string) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      dateTo: dateTo || undefined,
+    }));
+  }, []);
+
+  const handleSortChange = useCallback((sortBy: string, sortOrder: "asc" | "desc") => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      sortBy,
+      sortOrder,
+    }));
+  }, []);
+
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
   const deleteProductMutation = useDeleteProduct();
@@ -148,6 +227,8 @@ export function ProductPage() {
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  // Default location for new product stock (when adding product)
+  const [defaultLocationIdForCreate, setDefaultLocationIdForCreate] = useState<string | undefined>(undefined);
 
   // Form states
   const [productVariations, setProductVariations] = useState<
@@ -415,11 +496,15 @@ export function ProductPage() {
           });
           toast({ title: "Product updated successfully" });
         } else {
+          if (defaultLocationIdForCreate) {
+            data.defaultLocationId = defaultLocationIdForCreate;
+          }
           await createProductMutation.mutateAsync(data);
           toast({ title: "Product added successfully" });
         }
         setProductDialog(false);
         setEditingProduct(null);
+        setDefaultLocationIdForCreate(undefined);
         setProductVariations([]);
         setProductDiscounts([]);
         productForm.reset();
@@ -757,17 +842,8 @@ export function ProductPage() {
         </TabsList>
 
         <TabsContent value="products" className="space-y-4">
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-4">
-              <h2 className="text-xl font-semibold">Product Catalog</h2>
-              <LocationSelector
-                value={paginationParams.locationId || "all"}
-                onChange={handleLocationChange}
-                placeholder="Filter by location"
-                allLabel="All Locations"
-                className="w-[200px]"
-              />
-            </div>
+          <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
             {canManageProducts && (
               <div className="flex items-center gap-2">
                 <DropdownMenu>
@@ -815,6 +891,8 @@ export function ProductPage() {
                   variations={productVariations}
                   discounts={productDiscounts}
                   discountTypes={discountTypes}
+                  defaultLocationId={defaultLocationIdForCreate}
+                  onDefaultLocationChange={setDefaultLocationIdForCreate}
                   onReset={handleResetProduct}
                   onAddVariation={addVariationToForm}
                   onRemoveVariation={removeVariationFromForm}
@@ -832,6 +910,7 @@ export function ProductPage() {
                 />
               </div>
             )}
+            </div>
           </div>
 
           <ProductTable
@@ -841,6 +920,129 @@ export function ProductPage() {
             canManageProducts={canManageProducts}
             onEdit={handleEditProduct}
             onDelete={setProductToDelete}
+            filterBar={
+              <>
+                <LocationSelector
+                  value={paginationParams.locationId || "all"}
+                  onChange={handleLocationChange}
+                  placeholder="Location"
+                  allLabel="All"
+                  className="h-9 w-[130px] text-sm"
+                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-9 gap-2 text-sm shrink-0">
+                      <Filter className="h-4 w-4" />
+                      Filters
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-80 p-3" align="end">
+                    <div className="space-y-3">
+                      <p className="text-xs font-medium text-muted-foreground">Category & vendor</p>
+                      <div className="grid gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Category</Label>
+                          <Select
+                            value={paginationParams.categoryId ?? "all"}
+                            onValueChange={handleCategoryChange}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All</SelectItem>
+                              {categories.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Subcategory</Label>
+                          <Select
+                            value={paginationParams.subCategory ?? "all"}
+                            onValueChange={handleSubCategoryChange}
+                            disabled={!paginationParams.categoryId}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All</SelectItem>
+                              {subcategories.map((name) => (
+                                <SelectItem key={name} value={name}>{name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Vendor</Label>
+                          <Select
+                            value={paginationParams.vendorId ?? "all"}
+                            onValueChange={handleVendorChange}
+                          >
+                            <SelectTrigger className="h-8 text-sm">
+                              <SelectValue placeholder="All" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">All</SelectItem>
+                              {vendors.map((v) => (
+                                <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <p className="text-xs font-medium text-muted-foreground pt-1">Date & sort</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">From</Label>
+                          <Input
+                            type="date"
+                            value={paginationParams.dateFrom ?? ""}
+                            onChange={(e) => handleDateFromChange(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">To</Label>
+                          <Input
+                            type="date"
+                            value={paginationParams.dateTo ?? ""}
+                            onChange={(e) => handleDateToChange(e.target.value)}
+                            className="h-8 text-sm"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Sort</Label>
+                        <Select
+                          value={`${paginationParams.sortBy ?? "dateCreated"}-${paginationParams.sortOrder ?? "desc"}`}
+                          onValueChange={(v) => {
+                            const [sortBy, sortOrder] = v.split("-") as [string, "asc" | "desc"];
+                            handleSortChange(sortBy, sortOrder);
+                          }}
+                        >
+                          <SelectTrigger className="h-8 text-sm">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="dateCreated-desc">Newest first</SelectItem>
+                            <SelectItem value="dateCreated-asc">Oldest first</SelectItem>
+                            <SelectItem value="name-asc">Name A–Z</SelectItem>
+                            <SelectItem value="name-desc">Name Z–A</SelectItem>
+                            <SelectItem value="mrp-desc">MRP high–low</SelectItem>
+                            <SelectItem value="mrp-asc">MRP low–high</SelectItem>
+                            <SelectItem value="vendorname-asc">Vendor A–Z</SelectItem>
+                            <SelectItem value="vendorname-desc">Vendor Z–A</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </PopoverContent>
+                </Popover>
+              </>
+            }
             // Pagination props
             pagination={{
               currentPage:
@@ -893,7 +1095,7 @@ export function ProductPage() {
         </TabsContent>
 
         <TabsContent value="discounts" className="space-y-4">
-          <DiscountsTab products={products} />
+          <DiscountsTab />
         </TabsContent>
       </Tabs>
 

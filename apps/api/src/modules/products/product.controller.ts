@@ -263,6 +263,50 @@ class ProductController {
         },
       });
 
+      // Add initial stock to default warehouse (or specified location)
+      const defaultLocationId = req.body.defaultLocationId as string | undefined;
+      let warehouseLocation: { id: string } | null = null;
+      if (defaultLocationId) {
+        const loc = await prisma.location.findFirst({
+          where: { id: defaultLocationId, isActive: true },
+          select: { id: true },
+        });
+        warehouseLocation = loc;
+      }
+      if (!warehouseLocation) {
+        warehouseLocation = await prisma.location.findFirst({
+          where: { type: "WAREHOUSE", isDefaultWarehouse: true, isActive: true },
+          select: { id: true },
+        });
+      }
+      if (!warehouseLocation) {
+        warehouseLocation = await prisma.location.findFirst({
+          where: { type: "WAREHOUSE", isActive: true },
+          select: { id: true },
+        });
+      }
+      if (warehouseLocation && product.variations?.length) {
+        for (const v of product.variations) {
+          const qty = Number(v.stockQuantity) || 0;
+          if (qty > 0) {
+            await prisma.locationInventory.upsert({
+              where: {
+                locationId_variationId: {
+                  locationId: warehouseLocation!.id,
+                  variationId: v.id,
+                },
+              },
+              create: {
+                locationId: warehouseLocation!.id,
+                variationId: v.id,
+                quantity: qty,
+              },
+              update: { quantity: { increment: qty } },
+            });
+          }
+        }
+      }
+
       res.status(201).json({
         message: "Product created successfully",
         product,
@@ -289,9 +333,14 @@ class ProductController {
         req.query,
       );
 
-      // Parse optional locationId filter
+      // Parse optional filters
       const locationId = req.query.locationId as string | undefined;
       const categoryId = req.query.categoryId as string | undefined;
+      const subCategoryId = req.query.subCategoryId as string | undefined;
+      const subCategory = req.query.subCategory as string | undefined;
+      const vendorId = req.query.vendorId as string | undefined;
+      const dateFrom = req.query.dateFrom as string | undefined;
+      const dateTo = req.query.dateTo as string | undefined;
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -302,16 +351,21 @@ class ProductController {
         "mrp",
         "dateCreated",
         "dateModified",
+        "vendorId",
       ];
 
-      // Get orderBy for Prisma
-      const orderBy = getPrismaOrderBy(
+      // Get orderBy for Prisma (support relation sort for vendor name)
+      let orderBy: any = getPrismaOrderBy(
         sortBy,
         sortOrder,
         allowedSortFields,
-      ) || {
-        dateCreated: "desc",
-      };
+      );
+      if (!orderBy && sortBy?.toLowerCase() === "vendorname") {
+        orderBy = { vendor: { name: sortOrder } };
+      }
+      if (!orderBy) {
+        orderBy = { dateCreated: "desc" };
+      }
 
       // Build search filter
       const where: any = {};
@@ -333,6 +387,33 @@ class ProductController {
         where.categoryId = categoryId;
       }
 
+      // Add subcategory filter (by ID or by denormalized name)
+      if (subCategoryId) {
+        where.subCategoryId = subCategoryId;
+      }
+      if (subCategory && !subCategoryId) {
+        where.subCategory = { equals: subCategory, mode: "insensitive" };
+      }
+
+      // Add vendor filter
+      if (vendorId) {
+        where.vendorId = vendorId;
+      }
+
+      // Add date range filter (on dateCreated)
+      if (dateFrom || dateTo) {
+        where.dateCreated = {};
+        if (dateFrom) {
+          const from = new Date(dateFrom);
+          where.dateCreated.gte = from;
+        }
+        if (dateTo) {
+          const to = new Date(dateTo);
+          to.setHours(23, 59, 59, 999);
+          where.dateCreated.lte = to;
+        }
+      }
+
       // If locationId is provided, filter products that have inventory at that location
       if (locationId) {
         where.variations = {
@@ -350,23 +431,18 @@ class ProductController {
       // Calculate skip for pagination
       const skip = (page - 1) * limit;
 
-      // Build include object based on whether locationId is provided
+      // Build include object: always include locationInventory so UI can show stock per showroom
       const variationsInclude: any = {
         photos: true,
-      };
-
-      // If locationId is provided, include location-specific inventory
-      if (locationId) {
-        variationsInclude.locationInventory = {
-          where: { locationId },
+        locationInventory: {
           select: {
             quantity: true,
             location: {
               select: { id: true, name: true, type: true },
             },
           },
-        };
-      }
+        },
+      };
 
       // Get total count and products in parallel
       const [totalItems, products] = await Promise.all([
@@ -375,6 +451,9 @@ class ProductController {
           where,
           include: {
             category: true,
+            vendor: {
+              select: { id: true, name: true },
+            },
             createdBy: {
               select: {
                 id: true,
@@ -570,17 +649,71 @@ class ProductController {
         updateData.vendorId = vendorId || null;
       }
 
-      // Handle variations update if provided
+      // Handle variations update if provided (upsert by color; do not delete variations referenced by sales/transfers)
       if (variations !== undefined) {
-        // Delete existing variations and create new ones
-        await prisma.productVariation.deleteMany({
+        const existingVariations = await prisma.productVariation.findMany({
           where: { productId: id },
+          include: {
+            _count: {
+              select: { saleItems: true, transferItems: true },
+            },
+          },
         });
+        const incomingColors = new Set(
+          Array.isArray(variations)
+            ? variations.map((v: any) => (v.color || "").trim()).filter(Boolean)
+            : [],
+        );
 
-        if (Array.isArray(variations) && variations.length > 0) {
-          updateData.variations = {
-            create: variations.map((variation: any) => ({
-              color: variation.color,
+        for (const existing of existingVariations) {
+          const hasDependents =
+            (existing._count?.saleItems ?? 0) > 0 ||
+            (existing._count?.transferItems ?? 0) > 0;
+          if (incomingColors.has(existing.color)) {
+            const payload = variations.find(
+              (v: any) => (v.color || "").trim() === existing.color,
+            );
+            if (payload) {
+              const newPhotos =
+                payload.photos && Array.isArray(payload.photos)
+                  ? payload.photos.map((photo: any) => ({
+                      photoUrl: photo.photoUrl,
+                      isPrimary: photo.isPrimary || false,
+                    }))
+                  : [];
+              if (newPhotos.length > 0) {
+                await prisma.variationPhoto.deleteMany({
+                  where: { variationId: existing.id },
+                });
+              }
+              await prisma.productVariation.update({
+                where: { id: existing.id },
+                data: {
+                  stockQuantity:
+                    payload.stockQuantity ?? existing.stockQuantity,
+                  ...(newPhotos.length > 0
+                    ? {
+                        photos: { create: newPhotos },
+                      }
+                    : {}),
+                },
+              });
+            }
+          } else if (!hasDependents) {
+            await prisma.productVariation.delete({
+              where: { id: existing.id },
+            });
+          }
+        }
+
+        for (const variation of Array.isArray(variations) ? variations : []) {
+          const color = (variation.color || "").trim();
+          if (!color || existingVariations.some((e) => e.color === color))
+            continue;
+          await prisma.productVariation.create({
+            data: {
+              productId: id,
+              color,
               stockQuantity: variation.stockQuantity || 0,
               photos:
                 variation.photos && Array.isArray(variation.photos)
@@ -591,8 +724,8 @@ class ProductController {
                       })),
                     }
                   : undefined,
-            })),
-          };
+            },
+          });
         }
       }
 
@@ -844,6 +977,101 @@ class ProductController {
       console.error("Get discount types error:", error);
       res.status(500).json({
         message: "Error fetching discount types",
+        error: error.message,
+      });
+    }
+  }
+
+  // Get all product discounts with filters, sort, search (for discounts page)
+  async getAllProductDiscounts(req: Request, res: Response) {
+    try {
+      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
+        req.query,
+      );
+      const productId = req.query.productId as string | undefined;
+      const categoryId = req.query.categoryId as string | undefined;
+      const subCategoryId = req.query.subCategoryId as string | undefined;
+      const discountTypeId = req.query.discountTypeId as string | undefined;
+
+      const where: any = {};
+      if (productId) where.productId = productId;
+      if (categoryId || subCategoryId) {
+        where.product = {};
+        if (categoryId) where.product.categoryId = categoryId;
+        if (subCategoryId) where.product.subCategoryId = subCategoryId;
+      }
+      if (discountTypeId) where.discountTypeId = discountTypeId;
+
+      if (search) {
+        where.OR = [
+          { product: { name: { contains: search, mode: "insensitive" } } },
+          { product: { imsCode: { contains: search, mode: "insensitive" } } },
+          {
+            discountType: {
+              name: { contains: search, mode: "insensitive" },
+            },
+          },
+        ];
+      }
+
+      const allowedSortFields = [
+        "id",
+        "value",
+        "valueType",
+        "isActive",
+        "startDate",
+        "endDate",
+        "createdAt",
+      ];
+      let orderBy: any = getPrismaOrderBy(
+        sortBy,
+        sortOrder,
+        allowedSortFields,
+      );
+      if (!orderBy && sortBy?.toLowerCase() === "productname") {
+        orderBy = { product: { name: sortOrder } };
+      }
+      if (!orderBy && sortBy?.toLowerCase() === "discounttypename") {
+        orderBy = { discountType: { name: sortOrder } };
+      }
+      if (!orderBy) {
+        orderBy = { createdAt: "desc" };
+      }
+
+      const skip = (page - 1) * limit;
+      const [totalItems, discounts] = await Promise.all([
+        prisma.productDiscount.count({ where }),
+        prisma.productDiscount.findMany({
+          where,
+          skip,
+          take: limit,
+          include: {
+            product: {
+              select: {
+                id: true,
+                name: true,
+                imsCode: true,
+                categoryId: true,
+                subCategory: true,
+                subCategoryId: true,
+                category: { select: { id: true, name: true } },
+              },
+            },
+            discountType: { select: { id: true, name: true } },
+          },
+          orderBy,
+        }),
+      ]);
+
+      const result = createPaginationResult(discounts, totalItems, page, limit);
+      res.status(200).json({
+        message: "Product discounts fetched successfully",
+        ...result,
+      });
+    } catch (error: any) {
+      console.error("Get all product discounts error:", error);
+      res.status(500).json({
+        message: "Error fetching product discounts",
         error: error.message,
       });
     }

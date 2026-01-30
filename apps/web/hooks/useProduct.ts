@@ -11,6 +11,7 @@ import {
   updateProduct,
   deleteProduct,
   getAllDiscountTypes,
+  getProductDiscountsList,
   bulkUploadProducts,
   type Product,
   type ProductVariation,
@@ -20,6 +21,9 @@ import {
   type PaginatedProductsResponse,
   type PaginationMeta,
   type BulkUploadResponse,
+  type ProductDiscountListParams,
+  type PaginatedProductDiscountsResponse,
+  type ProductDiscountListItem,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/services/productService";
@@ -45,6 +49,9 @@ export type {
   ProductListParams,
   PaginatedProductsResponse,
   PaginationMeta,
+  ProductDiscountListItem,
+  ProductDiscountListParams,
+  PaginatedProductDiscountsResponse,
 };
 
 // Re-export defaults
@@ -71,6 +78,12 @@ export const categoryKeys = {
   detail: (id: string) => [...categoryKeys.details(), id] as const,
 };
 
+export const productDiscountKeys = {
+  all: ["product-discounts"] as const,
+  lists: (params: ProductDiscountListParams) =>
+    [...productDiscountKeys.all, "list", params] as const,
+};
+
 // ============================================
 // Product Hooks
 // ============================================
@@ -88,6 +101,13 @@ export function useProductsPaginated(params: ProductListParams = {}) {
     search: params.search?.trim() || "",
     locationId: params.locationId,
     categoryId: params.categoryId,
+    subCategoryId: params.subCategoryId,
+    subCategory: params.subCategory,
+    vendorId: params.vendorId,
+    dateFrom: params.dateFrom,
+    dateTo: params.dateTo,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   };
 
   return useQuery({
@@ -105,6 +125,31 @@ export function useProducts() {
   return useQuery({
     queryKey: productKeys.lists(),
     queryFn: getAllProducts,
+  });
+}
+
+/**
+ * Hook for fetching paginated product discounts with filters, sort, search
+ */
+export function useProductDiscountsList(
+  params: ProductDiscountListParams = {},
+) {
+  const normalizedParams: ProductDiscountListParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    search: params.search?.trim() || "",
+    productId: params.productId,
+    categoryId: params.categoryId,
+    subCategoryId: params.subCategoryId,
+    discountTypeId: params.discountTypeId,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
+  };
+
+  return useQuery({
+    queryKey: productDiscountKeys.lists(normalizedParams),
+    queryFn: () => getProductDiscountsList(normalizedParams),
+    placeholderData: (previousData) => previousData,
   });
 }
 
