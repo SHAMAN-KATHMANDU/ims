@@ -514,9 +514,13 @@ export async function downloadProducts(
       }
     }
 
-    // Use file-saver to trigger browser download
-    const { saveAs } = await import("file-saver");
-    saveAs(response.data, filename);
+    // Trigger browser download using native API
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
   } catch (error) {
     handleApiError(error, "download products");
     throw error;

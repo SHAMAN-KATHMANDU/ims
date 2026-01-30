@@ -48,11 +48,16 @@ FROM base AS runner
 RUN apk update && apk add --no-cache openssl
 WORKDIR /app
 
-# Create log directory and set permissions
-RUN mkdir -p /app/.log && chmod -R 777 /app/.log
+
 # Don't run production as root
 RUN addgroup --system --gid 1001 nestjs
 RUN adduser --system --uid 1001 nestjs
+
+# Create log directory and set permissions
+RUN mkdir -p /app/.log && chmod -R 777 /app/.log
+# Create uploads directory for multer and give ownership to nestjs
+RUN mkdir -p /app/uploads && chown -R nestjs:nestjs /app/uploads
+
 USER nestjs
 COPY --from=installer /app .
 # Tag the final image

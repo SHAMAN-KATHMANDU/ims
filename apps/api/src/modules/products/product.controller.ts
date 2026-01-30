@@ -10,6 +10,7 @@ import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
 import { z } from "zod";
+import csvParser from "csv-parser";
 import {
   excelProductRowSchema,
   type ExcelProductRow,
@@ -197,7 +198,7 @@ class ProductController {
           costPrice: parseFloat(costPrice.toString()),
           mrp: parseFloat(mrp.toString()),
           vendorId: vendorId || null,
-          createdById: req.user.id,
+          createdById: req.user!.id,
           // Add variations (colors with photos)
           variations:
             variations && Array.isArray(variations)
@@ -848,7 +849,7 @@ class ProductController {
     }
   }
 
-  // Bulk upload products from Excel file
+  // Bulk upload products from Excel or CSV file
   async bulkUploadProducts(req: Request, res: Response) {
     const errors: ValidationError[] = [];
     const createdProducts: any[] = [];
@@ -863,53 +864,11 @@ class ProductController {
         });
       }
 
-      // Validate that user is authenticated
-      if (!req.user || !req.user.id) {
-        // Clean up uploaded file
-        fs.unlinkSync(req.file.path);
-        return res.status(401).json({
-          message: "User not authenticated",
-          errors: [],
-        });
-      }
-
       const filePath = req.file.path;
-      const workbook = new ExcelJS.Workbook();
+      const fileExt = path.extname(req.file.originalname).toLowerCase();
+      const isCSV = fileExt === ".csv";
 
-      // Read Excel file
-      await workbook.xlsx.readFile(filePath);
-
-      // Get first worksheet
-      const worksheet = workbook.worksheets[0];
-      if (!worksheet) {
-        fs.unlinkSync(filePath);
-        return res.status(400).json({
-          message: "Excel file must contain at least one worksheet",
-          errors: [],
-        });
-      }
-
-      // Get all categories and discount types for lookup
-      const allCategories = await prisma.category.findMany({
-        select: { id: true, name: true },
-      });
-      const allDiscountTypes = await prisma.discountType.findMany({
-        select: { id: true, name: true },
-      });
-
-      // Create lookup maps
-      const categoryMap = new Map(
-        allCategories.map((cat) => [cat.name.toLowerCase(), cat.id]),
-      );
-      const discountTypeMap = new Map(
-        allDiscountTypes.map((dt) => [dt.name.toLowerCase(), dt.id]),
-      );
-
-      // Read header row to map column names to indices
-      const headerRow = worksheet.getRow(1);
-      const columnMap: Record<string, number> = {};
-
-      // Normalize header names for matching (case-insensitive, trim, handle variations)
+      // Helper function to normalize header names
       const normalizeHeader = (header: string): string => {
         return header
           .toString()
@@ -954,20 +913,50 @@ class ProductController {
         ],
       };
 
-      // Build column map from header row
-      headerRow.eachCell((cell, colNumber) => {
-        if (cell.value) {
-          const headerValue = String(cell.value).trim();
-          const normalized = normalizeHeader(headerValue);
+      let rows: ExcelProductRow[] = [];
+      let columnMap: Record<string, string> = {}; // For CSV: maps fieldName to CSV column name
 
-          // Find matching field name (check exact matches first, then partial)
+      if (isCSV) {
+        // Parse CSV file
+        const csvRows: Record<string, any>[] = [];
+        const csvColumnMap: Record<string, string> = {};
+
+        await new Promise<void>((resolve, reject) => {
+          const stream = fs
+            .createReadStream(filePath)
+            .pipe(csvParser())
+            .on("data", (row: Record<string, any>) => {
+              csvRows.push(row);
+            })
+            .on("end", () => {
+              resolve();
+            })
+            .on("error", (error) => {
+              reject(error);
+            });
+        });
+
+        if (csvRows.length === 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "CSV file is empty or invalid",
+            errors: [],
+          });
+        }
+
+        // Get header row (first row keys)
+        const csvHeaders = Object.keys(csvRows[0] || {});
+
+        // Build column map from CSV headers
+        for (const csvHeader of csvHeaders) {
+          const normalized = normalizeHeader(csvHeader);
           let bestMatch: { fieldName: string; priority: number } | null = null;
 
           for (const [fieldName, variations] of Object.entries(
             headerMappings,
           )) {
             // Skip if already mapped
-            if (columnMap[fieldName]) continue;
+            if (csvColumnMap[fieldName]) continue;
 
             // Check for exact match (highest priority)
             if (variations.some((v) => normalized === v)) {
@@ -987,103 +976,270 @@ class ProductController {
           }
 
           if (bestMatch) {
-            columnMap[bestMatch.fieldName] = colNumber;
+            csvColumnMap[bestMatch.fieldName] = csvHeader;
           }
         }
-      });
 
-      // Validate that required columns are found
-      const requiredColumns = [
-        "imsCode",
-        "category",
-        "name",
-        "variation",
-        "costPrice",
-        "finalSP",
-      ];
-      const missingColumns = requiredColumns.filter((col) => !columnMap[col]);
+        columnMap = csvColumnMap;
 
-      if (missingColumns.length > 0) {
-        fs.unlinkSync(filePath);
-        return res.status(400).json({
-          message: "Missing required columns in Excel file",
-          missingColumns,
-          foundColumns: Object.keys(columnMap),
-          hint: "Please ensure your Excel file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+        // Validate that required columns are found
+        const requiredColumns = [
+          "imsCode",
+          "category",
+          "name",
+          "variation",
+          "costPrice",
+          "finalSP",
+        ];
+        const missingColumns = requiredColumns.filter(
+          (col) => !csvColumnMap[col],
+        );
+
+        if (missingColumns.length > 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Missing required columns in CSV file",
+            missingColumns,
+            foundColumns: Object.keys(csvColumnMap),
+            hint: "Please ensure your CSV file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+          });
+        }
+
+        // Convert CSV rows to ExcelProductRow format
+        csvRows.forEach((csvRow, rowIndex) => {
+          const getCellValue = (fieldName: string) => {
+            const csvColumnName = csvColumnMap[fieldName];
+            if (!csvColumnName) return undefined;
+            const value = csvRow[csvColumnName];
+            // Convert empty strings to undefined
+            return value === "" || value === null ? undefined : value;
+          };
+
+          const rowData = {
+            imsCode: getCellValue("imsCode"),
+            category: getCellValue("category"),
+            subCategory: getCellValue("subCategory"),
+            name: getCellValue("name"),
+            variation: getCellValue("variation"),
+            material: getCellValue("material"),
+            length: getCellValue("length"),
+            breadth: getCellValue("breadth"),
+            height: getCellValue("height"),
+            weight: getCellValue("weight"),
+            vendor: getCellValue("vendor"),
+            quantity: getCellValue("quantity"),
+            costPrice: getCellValue("costPrice"),
+            finalSP: getCellValue("finalSP"),
+            nonMemberDiscount: getCellValue("nonMemberDiscount"),
+            memberDiscount: getCellValue("memberDiscount"),
+            wholesaleDiscount: getCellValue("wholesaleDiscount"),
+          };
+
+          // Check if row is empty
+          const hasData = Object.values(rowData).some(
+            (value) =>
+              value !== null &&
+              value !== undefined &&
+              String(value).trim() !== "",
+          );
+          if (!hasData) {
+            return; // Skip empty rows
+          }
+
+          try {
+            // Validate row data
+            const validatedRow = excelProductRowSchema.parse(rowData);
+            rows.push(validatedRow);
+          } catch (error: any) {
+            // Zod validation error
+            if (error instanceof z.ZodError) {
+              error.errors.forEach((err) => {
+                const fieldValue = err.path.reduce(
+                  (obj: any, key) => obj?.[key],
+                  rowData,
+                );
+                errors.push({
+                  row: rowIndex + 2, // +2 because CSV parser doesn't include header row in index
+                  field: err.path.join("."),
+                  message: err.message,
+                  value: fieldValue,
+                });
+              });
+            } else {
+              errors.push({
+                row: rowIndex + 2,
+                message: error.message || "Invalid row data",
+              });
+            }
+          }
+        });
+      } else {
+        // Parse Excel file
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
+
+        // Get first worksheet
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Excel file must contain at least one worksheet",
+            errors: [],
+          });
+        }
+
+        // Read header row to map column names to indices
+        const headerRow = worksheet.getRow(1);
+        const excelColumnMap: Record<string, number> = {};
+
+        // Build column map from header row
+        headerRow.eachCell((cell, colNumber) => {
+          if (cell.value) {
+            const headerValue = String(cell.value).trim();
+            const normalized = normalizeHeader(headerValue);
+
+            // Find matching field name (check exact matches first, then partial)
+            let bestMatch: { fieldName: string; priority: number } | null =
+              null;
+
+            for (const [fieldName, variations] of Object.entries(
+              headerMappings,
+            )) {
+              // Skip if already mapped
+              if (excelColumnMap[fieldName]) continue;
+
+              // Check for exact match (highest priority)
+              if (variations.some((v) => normalized === v)) {
+                bestMatch = { fieldName, priority: 2 };
+                break;
+              }
+
+              // Check for contains match (lower priority)
+              if (
+                !bestMatch &&
+                variations.some(
+                  (v) => normalized.includes(v) || v.includes(normalized),
+                )
+              ) {
+                bestMatch = { fieldName, priority: 1 };
+              }
+            }
+
+            if (bestMatch) {
+              excelColumnMap[bestMatch.fieldName] = colNumber;
+            }
+          }
+        });
+
+        // Validate that required columns are found
+        const requiredColumns = [
+          "imsCode",
+          "category",
+          "name",
+          "variation",
+          "costPrice",
+          "finalSP",
+        ];
+        const missingColumns = requiredColumns.filter(
+          (col) => !excelColumnMap[col],
+        );
+
+        if (missingColumns.length > 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Missing required columns in Excel file",
+            missingColumns,
+            foundColumns: Object.keys(excelColumnMap),
+            hint: "Please ensure your Excel file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+          });
+        }
+
+        // Parse rows (skip header row - row 1)
+        worksheet.eachRow((row, rowIndex) => {
+          // Skip header row
+          if (rowIndex === 1) return;
+
+          // Extract cell values using column map
+          const getCellValue = (fieldName: string) => {
+            const colNumber = excelColumnMap[fieldName];
+            return colNumber ? row.getCell(colNumber).value : undefined;
+          };
+
+          const rowData = {
+            imsCode: getCellValue("imsCode"),
+            category: getCellValue("category"),
+            subCategory: getCellValue("subCategory"),
+            name: getCellValue("name"),
+            variation: getCellValue("variation"),
+            material: getCellValue("material"),
+            length: getCellValue("length"),
+            breadth: getCellValue("breadth"),
+            height: getCellValue("height"),
+            weight: getCellValue("weight"),
+            vendor: getCellValue("vendor"),
+            quantity: getCellValue("quantity"),
+            costPrice: getCellValue("costPrice"),
+            finalSP: getCellValue("finalSP"),
+            nonMemberDiscount: getCellValue("nonMemberDiscount"),
+            memberDiscount: getCellValue("memberDiscount"),
+            wholesaleDiscount: getCellValue("wholesaleDiscount"),
+          };
+
+          // Check if row is empty (all cells are empty or null)
+          const hasData = Object.values(rowData).some(
+            (value) =>
+              value !== null &&
+              value !== undefined &&
+              String(value).trim() !== "",
+          );
+          if (!hasData) {
+            return; // Skip empty rows
+          }
+
+          try {
+            // Validate row data
+            const validatedRow = excelProductRowSchema.parse(rowData);
+            rows.push(validatedRow);
+          } catch (error: any) {
+            // Zod validation error
+            if (error instanceof z.ZodError) {
+              error.errors.forEach((err) => {
+                const fieldValue = err.path.reduce(
+                  (obj: any, key) => obj?.[key],
+                  rowData,
+                );
+                errors.push({
+                  row: rowIndex,
+                  field: err.path.join("."),
+                  message: err.message,
+                  value: fieldValue,
+                });
+              });
+            } else {
+              errors.push({
+                row: rowIndex,
+                message: error.message || "Invalid row data",
+              });
+            }
+          }
         });
       }
 
-      // Parse rows (skip header row - row 1)
-      const rows: ExcelProductRow[] = [];
-
-      worksheet.eachRow((row, rowIndex) => {
-        // Skip header row
-        if (rowIndex === 1) return;
-
-        // Extract cell values using column map
-        const getCellValue = (fieldName: string) => {
-          const colNumber = columnMap[fieldName];
-          return colNumber ? row.getCell(colNumber).value : undefined;
-        };
-
-        const rowData = {
-          imsCode: getCellValue("imsCode"),
-          category: getCellValue("category"),
-          subCategory: getCellValue("subCategory"),
-          name: getCellValue("name"),
-          variation: getCellValue("variation"),
-          material: getCellValue("material"),
-          length: getCellValue("length"),
-          breadth: getCellValue("breadth"),
-          height: getCellValue("height"),
-          weight: getCellValue("weight"),
-          vendor: getCellValue("vendor"),
-          quantity: getCellValue("quantity"),
-          costPrice: getCellValue("costPrice"),
-          finalSP: getCellValue("finalSP"),
-          nonMemberDiscount: getCellValue("nonMemberDiscount"),
-          memberDiscount: getCellValue("memberDiscount"),
-          wholesaleDiscount: getCellValue("wholesaleDiscount"),
-        };
-
-        // Check if row is empty (all cells are empty or null)
-        const hasData = Object.values(rowData).some(
-          (value) =>
-            value !== null &&
-            value !== undefined &&
-            String(value).trim() !== "",
-        );
-        if (!hasData) {
-          return; // Skip empty rows
-        }
-
-        try {
-          // Validate row data
-          const validatedRow = excelProductRowSchema.parse(rowData);
-          rows.push(validatedRow);
-        } catch (error: any) {
-          // Zod validation error
-          if (error instanceof z.ZodError) {
-            error.errors.forEach((err) => {
-              const fieldValue = err.path.reduce(
-                (obj: any, key) => obj?.[key],
-                rowData,
-              );
-              errors.push({
-                row: rowIndex,
-                field: err.path.join("."),
-                message: err.message,
-                value: fieldValue,
-              });
-            });
-          } else {
-            errors.push({
-              row: rowIndex,
-              message: error.message || "Invalid row data",
-            });
-          }
-        }
+      // Get all categories and discount types for lookup
+      const allCategories = await prisma.category.findMany({
+        select: { id: true, name: true },
       });
+      const allDiscountTypes = await prisma.discountType.findMany({
+        select: { id: true, name: true },
+      });
+
+      // Create lookup maps
+      const categoryMap = new Map(
+        allCategories.map((cat) => [cat.name.toLowerCase(), cat.id]),
+      );
+      const discountTypeMap = new Map(
+        allDiscountTypes.map((dt) => [dt.name.toLowerCase(), dt.id]),
+      );
 
       // Group rows by IMS code and name (same product, different variations)
       const productGroups = new Map<
@@ -1275,7 +1431,7 @@ class ProductController {
               weight: firstRow.weight,
               costPrice: firstRow.costPrice,
               mrp: firstRow.finalSP,
-              createdById: req.user.id,
+              createdById: req.user!.id,
               variations: {
                 create: productVariations,
               },

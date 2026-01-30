@@ -1,6 +1,8 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/useToast";
 import {
   getProducts,
   getAllProducts,
@@ -9,6 +11,7 @@ import {
   updateProduct,
   deleteProduct,
   getAllDiscountTypes,
+  bulkUploadProducts,
   type Product,
   type ProductVariation,
   type CreateProductData,
@@ -16,6 +19,7 @@ import {
   type ProductListParams,
   type PaginatedProductsResponse,
   type PaginationMeta,
+  type BulkUploadResponse,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/services/productService";
@@ -150,6 +154,70 @@ export function useDeleteProduct() {
       queryClient.invalidateQueries({ queryKey: productKeys.all });
     },
   });
+}
+
+/**
+ * Hook for bulk uploading products from Excel/CSV file
+ * Manages upload progress, success/error handling, and query invalidation
+ *
+ * @returns Object containing mutation, upload progress, and result
+ */
+export function useBulkUploadProducts() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadResult, setUploadResult] = useState<BulkUploadResponse | null>(
+    null,
+  );
+
+  const mutation = useMutation({
+    mutationFn: async (file: File) => {
+      setUploadProgress(0);
+      setUploadResult(null);
+      return bulkUploadProducts(file, (progress) => {
+        setUploadProgress(progress);
+      });
+    },
+    onSuccess: (data) => {
+      setUploadResult(data);
+      // Invalidate products query to refresh the list
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+
+      if (data.summary.created > 0) {
+        toast({
+          title: "Bulk upload completed",
+          description: `Successfully created ${data.summary.created} product(s)`,
+        });
+      }
+    },
+    onError: (error: unknown) => {
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        err.response?.data?.message || err.message || "Failed to upload file";
+      toast({
+        title: "Upload failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const reset = () => {
+    setUploadProgress(0);
+    setUploadResult(null);
+    mutation.reset();
+  };
+
+  return {
+    mutation,
+    uploadProgress,
+    uploadResult,
+    reset,
+    isUploading: mutation.isPending,
+  };
 }
 
 // ============================================
