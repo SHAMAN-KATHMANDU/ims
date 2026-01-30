@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { useBulkUploadProducts } from "@/hooks/useProduct";
+import { downloadBulkUploadTemplate } from "@/services/productService";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Upload,
   X,
+  Download,
   FileSpreadsheet,
   CheckCircle2,
   XCircle,
@@ -91,8 +93,8 @@ export function BulkUploadDialog({
         <DialogHeader>
           <DialogTitle>Bulk Upload Products</DialogTitle>
           <DialogDescription>
-            Upload an Excel or CSV file to create multiple products at once. The
-            file should contain product data with all required fields.
+            Upload an Excel or CSV file to create multiple products at once.
+            Download the template to see required and optional column headers.
           </DialogDescription>
         </DialogHeader>
 
@@ -321,6 +323,14 @@ export function BulkUploadDialog({
               <Button onClick={handleClose}>Close</Button>
             ) : (
               <>
+                <Button
+                  variant="outline"
+                  onClick={() => downloadBulkUploadTemplate()}
+                  disabled={isUploading}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download template
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleClose}

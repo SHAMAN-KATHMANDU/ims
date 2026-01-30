@@ -5,6 +5,7 @@ import { useDropzone } from "react-dropzone";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   bulkUploadMembers,
+  downloadBulkUploadTemplate,
   type MemberBulkUploadResponse,
 } from "@/services/memberService";
 import { Button } from "@/components/ui/button";
@@ -22,6 +23,7 @@ import { useToast } from "@/hooks/useToast";
 import {
   Upload,
   X,
+  Download,
   FileSpreadsheet,
   CheckCircle2,
   XCircle,
@@ -124,11 +126,8 @@ export function MemberBulkUploadDialog({
         <DialogHeader>
           <DialogTitle>Bulk Upload Members</DialogTitle>
           <DialogDescription>
-            Upload an Excel file to create multiple members at once. Required
-            column: <strong>Phone number</strong>. Optional: SN,{" "}
-            <strong>ID</strong> (maps to member_id; must be valid UUID when
-            provided), Name, Address, DoB, Notes, Member since. Headers are
-            case-insensitive.
+            Upload an Excel or CSV file to create multiple members at once.
+            Download the template to see required and optional column headers.
           </DialogDescription>
         </DialogHeader>
 
@@ -348,6 +347,14 @@ export function MemberBulkUploadDialog({
               <Button onClick={handleClose}>Close</Button>
             ) : (
               <>
+                <Button
+                  variant="outline"
+                  onClick={() => downloadBulkUploadTemplate()}
+                  disabled={isUploading}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download template
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleClose}
