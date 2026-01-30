@@ -172,6 +172,70 @@ productRouter.get(
 
 /**
  * @swagger
+ * /products/discounts/list:
+ *   get:
+ *     summary: Get all product discounts with filters, sort, search
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: productId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: subCategoryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: discountTypeId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [id, value, productName, discountTypeName, startDate, endDate, createdAt]
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *     responses:
+ *       200:
+ *         description: Product discounts list
+ */
+productRouter.get(
+  "/discounts/list",
+  verifyToken,
+  authorizeRoles("admin", "user", "superAdmin"),
+  productController.getAllProductDiscounts,
+);
+
+/**
+ * @swagger
  * /products/download:
  *   get:
  *     summary: Download products as Excel or CSV
