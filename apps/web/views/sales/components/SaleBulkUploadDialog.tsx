@@ -2,7 +2,11 @@
 
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
-import { useBulkUploadProducts } from "@/hooks/useProduct";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  bulkUploadSales,
+  type SaleBulkUploadResponse,
+} from "@/services/salesService";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,6 +18,7 @@ import {
 import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/useToast";
 import {
   Upload,
   X,
@@ -24,34 +29,62 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-interface BulkUploadDialogProps {
+interface SaleBulkUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function BulkUploadDialog({
+export function SaleBulkUploadDialog({
   open,
   onOpenChange,
-}: BulkUploadDialogProps) {
+}: SaleBulkUploadDialogProps) {
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadResult, setUploadResult] =
+    useState<SaleBulkUploadResponse | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const {
-    mutation: bulkUploadMutation,
-    uploadProgress,
-    uploadResult,
-    reset,
-    isUploading,
-  } = useBulkUploadProducts();
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const onDrop = useCallback(
-    (acceptedFiles: File[]) => {
-      if (acceptedFiles.length > 0 && acceptedFiles[0]) {
-        const file = acceptedFiles[0];
-        setSelectedFile(file);
-        reset();
+  const bulkUploadMutation = useMutation({
+    mutationFn: async (file: File) => {
+      return bulkUploadSales(file, (progress) => {
+        setUploadProgress(progress);
+      });
+    },
+    onSuccess: (data) => {
+      setUploadResult(data);
+      queryClient.invalidateQueries({ queryKey: ["sales"] });
+
+      if (data.summary.created > 0) {
+        toast({
+          title: "Bulk upload completed",
+          description: `Successfully created ${data.summary.created} sale(s)`,
+        });
       }
     },
-    [reset],
-  );
+    onError: (error: unknown) => {
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        err.response?.data?.message || err.message || "Failed to upload file";
+      toast({
+        title: "Upload failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    if (acceptedFiles.length > 0 && acceptedFiles[0]) {
+      const file = acceptedFiles[0];
+      setSelectedFile(file);
+      setUploadProgress(0);
+      setUploadResult(null);
+    }
+  }, []);
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } =
     useDropzone({
@@ -62,9 +95,6 @@ export function BulkUploadDialog({
         ],
         "application/vnd.ms-excel": [".xls"],
         "application/vnd.ms-excel.sheet.macroEnabled.12": [".xlsm"],
-        "text/csv": [".csv"],
-        "application/csv": [".csv"],
-        "text/plain": [".csv"],
       },
       maxFiles: 1,
       maxSize: 10 * 1024 * 1024, // 10MB
@@ -76,28 +106,41 @@ export function BulkUploadDialog({
   };
 
   const handleClose = () => {
-    if (isUploading) return; // Don't close during upload
+    if (bulkUploadMutation.isPending) return;
 
     setSelectedFile(null);
-    reset();
+    setUploadProgress(0);
+    setUploadResult(null);
+    bulkUploadMutation.reset();
     onOpenChange(false);
   };
 
+  const isUploading = bulkUploadMutation.isPending;
   const hasResult = uploadResult !== null;
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh]">
         <DialogHeader>
-          <DialogTitle>Bulk Upload Products</DialogTitle>
+          <DialogTitle>Bulk Upload Sales</DialogTitle>
           <DialogDescription>
-            Upload an Excel or CSV file to create multiple products at once. The
-            file should contain product data with all required fields.
+            Upload an Excel file to create multiple sales at once. Required:
+            <strong>
+              {" "}
+              Showroom, Sold by, Product IMS code, Product Name, Variation,
+              Quantity, MRP, Final amount
+            </strong>
+            . Optional: SN, <strong>sale_id</strong> (maps to sale_id; must be
+            valid UUID when provided), Date of sale,{" "}
+            <strong>Phone number</strong> (if provided, sale is Member sale;
+            member is found or created with that phone), Discount, Payment
+            method (CASH, CARD, CHEQUE, FONEPAY, QR). Headers are
+            case-insensitive. Rows with the same sale_id will be grouped into
+            one sale.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* File Dropzone */}
           {!hasResult && (
             <div
               {...getRootProps()}
@@ -142,7 +185,7 @@ export function BulkUploadDialog({
                         : "Drag & drop an Excel file here, or click to select"}
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      Supports .xlsx, .xls, .xlsm, .csv files (max 10MB)
+                      Supports .xlsx, .xls, .xlsm files (max 10MB)
                     </p>
                   </div>
                 )}
@@ -150,7 +193,6 @@ export function BulkUploadDialog({
             </div>
           )}
 
-          {/* File Rejection Errors */}
           {fileRejections.length > 0 && fileRejections[0] && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -161,7 +203,7 @@ export function BulkUploadDialog({
                     {error.code === "file-too-large"
                       ? "File size exceeds 10MB limit"
                       : error.code === "file-invalid-type"
-                        ? "Invalid file type. Only Excel (.xlsx, .xls, .xlsm) or CSV (.csv) files are allowed."
+                        ? "Invalid file type. Only Excel files are allowed."
                         : error.message}
                   </div>
                 ))}
@@ -169,7 +211,6 @@ export function BulkUploadDialog({
             </Alert>
           )}
 
-          {/* Upload Progress */}
           {isUploading && (
             <div className="space-y-2">
               <div className="flex items-center justify-between text-sm">
@@ -180,10 +221,8 @@ export function BulkUploadDialog({
             </div>
           )}
 
-          {/* Upload Result */}
           {hasResult && uploadResult && (
             <div className="space-y-4">
-              {/* Summary */}
               <Alert
                 variant={
                   uploadResult.summary.errors === 0 &&
@@ -223,7 +262,6 @@ export function BulkUploadDialog({
                 </AlertDescription>
               </Alert>
 
-              {/* Created Products */}
               {uploadResult.created.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-green-600">
@@ -231,16 +269,15 @@ export function BulkUploadDialog({
                   </h4>
                   <ScrollArea className="h-32 rounded-md border p-2">
                     <div className="space-y-1">
-                      {uploadResult.created.map((product, idx) => (
+                      {uploadResult.created.map((sale, idx) => (
                         <div
                           key={idx}
                           className="text-xs flex items-center gap-2 text-green-700"
                         >
                           <CheckCircle2 className="h-3 w-3" />
                           <span>
-                            {product.imsCode} - {product.name} (
-                            {product.variationsCount} variation
-                            {product.variationsCount !== 1 ? "s" : ""})
+                            {sale.saleCode} ({sale.itemsCount} item
+                            {sale.itemsCount !== 1 ? "s" : ""})
                           </span>
                         </div>
                       ))}
@@ -249,7 +286,6 @@ export function BulkUploadDialog({
                 </div>
               )}
 
-              {/* Skipped Products */}
               {uploadResult.skipped.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-yellow-600">
@@ -257,7 +293,7 @@ export function BulkUploadDialog({
                   </h4>
                   <ScrollArea className="h-32 rounded-md border p-2">
                     <div className="space-y-1">
-                      {uploadResult.skipped.map((product, idx) => (
+                      {uploadResult.skipped.map((sale, idx) => (
                         <div
                           key={idx}
                           className="text-xs flex items-start gap-2 text-yellow-700"
@@ -265,9 +301,9 @@ export function BulkUploadDialog({
                           <AlertCircle className="h-3 w-3 mt-0.5" />
                           <span>
                             <span className="font-medium">
-                              {product.imsCode} - {product.name}
+                              {sale.saleId || "N/A"}
                             </span>
-                            : {product.reason}
+                            : {sale.reason}
                           </span>
                         </div>
                       ))}
@@ -276,7 +312,6 @@ export function BulkUploadDialog({
                 </div>
               )}
 
-              {/* Errors */}
               {uploadResult.errors.length > 0 && (
                 <div className="space-y-2">
                   <h4 className="text-sm font-medium text-red-600">
@@ -315,7 +350,6 @@ export function BulkUploadDialog({
             </div>
           )}
 
-          {/* Action Buttons */}
           <div className="flex justify-end gap-2">
             {hasResult ? (
               <Button onClick={handleClose}>Close</Button>

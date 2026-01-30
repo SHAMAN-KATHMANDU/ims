@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import { format } from "date-fns";
 import {
   Table,
@@ -12,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Checkbox } from "@/components/ui/checkbox";
 import { type Member } from "@/hooks/useMember";
 import { Eye, Edit } from "lucide-react";
 
@@ -20,6 +22,9 @@ interface MemberTableProps {
   isLoading?: boolean;
   onView: (member: Member) => void;
   onEdit: (member: Member) => void;
+  // Selection props
+  selectedMembers?: Set<string>;
+  onSelectionChange?: (selectedIds: Set<string>) => void;
 }
 
 export function MemberTable({
@@ -27,13 +32,57 @@ export function MemberTable({
   isLoading,
   onView,
   onEdit,
+  selectedMembers = new Set(),
+  onSelectionChange,
 }: MemberTableProps) {
+  // Selection handlers
+  const handleSelectMember = useCallback(
+    (memberId: string, checked: boolean) => {
+      if (!onSelectionChange) return;
+
+      const newSelection = new Set(selectedMembers);
+      if (checked) {
+        newSelection.add(memberId);
+      } else {
+        newSelection.delete(memberId);
+      }
+      onSelectionChange(newSelection);
+    },
+    [selectedMembers, onSelectionChange],
+  );
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (!onSelectionChange) return;
+
+      if (checked) {
+        const allIds = new Set(members.map((m) => m.id));
+        onSelectionChange(allIds);
+      } else {
+        onSelectionChange(new Set());
+      }
+    },
+    [members, onSelectionChange],
+  );
+
+  // Check if all members on current page are selected
+  const allSelected =
+    members.length > 0 && members.every((m) => selectedMembers.has(m.id));
+
+  // Calculate column count for empty state
+  const baseColumnCount = 7; // Phone, Name, Email, Total Sales, Status, Joined, Actions
+  const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
   if (isLoading) {
     return (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              {onSelectionChange && (
+                <TableHead className="w-12">
+                  <Checkbox disabled aria-label="Select all members" />
+                </TableHead>
+              )}
               <TableHead>Phone</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
@@ -81,6 +130,11 @@ export function MemberTable({
         <Table>
           <TableHeader>
             <TableRow>
+              {onSelectionChange && (
+                <TableHead className="w-12">
+                  <Checkbox disabled aria-label="Select all members" />
+                </TableHead>
+              )}
               <TableHead>Phone</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
@@ -92,7 +146,7 @@ export function MemberTable({
           </TableHeader>
           <TableBody>
             <TableRow>
-              <TableCell colSpan={7} className="text-center py-8">
+              <TableCell colSpan={columnCount} className="text-center py-8">
                 <p className="text-muted-foreground">No members found</p>
               </TableCell>
             </TableRow>
@@ -107,6 +161,15 @@ export function MemberTable({
       <Table>
         <TableHeader>
           <TableRow>
+            {onSelectionChange && (
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all members"
+                />
+              </TableHead>
+            )}
             <TableHead>Phone</TableHead>
             <TableHead>Name</TableHead>
             <TableHead>Email</TableHead>
@@ -119,6 +182,20 @@ export function MemberTable({
         <TableBody>
           {members.map((member) => (
             <TableRow key={member.id}>
+              {onSelectionChange && (
+                <TableCell
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-12"
+                >
+                  <Checkbox
+                    checked={selectedMembers.has(member.id)}
+                    onCheckedChange={(checked) =>
+                      handleSelectMember(member.id, checked === true)
+                    }
+                    aria-label={`Select ${member.phone}`}
+                  />
+                </TableCell>
+              )}
               <TableCell className="font-medium">{member.phone}</TableCell>
               <TableCell>{member.name || "-"}</TableCell>
               <TableCell>{member.email || "-"}</TableCell>

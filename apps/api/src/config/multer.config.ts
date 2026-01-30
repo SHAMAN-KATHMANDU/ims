@@ -21,7 +21,7 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter - only allow Excel files
+// File filter - allow Excel and CSV files
 const fileFilter = (
   req: Express.Request,
   file: Express.Multer.File,
@@ -31,9 +31,12 @@ const fileFilter = (
     "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
     "application/vnd.ms-excel", // .xls
     "application/vnd.ms-excel.sheet.macroEnabled.12", // .xlsm
+    "text/csv", // .csv
+    "application/csv", // .csv (alternative MIME type)
+    "text/plain", // .csv (some systems send CSV as text/plain)
   ];
 
-  const allowedExts = [".xlsx", ".xls", ".xlsm"];
+  const allowedExts = [".xlsx", ".xls", ".xlsm", ".csv"];
 
   const ext = path.extname(file.originalname).toLowerCase();
   const isValidMime = allowedMimes.includes(file.mimetype);
@@ -44,7 +47,7 @@ const fileFilter = (
   } else {
     cb(
       new Error(
-        "Invalid file type. Only Excel files (.xlsx, .xls, .xlsm) are allowed.",
+        "Invalid file type. Only Excel files (.xlsx, .xls, .xlsm) and CSV files (.csv) are allowed.",
       ),
     );
   }
