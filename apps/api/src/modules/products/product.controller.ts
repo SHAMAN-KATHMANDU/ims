@@ -6,6 +6,16 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
+import { z } from "zod";
+import csvParser from "csv-parser";
+import {
+  excelProductRowSchema,
+  type ExcelProductRow,
+  type ValidationError,
+} from "./bulkUpload.validation";
 
 class ProductController {
   // Create product (admin and superAdmin only)
@@ -188,7 +198,7 @@ class ProductController {
           costPrice: parseFloat(costPrice.toString()),
           mrp: parseFloat(mrp.toString()),
           vendorId: vendorId || null,
-          createdById: req.user.id,
+          createdById: req.user!.id,
           // Add variations (colors with photos)
           variations:
             variations && Array.isArray(variations)
@@ -911,6 +921,898 @@ class ProductController {
       console.error("Get product discounts error:", error);
       res.status(500).json({
         message: "Error fetching product discounts",
+        error: error.message,
+      });
+    }
+  }
+
+  // Bulk upload products from Excel or CSV file
+  async bulkUploadProducts(req: Request, res: Response) {
+    const errors: ValidationError[] = [];
+    const createdProducts: any[] = [];
+    const skippedProducts: any[] = [];
+
+    try {
+      // Check if file exists
+      if (!req.file) {
+        return res.status(400).json({
+          message: "No file uploaded",
+          errors: [],
+        });
+      }
+
+      const filePath = req.file.path;
+      const fileExt = path.extname(req.file.originalname).toLowerCase();
+      const isCSV = fileExt === ".csv";
+
+      // Helper function to normalize header names
+      const normalizeHeader = (header: string): string => {
+        return header
+          .toString()
+          .toLowerCase()
+          .trim()
+          .replace(/[^a-z0-9]/g, "") // Remove special characters for matching
+          .replace(/\s+/g, ""); // Remove spaces
+      };
+
+      // Map of expected headers to their normalized forms
+      const headerMappings: Record<string, string[]> = {
+        imsCode: ["imscode", "ims_code", "ims"],
+        category: ["category"],
+        subCategory: ["subcategory", "sub-category", "sub_category"],
+        name: ["nameofproduct", "name", "productname", "product_name"],
+        variation: [
+          "variations",
+          "variation",
+          "designs",
+          "colors",
+          "variationsdesignscolors",
+        ],
+        material: ["material"],
+        length: ["length"],
+        breadth: ["breadth", "bredth", "width"],
+        height: ["height"],
+        weight: ["weight"],
+        vendor: ["vendor"],
+        quantity: ["qty", "quantity"],
+        costPrice: ["costprice", "cost_price", "cost"],
+        finalSP: ["finalsp", "final_sp", "sellingprice", "mrp", "price"],
+        nonMemberDiscount: [
+          "nonmemberdiscount",
+          "non_member_discount",
+          "nonmember",
+        ],
+        memberDiscount: ["memberdiscount", "member_discount", "member"],
+        wholesaleDiscount: [
+          "wholesalediscount",
+          "wholesale_discount",
+          "wholesale",
+        ],
+      };
+
+      let rows: ExcelProductRow[] = [];
+      let columnMap: Record<string, string> = {}; // For CSV: maps fieldName to CSV column name
+
+      if (isCSV) {
+        // Parse CSV file
+        const csvRows: Record<string, any>[] = [];
+        const csvColumnMap: Record<string, string> = {};
+
+        await new Promise<void>((resolve, reject) => {
+          const stream = fs
+            .createReadStream(filePath)
+            .pipe(csvParser())
+            .on("data", (row: Record<string, any>) => {
+              csvRows.push(row);
+            })
+            .on("end", () => {
+              resolve();
+            })
+            .on("error", (error) => {
+              reject(error);
+            });
+        });
+
+        if (csvRows.length === 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "CSV file is empty or invalid",
+            errors: [],
+          });
+        }
+
+        // Get header row (first row keys)
+        const csvHeaders = Object.keys(csvRows[0] || {});
+
+        // Build column map from CSV headers
+        for (const csvHeader of csvHeaders) {
+          const normalized = normalizeHeader(csvHeader);
+          let bestMatch: { fieldName: string; priority: number } | null = null;
+
+          for (const [fieldName, variations] of Object.entries(
+            headerMappings,
+          )) {
+            // Skip if already mapped
+            if (csvColumnMap[fieldName]) continue;
+
+            // Check for exact match (highest priority)
+            if (variations.some((v) => normalized === v)) {
+              bestMatch = { fieldName, priority: 2 };
+              break;
+            }
+
+            // Check for contains match (lower priority)
+            if (
+              !bestMatch &&
+              variations.some(
+                (v) => normalized.includes(v) || v.includes(normalized),
+              )
+            ) {
+              bestMatch = { fieldName, priority: 1 };
+            }
+          }
+
+          if (bestMatch) {
+            csvColumnMap[bestMatch.fieldName] = csvHeader;
+          }
+        }
+
+        columnMap = csvColumnMap;
+
+        // Validate that required columns are found
+        const requiredColumns = [
+          "imsCode",
+          "category",
+          "name",
+          "variation",
+          "costPrice",
+          "finalSP",
+        ];
+        const missingColumns = requiredColumns.filter(
+          (col) => !csvColumnMap[col],
+        );
+
+        if (missingColumns.length > 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Missing required columns in CSV file",
+            missingColumns,
+            foundColumns: Object.keys(csvColumnMap),
+            hint: "Please ensure your CSV file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+          });
+        }
+
+        // Convert CSV rows to ExcelProductRow format
+        csvRows.forEach((csvRow, rowIndex) => {
+          const getCellValue = (fieldName: string) => {
+            const csvColumnName = csvColumnMap[fieldName];
+            if (!csvColumnName) return undefined;
+            const value = csvRow[csvColumnName];
+            // Convert empty strings to undefined
+            return value === "" || value === null ? undefined : value;
+          };
+
+          const rowData = {
+            imsCode: getCellValue("imsCode"),
+            category: getCellValue("category"),
+            subCategory: getCellValue("subCategory"),
+            name: getCellValue("name"),
+            variation: getCellValue("variation"),
+            material: getCellValue("material"),
+            length: getCellValue("length"),
+            breadth: getCellValue("breadth"),
+            height: getCellValue("height"),
+            weight: getCellValue("weight"),
+            vendor: getCellValue("vendor"),
+            quantity: getCellValue("quantity"),
+            costPrice: getCellValue("costPrice"),
+            finalSP: getCellValue("finalSP"),
+            nonMemberDiscount: getCellValue("nonMemberDiscount"),
+            memberDiscount: getCellValue("memberDiscount"),
+            wholesaleDiscount: getCellValue("wholesaleDiscount"),
+          };
+
+          // Check if row is empty
+          const hasData = Object.values(rowData).some(
+            (value) =>
+              value !== null &&
+              value !== undefined &&
+              String(value).trim() !== "",
+          );
+          if (!hasData) {
+            return; // Skip empty rows
+          }
+
+          try {
+            // Validate row data
+            const validatedRow = excelProductRowSchema.parse(rowData);
+            rows.push(validatedRow);
+          } catch (error: any) {
+            // Zod validation error
+            if (error instanceof z.ZodError) {
+              error.errors.forEach((err) => {
+                const fieldValue = err.path.reduce(
+                  (obj: any, key) => obj?.[key],
+                  rowData,
+                );
+                errors.push({
+                  row: rowIndex + 2, // +2 because CSV parser doesn't include header row in index
+                  field: err.path.join("."),
+                  message: err.message,
+                  value: fieldValue,
+                });
+              });
+            } else {
+              errors.push({
+                row: rowIndex + 2,
+                message: error.message || "Invalid row data",
+              });
+            }
+          }
+        });
+      } else {
+        // Parse Excel file
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.readFile(filePath);
+
+        // Get first worksheet
+        const worksheet = workbook.worksheets[0];
+        if (!worksheet) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Excel file must contain at least one worksheet",
+            errors: [],
+          });
+        }
+
+        // Read header row to map column names to indices
+        const headerRow = worksheet.getRow(1);
+        const excelColumnMap: Record<string, number> = {};
+
+        // Build column map from header row
+        headerRow.eachCell((cell, colNumber) => {
+          if (cell.value) {
+            const headerValue = String(cell.value).trim();
+            const normalized = normalizeHeader(headerValue);
+
+            // Find matching field name (check exact matches first, then partial)
+            let bestMatch: { fieldName: string; priority: number } | null =
+              null;
+
+            for (const [fieldName, variations] of Object.entries(
+              headerMappings,
+            )) {
+              // Skip if already mapped
+              if (excelColumnMap[fieldName]) continue;
+
+              // Check for exact match (highest priority)
+              if (variations.some((v) => normalized === v)) {
+                bestMatch = { fieldName, priority: 2 };
+                break;
+              }
+
+              // Check for contains match (lower priority)
+              if (
+                !bestMatch &&
+                variations.some(
+                  (v) => normalized.includes(v) || v.includes(normalized),
+                )
+              ) {
+                bestMatch = { fieldName, priority: 1 };
+              }
+            }
+
+            if (bestMatch) {
+              excelColumnMap[bestMatch.fieldName] = colNumber;
+            }
+          }
+        });
+
+        // Validate that required columns are found
+        const requiredColumns = [
+          "imsCode",
+          "category",
+          "name",
+          "variation",
+          "costPrice",
+          "finalSP",
+        ];
+        const missingColumns = requiredColumns.filter(
+          (col) => !excelColumnMap[col],
+        );
+
+        if (missingColumns.length > 0) {
+          fs.unlinkSync(filePath);
+          return res.status(400).json({
+            message: "Missing required columns in Excel file",
+            missingColumns,
+            foundColumns: Object.keys(excelColumnMap),
+            hint: "Please ensure your Excel file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+          });
+        }
+
+        // Parse rows (skip header row - row 1)
+        worksheet.eachRow((row, rowIndex) => {
+          // Skip header row
+          if (rowIndex === 1) return;
+
+          // Extract cell values using column map
+          const getCellValue = (fieldName: string) => {
+            const colNumber = excelColumnMap[fieldName];
+            return colNumber ? row.getCell(colNumber).value : undefined;
+          };
+
+          const rowData = {
+            imsCode: getCellValue("imsCode"),
+            category: getCellValue("category"),
+            subCategory: getCellValue("subCategory"),
+            name: getCellValue("name"),
+            variation: getCellValue("variation"),
+            material: getCellValue("material"),
+            length: getCellValue("length"),
+            breadth: getCellValue("breadth"),
+            height: getCellValue("height"),
+            weight: getCellValue("weight"),
+            vendor: getCellValue("vendor"),
+            quantity: getCellValue("quantity"),
+            costPrice: getCellValue("costPrice"),
+            finalSP: getCellValue("finalSP"),
+            nonMemberDiscount: getCellValue("nonMemberDiscount"),
+            memberDiscount: getCellValue("memberDiscount"),
+            wholesaleDiscount: getCellValue("wholesaleDiscount"),
+          };
+
+          // Check if row is empty (all cells are empty or null)
+          const hasData = Object.values(rowData).some(
+            (value) =>
+              value !== null &&
+              value !== undefined &&
+              String(value).trim() !== "",
+          );
+          if (!hasData) {
+            return; // Skip empty rows
+          }
+
+          try {
+            // Validate row data
+            const validatedRow = excelProductRowSchema.parse(rowData);
+            rows.push(validatedRow);
+          } catch (error: any) {
+            // Zod validation error
+            if (error instanceof z.ZodError) {
+              error.errors.forEach((err) => {
+                const fieldValue = err.path.reduce(
+                  (obj: any, key) => obj?.[key],
+                  rowData,
+                );
+                errors.push({
+                  row: rowIndex,
+                  field: err.path.join("."),
+                  message: err.message,
+                  value: fieldValue,
+                });
+              });
+            } else {
+              errors.push({
+                row: rowIndex,
+                message: error.message || "Invalid row data",
+              });
+            }
+          }
+        });
+      }
+
+      // Get all categories and discount types for lookup
+      const allCategories = await prisma.category.findMany({
+        select: { id: true, name: true },
+      });
+      const allDiscountTypes = await prisma.discountType.findMany({
+        select: { id: true, name: true },
+      });
+
+      // Create lookup maps
+      const categoryMap = new Map(
+        allCategories.map((cat) => [cat.name.toLowerCase(), cat.id]),
+      );
+      const discountTypeMap = new Map(
+        allDiscountTypes.map((dt) => [dt.name.toLowerCase(), dt.id]),
+      );
+
+      // Group rows by IMS code and name (same product, different variations)
+      const productGroups = new Map<
+        string,
+        { product: ExcelProductRow; variations: ExcelProductRow[] }
+      >();
+
+      rows.forEach((row) => {
+        const key = `${row.imsCode}-${row.name}`;
+        if (!productGroups.has(key)) {
+          productGroups.set(key, {
+            product: row,
+            variations: [],
+          });
+        }
+        productGroups.get(key)!.variations.push(row);
+      });
+
+      // Process each product group
+      for (const [key, group] of productGroups.entries()) {
+        const firstRow = group.product;
+        const variations = group.variations;
+
+        try {
+          // Find or create category
+          const categoryNameLower = firstRow.category.toLowerCase();
+          const categoryNameOriginal = firstRow.category.trim();
+          let categoryId = categoryMap.get(categoryNameLower);
+
+          // If not found in initial map, check database and create if needed
+          if (!categoryId) {
+            // First try exact match
+            let existingCategory = await prisma.category.findUnique({
+              where: { name: categoryNameOriginal },
+            });
+
+            // If not found, try case-insensitive search using findMany
+            if (!existingCategory) {
+              const allCategories = await prisma.category.findMany({
+                where: {
+                  name: {
+                    contains: categoryNameOriginal,
+                    mode: "insensitive",
+                  },
+                },
+              });
+              // Find exact case-insensitive match
+              existingCategory =
+                allCategories.find(
+                  (cat) => cat.name.toLowerCase() === categoryNameLower,
+                ) || null;
+            }
+
+            if (existingCategory) {
+              categoryId = existingCategory.id;
+              // Update map for future lookups in this batch
+              categoryMap.set(categoryNameLower, categoryId);
+            } else {
+              // Create new category
+              try {
+                const newCategory = await prisma.category.create({
+                  data: {
+                    name: categoryNameOriginal,
+                  },
+                });
+                categoryId = newCategory.id;
+                // Update map for future lookups in this batch
+                categoryMap.set(categoryNameLower, categoryId);
+              } catch (createError: any) {
+                // If creation fails due to unique constraint (race condition),
+                // try to find it again
+                if (createError.code === "P2002") {
+                  const foundCategory = await prisma.category.findUnique({
+                    where: { name: categoryNameOriginal },
+                  });
+                  if (foundCategory) {
+                    categoryId = foundCategory.id;
+                    categoryMap.set(categoryNameLower, categoryId);
+                  } else {
+                    throw createError;
+                  }
+                } else {
+                  throw createError;
+                }
+              }
+            }
+          }
+
+          // Check if product with this IMS code already exists
+          const existingProduct = await prisma.product.findUnique({
+            where: { imsCode: firstRow.imsCode },
+          });
+
+          if (existingProduct) {
+            errors.push({
+              row: rows.indexOf(firstRow) + 2,
+              field: "imsCode",
+              message: `Product with IMS code "${firstRow.imsCode}" already exists`,
+              value: firstRow.imsCode,
+            });
+            skippedProducts.push({
+              imsCode: firstRow.imsCode,
+              name: firstRow.name,
+              reason: `Product with IMS code "${firstRow.imsCode}" already exists`,
+            });
+            continue;
+          }
+
+          // Prepare variations
+          const productVariations = variations.map((variationRow) => ({
+            color: variationRow.variation,
+            stockQuantity: variationRow.quantity || 0,
+          }));
+
+          // Prepare discounts
+          // Map Excel discount column names to database discount type names
+          const discountMappings: Record<string, string> = {
+            "non member": "Normal", // NON MEMBER DISCOUNT -> Normal
+            member: "Member", // MEMBER DISCOUNT -> Member
+            wholesale: "Wholesale", // WHOLESALE DISCOUNT -> Wholesale
+          };
+
+          const discounts: any[] = [];
+
+          // Add NON MEMBER DISCOUNT if provided (maps to "Normal" discount type)
+          if (
+            firstRow.nonMemberDiscount !== null &&
+            firstRow.nonMemberDiscount !== undefined
+          ) {
+            const mappedName = discountMappings["non member"];
+            const discountTypeId = discountTypeMap.get(
+              mappedName.toLowerCase(),
+            );
+            if (discountTypeId) {
+              discounts.push({
+                discountTypeId,
+                discountPercentage: firstRow.nonMemberDiscount,
+                isActive: true,
+              });
+            }
+          }
+
+          // Add MEMBER DISCOUNT if provided
+          if (
+            firstRow.memberDiscount !== null &&
+            firstRow.memberDiscount !== undefined
+          ) {
+            const mappedName = discountMappings["member"];
+            const discountTypeId = discountTypeMap.get(
+              mappedName.toLowerCase(),
+            );
+            if (discountTypeId) {
+              discounts.push({
+                discountTypeId,
+                discountPercentage: firstRow.memberDiscount,
+                isActive: true,
+              });
+            }
+          }
+
+          // Add WHOLESALE DISCOUNT if provided
+          if (
+            firstRow.wholesaleDiscount !== null &&
+            firstRow.wholesaleDiscount !== undefined
+          ) {
+            const mappedName = discountMappings["wholesale"];
+            const discountTypeId = discountTypeMap.get(
+              mappedName.toLowerCase(),
+            );
+            if (discountTypeId) {
+              discounts.push({
+                discountTypeId,
+                discountPercentage: firstRow.wholesaleDiscount,
+                isActive: true,
+              });
+            }
+          }
+
+          // Create product
+          const product = await prisma.product.create({
+            data: {
+              imsCode: firstRow.imsCode,
+              name: firstRow.name,
+              categoryId,
+              description: firstRow.material || null,
+              length: firstRow.length,
+              breadth: firstRow.breadth,
+              height: firstRow.height,
+              weight: firstRow.weight,
+              costPrice: firstRow.costPrice,
+              mrp: firstRow.finalSP,
+              createdById: req.user!.id,
+              variations: {
+                create: productVariations,
+              },
+              discounts:
+                discounts.length > 0
+                  ? {
+                      create: discounts,
+                    }
+                  : undefined,
+            },
+            include: {
+              category: true,
+              variations: true,
+              discounts: {
+                include: {
+                  discountType: true,
+                },
+              },
+            },
+          });
+
+          createdProducts.push({
+            id: product.id,
+            imsCode: product.imsCode,
+            name: product.name,
+            variationsCount: product.variations?.length || 0,
+          });
+        } catch (error: any) {
+          errors.push({
+            row: rows.indexOf(firstRow) + 2,
+            message: error.message || "Error creating product",
+          });
+          skippedProducts.push({
+            imsCode: firstRow.imsCode,
+            name: firstRow.name,
+            reason: error.message || "Error creating product",
+          });
+        }
+      }
+
+      // Clean up uploaded file
+      try {
+        fs.unlinkSync(filePath);
+      } catch (cleanupError) {
+        console.error("Error cleaning up file:", cleanupError);
+      }
+
+      // Return response
+      res.status(200).json({
+        message: "Bulk upload completed",
+        summary: {
+          total: productGroups.size,
+          created: createdProducts.length,
+          skipped: skippedProducts.length,
+          errors: errors.length,
+        },
+        created: createdProducts,
+        skipped: skippedProducts,
+        errors: errors,
+      });
+    } catch (error: any) {
+      // Clean up uploaded file on error
+      if (req.file?.path) {
+        try {
+          fs.unlinkSync(req.file.path);
+        } catch (cleanupError) {
+          console.error("Error cleaning up file:", cleanupError);
+        }
+      }
+
+      console.error("Bulk upload error:", error);
+      res.status(500).json({
+        message: "Error processing bulk upload",
+        error: error.message,
+        errors: errors,
+      });
+    }
+  }
+
+  // Download products as Excel or CSV
+  async downloadProducts(req: Request, res: Response) {
+    try {
+      const format = (req.query.format as string)?.toLowerCase() || "excel";
+      const idsParam = req.query.ids as string | undefined;
+
+      // Validate format
+      if (format !== "excel" && format !== "csv") {
+        return res.status(400).json({
+          message: "Invalid format. Supported formats: excel, csv",
+        });
+      }
+
+      // Parse product IDs from query string
+      let productIds: string[] | undefined;
+      if (idsParam) {
+        productIds = idsParam
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean);
+      }
+
+      // Build where clause
+      const where: any = {};
+      if (productIds && productIds.length > 0) {
+        where.id = { in: productIds };
+      }
+
+      // Fetch products with relations
+      const products = await prisma.product.findMany({
+        where,
+        include: {
+          category: true,
+          variations: {
+            include: {
+              photos: true,
+            },
+          },
+          discounts: {
+            include: {
+              discountType: true,
+            },
+          },
+        },
+        orderBy: {
+          dateCreated: "desc",
+        },
+      });
+
+      if (products.length === 0) {
+        return res.status(404).json({
+          message: "No products found to export",
+        });
+      }
+
+      // Create workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Products");
+
+      // Define columns
+      const columns = [
+        { header: "IMS Code", key: "imsCode", width: 15 },
+        { header: "Product Name", key: "name", width: 30 },
+        { header: "Category", key: "category", width: 20 },
+        { header: "Description", key: "description", width: 40 },
+        { header: "Cost Price", key: "costPrice", width: 15 },
+        { header: "MRP", key: "mrp", width: 15 },
+        { header: "Length (cm)", key: "length", width: 15 },
+        { header: "Breadth (cm)", key: "breadth", width: 15 },
+        { header: "Height (cm)", key: "height", width: 15 },
+        { header: "Weight (kg)", key: "weight", width: 15 },
+        { header: "Total Stock", key: "totalStock", width: 15 },
+        { header: "Variations", key: "variations", width: 40 },
+        { header: "Discounts", key: "discounts", width: 40 },
+      ];
+
+      worksheet.columns = columns;
+
+      // Style header row
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+
+      // Add data rows
+      products.forEach((product) => {
+        // Calculate total stock
+        const totalStock = product.variations.reduce(
+          (sum, v) => sum + (v.stockQuantity || 0),
+          0,
+        );
+
+        // Format variations
+        const variationsStr =
+          product.variations.length > 0
+            ? product.variations
+                .map((v) => `${v.color} (${v.stockQuantity})`)
+                .join("; ")
+            : "No variations";
+
+        // Format discounts
+        const discountsStr =
+          product.discounts && product.discounts.length > 0
+            ? product.discounts
+                .filter((d) => d.isActive)
+                .map(
+                  (d) =>
+                    `${d.discountType?.name || "Unknown"}: ${d.discountPercentage}%`,
+                )
+                .join("; ")
+            : "No discounts";
+
+        worksheet.addRow({
+          imsCode: product.imsCode,
+          name: product.name,
+          category: product.category?.name || "N/A",
+          description: product.description || "N/A",
+          costPrice: product.costPrice,
+          mrp: product.mrp,
+          length: product.length || "N/A",
+          breadth: product.breadth || "N/A",
+          height: product.height || "N/A",
+          weight: product.weight || "N/A",
+          totalStock: totalStock,
+          variations: variationsStr,
+          discounts: discountsStr,
+        });
+      });
+
+      // Generate filename with timestamp
+      const timestamp = new Date().toISOString().split("T")[0];
+      const filename = `products_${timestamp}.${format === "excel" ? "xlsx" : "csv"}`;
+
+      // Set response headers
+      if (format === "excel") {
+        res.setHeader(
+          "Content-Type",
+          "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        );
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
+
+        // Generate buffer and send
+        const buffer = await workbook.xlsx.writeBuffer();
+        res.send(buffer);
+      } else {
+        // CSV format - manually convert to CSV
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader(
+          "Content-Disposition",
+          `attachment; filename="${filename}"`,
+        );
+
+        // Helper function to escape CSV values
+        const escapeCsvValue = (value: any): string => {
+          if (value === null || value === undefined) {
+            return "";
+          }
+          const str = String(value);
+          // If value contains comma, newline, or quote, wrap in quotes and escape quotes
+          if (str.includes(",") || str.includes("\n") || str.includes('"')) {
+            return `"${str.replace(/"/g, '""')}"`;
+          }
+          return str;
+        };
+
+        // Build CSV rows
+        const csvRows: string[] = [];
+
+        // Header row
+        csvRows.push(
+          columns.map((col) => escapeCsvValue(col.header)).join(","),
+        );
+
+        // Data rows
+        products.forEach((product) => {
+          const totalStock = product.variations.reduce(
+            (sum, v) => sum + (v.stockQuantity || 0),
+            0,
+          );
+          const variationsStr =
+            product.variations.length > 0
+              ? product.variations
+                  .map((v) => `${v.color} (${v.stockQuantity})`)
+                  .join("; ")
+              : "No variations";
+          const discountsStr =
+            product.discounts && product.discounts.length > 0
+              ? product.discounts
+                  .filter((d) => d.isActive)
+                  .map(
+                    (d) =>
+                      `${d.discountType?.name || "Unknown"}: ${d.discountPercentage}%`,
+                  )
+                  .join("; ")
+              : "No discounts";
+
+          const row = [
+            escapeCsvValue(product.imsCode),
+            escapeCsvValue(product.name),
+            escapeCsvValue(product.category?.name || "N/A"),
+            escapeCsvValue(product.description || "N/A"),
+            escapeCsvValue(product.costPrice),
+            escapeCsvValue(product.mrp),
+            escapeCsvValue(product.length || "N/A"),
+            escapeCsvValue(product.breadth || "N/A"),
+            escapeCsvValue(product.height || "N/A"),
+            escapeCsvValue(product.weight || "N/A"),
+            escapeCsvValue(totalStock),
+            escapeCsvValue(variationsStr),
+            escapeCsvValue(discountsStr),
+          ];
+          csvRows.push(row.join(","));
+        });
+
+        res.send(csvRows.join("\n"));
+      }
+    } catch (error: any) {
+      console.error("Download products error:", error);
+      res.status(500).json({
+        message: "Error downloading products",
         error: error.message,
       });
     }

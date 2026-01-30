@@ -7,6 +7,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
+import { useAuthStore } from "@/stores/auth-store";
 
 // ============================================
 // Types
@@ -355,5 +356,173 @@ export async function getAllDiscountTypes(): Promise<
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch discount types");
+  }
+}
+
+// ============================================
+// Bulk Upload Types
+// ============================================
+
+export interface BulkUploadError {
+  row: number;
+  field?: string;
+  message: string;
+  value?: unknown;
+}
+
+export interface BulkUploadSummary {
+  total: number;
+  created: number;
+  skipped: number;
+  errors: number;
+}
+
+export interface CreatedProduct {
+  id: string;
+  imsCode: string;
+  name: string;
+  variationsCount: number;
+}
+
+export interface SkippedProduct {
+  imsCode: string;
+  name: string;
+  reason: string;
+}
+
+export interface BulkUploadResponse {
+  message: string;
+  summary: BulkUploadSummary;
+  created: CreatedProduct[];
+  skipped: SkippedProduct[];
+  errors: BulkUploadError[];
+}
+
+/**
+ * Bulk upload products from Excel file
+ * @param file - Excel file to upload
+ * @param onProgress - Optional callback for upload progress (0-100)
+ */
+export async function bulkUploadProducts(
+  file: File,
+  onProgress?: (progress: number) => void,
+): Promise<BulkUploadResponse> {
+  if (!file) {
+    throw new Error("File is required");
+  }
+
+  // Validate file type
+  const allowedTypes = [
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
+    "application/vnd.ms-excel", // .xls
+    "application/vnd.ms-excel.sheet.macroEnabled.12", // .xlsm
+  ];
+
+  const allowedExtensions = [".xlsx", ".xls", ".xlsm"];
+  const fileExtension = file.name
+    .substring(file.name.lastIndexOf("."))
+    .toLowerCase();
+
+  if (
+    !allowedTypes.includes(file.type) &&
+    !allowedExtensions.includes(fileExtension)
+  ) {
+    throw new Error(
+      "Invalid file type. Only Excel files (.xlsx, .xls, .xlsm) are allowed.",
+    );
+  }
+
+  // Validate file size (10MB limit)
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    throw new Error("File size exceeds 10MB limit");
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    // Get token for manual header setting (since we're using FormData)
+    const token = useAuthStore.getState().token;
+
+    const response = await api.post<BulkUploadResponse>(
+      "/products/bulk-upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
+            onProgress(progress);
+          }
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "bulk upload products");
+    throw error;
+  }
+}
+
+/**
+ * Download products as Excel or CSV
+ * @param format - Export format: 'excel' or 'csv'
+ * @param productIds - Optional array of product IDs to export. If not provided, exports all products.
+ */
+export async function downloadProducts(
+  format: "excel" | "csv" = "excel",
+  productIds?: string[],
+): Promise<void> {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.set("format", format);
+
+    if (productIds && productIds.length > 0) {
+      queryParams.set("ids", productIds.join(","));
+    }
+
+    // Get token for manual header setting
+    const token = useAuthStore.getState().token;
+
+    const response = await api.get(
+      `/products/download?${queryParams.toString()}`,
+      {
+        responseType: "blob",
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      },
+    );
+
+    // Get filename from Content-Disposition header or generate one
+    const contentDisposition = response.headers["content-disposition"];
+    let filename = `products_${new Date().toISOString().split("T")[0]}.${
+      format === "excel" ? "xlsx" : "csv"
+    }`;
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Trigger browser download using native API
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    handleApiError(error, "download products");
+    throw error;
   }
 }
