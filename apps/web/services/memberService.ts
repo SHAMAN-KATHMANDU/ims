@@ -7,6 +7,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
+import { useAuthStore } from "@/stores/auth-store";
 
 // ============================================
 // Types
@@ -250,5 +251,168 @@ export async function updateMember(
     return response.data.member;
   } catch (error) {
     handleApiError(error, `update member "${id}"`);
+  }
+}
+
+// ============================================
+// Bulk Upload Types
+// ============================================
+
+export interface MemberBulkUploadError {
+  row: number;
+  field?: string;
+  message: string;
+  value?: unknown;
+}
+
+export interface MemberBulkUploadSummary {
+  total: number;
+  created: number;
+  skipped: number;
+  errors: number;
+}
+
+export interface CreatedMember {
+  id: string;
+  phone: string;
+  name: string | null;
+}
+
+export interface SkippedMember {
+  phone: string;
+  name: string | null;
+  reason: string;
+}
+
+export interface MemberBulkUploadResponse {
+  message: string;
+  summary: MemberBulkUploadSummary;
+  created: CreatedMember[];
+  skipped: SkippedMember[];
+  errors: MemberBulkUploadError[];
+}
+
+/**
+ * Bulk upload members from Excel file
+ * @param file - Excel file to upload
+ * @param onProgress - Optional callback for upload progress (0-100)
+ */
+export async function bulkUploadMembers(
+  file: File,
+  onProgress?: (progress: number) => void,
+): Promise<MemberBulkUploadResponse> {
+  if (!file) {
+    throw new Error("File is required");
+  }
+
+  const allowedTypes = [
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/vnd.ms-excel.sheet.macroEnabled.12",
+  ];
+  const allowedExtensions = [".xlsx", ".xls", ".xlsm"];
+  const fileExtension = file.name
+    .substring(file.name.lastIndexOf("."))
+    .toLowerCase();
+
+  if (
+    !allowedTypes.includes(file.type) &&
+    !allowedExtensions.includes(fileExtension)
+  ) {
+    throw new Error(
+      "Invalid file type. Only Excel files (.xlsx, .xls, .xlsm) are allowed.",
+    );
+  }
+
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    throw new Error("File size exceeds 10MB limit");
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const token = useAuthStore.getState().token;
+
+    const response = await api.post<MemberBulkUploadResponse>(
+      "/members/bulk-upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
+            onProgress(progress);
+          }
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "bulk upload members");
+    throw error;
+  }
+}
+
+/**
+ * Download members as Excel or CSV
+ * @param format - Export format: 'excel' or 'csv'
+ * @param memberIds - Optional array of member IDs to export. If not provided, exports all members.
+ */
+export async function downloadMembers(
+  format: "excel" | "csv" = "excel",
+  memberIds?: string[],
+): Promise<void> {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.set("format", format);
+
+    if (memberIds && memberIds.length > 0) {
+      queryParams.set("ids", memberIds.join(","));
+    }
+
+    // Get token for manual header setting
+    const token = useAuthStore.getState().token;
+
+    const response = await api.get(
+      `/members/download?${queryParams.toString()}`,
+      {
+        responseType: "blob",
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      },
+    );
+
+    // Get filename from Content-Disposition header or generate one
+    const contentDisposition = response.headers["content-disposition"];
+    let filename = `members_${new Date().toISOString().split("T")[0]}.${
+      format === "excel" ? "xlsx" : "csv"
+    }`;
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Trigger browser download using native API
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    handleApiError(error, "download members");
+    throw error;
   }
 }

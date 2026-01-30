@@ -7,6 +7,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
+import { useAuthStore } from "@/stores/auth-store";
 
 // ============================================
 // Types
@@ -52,6 +53,7 @@ export interface SalePaymentDetail {
   id: string;
   method: PaymentMethod;
   amount: number;
+  createdAt?: string;
 }
 
 export interface Sale {
@@ -78,9 +80,10 @@ export interface Sale {
   createdBy: {
     id: string;
     username: string;
+    role?: string;
   };
-  items?: SaleItem[];
   payments?: SalePaymentDetail[];
+  items?: SaleItem[];
   _count?: {
     items: number;
   };
@@ -398,4 +401,166 @@ export function formatCurrency(amount: number): string {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   }).format(amount);
+}
+
+// ============================================
+// Bulk Upload Types
+// ============================================
+
+export interface SaleBulkUploadError {
+  row: number;
+  field?: string;
+  message: string;
+  value?: unknown;
+}
+
+export interface SaleBulkUploadSummary {
+  total: number;
+  created: number;
+  skipped: number;
+  errors: number;
+}
+
+export interface CreatedSale {
+  id: string;
+  saleCode: string;
+  itemsCount: number;
+}
+
+export interface SkippedSale {
+  saleId: string | null;
+  reason: string;
+}
+
+export interface SaleBulkUploadResponse {
+  message: string;
+  summary: SaleBulkUploadSummary;
+  created: CreatedSale[];
+  skipped: SkippedSale[];
+  errors: SaleBulkUploadError[];
+}
+
+/**
+ * Bulk upload sales from Excel file
+ * @param file - Excel file to upload
+ * @param onProgress - Optional callback for upload progress (0-100)
+ */
+export async function bulkUploadSales(
+  file: File,
+  onProgress?: (progress: number) => void,
+): Promise<SaleBulkUploadResponse> {
+  if (!file) {
+    throw new Error("File is required");
+  }
+
+  const allowedTypes = [
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.ms-excel",
+    "application/vnd.ms-excel.sheet.macroEnabled.12",
+  ];
+  const allowedExtensions = [".xlsx", ".xls", ".xlsm"];
+  const fileExtension = file.name
+    .substring(file.name.lastIndexOf("."))
+    .toLowerCase();
+
+  if (
+    !allowedTypes.includes(file.type) &&
+    !allowedExtensions.includes(fileExtension)
+  ) {
+    throw new Error(
+      "Invalid file type. Only Excel files (.xlsx, .xls, .xlsm) are allowed.",
+    );
+  }
+
+  const maxSize = 10 * 1024 * 1024; // 10MB
+  if (file.size > maxSize) {
+    throw new Error("File size exceeds 10MB limit");
+  }
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const token = useAuthStore.getState().token;
+
+    const response = await api.post<SaleBulkUploadResponse>(
+      "/sales/bulk-upload",
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data",
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+        onUploadProgress: (progressEvent) => {
+          if (progressEvent.total && onProgress) {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total,
+            );
+            onProgress(progress);
+          }
+        },
+      },
+    );
+
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "bulk upload sales");
+    throw error;
+  }
+}
+
+/**
+ * Download sales as Excel or CSV
+ * @param format - Export format: 'excel' or 'csv'
+ * @param saleIds - Optional array of sale IDs to export. If not provided, exports all sales.
+ */
+export async function downloadSales(
+  format: "excel" | "csv" = "excel",
+  saleIds?: string[],
+): Promise<void> {
+  try {
+    const queryParams = new URLSearchParams();
+    queryParams.set("format", format);
+
+    if (saleIds && saleIds.length > 0) {
+      queryParams.set("ids", saleIds.join(","));
+    }
+
+    // Get token for manual header setting
+    const token = useAuthStore.getState().token;
+
+    const response = await api.get(
+      `/sales/download?${queryParams.toString()}`,
+      {
+        responseType: "blob",
+        headers: {
+          ...(token && { Authorization: `Bearer ${token}` }),
+        },
+      },
+    );
+
+    // Get filename from Content-Disposition header or generate one
+    const contentDisposition = response.headers["content-disposition"];
+    let filename = `sales_${new Date().toISOString().split("T")[0]}.${
+      format === "excel" ? "xlsx" : "csv"
+    }`;
+
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch && filenameMatch[1]) {
+        filename = filenameMatch[1];
+      }
+    }
+
+    // Trigger browser download using native API
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    handleApiError(error, "download sales");
+    throw error;
+  }
 }

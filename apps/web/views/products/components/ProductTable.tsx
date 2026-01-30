@@ -25,6 +25,7 @@ import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   getTotalStock,
   getDiscountedPrices,
@@ -54,6 +55,9 @@ interface ProductTableProps {
   // Loading state
   isLoading?: boolean;
   isFetching?: boolean;
+  // Selection props
+  selectedProducts?: Set<string>;
+  onSelectionChange?: (selectedIds: Set<string>) => void;
 }
 
 // ============================================
@@ -158,6 +162,8 @@ export function ProductTable({
   onSearchChange,
   isLoading = false,
   isFetching = false,
+  selectedProducts = new Set(),
+  onSelectionChange,
 }: ProductTableProps) {
   const [expandedProductId, setExpandedProductId] = useState<string | null>(
     null,
@@ -169,8 +175,45 @@ export function ProductTable({
     onSearchChange,
   );
 
+  // Selection handlers
+  const handleSelectProduct = useCallback(
+    (productId: string, checked: boolean) => {
+      if (!onSelectionChange) return;
+
+      const newSelection = new Set(selectedProducts);
+      if (checked) {
+        newSelection.add(productId);
+      } else {
+        newSelection.delete(productId);
+      }
+      onSelectionChange(newSelection);
+    },
+    [selectedProducts, onSelectionChange],
+  );
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (!onSelectionChange) return;
+
+      if (checked) {
+        const allIds = new Set(products.map((p) => p.id));
+        onSelectionChange(allIds);
+      } else {
+        onSelectionChange(new Set());
+      }
+    },
+    [products, onSelectionChange],
+  );
+
+  // Check if all products on current page are selected
+  const allSelected =
+    products.length > 0 && products.every((p) => selectedProducts.has(p.id));
+
   // Calculate column count for empty state and expanded rows
-  const columnCount = canSeeCostPrice ? 7 : 10;
+  // Base columns: IMS Code, Name, Category, (Cost Price if admin), MRP, (4 discount prices if not admin), Stock, Actions = 7 or 10
+  // Add 1 for checkbox if selection is enabled
+  const baseColumnCount = canSeeCostPrice ? 7 : 10;
+  const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
 
   return (
     <Card>
@@ -214,6 +257,15 @@ export function ProductTable({
         <Table>
           <TableHeader>
             <TableRow>
+              {onSelectionChange && (
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all products"
+                  />
+                </TableHead>
+              )}
               <TableHead>IMS Code</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Category</TableHead>
@@ -275,6 +327,20 @@ export function ProductTable({
                           : undefined
                       }
                     >
+                      {onSelectionChange && (
+                        <TableCell
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-12"
+                        >
+                          <Checkbox
+                            checked={selectedProducts.has(product.id)}
+                            onCheckedChange={(checked) =>
+                              handleSelectProduct(product.id, checked === true)
+                            }
+                            aria-label={`Select ${product.name}`}
+                          />
+                        </TableCell>
+                      )}
                       <TableCell className="font-mono">
                         {product.imsCode}
                       </TableCell>
