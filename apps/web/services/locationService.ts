@@ -20,6 +20,7 @@ export interface Location {
   type: LocationType;
   address?: string;
   isActive: boolean;
+  isDefaultWarehouse?: boolean;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -55,6 +56,7 @@ export interface CreateLocationData {
   name: string;
   type?: LocationType;
   address?: string;
+  isDefaultWarehouse?: boolean;
 }
 
 export interface UpdateLocationData {
@@ -62,6 +64,7 @@ export interface UpdateLocationData {
   type?: LocationType;
   address?: string;
   isActive?: boolean;
+  isDefaultWarehouse?: boolean;
 }
 
 interface LocationsApiResponse {

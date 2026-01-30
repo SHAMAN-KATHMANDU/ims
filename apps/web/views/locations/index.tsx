@@ -79,6 +79,7 @@ export function LocationsPage() {
     name: string;
     type: LocationType;
     address: string;
+    isDefaultWarehouse?: boolean;
   }) => {
     try {
       if (editingLocation) {
@@ -88,6 +89,7 @@ export function LocationsPage() {
             name: data.name,
             type: data.type,
             address: data.address || undefined,
+            isDefaultWarehouse: data.isDefaultWarehouse ?? false,
           },
         });
         toast({ title: "Location updated successfully" });
@@ -96,6 +98,7 @@ export function LocationsPage() {
           name: data.name,
           type: data.type,
           address: data.address || undefined,
+          isDefaultWarehouse: data.isDefaultWarehouse,
         });
         toast({ title: "Location created successfully" });
       }

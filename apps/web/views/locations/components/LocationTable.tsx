@@ -43,6 +43,7 @@ export function LocationTable({
             <TableRow>
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Default warehouse</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Inventory Items</TableHead>
@@ -57,6 +58,9 @@ export function LocationTable({
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-16" />
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-4 w-48" />
@@ -99,6 +103,7 @@ export function LocationTable({
           <TableRow>
             <TableHead>Name</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead>Default warehouse</TableHead>
             <TableHead>Address</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Inventory Items</TableHead>
@@ -126,6 +131,11 @@ export function LocationTable({
                 >
                   {location.type}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                {location.type === "WAREHOUSE" && location.isDefaultWarehouse
+                  ? "Yes"
+                  : "-"}
               </TableCell>
               <TableCell className="max-w-[200px] truncate text-muted-foreground">
                 {location.address || "-"}
