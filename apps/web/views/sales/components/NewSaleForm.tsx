@@ -16,6 +16,7 @@ import {
   formatCurrency,
   previewSale,
 } from "@/services/salesService";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -168,6 +170,7 @@ export function NewSaleForm({
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SaleItem[]>([]);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
+  const [isCreditSale, setIsCreditSale] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>("CASH");
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -279,6 +282,13 @@ export function NewSaleForm({
   const { data: memberCheck, isLoading: checkingMember } =
     useCheckMember(debouncedPhone);
   const { toast } = useToast();
+
+  // Credit sale requires a member; clear credit sale if phone is cleared
+  useEffect(() => {
+    if (!memberPhone.trim() && isCreditSale) {
+      setIsCreditSale(false);
+    }
+  }, [memberPhone, isCreditSale]);
 
   // Get showrooms only
   const showrooms = locations.filter((l) => l.type === "SHOWROOM");
@@ -412,8 +422,16 @@ export function NewSaleForm({
           }>;
         }>(`/products/${productId}/discounts`);
         return response.data.discounts || [];
-      } catch {
-        console.error("Failed to fetch discounts");
+      } catch (err: unknown) {
+        const axiosErr = err as {
+          response?: { data?: { message?: string }; status?: number };
+          message?: string;
+        };
+        const msg =
+          axiosErr.response?.data?.message ??
+          axiosErr.message ??
+          "Unknown error";
+        console.warn("Failed to fetch discounts for product:", productId, msg);
         return [];
       }
     };
@@ -575,7 +593,10 @@ export function NewSaleForm({
       }
     }
 
-    if (totalPayment <= 0 || Math.abs(totalPayment - expectedTotal) > 0.01) {
+    if (
+      !isCreditSale &&
+      (totalPayment <= 0 || Math.abs(totalPayment - expectedTotal) > 0.01)
+    ) {
       toast({
         title: "Payment Error",
         description:
@@ -599,6 +620,7 @@ export function NewSaleForm({
         method: p.method,
         amount: Math.round(p.amount * 100) / 100,
       })),
+      isCreditSale: isCreditSale || undefined,
     });
 
     // Reset form
@@ -633,6 +655,7 @@ export function NewSaleForm({
       setItems([]);
       setProductSearch("");
       setPayments([]);
+      setIsCreditSale(false);
       setSelectedPaymentMethod("CASH");
       setPaymentAmount("");
       setDiscountMode("individual");
@@ -1052,6 +1075,36 @@ export function NewSaleForm({
                       value="payment"
                       className="space-y-4 py-4 mt-0"
                     >
+                      {/* Credit sale: pay later (members only) */}
+                      <div className="space-y-1">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id="credit-sale"
+                            checked={isCreditSale}
+                            disabled={!memberPhone.trim()}
+                            onCheckedChange={(checked) =>
+                              setIsCreditSale(checked === true)
+                            }
+                          />
+                          <Label
+                            htmlFor="credit-sale"
+                            className={cn(
+                              "text-sm font-normal",
+                              memberPhone.trim()
+                                ? "cursor-pointer"
+                                : "cursor-not-allowed text-muted-foreground",
+                            )}
+                          >
+                            This is a credit sale (pay later)
+                          </Label>
+                        </div>
+                        {!memberPhone.trim() && (
+                          <p className="text-xs text-muted-foreground pl-6">
+                            Enter customer phone (member) to enable credit sale.
+                          </p>
+                        )}
+                      </div>
+
                       {/* Promo first: apply then see amount to pay */}
                       {items.length > 0 && (
                         <div className="space-y-2">
@@ -1195,7 +1248,9 @@ export function NewSaleForm({
                           <span className="font-medium text-foreground">
                             {formatCurrency(expectedTotal)}
                           </span>
-                          . Payment total must match exactly.
+                          {isCreditSale
+                            ? ". Credit sale: partial or no payment now; balance can be paid later."
+                            : ". Payment total must match exactly."}
                         </p>
                       </div>
 
@@ -1464,8 +1519,9 @@ export function NewSaleForm({
                     isLoading ||
                     !locationId ||
                     items.length === 0 ||
-                    totalPayment <= 0 ||
-                    Math.abs(totalPayment - expectedTotal) > 0.01
+                    (!isCreditSale &&
+                      (totalPayment <= 0 ||
+                        Math.abs(totalPayment - expectedTotal) > 0.01))
                   }
                   className="min-w-[140px]"
                   onClick={() => {
@@ -1496,6 +1552,7 @@ export function NewSaleForm({
                     (activeTab === "products" &&
                       (!locationId || items.length === 0)) ||
                     (activeTab === "payment" &&
+                      !isCreditSale &&
                       (payments.length === 0 ||
                         totalPayment <= 0 ||
                         Math.abs(totalPayment - expectedTotal) > 0.01))

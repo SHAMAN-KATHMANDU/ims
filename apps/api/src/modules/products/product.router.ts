@@ -281,6 +281,66 @@ productRouter.get(
 
 /**
  * @swagger
+ * /products/{id}/discounts:
+ *   get:
+ *     summary: Get active discounts for a product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Product ID
+ *     responses:
+ *       200:
+ *         description: Product discounts retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 discounts:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       value:
+ *                         type: number
+ *                       valueType:
+ *                         type: string
+ *                         enum: [PERCENTAGE, FLAT]
+ *                       discountType:
+ *                         type: string
+ *                       discountTypeId:
+ *                         type: string
+ *                       startDate:
+ *                         type: string
+ *                         format: date-time
+ *                       endDate:
+ *                         type: string
+ *                         format: date-time
+ *       404:
+ *         description: Product not found
+ */
+productRouter.get(
+  "/:id/discounts",
+  verifyToken,
+  authorizeRoles("admin", "user", "superAdmin"),
+  productController.getProductDiscounts,
+);
+
+/**
+ * @swagger
  * /products/{id}:
  *   get:
  *     summary: Get product by ID
@@ -375,66 +435,6 @@ productRouter.delete(
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
   productController.deleteProduct,
-);
-
-/**
- * @swagger
- * /products/{id}/discounts:
- *   get:
- *     summary: Get active discounts for a product
- *     tags: [Products]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *           format: uuid
- *         description: Product ID
- *     responses:
- *       200:
- *         description: Product discounts retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 discounts:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       id:
- *                         type: string
- *                       name:
- *                         type: string
- *                       value:
- *                         type: number
- *                       valueType:
- *                         type: string
- *                         enum: [PERCENTAGE, FLAT]
- *                       discountType:
- *                         type: string
- *                       discountTypeId:
- *                         type: string
- *                       startDate:
- *                         type: string
- *                         format: date-time
- *                       endDate:
- *                         type: string
- *                         format: date-time
- *       404:
- *         description: Product not found
- */
-productRouter.get(
-  "/:id/discounts",
-  verifyToken,
-  authorizeRoles("admin", "user", "superAdmin"),
-  productController.getProductDiscounts,
 );
 
 /**

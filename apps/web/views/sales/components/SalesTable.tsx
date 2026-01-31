@@ -81,8 +81,8 @@ export function SalesTable({
   const allSelected =
     sales.length > 0 && sales.every((s) => selectedSales.has(s.id));
 
-  // Calculate column count for empty state (S.N. + optional checkbox + rest)
-  const baseColumnCount = 9; // S.N., Sale Code, Type, Location, Customer, Total, Payment Method, Date, Actions
+  // Calculate column count for empty state (S.N. + optional checkbox + Credit + rest)
+  const baseColumnCount = 10; // S.N., Sale Code, Type, Credit, Location, Customer, Total, Payment Method, Date, Actions
   const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
 
   if (isLoading) {
@@ -99,6 +99,7 @@ export function SalesTable({
               )}
               <TableHead>Sale Code</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Credit</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead className="text-right">Total</TableHead>
@@ -123,6 +124,9 @@ export function SalesTable({
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-12" />
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-5 w-16" />
@@ -167,9 +171,11 @@ export function SalesTable({
               )}
               <TableHead>Sale Code</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Credit</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead>Payment Method</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -203,6 +209,7 @@ export function SalesTable({
             )}
             <TableHead>Sale Code</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead>Credit</TableHead>
             <TableHead>Location</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead className="text-right">Total</TableHead>
@@ -212,75 +219,95 @@ export function SalesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sales.map((sale, index) => (
-            <TableRow key={sale.id}>
-              <TableCell className="text-muted-foreground">
-                {getSerialNumber(index)}
-              </TableCell>
-              {onSelectionChange && (
-                <TableCell
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-12"
-                >
-                  <Checkbox
-                    checked={selectedSales.has(sale.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectSale(sale.id, checked === true)
-                    }
-                    aria-label={`Select ${sale.saleCode}`}
-                  />
+          {sales.map((sale, index) => {
+            const isCredit = sale.isCreditSale === true;
+            return (
+              <TableRow
+                key={sale.id}
+                className={
+                  isCredit ? "text-amber-700 dark:text-amber-400" : undefined
+                }
+              >
+                <TableCell className="text-muted-foreground">
+                  {getSerialNumber(index)}
                 </TableCell>
-              )}
-              <TableCell className="font-medium">{sale.saleCode}</TableCell>
-              <TableCell>
-                <Badge
-                  className={getSaleTypeColor(sale.type)}
-                  variant="outline"
-                >
-                  {getSaleTypeLabel(sale.type)}
-                </Badge>
-              </TableCell>
-              <TableCell>{sale.location.name}</TableCell>
-              <TableCell>
-                {sale.member ? (
-                  <div>
-                    <div className="font-medium">{sale.member.phone}</div>
-                    {sale.member.name && (
-                      <div className="text-sm text-muted-foreground">
-                        {sale.member.name}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">
-                    Walk-in Customer
-                  </span>
+                {onSelectionChange && (
+                  <TableCell
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-12"
+                  >
+                    <Checkbox
+                      checked={selectedSales.has(sale.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectSale(sale.id, checked === true)
+                      }
+                      aria-label={`Select ${sale.saleCode}`}
+                    />
+                  </TableCell>
                 )}
-              </TableCell>
-              <TableCell className="text-right font-medium">
-                {formatCurrency(Number(sale.total))}
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {sale.payments && sale.payments.length > 0
-                    ? (sale.payments[0]?.method ?? "N/A")
-                    : "N/A"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {format(new Date(sale.createdAt), "MMM d, yyyy h:mm a")}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onView(sale)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          ))}
+                <TableCell className="font-medium">{sale.saleCode}</TableCell>
+                <TableCell>
+                  <Badge
+                    className={getSaleTypeColor(sale.type)}
+                    variant="outline"
+                  >
+                    {getSaleTypeLabel(sale.type)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {isCredit ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                    >
+                      Yes
+                    </Badge>
+                  ) : (
+                    <span className="text-muted-foreground">No</span>
+                  )}
+                </TableCell>
+                <TableCell>{sale.location.name}</TableCell>
+                <TableCell>
+                  {sale.member ? (
+                    <div>
+                      <div className="font-medium">{sale.member.phone}</div>
+                      {sale.member.name && (
+                        <div className="text-sm text-muted-foreground">
+                          {sale.member.name}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Walk-in Customer
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-medium">
+                  {formatCurrency(Number(sale.total))}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {sale.payments && sale.payments.length > 0
+                      ? (sale.payments[0]?.method ?? "N/A")
+                      : "N/A"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {format(new Date(sale.createdAt), "MMM d, yyyy h:mm a")}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onView(sale)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

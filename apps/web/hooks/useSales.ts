@@ -5,6 +5,7 @@ import {
   getSales,
   getSaleById,
   createSale,
+  addPaymentToSale,
   getSalesSummary,
   getSalesByLocation,
   getDailySales,
@@ -17,6 +18,7 @@ import {
   type SalesSummary,
   type LocationSalesStat,
   type DailySalesStat,
+  type PaymentMethod,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   getSaleTypeLabel,
@@ -35,6 +37,7 @@ export type {
   SalesSummary,
   LocationSalesStat,
   DailySalesStat,
+  PaymentMethod,
 };
 
 // Re-export defaults and helpers
@@ -81,6 +84,7 @@ export function useSalesPaginated(params: SalesListParams = {}) {
     limit: params.limit ?? DEFAULT_LIMIT,
     locationId: params.locationId,
     type: params.type,
+    isCreditSale: params.isCreditSale,
     startDate: params.startDate,
     endDate: params.endDate,
     search: params.search?.trim() || "",
@@ -119,6 +123,31 @@ export function useCreateSale() {
       queryClient.refetchQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.analytics() });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+}
+
+/**
+ * Hook for adding a payment to a credit sale
+ */
+export function useAddPaymentToSale() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      method,
+      amount,
+    }: {
+      saleId: string;
+      method: PaymentMethod;
+      amount: number;
+    }) => addPaymentToSale(saleId, method, amount),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: salesKeys.detail(variables.saleId),
+      });
+      queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
     },
   });
 }

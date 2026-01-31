@@ -92,6 +92,9 @@ export function SalesPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<SaleType | "ALL">("ALL");
+  const [creditFilter, setCreditFilter] = useState<
+    "ALL" | "credit" | "non-credit"
+  >("ALL");
   const [locationFilter, setLocationFilter] = useState<string>("ALL");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
@@ -107,6 +110,12 @@ export function SalesPage() {
     limit: pageSize,
     search,
     type: typeFilter === "ALL" ? undefined : typeFilter,
+    isCreditSale:
+      creditFilter === "credit"
+        ? true
+        : creditFilter === "non-credit"
+          ? false
+          : undefined,
     locationId: locationFilter === "ALL" ? undefined : locationFilter,
     startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
     endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
@@ -148,6 +157,11 @@ export function SalesPage() {
 
   const handleTypeChange = useCallback((value: string) => {
     setTypeFilter(value as SaleType | "ALL");
+    setPage(DEFAULT_PAGE);
+  }, []);
+
+  const handleCreditFilterChange = useCallback((value: string) => {
+    setCreditFilter(value as "ALL" | "credit" | "non-credit");
     setPage(DEFAULT_PAGE);
   }, []);
 
@@ -299,7 +313,7 @@ export function SalesPage() {
             <PopoverContent className="w-80 p-3" align="end">
               <div className="space-y-3">
                 <p className="text-xs font-medium text-muted-foreground">
-                  Type & showroom
+                  Type, credit & showroom
                 </p>
                 <div className="grid gap-2">
                   <div className="space-y-1">
@@ -314,6 +328,24 @@ export function SalesPage() {
                             {option.label}
                           </SelectItem>
                         ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Credit</Label>
+                    <Select
+                      value={creditFilter}
+                      onValueChange={handleCreditFilterChange}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Credit" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All</SelectItem>
+                        <SelectItem value="credit">Credit only</SelectItem>
+                        <SelectItem value="non-credit">
+                          Non-credit only
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>

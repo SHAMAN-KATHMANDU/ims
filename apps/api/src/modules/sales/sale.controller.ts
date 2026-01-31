@@ -35,6 +35,7 @@ class SaleController {
         items,
         notes,
         payments,
+        isCreditSale,
       }: {
         locationId: string;
         memberPhone?: string;
@@ -49,6 +50,7 @@ class SaleController {
           method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
           amount: number;
         }>;
+        isCreditSale?: boolean;
       } = req.body;
 
       // Validate user
@@ -110,6 +112,14 @@ class SaleController {
         if (member.isActive) {
           saleType = "MEMBER";
         }
+      }
+
+      // Credit sales require a customer (member)
+      if (isCreditSale === true && !member) {
+        return res.status(400).json({
+          message:
+            "Credit sales require a customer (member). Please enter the customer's phone number.",
+        });
       }
 
       // Get "Member" discount type for member sales
@@ -371,8 +381,10 @@ class SaleController {
 
       const total = Math.round((subtotal - totalDiscount) * 100) / 100;
 
-      // Optional: validate payment breakdown matches total
-      if (payments && payments.length > 0) {
+      const creditSale = isCreditSale === true;
+
+      // For non-credit sales: validate payment breakdown matches total
+      if (!creditSale && payments && payments.length > 0) {
         const paymentSum =
           Math.round(
             payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) * 100,
@@ -395,6 +407,7 @@ class SaleController {
           data: {
             saleCode: generateSaleCode(),
             type: saleType,
+            isCreditSale: creditSale,
             locationId,
             memberId: member?.id || null,
             subtotal,
@@ -767,6 +780,7 @@ class SaleController {
       // Parse filters
       const locationId = req.query.locationId as string | undefined;
       const type = req.query.type as "GENERAL" | "MEMBER" | undefined;
+      const isCreditSaleParam = req.query.isCreditSale as string | undefined;
       const startDate = req.query.startDate as string | undefined;
       const endDate = req.query.endDate as string | undefined;
 
@@ -795,6 +809,12 @@ class SaleController {
 
       if (type) {
         where.type = type;
+      }
+
+      if (isCreditSaleParam === "true") {
+        where.isCreditSale = true;
+      } else if (isCreditSaleParam === "false") {
+        where.isCreditSale = false;
       }
 
       if (startDate || endDate) {
@@ -923,6 +943,112 @@ class SaleController {
       res
         .status(500)
         .json({ message: "Error fetching sale", error: error.message });
+    }
+  }
+
+  // Add payment to a credit sale
+  async addPayment(req: Request, res: Response) {
+    try {
+      const saleId = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const { method, amount }: { method: string; amount: number } = req.body;
+
+      if (!saleId) {
+        return res.status(400).json({ message: "Sale ID is required" });
+      }
+      if (
+        !method ||
+        !["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"].includes(method)
+      ) {
+        return res.status(400).json({
+          message:
+            "Valid payment method is required (CASH, CARD, CHEQUE, FONEPAY, QR)",
+        });
+      }
+      const amountNum = Number(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        return res.status(400).json({
+          message: "Amount must be a positive number",
+        });
+      }
+
+      const sale = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: {
+          payments: { select: { amount: true } },
+        },
+      });
+
+      if (!sale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+      if (!sale.isCreditSale) {
+        return res.status(400).json({
+          message: "Payments can only be added to credit sales",
+        });
+      }
+
+      const amountPaid =
+        sale.payments.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      const totalNum = Number(sale.total);
+      const balanceDue = Math.round((totalNum - amountPaid) * 100) / 100;
+
+      if (amountNum > balanceDue + 0.01) {
+        return res.status(400).json({
+          message: "Payment amount exceeds balance due",
+          balanceDue,
+        });
+      }
+
+      const payment = await prisma.salePayment.create({
+        data: {
+          saleId: sale.id,
+          method: method as "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR",
+          amount: amountNum,
+        },
+      });
+
+      const updatedSale = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: {
+          location: { select: { id: true, name: true } },
+          member: { select: { id: true, phone: true, name: true } },
+          createdBy: { select: { id: true, username: true, role: true } },
+          payments: {
+            select: { id: true, method: true, amount: true, createdAt: true },
+            orderBy: { createdAt: "asc" },
+          },
+          items: {
+            include: {
+              variation: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      name: true,
+                      imsCode: true,
+                      category: true,
+                    },
+                  },
+                  photos: { where: { isPrimary: true }, take: 1 },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      res.status(201).json({
+        message: "Payment added successfully",
+        sale: updatedSale,
+        payment,
+      });
+    } catch (error: any) {
+      console.error("Add payment error:", error);
+      res
+        .status(500)
+        .json({ message: "Error adding payment", error: error.message });
     }
   }
 

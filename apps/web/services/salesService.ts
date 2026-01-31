@@ -60,6 +60,7 @@ export interface Sale {
   id: string;
   saleCode: string;
   type: SaleType;
+  isCreditSale: boolean;
   locationId: string;
   memberId?: string;
   subtotal: number;
@@ -94,6 +95,7 @@ export interface SalesListParams {
   limit?: number;
   locationId?: string;
   type?: SaleType;
+  isCreditSale?: boolean;
   startDate?: string;
   endDate?: string;
   search?: string;
@@ -128,6 +130,7 @@ export interface CreateSaleData {
   items: CreateSaleItem[];
   notes?: string;
   payments?: SalePayment[];
+  isCreditSale?: boolean;
 }
 
 export interface SalesSummary {
@@ -204,6 +207,7 @@ export async function getSales(
     limit = DEFAULT_LIMIT,
     locationId,
     type,
+    isCreditSale,
     startDate,
     endDate,
     search,
@@ -219,6 +223,11 @@ export async function getSales(
   }
   if (type) {
     queryParams.set("type", type);
+  }
+  if (isCreditSale === true) {
+    queryParams.set("isCreditSale", "true");
+  } else if (isCreditSale === false) {
+    queryParams.set("isCreditSale", "false");
   }
   if (startDate) {
     queryParams.set("startDate", startDate);
@@ -262,6 +271,44 @@ export async function getSaleById(id: string): Promise<Sale> {
     return response.data.sale;
   } catch (error) {
     handleApiError(error, `fetch sale "${id}"`);
+  }
+}
+
+interface AddPaymentResponse {
+  message: string;
+  sale: Sale;
+  payment: SalePaymentDetail & { createdAt?: string };
+}
+
+/**
+ * Add payment to a credit sale
+ */
+export async function addPaymentToSale(
+  saleId: string,
+  method: PaymentMethod,
+  amount: number,
+): Promise<Sale> {
+  if (!saleId?.trim()) {
+    throw new Error("Sale ID is required");
+  }
+  if (
+    !method ||
+    !["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"].includes(method)
+  ) {
+    throw new Error("Valid payment method is required");
+  }
+  if (typeof amount !== "number" || amount <= 0) {
+    throw new Error("Amount must be a positive number");
+  }
+
+  try {
+    const response = await api.post<AddPaymentResponse>(
+      `/sales/${saleId}/payments`,
+      { method, amount },
+    );
+    return response.data.sale;
+  } catch (error) {
+    handleApiError(error, "add payment to sale");
   }
 }
 

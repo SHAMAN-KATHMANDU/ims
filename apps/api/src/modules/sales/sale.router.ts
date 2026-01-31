@@ -325,6 +325,49 @@ saleRouter.get(
 
 /**
  * @swagger
+ * /sales/{id}/payments:
+ *   post:
+ *     summary: Add payment to a credit sale
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [method, amount]
+ *             properties:
+ *               method:
+ *                 type: string
+ *                 enum: [CASH, CARD, CHEQUE, FONEPAY, QR]
+ *               amount:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Payment added successfully
+ *       400:
+ *         description: Invalid request or not a credit sale or amount exceeds balance due
+ *       404:
+ *         description: Sale not found
+ */
+saleRouter.post(
+  "/:id/payments",
+  verifyToken,
+  authorizeRoles("user", "admin", "superAdmin"),
+  saleController.addPayment,
+);
+
+/**
+ * @swagger
  * /sales/{id}:
  *   get:
  *     summary: Get sale details by ID
