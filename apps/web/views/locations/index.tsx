@@ -43,8 +43,12 @@ export function LocationsPage() {
     null,
   );
 
-  // Data fetching
-  const { data: locationsResponse, isLoading } = useLocationsPaginated({
+  // Data fetching — refetch on this page when dialog closes
+  const {
+    data: locationsResponse,
+    isLoading,
+    refetch: refetchLocations,
+  } = useLocationsPaginated({
     page,
     limit: DEFAULT_LIMIT,
     search,
@@ -104,6 +108,7 @@ export function LocationsPage() {
       }
       setFormOpen(false);
       setEditingLocation(null);
+      refetchLocations();
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : "Failed to save location";

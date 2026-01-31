@@ -111,8 +111,8 @@ export function useCreateMember() {
   return useMutation({
     mutationFn: (data: CreateMemberData) => createMember(data),
     onSuccess: () => {
-      // Invalidate all member lists
       queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
+      queryClient.refetchQueries({ queryKey: memberKeys.lists() });
     },
   });
 }
@@ -127,17 +127,15 @@ export function useUpdateMember() {
     mutationFn: ({ id, data }: { id: string; data: UpdateMemberData }) =>
       updateMember(id, data),
     onSuccess: (updatedMember) => {
-      // Update the cache for this specific member
       queryClient.setQueryData(
         memberKeys.detail(updatedMember.id),
         updatedMember,
       );
-      // Invalidate all member lists
       queryClient.invalidateQueries({ queryKey: memberKeys.lists() });
-      // Invalidate phone lookup cache
       queryClient.invalidateQueries({
         queryKey: memberKeys.byPhone(updatedMember.phone),
       });
+      queryClient.refetchQueries({ queryKey: memberKeys.lists() });
     },
   });
 }

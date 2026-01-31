@@ -57,6 +57,43 @@ saleRouter.post(
 
 /**
  * @swagger
+ * /sales/preview:
+ *   post:
+ *     summary: Preview sale total (discount + promo, no DB writes)
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [locationId, items]
+ *             properties:
+ *               locationId: { type: string, format: uuid }
+ *               memberPhone: { type: string }
+ *               memberName: { type: string }
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     variationId: { type: string, format: uuid }
+ *                     quantity: { type: integer }
+ *                     promoCode: { type: string }
+ *     responses:
+ *       200:
+ *         description: Returns subtotal, discount, total
+ */
+saleRouter.post(
+  "/preview",
+  verifyToken,
+  authorizeRoles("user", "admin", "superAdmin"),
+  saleController.previewSale,
+);
+
+/**
+ * @swagger
  * /sales:
  *   get:
  *     summary: Get all sales with pagination and filtering
@@ -222,7 +259,7 @@ saleRouter.get(
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: Excel file (.xlsx, .xls, .xlsm) with columns: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount (required). Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR). If Phone number is provided, sale is marked as Member sale; member is found or created with that phone.
+ *                 description: "Excel file (.xlsx, .xls, .xlsm) with columns: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount (required). Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR). If Phone number is provided, sale is marked as Member sale; member is found or created with that phone."
  *     responses:
  *       200:
  *         description: Bulk upload completed

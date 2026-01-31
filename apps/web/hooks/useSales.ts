@@ -84,8 +84,8 @@ export function useSalesPaginated(params: SalesListParams = {}) {
     startDate: params.startDate,
     endDate: params.endDate,
     search: params.search?.trim() || "",
-    sortBy: params.sortBy,
-    sortOrder: params.sortOrder,
+    sortBy: params.sortBy ?? "createdAt",
+    sortOrder: params.sortOrder ?? "desc",
   };
 
   return useQuery({
@@ -115,11 +115,9 @@ export function useCreateSale() {
   return useMutation({
     mutationFn: (data: CreateSaleData) => createSale(data),
     onSuccess: () => {
-      // Invalidate all sales lists
       queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
-      // Invalidate analytics
+      queryClient.refetchQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.analytics() });
-      // Invalidate inventory (since stock is deducted)
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
     },
   });

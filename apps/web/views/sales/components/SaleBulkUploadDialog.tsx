@@ -7,6 +7,7 @@ import {
   bulkUploadSales,
   type SaleBulkUploadResponse,
 } from "@/services/salesService";
+import { salesKeys } from "@/hooks/useSales";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -53,7 +54,8 @@ export function SaleBulkUploadDialog({
     },
     onSuccess: (data) => {
       setUploadResult(data);
-      queryClient.invalidateQueries({ queryKey: ["sales"] });
+      queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
+      queryClient.refetchQueries({ queryKey: salesKeys.lists() });
 
       if (data.summary.created > 0) {
         toast({

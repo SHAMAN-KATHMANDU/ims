@@ -69,7 +69,7 @@ memberRouter.post(
  *               file:
  *                 type: string
  *                 format: binary
- *                 description: Excel file (.xlsx, .xls, .xlsm) with columns: Phone number (required), SN, ID, Name, Address, DoB, Notes, Member since
+ *                 description: "Excel file (.xlsx, .xls, .xlsm) with columns: Phone number (required), SN, ID, Name, Address, DoB, Notes, Member since"
  *     responses:
  *       200:
  *         description: Bulk upload completed
