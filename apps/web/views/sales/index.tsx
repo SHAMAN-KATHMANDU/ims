@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -48,7 +49,6 @@ import {
   FileText,
   Filter,
 } from "lucide-react";
-import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -60,11 +60,10 @@ import {
   startOfDay,
   endOfDay,
   subDays,
+  subMonths,
+  subYears,
   startOfWeek,
   endOfWeek,
-  startOfMonth,
-  endOfMonth,
-  subMonths,
 } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -96,15 +95,13 @@ export function SalesPage() {
   const [locationFilter, setLocationFilter] = useState<string>("ALL");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
-  const [sortBy, setSortBy] = useState<string>("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Dialog state
   const [formOpen, setFormOpen] = useState(false);
   const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
 
-  // Data fetching
+  // Data fetching – newest first
   const { data: salesResponse, isLoading: salesLoading } = useSalesPaginated({
     page,
     limit: pageSize,
@@ -113,8 +110,8 @@ export function SalesPage() {
     locationId: locationFilter === "ALL" ? undefined : locationFilter,
     startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
     endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
-    sortBy,
-    sortOrder,
+    sortBy: "createdAt",
+    sortOrder: "desc",
   });
 
   const sales = salesResponse?.data ?? [];
@@ -176,10 +173,15 @@ export function SalesPage() {
       toast({ title: "Sale completed successfully" });
       setFormOpen(false);
     } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
       const message =
-        error instanceof Error ? error.message : "Failed to create sale";
+        err.response?.data?.message ||
+        (error instanceof Error ? error.message : "Failed to create sale");
       toast({
-        title: "Error",
+        title: "Error creating sale",
         description: message,
         variant: "destructive",
       });
@@ -193,11 +195,6 @@ export function SalesPage() {
   };
 
   const today = new Date();
-  const applyDateShortcut = (start: Date, end: Date) => {
-    setStartDate(start);
-    setEndDate(end);
-    setPage(DEFAULT_PAGE);
-  };
   const dateShortcuts = [
     { label: "Today", start: startOfDay(today), end: endOfDay(today) },
     {
@@ -211,23 +208,22 @@ export function SalesPage() {
       end: endOfWeek(today, { weekStartsOn: 0 }),
     },
     {
-      label: "This month",
-      start: startOfMonth(today),
-      end: endOfMonth(today),
-    },
-    {
       label: "6 months",
       start: startOfDay(subMonths(today, 6)),
       end: endOfDay(today),
     },
+    {
+      label: "1 year",
+      start: startOfDay(subYears(today, 1)),
+      end: endOfDay(today),
+    },
   ];
 
-  const handleSortChange = useCallback((value: string) => {
-    const [by, order] = value.split("-") as [string, "asc" | "desc"];
-    setSortBy(by);
-    setSortOrder(order);
+  const applyDateShortcut = (start: Date, end: Date) => {
+    setStartDate(start);
+    setEndDate(end);
     setPage(DEFAULT_PAGE);
-  }, []);
+  };
 
   // Export handlers
   const handleExport = useCallback(
@@ -277,220 +273,211 @@ export function SalesPage() {
         </p>
       </div>
 
-      {/* Action buttons – above filter */}
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {canManageSales && (
-          <>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <Download className="h-4 w-4 mr-2" />
-                  Download
-                  {selectedSaleIds.size > 0 && (
-                    <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
-                      {selectedSaleIds.size}
-                    </span>
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  onClick={() => handleExport("excel")}
-                  disabled={salesLoading}
-                >
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Download as Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  onClick={() => handleExport("csv")}
-                  disabled={salesLoading}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  Download as CSV
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button
-              variant="outline"
-              onClick={() => setBulkUploadDialog(true)}
-            >
-              <Upload className="h-4 w-4 mr-2" />
-              Bulk Upload
-            </Button>
-          </>
-        )}
-        <NewSaleForm
-          open={formOpen}
-          onOpenChange={setFormOpen}
-          locations={locations}
-          onSubmit={handleCreateSale}
-          isLoading={createSaleMutation.isPending}
-        />
-      </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Minimal filter bar – search + Filters popover (like Catalog) */}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search sales..."
+              value={search}
+              onChange={handleSearchChange}
+              className="pl-8 h-9 text-sm w-full min-w-[180px] max-w-[240px]"
+            />
+          </div>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-2 text-sm shrink-0"
+              >
+                <Filter className="h-4 w-4" />
+                Filters
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80 p-3" align="end">
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">
+                  Type & showroom
+                </p>
+                <div className="grid gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">Type</Label>
+                    <Select value={typeFilter} onValueChange={handleTypeChange}>
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {TYPE_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Showroom</Label>
+                    <Select
+                      value={locationFilter}
+                      onValueChange={handleLocationChange}
+                    >
+                      <SelectTrigger className="h-8 text-sm">
+                        <SelectValue placeholder="Showroom" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL">All Showrooms</SelectItem>
+                        {showrooms.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs font-medium text-muted-foreground pt-1">
+                  Date range
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {dateShortcuts.map(({ label, start, end }) => (
+                    <Button
+                      key={label}
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => applyDateShortcut(start, end)}
+                    >
+                      {label}
+                    </Button>
+                  ))}
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <Label className="text-xs">From</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-8 w-full justify-start text-left font-normal text-sm",
+                            !startDate && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                          {startDate ? format(startDate, "MMM d") : "Select"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={startDate}
+                          onSelect={(date) => {
+                            setStartDate(date);
+                            setPage(DEFAULT_PAGE);
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">To</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn(
+                            "h-8 w-full justify-start text-left font-normal text-sm",
+                            !endDate && "text-muted-foreground",
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                          {endDate ? format(endDate, "MMM d") : "Select"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={endDate}
+                          onSelect={(date) => {
+                            setEndDate(date);
+                            setPage(DEFAULT_PAGE);
+                          }}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+                </div>
+                {(startDate || endDate) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-full text-xs"
+                    onClick={clearDateFilters}
+                  >
+                    <X className="h-3.5 w-3.5 mr-2" />
+                    Clear dates
+                  </Button>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
+        </div>
 
-      {/* Minimal filter bar – same style as products/discounts */}
-      <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
-        <div className="relative flex-1 min-w-[180px] max-w-[280px]">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search sales..."
-            value={search}
-            onChange={handleSearchChange}
-            className="h-8 pl-8 text-sm"
+        <div className="flex items-center gap-2">
+          {canManageSales && (
+            <>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download
+                    {selectedSaleIds.size > 0 && (
+                      <span className="ml-2 rounded-full bg-primary text-primary-foreground px-2 py-0.5 text-xs">
+                        {selectedSaleIds.size}
+                      </span>
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onClick={() => handleExport("excel")}
+                    disabled={salesLoading}
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Download as Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("csv")}
+                    disabled={salesLoading}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    Download as CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="outline"
+                onClick={() => setBulkUploadDialog(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+            </>
+          )}
+          <NewSaleForm
+            open={formOpen}
+            onOpenChange={setFormOpen}
+            locations={locations}
+            onSubmit={handleCreateSale}
+            isLoading={createSaleMutation.isPending}
           />
         </div>
-        <div className="flex flex-wrap items-center gap-1.5">
-          {dateShortcuts.map(({ label, start, end }) => (
-            <Button
-              key={label}
-              variant="outline"
-              size="sm"
-              className="h-8 text-xs shrink-0"
-              onClick={() => applyDateShortcut(start, end)}
-            >
-              {label}
-            </Button>
-          ))}
-        </div>
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 gap-1.5 text-sm">
-              <Filter className="h-3.5 w-3.5" />
-              Filters
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-80 p-3" align="start">
-            <div className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground">Type & location</p>
-              <div className="grid gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">Type</Label>
-                  <Select value={typeFilter} onValueChange={handleTypeChange}>
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TYPE_OPTIONS.map((option) => (
-                        <SelectItem key={option.value} value={option.value}>
-                          {option.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Location</Label>
-                  <Select value={locationFilter} onValueChange={handleLocationChange}>
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="ALL">All showrooms</SelectItem>
-                      {showrooms.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <p className="text-xs font-medium text-muted-foreground pt-1">Date range</p>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs">From</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          "h-8 w-full justify-start text-left font-normal text-sm",
-                          !startDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                        {startDate ? format(startDate, "MMM d") : "Pick"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={startDate}
-                        onSelect={(date) => {
-                          setStartDate(date);
-                          setPage(DEFAULT_PAGE);
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">To</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className={cn(
-                          "h-8 w-full justify-start text-left font-normal text-sm",
-                          !endDate && "text-muted-foreground",
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                        {endDate ? format(endDate, "MMM d") : "Pick"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={endDate}
-                        onSelect={(date) => {
-                          setEndDate(date);
-                          setPage(DEFAULT_PAGE);
-                        }}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-              </div>
-              {(startDate || endDate) && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={clearDateFilters}
-                >
-                  <X className="mr-1 h-3.5 w-3.5" />
-                  Clear dates
-                </Button>
-              )}
-              <div className="space-y-1">
-                <Label className="text-xs">Sort</Label>
-                <Select
-                  value={`${sortBy}-${sortOrder}`}
-                  onValueChange={handleSortChange}
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="createdAt-desc">Newest first</SelectItem>
-                    <SelectItem value="createdAt-asc">Oldest first</SelectItem>
-                    <SelectItem value="total-desc">Total high–low</SelectItem>
-                    <SelectItem value="total-asc">Total low–high</SelectItem>
-                    <SelectItem value="saleCode-asc">Sale code A–Z</SelectItem>
-                    <SelectItem value="saleCode-desc">Sale code Z–A</SelectItem>
-                    <SelectItem value="type-asc">Type A–Z</SelectItem>
-                    <SelectItem value="type-desc">Type Z–A</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </PopoverContent>
-        </Popover>
       </div>
 
       <SalesTable
