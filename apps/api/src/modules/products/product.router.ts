@@ -436,7 +436,8 @@ productRouter.get(
   authorizeRoles("admin", "user", "superAdmin"),
   productController.getProductDiscounts,
 );
-  /**
+
+/**
  * @swagger
  * /products/bulk-upload/template:
  *   get:
