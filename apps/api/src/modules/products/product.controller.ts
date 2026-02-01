@@ -849,6 +849,83 @@ class ProductController {
     }
   }
 
+  // Get active discounts for a product
+  async getProductDiscounts(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      if (!id) {
+        return res.status(400).json({ message: "Product ID is required" });
+      }
+
+      // Check if product exists
+      const product = await prisma.product.findUnique({
+        where: { id },
+        select: { id: true, name: true },
+      });
+
+      if (!product) {
+        return res.status(404).json({ message: "Product not found" });
+      }
+
+      // Get active discounts for the product
+      const now = new Date();
+      const discounts = await prisma.productDiscount.findMany({
+        where: {
+          productId: id,
+          isActive: true,
+          OR: [{ startDate: null }, { startDate: { lte: now } }],
+          AND: [
+            {
+              OR: [{ endDate: null }, { endDate: { gte: now } }],
+            },
+          ],
+        },
+        include: {
+          discountType: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+        orderBy: [
+          {
+            discountType: {
+              name: "asc",
+            },
+          },
+          {
+            value: "desc",
+          },
+        ],
+      });
+
+      // Format the response
+      const formattedDiscounts = discounts.map((discount) => ({
+        id: discount.id,
+        name: discount.discountType.name,
+        value: Number(discount.value),
+        valueType: discount.valueType,
+        discountType: discount.discountType.name,
+        discountTypeId: discount.discountType.id,
+        startDate: discount.startDate,
+        endDate: discount.endDate,
+      }));
+
+      res.status(200).json({
+        message: "Product discounts fetched successfully",
+        discounts: formattedDiscounts,
+      });
+    } catch (error: any) {
+      console.error("Get product discounts error:", error);
+      res.status(500).json({
+        message: "Error fetching product discounts",
+        error: error.message,
+      });
+    }
+  }
+
   // Bulk upload products from Excel or CSV file
   async bulkUploadProducts(req: Request, res: Response) {
     const errors: ValidationError[] = [];

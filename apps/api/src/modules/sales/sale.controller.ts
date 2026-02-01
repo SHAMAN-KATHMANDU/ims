@@ -31,12 +31,14 @@ class SaleController {
       const {
         locationId,
         memberPhone,
+        memberName,
         items,
         notes,
         payments,
       }: {
         locationId: string;
         memberPhone?: string;
+        memberName?: string;
         items: Array<{
           variationId: string;
           quantity: number;
@@ -96,9 +98,12 @@ class SaleController {
         });
 
         if (!member) {
-          // Auto-create member with phone
+          // Auto-create member with phone and optional name
           member = await prisma.member.create({
-            data: { phone: normalizedPhone },
+            data: {
+              phone: normalizedPhone,
+              name: memberName?.trim() || null,
+            },
           });
         }
 
@@ -622,7 +627,12 @@ class SaleController {
             select: { id: true, username: true, role: true },
           },
           payments: {
-            select: { method: true, amount: true, createdAt: true },
+            select: {
+              id: true,
+              method: true,
+              amount: true,
+              createdAt: true,
+            },
             orderBy: { createdAt: "asc" },
           },
           items: {

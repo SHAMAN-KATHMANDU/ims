@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { z } from "zod";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckMember } from "@/hooks/useMember";
 import { useToast } from "@/hooks/useToast";
@@ -8,6 +9,7 @@ import {
   getLocationInventory,
   type LocationInventoryItem,
 } from "@/services/inventoryService";
+import api from "@/lib/axios";
 import { type Location } from "@/services/locationService";
 import { type CreateSaleData, formatCurrency } from "@/services/salesService";
 import {
@@ -30,9 +32,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   Plus,
   Minus,
@@ -43,7 +54,38 @@ import {
   Loader2,
   CreditCard,
   FileText,
+  Tag,
 } from "lucide-react";
+
+// Zod schema for phone validation
+const phoneSchema = z
+  .string()
+  .optional()
+  .refine((val) => !val || /^\d+$/.test(val), {
+    message: "Phone number must contain only digits",
+  })
+  .refine((val) => !val || val.length >= 10, {
+    message: "Phone number must be at least 10 digits",
+  });
+
+interface ProductDiscount {
+  id: string;
+  name: string;
+  value: number;
+  valueType: "PERCENTAGE" | "FLAT";
+  discountType: string;
+  discountTypeId: string;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+// Helper to format discount display
+const formatDiscountLabel = (discount: ProductDiscount): string => {
+  if (discount.valueType === "FLAT") {
+    return `${discount.discountType} - ${formatCurrency(discount.value)}`;
+  }
+  return `${discount.discountType} - ${discount.value}%`;
+};
 
 interface SaleItem {
   variationId: string;
@@ -54,8 +96,8 @@ interface SaleItem {
   quantity: number;
   maxQuantity: number;
   promoCode?: string;
-  // Optional client-side hint for discount; actual calculation happens on the backend
-  discountPercent?: number;
+  selectedDiscountId?: string;
+  availableDiscounts?: ProductDiscount[];
 }
 
 type PaymentMethod = "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
@@ -84,12 +126,111 @@ export function NewSaleForm({
   // Form state
   const [locationId, setLocationId] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
+  const [memberName, setMemberName] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SaleItem[]>([]);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>("CASH");
   const [paymentAmount, setPaymentAmount] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
+  const [promoCodeValidating, setPromoCodeValidating] = useState(false);
+  const debouncedPromoCode = useDebounce(promoCode, 500);
+
+  // Validate promo code when debounced value changes
+  useEffect(() => {
+    const validatePromoCode = async () => {
+      if (!debouncedPromoCode.trim()) {
+        setPromoCodeError(null);
+        // Clear promo codes from all items
+        setItems((prevItems) =>
+          prevItems.map((item) => ({
+            ...item,
+            promoCode: undefined,
+          })),
+        );
+        return;
+      }
+
+      if (items.length === 0) return;
+
+      setPromoCodeValidating(true);
+      setPromoCodeError(null);
+
+      try {
+        // Search for promo code using the search endpoint
+        const response = await api.get<{
+          message: string;
+          data: Array<{
+            id: string;
+            code: string;
+            isActive: boolean;
+            products?: Array<{ productId: string }>;
+          }>;
+        }>(
+          `/promos?search=${encodeURIComponent(debouncedPromoCode.trim())}&limit=1`,
+        );
+
+        const foundPromo = response.data.data?.find(
+          (p) =>
+            p.code.toLowerCase() === debouncedPromoCode.trim().toLowerCase(),
+        );
+
+        if (foundPromo) {
+          if (!foundPromo.isActive) {
+            setPromoCodeError("Promo code is not active");
+            setItems((prevItems) =>
+              prevItems.map((item) => ({
+                ...item,
+                promoCode: undefined,
+              })),
+            );
+          } else {
+            // Apply promo code to all items (backend will validate eligibility)
+            setItems((prevItems) =>
+              prevItems.map((item) => ({
+                ...item,
+                promoCode: debouncedPromoCode.trim(),
+              })),
+            );
+            setPromoCodeError(null);
+          }
+        } else {
+          setPromoCodeError("Promo code not found");
+          setItems((prevItems) =>
+            prevItems.map((item) => ({
+              ...item,
+              promoCode: undefined,
+            })),
+          );
+        }
+      } catch {
+        setPromoCodeError("Error validating promo code");
+        setItems((prevItems) =>
+          prevItems.map((item) => ({
+            ...item,
+            promoCode: undefined,
+          })),
+        );
+      } finally {
+        setPromoCodeValidating(false);
+      }
+    };
+
+    validatePromoCode();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedPromoCode]);
+
+  // Discount mode: 'individual' (per product) or 'aggregate' (whole sale)
+  const [discountMode, setDiscountMode] = useState<"individual" | "aggregate">(
+    "individual",
+  );
+  const [aggregateDiscountId, setAggregateDiscountId] =
+    useState<string>("none");
+  const [aggregateDiscountAmount, setAggregateDiscountAmount] =
+    useState<number>(0);
 
   // Inventory state
   const [inventory, setInventory] = useState<LocationInventoryItem[]>([]);
@@ -137,7 +278,7 @@ export function NewSaleForm({
   });
 
   // Add item to sale
-  const handleAddItem = (inventoryItem: LocationInventoryItem) => {
+  const handleAddItem = async (inventoryItem: LocationInventoryItem) => {
     // Check if already added
     const existingIndex = items.findIndex(
       (item) => item.variationId === inventoryItem.variationId,
@@ -157,7 +298,33 @@ export function NewSaleForm({
       return;
     }
 
-    // Add new item
+    // Fetch available discounts for this product
+    const fetchProductDiscounts = async (productId: string) => {
+      try {
+        const response = await api.get<{
+          message: string;
+          discounts: Array<{
+            id: string;
+            name: string;
+            value: number;
+            valueType: "PERCENTAGE" | "FLAT";
+            discountType: string;
+            discountTypeId: string;
+            startDate: string | null;
+            endDate: string | null;
+          }>;
+        }>(`/products/${productId}/discounts`);
+        return response.data.discounts || [];
+      } catch {
+        console.error("Failed to fetch discounts");
+        return [];
+      }
+    };
+
+    // Fetch discounts and add item
+    const discounts = await fetchProductDiscounts(
+      inventoryItem.variation.product.id,
+    );
     setItems([
       ...items,
       {
@@ -168,7 +335,8 @@ export function NewSaleForm({
         unitPrice: Number(inventoryItem.variation.product.mrp),
         quantity: 1,
         maxQuantity: inventoryItem.quantity,
-        discountPercent: 0, // Will be updated if member discount applies
+        selectedDiscountId: "none",
+        availableDiscounts: discounts,
       },
     ]);
     setProductSearch(""); // Clear search after adding
@@ -191,11 +359,51 @@ export function NewSaleForm({
     setItems(items.filter((_, i) => i !== index));
   };
 
+  // Calculate item-level discounts (for individual mode)
+  const calculateItemDiscount = (item: SaleItem): number => {
+    if (discountMode === "aggregate") return 0;
+
+    const itemSubtotal = item.unitPrice * item.quantity;
+
+    if (item.selectedDiscountId && item.availableDiscounts) {
+      const selectedDiscount = item.availableDiscounts.find(
+        (d) => d.id === item.selectedDiscountId,
+      );
+      if (selectedDiscount) {
+        if (selectedDiscount.valueType === "FLAT") {
+          return Math.min(selectedDiscount.value, itemSubtotal);
+        } else {
+          return itemSubtotal * (selectedDiscount.value / 100);
+        }
+      }
+    }
+
+    return 0;
+  };
+
   // Calculate totals
   const subtotal = items.reduce(
     (sum, item) => sum + item.unitPrice * item.quantity,
     0,
   );
+
+  // Calculate total discount
+  let totalDiscount = 0;
+  if (discountMode === "aggregate") {
+    if (aggregateDiscountAmount > 0) {
+      totalDiscount = Math.min(aggregateDiscountAmount, subtotal);
+    } else if (aggregateDiscountId && aggregateDiscountId !== "none") {
+      // This would be used if we have aggregate discount options from API
+      // For now, we use the flat amount input
+    }
+  } else {
+    totalDiscount = items.reduce(
+      (sum, item) => sum + calculateItemDiscount(item),
+      0,
+    );
+  }
+
+  const finalTotal = subtotal - totalDiscount;
 
   const totalPayment = payments.reduce(
     (sum, payment) => sum + payment.amount,
@@ -228,10 +436,27 @@ export function NewSaleForm({
 
     if (!locationId || items.length === 0) return;
 
-    if (totalPayment <= 0 || Math.abs(totalPayment - subtotal) > 0.01) {
+    // Validate phone number if provided
+    if (memberPhone.trim()) {
+      const result = phoneSchema.safeParse(memberPhone.trim());
+      if (!result.success) {
+        setPhoneError(
+          result.error.errors[0]?.message || "Invalid phone number",
+        );
+        toast({
+          title: "Validation Error",
+          description: "Please enter a valid phone number",
+          variant: "destructive",
+        });
+        return;
+      }
+    }
+
+    if (totalPayment <= 0 || Math.abs(totalPayment - finalTotal) > 0.01) {
       toast({
         title: "Payment Error",
-        description: "Payment total must match the order total",
+        description:
+          "Payment total must match the order total (after discounts)",
         variant: "destructive",
       });
       return;
@@ -240,6 +465,7 @@ export function NewSaleForm({
     await onSubmit({
       locationId,
       memberPhone: memberPhone.trim() || undefined,
+      memberName: memberName.trim() || undefined,
       items: items.map((item) => ({
         variationId: item.variationId,
         quantity: item.quantity,
@@ -255,12 +481,19 @@ export function NewSaleForm({
     // Reset form
     setLocationId("");
     setMemberPhone("");
+    setPhoneError(null);
+    setMemberName("");
     setNotes("");
     setItems([]);
     setProductSearch("");
     setPayments([]);
     setSelectedPaymentMethod("CASH");
     setPaymentAmount("");
+    setDiscountMode("individual");
+    setAggregateDiscountId("none");
+    setAggregateDiscountAmount(0);
+    setPromoCode("");
+    setPromoCodeError(null);
   };
 
   // Reset form when dialog closes
@@ -268,12 +501,19 @@ export function NewSaleForm({
     if (!newOpen) {
       setLocationId("");
       setMemberPhone("");
+      setPhoneError(null);
+      setMemberName("");
       setNotes("");
       setItems([]);
       setProductSearch("");
       setPayments([]);
       setSelectedPaymentMethod("CASH");
       setPaymentAmount("");
+      setDiscountMode("individual");
+      setAggregateDiscountId("none");
+      setAggregateDiscountAmount(0);
+      setPromoCode("");
+      setPromoCodeError(null);
     }
     onOpenChange(newOpen);
   };
@@ -286,9 +526,12 @@ export function NewSaleForm({
           New Sale
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[700px] max-h-[90vh] flex flex-col">
-        <form onSubmit={handleSubmit} className="flex h-full flex-col">
-          <DialogHeader>
+      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <form
+          onSubmit={handleSubmit}
+          className="flex flex-col h-full overflow-hidden"
+        >
+          <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b">
             <DialogTitle>Create New Sale</DialogTitle>
             <DialogDescription>
               Record a sale from a showroom. Inventory will be deducted
@@ -296,398 +539,733 @@ export function NewSaleForm({
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs
-            value={activeTab}
-            onValueChange={(v) =>
-              setActiveTab(v as "products" | "payment" | "details")
-            }
-            className="mt-2 flex-1 flex flex-col"
-          >
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="products">
-                <ShoppingCart className="h-4 w-4 mr-2" />
-                Products
-              </TabsTrigger>
-              <TabsTrigger value="payment" disabled={items.length === 0}>
-                <CreditCard className="h-4 w-4 mr-2" />
-                Payment
-              </TabsTrigger>
-              <TabsTrigger value="details" disabled={items.length === 0}>
-                <FileText className="h-4 w-4 mr-2" />
-                Details
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex-1 flex overflow-hidden min-h-0">
+            {/* Main Content Area */}
+            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+              <Tabs
+                value={activeTab}
+                onValueChange={(v) =>
+                  setActiveTab(v as "products" | "payment" | "details")
+                }
+                className="flex flex-col h-full overflow-hidden"
+              >
+                <TabsList className="grid w-full grid-cols-3 mx-6 mt-4 shrink-0">
+                  <TabsTrigger value="products">
+                    <ShoppingCart className="h-4 w-4 mr-2" />
+                    Products
+                  </TabsTrigger>
+                  <TabsTrigger value="payment" disabled={items.length === 0}>
+                    <CreditCard className="h-4 w-4 mr-2" />
+                    Payment
+                  </TabsTrigger>
+                  <TabsTrigger value="details" disabled={items.length === 0}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Details
+                  </TabsTrigger>
+                </TabsList>
 
-            <ScrollArea className="flex-1 pr-4 mt-4">
-              <TabsContent value="products" className="space-y-6 py-2">
-                {/* Location Selection */}
-                <div className="space-y-2">
-                  <Label htmlFor="location">Showroom *</Label>
-                  <Select value={locationId} onValueChange={setLocationId}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a showroom" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {showrooms.map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {/* Member Phone */}
-                <div className="space-y-2">
-                  <Label htmlFor="memberPhone">Customer Phone (Optional)</Label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      id="memberPhone"
-                      value={memberPhone}
-                      onChange={(e) => setMemberPhone(e.target.value)}
-                      placeholder="Enter phone for member discount"
-                      className="pl-9"
-                    />
-                  </div>
-                  {memberPhone && (
-                    <div className="flex items-center gap-2 text-sm">
-                      {checkingMember ? (
-                        <span className="text-muted-foreground">
-                          Checking membership...
-                        </span>
-                      ) : memberCheck?.isMember ? (
-                        <>
-                          <Badge
-                            variant="secondary"
-                            className="bg-green-100 text-green-800"
-                          >
-                            Member
-                          </Badge>
-                          <span className="text-muted-foreground">
-                            {memberCheck.member?.name ||
-                              memberCheck.member?.phone}
-                            {" - Member discount will apply"}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-muted-foreground">
-                          Not a member - will be auto-registered
-                        </span>
-                      )}
-                    </div>
-                  )}
-                </div>
-
-                {/* Product Search and Add */}
-                {locationId && (
-                  <div className="space-y-2">
-                    <Label>Add Products</Label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        value={productSearch}
-                        onChange={(e) => setProductSearch(e.target.value)}
-                        placeholder="Search by product name, code, or color..."
-                        className="pl-9"
-                      />
-                    </div>
-
-                    {/* Available Products */}
-                    {inventoryLoading ? (
-                      <div className="flex items-center justify-center py-4">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : productSearch ? (
-                      <div className="border rounded-md max-h-48 overflow-y-auto">
-                        {filteredInventory.length === 0 ? (
-                          <div className="p-4 text-center text-muted-foreground text-sm">
-                            No products found
+                <div className="flex-1 overflow-hidden min-h-0 px-6 mt-4">
+                  <ScrollArea className="h-full">
+                    <TabsContent
+                      value="products"
+                      className="space-y-4 py-4 mt-0"
+                    >
+                      {/* Product Search and Add */}
+                      {locationId && (
+                        <div className="space-y-2">
+                          <Label>Add Products</Label>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                            <Input
+                              value={productSearch}
+                              onChange={(e) => setProductSearch(e.target.value)}
+                              placeholder="Search by product name, code, or color..."
+                              className="pl-9"
+                            />
                           </div>
-                        ) : (
-                          filteredInventory.slice(0, 10).map((item) => (
+
+                          {/* Available Products */}
+                          {inventoryLoading ? (
+                            <div className="flex items-center justify-center py-4">
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                            </div>
+                          ) : productSearch ? (
+                            <div className="border rounded-md max-h-48 overflow-y-auto">
+                              {filteredInventory.length === 0 ? (
+                                <div className="p-4 text-center text-muted-foreground text-sm">
+                                  No products found
+                                </div>
+                              ) : (
+                                filteredInventory.slice(0, 10).map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="flex items-center justify-between p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
+                                    onClick={() => handleAddItem(item)}
+                                  >
+                                    <div>
+                                      <div className="font-medium">
+                                        {item.variation.product.name}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        {item.variation.product.imsCode} -{" "}
+                                        {item.variation.color}
+                                      </div>
+                                    </div>
+                                    <div className="text-right">
+                                      <div className="font-medium">
+                                        {formatCurrency(
+                                          Number(item.variation.product.mrp),
+                                        )}
+                                      </div>
+                                      <div className="text-sm text-muted-foreground">
+                                        Stock: {item.quantity}
+                                      </div>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          ) : null}
+                        </div>
+                      )}
+
+                      {/* Discount Mode Selection */}
+                      {items.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Discount Type</Label>
+                          <RadioGroup
+                            value={discountMode}
+                            onValueChange={(value) =>
+                              setDiscountMode(
+                                value as "individual" | "aggregate",
+                              )
+                            }
+                            className="flex gap-6"
+                          >
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="individual"
+                                id="individual"
+                              />
+                              <Label
+                                htmlFor="individual"
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                Individual (Per Product)
+                              </Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem
+                                value="aggregate"
+                                id="aggregate"
+                              />
+                              <Label
+                                htmlFor="aggregate"
+                                className="text-sm font-normal cursor-pointer"
+                              >
+                                Aggregate (Whole Sale)
+                              </Label>
+                            </div>
+                          </RadioGroup>
+                        </div>
+                      )}
+
+                      {/* Aggregate Discount */}
+                      {items.length > 0 && discountMode === "aggregate" && (
+                        <div className="space-y-2 border rounded-md p-3 bg-muted/30">
+                          <Label className="flex items-center gap-2">
+                            <Tag className="h-4 w-4" />
+                            Aggregate Discount
+                          </Label>
+                          <div className="flex gap-2">
+                            <div className="flex-1">
+                              <Label className="text-xs text-muted-foreground">
+                                Discount Amount (Flat)
+                              </Label>
+                              <Input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={aggregateDiscountAmount || ""}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setAggregateDiscountAmount(
+                                    val >= 0 ? val : 0,
+                                  );
+                                  if (val > 0) {
+                                    setAggregateDiscountId("none");
+                                  }
+                                }}
+                                placeholder="0.00"
+                                className="h-9"
+                              />
+                            </div>
+                          </div>
+                          {aggregateDiscountAmount > 0 && (
+                            <div className="text-sm text-muted-foreground">
+                              Discount:{" "}
+                              {formatCurrency(aggregateDiscountAmount)}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Selected Items */}
+                      {items.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>
+                            <ShoppingCart className="inline-block h-4 w-4 mr-1" />
+                            Cart ({items.length} items)
+                          </Label>
+                          <div className="rounded-md border overflow-hidden">
                             <div
-                              key={item.id}
-                              className="flex items-center justify-between p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
-                              onClick={() => handleAddItem(item)}
+                              className={
+                                discountMode === "aggregate"
+                                  ? "max-h-[300px] overflow-y-auto"
+                                  : "max-h-[350px] overflow-y-auto"
+                              }
                             >
-                              <div>
-                                <div className="font-medium">
-                                  {item.variation.product.name}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  {item.variation.product.imsCode} -{" "}
-                                  {item.variation.color}
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-medium">
-                                  {formatCurrency(
-                                    Number(item.variation.product.mrp),
-                                  )}
-                                </div>
-                                <div className="text-sm text-muted-foreground">
-                                  Stock: {item.quantity}
-                                </div>
+                              <div className="divide-y">
+                                {items.map((item, index) => (
+                                  <div
+                                    key={item.variationId}
+                                    className="flex items-start gap-1.5 p-2 w-full"
+                                  >
+                                    <div className="flex-1 min-w-0 overflow-hidden pr-1">
+                                      {/* Name and Price side by side */}
+                                      <div className="flex items-start justify-between gap-1.5 mb-1">
+                                        <div className="flex-1 min-w-0 overflow-hidden">
+                                          <div className="font-medium text-sm truncate">
+                                            {item.productName}
+                                          </div>
+                                        </div>
+                                        <div className="text-right shrink-0 whitespace-nowrap pl-2">
+                                          <div className="font-medium text-xs">
+                                            {formatCurrency(
+                                              item.unitPrice * item.quantity,
+                                            )}
+                                          </div>
+                                          {discountMode === "individual" &&
+                                            calculateItemDiscount(item) > 0 && (
+                                              <div className="text-[10px] text-green-600">
+                                                -{" "}
+                                                {formatCurrency(
+                                                  calculateItemDiscount(item),
+                                                )}
+                                              </div>
+                                            )}
+                                        </div>
+                                      </div>
+                                      {/* Code and Discount below */}
+                                      <div className="space-y-0.5">
+                                        <div className="text-[10px] text-muted-foreground truncate">
+                                          {item.imsCode} - {item.color}
+                                        </div>
+                                        <div className="text-[10px] text-muted-foreground">
+                                          {formatCurrency(item.unitPrice)} x{" "}
+                                          {item.quantity}
+                                        </div>
+                                        {discountMode === "individual" && (
+                                          <div className="space-y-1.5 mt-1">
+                                            {/* Available Discounts Table */}
+                                            {item.availableDiscounts &&
+                                              item.availableDiscounts.length >
+                                                0 && (
+                                                <div className="space-y-0.5">
+                                                  <Label className="text-[10px] font-medium">
+                                                    Available Discounts:
+                                                  </Label>
+                                                  <div className="border rounded-md overflow-hidden">
+                                                    <Table>
+                                                      <TableHeader>
+                                                        <TableRow className="h-6">
+                                                          <TableHead className="h-6 px-1.5 text-[10px]">
+                                                            Type
+                                                          </TableHead>
+                                                          <TableHead className="h-6 px-1.5 text-[10px]">
+                                                            Value
+                                                          </TableHead>
+                                                        </TableRow>
+                                                      </TableHeader>
+                                                      <TableBody>
+                                                        {item.availableDiscounts.map(
+                                                          (discount) => (
+                                                            <TableRow
+                                                              key={discount.id}
+                                                              className="h-6"
+                                                            >
+                                                              <TableCell className="h-6 px-1.5 text-[10px]">
+                                                                {
+                                                                  discount.discountType
+                                                                }
+                                                              </TableCell>
+                                                              <TableCell className="h-6 px-1.5 text-[10px]">
+                                                                {discount.valueType ===
+                                                                "FLAT"
+                                                                  ? formatCurrency(
+                                                                      discount.value,
+                                                                    )
+                                                                  : `${discount.value}%`}
+                                                              </TableCell>
+                                                            </TableRow>
+                                                          ),
+                                                        )}
+                                                      </TableBody>
+                                                    </Table>
+                                                  </div>
+                                                </div>
+                                              )}
+                                            {/* Discount Selection Dropdown */}
+                                            <div className="flex items-center gap-1.5">
+                                              <Label className="text-[10px] whitespace-nowrap">
+                                                Select Discount:
+                                              </Label>
+                                              <Select
+                                                value={
+                                                  item.selectedDiscountId ||
+                                                  "none"
+                                                }
+                                                onValueChange={(value) => {
+                                                  const newItems = [...items];
+                                                  newItems[index] = {
+                                                    ...item,
+                                                    selectedDiscountId: value,
+                                                  };
+                                                  setItems(newItems);
+                                                }}
+                                              >
+                                                <SelectTrigger className="h-6 w-32 text-[10px]">
+                                                  <SelectValue placeholder="Select discount" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                  <SelectItem value="none">
+                                                    No Discount
+                                                  </SelectItem>
+                                                  {item.availableDiscounts?.map(
+                                                    (discount) => (
+                                                      <SelectItem
+                                                        key={discount.id}
+                                                        value={discount.id}
+                                                      >
+                                                        {formatDiscountLabel(
+                                                          discount,
+                                                        )}
+                                                      </SelectItem>
+                                                    ),
+                                                  )}
+                                                </SelectContent>
+                                              </Select>
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-0.5 shrink-0">
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-6 w-6 shrink-0"
+                                        onClick={() =>
+                                          handleQuantityChange(index, -1)
+                                        }
+                                        disabled={item.quantity <= 1}
+                                      >
+                                        <Minus className="h-2.5 w-2.5" />
+                                      </Button>
+                                      <span className="w-4 text-center text-[10px] shrink-0">
+                                        {item.quantity}
+                                      </span>
+                                      <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="icon"
+                                        className="h-6 w-6 shrink-0"
+                                        onClick={() =>
+                                          handleQuantityChange(index, 1)
+                                        }
+                                        disabled={
+                                          item.quantity >= item.maxQuantity
+                                        }
+                                      >
+                                        <Plus className="h-2.5 w-2.5" />
+                                      </Button>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 text-destructive shrink-0"
+                                        onClick={() => handleRemoveItem(index)}
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                          ))
+                          </div>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    <TabsContent
+                      value="payment"
+                      className="space-y-4 py-4 mt-0"
+                    >
+                      {/* Total MRP Display */}
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">Total MRP</span>
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(subtotal)}
+                          </span>
+                        </div>
+                        {totalDiscount > 0 && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">
+                              Total Discount
+                            </span>
+                            <span className="font-medium text-green-600">
+                              -{formatCurrency(totalDiscount)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-sm font-medium">
+                            Final Total
+                          </span>
+                          <span className="text-lg font-semibold">
+                            {formatCurrency(finalTotal)}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Promo Code */}
+                      {items.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Promo Code (Optional)</Label>
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <Input
+                                value={promoCode}
+                                onChange={(e) => {
+                                  setPromoCode(e.target.value);
+                                }}
+                                placeholder="Enter promo code (auto-validated)"
+                                className="flex-1"
+                                disabled={promoCodeValidating}
+                              />
+                              {promoCodeValidating && (
+                                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                              )}
+                            </div>
+                          </div>
+                          {promoCodeError && (
+                            <p className="text-xs text-destructive">
+                              {promoCodeError}
+                            </p>
+                          )}
+                          {promoCode &&
+                            !promoCodeError &&
+                            !promoCodeValidating && (
+                              <p className="text-xs text-green-600">
+                                ✓ Promo code applied to all items
+                              </p>
+                            )}
+                        </div>
+                      )}
+
+                      {/* Add Payment */}
+                      <div className="space-y-3">
+                        <Label>Add Payment</Label>
+                        <div className="flex gap-2">
+                          <Select
+                            value={selectedPaymentMethod}
+                            onValueChange={(value) =>
+                              setSelectedPaymentMethod(value as PaymentMethod)
+                            }
+                          >
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="CASH">Cash</SelectItem>
+                              <SelectItem value="CARD">Card</SelectItem>
+                              <SelectItem value="CHEQUE">Cheque</SelectItem>
+                              <SelectItem value="FONEPAY">Fonepay</SelectItem>
+                              <SelectItem value="QR">QR</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            placeholder="Amount"
+                            className="flex-1"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleAddPayment();
+                              }
+                            }}
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleAddPayment}
+                            disabled={
+                              !paymentAmount || Number(paymentAmount) <= 0
+                            }
+                          >
+                            <Plus className="h-4 w-4 mr-2" />
+                            Add
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Payment List */}
+                      {payments.length > 0 && (
+                        <div className="space-y-2">
+                          <Label>Payments ({payments.length})</Label>
+                          <div className="rounded-md border overflow-hidden">
+                            <div className="max-h-[200px] overflow-y-auto">
+                              <div className="divide-y">
+                                {payments.map((payment) => (
+                                  <div
+                                    key={payment.id}
+                                    className="flex items-center justify-between p-3"
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <Badge variant="outline">
+                                        {payment.method}
+                                      </Badge>
+                                      <span className="font-medium">
+                                        {formatCurrency(payment.amount)}
+                                      </span>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="h-8 w-8 text-destructive"
+                                      onClick={() =>
+                                        handleRemovePayment(payment.id)
+                                      }
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Payment Summary */}
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>Payment Total</span>
+                          <span className="font-semibold">
+                            {formatCurrency(totalPayment)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Remaining</span>
+                          <span
+                            className={
+                              Math.abs(finalTotal - totalPayment) < 0.01
+                                ? "font-semibold text-green-600"
+                                : "font-semibold text-orange-600"
+                            }
+                          >
+                            {formatCurrency(finalTotal - totalPayment)}
+                          </span>
+                        </div>
+                        {Math.abs(finalTotal - totalPayment) > 0.01 && (
+                          <p className="text-xs text-muted-foreground">
+                            Payment total must match Final Total (after
+                            discounts)
+                          </p>
                         )}
                       </div>
-                    ) : null}
-                  </div>
-                )}
+                    </TabsContent>
 
-                {/* Selected Items */}
-                {items.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>
-                      <ShoppingCart className="inline-block h-4 w-4 mr-1" />
-                      Cart ({items.length} items)
-                    </Label>
-                    <ScrollArea className="h-[300px] rounded-md border">
-                      <div className="divide-y">
-                        {items.map((item, index) => (
-                          <div
-                            key={item.variationId}
-                            className="flex items-center justify-between p-3"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="font-medium truncate">
-                                {item.productName}
-                              </div>
-                              <div className="text-sm text-muted-foreground">
-                                {item.imsCode} - {item.color}
-                              </div>
-                              <div className="text-sm">
-                                {formatCurrency(item.unitPrice)} x{" "}
-                                {item.quantity} ={" "}
-                                <span className="font-medium">
-                                  {formatCurrency(
-                                    item.unitPrice * item.quantity,
-                                  )}
-                                </span>
-                              </div>
-                              <div className="mt-1 flex items-center gap-2">
-                                <Label className="text-xs">Promo Code</Label>
-                                <Input
-                                  className="h-7 w-32 text-xs"
-                                  value={item.promoCode ?? ""}
-                                  onChange={(e) => {
-                                    const newItems = [...items];
-                                    newItems[index] = {
-                                      ...item,
-                                      promoCode: e.target.value,
-                                    };
-                                    setItems(newItems);
-                                  }}
-                                  placeholder="Optional"
-                                />
-                              </div>
-                            </div>
-                            <div className="ml-4 flex items-center gap-2">
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleQuantityChange(index, -1)}
-                                disabled={item.quantity <= 1}
-                              >
-                                <Minus className="h-3 w-3" />
-                              </Button>
-                              <span className="w-8 text-center">
-                                {item.quantity}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="icon"
-                                className="h-8 w-8"
-                                onClick={() => handleQuantityChange(index, 1)}
-                                disabled={item.quantity >= item.maxQuantity}
-                              >
-                                <Plus className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="h-8 w-8 text-destructive"
-                                onClick={() => handleRemoveItem(index)}
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="payment" className="space-y-6 py-2">
-                {/* Total MRP Display */}
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm font-medium">Total MRP</span>
-                    <span className="text-lg font-semibold">
-                      {formatCurrency(subtotal)}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Add Payment */}
-                <div className="space-y-3">
-                  <Label>Add Payment</Label>
-                  <div className="flex gap-2">
-                    <Select
-                      value={selectedPaymentMethod}
-                      onValueChange={(value) =>
-                        setSelectedPaymentMethod(value as PaymentMethod)
-                      }
+                    <TabsContent
+                      value="details"
+                      className="space-y-4 py-4 mt-0"
                     >
-                      <SelectTrigger className="w-[140px]">
-                        <SelectValue />
+                      {/* Notes */}
+                      <div className="space-y-2">
+                        <Label htmlFor="notes">Notes (Optional)</Label>
+                        <Textarea
+                          id="notes"
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Add any notes about this sale..."
+                          rows={6}
+                        />
+                      </div>
+
+                      {/* Summary */}
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                        <div className="text-sm font-medium mb-3">
+                          Sale Summary
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Items</span>
+                          <span>{items.length}</span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span>Total MRP</span>
+                          <span>{formatCurrency(subtotal)}</span>
+                        </div>
+                        {totalDiscount > 0 && (
+                          <div className="flex justify-between text-sm">
+                            <span>Total Discount</span>
+                            <span className="text-green-600">
+                              -{formatCurrency(totalDiscount)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between text-sm">
+                          <span>Payment Methods</span>
+                          <span>{payments.length}</span>
+                        </div>
+                        <div className="flex justify-between text-sm font-semibold pt-2 border-t">
+                          <span>Total Payment</span>
+                          <span>{formatCurrency(totalPayment)}</span>
+                        </div>
+                      </div>
+                    </TabsContent>
+                  </ScrollArea>
+                </div>
+              </Tabs>
+            </div>
+
+            {/* Sidebar */}
+            <div className="w-72 border-l bg-muted/30 flex flex-col shrink-0 overflow-hidden">
+              <div className="p-4 border-b shrink-0">
+                <h3 className="text-sm font-semibold">Sale Information</h3>
+              </div>
+              <ScrollArea className="flex-1 min-h-0">
+                <div className="p-4 space-y-4">
+                  {/* Location Selection */}
+                  <div className="space-y-2">
+                    <Label htmlFor="location">Showroom *</Label>
+                    <Select value={locationId} onValueChange={setLocationId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a showroom" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="CASH">Cash</SelectItem>
-                        <SelectItem value="CARD">Card</SelectItem>
-                        <SelectItem value="CHEQUE">Cheque</SelectItem>
-                        <SelectItem value="FONEPAY">Fonepay</SelectItem>
-                        <SelectItem value="QR">QR</SelectItem>
+                        {showrooms.map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                    <Input
-                      type="number"
-                      min="0"
-                      step="0.01"
-                      value={paymentAmount}
-                      onChange={(e) => setPaymentAmount(e.target.value)}
-                      placeholder="Amount"
-                      className="flex-1"
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleAddPayment();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleAddPayment}
-                      disabled={!paymentAmount || Number(paymentAmount) <= 0}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add
-                    </Button>
                   </div>
-                </div>
 
-                {/* Payment List */}
-                {payments.length > 0 && (
+                  {/* Member Phone */}
                   <div className="space-y-2">
-                    <Label>Payments ({payments.length})</Label>
-                    <ScrollArea className="h-[200px] rounded-md border">
-                      <div className="divide-y">
-                        {payments.map((payment) => (
-                          <div
-                            key={payment.id}
-                            className="flex items-center justify-between p-3"
-                          >
-                            <div className="flex items-center gap-3">
-                              <Badge variant="outline">{payment.method}</Badge>
-                              <span className="font-medium">
-                                {formatCurrency(payment.amount)}
-                              </span>
-                            </div>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => handleRemovePayment(payment.id)}
+                    <Label htmlFor="memberPhone">Customer Phone</Label>
+                    <div className="relative">
+                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        id="memberPhone"
+                        type="tel"
+                        value={memberPhone}
+                        onChange={(e) => {
+                          const value = e.target.value;
+                          setMemberPhone(value);
+                          // Validate phone number
+                          if (value.trim()) {
+                            const result = phoneSchema.safeParse(value.trim());
+                            if (!result.success) {
+                              setPhoneError(
+                                result.error.errors[0]?.message ||
+                                  "Invalid phone number",
+                              );
+                            } else {
+                              setPhoneError(null);
+                            }
+                          } else {
+                            setPhoneError(null);
+                          }
+                        }}
+                        placeholder="Enter phone"
+                        className={
+                          phoneError ? "pl-9 border-destructive" : "pl-9"
+                        }
+                      />
+                    </div>
+                    {phoneError && (
+                      <p className="text-xs text-destructive">{phoneError}</p>
+                    )}
+                    {memberPhone && !phoneError && (
+                      <div className="space-y-1">
+                        {checkingMember ? (
+                          <span className="text-xs text-muted-foreground">
+                            Checking...
+                          </span>
+                        ) : memberCheck?.isMember ? (
+                          <>
+                            <Badge
+                              variant="secondary"
+                              className="bg-green-100 text-green-800 text-xs"
                             >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
+                              Member
+                            </Badge>
+                            <div className="text-xs text-muted-foreground">
+                              {memberCheck.member?.name ||
+                                memberCheck.member?.phone}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              Member discount will apply
+                            </div>
+                          </>
+                        ) : (
+                          <div className="space-y-2">
+                            <span className="text-xs text-muted-foreground">
+                              Will be auto-registered
+                            </span>
+                            <div className="space-y-1">
+                              <Label className="text-xs">
+                                Customer Name (Optional)
+                              </Label>
+                              <Input
+                                type="text"
+                                value={memberName}
+                                onChange={(e) => setMemberName(e.target.value)}
+                                placeholder="Enter customer name"
+                                className="h-8 text-xs"
+                              />
+                            </div>
                           </div>
-                        ))}
+                        )}
                       </div>
-                    </ScrollArea>
-                  </div>
-                )}
-
-                {/* Payment Summary */}
-                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span>Payment Total</span>
-                    <span className="font-semibold">
-                      {formatCurrency(totalPayment)}
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Remaining</span>
-                    <span
-                      className={
-                        Math.abs(subtotal - totalPayment) < 0.01
-                          ? "font-semibold text-green-600"
-                          : "font-semibold text-orange-600"
-                      }
-                    >
-                      {formatCurrency(subtotal - totalPayment)}
-                    </span>
-                  </div>
-                  {Math.abs(subtotal - totalPayment) > 0.01 && (
-                    <p className="text-xs text-muted-foreground">
-                      Payment total must match Total MRP
-                    </p>
-                  )}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="details" className="space-y-6 py-2">
-                {/* Notes */}
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Add any notes about this sale..."
-                    rows={6}
-                  />
-                </div>
-
-                {/* Summary */}
-                <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                  <div className="text-sm font-medium mb-3">Sale Summary</div>
-                  <div className="flex justify-between text-sm">
-                    <span>Items</span>
-                    <span>{items.length}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Total MRP</span>
-                    <span>{formatCurrency(subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Payment Methods</span>
-                    <span>{payments.length}</span>
-                  </div>
-                  <div className="flex justify-between text-sm font-semibold pt-2 border-t">
-                    <span>Total Payment</span>
-                    <span>{formatCurrency(totalPayment)}</span>
+                    )}
                   </div>
                 </div>
-              </TabsContent>
-            </ScrollArea>
-          </Tabs>
+              </ScrollArea>
+            </div>
+          </div>
 
-          <DialogFooter className="mt-4">
+          <DialogFooter className="px-6 py-4 border-t shrink-0 bg-background">
             <Button
               type="button"
               variant="outline"
-              className="mr-auto"
+              onClick={() => handleOpenChange(false)}
+              disabled={isLoading}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
               onClick={() => {
                 if (activeTab === "products") setActiveTab("payment");
                 else if (activeTab === "payment") setActiveTab("details");
@@ -699,18 +1277,10 @@ export function NewSaleForm({
                 (activeTab === "payment" &&
                   (payments.length === 0 ||
                     totalPayment <= 0 ||
-                    Math.abs(totalPayment - subtotal) > 0.01))
+                    Math.abs(totalPayment - finalTotal) > 0.01))
               }
             >
               Next
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-            >
-              Cancel
             </Button>
             <Button
               type="submit"
@@ -719,7 +1289,7 @@ export function NewSaleForm({
                 !locationId ||
                 items.length === 0 ||
                 totalPayment <= 0 ||
-                Math.abs(totalPayment - subtotal) > 0.01
+                Math.abs(totalPayment - finalTotal) > 0.01
               }
             >
               {isLoading ? (
