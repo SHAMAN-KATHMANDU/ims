@@ -51,6 +51,34 @@ memberRouter.post(
 
 /**
  * @swagger
+ * /members/bulk-upload/template:
+ *   get:
+ *     summary: Download bulk upload template (Excel with headers)
+ *     tags: [Members]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Excel template file
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+memberRouter.get(
+  "/bulk-upload/template",
+  verifyToken,
+  authorizeRoles("admin", "superAdmin"),
+  memberController.downloadBulkUploadTemplate,
+);
+
+/**
+ * @swagger
  * /members/bulk-upload:
  *   post:
  *     summary: Bulk upload members from Excel file
