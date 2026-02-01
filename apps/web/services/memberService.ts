@@ -416,3 +416,33 @@ export async function downloadMembers(
     throw error;
   }
 }
+
+/**
+ * Download bulk upload template (Excel with headers only)
+ */
+export async function downloadBulkUploadTemplate(): Promise<void> {
+  try {
+    const token = useAuthStore.getState().token;
+    const response = await api.get("/members/bulk-upload/template", {
+      responseType: "blob",
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+    const contentDisposition = response.headers["content-disposition"];
+    let filename = "members_bulk_upload_template.xlsx";
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?(.+)"?/i);
+      if (match?.[1]) filename = match[1];
+    }
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    handleApiError(error, "download template");
+    throw error;
+  }
+}
