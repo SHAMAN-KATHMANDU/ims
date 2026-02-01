@@ -49,6 +49,13 @@ export interface SaleItem {
   };
 }
 
+export interface SalePaymentDetail {
+  id: string;
+  method: PaymentMethod;
+  amount: number;
+  createdAt?: string;
+}
+
 export interface Sale {
   id: string;
   saleCode: string;
@@ -75,11 +82,7 @@ export interface Sale {
     username: string;
     role?: string;
   };
-  payments?: Array<{
-    method: PaymentMethod;
-    amount: number;
-    createdAt?: string;
-  }>;
+  payments?: SalePaymentDetail[];
   items?: SaleItem[];
   _count?: {
     items: number;
@@ -119,6 +122,7 @@ export interface CreateSaleItem {
 export interface CreateSaleData {
   locationId: string;
   memberPhone?: string;
+  memberName?: string;
   items: CreateSaleItem[];
   notes?: string;
   payments?: SalePayment[];

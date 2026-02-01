@@ -26,6 +26,8 @@ interface SalesTableProps {
   sales: Sale[];
   isLoading?: boolean;
   onView: (sale: Sale) => void;
+  currentPage?: number;
+  itemsPerPage?: number;
   // Selection props
   selectedSales?: Set<string>;
   onSelectionChange?: (selectedIds: Set<string>) => void;
@@ -35,9 +37,16 @@ export function SalesTable({
   sales,
   isLoading,
   onView,
+  currentPage = 1,
+  itemsPerPage = 10,
   selectedSales = new Set(),
   onSelectionChange,
 }: SalesTableProps) {
+  // Calculate starting serial number for current page
+  const getSerialNumber = (index: number) => {
+    return (currentPage - 1) * itemsPerPage + index + 1;
+  };
+
   // Selection handlers
   const handleSelectSale = useCallback(
     (saleId: string, checked: boolean) => {
@@ -72,15 +81,17 @@ export function SalesTable({
   const allSelected =
     sales.length > 0 && sales.every((s) => selectedSales.has(s.id));
 
-  // Calculate column count for empty state
-  const baseColumnCount = 8; // Sale Code, Type, Location, Customer, Total, Payment Method, Date, Actions
+  // Calculate column count for empty state (S.N. + optional checkbox + rest)
+  const baseColumnCount = 9; // S.N., Sale Code, Type, Location, Customer, Total, Payment Method, Date, Actions
   const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
+
   if (isLoading) {
     return (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>S.N.</TableHead>
               {onSelectionChange && (
                 <TableHead className="w-12">
                   <Checkbox disabled aria-label="Select all sales" />
@@ -99,11 +110,17 @@ export function SalesTable({
           <TableBody>
             {[...Array(5)].map((_, i) => (
               <TableRow key={i}>
+                <TableCell>
+                  <Skeleton className="h-4 w-8" />
+                </TableCell>
                 {onSelectionChange && (
                   <TableCell>
                     <Skeleton className="h-4 w-4" />
                   </TableCell>
                 )}
+                <TableCell>
+                  <Skeleton className="h-4 w-12" />
+                </TableCell>
                 <TableCell>
                   <Skeleton className="h-4 w-24" />
                 </TableCell>
@@ -142,6 +159,7 @@ export function SalesTable({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead>S.N.</TableHead>
               {onSelectionChange && (
                 <TableHead className="w-12">
                   <Checkbox disabled aria-label="Select all sales" />
@@ -173,6 +191,7 @@ export function SalesTable({
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>S.N.</TableHead>
             {onSelectionChange && (
               <TableHead className="w-12">
                 <Checkbox
@@ -193,8 +212,11 @@ export function SalesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sales.map((sale) => (
+          {sales.map((sale, index) => (
             <TableRow key={sale.id}>
+              <TableCell className="text-muted-foreground">
+                {getSerialNumber(index)}
+              </TableCell>
               {onSelectionChange && (
                 <TableCell
                   onClick={(e) => e.stopPropagation()}

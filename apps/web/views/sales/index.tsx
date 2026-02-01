@@ -388,7 +388,8 @@ export function SalesPage() {
         sales={sales}
         isLoading={salesLoading}
         onView={handleView}
-        // Selection props
+        currentPage={salesPagination?.currentPage || 1}
+        itemsPerPage={salesPagination?.itemsPerPage || DEFAULT_LIMIT}
         selectedSales={selectedSaleIds}
         onSelectionChange={setSelectedSaleIds}
       />
