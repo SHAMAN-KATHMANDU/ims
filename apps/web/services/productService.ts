@@ -465,9 +465,32 @@ export async function bulkUploadProducts(
     );
 
     return response.data;
-  } catch (error) {
+  } catch (error: unknown) {
+    const axiosError = error as {
+      isAxiosError?: boolean;
+      response?: {
+        status?: number;
+        data?: {
+          message?: string;
+          missingColumns?: string[];
+          hint?: string;
+          foundColumns?: string[];
+        };
+      };
+    };
+    if (
+      axiosError?.isAxiosError &&
+      axiosError.response?.status === 400 &&
+      axiosError.response?.data
+    ) {
+      const data = axiosError.response.data;
+      const err = new Error(data?.message || "Validation failed") as Error & {
+        responseData?: typeof data;
+      };
+      err.responseData = data;
+      throw err;
+    }
     handleApiError(error, "bulk upload products");
-    throw error;
   }
 }
 
@@ -523,6 +546,36 @@ export async function downloadProducts(
     URL.revokeObjectURL(url);
   } catch (error) {
     handleApiError(error, "download products");
+    throw error;
+  }
+}
+
+/**
+ * Download bulk upload template (Excel with headers only)
+ */
+export async function downloadBulkUploadTemplate(): Promise<void> {
+  try {
+    const token = useAuthStore.getState().token;
+    const response = await api.get("/products/bulk-upload/template", {
+      responseType: "blob",
+      headers: {
+        ...(token && { Authorization: `Bearer ${token}` }),
+      },
+    });
+    const contentDisposition = response.headers["content-disposition"];
+    let filename = "products_bulk_upload_template.xlsx";
+    if (contentDisposition) {
+      const match = contentDisposition.match(/filename="?(.+)"?/i);
+      if (match?.[1]) filename = match[1];
+    }
+    const url = URL.createObjectURL(response.data);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    handleApiError(error, "download template");
     throw error;
   }
 }
