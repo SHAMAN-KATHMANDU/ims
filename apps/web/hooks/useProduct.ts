@@ -236,6 +236,7 @@ export function useBulkUploadProducts() {
       }
     },
     onError: (error: unknown) => {
+      setUploadProgress(0);
       const err = error as {
         response?: { data?: { message?: string } };
         message?: string;

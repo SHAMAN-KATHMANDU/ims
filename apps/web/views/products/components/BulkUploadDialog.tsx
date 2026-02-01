@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useDropzone } from "react-dropzone";
 import { useBulkUploadProducts } from "@/hooks/useProduct";
+import { downloadBulkUploadTemplate } from "@/services/productService";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -17,6 +18,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Upload,
   X,
+  Download,
   FileSpreadsheet,
   CheckCircle2,
   XCircle,
@@ -91,8 +93,8 @@ export function BulkUploadDialog({
         <DialogHeader>
           <DialogTitle>Bulk Upload Products</DialogTitle>
           <DialogDescription>
-            Upload an Excel or CSV file to create multiple products at once. The
-            file should contain product data with all required fields.
+            Upload an Excel or CSV file to create multiple products at once.
+            Download the template to see required and optional column headers.
           </DialogDescription>
         </DialogHeader>
 
@@ -168,6 +170,46 @@ export function BulkUploadDialog({
               </AlertDescription>
             </Alert>
           )}
+
+          {/* Upload Error (e.g. wrong/missing columns) */}
+          {bulkUploadMutation.isError && bulkUploadMutation.error ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Upload failed</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>{(bulkUploadMutation.error as Error).message}</p>
+                {(
+                  bulkUploadMutation.error as Error & {
+                    responseData?: { missingColumns?: string[]; hint?: string };
+                  }
+                ).responseData?.missingColumns && (
+                  <p className="text-sm">
+                    <span className="font-medium">Missing columns: </span>
+                    {(
+                      bulkUploadMutation.error as Error & {
+                        responseData?: { missingColumns?: string[] };
+                      }
+                    ).responseData!.missingColumns!.join(", ")}
+                  </p>
+                )}
+                {(
+                  bulkUploadMutation.error as Error & {
+                    responseData?: { hint?: string };
+                  }
+                ).responseData?.hint && (
+                  <p className="text-sm text-muted-foreground">
+                    {
+                      (
+                        bulkUploadMutation.error as Error & {
+                          responseData?: { hint?: string };
+                        }
+                      ).responseData!.hint
+                    }
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           {/* Upload Progress */}
           {isUploading && (
@@ -321,6 +363,14 @@ export function BulkUploadDialog({
               <Button onClick={handleClose}>Close</Button>
             ) : (
               <>
+                <Button
+                  variant="outline"
+                  onClick={() => downloadBulkUploadTemplate()}
+                  disabled={isUploading}
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  Download template
+                </Button>
                 <Button
                   variant="outline"
                   onClick={handleClose}
