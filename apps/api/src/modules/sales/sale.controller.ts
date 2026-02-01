@@ -1569,6 +1569,81 @@ class SaleController {
     }
   }
 
+  // Download bulk upload template (headers only)
+  async downloadBulkUploadTemplate(req: Request, res: Response) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sales Template");
+
+      const headers = [
+        { header: "SN", width: 8 },
+        { header: "Sale ID (UUID)", width: 18 },
+        { header: "Date of Sale", width: 14 },
+        { header: "Showroom", width: 15 },
+        { header: "Phone", width: 14 },
+        { header: "Sold By", width: 14 },
+        { header: "Product IMS Code", width: 18 },
+        { header: "Product Name", width: 22 },
+        { header: "Variation", width: 14 },
+        { header: "Quantity", width: 10 },
+        { header: "MRP", width: 10 },
+        { header: "Discount", width: 10 },
+        { header: "Final Amount", width: 14 },
+        { header: "Payment Method", width: 18 },
+      ];
+      const requiredOptional = [
+        "Optional",
+        "Optional",
+        "Optional",
+        "Required",
+        "Optional",
+        "Required",
+        "Required",
+        "Required",
+        "Required",
+        "Required",
+        "Required",
+        "Optional",
+        "Required",
+        "Optional (CASH, CARD, CHEQUE, FONEPAY, QR)",
+      ];
+
+      worksheet.columns = headers.map((h) => ({
+        header: h.header,
+        width: h.width,
+      }));
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+      const row2 = worksheet.getRow(2);
+      requiredOptional.forEach((text, i) => {
+        row2.getCell(i + 1).value = text;
+      });
+      row2.font = { italic: true };
+
+      const filename = "sales_bulk_upload_template.xlsx";
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`,
+      );
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Download template error:", error);
+      res.status(500).json({
+        message: "Error generating template",
+        error: error.message,
+      });
+    }
+  }
+
   // Download sales as Excel or CSV
   async downloadSales(req: Request, res: Response) {
     try {
