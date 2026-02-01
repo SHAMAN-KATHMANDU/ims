@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -32,6 +33,7 @@ interface LocationFormProps {
     name: string;
     type: LocationType;
     address: string;
+    isDefaultWarehouse?: boolean;
   }) => Promise<void>;
   onReset: () => void;
   isLoading?: boolean;
@@ -48,6 +50,7 @@ export function LocationForm({
   const [name, setName] = useState("");
   const [type, setType] = useState<LocationType>("SHOWROOM");
   const [address, setAddress] = useState("");
+  const [isDefaultWarehouse, setIsDefaultWarehouse] = useState(false);
 
   // Populate form when editing
   useEffect(() => {
@@ -55,16 +58,24 @@ export function LocationForm({
       setName(editingLocation.name);
       setType(editingLocation.type);
       setAddress(editingLocation.address || "");
+      setIsDefaultWarehouse(editingLocation.isDefaultWarehouse ?? false);
     } else {
       setName("");
       setType("SHOWROOM");
       setAddress("");
+      setIsDefaultWarehouse(false);
     }
   }, [editingLocation, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    await onSubmit({ name, type, address });
+    await onSubmit({
+      name,
+      type,
+      address,
+      // Send false when not warehouse so backend clears default when type changes to SHOWROOM
+      isDefaultWarehouse: type === "WAREHOUSE" ? isDefaultWarehouse : false,
+    });
   };
 
   const handleOpenChange = (newOpen: boolean) => {
@@ -130,6 +141,23 @@ export function LocationForm({
                 rows={3}
               />
             </div>
+            {type === "WAREHOUSE" && (
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isDefaultWarehouse"
+                  checked={isDefaultWarehouse}
+                  onCheckedChange={(checked) =>
+                    setIsDefaultWarehouse(checked === true)
+                  }
+                />
+                <Label
+                  htmlFor="isDefaultWarehouse"
+                  className="text-sm font-normal cursor-pointer"
+                >
+                  Use as default warehouse for new products
+                </Label>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button

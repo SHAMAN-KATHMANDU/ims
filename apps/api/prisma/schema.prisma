@@ -199,13 +199,15 @@ model Vendor {
 // ============================================
 
 model Location {
-  id        String       @id @default(uuid()) @map("location_id")
-  name      String       @unique @map("location_name") @db.VarChar(255)
-  type      LocationType @default(SHOWROOM)
-  address   String?      @db.Text
-  isActive  Boolean      @default(true) @map("is_active")
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
+  id                String       @id @default(uuid()) @map("location_id")
+  name              String       @unique @map("location_name") @db.VarChar(255)
+  type              LocationType @default(SHOWROOM)
+  address           String?      @db.Text
+  isActive          Boolean      @default(true) @map("is_active")
+  /// When true, new product stock is added here by default; only one warehouse should be default
+  isDefaultWarehouse Boolean     @default(false) @map("is_default_warehouse")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt        DateTime     @updatedAt @map("updated_at")
 
   inventory     LocationInventory[]
   transfersFrom Transfer[]          @relation("TransferFrom")

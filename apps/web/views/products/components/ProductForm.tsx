@@ -32,6 +32,8 @@ interface ProductFormProps {
   variations: ProductVariationForm[];
   discounts: ProductDiscountForm[];
   discountTypes: Array<{ id: string; name: string }>;
+  defaultLocationId?: string;
+  onDefaultLocationChange?: (locationId: string | undefined) => void;
   onReset: () => void;
   onAddVariation: () => void;
   onRemoveVariation: (index: number) => void;
@@ -68,6 +70,8 @@ export function ProductForm({
   variations,
   discounts,
   discountTypes,
+  defaultLocationId,
+  onDefaultLocationChange,
   onReset,
   onAddVariation,
   onRemoveVariation,
@@ -223,7 +227,13 @@ export function ProductForm({
               </TabsList>
 
               <TabsContent value="general" className="space-y-4 mt-4">
-                <GeneralTab form={form} categories={categories} />
+                <GeneralTab
+                  form={form}
+                  categories={categories}
+                  isCreating={!editingProduct}
+                  defaultLocationId={defaultLocationId}
+                  onDefaultLocationChange={onDefaultLocationChange}
+                />
               </TabsContent>
 
               <TabsContent value="dimensions" className="space-y-4 mt-4">

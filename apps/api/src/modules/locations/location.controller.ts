@@ -10,7 +10,7 @@ class LocationController {
   // Create location (superAdmin only)
   async createLocation(req: Request, res: Response) {
     try {
-      const { name, type, address } = req.body;
+      const { name, type, address, isDefaultWarehouse } = req.body;
 
       // Validate required fields
       if (!name) {
@@ -35,11 +35,20 @@ class LocationController {
           .json({ message: "Location with this name already exists" });
       }
 
+      // If setting as default warehouse, unset any existing default
+      if (isDefaultWarehouse === true) {
+        await prisma.location.updateMany({
+          where: { isDefaultWarehouse: true },
+          data: { isDefaultWarehouse: false },
+        });
+      }
+
       const location = await prisma.location.create({
         data: {
           name,
           type: type || "SHOWROOM",
           address: address || null,
+          isDefaultWarehouse: isDefaultWarehouse === true,
         },
       });
 
@@ -181,7 +190,7 @@ class LocationController {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-      const { name, type, address, isActive } = req.body;
+      const { name, type, address, isActive, isDefaultWarehouse } = req.body;
 
       // Check if location exists
       const existingLocation = await prisma.location.findUnique({
@@ -226,6 +235,17 @@ class LocationController {
 
       if (isActive !== undefined) {
         updateData.isActive = isActive;
+      }
+
+      if (isDefaultWarehouse !== undefined) {
+        updateData.isDefaultWarehouse = isDefaultWarehouse === true;
+        // If setting this location as default warehouse, unset others
+        if (isDefaultWarehouse === true) {
+          await prisma.location.updateMany({
+            where: { id: { not: id } },
+            data: { isDefaultWarehouse: false },
+          });
+        }
       }
 
       const updatedLocation = await prisma.location.update({
