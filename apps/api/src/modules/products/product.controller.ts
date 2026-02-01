@@ -264,7 +264,9 @@ class ProductController {
       });
 
       // Add initial stock to default warehouse (or specified location)
-      const defaultLocationId = req.body.defaultLocationId as string | undefined;
+      const defaultLocationId = req.body.defaultLocationId as
+        | string
+        | undefined;
       let warehouseLocation: { id: string } | null = null;
       if (defaultLocationId) {
         const loc = await prisma.location.findFirst({
@@ -275,7 +277,11 @@ class ProductController {
       }
       if (!warehouseLocation) {
         warehouseLocation = await prisma.location.findFirst({
-          where: { type: "WAREHOUSE", isDefaultWarehouse: true, isActive: true },
+          where: {
+            type: "WAREHOUSE",
+            isDefaultWarehouse: true,
+            isActive: true,
+          },
           select: { id: true },
         });
       }
@@ -355,11 +361,7 @@ class ProductController {
       ];
 
       // Get orderBy for Prisma (support relation sort for vendor name)
-      let orderBy: any = getPrismaOrderBy(
-        sortBy,
-        sortOrder,
-        allowedSortFields,
-      );
+      let orderBy: any = getPrismaOrderBy(sortBy, sortOrder, allowedSortFields);
       if (!orderBy && sortBy?.toLowerCase() === "vendorname") {
         orderBy = { vendor: { name: sortOrder } };
       }
@@ -1023,11 +1025,7 @@ class ProductController {
         "endDate",
         "createdAt",
       ];
-      let orderBy: any = getPrismaOrderBy(
-        sortBy,
-        sortOrder,
-        allowedSortFields,
-      );
+      let orderBy: any = getPrismaOrderBy(sortBy, sortOrder, allowedSortFields);
       if (!orderBy && sortBy?.toLowerCase() === "productname") {
         orderBy = { product: { name: sortOrder } };
       }
@@ -1080,7 +1078,8 @@ class ProductController {
   // Get active discounts for a product
   async getProductDiscounts(req: Request, res: Response) {
     try {
-      const { id } = req.params;
+      const rawId = req.params.id;
+      const id = Array.isArray(rawId) ? rawId[0] : rawId;
 
       if (!id) {
         return res.status(400).json({ message: "Product ID is required" });
@@ -1129,17 +1128,32 @@ class ProductController {
         ],
       });
 
-      // Format the response
-      const formattedDiscounts = discounts.map((discount) => ({
-        id: discount.id,
-        name: discount.discountType.name,
-        value: Number(discount.value),
-        valueType: discount.valueType,
-        discountType: discount.discountType.name,
-        discountTypeId: discount.discountType.id,
-        startDate: discount.startDate,
-        endDate: discount.endDate,
-      }));
+      // Format the response (discount includes discountType from Prisma include)
+      type DiscountWithType = (typeof discounts)[number];
+      const formattedDiscounts = discounts.map(
+        (discount: DiscountWithType) => ({
+          id: discount.id,
+          name: (
+            discount as DiscountWithType & {
+              discountType: { id: string; name: string };
+            }
+          ).discountType.name,
+          value: Number(discount.value),
+          valueType: discount.valueType,
+          discountType: (
+            discount as DiscountWithType & {
+              discountType: { id: string; name: string };
+            }
+          ).discountType.name,
+          discountTypeId: (
+            discount as DiscountWithType & {
+              discountType: { id: string; name: string };
+            }
+          ).discountType.id,
+          startDate: discount.startDate,
+          endDate: discount.endDate,
+        }),
+      );
 
       res.status(200).json({
         message: "Product discounts fetched successfully",
