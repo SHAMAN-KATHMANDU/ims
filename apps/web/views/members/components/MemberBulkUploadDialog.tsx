@@ -65,6 +65,7 @@ export function MemberBulkUploadDialog({
       }
     },
     onError: (error: unknown) => {
+      setUploadProgress(0);
       const err = error as {
         response?: { data?: { message?: string } };
         message?: string;
@@ -79,14 +80,18 @@ export function MemberBulkUploadDialog({
     },
   });
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    if (acceptedFiles.length > 0 && acceptedFiles[0]) {
-      const file = acceptedFiles[0];
-      setSelectedFile(file);
-      setUploadProgress(0);
-      setUploadResult(null);
-    }
-  }, []);
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      if (acceptedFiles.length > 0 && acceptedFiles[0]) {
+        const file = acceptedFiles[0];
+        setSelectedFile(file);
+        setUploadProgress(0);
+        setUploadResult(null);
+        bulkUploadMutation.reset();
+      }
+    },
+    [bulkUploadMutation],
+  );
 
   const { getRootProps, getInputProps, isDragActive, fileRejections } =
     useDropzone({
@@ -201,6 +206,45 @@ export function MemberBulkUploadDialog({
               </AlertDescription>
             </Alert>
           )}
+
+          {bulkUploadMutation.isError && bulkUploadMutation.error ? (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>Upload failed</AlertTitle>
+              <AlertDescription className="space-y-2">
+                <p>{(bulkUploadMutation.error as Error).message}</p>
+                {(
+                  bulkUploadMutation.error as Error & {
+                    responseData?: { missingColumns?: string[]; hint?: string };
+                  }
+                ).responseData?.missingColumns && (
+                  <p className="text-sm">
+                    <span className="font-medium">Missing columns: </span>
+                    {(
+                      bulkUploadMutation.error as Error & {
+                        responseData?: { missingColumns?: string[] };
+                      }
+                    ).responseData!.missingColumns!.join(", ")}
+                  </p>
+                )}
+                {(
+                  bulkUploadMutation.error as Error & {
+                    responseData?: { hint?: string };
+                  }
+                ).responseData?.hint && (
+                  <p className="text-sm text-muted-foreground">
+                    {
+                      (
+                        bulkUploadMutation.error as Error & {
+                          responseData?: { hint?: string };
+                        }
+                      ).responseData!.hint
+                    }
+                  </p>
+                )}
+              </AlertDescription>
+            </Alert>
+          ) : null}
 
           {isUploading && (
             <div className="space-y-2">
