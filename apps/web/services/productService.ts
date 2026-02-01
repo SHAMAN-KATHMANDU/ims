@@ -31,6 +31,11 @@ export interface ProductVariation {
     photoUrl: string;
     isPrimary: boolean;
   }>;
+  /** Per-location stock (when API includes it) for showing "which showroom has how much" */
+  locationInventory?: Array<{
+    quantity: number;
+    location: { id: string; name: string; type: string };
+  }>;
 }
 
 export interface Product {
@@ -80,6 +85,13 @@ export interface ProductListParams {
   search?: string;
   locationId?: string;
   categoryId?: string;
+  subCategoryId?: string;
+  subCategory?: string;
+  vendorId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginationMeta {
@@ -110,6 +122,8 @@ export interface CreateProductData {
   costPrice: number;
   mrp: number;
   vendorId?: string;
+  /** Default location for new product stock (warehouse). If omitted, API uses location marked as default warehouse. */
+  defaultLocationId?: string;
   variations?: Array<{
     color: string;
     stockQuantity?: number;
@@ -205,6 +219,13 @@ export async function getProducts(
     search = "",
     locationId,
     categoryId,
+    subCategoryId,
+    subCategory,
+    vendorId,
+    dateFrom,
+    dateTo,
+    sortBy,
+    sortOrder,
   } = params;
 
   const queryParams = new URLSearchParams();
@@ -218,6 +239,27 @@ export async function getProducts(
   }
   if (categoryId) {
     queryParams.set("categoryId", categoryId);
+  }
+  if (subCategoryId) {
+    queryParams.set("subCategoryId", subCategoryId);
+  }
+  if (subCategory) {
+    queryParams.set("subCategory", subCategory);
+  }
+  if (vendorId) {
+    queryParams.set("vendorId", vendorId);
+  }
+  if (dateFrom) {
+    queryParams.set("dateFrom", dateFrom);
+  }
+  if (dateTo) {
+    queryParams.set("dateTo", dateTo);
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
   }
 
   try {
@@ -356,6 +398,105 @@ export async function getAllDiscountTypes(): Promise<
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch discount types");
+  }
+}
+
+// ============================================
+// Product Discounts List (for discounts page)
+// ============================================
+
+export interface ProductDiscountListItem {
+  id: string;
+  productId: string;
+  discountTypeId: string;
+  discountPercentage: number;
+  valueType: string;
+  value: number;
+  startDate: string | null;
+  endDate: string | null;
+  isActive: boolean;
+  createdAt: string;
+  product: {
+    id: string;
+    name: string;
+    imsCode: string;
+    categoryId: string;
+    subCategory: string | null;
+    subCategoryId: string | null;
+    category: { id: string; name: string };
+  };
+  discountType: { id: string; name: string };
+}
+
+export interface ProductDiscountListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  productId?: string;
+  categoryId?: string;
+  subCategoryId?: string;
+  discountTypeId?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface PaginatedProductDiscountsResponse {
+  data: ProductDiscountListItem[];
+  pagination: PaginationMeta;
+}
+
+export async function getProductDiscountsList(
+  params: ProductDiscountListParams = {},
+): Promise<PaginatedProductDiscountsResponse> {
+  const {
+    page = DEFAULT_PAGE,
+    limit = DEFAULT_LIMIT,
+    search = "",
+    productId,
+    categoryId,
+    subCategoryId,
+    discountTypeId,
+    sortBy,
+    sortOrder,
+  } = params;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search.trim()) {
+    queryParams.set("search", search.trim());
+  }
+  if (productId) {
+    queryParams.set("productId", productId);
+  }
+  if (categoryId) {
+    queryParams.set("categoryId", categoryId);
+  }
+  if (subCategoryId) {
+    queryParams.set("subCategoryId", subCategoryId);
+  }
+  if (discountTypeId) {
+    queryParams.set("discountTypeId", discountTypeId);
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
+  }
+
+  try {
+    const response = await api.get<{
+      message: string;
+      data: ProductDiscountListItem[];
+      pagination: PaginationMeta;
+    }>(`/products/discounts/list?${queryParams.toString()}`);
+    return {
+      data: response.data.data || [],
+      pagination: response.data.pagination,
+    };
+  } catch (error) {
+    handleApiError(error, "fetch product discounts");
   }
 }
 

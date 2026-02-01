@@ -97,6 +97,8 @@ export interface SalesListParams {
   startDate?: string;
   endDate?: string;
   search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginationMeta {
@@ -205,6 +207,8 @@ export async function getSales(
     startDate,
     endDate,
     search,
+    sortBy,
+    sortOrder,
   } = params;
 
   const queryParams = new URLSearchParams();
@@ -224,6 +228,12 @@ export async function getSales(
   }
   if (search?.trim()) {
     queryParams.set("search", search.trim());
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
   }
 
   try {

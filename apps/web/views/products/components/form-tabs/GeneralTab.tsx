@@ -10,6 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { LocationSelector } from "@/components/ui/location-selector";
 import type { ProductFormValues } from "../../types";
 import type { Category } from "@/hooks/useProduct";
 import type { UseFormReturn } from "@/hooks/useForm";
@@ -20,9 +21,18 @@ import { useCategorySubcategories } from "@/hooks/useProduct";
 interface GeneralTabProps {
   form: UseFormReturn<ProductFormValues>;
   categories: Category[];
+  isCreating?: boolean;
+  defaultLocationId?: string;
+  onDefaultLocationChange?: (locationId: string | undefined) => void;
 }
 
-export function GeneralTab({ form, categories }: GeneralTabProps) {
+export function GeneralTab({
+  form,
+  categories,
+  isCreating,
+  defaultLocationId,
+  onDefaultLocationChange,
+}: GeneralTabProps) {
   const isAdmin = useAuthStore(selectIsAdmin);
   const { data: vendorsResponse } = useVendorsPaginated({
     page: 1,
@@ -130,6 +140,23 @@ export function GeneralTab({ form, categories }: GeneralTabProps) {
               ))}
             </SelectContent>
           </Select>
+        </div>
+      )}
+      {isCreating && onDefaultLocationChange && (
+        <div className="space-y-2">
+          <Label>Default location for new stock</Label>
+          <LocationSelector
+            value={defaultLocationId ?? "all"}
+            onChange={(id) =>
+              onDefaultLocationChange(id === "all" ? undefined : id)
+            }
+            placeholder="Choose location"
+            allLabel="Use default warehouse"
+            className="w-full"
+          />
+          <p className="text-xs text-muted-foreground">
+            New product stock will be added to this location. If not set, the system default warehouse is used.
+          </p>
         </div>
       )}
       <div className="space-y-2">
