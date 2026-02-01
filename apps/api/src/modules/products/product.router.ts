@@ -435,6 +435,33 @@ productRouter.get(
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   productController.getProductDiscounts,
+  );
+  /**
+ * @swagger
+ * /products/bulk-upload/template:
+ *   get:
+ *     summary: Download bulk upload template (Excel with headers)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Excel template file
+ *         content:
+ *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+productRouter.get(
+  "/bulk-upload/template",
+  verifyToken,
+  authorizeRoles("admin", "superAdmin"),
+  productController.downloadBulkUploadTemplate,
 );
 
 /**
