@@ -121,8 +121,8 @@ export function useCreateTransfer() {
   return useMutation({
     mutationFn: (data: CreateTransferData) => createTransfer(data),
     onSuccess: () => {
-      // Invalidate all transfer lists
       queryClient.invalidateQueries({ queryKey: transferKeys.lists() });
+      queryClient.refetchQueries({ queryKey: transferKeys.lists() });
     },
   });
 }
@@ -136,14 +136,12 @@ export function useApproveTransfer() {
   return useMutation({
     mutationFn: (id: string) => approveTransfer(id),
     onSuccess: (updatedTransfer) => {
-      // Update the cache for this specific transfer
       queryClient.setQueryData(
         transferKeys.detail(updatedTransfer.id),
         updatedTransfer,
       );
-      // Invalidate all transfer lists
       queryClient.invalidateQueries({ queryKey: transferKeys.lists() });
-      // Invalidate logs for this transfer
+      queryClient.refetchQueries({ queryKey: transferKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: transferKeys.logs(updatedTransfer.id),
       });
@@ -160,18 +158,15 @@ export function useStartTransit() {
   return useMutation({
     mutationFn: (id: string) => startTransit(id),
     onSuccess: (updatedTransfer) => {
-      // Update the cache for this specific transfer
       queryClient.setQueryData(
         transferKeys.detail(updatedTransfer.id),
         updatedTransfer,
       );
-      // Invalidate all transfer lists
       queryClient.invalidateQueries({ queryKey: transferKeys.lists() });
-      // Invalidate logs for this transfer
+      queryClient.refetchQueries({ queryKey: transferKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: transferKeys.logs(updatedTransfer.id),
       });
-      // Invalidate inventory (stock has been deducted)
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
@@ -186,18 +181,15 @@ export function useCompleteTransfer() {
   return useMutation({
     mutationFn: (id: string) => completeTransfer(id),
     onSuccess: (updatedTransfer) => {
-      // Update the cache for this specific transfer
       queryClient.setQueryData(
         transferKeys.detail(updatedTransfer.id),
         updatedTransfer,
       );
-      // Invalidate all transfer lists
       queryClient.invalidateQueries({ queryKey: transferKeys.lists() });
-      // Invalidate logs for this transfer
+      queryClient.refetchQueries({ queryKey: transferKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: transferKeys.logs(updatedTransfer.id),
       });
-      // Invalidate inventory (stock has been added)
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });
@@ -213,18 +205,15 @@ export function useCancelTransfer() {
     mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
       cancelTransfer(id, reason),
     onSuccess: (updatedTransfer) => {
-      // Update the cache for this specific transfer
       queryClient.setQueryData(
         transferKeys.detail(updatedTransfer.id),
         updatedTransfer,
       );
-      // Invalidate all transfer lists
       queryClient.invalidateQueries({ queryKey: transferKeys.lists() });
-      // Invalidate logs for this transfer
+      queryClient.refetchQueries({ queryKey: transferKeys.lists() });
       queryClient.invalidateQueries({
         queryKey: transferKeys.logs(updatedTransfer.id),
       });
-      // Invalidate inventory (stock may have been restored)
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
     },
   });

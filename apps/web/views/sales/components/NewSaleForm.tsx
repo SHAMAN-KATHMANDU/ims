@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { z } from "zod";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckMember } from "@/hooks/useMember";
@@ -11,7 +11,11 @@ import {
 } from "@/services/inventoryService";
 import api from "@/lib/axios";
 import { type Location } from "@/services/locationService";
-import { type CreateSaleData, formatCurrency } from "@/services/salesService";
+import {
+  type CreateSaleData,
+  formatCurrency,
+  previewSale,
+} from "@/services/salesService";
 import {
   Dialog,
   DialogContent,
@@ -87,6 +91,39 @@ const formatDiscountLabel = (discount: ProductDiscount): string => {
   return `${discount.discountType} - ${discount.value}%`;
 };
 
+/**
+ * Pick the best discount for a member sale (matches backend logic):
+ * eligible = types containing "member" or "non-member"; sort by Special first, then highest value.
+ */
+function getBestMemberDiscountId(
+  discounts: ProductDiscount[],
+  itemSubtotal: number,
+): string | "none" {
+  if (!discounts?.length) return "none";
+  const eligible = discounts.filter((d) => {
+    const typeName = (d.discountType ?? "").toLowerCase();
+    return typeName.includes("member") || typeName.includes("non-member");
+  });
+  if (eligible.length === 0) return "none";
+  const sorted = [...eligible].sort((a, b) => {
+    const aIsSpecial =
+      (a.discountType ?? "").toLowerCase() === "special" ? 1 : 0;
+    const bIsSpecial =
+      (b.discountType ?? "").toLowerCase() === "special" ? 1 : 0;
+    if (aIsSpecial !== bIsSpecial) return bIsSpecial - aIsSpecial;
+    const aValue =
+      a.valueType === "FLAT"
+        ? Number(a.value)
+        : (Number(a.value) / 100) * itemSubtotal;
+    const bValue =
+      b.valueType === "FLAT"
+        ? Number(b.value)
+        : (Number(b.value) / 100) * itemSubtotal;
+    return bValue - aValue;
+  });
+  return sorted[0]?.id ?? "none";
+}
+
 interface SaleItem {
   variationId: string;
   productName: string;
@@ -137,7 +174,7 @@ export function NewSaleForm({
   const [promoCode, setPromoCode] = useState("");
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
   const [promoCodeValidating, setPromoCodeValidating] = useState(false);
-  const debouncedPromoCode = useDebounce(promoCode, 500);
+  const debouncedPromoCode = useDebounce(promoCode, 2000);
 
   // Validate promo code when debounced value changes
   useEffect(() => {
@@ -249,6 +286,14 @@ export function NewSaleForm({
   const [activeTab, setActiveTab] = useState<
     "products" | "payment" | "details"
   >("products");
+  const completeSaleClickedRef = useRef(false);
+  const formRef = useRef<HTMLFormElement>(null);
+  const [previewResult, setPreviewResult] = useState<{
+    subtotal: number;
+    discount: number;
+    total: number;
+  } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // Load inventory when location changes
   useEffect(() => {
@@ -265,6 +310,58 @@ export function NewSaleForm({
       setInventory([]);
     }
   }, [locationId]);
+
+  // When member is detected, auto-apply best eligible discount (matches backend logic)
+  useEffect(() => {
+    if (!memberCheck?.isMember || items.length === 0) return;
+    setItems((prev) =>
+      prev.map((item) => {
+        if (!item.availableDiscounts?.length) return item;
+        const itemSubtotal = item.unitPrice * item.quantity;
+        const bestId = getBestMemberDiscountId(
+          item.availableDiscounts,
+          itemSubtotal,
+        );
+        if (bestId === "none") return item;
+        return {
+          ...item,
+          selectedDiscountId: bestId,
+        };
+      }),
+    );
+  }, [memberCheck?.isMember, items.length]);
+
+  // Fetch backend preview total (includes discount + promo) so payment matches exactly
+  useEffect(() => {
+    if (!locationId || items.length === 0) {
+      setPreviewResult(null);
+      return;
+    }
+    let cancelled = false;
+    setPreviewLoading(true);
+    previewSale({
+      locationId,
+      memberPhone: memberPhone.trim() || undefined,
+      memberName: memberName.trim() || undefined,
+      items: items.map((i) => ({
+        variationId: i.variationId,
+        quantity: i.quantity,
+        promoCode: i.promoCode?.trim() || undefined,
+      })),
+    })
+      .then((res) => {
+        if (!cancelled) setPreviewResult(res);
+      })
+      .catch(() => {
+        if (!cancelled) setPreviewResult(null);
+      })
+      .finally(() => {
+        if (!cancelled) setPreviewLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [locationId, memberPhone, memberName, items, items.length]);
 
   // Filter inventory by search
   const filteredInventory = inventory.filter((item) => {
@@ -325,6 +422,12 @@ export function NewSaleForm({
     const discounts = await fetchProductDiscounts(
       inventoryItem.variation.product.id,
     );
+    // Auto-apply Member discount when customer is a member
+    const memberDiscount = discounts.find(
+      (d) => d.discountType?.toLowerCase() === "member",
+    );
+    const defaultDiscountId =
+      memberCheck?.isMember && memberDiscount ? memberDiscount.id : "none";
     setItems([
       ...items,
       {
@@ -335,7 +438,7 @@ export function NewSaleForm({
         unitPrice: Number(inventoryItem.variation.product.mrp),
         quantity: 1,
         maxQuantity: inventoryItem.quantity,
-        selectedDiscountId: "none",
+        selectedDiscountId: defaultDiscountId,
         availableDiscounts: discounts,
       },
     ]);
@@ -381,58 +484,78 @@ export function NewSaleForm({
     return 0;
   };
 
-  // Calculate totals
-  const subtotal = items.reduce(
-    (sum, item) => sum + item.unitPrice * item.quantity,
-    0,
-  );
+  // Calculate totals (all rounded to 2 decimal places)
+  const subtotal =
+    Math.round(
+      items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0) *
+        100,
+    ) / 100;
 
   // Calculate total discount
   let totalDiscount = 0;
   if (discountMode === "aggregate") {
     if (aggregateDiscountAmount > 0) {
-      totalDiscount = Math.min(aggregateDiscountAmount, subtotal);
+      totalDiscount =
+        Math.round(Math.min(aggregateDiscountAmount, subtotal) * 100) / 100;
     } else if (aggregateDiscountId && aggregateDiscountId !== "none") {
       // This would be used if we have aggregate discount options from API
       // For now, we use the flat amount input
     }
   } else {
-    totalDiscount = items.reduce(
-      (sum, item) => sum + calculateItemDiscount(item),
-      0,
-    );
+    totalDiscount =
+      Math.round(
+        items.reduce((sum, item) => sum + calculateItemDiscount(item), 0) * 100,
+      ) / 100;
   }
 
-  const finalTotal = subtotal - totalDiscount;
-
-  const totalPayment = payments.reduce(
-    (sum, payment) => sum + payment.amount,
-    0,
-  );
+  const finalTotal = Math.round((subtotal - totalDiscount) * 100) / 100;
+  // Use backend preview total so payment always matches (includes promo + exact rounding)
+  const expectedTotal = previewResult?.total ?? finalTotal;
+  const totalPayment =
+    Math.round(
+      payments.reduce((sum, payment) => sum + payment.amount, 0) * 100,
+    ) / 100;
+  const remainingAmount =
+    Math.round((expectedTotal - totalPayment) * 100) / 100;
 
   // Payment handlers
   const handleAddPayment = () => {
     const amount = Number(paymentAmount);
     if (amount > 0) {
+      const rounded = Math.round(amount * 100) / 100;
       setPayments([
         ...payments,
         {
           id: `${selectedPaymentMethod}-${Date.now()}`,
           method: selectedPaymentMethod,
-          amount,
+          amount: rounded,
         },
       ]);
       setPaymentAmount("");
     }
   };
 
+  const handleAddRemaining = () => {
+    if (remainingAmount <= 0) return;
+    setPayments([
+      ...payments,
+      {
+        id: `${selectedPaymentMethod}-${Date.now()}`,
+        method: selectedPaymentMethod,
+        amount: remainingAmount,
+      },
+    ]);
+    setPaymentAmount("");
+  };
+
   const handleRemovePayment = (id: string) => {
     setPayments(payments.filter((p) => p.id !== id));
   };
 
-  // Handle submit
+  // Handle submit (only when Complete Sale was clicked; prevents Enter from submitting)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!completeSaleClickedRef.current) return;
 
     if (!locationId || items.length === 0) return;
 
@@ -452,7 +575,7 @@ export function NewSaleForm({
       }
     }
 
-    if (totalPayment <= 0 || Math.abs(totalPayment - finalTotal) > 0.01) {
+    if (totalPayment <= 0 || Math.abs(totalPayment - expectedTotal) > 0.01) {
       toast({
         title: "Payment Error",
         description:
@@ -474,7 +597,7 @@ export function NewSaleForm({
       notes: notes.trim() || undefined,
       payments: payments.map((p) => ({
         method: p.method,
-        amount: p.amount,
+        amount: Math.round(p.amount * 100) / 100,
       })),
     });
 
@@ -494,11 +617,14 @@ export function NewSaleForm({
     setAggregateDiscountAmount(0);
     setPromoCode("");
     setPromoCodeError(null);
+    setPreviewResult(null);
+    completeSaleClickedRef.current = false;
   };
 
   // Reset form when dialog closes
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
+      completeSaleClickedRef.current = false;
       setLocationId("");
       setMemberPhone("");
       setPhoneError(null);
@@ -514,6 +640,7 @@ export function NewSaleForm({
       setAggregateDiscountAmount(0);
       setPromoCode("");
       setPromoCodeError(null);
+      setPreviewResult(null);
     }
     onOpenChange(newOpen);
   };
@@ -528,8 +655,20 @@ export function NewSaleForm({
       </DialogTrigger>
       <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
         <form
+          ref={formRef}
           onSubmit={handleSubmit}
           className="flex flex-col h-full overflow-hidden"
+          onKeyDown={(e) => {
+            if (e.key !== "Enter") return;
+            const target = e.target as HTMLElement;
+            if (target.tagName === "TEXTAREA") return;
+            if (
+              target.tagName === "BUTTON" &&
+              (target as HTMLButtonElement).type === "submit"
+            )
+              return;
+            e.preventDefault();
+          }}
         >
           <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b">
             <DialogTitle>Create New Sale</DialogTitle>
@@ -913,47 +1052,21 @@ export function NewSaleForm({
                       value="payment"
                       className="space-y-4 py-4 mt-0"
                     >
-                      {/* Total MRP Display */}
-                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium">Total MRP</span>
-                          <span className="text-lg font-semibold">
-                            {formatCurrency(subtotal)}
-                          </span>
-                        </div>
-                        {totalDiscount > 0 && (
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">
-                              Total Discount
-                            </span>
-                            <span className="font-medium text-green-600">
-                              -{formatCurrency(totalDiscount)}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex justify-between items-center pt-2 border-t">
-                          <span className="text-sm font-medium">
-                            Final Total
-                          </span>
-                          <span className="text-lg font-semibold">
-                            {formatCurrency(finalTotal)}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Promo Code */}
+                      {/* Promo first: apply then see amount to pay */}
                       {items.length > 0 && (
                         <div className="space-y-2">
-                          <Label>Promo Code (Optional)</Label>
+                          <Label>Promo code (optional)</Label>
                           <div className="flex gap-2">
                             <div className="relative flex-1">
                               <Input
+                                type="text"
+                                autoComplete="off"
                                 value={promoCode}
                                 onChange={(e) => {
-                                  setPromoCode(e.target.value);
+                                  setPromoCode(e.target.value.toUpperCase());
                                 }}
-                                placeholder="Enter promo code (auto-validated)"
-                                className="flex-1"
+                                placeholder="Enter promo code"
+                                className="flex-1 uppercase"
                                 disabled={promoCodeValidating}
                               />
                               {promoCodeValidating && (
@@ -970,23 +1083,62 @@ export function NewSaleForm({
                             !promoCodeError &&
                             !promoCodeValidating && (
                               <p className="text-xs text-green-600">
-                                ✓ Promo code applied to all items
+                                ✓ Promo applied to all items
                               </p>
                             )}
                         </div>
                       )}
 
+                      {/* Amount to pay (from server: discounts + promo) */}
+                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-muted-foreground">
+                            Subtotal
+                          </span>
+                          <span>{formatCurrency(subtotal)}</span>
+                        </div>
+                        {totalDiscount > 0 && (
+                          <div className="flex justify-between items-center text-sm">
+                            <span className="text-muted-foreground">
+                              {memberCheck?.isMember
+                                ? "Member discount"
+                                : "Discount"}
+                            </span>
+                            <span className="text-green-600">
+                              -{formatCurrency(totalDiscount)}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="text-sm font-medium">
+                            Amount to pay
+                            {previewResult && (
+                              <span className="text-muted-foreground font-normal ml-1">
+                                (incl. promo)
+                              </span>
+                            )}
+                          </span>
+                          <span className="text-lg font-semibold">
+                            {previewLoading ? (
+                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                            ) : (
+                              formatCurrency(expectedTotal)
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
                       {/* Add Payment */}
                       <div className="space-y-3">
                         <Label>Add Payment</Label>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap items-center gap-2">
                           <Select
                             value={selectedPaymentMethod}
                             onValueChange={(value) =>
                               setSelectedPaymentMethod(value as PaymentMethod)
                             }
                           >
-                            <SelectTrigger className="w-[140px]">
+                            <SelectTrigger className="w-[140px] h-9">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -1003,8 +1155,12 @@ export function NewSaleForm({
                             step="0.01"
                             value={paymentAmount}
                             onChange={(e) => setPaymentAmount(e.target.value)}
-                            placeholder="Amount"
-                            className="flex-1"
+                            placeholder={
+                              remainingAmount > 0
+                                ? `Remaining: ${formatCurrency(remainingAmount)}`
+                                : "Amount"
+                            }
+                            className="flex-1 min-w-[120px] h-9"
                             onKeyDown={(e) => {
                               if (e.key === "Enter") {
                                 e.preventDefault();
@@ -1014,15 +1170,33 @@ export function NewSaleForm({
                           />
                           <Button
                             type="button"
+                            variant="secondary"
                             onClick={handleAddPayment}
                             disabled={
                               !paymentAmount || Number(paymentAmount) <= 0
                             }
+                            className="h-9"
                           >
                             <Plus className="h-4 w-4 mr-2" />
                             Add
                           </Button>
+                          {remainingAmount > 0.01 && (
+                            <Button
+                              type="button"
+                              onClick={handleAddRemaining}
+                              className="h-9"
+                            >
+                              Pay full ({formatCurrency(remainingAmount)})
+                            </Button>
+                          )}
                         </div>
+                        <p className="text-xs text-muted-foreground">
+                          Final total (after discounts):{" "}
+                          <span className="font-medium text-foreground">
+                            {formatCurrency(expectedTotal)}
+                          </span>
+                          . Payment total must match exactly.
+                        </p>
                       </div>
 
                       {/* Payment List */}
@@ -1076,15 +1250,15 @@ export function NewSaleForm({
                           <span>Remaining</span>
                           <span
                             className={
-                              Math.abs(finalTotal - totalPayment) < 0.01
+                              Math.abs(expectedTotal - totalPayment) < 0.01
                                 ? "font-semibold text-green-600"
                                 : "font-semibold text-orange-600"
                             }
                           >
-                            {formatCurrency(finalTotal - totalPayment)}
+                            {formatCurrency(expectedTotal - totalPayment)}
                           </span>
                         </div>
-                        {Math.abs(finalTotal - totalPayment) > 0.01 && (
+                        {Math.abs(expectedTotal - totalPayment) > 0.01 && (
                           <p className="text-xs text-muted-foreground">
                             Payment total must match Final Total (after
                             discounts)
@@ -1124,7 +1298,11 @@ export function NewSaleForm({
                         </div>
                         {totalDiscount > 0 && (
                           <div className="flex justify-between text-sm">
-                            <span>Total Discount</span>
+                            <span>
+                              {memberCheck?.isMember
+                                ? "Member discount"
+                                : "Total Discount"}
+                            </span>
                             <span className="text-green-600">
                               -{formatCurrency(totalDiscount)}
                             </span>
@@ -1224,7 +1402,9 @@ export function NewSaleForm({
                                 memberCheck.member?.phone}
                             </div>
                             <div className="text-xs text-muted-foreground">
-                              Member discount will apply
+                              {totalDiscount > 0
+                                ? `Member discount: ${formatCurrency(totalDiscount)}`
+                                : "Member discount will apply"}
                             </div>
                           </>
                         ) : (
@@ -1254,56 +1434,78 @@ export function NewSaleForm({
             </div>
           </div>
 
-          <DialogFooter className="px-6 py-4 border-t shrink-0 bg-background">
+          <DialogFooter className="px-6 py-4 border-t shrink-0 bg-background flex-row justify-between gap-4">
             <Button
               type="button"
-              variant="outline"
+              variant="ghost"
               onClick={() => handleOpenChange(false)}
               disabled={isLoading}
+              className="mr-0"
             >
               Cancel
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => {
-                if (activeTab === "products") setActiveTab("payment");
-                else if (activeTab === "payment") setActiveTab("details");
-              }}
-              disabled={
-                activeTab === "details" ||
-                (activeTab === "products" &&
-                  (!locationId || items.length === 0)) ||
-                (activeTab === "payment" &&
-                  (payments.length === 0 ||
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  if (activeTab === "details") setActiveTab("payment");
+                  else if (activeTab === "payment") setActiveTab("products");
+                }}
+                disabled={activeTab === "products"}
+                className="min-w-[90px]"
+              >
+                Previous
+              </Button>
+              {activeTab === "details" ? (
+                <Button
+                  type="button"
+                  disabled={
+                    isLoading ||
+                    !locationId ||
+                    items.length === 0 ||
                     totalPayment <= 0 ||
-                    Math.abs(totalPayment - finalTotal) > 0.01))
-              }
-            >
-              Next
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                isLoading ||
-                !locationId ||
-                items.length === 0 ||
-                totalPayment <= 0 ||
-                Math.abs(totalPayment - finalTotal) > 0.01
-              }
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Creating...
-                </>
+                    Math.abs(totalPayment - expectedTotal) > 0.01
+                  }
+                  className="min-w-[140px]"
+                  onClick={() => {
+                    completeSaleClickedRef.current = true;
+                    formRef.current?.requestSubmit();
+                  }}
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="mr-2 h-4 w-4" />
+                      Complete Sale
+                    </>
+                  )}
+                </Button>
               ) : (
-                <>
-                  <ShoppingCart className="mr-2 h-4 w-4" />
-                  Complete Sale
-                </>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    if (activeTab === "products") setActiveTab("payment");
+                    else if (activeTab === "payment") setActiveTab("details");
+                  }}
+                  disabled={
+                    (activeTab === "products" &&
+                      (!locationId || items.length === 0)) ||
+                    (activeTab === "payment" &&
+                      (payments.length === 0 ||
+                        totalPayment <= 0 ||
+                        Math.abs(totalPayment - expectedTotal) > 0.01))
+                  }
+                  className="min-w-[90px]"
+                >
+                  Next
+                </Button>
               )}
-            </Button>
+            </div>
           </DialogFooter>
         </form>
       </DialogContent>
