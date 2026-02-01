@@ -435,8 +435,9 @@ productRouter.get(
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   productController.getProductDiscounts,
-  );
-  /**
+);
+
+/**
  * @swagger
  * /products/bulk-upload/template:
  *   get:
