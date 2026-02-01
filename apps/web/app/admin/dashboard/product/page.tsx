@@ -1,5 +1,5 @@
-import { CatalogPage } from "@/views/products/CatalogPage";
+import { ProductPage } from "@/views/products";
 
 export default function Product() {
-  return <CatalogPage />;
+  return <ProductPage />;
 }

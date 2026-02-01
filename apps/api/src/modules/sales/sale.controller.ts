@@ -1831,6 +1831,81 @@ class SaleController {
     }
   }
 
+  // Download bulk upload template (headers only)
+  async downloadBulkUploadTemplate(req: Request, res: Response) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sales Template");
+
+      const headers = [
+        { header: "SN", width: 8 },
+        { header: "Sale ID (UUID)", width: 18 },
+        { header: "Date of Sale", width: 14 },
+        { header: "Showroom", width: 15 },
+        { header: "Phone", width: 14 },
+        { header: "Sold By", width: 14 },
+        { header: "Product IMS Code", width: 18 },
+        { header: "Product Name", width: 22 },
+        { header: "Variation", width: 14 },
+        { header: "Quantity", width: 10 },
+        { header: "MRP", width: 10 },
+        { header: "Discount", width: 10 },
+        { header: "Final Amount", width: 14 },
+        { header: "Payment Method", width: 18 },
+      ];
+      const requiredOptional = [
+        "Optional",
+        "Optional",
+        "Optional",
+        "Required",
+        "Optional",
+        "Required",
+        "Required",
+        "Required",
+        "Required",
+        "Required",
+        "Required",
+        "Optional",
+        "Required",
+        "Optional (CASH, CARD, CHEQUE, FONEPAY, QR)",
+      ];
+
+      worksheet.columns = headers.map((h) => ({
+        header: h.header,
+        width: h.width,
+      }));
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+      const row2 = worksheet.getRow(2);
+      requiredOptional.forEach((text, i) => {
+        row2.getCell(i + 1).value = text;
+      });
+      row2.font = { italic: true };
+
+      const filename = "sales_bulk_upload_template.xlsx";
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`,
+      );
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Download template error:", error);
+      res.status(500).json({
+        message: "Error generating template",
+        error: error.message,
+      });
+    }
+  }
+
   // Download sales as Excel or CSV
   async downloadSales(req: Request, res: Response) {
     try {
@@ -1859,7 +1934,7 @@ class SaleController {
         where.id = { in: saleIds };
       }
 
-      // Fetch sales with relations
+      // Fetch sales with relations (location, member, createdBy, items with product/variation, payments)
       const sales = await prisma.sale.findMany({
         where,
         include: {
@@ -1871,6 +1946,7 @@ class SaleController {
               username: true,
             },
           },
+          payments: true,
           items: {
             include: {
               variation: {
@@ -1896,26 +1972,122 @@ class SaleController {
         });
       }
 
-      // Create workbook
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Sales");
+      // Build payment summary string for a sale (e.g. "CASH: 1000; CARD: 500")
+      const paymentSummary = (sale: (typeof sales)[0]) =>
+        sale.payments
+          .map((p) => `${p.method}: ${Number(p.amount)}`)
+          .join("; ") || "N/A";
 
-      // Define columns
+      // One row per line item (sale item); if sale has no items, one row with sale info and empty product columns
+      type ExportRow = {
+        saleCode: string;
+        type: string;
+        location: string;
+        memberPhone: string;
+        memberName: string;
+        createdBy: string;
+        date: string;
+        notes: string;
+        subtotal: number;
+        discount: number;
+        total: number;
+        paymentSummary: string;
+        productImsCode: string;
+        productName: string;
+        category: string;
+        variation: string;
+        quantity: number;
+        unitPrice: number;
+        totalMrp: number;
+        discountPercent: number;
+        discountAmount: number;
+        lineTotal: number;
+      };
+
+      const buildRows = (): ExportRow[] => {
+        const rows: ExportRow[] = [];
+        for (const sale of sales) {
+          const saleContext = {
+            saleCode: sale.saleCode,
+            type: sale.type,
+            location: sale.location.name,
+            memberPhone: sale.member?.phone ?? "Walk-in",
+            memberName: sale.member?.name ?? "N/A",
+            createdBy: sale.createdBy.username,
+            date: new Date(sale.createdAt).toLocaleString(),
+            notes: sale.notes ?? "N/A",
+            subtotal: Number(sale.subtotal),
+            discount: Number(sale.discount),
+            total: Number(sale.total),
+            paymentSummary: paymentSummary(sale),
+          };
+          if (sale.items.length === 0) {
+            rows.push({
+              ...saleContext,
+              productImsCode: "",
+              productName: "",
+              category: "",
+              variation: "",
+              quantity: 0,
+              unitPrice: 0,
+              totalMrp: 0,
+              discountPercent: 0,
+              discountAmount: 0,
+              lineTotal: 0,
+            });
+          } else {
+            for (const item of sale.items) {
+              const product = item.variation.product;
+              rows.push({
+                ...saleContext,
+                productImsCode: product.imsCode,
+                productName: product.name,
+                category: product.category?.name ?? "",
+                variation: item.variation.color,
+                quantity: item.quantity,
+                unitPrice: Number(item.unitPrice),
+                totalMrp: Number(item.totalMrp),
+                discountPercent: Number(item.discountPercent),
+                discountAmount: Number(item.discountAmount),
+                lineTotal: Number(item.lineTotal),
+              });
+            }
+          }
+        }
+        return rows;
+      };
+
+      const exportRows = buildRows();
+
+      // Define columns: sale-level, then payment summary, then line-item (product) details
       const columns = [
         { header: "Sale Code", key: "saleCode", width: 20 },
         { header: "Type", key: "type", width: 12 },
         { header: "Location", key: "location", width: 25 },
         { header: "Member Phone", key: "memberPhone", width: 15 },
         { header: "Member Name", key: "memberName", width: 25 },
-        { header: "Subtotal", key: "subtotal", width: 15 },
-        { header: "Discount", key: "discount", width: 15 },
-        { header: "Total", key: "total", width: 15 },
-        { header: "Items Count", key: "itemsCount", width: 12 },
         { header: "Created By", key: "createdBy", width: 20 },
         { header: "Date", key: "date", width: 20 },
-        { header: "Notes", key: "notes", width: 40 },
+        { header: "Notes", key: "notes", width: 35 },
+        { header: "Subtotal", key: "subtotal", width: 12 },
+        { header: "Discount", key: "discount", width: 12 },
+        { header: "Total", key: "total", width: 12 },
+        { header: "Payment Summary", key: "paymentSummary", width: 30 },
+        { header: "Product IMS Code", key: "productImsCode", width: 18 },
+        { header: "Product Name", key: "productName", width: 30 },
+        { header: "Category", key: "category", width: 18 },
+        { header: "Variation", key: "variation", width: 15 },
+        { header: "Quantity", key: "quantity", width: 10 },
+        { header: "Unit Price", key: "unitPrice", width: 12 },
+        { header: "Total MRP", key: "totalMrp", width: 12 },
+        { header: "Discount %", key: "discountPercent", width: 10 },
+        { header: "Discount Amount", key: "discountAmount", width: 14 },
+        { header: "Line Total", key: "lineTotal", width: 12 },
       ];
 
+      // Create workbook
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Sales");
       worksheet.columns = columns;
 
       // Style header row
@@ -1927,21 +2099,8 @@ class SaleController {
       };
 
       // Add data rows
-      sales.forEach((sale) => {
-        worksheet.addRow({
-          saleCode: sale.saleCode,
-          type: sale.type,
-          location: sale.location.name,
-          memberPhone: sale.member?.phone || "Walk-in",
-          memberName: sale.member?.name || "N/A",
-          subtotal: sale.subtotal,
-          discount: sale.discount,
-          total: sale.total,
-          itemsCount: sale.items?.length || 0,
-          createdBy: sale.createdBy.username,
-          date: new Date(sale.createdAt).toLocaleString(),
-          notes: sale.notes || "N/A",
-        });
+      exportRows.forEach((row) => {
+        worksheet.addRow(row);
       });
 
       // Generate filename with timestamp
@@ -1984,28 +2143,34 @@ class SaleController {
 
         // Build CSV rows
         const csvRows: string[] = [];
+        const csvHeaders = columns.map((col) => col.header);
+        csvRows.push(csvHeaders.map(escapeCsvValue).join(","));
 
-        // Header row
-        csvRows.push(
-          columns.map((col) => escapeCsvValue(col.header)).join(","),
-        );
-
-        // Data rows
-        sales.forEach((sale) => {
+        exportRows.forEach((row) => {
           csvRows.push(
             [
-              sale.saleCode,
-              sale.type,
-              sale.location.name,
-              sale.member?.phone || "Walk-in",
-              sale.member?.name || "N/A",
-              sale.subtotal,
-              sale.discount,
-              sale.total,
-              sale.items?.length || 0,
-              sale.createdBy.username,
-              new Date(sale.createdAt).toLocaleString(),
-              sale.notes || "N/A",
+              row.saleCode,
+              row.type,
+              row.location,
+              row.memberPhone,
+              row.memberName,
+              row.createdBy,
+              row.date,
+              row.notes,
+              row.subtotal,
+              row.discount,
+              row.total,
+              row.paymentSummary,
+              row.productImsCode,
+              row.productName,
+              row.category,
+              row.variation,
+              row.quantity,
+              row.unitPrice,
+              row.totalMrp,
+              row.discountPercent,
+              row.discountAmount,
+              row.lineTotal,
             ]
               .map(escapeCsvValue)
               .join(","),

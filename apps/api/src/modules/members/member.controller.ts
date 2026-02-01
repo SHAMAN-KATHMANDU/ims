@@ -703,6 +703,69 @@ class MemberController {
     }
   }
 
+  // Download bulk upload template (headers only)
+  async downloadBulkUploadTemplate(req: Request, res: Response) {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Members Template");
+
+      const headers = [
+        { header: "SN", width: 8 },
+        { header: "ID (member_id UUID)", width: 22 },
+        { header: "Name", width: 20 },
+        { header: "Address", width: 25 },
+        { header: "Phone", width: 15 },
+        { header: "DoB", width: 12 },
+        { header: "Notes", width: 25 },
+        { header: "Member since", width: 15 },
+      ];
+      const requiredOptional = [
+        "Optional",
+        "Optional",
+        "Optional",
+        "Optional",
+        "Required",
+        "Optional",
+        "Optional",
+        "Optional",
+      ];
+
+      worksheet.columns = headers.map((h) => ({
+        header: h.header,
+        width: h.width,
+      }));
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: "FFE0E0E0" },
+      };
+      const row2 = worksheet.getRow(2);
+      requiredOptional.forEach((text, i) => {
+        row2.getCell(i + 1).value = text;
+      });
+      row2.font = { italic: true };
+
+      const filename = "members_bulk_upload_template.xlsx";
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${filename}"`,
+      );
+      const buffer = await workbook.xlsx.writeBuffer();
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Download template error:", error);
+      res.status(500).json({
+        message: "Error generating template",
+        error: error.message,
+      });
+    }
+  }
+
   // Download members as Excel or CSV
   async downloadMembers(req: Request, res: Response) {
     try {
