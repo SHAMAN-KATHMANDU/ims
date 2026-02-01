@@ -369,15 +369,15 @@ class SaleController {
         });
       }
 
-      const total = subtotal - totalDiscount;
+      const total = Math.round((subtotal - totalDiscount) * 100) / 100;
 
       // Optional: validate payment breakdown matches total
       if (payments && payments.length > 0) {
-        const paymentSum = payments.reduce(
-          (sum, p) => sum + Number(p.amount || 0),
-          0,
-        );
-        // Allow small floating point tolerance
+        const paymentSum =
+          Math.round(
+            payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) * 100,
+          ) / 100;
+        // Allow small floating point tolerance (1 cent)
         if (Math.abs(paymentSum - total) > 0.01) {
           return res.status(400).json({
             message:
@@ -502,6 +502,258 @@ class SaleController {
       res
         .status(500)
         .json({ message: "Error creating sale", error: error.message });
+    }
+  }
+
+  /**
+   * Preview sale total (same discount + promo logic as createSale, no DB writes).
+   * Use so frontend can show exact total and validate payment.
+   */
+  async previewSale(req: Request, res: Response) {
+    try {
+      const {
+        locationId,
+        memberPhone,
+        memberName,
+        items,
+      }: {
+        locationId: string;
+        memberPhone?: string;
+        memberName?: string;
+        items: Array<{
+          variationId: string;
+          quantity: number;
+          promoCode?: string;
+        }>;
+      } = req.body;
+
+      if (
+        !locationId ||
+        !items ||
+        !Array.isArray(items) ||
+        items.length === 0
+      ) {
+        return res.status(400).json({
+          message: "locationId and items (non-empty array) are required",
+        });
+      }
+
+      const location = await prisma.location.findUnique({
+        where: { id: locationId },
+      });
+      if (!location || !location.isActive || location.type !== "SHOWROOM") {
+        return res
+          .status(400)
+          .json({ message: "Invalid or inactive showroom" });
+      }
+
+      let member: { id: string; isActive: boolean } | null = null;
+      let saleType: "GENERAL" | "MEMBER" = "GENERAL";
+      if (memberPhone) {
+        const normalizedPhone = String(memberPhone)
+          .replace(/[\s-]/g, "")
+          .trim();
+        member = await prisma.member.findUnique({
+          where: { phone: normalizedPhone },
+          select: { id: true, isActive: true },
+        });
+        if (member?.isActive) saleType = "MEMBER";
+      }
+
+      let subtotal = 0;
+      let totalDiscount = 0;
+
+      for (const item of items) {
+        if (!item.variationId || !item.quantity || item.quantity <= 0) {
+          return res.status(400).json({
+            message: "Each item must have variationId and positive quantity",
+          });
+        }
+
+        const variation = await prisma.productVariation.findUnique({
+          where: { id: item.variationId },
+          include: {
+            product: {
+              include: {
+                discounts: {
+                  where: {
+                    isActive: true,
+                    OR: [
+                      { startDate: null },
+                      { startDate: { lte: new Date() } },
+                    ],
+                    AND: [
+                      {
+                        OR: [
+                          { endDate: null },
+                          { endDate: { gte: new Date() } },
+                        ],
+                      },
+                    ],
+                  },
+                  include: { discountType: true },
+                },
+              },
+            },
+          },
+        });
+
+        if (!variation) {
+          return res.status(404).json({
+            message: `Variation ${item.variationId} not found`,
+          });
+        }
+
+        const inventory = await prisma.locationInventory.findUnique({
+          where: {
+            locationId_variationId: {
+              locationId,
+              variationId: item.variationId,
+            },
+          },
+        });
+        const availableStock = inventory?.quantity || 0;
+        if (availableStock < item.quantity) {
+          return res.status(400).json({
+            message: `Insufficient stock for ${variation.product.name} (${variation.color})`,
+            available: availableStock,
+            requested: item.quantity,
+          });
+        }
+
+        const unitPrice = Number(variation.product.mrp);
+        const itemSubtotal = unitPrice * item.quantity;
+        let discountPercent = 0;
+        let discountAmount = 0;
+
+        const activeDiscounts = variation.product.discounts as Array<
+          (typeof variation.product.discounts)[number] & {
+            discountType: { name: string };
+          }
+        >;
+        let baseDiscount: (typeof activeDiscounts)[number] | null = null;
+
+        if (activeDiscounts?.length > 0) {
+          const eligible = activeDiscounts.filter((d) => {
+            const typeName = d.discountType.name.toLowerCase();
+            if (saleType === "MEMBER") {
+              return (
+                typeName.includes("member") || typeName.includes("non-member")
+              );
+            }
+            return (
+              typeName.includes("non-member") || typeName.includes("wholesale")
+            );
+          });
+
+          if (eligible.length > 0) {
+            eligible.sort((a, b) => {
+              const aIsSpecial =
+                a.discountType.name.toLowerCase() === "special" ? 1 : 0;
+              const bIsSpecial =
+                b.discountType.name.toLowerCase() === "special" ? 1 : 0;
+              if (aIsSpecial !== bIsSpecial) return bIsSpecial - aIsSpecial;
+              const aValue =
+                a.valueType === "FLAT"
+                  ? Number(a.value)
+                  : (Number(a.value) / 100) * itemSubtotal;
+              const bValue =
+                b.valueType === "FLAT"
+                  ? Number(b.value)
+                  : (Number(b.value) / 100) * itemSubtotal;
+              return bValue - aValue;
+            });
+            baseDiscount = eligible[0];
+          }
+        }
+
+        if (baseDiscount) {
+          if (baseDiscount.valueType === "FLAT") {
+            discountAmount += Number(baseDiscount.value);
+          } else {
+            discountPercent += Number(baseDiscount.value);
+          }
+        }
+
+        if (item.promoCode) {
+          const promo = await prisma.promoCode.findUnique({
+            where: { code: item.promoCode },
+            include: {
+              products: { include: { product: true } },
+            },
+          });
+
+          if (promo && promo.isActive) {
+            const now = new Date();
+            if (
+              (!promo.validFrom || promo.validFrom <= now) &&
+              (!promo.validTo || promo.validTo >= now) &&
+              (!promo.usageLimit || promo.usageCount < promo.usageLimit)
+            ) {
+              const isProductEligible = promo.products.some(
+                (pp: { productId: string }) =>
+                  pp.productId === variation.productId,
+              );
+              let isCustomerEligible = false;
+              if (promo.eligibility === "ALL") isCustomerEligible = true;
+              else if (promo.eligibility === "MEMBER")
+                isCustomerEligible = saleType === "MEMBER";
+              else if (promo.eligibility === "NON_MEMBER")
+                isCustomerEligible = saleType === "GENERAL";
+
+              if (isProductEligible && isCustomerEligible) {
+                const baseAfterProductDiscount =
+                  itemSubtotal -
+                  (discountAmount + itemSubtotal * (discountPercent / 100));
+                let promoDiscountAmount = 0;
+                if (promo.valueType === "FLAT") {
+                  promoDiscountAmount = Number(promo.value);
+                } else {
+                  promoDiscountAmount =
+                    baseAfterProductDiscount * (Number(promo.value) / 100);
+                }
+
+                if (promo.overrideDiscounts) {
+                  discountAmount = promoDiscountAmount;
+                  discountPercent = 0;
+                } else if (promo.allowStacking) {
+                  discountAmount += promoDiscountAmount;
+                } else {
+                  const baseTotalDiscount =
+                    discountAmount + itemSubtotal * (discountPercent / 100);
+                  if (promoDiscountAmount > baseTotalDiscount) {
+                    discountAmount = promoDiscountAmount;
+                    discountPercent = 0;
+                  }
+                }
+                // Preview: do not increment promo usageCount
+              }
+            }
+          }
+        }
+
+        const effectiveDiscount =
+          Math.min(
+            itemSubtotal,
+            discountAmount + itemSubtotal * (discountPercent / 100),
+          ) || 0;
+        subtotal += itemSubtotal;
+        totalDiscount += effectiveDiscount;
+      }
+
+      const total = Math.round((subtotal - totalDiscount) * 100) / 100;
+
+      res.json({
+        subtotal: Math.round(subtotal * 100) / 100,
+        discount: Math.round(totalDiscount * 100) / 100,
+        total,
+      });
+    } catch (error: unknown) {
+      console.error("Preview sale error:", error);
+      res.status(500).json({
+        message: "Error computing preview",
+        error: error instanceof Error ? error.message : String(error),
+      });
     }
   }
 

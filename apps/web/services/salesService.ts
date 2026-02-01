@@ -265,6 +265,37 @@ export async function getSaleById(id: string): Promise<Sale> {
   }
 }
 
+export interface SalePreviewResponse {
+  subtotal: number;
+  discount: number;
+  total: number;
+}
+
+/**
+ * Preview sale total (same logic as create; use to show exact total and validate payment).
+ */
+export async function previewSale(
+  data: Pick<
+    CreateSaleData,
+    "locationId" | "memberPhone" | "memberName" | "items"
+  >,
+): Promise<SalePreviewResponse> {
+  if (!data.locationId?.trim() || !data.items?.length) {
+    throw new Error("locationId and items required");
+  }
+  const response = await api.post<SalePreviewResponse>("/sales/preview", {
+    locationId: data.locationId,
+    memberPhone: data.memberPhone,
+    memberName: data.memberName,
+    items: data.items.map((i) => ({
+      variationId: i.variationId,
+      quantity: i.quantity,
+      promoCode: i.promoCode,
+    })),
+  });
+  return response.data;
+}
+
 /**
  * Create a new sale
  */

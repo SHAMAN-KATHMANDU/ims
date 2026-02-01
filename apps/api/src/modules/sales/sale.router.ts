@@ -57,6 +57,43 @@ saleRouter.post(
 
 /**
  * @swagger
+ * /sales/preview:
+ *   post:
+ *     summary: Preview sale total (discount + promo, no DB writes)
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [locationId, items]
+ *             properties:
+ *               locationId: { type: string, format: uuid }
+ *               memberPhone: { type: string }
+ *               memberName: { type: string }
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     variationId: { type: string, format: uuid }
+ *                     quantity: { type: integer }
+ *                     promoCode: { type: string }
+ *     responses:
+ *       200:
+ *         description: Returns subtotal, discount, total
+ */
+saleRouter.post(
+  "/preview",
+  verifyToken,
+  authorizeRoles("user", "admin", "superAdmin"),
+  saleController.previewSale,
+);
+
+/**
+ * @swagger
  * /sales:
  *   get:
  *     summary: Get all sales with pagination and filtering

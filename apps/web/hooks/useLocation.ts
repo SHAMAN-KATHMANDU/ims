@@ -99,9 +99,10 @@ export function useCreateLocation() {
   return useMutation({
     mutationFn: (data: CreateLocationData) => createLocation(data),
     onSuccess: () => {
-      // Invalidate all location lists
       queryClient.invalidateQueries({ queryKey: locationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: locationKeys.active() });
+      queryClient.refetchQueries({ queryKey: locationKeys.lists() });
+      queryClient.refetchQueries({ queryKey: locationKeys.active() });
     },
   });
 }
@@ -116,14 +117,14 @@ export function useUpdateLocation() {
     mutationFn: ({ id, data }: { id: string; data: UpdateLocationData }) =>
       updateLocation(id, data),
     onSuccess: (updatedLocation) => {
-      // Update the cache for this specific location
       queryClient.setQueryData(
         locationKeys.detail(updatedLocation.id),
         updatedLocation,
       );
-      // Invalidate all location lists
       queryClient.invalidateQueries({ queryKey: locationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: locationKeys.active() });
+      queryClient.refetchQueries({ queryKey: locationKeys.lists() });
+      queryClient.refetchQueries({ queryKey: locationKeys.active() });
     },
   });
 }
@@ -137,9 +138,10 @@ export function useDeleteLocation() {
   return useMutation({
     mutationFn: (id: string) => deleteLocation(id),
     onSuccess: () => {
-      // Invalidate all location lists
       queryClient.invalidateQueries({ queryKey: locationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: locationKeys.active() });
+      queryClient.refetchQueries({ queryKey: locationKeys.lists() });
+      queryClient.refetchQueries({ queryKey: locationKeys.active() });
     },
   });
 }

@@ -167,8 +167,8 @@ export function useCreateProduct() {
   return useMutation({
     mutationFn: (data: CreateProductData) => createProduct(data),
     onSuccess: () => {
-      // Invalidate all product lists (paginated and non-paginated)
       queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.refetchQueries({ queryKey: productKeys.all });
     },
   });
 }
@@ -180,8 +180,8 @@ export function useUpdateProduct() {
     mutationFn: ({ id, data }: { id: string; data: UpdateProductData }) =>
       updateProduct(id, data),
     onSuccess: (_, variables) => {
-      // Invalidate all product lists and the specific product detail
       queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.refetchQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({
         queryKey: productKeys.detail(variables.id),
       });
@@ -195,8 +195,8 @@ export function useDeleteProduct() {
   return useMutation({
     mutationFn: (id: string) => deleteProduct(id),
     onSuccess: () => {
-      // Invalidate all product lists
       queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.refetchQueries({ queryKey: productKeys.all });
     },
   });
 }
