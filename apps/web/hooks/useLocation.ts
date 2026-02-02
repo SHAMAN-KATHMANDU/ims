@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * React Query wrappers for locations. Business logic and API calls live in locationService; hooks only wire query/mutation and cache keys.
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getLocations,

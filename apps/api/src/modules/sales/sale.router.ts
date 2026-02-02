@@ -146,6 +146,34 @@ saleRouter.get(
 
 /**
  * @swagger
+ * /sales/me/since-last-login:
+ *   get:
+ *     summary: Get current user's sales since last login (User Sales Report)
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Sales since last login
+ */
+saleRouter.get(
+  "/me/since-last-login",
+  verifyToken,
+  authorizeRoles("user", "admin", "superAdmin"),
+  saleController.getSalesSinceLastLogin,
+);
+
+/**
+ * @swagger
  * /sales/analytics/summary:
  *   get:
  *     summary: Get sales summary analytics
@@ -349,6 +377,49 @@ saleRouter.get(
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   saleController.downloadSales,
+);
+
+/**
+ * @swagger
+ * /sales/{id}/payments:
+ *   post:
+ *     summary: Add payment to a credit sale
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [method, amount]
+ *             properties:
+ *               method:
+ *                 type: string
+ *                 enum: [CASH, CARD, CHEQUE, FONEPAY, QR]
+ *               amount:
+ *                 type: number
+ *     responses:
+ *       201:
+ *         description: Payment added successfully
+ *       400:
+ *         description: Invalid request or not a credit sale or amount exceeds balance due
+ *       404:
+ *         description: Sale not found
+ */
+saleRouter.post(
+  "/:id/payments",
+  verifyToken,
+  authorizeRoles("user", "admin", "superAdmin"),
+  saleController.addPayment,
 );
 
 /**

@@ -47,6 +47,13 @@
   /* Radius */
   --radius: 0.6rem;
 
+  /* Chart colors (light mode: distinct, readable on light bg). Use as hsl(var(--chart-1)). */
+  --chart-1: 220 70% 48%;
+  --chart-2: 165 60% 42%;
+  --chart-3: 38 92% 50%;
+  --chart-4: 270 65% 55%;
+  --chart-5: 350 75% 52%;
+
   /* Sidebar */
   --sidebar: oklch(0.975 0.006 95);
   --sidebar-foreground: oklch(0.2 0.01 95);
@@ -89,6 +96,13 @@
   --border: oklch(0.32 0.01 95);
   --input: oklch(0.32 0.01 95);
   --ring: oklch(0.7 0.09 150);
+
+  /* Chart colors (dark mode: lighter for contrast on dark bg) */
+  --chart-1: 220 70% 68%;
+  --chart-2: 165 55% 62%;
+  --chart-3: 38 92% 68%;
+  --chart-4: 270 60% 72%;
+  --chart-5: 350 70% 70%;
 
   --sidebar: oklch(0.2 0.01 95);
   --sidebar-foreground: oklch(0.95 0.005 95);

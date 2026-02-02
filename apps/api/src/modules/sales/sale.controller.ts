@@ -32,6 +32,7 @@ class SaleController {
         locationId,
         memberPhone,
         memberName,
+        isCreditSale,
         items,
         notes,
         payments,
@@ -39,6 +40,7 @@ class SaleController {
         locationId: string;
         memberPhone?: string;
         memberName?: string;
+        isCreditSale?: boolean;
         items: Array<{
           variationId: string;
           subVariationId?: string | null;
@@ -111,6 +113,14 @@ class SaleController {
         if (member.isActive) {
           saleType = "MEMBER";
         }
+      }
+
+      // Credit sales require a customer (member)
+      if (isCreditSale === true && !member) {
+        return res.status(400).json({
+          message:
+            "Credit sales require a customer (member). Please enter the customer's phone number.",
+        });
       }
 
       // Get "Member" discount type for member sales
@@ -205,15 +215,25 @@ class SaleController {
         }
 
         // Check stock at this location (and sub-variant when applicable)
-        const inventory = await prisma.locationInventory.findUnique({
-          where: {
-            locationId_variationId_subVariationId: {
-              locationId,
-              variationId: item.variationId,
-              subVariationId,
-            } as any,
-          },
-        });
+        // findFirst when subVariationId is null (Prisma findUnique does not accept null in compound unique)
+        const inventory =
+          subVariationId != null
+            ? await prisma.locationInventory.findUnique({
+                where: {
+                  locationId_variationId_subVariationId: {
+                    locationId,
+                    variationId: item.variationId,
+                    subVariationId,
+                  },
+                },
+              })
+            : await prisma.locationInventory.findFirst({
+                where: {
+                  locationId,
+                  variationId: item.variationId,
+                  subVariationId: null,
+                },
+              });
 
         const availableStock = inventory?.quantity || 0;
         if (availableStock < item.quantity) {
@@ -399,8 +419,10 @@ class SaleController {
 
       const total = Math.round((subtotal - totalDiscount) * 100) / 100;
 
-      // Optional: validate payment breakdown matches total
-      if (payments && payments.length > 0) {
+      const creditSale = isCreditSale === true;
+
+      // For non-credit sales: validate payment breakdown matches total
+      if (!creditSale && payments && payments.length > 0) {
         const paymentSum =
           Math.round(
             payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) * 100,
@@ -423,6 +445,7 @@ class SaleController {
           data: {
             saleCode: generateSaleCode(),
             type: saleType,
+            isCreditSale: creditSale,
             locationId,
             memberId: member?.id || null,
             subtotal,
@@ -479,19 +502,35 @@ class SaleController {
         });
 
         // Deduct inventory for each item (variation-level or sub-variant level)
+        // findFirst when subVariationId is null (Prisma compound unique does not accept null)
         for (const item of processedItems) {
+          const inv =
+            item.subVariationId != null
+              ? await tx.locationInventory.findUnique({
+                  where: {
+                    locationId_variationId_subVariationId: {
+                      locationId,
+                      variationId: item.variationId,
+                      subVariationId: item.subVariationId,
+                    },
+                  },
+                })
+              : await tx.locationInventory.findFirst({
+                  where: {
+                    locationId,
+                    variationId: item.variationId,
+                    subVariationId: null,
+                  },
+                });
+          if (!inv) {
+            throw new Error(
+              `Inventory not found for location ${locationId}, variation ${item.variationId}`,
+            );
+          }
           await tx.locationInventory.update({
-            where: {
-              locationId_variationId_subVariationId: {
-                locationId,
-                variationId: item.variationId,
-                subVariationId: item.subVariationId,
-              } as any,
-            },
+            where: { id: inv.id },
             data: {
-              quantity: {
-                decrement: item.quantity,
-              },
+              quantity: { decrement: item.quantity },
             },
           });
         }
@@ -517,6 +556,30 @@ class SaleController {
           // Log error but don't fail the sale creation
           console.error("Failed to update member aggregation fields:", error);
         }
+      }
+
+      // Audit log: CREATE_SALE
+      try {
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user!.id,
+            action: "CREATE_SALE",
+            resource: "sale",
+            resourceId: sale.id,
+            details: {
+              saleCode: sale.saleCode,
+              total: Number(sale.total),
+              locationId: sale.locationId,
+            },
+            ip:
+              (req as any).ip ??
+              (req.socket as any)?.remoteAddress ??
+              undefined,
+            userAgent: req.get("user-agent") ?? undefined,
+          },
+        });
+      } catch (auditErr) {
+        console.error("Audit log CREATE_SALE failed:", auditErr);
       }
 
       res.status(201).json({
@@ -594,6 +657,7 @@ class SaleController {
 
       let subtotal = 0;
       let totalDiscount = 0;
+      let totalPromoDiscount = 0;
 
       for (const item of items) {
         if (!item.variationId || !item.quantity || item.quantity <= 0) {
@@ -645,15 +709,25 @@ class SaleController {
           });
         }
 
-        const inventory = await prisma.locationInventory.findUnique({
-          where: {
-            locationId_variationId_subVariationId: {
-              locationId,
-              variationId: item.variationId,
-              subVariationId: prevSubVariationId,
-            } as any,
-          },
-        });
+        // findFirst when subVariationId is null (Prisma findUnique does not accept null in compound unique)
+        const inventory =
+          prevSubVariationId != null
+            ? await prisma.locationInventory.findUnique({
+                where: {
+                  locationId_variationId_subVariationId: {
+                    locationId,
+                    variationId: item.variationId,
+                    subVariationId: prevSubVariationId,
+                  },
+                },
+              })
+            : await prisma.locationInventory.findFirst({
+                where: {
+                  locationId,
+                  variationId: item.variationId,
+                  subVariationId: null,
+                },
+              });
         const availableStock = inventory?.quantity || 0;
         if (availableStock < item.quantity) {
           return res.status(400).json({
@@ -768,6 +842,10 @@ class SaleController {
                     discountPercent = 0;
                   }
                 }
+                totalPromoDiscount += Math.min(
+                  promoDiscountAmount,
+                  itemSubtotal,
+                );
                 // Preview: do not increment promo usageCount
               }
             }
@@ -789,6 +867,7 @@ class SaleController {
         subtotal: Math.round(subtotal * 100) / 100,
         discount: Math.round(totalDiscount * 100) / 100,
         total,
+        promoDiscount: Math.round(totalPromoDiscount * 100) / 100,
       });
     } catch (error: unknown) {
       console.error("Preview sale error:", error);
@@ -806,11 +885,38 @@ class SaleController {
         req.query,
       );
 
-      // Parse filters
+      // Parse filters (createdById used for analytics drill-down; user role ignores it and sees only own)
       const locationId = req.query.locationId as string | undefined;
+      const createdByIdParam = req.query.createdById as string | undefined;
       const type = req.query.type as "GENERAL" | "MEMBER" | undefined;
-      const startDate = req.query.startDate as string | undefined;
-      const endDate = req.query.endDate as string | undefined;
+      const isCreditSaleParam = req.query.isCreditSale as string | undefined;
+      let startDate = req.query.startDate as string | undefined;
+      let endDate = req.query.endDate as string | undefined;
+
+      // For role "user", restrict date range to today and yesterday only
+      const userRole = (req as any).user?.role as string | undefined;
+      if (userRole === "user") {
+        const today = new Date();
+        today.setHours(23, 59, 59, 999);
+        const yesterdayStart = new Date(today);
+        yesterdayStart.setDate(yesterdayStart.getDate() - 1);
+        yesterdayStart.setHours(0, 0, 0, 0);
+        const todayStart = new Date(today);
+        todayStart.setHours(0, 0, 0, 0);
+        const yesterdayEnd = new Date(yesterdayStart);
+        yesterdayEnd.setHours(23, 59, 59, 999);
+        // Clamp: if no dates provided, default to today
+        if (!startDate && !endDate) {
+          startDate = todayStart.toISOString().slice(0, 10);
+          endDate = today.toISOString().slice(0, 10);
+        } else {
+          const reqStart = startDate ? new Date(startDate) : yesterdayStart;
+          const reqEnd = endDate ? new Date(endDate) : today;
+          if (reqStart < yesterdayStart)
+            startDate = yesterdayStart.toISOString().slice(0, 10);
+          if (reqEnd > today) endDate = today.toISOString().slice(0, 10);
+        }
+      }
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -839,6 +945,12 @@ class SaleController {
         where.type = type;
       }
 
+      if (isCreditSaleParam === "true") {
+        where.isCreditSale = true;
+      } else if (isCreditSaleParam === "false") {
+        where.isCreditSale = false;
+      }
+
       if (startDate || endDate) {
         where.createdAt = {};
         if (startDate) {
@@ -858,6 +970,12 @@ class SaleController {
           { member: { phone: { contains: search, mode: "insensitive" } } },
           { member: { name: { contains: search, mode: "insensitive" } } },
         ];
+      }
+
+      if (userRole === "user" && (req as any).user?.id) {
+        where.createdById = (req as any).user.id;
+      } else if (createdByIdParam) {
+        where.createdById = createdByIdParam;
       }
 
       const skip = (page - 1) * limit;
@@ -902,6 +1020,68 @@ class SaleController {
       res
         .status(500)
         .json({ message: "Error fetching sales", error: error.message });
+    }
+  }
+
+  // Get current user's sales since last login (for User Sales Report)
+  async getSalesSinceLastLogin(req: Request, res: Response) {
+    try {
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({ message: "User not authenticated" });
+      }
+
+      const { page, limit } = getPaginationParams(req.query);
+
+      const user = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { lastLoginAt: true },
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const since = user.lastLoginAt ?? new Date(0); // If never logged in, show all
+
+      const where = {
+        createdById: req.user.id,
+        createdAt: { gte: since },
+      };
+
+      const skip = (page - 1) * limit;
+      const [totalItems, sales] = await Promise.all([
+        prisma.sale.count({ where }),
+        prisma.sale.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { createdAt: "desc" },
+          include: {
+            location: { select: { id: true, name: true } },
+            member: { select: { id: true, phone: true, name: true } },
+            createdBy: { select: { id: true, username: true } },
+            payments: {
+              select: { method: true, amount: true },
+              take: 1,
+              orderBy: { createdAt: "asc" },
+            },
+            _count: { select: { items: true } },
+          },
+        }),
+      ]);
+
+      const result = createPaginationResult(sales, totalItems, page, limit);
+
+      res.status(200).json({
+        message: "Sales since last login",
+        ...result,
+      });
+    } catch (error: any) {
+      console.error("Get sales since last login error:", error);
+      res.status(500).json({
+        message: "Error fetching sales",
+        error: error.message,
+      });
     }
   }
 
@@ -966,6 +1146,112 @@ class SaleController {
       res
         .status(500)
         .json({ message: "Error fetching sale", error: error.message });
+    }
+  }
+
+  // Add payment to a credit sale
+  async addPayment(req: Request, res: Response) {
+    try {
+      const saleId = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const { method, amount }: { method: string; amount: number } = req.body;
+
+      if (!saleId) {
+        return res.status(400).json({ message: "Sale ID is required" });
+      }
+      if (
+        !method ||
+        !["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"].includes(method)
+      ) {
+        return res.status(400).json({
+          message:
+            "Valid payment method is required (CASH, CARD, CHEQUE, FONEPAY, QR)",
+        });
+      }
+      const amountNum = Number(amount);
+      if (isNaN(amountNum) || amountNum <= 0) {
+        return res.status(400).json({
+          message: "Amount must be a positive number",
+        });
+      }
+
+      const sale = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: {
+          payments: { select: { amount: true } },
+        },
+      });
+
+      if (!sale) {
+        return res.status(404).json({ message: "Sale not found" });
+      }
+      if (!sale.isCreditSale) {
+        return res.status(400).json({
+          message: "Payments can only be added to credit sales",
+        });
+      }
+
+      const amountPaid =
+        sale.payments.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+      const totalNum = Number(sale.total);
+      const balanceDue = Math.round((totalNum - amountPaid) * 100) / 100;
+
+      if (amountNum > balanceDue + 0.01) {
+        return res.status(400).json({
+          message: "Payment amount exceeds balance due",
+          balanceDue,
+        });
+      }
+
+      const payment = await prisma.salePayment.create({
+        data: {
+          saleId: sale.id,
+          method: method as "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR",
+          amount: amountNum,
+        },
+      });
+
+      const updatedSale = await prisma.sale.findUnique({
+        where: { id: saleId },
+        include: {
+          location: { select: { id: true, name: true } },
+          member: { select: { id: true, phone: true, name: true } },
+          createdBy: { select: { id: true, username: true, role: true } },
+          payments: {
+            select: { id: true, method: true, amount: true, createdAt: true },
+            orderBy: { createdAt: "asc" },
+          },
+          items: {
+            include: {
+              variation: {
+                include: {
+                  product: {
+                    select: {
+                      id: true,
+                      name: true,
+                      imsCode: true,
+                      category: true,
+                    },
+                  },
+                  photos: { where: { isPrimary: true }, take: 1 },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      res.status(201).json({
+        message: "Payment added successfully",
+        sale: updatedSale,
+        payment,
+      });
+    } catch (error: any) {
+      console.error("Add payment error:", error);
+      res
+        .status(500)
+        .json({ message: "Error adding payment", error: error.message });
     }
   }
 

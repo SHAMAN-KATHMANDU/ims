@@ -2,6 +2,7 @@
  * API Error Handler
  *
  * Shared error handling utility for all services.
+ * All services must use handleApiError for API errors; do not implement custom axios error handling in services.
  * Converts axios errors to user-friendly error messages.
  */
 

@@ -1,8 +1,8 @@
 /**
  * Axios Instance Configuration
  *
- * This is the single source of truth for HTTP client configuration.
- * Import this instance in services to make API calls.
+ * Single source of truth for HTTP client configuration.
+ * All services must use this instance; do not create other axios instances for API calls.
  *
  * Features:
  * - Base URL from environment variable

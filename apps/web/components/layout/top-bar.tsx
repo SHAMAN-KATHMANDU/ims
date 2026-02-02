@@ -1,8 +1,10 @@
 "use client";
 
+import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import Link from "next/link";
+import { getWorkspaceRoot } from "@/config/routes";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -12,8 +14,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Moon, Sun, LogOut, Menu, Settings } from "lucide-react";
+import { Moon, Sun, LogOut, Menu, Settings, Bug } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { ReportErrorDialog } from "./ReportErrorDialog";
 import { useIsMobile } from "@/hooks/useMobile";
 
 interface TopBarProps {
@@ -25,15 +28,21 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const { theme, setTheme } = useTheme();
   const { user, logout, isLoggingOut } = useAuth();
   const isMobile = useIsMobile();
+  const [reportErrorOpen, setReportErrorOpen] = useState(false);
 
   const handleLogout = async () => {
     await logout();
   };
 
-  // Detect base path for settings link
-  const basePath = pathname.startsWith("/admin/dashboard")
-    ? "/admin/dashboard"
-    : "/dashboard";
+  // Base path: first segment is workspace (e.g. /admin -> /admin)
+  const workspace =
+    pathname.startsWith("/admin") || pathname.startsWith("/dashboard")
+      ? (pathname.split("/")[1] ?? "admin")
+      : pathname.split("/")[1];
+  const basePath =
+    workspace && !["login", "401", "loading"].includes(workspace)
+      ? `/${workspace}`
+      : getWorkspaceRoot();
   const settingsPath = `${basePath}/settings`;
 
   const username = user?.username ?? "";
@@ -88,6 +97,13 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                 Settings
               </Link>
             </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => setReportErrorOpen(true)}
+              onSelect={(e) => e.preventDefault()}
+            >
+              <Bug className="mr-2 h-4 w-4" />
+              Report error
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout} disabled={isLoggingOut}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -95,6 +111,10 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        <ReportErrorDialog
+          open={reportErrorOpen}
+          onOpenChange={setReportErrorOpen}
+        />
       </div>
     </header>
   );

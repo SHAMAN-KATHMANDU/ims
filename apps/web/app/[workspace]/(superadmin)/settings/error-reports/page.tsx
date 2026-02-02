@@ -1,0 +1,12 @@
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { WORKSPACE_ROOT } from "@/config/routes";
+import { ErrorReportsPage } from "@/views/settings/ErrorReportsPage";
+
+/** Error reports – superAdmin only. */
+export default function ErrorReportsRoute() {
+  return (
+    <AuthGuard roles={["superAdmin"]} unauthorizedPath={WORKSPACE_ROOT}>
+      <ErrorReportsPage />
+    </AuthGuard>
+  );
+}

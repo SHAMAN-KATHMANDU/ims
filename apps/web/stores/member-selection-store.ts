@@ -1,16 +1,14 @@
 "use client";
 
-import { create } from "zustand";
+/**
+ * Member selection store (multi-select for export). Built from createSelectionStore; single point of change there.
+ */
 
-// ============================================
-// Types
-// ============================================
+import { create } from "zustand";
+import { selectionStoreImpl } from "./createSelectionStore";
 
 interface MemberSelectionState {
-  // State
   selectedMemberIds: Set<string>;
-
-  // Actions
   addMember: (memberId: string) => void;
   removeMember: (memberId: string) => void;
   toggleMember: (memberId: string) => void;
@@ -19,61 +17,24 @@ interface MemberSelectionState {
   isSelected: (memberId: string) => boolean;
 }
 
-// ============================================
-// Store
-// ============================================
-
 export const useMemberSelectionStore = create<MemberSelectionState>()(
-  (set, get) => ({
-    // Initial state
-    selectedMemberIds: new Set(),
-
-    // Actions
-    addMember: (memberId) => {
-      set((state) => {
-        const newSet = new Set(state.selectedMemberIds);
-        newSet.add(memberId);
-        return { selectedMemberIds: newSet };
-      });
-    },
-
-    removeMember: (memberId) => {
-      set((state) => {
-        const newSet = new Set(state.selectedMemberIds);
-        newSet.delete(memberId);
-        return { selectedMemberIds: newSet };
-      });
-    },
-
-    toggleMember: (memberId) => {
-      set((state) => {
-        const newSet = new Set(state.selectedMemberIds);
-        if (newSet.has(memberId)) {
-          newSet.delete(memberId);
-        } else {
-          newSet.add(memberId);
-        }
-        return { selectedMemberIds: newSet };
-      });
-    },
-
-    setMembers: (memberIds) => {
-      set({ selectedMemberIds: new Set(memberIds) });
-    },
-
-    clearSelection: () => {
-      set({ selectedMemberIds: new Set() });
-    },
-
-    isSelected: (memberId) => {
-      return get().selectedMemberIds.has(memberId);
-    },
-  }),
+  (set, get) => {
+    const impl = selectionStoreImpl(
+      set as (p: Record<string, unknown> | ((s: Record<string, unknown>) => Record<string, unknown>)) => void,
+      get as unknown as () => Record<string, unknown>,
+      "selectedMemberIds",
+    );
+    return {
+      selectedMemberIds: new Set(),
+      addMember: impl.add,
+      removeMember: impl.remove,
+      toggleMember: impl.toggle,
+      setMembers: impl.set,
+      clearSelection: impl.clearSelection,
+      isSelected: impl.isSelected,
+    };
+  },
 );
-
-// ============================================
-// Selectors (for optimized re-renders)
-// ============================================
 
 export const selectSelectedMemberIds = (state: MemberSelectionState) =>
   state.selectedMemberIds;

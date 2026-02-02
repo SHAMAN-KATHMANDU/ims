@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Product discounts list page content (table, filters, pagination).
+ * Not the form tab – see form-tabs/DiscountsTab.tsx for product form discount rows.
+ */
+
 import { useState, useCallback } from "react";
 import {
   Card,

@@ -55,9 +55,17 @@ import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
+import { useAuthStore, selectUserRole } from "@/stores/auth-store";
 
-export function PromoPage() {
+interface PromoPageProps {
+  /** When true, page is read-only for all roles (no add/edit/delete). Used under Products. */
+  readOnly?: boolean;
+}
+
+export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
   const { toast } = useToast();
+  const userRole = useAuthStore(selectUserRole);
+  const readOnly = readOnlyProp === true ? true : userRole === "user";
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -271,6 +279,7 @@ export function PromoPage() {
                 Show active only
               </label>
             </div>
+            {!readOnly && (
             <Dialog
               open={dialogOpen}
               onOpenChange={(open) => {
@@ -723,6 +732,7 @@ export function PromoPage() {
                 </div>
               </DialogContent>
             </Dialog>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -799,22 +809,24 @@ export function PromoPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEdit(promo)}
-                          >
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete(promo)}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </div>
+                        {!readOnly && (
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleEdit(promo)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(promo)}
+                            >
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))

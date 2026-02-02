@@ -1,3 +1,7 @@
+/**
+ * Route registration is the single source of truth; do not maintain a separate list of paths here.
+ */
+
 import { Request, Response, Router } from "express";
 import authRouter from "@/modules/auth/auth.router";
 import userRouter from "@/modules/users/user.router";
@@ -10,7 +14,9 @@ import transferRouter from "@/modules/transfers/transfer.router";
 import memberRouter from "@/modules/members/member.router";
 import saleRouter from "@/modules/sales/sale.router";
 import promoRouter from "@/modules/promos/promo.router";
-// import analyticsRouter from "@/modules/analytics/analytics.router";
+import auditRouter from "@/modules/audit/audit.router";
+import errorReportRouter from "@/modules/error-reports/error-report.router";
+import analyticsRouter from "@/modules/analytics/analytics.router";
 // import homeRouter from "@/modules/home/home.router";
 
 const router = Router();
@@ -19,21 +25,6 @@ router.get("/", (req: Request, res: Response) => {
   res.status(200).json({
     message: "API is running",
     version: "1.0.0",
-    endpoints: {
-      auth: "/api/v1/auth",
-      users: "/api/v1/users",
-      products: "/api/v1/products",
-      categories: "/api/v1/categories",
-      locations: "/api/v1/locations",
-      inventory: "/api/v1/inventory",
-      transfers: "/api/v1/transfers",
-      members: "/api/v1/members",
-      sales: "/api/v1/sales",
-      promos: "/api/v1/promos",
-      vendors: "/api/v1/vendors",
-      analytics: "/api/v1/analytics",
-      home: "/api/v1/home",
-    },
   });
 });
 
@@ -48,7 +39,9 @@ router.use("/transfers", transferRouter);
 router.use("/members", memberRouter);
 router.use("/sales", saleRouter);
 router.use("/promos", promoRouter);
-// router.use("/analytics", analyticsRouter);
+router.use("/audit-logs", auditRouter);
+router.use("/error-reports", errorReportRouter);
+router.use("/analytics", analyticsRouter);
 // router.use("/home", homeRouter);
 
 export default router;

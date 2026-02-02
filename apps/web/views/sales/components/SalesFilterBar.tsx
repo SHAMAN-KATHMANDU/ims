@@ -1,0 +1,253 @@
+"use client";
+
+/**
+ * Presentational filter bar for sales list: search, type, credit, showroom, date range.
+ * State and business logic (e.g. reset page on filter change) live in the parent view.
+ */
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Search, CalendarIcon, X, Filter } from "lucide-react";
+import { format, startOfDay, subDays, endOfDay } from "date-fns";
+import { cn } from "@/lib/utils";
+import type { SaleType } from "@/hooks/useSales";
+import type { Location } from "@/services/locationService";
+
+const TYPE_OPTIONS: { value: SaleType | "ALL"; label: string }[] = [
+  { value: "ALL", label: "All Types" },
+  { value: "GENERAL", label: "General" },
+  { value: "MEMBER", label: "Member" },
+];
+
+export interface DateShortcut {
+  label: string;
+  start: Date;
+  end: Date;
+}
+
+export interface SalesFilterBarProps {
+  search: string;
+  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  typeFilter: SaleType | "ALL";
+  onTypeChange: (value: string) => void;
+  creditFilter: "ALL" | "credit" | "non-credit";
+  onCreditChange: (value: string) => void;
+  locationFilter: string;
+  onLocationChange: (value: string) => void;
+  startDate: Date | undefined;
+  endDate: Date | undefined;
+  onStartDateChange: (date: Date | undefined) => void;
+  onEndDateChange: (date: Date | undefined) => void;
+  onClearDates: () => void;
+  showrooms: Location[];
+  dateShortcuts: DateShortcut[];
+  onDateShortcut: (start: Date, end: Date) => void;
+  isUserRole: boolean;
+  today: Date;
+}
+
+export function SalesFilterBar({
+  search,
+  onSearchChange,
+  typeFilter,
+  onTypeChange,
+  creditFilter,
+  onCreditChange,
+  locationFilter,
+  onLocationChange,
+  startDate,
+  endDate,
+  onStartDateChange,
+  onEndDateChange,
+  onClearDates,
+  showrooms,
+  dateShortcuts,
+  onDateShortcut,
+  isUserRole,
+  today,
+}: SalesFilterBarProps) {
+  const calendarDisabled = isUserRole
+    ? (date: Date) => {
+        const d = new Date(date);
+        const yesterdayStart = startOfDay(subDays(today, 1));
+        const todayEnd = endOfDay(today);
+        return d < yesterdayStart || d > todayEnd;
+      }
+    : undefined;
+
+  return (
+    <div className="flex items-center gap-2">
+      <div className="relative">
+        <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          placeholder="Search sales..."
+          value={search}
+          onChange={onSearchChange}
+          className="pl-8 h-9 text-sm w-full min-w-[180px] max-w-[240px]"
+        />
+      </div>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 text-sm shrink-0"
+          >
+            <Filter className="h-4 w-4" />
+            Filters
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-80 p-3" align="end">
+          <div className="space-y-3">
+            <p className="text-xs font-medium text-muted-foreground">
+              Type, credit & showroom
+            </p>
+            <div className="grid gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">Type</Label>
+                <Select value={typeFilter} onValueChange={onTypeChange}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Credit</Label>
+                <Select value={creditFilter} onValueChange={onCreditChange}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Credit" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All</SelectItem>
+                    <SelectItem value="credit">Credit only</SelectItem>
+                    <SelectItem value="non-credit">Non-credit only</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Showroom</Label>
+                <Select value={locationFilter} onValueChange={onLocationChange}>
+                  <SelectTrigger className="h-8 text-sm">
+                    <SelectValue placeholder="Showroom" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ALL">All Showrooms</SelectItem>
+                    {showrooms.map((location) => (
+                      <SelectItem key={location.id} value={location.id}>
+                        {location.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground pt-1">
+              Date range
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {dateShortcuts.map(({ label, start, end }) => (
+                <Button
+                  key={label}
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() => onDateShortcut(start, end)}
+                >
+                  {label}
+                </Button>
+              ))}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="space-y-1">
+                <Label className="text-xs">From</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-8 w-full justify-start text-left font-normal text-sm",
+                        !startDate && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {startDate ? format(startDate, "MMM d") : "Select"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={startDate}
+                      onSelect={onStartDateChange}
+                      disabled={calendarDisabled}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">To</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className={cn(
+                        "h-8 w-full justify-start text-left font-normal text-sm",
+                        !endDate && "text-muted-foreground",
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                      {endDate ? format(endDate, "MMM d") : "Select"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={endDate}
+                      onSelect={onEndDateChange}
+                      disabled={calendarDisabled}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+            {(startDate || endDate) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 w-full text-xs"
+                onClick={onClearDates}
+              >
+                <X className="h-3.5 w-3.5 mr-2" />
+                Clear dates
+              </Button>
+            )}
+          </div>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+}
