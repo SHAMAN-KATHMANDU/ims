@@ -6,8 +6,12 @@ echo "🔍 Running pre-commit checks..."
 echo "✨ Formatting staged files..."
 pnpm lint-staged
 
-# Run linting (full turbo lint; type-check runs in CI to keep hook under ~1m)
+# Run linting
 echo "🔎 Running linter..."
 pnpm lint
+
+# Run type checking
+echo "📝 Checking types..."
+pnpm check-types
 
 echo "✅ All checks passed!"
