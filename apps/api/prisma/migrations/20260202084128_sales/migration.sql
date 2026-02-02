@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "location_inventory_location_id_variation_id_sub_variation_id_ke" RENAME TO "location_inventory_location_id_variation_id_sub_variation_i_key";
