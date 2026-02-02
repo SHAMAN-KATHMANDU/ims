@@ -215,6 +215,20 @@ class ProductController {
                             })),
                           }
                         : undefined,
+                    subVariations:
+                      variation.subVariants &&
+                      Array.isArray(variation.subVariants)
+                        ? {
+                            create: variation.subVariants
+                              .map((n: string) =>
+                                typeof n === "string"
+                                  ? n.trim()
+                                  : ((n as any)?.name?.trim() ?? ""),
+                              )
+                              .filter(Boolean)
+                              .map((name: string) => ({ name })),
+                          }
+                        : undefined,
                   })),
                 }
               : undefined,
@@ -253,6 +267,7 @@ class ProductController {
           variations: {
             include: {
               photos: true,
+              subVariations: true,
             },
           },
           discounts: {
@@ -263,7 +278,7 @@ class ProductController {
         },
       });
 
-      // Add initial stock to default warehouse (or specified location)
+      // Add initial stock to default warehouse (or specified location) — only for variations without sub-variants
       const defaultLocationId = req.body.defaultLocationId as
         | string
         | undefined;
@@ -293,20 +308,26 @@ class ProductController {
       }
       if (warehouseLocation && product.variations?.length) {
         for (const v of product.variations) {
+          const hasSubVariants =
+            Array.isArray((v as any).subVariations) &&
+            (v as any).subVariations.length > 0;
+          if (hasSubVariants) continue; // stock is per location per sub-variant via inventory API
           const qty = Number(v.stockQuantity) || 0;
           if (qty > 0) {
             await prisma.locationInventory.upsert({
               where: {
-                locationId_variationId: {
+                locationId_variationId_subVariationId: {
                   locationId: warehouseLocation!.id,
                   variationId: v.id,
-                },
+                  subVariationId: null,
+                } as any,
               },
               create: {
                 locationId: warehouseLocation!.id,
                 variationId: v.id,
+                subVariationId: null,
                 quantity: qty,
-              },
+              } as any,
               update: { quantity: { increment: qty } },
             });
           }
@@ -436,9 +457,12 @@ class ProductController {
       // Build include object: always include locationInventory so UI can show stock per showroom
       const variationsInclude: any = {
         photos: true,
+        subVariations: { select: { id: true, name: true } },
         locationInventory: {
           select: {
             quantity: true,
+            subVariationId: true,
+            subVariation: { select: { id: true, name: true } },
             location: {
               select: { id: true, name: true, type: true },
             },
@@ -514,6 +538,7 @@ class ProductController {
           variations: {
             include: {
               photos: true,
+              subVariations: { select: { id: true, name: true } },
             },
           },
           discounts: {
@@ -656,6 +681,7 @@ class ProductController {
         const existingVariations = await prisma.productVariation.findMany({
           where: { productId: id },
           include: {
+            subVariations: true,
             _count: {
               select: { saleItems: true, transferItems: true },
             },
@@ -687,6 +713,45 @@ class ProductController {
                 await prisma.variationPhoto.deleteMany({
                   where: { variationId: existing.id },
                 });
+              }
+              const incomingSubArr =
+                payload.subVariants && Array.isArray(payload.subVariants)
+                  ? payload.subVariants
+                      .map((s: string | { name: string }) =>
+                        typeof s === "string"
+                          ? s.trim()
+                          : (s?.name ?? "").trim(),
+                      )
+                      .filter((x: unknown): x is string => Boolean(x))
+                  : [];
+              const incomingSubNames = new Set<string>(incomingSubArr);
+              const existingSubs = existing.subVariations ?? [];
+              for (const sub of existingSubs) {
+                if (!incomingSubNames.has(sub.name)) {
+                  const subDependents =
+                    (await prisma.locationInventory.count({
+                      where: { subVariationId: sub.id },
+                    })) +
+                    (await prisma.saleItem.count({
+                      where: { subVariationId: sub.id },
+                    })) +
+                    (await prisma.transferItem.count({
+                      where: { subVariationId: sub.id },
+                    }));
+                  if (subDependents === 0) {
+                    await prisma.productSubVariation.delete({
+                      where: { id: sub.id },
+                    });
+                  }
+                }
+              }
+              for (const name of incomingSubNames) {
+                const exists = existingSubs.some((s) => s.name === name);
+                if (!exists) {
+                  await prisma.productSubVariation.create({
+                    data: { variationId: existing.id, name },
+                  });
+                }
               }
               await prisma.productVariation.update({
                 where: { id: existing.id },
@@ -724,6 +789,19 @@ class ProductController {
                         photoUrl: photo.photoUrl,
                         isPrimary: photo.isPrimary || false,
                       })),
+                    }
+                  : undefined,
+              subVariations:
+                variation.subVariants && Array.isArray(variation.subVariants)
+                  ? {
+                      create: variation.subVariants
+                        .map((n: string | { name: string }) =>
+                          typeof n === "string"
+                            ? n.trim()
+                            : (n?.name ?? "").trim(),
+                        )
+                        .filter(Boolean)
+                        .map((name: string) => ({ name })),
                     }
                   : undefined,
             },

@@ -388,6 +388,7 @@ class LocationController {
                 },
               },
             },
+            subVariation: { select: { id: true, name: true } },
           },
           orderBy: {
             variation: {

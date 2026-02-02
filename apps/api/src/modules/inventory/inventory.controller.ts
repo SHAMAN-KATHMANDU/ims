@@ -89,6 +89,7 @@ class InventoryController {
                 },
               },
             },
+            subVariation: { select: { id: true, name: true } },
           },
           orderBy: {
             variation: {
@@ -167,6 +168,7 @@ class InventoryController {
               color: true,
             },
           },
+          subVariation: { select: { id: true, name: true } },
         },
         orderBy: [
           { location: { type: "asc" } },
@@ -189,6 +191,10 @@ class InventoryController {
           acc[locationId].variations.push({
             variationId: item.variation.id,
             color: item.variation.color,
+            subVariationId: item.subVariationId ?? undefined,
+            subVariation: item.subVariation
+              ? { id: item.subVariation.id, name: item.subVariation.name }
+              : undefined,
             quantity: item.quantity,
           });
           acc[locationId].totalQuantity += item.quantity;
@@ -226,7 +232,8 @@ class InventoryController {
   // Adjust inventory manually (admin/superAdmin)
   async adjustInventory(req: Request, res: Response) {
     try {
-      const { locationId, variationId, quantity, reason } = req.body;
+      const { locationId, variationId, subVariationId, quantity, reason } =
+        req.body;
 
       // Validate required fields
       if (!locationId) {
@@ -271,14 +278,29 @@ class InventoryController {
         return res.status(404).json({ message: "Product variation not found" });
       }
 
+      if (subVariationId) {
+        const subVar = await prisma.productSubVariation.findFirst({
+          where: { id: subVariationId, variationId },
+        });
+        if (!subVar) {
+          return res.status(404).json({
+            message:
+              "Sub-variation not found or does not belong to this variation",
+          });
+        }
+      }
+
+      const uniqueKey = {
+        locationId_variationId_subVariationId: {
+          locationId,
+          variationId,
+          subVariationId: subVariationId || null,
+        },
+      };
+
       // Get or create inventory record
       const existingInventory = await prisma.locationInventory.findUnique({
-        where: {
-          locationId_variationId: {
-            locationId,
-            variationId,
-          },
-        },
+        where: uniqueKey,
       });
 
       let inventory;
@@ -313,6 +335,7 @@ class InventoryController {
           data: {
             locationId,
             variationId,
+            subVariationId: subVariationId || null,
             quantity: adjustedQuantity,
           },
         });
@@ -325,6 +348,7 @@ class InventoryController {
           locationName: location.name,
           product: variation.product,
           color: variation.color,
+          subVariationId: inventory.subVariationId ?? undefined,
           previousQuantity,
           adjustmentAmount: adjustedQuantity,
           newQuantity: inventory.quantity,
@@ -343,7 +367,7 @@ class InventoryController {
   // Set inventory quantity (admin/superAdmin) - absolute value
   async setInventory(req: Request, res: Response) {
     try {
-      const { locationId, variationId, quantity } = req.body;
+      const { locationId, variationId, subVariationId, quantity } = req.body;
 
       // Validate required fields
       if (!locationId) {
@@ -390,18 +414,32 @@ class InventoryController {
         return res.status(404).json({ message: "Product variation not found" });
       }
 
+      if (subVariationId) {
+        const subVar = await prisma.productSubVariation.findFirst({
+          where: { id: subVariationId, variationId },
+        });
+        if (!subVar) {
+          return res.status(404).json({
+            message:
+              "Sub-variation not found or does not belong to this variation",
+          });
+        }
+      }
+
       // Upsert inventory record
       const inventory = await prisma.locationInventory.upsert({
         where: {
-          locationId_variationId: {
+          locationId_variationId_subVariationId: {
             locationId,
             variationId,
+            subVariationId: subVariationId || null,
           },
         },
         update: { quantity: newQuantity },
         create: {
           locationId,
           variationId,
+          subVariationId: subVariationId || null,
           quantity: newQuantity,
         },
       });
@@ -414,6 +452,7 @@ class InventoryController {
           locationName: location.name,
           product: variation.product,
           color: variation.color,
+          subVariationId: inventory.subVariationId ?? undefined,
           quantity: inventory.quantity,
         },
       });
