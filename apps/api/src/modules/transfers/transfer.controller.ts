@@ -85,7 +85,11 @@ class TransferController {
       }
 
       // Validate items and check stock availability
-      const validatedItems: { variationId: string; quantity: number }[] = [];
+      const validatedItems: {
+        variationId: string;
+        subVariationId: string | null;
+        quantity: number;
+      }[] = [];
       const insufficientStock: any[] = [];
 
       for (const item of items) {
@@ -95,10 +99,14 @@ class TransferController {
           });
         }
 
+        const subVariationId =
+          (item as { subVariationId?: string | null }).subVariationId ?? null;
+
         // Check if variation exists
         const variation = await prisma.productVariation.findUnique({
           where: { id: item.variationId },
           include: {
+            subVariations: { select: { id: true, name: true } },
             product: {
               select: { id: true, name: true, imsCode: true },
             },
@@ -111,13 +119,36 @@ class TransferController {
           });
         }
 
-        // Check stock at source location
+        const hasSubVariants = (variation.subVariations?.length ?? 0) > 0;
+        if (hasSubVariants && !subVariationId) {
+          return res.status(400).json({
+            message: `Variation ${variation.color} has sub-variants; specify subVariationId for each item`,
+          });
+        }
+        if (!hasSubVariants && subVariationId) {
+          return res.status(400).json({
+            message: `Variation ${variation.color} has no sub-variants; do not send subVariationId`,
+          });
+        }
+        if (subVariationId) {
+          const belongs = variation.subVariations?.some(
+            (s) => s.id === subVariationId,
+          );
+          if (!belongs) {
+            return res.status(400).json({
+              message: `Sub-variation ${subVariationId} does not belong to variation ${item.variationId}`,
+            });
+          }
+        }
+
+        // Check stock at source location (variation-level or sub-variant level)
         const sourceInventory = await prisma.locationInventory.findUnique({
           where: {
-            locationId_variationId: {
+            locationId_variationId_subVariationId: {
               locationId: fromLocationId,
               variationId: item.variationId,
-            },
+              subVariationId,
+            } as any,
           },
         });
 
@@ -126,6 +157,7 @@ class TransferController {
           insufficientStock.push({
             product: variation.product.name,
             color: variation.color,
+            subVariationId: subVariationId ?? undefined,
             requested: item.quantity,
             available: availableQuantity,
           });
@@ -133,6 +165,7 @@ class TransferController {
 
         validatedItems.push({
           variationId: item.variationId,
+          subVariationId,
           quantity: parseInt(item.quantity),
         });
       }
@@ -157,6 +190,7 @@ class TransferController {
           items: {
             create: validatedItems.map((item) => ({
               variationId: item.variationId,
+              subVariationId: item.subVariationId,
               quantity: item.quantity,
             })),
           },
@@ -176,6 +210,7 @@ class TransferController {
                   },
                 },
               },
+              subVariation: { select: { id: true, name: true } },
             },
           },
         },
@@ -416,10 +451,11 @@ class TransferController {
       for (const item of transfer.items) {
         const sourceInventory = await prisma.locationInventory.findUnique({
           where: {
-            locationId_variationId: {
+            locationId_variationId_subVariationId: {
               locationId: transfer.fromLocationId,
               variationId: item.variationId,
-            },
+              subVariationId: item.subVariationId,
+            } as any,
           },
         });
 
@@ -428,6 +464,7 @@ class TransferController {
           insufficientStock.push({
             product: item.variation.product.name,
             color: item.variation.color,
+            subVariationId: item.subVariationId ?? undefined,
             requested: item.quantity,
             available: availableQuantity,
           });
@@ -462,6 +499,7 @@ class TransferController {
                   product: { select: { id: true, name: true, imsCode: true } },
                 },
               },
+              subVariation: { select: { id: true, name: true } },
             },
           },
         },
@@ -516,14 +554,15 @@ class TransferController {
         });
       }
 
-      // Deduct stock from source location
+      // Deduct stock from source location (variation or sub-variant level)
       for (const item of transfer.items) {
         await prisma.locationInventory.update({
           where: {
-            locationId_variationId: {
+            locationId_variationId_subVariationId: {
               locationId: transfer.fromLocationId,
               variationId: item.variationId,
-            },
+              subVariationId: item.subVariationId,
+            } as any,
           },
           data: {
             quantity: {
@@ -549,6 +588,7 @@ class TransferController {
                   product: { select: { id: true, name: true, imsCode: true } },
                 },
               },
+              subVariation: { select: { id: true, name: true } },
             },
           },
         },
@@ -605,14 +645,15 @@ class TransferController {
         });
       }
 
-      // Add stock to destination location
+      // Add stock to destination location (variation or sub-variant level)
       for (const item of transfer.items) {
         await prisma.locationInventory.upsert({
           where: {
-            locationId_variationId: {
+            locationId_variationId_subVariationId: {
               locationId: transfer.toLocationId,
               variationId: item.variationId,
-            },
+              subVariationId: item.subVariationId,
+            } as any,
           },
           update: {
             quantity: {
@@ -622,6 +663,7 @@ class TransferController {
           create: {
             locationId: transfer.toLocationId,
             variationId: item.variationId,
+            subVariationId: item.subVariationId,
             quantity: item.quantity,
           },
         });
@@ -646,6 +688,7 @@ class TransferController {
                   product: { select: { id: true, name: true, imsCode: true } },
                 },
               },
+              subVariation: { select: { id: true, name: true } },
             },
           },
         },
@@ -708,10 +751,11 @@ class TransferController {
         for (const item of transfer.items) {
           await prisma.locationInventory.upsert({
             where: {
-              locationId_variationId: {
+              locationId_variationId_subVariationId: {
                 locationId: transfer.fromLocationId,
                 variationId: item.variationId,
-              },
+                subVariationId: item.subVariationId,
+              } as any,
             },
             update: {
               quantity: {
@@ -721,6 +765,7 @@ class TransferController {
             create: {
               locationId: transfer.fromLocationId,
               variationId: item.variationId,
+              subVariationId: item.subVariationId,
               quantity: item.quantity,
             },
           });

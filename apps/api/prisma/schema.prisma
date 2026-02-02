@@ -113,7 +113,8 @@ model ProductVariation {
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
-  product           Product             @relation(fields: [productId], references: [id], onDelete: Cascade)
+  product           Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+  subVariations     ProductSubVariation[]
   photos            VariationPhoto[]
   locationInventory LocationInventory[]
   transferItems     TransferItem[]
@@ -121,6 +122,22 @@ model ProductVariation {
 
   @@unique([productId, color])
   @@map("product_variations")
+}
+
+model ProductSubVariation {
+  id         String   @id @default(uuid()) @map("sub_variation_id")
+  variationId String  @map("variation_id")
+  name       String   @db.VarChar(100)
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  variation ProductVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
+  locationInventory LocationInventory[]
+  transferItems     TransferItem[]
+  saleItems         SaleItem[]
+
+  @@unique([variationId, name])
+  @@map("product_sub_variations")
 }
 
 model VariationPhoto {
@@ -223,17 +240,19 @@ enum LocationType {
 }
 
 model LocationInventory {
-  id          String   @id @default(uuid()) @map("inventory_id")
-  locationId  String   @map("location_id")
-  variationId String   @map("variation_id")
-  quantity    Int      @default(0)
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id              String   @id @default(uuid()) @map("inventory_id")
+  locationId      String   @map("location_id")
+  variationId     String   @map("variation_id")
+  subVariationId  String?  @map("sub_variation_id")
+  quantity        Int      @default(0)
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
-  location  Location         @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  variation ProductVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
+  location    Location           @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  variation   ProductVariation   @relation(fields: [variationId], references: [id], onDelete: Cascade)
+  subVariation ProductSubVariation? @relation(fields: [subVariationId], references: [id], onDelete: Cascade)
 
-  @@unique([locationId, variationId])
+  @@unique([locationId, variationId, subVariationId])
   @@map("location_inventory")
 }
 
@@ -273,15 +292,17 @@ enum TransferStatus {
 }
 
 model TransferItem {
-  id          String @id @default(uuid()) @map("transfer_item_id")
-  transferId  String @map("transfer_id")
-  variationId String @map("variation_id")
-  quantity    Int
+  id              String  @id @default(uuid()) @map("transfer_item_id")
+  transferId      String  @map("transfer_id")
+  variationId     String  @map("variation_id")
+  subVariationId  String? @map("sub_variation_id")
+  quantity        Int
 
-  transfer  Transfer         @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  variation ProductVariation @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  transfer     Transfer           @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  variation    ProductVariation   @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  subVariation ProductSubVariation? @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
 
-  @@unique([transferId, variationId])
+  @@unique([transferId, variationId, subVariationId])
   @@map("transfer_items")
 }
 
@@ -368,6 +389,7 @@ model SaleItem {
   id              String  @id @default(uuid()) @map("sale_item_id")
   saleId          String  @map("sale_id")
   variationId     String  @map("variation_id")
+  subVariationId  String? @map("sub_variation_id")
   quantity        Int
   /// Snapshot of the MRP / unit price at the time of sale
   unitPrice       Decimal @db.Decimal(10, 2)
@@ -380,8 +402,9 @@ model SaleItem {
   /// Final payable for this line after all discounts
   lineTotal       Decimal @map("line_total") @db.Decimal(12, 2)
 
-  sale      Sale             @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  variation ProductVariation @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  sale         Sale               @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variation    ProductVariation   @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  subVariation ProductSubVariation? @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
 
   @@map("sale_items")
 }

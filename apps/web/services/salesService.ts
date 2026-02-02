@@ -117,6 +117,7 @@ export interface PaginatedSalesResponse {
 
 export interface CreateSaleItem {
   variationId: string;
+  subVariationId?: string | null;
   quantity: number;
   promoCode?: string;
 }

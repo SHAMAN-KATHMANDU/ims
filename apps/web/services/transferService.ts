@@ -115,6 +115,7 @@ export interface CreateTransferData {
   toLocationId: string;
   items: Array<{
     variationId: string;
+    subVariationId?: string | null;
     quantity: number;
   }>;
   notes?: string;

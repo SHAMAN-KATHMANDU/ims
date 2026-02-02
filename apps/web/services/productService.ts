@@ -20,12 +20,19 @@ export interface Category {
   createdAt?: string;
 }
 
+export interface ProductSubVariation {
+  id: string;
+  name: string;
+}
+
 export interface ProductVariation {
   id: string;
   productId: string;
   color: string;
   stockQuantity: number;
   createdAt?: string;
+  /** Sub-variants (e.g. S, M, L); when present, stock is per sub-variant per location */
+  subVariations?: ProductSubVariation[];
   photos?: Array<{
     id: string;
     photoUrl: string;
@@ -34,6 +41,8 @@ export interface ProductVariation {
   /** Per-location stock (when API includes it) for showing "which showroom has how much" */
   locationInventory?: Array<{
     quantity: number;
+    subVariationId?: string | null;
+    subVariation?: { id: string; name: string };
     location: { id: string; name: string; type: string };
   }>;
 }
@@ -158,6 +167,7 @@ export interface UpdateProductData {
   variations?: Array<{
     color: string;
     stockQuantity?: number;
+    subVariants?: string[];
     photos?: Array<{
       photoUrl: string;
       isPrimary?: boolean;

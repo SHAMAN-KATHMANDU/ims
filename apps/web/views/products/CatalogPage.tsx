@@ -46,7 +46,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Upload, Download, FileSpreadsheet, FileText, Filter } from "lucide-react";
+import {
+  Upload,
+  Download,
+  FileSpreadsheet,
+  FileText,
+  Filter,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -89,7 +95,10 @@ export function CatalogPage() {
   const paginationInfo = productsResponse?.pagination;
 
   const { data: categories = [] } = useCategories();
-  const { data: vendorsResponse } = useVendorsPaginated({ page: 1, limit: 200 });
+  const { data: vendorsResponse } = useVendorsPaginated({
+    page: 1,
+    limit: 200,
+  });
   const vendors = vendorsResponse?.data ?? [];
   const { data: subcategories = [] } = useCategorySubcategories(
     paginationParams.categoryId ?? "",
@@ -170,14 +179,17 @@ export function CatalogPage() {
     }));
   }, []);
 
-  const handleSortChange = useCallback((sortBy: string, sortOrder: "asc" | "desc") => {
-    setPaginationParams((prev) => ({
-      ...prev,
-      page: DEFAULT_PAGE,
-      sortBy,
-      sortOrder,
-    }));
-  }, []);
+  const handleSortChange = useCallback(
+    (sortBy: string, sortOrder: "asc" | "desc") => {
+      setPaginationParams((prev) => ({
+        ...prev,
+        page: DEFAULT_PAGE,
+        sortBy,
+        sortOrder,
+      }));
+    },
+    [],
+  );
 
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
@@ -407,6 +419,10 @@ export function CatalogPage() {
           data.variations = productVariations.map((v) => ({
             color: v.color,
             stockQuantity: Number(v.stockQuantity) || 0,
+            subVariants:
+              v.subVariants && v.subVariants.length > 0
+                ? v.subVariants.filter(Boolean)
+                : undefined,
             photos:
               v.photos && v.photos.length > 0
                 ? v.photos.map((p) => ({
@@ -432,6 +448,10 @@ export function CatalogPage() {
             data.variations = productVariations.map((v) => ({
               color: v.color,
               stockQuantity: Number(v.stockQuantity) || 0,
+              subVariants:
+                v.subVariants && v.subVariants.length > 0
+                  ? v.subVariants.filter(Boolean)
+                  : undefined,
               photos:
                 v.photos && v.photos.length > 0
                   ? v.photos.map((p) => ({
@@ -525,6 +545,7 @@ export function CatalogPage() {
         product.variations.map((v) => ({
           color: v.color || "",
           stockQuantity: (v.stockQuantity || 0).toString(),
+          subVariants: (v.subVariations || []).map((s) => s.name),
           photos: (v.photos || []).map((p) => ({
             photoUrl: p.photoUrl,
             isPrimary: p.isPrimary || false,
@@ -569,7 +590,7 @@ export function CatalogPage() {
   const addVariationToForm = () => {
     setProductVariations([
       ...productVariations,
-      { color: "", stockQuantity: "0", photos: [] },
+      { color: "", stockQuantity: "0", subVariants: [], photos: [] },
     ]);
   };
 
@@ -589,7 +610,19 @@ export function CatalogPage() {
         field === "stockQuantity"
           ? value
           : updated[index]?.stockQuantity || "0",
+      subVariants: updated[index]?.subVariants ?? [],
       photos: updated[index]?.photos || [],
+    };
+    setProductVariations(updated);
+  };
+
+  const updateSubVariantsInForm = (index: number, subVariants: string[]) => {
+    const updated = [...productVariations];
+    const v = updated[index];
+    if (!v) return;
+    updated[index] = {
+      ...v,
+      subVariants: subVariants.filter((s) => s.trim() !== ""),
     };
     setProductVariations(updated);
   };
@@ -604,6 +637,7 @@ export function CatalogPage() {
     updated[variationIndex] = {
       color: variation.color || "",
       stockQuantity: variation.stockQuantity || "0",
+      subVariants: variation.subVariants ?? [],
       photos: [...photos, { photoUrl, isPrimary }],
     };
     setProductVariations(updated);
@@ -625,6 +659,7 @@ export function CatalogPage() {
     updated[variationIndex] = {
       color: variation.color || "",
       stockQuantity: variation.stockQuantity || "0",
+      subVariants: variation.subVariants ?? [],
       photos: newPhotos,
     };
     setProductVariations(updated);
@@ -642,6 +677,7 @@ export function CatalogPage() {
     updated[variationIndex] = {
       color: variation.color || "",
       stockQuantity: variation.stockQuantity || "0",
+      subVariants: variation.subVariants ?? [],
       photos: photos,
     };
     setProductVariations(updated);
@@ -795,6 +831,7 @@ export function CatalogPage() {
               onAddVariation={addVariationToForm}
               onRemoveVariation={removeVariationFromForm}
               onUpdateVariation={updateVariationInForm}
+              onUpdateSubVariants={updateSubVariantsInForm}
               onAddPhoto={addPhotoToVariation}
               onRemovePhoto={removePhotoFromVariation}
               onSetPrimaryPhoto={setPrimaryPhoto}
@@ -828,116 +865,141 @@ export function CatalogPage() {
             />
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className="h-9 gap-2 text-sm shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-2 text-sm shrink-0"
+                >
                   <Filter className="h-4 w-4" />
                   Filters
                 </Button>
               </PopoverTrigger>
-            <PopoverContent className="w-80 p-3" align="end">
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground">Category & vendor</p>
-                <div className="grid gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Category</Label>
-                    <Select
-                      value={paginationParams.categoryId ?? "all"}
-                      onValueChange={handleCategoryChange}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {categories.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+              <PopoverContent className="w-80 p-3" align="end">
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Category & vendor
+                  </p>
+                  <div className="grid gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Category</Label>
+                      <Select
+                        value={paginationParams.categoryId ?? "all"}
+                        onValueChange={handleCategoryChange}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {categories.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Subcategory</Label>
+                      <Select
+                        value={paginationParams.subCategory ?? "all"}
+                        onValueChange={handleSubCategoryChange}
+                        disabled={!paginationParams.categoryId}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {subcategories.map((name) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Vendor</Label>
+                      <Select
+                        value={paginationParams.vendorId ?? "all"}
+                        onValueChange={handleVendorChange}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {vendors.map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              {v.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground pt-1">
+                    Date & sort
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <Label className="text-xs">From</Label>
+                      <Input
+                        type="date"
+                        value={paginationParams.dateFrom ?? ""}
+                        onChange={(e) => handleDateFromChange(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">To</Label>
+                      <Input
+                        type="date"
+                        value={paginationParams.dateTo ?? ""}
+                        onChange={(e) => handleDateToChange(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Subcategory</Label>
+                    <Label className="text-xs">Sort</Label>
                     <Select
-                      value={paginationParams.subCategory ?? "all"}
-                      onValueChange={handleSubCategoryChange}
-                      disabled={!paginationParams.categoryId}
+                      value={`${paginationParams.sortBy ?? "dateCreated"}-${paginationParams.sortOrder ?? "desc"}`}
+                      onValueChange={(v) => {
+                        const [sortBy, sortOrder] = v.split("-") as [
+                          string,
+                          "asc" | "desc",
+                        ];
+                        handleSortChange(sortBy, sortOrder);
+                      }}
                     >
                       <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="All" />
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {subcategories.map((name) => (
-                          <SelectItem key={name} value={name}>{name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Vendor</Label>
-                    <Select
-                      value={paginationParams.vendorId ?? "all"}
-                      onValueChange={handleVendorChange}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="All" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All</SelectItem>
-                        {vendors.map((v) => (
-                          <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                        ))}
+                        <SelectItem value="dateCreated-desc">
+                          Newest first
+                        </SelectItem>
+                        <SelectItem value="dateCreated-asc">
+                          Oldest first
+                        </SelectItem>
+                        <SelectItem value="name-asc">Name A–Z</SelectItem>
+                        <SelectItem value="name-desc">Name Z–A</SelectItem>
+                        <SelectItem value="mrp-desc">MRP high–low</SelectItem>
+                        <SelectItem value="mrp-asc">MRP low–high</SelectItem>
+                        <SelectItem value="vendorname-asc">
+                          Vendor A–Z
+                        </SelectItem>
+                        <SelectItem value="vendorname-desc">
+                          Vendor Z–A
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
-                <p className="text-xs font-medium text-muted-foreground pt-1">Date & sort</p>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">From</Label>
-                    <Input
-                      type="date"
-                      value={paginationParams.dateFrom ?? ""}
-                      onChange={(e) => handleDateFromChange(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">To</Label>
-                    <Input
-                      type="date"
-                      value={paginationParams.dateTo ?? ""}
-                      onChange={(e) => handleDateToChange(e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs">Sort</Label>
-                  <Select
-                    value={`${paginationParams.sortBy ?? "dateCreated"}-${paginationParams.sortOrder ?? "desc"}`}
-                    onValueChange={(v) => {
-                      const [sortBy, sortOrder] = v.split("-") as [string, "asc" | "desc"];
-                      handleSortChange(sortBy, sortOrder);
-                    }}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="dateCreated-desc">Newest first</SelectItem>
-                      <SelectItem value="dateCreated-asc">Oldest first</SelectItem>
-                      <SelectItem value="name-asc">Name A–Z</SelectItem>
-                      <SelectItem value="name-desc">Name Z–A</SelectItem>
-                      <SelectItem value="mrp-desc">MRP high–low</SelectItem>
-                      <SelectItem value="mrp-asc">MRP low–high</SelectItem>
-                      <SelectItem value="vendorname-asc">Vendor A–Z</SelectItem>
-                      <SelectItem value="vendorname-desc">Vendor Z–A</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </PopoverContent>
-          </Popover>
+              </PopoverContent>
+            </Popover>
           </>
         }
         pagination={{
