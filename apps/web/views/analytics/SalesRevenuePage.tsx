@@ -37,7 +37,7 @@ import {
 } from "@/components/charts";
 import { SalesTable } from "@/views/sales/components/SalesTable";
 import { SaleDetail } from "@/views/sales/components/SaleDetail";
-import { DataTablePagination, type PaginationState } from "@/components/ui/data-table-pagination";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { formatCurrency } from "@/lib/format";
 import {
   DollarSign,
@@ -50,7 +50,9 @@ import {
 } from "lucide-react";
 import type { Sale } from "@/hooks/useSales";
 
-type DrillDown = { type: "location"; id: string; label: string } | { type: "user"; id: string; label: string };
+type DrillDown =
+  | { type: "location"; id: string; label: string }
+  | { type: "user"; id: string; label: string };
 
 export function SalesRevenuePage() {
   const { apiParams, filters } = useAnalyticsFilters();
@@ -190,7 +192,9 @@ export function SalesRevenuePage() {
             <Skeleton className="h-[300px] w-full" />
           ) : data?.timeSeries?.length ? (
             <TimeSeriesLineChart
-              data={data.timeSeries as unknown as Array<Record<string, unknown>>}
+              data={
+                data.timeSeries as unknown as Array<Record<string, unknown>>
+              }
               series={[
                 {
                   dataKey: "gross",
@@ -271,7 +275,7 @@ export function SalesRevenuePage() {
               <TabsContent value="payment">
                 <DonutChart
                   data={
-                    data?.composition.byPaymentMethod.map((c, i) => ({
+                    data?.composition.byPaymentMethod.map((c) => ({
                       name: c.method,
                       value: c.revenue,
                       id: c.method,
@@ -328,7 +332,10 @@ export function SalesRevenuePage() {
               <AgingBucketsBar
                 data={[
                   { bucket: "0-7 days", value: data?.credit.aging["0-7"] ?? 0 },
-                  { bucket: "8-30 days", value: data?.credit.aging["8-30"] ?? 0 },
+                  {
+                    bucket: "8-30 days",
+                    value: data?.credit.aging["8-30"] ?? 0,
+                  },
                   { bucket: "30+ days", value: data?.credit.aging["30+"] ?? 0 },
                 ]}
               />

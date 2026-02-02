@@ -13,7 +13,6 @@ import {
   subDays,
   startOfMonth,
   endOfMonth,
-  subMonths,
   format,
 } from "date-fns";
 
@@ -54,13 +53,18 @@ export const ANALYTICS_PRESETS = [
   { id: "custom", label: "Custom" },
 ] as const;
 
-function getPresetRange(preset: string): { dateFrom: string; dateTo: string } | null {
+function getPresetRange(
+  preset: string,
+): { dateFrom: string; dateTo: string } | null {
   const now = new Date();
   switch (preset) {
     case "today": {
       const start = startOfDay(now);
       const end = endOfDay(now);
-      return { dateFrom: format(start, "yyyy-MM-dd"), dateTo: format(end, "yyyy-MM-dd") };
+      return {
+        dateFrom: format(start, "yyyy-MM-dd"),
+        dateTo: format(end, "yyyy-MM-dd"),
+      };
     }
     case "yesterday": {
       const y = subDays(now, 1);
@@ -71,20 +75,32 @@ function getPresetRange(preset: string): { dateFrom: string; dateTo: string } | 
     }
     case "last7": {
       const start = startOfDay(subDays(now, 6));
-      return { dateFrom: format(start, "yyyy-MM-dd"), dateTo: format(now, "yyyy-MM-dd") };
+      return {
+        dateFrom: format(start, "yyyy-MM-dd"),
+        dateTo: format(now, "yyyy-MM-dd"),
+      };
     }
     case "last30": {
       const start = startOfDay(subDays(now, 29));
-      return { dateFrom: format(start, "yyyy-MM-dd"), dateTo: format(now, "yyyy-MM-dd") };
+      return {
+        dateFrom: format(start, "yyyy-MM-dd"),
+        dateTo: format(now, "yyyy-MM-dd"),
+      };
     }
     case "last90": {
       const start = startOfDay(subDays(now, 89));
-      return { dateFrom: format(start, "yyyy-MM-dd"), dateTo: format(now, "yyyy-MM-dd") };
+      return {
+        dateFrom: format(start, "yyyy-MM-dd"),
+        dateTo: format(now, "yyyy-MM-dd"),
+      };
     }
     case "thisMonth": {
       const start = startOfMonth(now);
       const end = endOfMonth(now);
-      return { dateFrom: format(start, "yyyy-MM-dd"), dateTo: format(end, "yyyy-MM-dd") };
+      return {
+        dateFrom: format(start, "yyyy-MM-dd"),
+        dateTo: format(end, "yyyy-MM-dd"),
+      };
     }
     default:
       return null;
@@ -103,20 +119,28 @@ const DEFAULT_FILTERS: AnalyticsFilters = {
   vendorId: undefined,
 };
 
-function parseFiltersFromSearchParams(params: URLSearchParams): AnalyticsFilters {
+function parseFiltersFromSearchParams(
+  params: URLSearchParams,
+): AnalyticsFilters {
   const preset = params.get("preset") ?? DEFAULT_FILTERS.preset;
-  const presetRange = preset && preset !== "custom" ? getPresetRange(preset) : null;
+  const presetRange =
+    preset && preset !== "custom" ? getPresetRange(preset) : null;
   const dateFrom = params.get("dateFrom") ?? presetRange?.dateFrom ?? undefined;
   const dateTo = params.get("dateTo") ?? presetRange?.dateTo ?? undefined;
 
   const locationIdsParam = params.get("locationIds");
   const locationIds = locationIdsParam
-    ? locationIdsParam.split(",").map((s) => s.trim()).filter(Boolean)
+    ? locationIdsParam
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
     : [];
 
   const saleTypeParam = params.get("saleType");
   const saleType =
-    saleTypeParam === "GENERAL" || saleTypeParam === "MEMBER" ? saleTypeParam : undefined;
+    saleTypeParam === "GENERAL" || saleTypeParam === "MEMBER"
+      ? saleTypeParam
+      : undefined;
 
   const creditStatusParam = params.get("creditStatus");
   const creditStatus: AnalyticsCreditStatus =
@@ -141,14 +165,17 @@ function parseFiltersFromSearchParams(params: URLSearchParams): AnalyticsFilters
   };
 }
 
-function filtersToSearchParams(update: AnalyticsFiltersUpdate): URLSearchParams {
+function filtersToSearchParams(
+  update: AnalyticsFiltersUpdate,
+): URLSearchParams {
   const params = new URLSearchParams();
   if (update.dateFrom != null) params.set("dateFrom", update.dateFrom);
   if (update.dateTo != null) params.set("dateTo", update.dateTo);
   if (update.preset != null) params.set("preset", update.preset);
   if (update.locationIds != null && update.locationIds.length > 0)
     params.set("locationIds", update.locationIds.join(","));
-  if (update.saleType != null && update.saleType !== "all") params.set("saleType", update.saleType);
+  if (update.saleType != null && update.saleType !== "all")
+    params.set("saleType", update.saleType);
   if (update.creditStatus != null && update.creditStatus !== "all")
     params.set("creditStatus", update.creditStatus);
   if (update.userId != null) params.set("userId", update.userId);

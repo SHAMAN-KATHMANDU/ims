@@ -4,8 +4,6 @@
  * Funnel chart for transfer status: pending → approved → in-transit → completed.
  */
 
-import { formatCurrency } from "@/lib/format";
-
 export interface TransferFunnelCounts {
   PENDING: number;
   APPROVED: number;
