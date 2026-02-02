@@ -958,13 +958,11 @@ async function main() {
 
     for (const variation of allVariations) {
       // Check if inventory record already exists (variation-level, no sub-variant)
-      const existingInventory = await prisma.locationInventory.findUnique({
+      const existingInventory = await prisma.locationInventory.findFirst({
         where: {
-          locationId_variationId_subVariationId: {
-            locationId: mainWarehouse.id,
-            variationId: variation.id,
-            subVariationId: null,
-          },
+          locationId: mainWarehouse.id,
+          variationId: variation.id,
+          subVariationId: null,
         } as any,
       });
 
@@ -1431,23 +1429,19 @@ async function main() {
       );
 
       // Check if showroom inventory already exists (variation-level)
-      const existingA = await prisma.locationInventory.findUnique({
+      const existingA = await prisma.locationInventory.findFirst({
         where: {
-          locationId_variationId_subVariationId: {
-            locationId: showroomA.id,
-            variationId: inv.variationId,
-            subVariationId: null,
-          },
+          locationId: showroomA.id,
+          variationId: inv.variationId,
+          subVariationId: null,
         } as any,
       });
 
-      const existingB = await prisma.locationInventory.findUnique({
+      const existingB = await prisma.locationInventory.findFirst({
         where: {
-          locationId_variationId_subVariationId: {
-            locationId: showroomB.id,
-            variationId: inv.variationId,
-            subVariationId: null,
-          },
+          locationId: showroomB.id,
+          variationId: inv.variationId,
+          subVariationId: null,
         } as any,
       });
 
