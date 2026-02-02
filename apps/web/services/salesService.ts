@@ -1,13 +1,20 @@
 /**
  * Sales Service
  *
- * Service layer for sales management operations.
- * Uses the shared axios instance from lib/axios.
+ * Single source for sales API calls. All sales HTTP requests must go through this file.
+ * Do not add React or UI logic.
  */
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
-import { useAuthStore } from "@/stores/auth-store";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+} from "@/lib/apiTypes";
+import { downloadBlobFromResponse } from "@/lib/downloadBlob";
+import { formatCurrency } from "@/lib/format";
+import { validateExcelFile } from "@/lib/fileValidation";
 
 // ============================================
 // Types
@@ -60,6 +67,7 @@ export interface Sale {
   id: string;
   saleCode: string;
   type: SaleType;
+  isCreditSale: boolean;
   locationId: string;
   memberId?: string;
   subtotal: number;
@@ -93,7 +101,9 @@ export interface SalesListParams {
   page?: number;
   limit?: number;
   locationId?: string;
+  createdById?: string;
   type?: SaleType;
+  isCreditSale?: boolean;
   startDate?: string;
   endDate?: string;
   search?: string;
@@ -101,14 +111,7 @@ export interface SalesListParams {
   sortOrder?: "asc" | "desc";
 }
 
-export interface PaginationMeta {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
+export type { PaginationMeta } from "@/lib/apiTypes";
 
 export interface PaginatedSalesResponse {
   data: Sale[];
@@ -129,6 +132,7 @@ export interface CreateSaleData {
   items: CreateSaleItem[];
   notes?: string;
   payments?: SalePayment[];
+  isCreditSale?: boolean;
 }
 
 export interface SalesSummary {
@@ -191,8 +195,7 @@ interface DailySalesResponse {
 // API Functions
 // ============================================
 
-export const DEFAULT_PAGE = 1;
-export const DEFAULT_LIMIT = 10;
+export { DEFAULT_PAGE, DEFAULT_LIMIT };
 
 /**
  * Get all sales with pagination and filtering
@@ -204,7 +207,9 @@ export async function getSales(
     page = DEFAULT_PAGE,
     limit = DEFAULT_LIMIT,
     locationId,
+    createdById,
     type,
+    isCreditSale,
     startDate,
     endDate,
     search,
@@ -218,8 +223,16 @@ export async function getSales(
   if (locationId) {
     queryParams.set("locationId", locationId);
   }
+  if (createdById) {
+    queryParams.set("createdById", createdById);
+  }
   if (type) {
     queryParams.set("type", type);
+  }
+  if (isCreditSale === true) {
+    queryParams.set("isCreditSale", "true");
+  } else if (isCreditSale === false) {
+    queryParams.set("isCreditSale", "false");
   }
   if (startDate) {
     queryParams.set("startDate", startDate);
@@ -266,10 +279,74 @@ export async function getSaleById(id: string): Promise<Sale> {
   }
 }
 
+interface AddPaymentResponse {
+  message: string;
+  sale: Sale;
+  payment: SalePaymentDetail & { createdAt?: string };
+}
+
+/**
+ * Add payment to a credit sale
+ */
+export async function addPaymentToSale(
+  saleId: string,
+  method: PaymentMethod,
+  amount: number,
+): Promise<Sale> {
+  if (!saleId?.trim()) {
+    throw new Error("Sale ID is required");
+  }
+  if (
+    !method ||
+    !["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"].includes(method)
+  ) {
+    throw new Error("Valid payment method is required");
+  }
+  if (typeof amount !== "number" || amount <= 0) {
+    throw new Error("Amount must be a positive number");
+  }
+
+  try {
+    const response = await api.post<AddPaymentResponse>(
+      `/sales/${saleId}/payments`,
+      { method, amount },
+    );
+    return response.data.sale;
+  } catch (error) {
+    handleApiError(error, "add payment to sale");
+  }
+}
+
+/**
+ * Get current user's sales since last login (User Sales Report)
+ */
+export async function getSalesSinceLastLogin(params: {
+  page?: number;
+  limit?: number;
+} = {}): Promise<PaginatedSalesResponse> {
+  const { page = DEFAULT_PAGE, limit = DEFAULT_LIMIT } = params;
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+
+  try {
+    const response = await api.get<SalesApiResponse>(
+      `/sales/me/since-last-login?${queryParams.toString()}`,
+    );
+    return {
+      data: response.data.data || [],
+      pagination: response.data.pagination,
+    };
+  } catch (error) {
+    handleApiError(error, "fetch sales since last login");
+  }
+}
+
 export interface SalePreviewResponse {
   subtotal: number;
   discount: number;
   total: number;
+  promoDiscount?: number;
 }
 
 /**
@@ -433,17 +510,8 @@ export function getSaleTypeColor(type: SaleType): string {
   }
 }
 
-/**
- * Format currency
- */
-export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat("en-NP", {
-    style: "currency",
-    currency: "NPR",
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(amount);
-}
+/** Re-export for backward compatibility; single source is @/lib/format. */
+export { formatCurrency };
 
 // ============================================
 // Bulk Upload Types
@@ -491,48 +559,16 @@ export async function bulkUploadSales(
   file: File,
   onProgress?: (progress: number) => void,
 ): Promise<SaleBulkUploadResponse> {
-  if (!file) {
-    throw new Error("File is required");
-  }
-
-  const allowedTypes = [
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "application/vnd.ms-excel",
-    "application/vnd.ms-excel.sheet.macroEnabled.12",
-  ];
-  const allowedExtensions = [".xlsx", ".xls", ".xlsm"];
-  const fileExtension = file.name
-    .substring(file.name.lastIndexOf("."))
-    .toLowerCase();
-
-  if (
-    !allowedTypes.includes(file.type) &&
-    !allowedExtensions.includes(fileExtension)
-  ) {
-    throw new Error(
-      "Invalid file type. Only Excel files (.xlsx, .xls, .xlsm) are allowed.",
-    );
-  }
-
-  const maxSize = 10 * 1024 * 1024; // 10MB
-  if (file.size > maxSize) {
-    throw new Error("File size exceeds 10MB limit");
-  }
+  validateExcelFile(file);
 
   try {
     const formData = new FormData();
     formData.append("file", file);
 
-    const token = useAuthStore.getState().token;
-
     const response = await api.post<SaleBulkUploadResponse>(
       "/sales/bulk-upload",
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total && onProgress) {
             const progress = Math.round(
@@ -591,39 +627,15 @@ export async function downloadSales(
       queryParams.set("ids", saleIds.join(","));
     }
 
-    // Get token for manual header setting
-    const token = useAuthStore.getState().token;
-
-    const response = await api.get(
+    const response = await api.get<Blob>(
       `/sales/download?${queryParams.toString()}`,
-      {
-        responseType: "blob",
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      },
+      { responseType: "blob" },
     );
 
-    // Get filename from Content-Disposition header or generate one
-    const contentDisposition = response.headers["content-disposition"];
-    let filename = `sales_${new Date().toISOString().split("T")[0]}.${
+    const defaultFilename = `sales_${new Date().toISOString().split("T")[0]}.${
       format === "excel" ? "xlsx" : "csv"
     }`;
-
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1];
-      }
-    }
-
-    // Trigger browser download using native API
-    const url = URL.createObjectURL(response.data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadBlobFromResponse(response, defaultFilename);
   } catch (error) {
     handleApiError(error, "download sales");
     throw error;
@@ -635,25 +647,10 @@ export async function downloadSales(
  */
 export async function downloadBulkUploadTemplate(): Promise<void> {
   try {
-    const token = useAuthStore.getState().token;
-    const response = await api.get("/sales/bulk-upload/template", {
+    const response = await api.get<Blob>("/sales/bulk-upload/template", {
       responseType: "blob",
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
     });
-    const contentDisposition = response.headers["content-disposition"];
-    let filename = "sales_bulk_upload_template.xlsx";
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?(.+)"?/i);
-      if (match?.[1]) filename = match[1];
-    }
-    const url = URL.createObjectURL(response.data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadBlobFromResponse(response, "sales_bulk_upload_template.xlsx");
   } catch (error) {
     handleApiError(error, "download template");
     throw error;

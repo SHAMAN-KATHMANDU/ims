@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import User from "@/models/userModel";
+import prisma from "@/config/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
@@ -61,6 +62,24 @@ class AuthController {
       }
 
       console.log("✅ Login successful for:", user.username);
+
+      // Update lastLoginAt and record audit log (LOGIN)
+      const now = new Date();
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { lastLoginAt: now },
+      });
+      await prisma.auditLog.create({
+        data: {
+          userId: user.id,
+          action: "LOGIN",
+          resource: "auth",
+          resourceId: user.id,
+          details: { username: user.username },
+          ip: req.ip ?? req.socket?.remoteAddress ?? undefined,
+          userAgent: req.get("user-agent") ?? undefined,
+        },
+      });
 
       // Generate JWT token
       const token = jwt.sign(

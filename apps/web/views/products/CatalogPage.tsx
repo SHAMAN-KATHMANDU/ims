@@ -65,7 +65,12 @@ import type {
   ProductDiscountForm,
 } from "./types";
 
-export function CatalogPage() {
+interface CatalogPageProps {
+  /** When true, catalog is read-only for all roles (no Add/Bulk Upload/Download/edit/delete). */
+  readOnly?: boolean;
+}
+
+export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   // ============================================
   // Pagination State
   // ============================================
@@ -196,7 +201,7 @@ export function CatalogPage() {
   const deleteProductMutation = useDeleteProduct();
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
-  const canManageProducts = isAdmin;
+  const canManageProducts = readOnly ? false : isAdmin;
   const canSeeCostPrice = isAdmin;
 
   // Zustand store for product selection

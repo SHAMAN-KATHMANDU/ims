@@ -109,7 +109,7 @@ promoRouter.post(
 promoRouter.get(
   "/",
   verifyToken,
-  authorizeRoles("admin", "superAdmin"),
+  authorizeRoles("user", "admin", "superAdmin"),
   promoController.getAllPromos,
 );
 
@@ -137,7 +137,7 @@ promoRouter.get(
 promoRouter.get(
   "/:id",
   verifyToken,
-  authorizeRoles("admin", "superAdmin"),
+  authorizeRoles("user", "admin", "superAdmin"),
   promoController.getPromoById,
 );
 

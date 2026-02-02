@@ -1,13 +1,19 @@
 /**
  * Product Service
  *
- * Service layer for product management operations.
- * Uses the shared axios instance from lib/axios.
+ * Single source for product API calls. All product HTTP requests must go through this file.
+ * Do not add React or UI logic.
  */
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
-import { useAuthStore } from "@/stores/auth-store";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+} from "@/lib/apiTypes";
+import { downloadBlobFromResponse } from "@/lib/downloadBlob";
+import { validateExcelFile } from "@/lib/fileValidation";
 
 // ============================================
 // Types
@@ -103,14 +109,7 @@ export interface ProductListParams {
   sortOrder?: "asc" | "desc";
 }
 
-export interface PaginationMeta {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
+export type { PaginationMeta } from "@/lib/apiTypes";
 
 export interface PaginatedProductsResponse {
   data: Product[];
@@ -210,11 +209,8 @@ interface DiscountTypesResponse {
 // API Functions
 // ============================================
 
-/**
- * Default pagination values
- */
-export const DEFAULT_PAGE = 1;
-export const DEFAULT_LIMIT = 10;
+export { DEFAULT_PAGE, DEFAULT_LIMIT };
+/** Product list default search (empty string). */
 export const DEFAULT_SEARCH = "";
 
 /**
@@ -562,48 +558,16 @@ export async function bulkUploadProducts(
     throw new Error("File is required");
   }
 
-  // Validate file type
-  const allowedTypes = [
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // .xlsx
-    "application/vnd.ms-excel", // .xls
-    "application/vnd.ms-excel.sheet.macroEnabled.12", // .xlsm
-  ];
-
-  const allowedExtensions = [".xlsx", ".xls", ".xlsm"];
-  const fileExtension = file.name
-    .substring(file.name.lastIndexOf("."))
-    .toLowerCase();
-
-  if (
-    !allowedTypes.includes(file.type) &&
-    !allowedExtensions.includes(fileExtension)
-  ) {
-    throw new Error(
-      "Invalid file type. Only Excel files (.xlsx, .xls, .xlsm) are allowed.",
-    );
-  }
-
-  // Validate file size (10MB limit)
-  const maxSize = 10 * 1024 * 1024; // 10MB
-  if (file.size > maxSize) {
-    throw new Error("File size exceeds 10MB limit");
-  }
+  validateExcelFile(file);
 
   try {
     const formData = new FormData();
     formData.append("file", file);
 
-    // Get token for manual header setting (since we're using FormData)
-    const token = useAuthStore.getState().token;
-
     const response = await api.post<BulkUploadResponse>(
       "/products/bulk-upload",
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data",
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
         onUploadProgress: (progressEvent) => {
           if (progressEvent.total && onProgress) {
             const progress = Math.round(
@@ -662,39 +626,15 @@ export async function downloadProducts(
       queryParams.set("ids", productIds.join(","));
     }
 
-    // Get token for manual header setting
-    const token = useAuthStore.getState().token;
-
-    const response = await api.get(
+    const response = await api.get<Blob>(
       `/products/download?${queryParams.toString()}`,
-      {
-        responseType: "blob",
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
-      },
+      { responseType: "blob" },
     );
 
-    // Get filename from Content-Disposition header or generate one
-    const contentDisposition = response.headers["content-disposition"];
-    let filename = `products_${new Date().toISOString().split("T")[0]}.${
+    const defaultFilename = `products_${new Date().toISOString().split("T")[0]}.${
       format === "excel" ? "xlsx" : "csv"
     }`;
-
-    if (contentDisposition) {
-      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
-      if (filenameMatch && filenameMatch[1]) {
-        filename = filenameMatch[1];
-      }
-    }
-
-    // Trigger browser download using native API
-    const url = URL.createObjectURL(response.data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadBlobFromResponse(response, defaultFilename);
   } catch (error) {
     handleApiError(error, "download products");
     throw error;
@@ -706,25 +646,10 @@ export async function downloadProducts(
  */
 export async function downloadBulkUploadTemplate(): Promise<void> {
   try {
-    const token = useAuthStore.getState().token;
-    const response = await api.get("/products/bulk-upload/template", {
+    const response = await api.get<Blob>("/products/bulk-upload/template", {
       responseType: "blob",
-      headers: {
-        ...(token && { Authorization: `Bearer ${token}` }),
-      },
     });
-    const contentDisposition = response.headers["content-disposition"];
-    let filename = "products_bulk_upload_template.xlsx";
-    if (contentDisposition) {
-      const match = contentDisposition.match(/filename="?(.+)"?/i);
-      if (match?.[1]) filename = match[1];
-    }
-    const url = URL.createObjectURL(response.data);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-    URL.revokeObjectURL(url);
+    downloadBlobFromResponse(response, "products_bulk_upload_template.xlsx");
   } catch (error) {
     handleApiError(error, "download template");
     throw error;

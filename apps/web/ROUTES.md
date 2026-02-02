@@ -1,0 +1,35 @@
+# Route & Access Spec
+
+All routes live under `/[workspace]` (e.g. `/admin`). Route groups `(admin)` and `(superadmin)` do **not** change the URL; they only organize files.
+
+## Path → Roles (single source of truth)
+
+| Path                     | Allowed roles           | Route file                                     | Notes                          |
+| ------------------------ | ----------------------- | ---------------------------------------------- | ------------------------------ |
+| `""` (dashboard)         | user, admin, superAdmin | `(admin)/page.tsx`                             |                                |
+| `sales`                  | user, admin, superAdmin | `(admin)/sales/page.tsx`                       |                                |
+| `sales/user-report`      | user, admin, superAdmin | `(admin)/sales/user-report/page.tsx`           |                                |
+| `members`                | user, admin, superAdmin | `(admin)/members/page.tsx`                     |                                |
+| `product`                | admin, superAdmin       | `(admin)/product/page.tsx`                     | Products (inventory); guarded  |
+| `product/catalog`        | user, admin, superAdmin | `(admin)/product/catalog/page.tsx`             | Read-only catalog              |
+| `product/categories`     | user, admin, superAdmin | `(admin)/product/categories/page.tsx`          |                                |
+| `product/discounts`      | user, admin, superAdmin | `(admin)/product/discounts/page.tsx`           |                                |
+| `product/promos`         | user, admin, superAdmin | `(admin)/product/promos/page.tsx`              | Read-only promo codes          |
+| `promos`                 | admin, superAdmin       | `(admin)/promos/page.tsx`                      | Full promo management; guarded |
+| `transfers`              | user, admin, superAdmin | `(admin)/transfers/page.tsx`                   | Create + list by role in view  |
+| `locations`              | admin, superAdmin       | `(admin)/locations/page.tsx`                   | Guarded                        |
+| `vendors`                | admin, superAdmin       | `(admin)/vendors/page.tsx`                     | Guarded                        |
+| `reports/inventory`      | admin, superAdmin       | `(admin)/reports/inventory/page.tsx`           | Guarded                        |
+| `reports/finance`        | admin, superAdmin       | `(admin)/reports/finance/page.tsx`             | Guarded                        |
+| `reports/analytics`      | admin, superAdmin       | `(admin)/reports/analytics/page.tsx`           | Guarded                        |
+| `settings`               | admin, superAdmin       | `(admin)/settings/page.tsx`                    | Workspace settings; guarded    |
+| `users`                  | superAdmin              | `(superadmin)/users/page.tsx`                  | Guarded                        |
+| `settings/logs`          | superAdmin              | `(superadmin)/settings/logs/page.tsx`          | User logs; guarded             |
+| `settings/error-reports` | superAdmin              | `(superadmin)/settings/error-reports/page.tsx` | Guarded                        |
+| `admin-controls`         | superAdmin              | `(superadmin)/admin-controls/page.tsx`         | System; guarded                |
+
+## Rules
+
+1. **One route per URL** – No duplicate file trees that resolve to the same path (e.g. only one `product/catalog`).
+2. **Guarded routes** – Pages that are admin-only or superAdmin-only must wrap content in `<AuthGuard roles={[...]} unauthorizedPath="/admin" />`.
+3. **Sidebar** – `sidebar.tsx` shows/hides links by role; same path may appear in multiple nav sections (e.g. "transfers" under PRODUCTS and INVENTORY).

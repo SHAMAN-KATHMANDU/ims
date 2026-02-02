@@ -20,7 +20,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { type MemberWithSales } from "@/hooks/useMember";
-import { formatCurrency } from "@/services/salesService";
+import { formatCurrency } from "@/lib/format";
 import {
   Phone,
   Mail,

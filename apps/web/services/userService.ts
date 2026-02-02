@@ -55,12 +55,22 @@ interface UserResponse {
 // API Functions
 // ============================================
 
+export interface GetAllUsersParams {
+  page?: number;
+  limit?: number;
+}
+
 /**
- * Get all users (superAdmin only)
+ * Get all users (superAdmin only). Pass page/limit for dropdowns (e.g. { page: 1, limit: 100 }).
  */
-export async function getAllUsers(): Promise<User[]> {
+export async function getAllUsers(params?: GetAllUsersParams): Promise<User[]> {
   try {
-    const response = await api.get<UsersResponse>("/users");
+    const queryParams = new URLSearchParams();
+    if (params?.page != null) queryParams.set("page", String(params.page));
+    if (params?.limit != null) queryParams.set("limit", String(params.limit));
+    const query = queryParams.toString();
+    const url = query ? `/users?${query}` : "/users";
+    const response = await api.get<UsersResponse>(url);
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch users");

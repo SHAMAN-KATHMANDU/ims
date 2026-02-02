@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * React Query wrappers for products and categories. Business logic and API calls live in productService/categoryService; hooks only wire query/mutation and cache keys.
+ */
+
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/useToast";

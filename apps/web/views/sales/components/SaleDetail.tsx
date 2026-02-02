@@ -1,13 +1,25 @@
 "use client";
 
+import { useState } from "react";
 import { format } from "date-fns";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -20,10 +32,13 @@ import {
 } from "@/components/ui/table";
 import {
   type Sale,
+  type PaymentMethod,
   getSaleTypeLabel,
   getSaleTypeColor,
   formatCurrency,
+  useAddPaymentToSale,
 } from "@/hooks/useSales";
+import { useToast } from "@/hooks/useToast";
 import {
   MapPin,
   User,
@@ -32,6 +47,14 @@ import {
   Hash,
   CreditCard,
 } from "lucide-react";
+
+const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
+  { value: "CASH", label: "Cash" },
+  { value: "CARD", label: "Card" },
+  { value: "CHEQUE", label: "Cheque" },
+  { value: "FONEPAY", label: "Fonepay" },
+  { value: "QR", label: "QR" },
+];
 
 interface SaleDetailProps {
   open: boolean;
@@ -46,6 +69,49 @@ export function SaleDetail({
   sale,
   isLoading,
 }: SaleDetailProps) {
+  const { toast } = useToast();
+  const addPaymentMutation = useAddPaymentToSale();
+  const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [payAmount, setPayAmount] = useState("");
+  const [payMethod, setPayMethod] = useState<PaymentMethod>("CASH");
+
+  const amountPaid =
+    sale?.payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+  const totalNum = sale ? Number(sale.total) : 0;
+  const balanceDue = Math.round((totalNum - amountPaid) * 100) / 100;
+  const isCreditSale = sale?.isCreditSale === true;
+
+  const handlePaySubmit = async () => {
+    if (!sale) return;
+    const amount = Number(payAmount);
+    if (isNaN(amount) || amount <= 0 || amount > balanceDue + 0.01) {
+      toast({
+        title: "Invalid amount",
+        description: `Enter an amount between 0.01 and ${formatCurrency(balanceDue)}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await addPaymentMutation.mutateAsync({
+        saleId: sale.id,
+        method: payMethod,
+        amount,
+      });
+      toast({ title: "Payment recorded" });
+      setPayDialogOpen(false);
+      setPayAmount("");
+      setPayMethod("CASH");
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toast({
+        title: "Payment failed",
+        description: err.message ?? "Could not add payment",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
@@ -215,6 +281,30 @@ export function SaleDetail({
                   </div>
                 </>
               )}
+              {isCreditSale && (
+                <>
+                  <Separator />
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span>Amount paid</span>
+                      <span>{formatCurrency(amountPaid)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm font-medium">
+                      <span>Balance due</span>
+                      <span>{formatCurrency(balanceDue)}</span>
+                    </div>
+                    {balanceDue > 0 && (
+                      <Button
+                        size="sm"
+                        className="mt-2"
+                        onClick={() => setPayDialogOpen(true)}
+                      >
+                        Pay
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Payment Methods */}
@@ -266,6 +356,70 @@ export function SaleDetail({
           </div>
         )}
       </DialogContent>
+
+      {/* Pay dialog for credit sales */}
+      <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Add Payment</DialogTitle>
+          </DialogHeader>
+          {sale && (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Balance due:{" "}
+                <span className="font-semibold text-foreground">
+                  {formatCurrency(balanceDue)}
+                </span>
+              </p>
+              <div className="space-y-2">
+                <Label>Amount</Label>
+                <Input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  max={balanceDue}
+                  value={payAmount}
+                  onChange={(e) => setPayAmount(e.target.value)}
+                  placeholder={formatCurrency(balanceDue)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Method</Label>
+                <Select
+                  value={payMethod}
+                  onValueChange={(v) => setPayMethod(v as PaymentMethod)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {PAYMENT_METHODS.map((m) => (
+                      <SelectItem key={m.value} value={m.value}>
+                        {m.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handlePaySubmit}
+              disabled={
+                !payAmount ||
+                Number(payAmount) <= 0 ||
+                addPaymentMutation.isPending
+              }
+            >
+              {addPaymentMutation.isPending ? "Adding..." : "Add Payment"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   );
 }

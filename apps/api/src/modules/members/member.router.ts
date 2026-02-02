@@ -145,7 +145,7 @@ memberRouter.post(
 memberRouter.get(
   "/",
   verifyToken,
-  authorizeRoles("admin", "superAdmin"),
+  authorizeRoles("user", "admin", "superAdmin"),
   memberController.getAllMembers,
 );
 

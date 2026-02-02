@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * React Query wrappers for users. Business logic and API calls live in userService; hooks only wire query/mutation and cache keys.
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAllUsers,
@@ -27,10 +31,10 @@ export const userKeys = {
 /**
  * Hook for fetching all users
  */
-export function useUsers() {
+export function useUsers(params?: { page?: number; limit?: number }) {
   return useQuery({
-    queryKey: userKeys.lists(),
-    queryFn: getAllUsers,
+    queryKey: [...userKeys.lists(), params],
+    queryFn: () => getAllUsers(params),
   });
 }
 

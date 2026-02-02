@@ -1,11 +1,12 @@
 /**
  * Auth Service
  *
- * Service layer for authentication operations.
- * All API calls related to authentication go here.
+ * Single source for auth API calls. All auth HTTP requests must go through this file.
+ * Auth errors use handleApiError for consistency; login message may be customized in apiError if needed.
  */
 
 import api from "@/lib/axios";
+import { handleApiError } from "@/lib/apiError";
 import type { AuthUser } from "@/utils/auth";
 
 export interface LoginResponse {
@@ -36,21 +37,7 @@ export async function login(
 
     return response.data;
   } catch (error: unknown) {
-    // Handle axios errors
-    if (isAxiosError(error)) {
-      const message = error.response?.data?.message || error.message;
-
-      // Network error
-      if (error.code === "ERR_NETWORK") {
-        throw new Error(
-          "Cannot connect to server. Please check if the API is running.",
-        );
-      }
-
-      throw new Error(message || "Login failed");
-    }
-
-    throw new Error("An unexpected error occurred during login");
+    handleApiError(error, "login");
   }
 }
 
@@ -75,17 +62,4 @@ export async function logout(): Promise<void> {
   } catch {
     // Ignore errors on logout - we'll clear local state anyway
   }
-}
-
-// Type guard for axios errors
-function isAxiosError(error: unknown): error is {
-  response?: { data?: { message?: string }; status?: number };
-  message?: string;
-  code?: string;
-} {
-  return (
-    typeof error === "object" &&
-    error !== null &&
-    ("response" in error || "message" in error)
-  );
 }
