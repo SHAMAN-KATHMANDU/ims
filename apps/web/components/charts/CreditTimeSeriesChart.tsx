@@ -15,11 +15,13 @@ export interface CreditTimeSeriesPoint {
 interface CreditTimeSeriesChartProps {
   data: CreditTimeSeriesPoint[];
   height?: number;
+  scale?: "linear" | "log";
 }
 
 export function CreditTimeSeriesChart({
   data,
   height = 280,
+  scale = "linear",
 }: CreditTimeSeriesChartProps) {
   return (
     <TimeSeriesLineChart
@@ -34,6 +36,10 @@ export function CreditTimeSeriesChart({
       ]}
       xKey="date"
       height={height}
+      xLabel="Date"
+      yLabel="Amount"
+      ariaLabel="Credit issued vs paid over time"
+      scale={scale}
     />
   );
 }

@@ -5,10 +5,15 @@
  * Do not add API calls or business rules here; use hooks and services.
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useActiveLocations } from "@/hooks/useLocation";
-import { useAuthStore, selectIsAdmin, selectUserRole } from "@/stores/auth-store";
+import {
+  useAuthStore,
+  selectIsAdmin,
+  selectUserRole,
+} from "@/stores/auth-store";
 import {
   useSaleSelectionStore,
   selectSelectedSaleIds,
@@ -30,12 +35,7 @@ import { SaleDetail } from "./components/SaleDetail";
 import { SaleBulkUploadDialog } from "./components/SaleBulkUploadDialog";
 import { SalesFilterBar } from "./components/SalesFilterBar";
 import { Button } from "@/components/ui/button";
-import {
-  Download,
-  Upload,
-  FileSpreadsheet,
-  FileText,
-} from "lucide-react";
+import { Download, Upload, FileSpreadsheet, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -59,19 +59,12 @@ import {
 
 export function SalesPage() {
   const { toast } = useToast();
+  const searchParams = useSearchParams();
+  const hasAppliedUrlParams = useRef(false);
   const userRole = useAuthStore(selectUserRole);
   const isAdmin = useAuthStore(selectIsAdmin);
   const isUserRole = userRole === "user";
   const canManageSales = isAdmin;
-
-  // For role "user", default date range to today
-  useEffect(() => {
-    if (isUserRole && startDate === undefined && endDate === undefined) {
-      const today = new Date();
-      setStartDate(startOfDay(today));
-      setEndDate(endOfDay(today));
-    }
-  }, [isUserRole]); // eslint-disable-line react-hooks/exhaustive-deps -- only set default once when user
 
   // Zustand store for sale selection
   const selectedSaleIds = useSaleSelectionStore(selectSelectedSaleIds);
@@ -87,8 +80,49 @@ export function SalesPage() {
     "ALL" | "credit" | "non-credit"
   >("ALL");
   const [locationFilter, setLocationFilter] = useState<string>("ALL");
+  const [userFilter, setUserFilter] = useState<string | undefined>(undefined);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+
+  // Apply URL search params once on mount (e.g. from dashboard/analytics links)
+  useEffect(() => {
+    if (hasAppliedUrlParams.current) return;
+    const credit = searchParams.get("credit");
+    const userId = searchParams.get("userId");
+    const locationId = searchParams.get("locationId");
+    const start = searchParams.get("start");
+    const end = searchParams.get("end");
+    if (credit || userId || locationId || start || end) {
+      hasAppliedUrlParams.current = true;
+      if (credit === "credit") setCreditFilter("credit");
+      else if (credit === "non-credit") setCreditFilter("non-credit");
+      if (userId) setUserFilter(userId);
+      if (locationId && locationId !== "ALL") setLocationFilter(locationId);
+      if (start) {
+        const d = new Date(start);
+        if (!isNaN(d.getTime())) setStartDate(startOfDay(d));
+      }
+      if (end) {
+        const d = new Date(end);
+        if (!isNaN(d.getTime())) setEndDate(endOfDay(d));
+      }
+      setPage(DEFAULT_PAGE);
+    }
+  }, [searchParams]);
+
+  // For role "user", default date range to today (only when no URL params applied)
+  useEffect(() => {
+    if (
+      isUserRole &&
+      !hasAppliedUrlParams.current &&
+      startDate === undefined &&
+      endDate === undefined
+    ) {
+      const today = new Date();
+      setStartDate(startOfDay(today));
+      setEndDate(endOfDay(today));
+    }
+  }, [isUserRole, startDate, endDate]);
 
   // Dialog state
   const [formOpen, setFormOpen] = useState(false);
@@ -108,6 +142,7 @@ export function SalesPage() {
           ? false
           : undefined,
     locationId: locationFilter === "ALL" ? undefined : locationFilter,
+    createdById: userFilter,
     startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
     endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
     sortBy: "createdAt",

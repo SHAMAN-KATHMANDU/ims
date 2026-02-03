@@ -106,7 +106,7 @@ const navSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
       },
       {
-        path: "transfers",
+        path: "transfers/new",
         label: "Create Transfer Request",
         icon: ArrowLeftRight,
         roles: ["user", "admin", "superAdmin"],
@@ -163,19 +163,13 @@ const navSections: NavSection[] = [
     title: "REPORTS",
     items: [
       {
-        path: "reports/inventory",
-        label: "Inventory report",
-        icon: BarChart3,
-        roles: ["admin", "superAdmin"],
-      },
-      {
-        path: "reports/finance",
-        label: "Finance report",
-        icon: BarChart3,
-        roles: ["admin", "superAdmin"],
-      },
-      {
         path: "reports/analytics",
+        label: "Analytics",
+        icon: BarChart3,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "reports/analytics/sales",
         label: "Sales & Revenue",
         icon: BarChart3,
         roles: ["user", "admin", "superAdmin"],
@@ -288,21 +282,14 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     }));
   };
 
+  // Only the current page link is active: exact pathname match (no parent paths as active).
   const isItemActive = (
     item: NavItem & { href?: string },
     detectedBasePath: string,
   ) => {
     const href =
       item.href || `${detectedBasePath}${item.path ? `/${item.path}` : ""}`;
-
-    if (item.path === "") {
-      return pathname === href;
-    }
-    // Special-case product catalog so it doesn't stay active on nested product routes
-    if (item.path === "product") {
-      return pathname === href;
-    }
-    return pathname === href || pathname.startsWith(href + "/");
+    return pathname === href;
   };
 
   const sidebarContent = (
