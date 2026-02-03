@@ -1,5 +1,17 @@
+/**
+ * Promo Service
+ *
+ * Single source for promo code API calls. All promo HTTP requests must go through this file.
+ * Do not add React or UI logic.
+ */
+
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+} from "@/lib/apiTypes";
 
 export type DiscountValueType = "PERCENTAGE" | "FLAT";
 export type PromoEligibility = "ALL" | "MEMBER" | "NON_MEMBER" | "WHOLESALE";
@@ -41,15 +53,6 @@ export interface PromoListParams {
   isActive?: boolean;
 }
 
-export interface PaginationMeta {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
-
 export interface PaginatedPromosResponse {
   data: PromoCode[];
   pagination: PaginationMeta;
@@ -84,8 +87,7 @@ interface PromoResponse {
   promo: PromoCode;
 }
 
-export const DEFAULT_PAGE = 1;
-export const DEFAULT_LIMIT = 10;
+export { DEFAULT_PAGE, DEFAULT_LIMIT };
 
 export async function getPromos(
   params: PromoListParams = {},

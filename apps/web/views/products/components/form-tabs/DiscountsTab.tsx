@@ -1,5 +1,10 @@
 "use client";
 
+/**
+ * Product form tab for discount rows (add/edit discounts on a product).
+ * Not the discounts list page – see ../DiscountsTab.tsx for the full page content.
+ */
+
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { getWorkspaceRoot } from "@/config/routes";
 import { cn } from "@/lib/utils";
 import {
   Home,
@@ -18,6 +19,7 @@ import {
   Factory,
   Percent,
   Tags,
+  Bug,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthStore, selectUserRole } from "@/stores/auth-store";
@@ -71,7 +73,13 @@ const navSections: NavSection[] = [
         path: "members",
         label: "Members",
         icon: UserCheck,
-        roles: ["admin", "superAdmin"],
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "sales/user-report",
+        label: "User Sales Report",
+        icon: Receipt,
+        roles: ["user", "admin", "superAdmin"],
       },
     ],
   },
@@ -79,22 +87,29 @@ const navSections: NavSection[] = [
     title: "PRODUCTS",
     items: [
       {
-        path: "product",
+        path: "product/catalog",
         label: "Catalog",
         icon: Package,
         roles: ["user", "admin", "superAdmin"],
       },
-      {
-        path: "product/categories",
-        label: "Categories",
-        icon: Tags,
-        roles: ["user", "admin", "superAdmin"],
-      },
+
       {
         path: "product/discounts",
         label: "Discounts",
         icon: Percent,
-        roles: ["admin", "superAdmin"],
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "product/promos",
+        label: "Promo Codes",
+        icon: Percent,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "transfers",
+        label: "Create Transfer Request",
+        icon: ArrowLeftRight,
+        roles: ["user", "admin", "superAdmin"],
       },
     ],
   },
@@ -102,10 +117,22 @@ const navSections: NavSection[] = [
     title: "INVENTORY",
     items: [
       {
+        path: "product",
+        label: "Products",
+        icon: Package,
+        roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "product/categories",
+        label: "Categories",
+        icon: Tags,
+        roles: ["admin", "superAdmin"],
+      },
+      {
         path: "locations",
         label: "Locations",
         icon: Warehouse,
-        roles: ["user", "admin", "superAdmin"],
+        roles: ["admin", "superAdmin"],
       },
       {
         path: "vendors",
@@ -117,7 +144,7 @@ const navSections: NavSection[] = [
         path: "transfers",
         label: "Transfers",
         icon: ArrowLeftRight,
-        roles: ["user", "admin", "superAdmin"],
+        roles: ["admin", "superAdmin"],
       },
     ],
   },
@@ -136,8 +163,32 @@ const navSections: NavSection[] = [
     title: "REPORTS",
     items: [
       {
-        path: "analytics",
-        label: "Analytics",
+        path: "reports/inventory",
+        label: "Inventory report",
+        icon: BarChart3,
+        roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "reports/finance",
+        label: "Finance report",
+        icon: BarChart3,
+        roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "reports/analytics",
+        label: "Sales & Revenue",
+        icon: BarChart3,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "reports/analytics/inventory",
+        label: "Inventory & Operations",
+        icon: BarChart3,
+        roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "reports/analytics/customers",
+        label: "Customers & Promotions",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
       },
@@ -150,6 +201,18 @@ const navSections: NavSection[] = [
         path: "users",
         label: "Users",
         icon: Users,
+        roles: ["superAdmin"],
+      },
+      {
+        path: "settings/logs",
+        label: "User Logs",
+        icon: BarChart3,
+        roles: ["superAdmin"],
+      },
+      {
+        path: "settings/error-reports",
+        label: "Error Reports",
+        icon: Bug,
         roles: ["superAdmin"],
       },
       {
@@ -182,16 +245,19 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     SETTINGS: true,
   });
 
-  // Detect base path from current pathname if not provided
+  // Base path: first segment is workspace (e.g. /admin, /admin/sales -> /admin).
   const detectedBasePath = useMemo(() => {
     if (basePath) return basePath;
-    if (pathname.startsWith("/admin/dashboard")) {
-      return "/admin/dashboard";
-    } else if (pathname.startsWith("/dashboard")) {
-      return "/dashboard";
+    const segment = pathname.split("/")[1];
+    if (
+      segment &&
+      segment !== "login" &&
+      segment !== "401" &&
+      segment !== "loading"
+    ) {
+      return `/${segment}`;
     }
-
-    return "/dashboard";
+    return getWorkspaceRoot();
   }, [pathname, basePath]);
 
   // Build nav items with full paths

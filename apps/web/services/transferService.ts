@@ -7,7 +7,12 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
-import type { LocationType, PaginationMeta } from "./locationService";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+} from "@/lib/apiTypes";
+import type { LocationType } from "./locationService";
 
 // ============================================
 // Types
@@ -142,8 +147,7 @@ interface TransferLogsResponse {
 // API Functions
 // ============================================
 
-export const DEFAULT_PAGE = 1;
-export const DEFAULT_LIMIT = 10;
+export { DEFAULT_PAGE, DEFAULT_LIMIT };
 
 /**
  * Get all transfers with filtering

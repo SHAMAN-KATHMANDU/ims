@@ -7,7 +7,8 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
-import type { Location, LocationType, PaginationMeta } from "./locationService";
+import { type PaginationMeta, DEFAULT_PAGE } from "@/lib/apiTypes";
+import type { Location, LocationType } from "./locationService";
 
 // ============================================
 // Types
@@ -156,12 +157,14 @@ interface InventorySummaryApiResponse {
   }>;
 }
 
+/** Default limit for inventory list (larger than generic DEFAULT_LIMIT). */
+const INVENTORY_DEFAULT_LIMIT = 20;
+
 // ============================================
 // API Functions
 // ============================================
 
-export const DEFAULT_PAGE = 1;
-export const DEFAULT_LIMIT = 20;
+export { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 
 /**
  * Get inventory for a specific location
@@ -176,7 +179,7 @@ export async function getLocationInventory(
 
   const {
     page = DEFAULT_PAGE,
-    limit = DEFAULT_LIMIT,
+    limit = INVENTORY_DEFAULT_LIMIT,
     search = "",
     categoryId,
   } = params;

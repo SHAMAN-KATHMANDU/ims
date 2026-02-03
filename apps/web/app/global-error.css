@@ -1,0 +1,769 @@
+/* Global error – truck crash. Self-contained so we don't import globals.css (avoids Turbopack CSS chunk error). */
+
+:root {
+  --background: #fafaf9;
+  --foreground: #1c1917;
+  --muted-foreground: #78716c;
+  --primary: #4d7c5c;
+}
+
+.global-error-body {
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+.error-container {
+  background-color: var(--background);
+  color: var(--foreground);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family:
+    system-ui,
+    -apple-system,
+    sans-serif;
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+.error-content {
+  text-align: center;
+  max-width: 600px;
+}
+
+.error-title {
+  font-size: 2rem;
+  font-weight: 700;
+  margin-bottom: 1rem;
+  color: var(--foreground);
+  animation: shake-text 6s ease-in-out 1 forwards;
+}
+
+.error-message {
+  font-size: 1.125rem;
+  margin-bottom: 2rem;
+  color: var(--muted-foreground);
+}
+
+.truck-loader-wrapper {
+  position: relative;
+  width: 100%;
+  height: 220px;
+  margin: 2rem 0;
+  overflow: hidden;
+}
+
+.truck {
+  --dur: 6s;
+  --drive-dur: 6s;
+  display: block;
+  width: 12em;
+  height: auto;
+  position: absolute;
+  left: 15%;
+  bottom: 35%;
+  animation: truck-drive-then-crash var(--drive-dur) ease-in-out 1 forwards;
+  color: var(--primary);
+  z-index: 10;
+}
+
+.truck__body,
+.truck__line,
+.truck__outside1,
+.truck__outside2,
+.truck__outside3,
+.truck__wheel,
+.truck__wheel-spin,
+.truck__window1,
+.truck__window2 {
+  animation-duration: var(--dur);
+  animation-timing-function: linear;
+  animation-iteration-count: 1;
+  animation-fill-mode: forwards;
+}
+
+.truck__body {
+  transform-origin: 17px 11px;
+  animation-name: truck-body-driving;
+}
+
+.truck__line {
+  animation-name: truck-line-driving;
+  stroke: var(--accent);
+}
+
+.truck__outside1 {
+  animation-name: truck-outside1-driving;
+}
+
+.truck__outside2 {
+  animation-name: truck-outside2-driving;
+}
+
+.truck__outside3 {
+  animation-name: truck-outside3-driving;
+}
+
+.truck__wheel {
+  animation-name: truck-wheel-driving;
+}
+
+.truck__wheel-spin {
+  animation-name: truck-wheel-spin-driving;
+  transform-origin: 6.5px 17px;
+}
+
+.truck__wheel:nth-child(2) {
+  animation-delay: calc(var(--dur) * 0.0625);
+}
+
+.truck__wheel:nth-child(2) .truck__wheel-spin {
+  transform-origin: 27px 17px;
+}
+
+.truck__window1 {
+  animation-name: truck-window1-driving;
+  stroke: var(--accent);
+}
+
+.truck__window2 {
+  animation-name: truck-window2-driving;
+  stroke: var(--accent);
+}
+
+.road {
+  position: absolute;
+  bottom: 35%;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--muted-foreground);
+  opacity: 0.3;
+}
+
+.road-lines {
+  position: absolute;
+  bottom: calc(35% + 15px);
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--muted-foreground) 0,
+    var(--muted-foreground) 20px,
+    transparent 20px,
+    transparent 40px
+  );
+  background-size: 40px 2px;
+  opacity: 0.2;
+  animation: road-move 6s linear 1 forwards;
+}
+
+/* Wall moves from right toward the front of the truck (truck is being driven toward wall) */
+.wall {
+  position: absolute;
+  right: -40px;
+  bottom: 35%;
+  width: 8px;
+  height: 100px;
+  background: var(--muted-foreground);
+  box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+  z-index: 5;
+  animation: wall-move-toward-truck 6s ease-in 1 forwards;
+}
+
+.wall::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 10px,
+    rgba(0, 0, 0, 0.1) 10px,
+    rgba(0, 0, 0, 0.1) 11px
+  );
+}
+
+.tire-explosion {
+  position: absolute;
+  left: 35%;
+  bottom: 35%;
+  width: 80px;
+  height: 80px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.explosion-flash {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background: var(--destructive);
+  border-radius: 50%;
+  opacity: 0;
+  animation: explosion-flash 6s ease-out 1 forwards;
+  box-shadow: 0 0 20px var(--destructive);
+}
+
+.explosion-particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: var(--destructive);
+  border-radius: 50%;
+  opacity: 0;
+}
+
+.explosion-particle:nth-child(2) {
+  animation: exp-particle-1 6s 1 forwards;
+}
+.explosion-particle:nth-child(3) {
+  animation: exp-particle-2 6s 1 forwards;
+}
+.explosion-particle:nth-child(4) {
+  animation: exp-particle-3 6s 1 forwards;
+}
+.explosion-particle:nth-child(5) {
+  animation: exp-particle-4 6s 1 forwards;
+}
+.explosion-particle:nth-child(6) {
+  animation: exp-particle-5 6s 1 forwards;
+}
+.explosion-particle:nth-child(7) {
+  animation: exp-particle-6 6s 1 forwards;
+}
+.explosion-particle:nth-child(8) {
+  animation: exp-particle-7 6s 1 forwards;
+}
+.explosion-particle:nth-child(9) {
+  animation: exp-particle-8 6s 1 forwards;
+}
+
+.impact-effect {
+  position: absolute;
+  left: 35%;
+  bottom: 35%;
+  width: 100px;
+  height: 100px;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.impact-ring {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  border: 3px solid var(--destructive);
+  border-radius: 50%;
+  animation: impact-ring-crash 6s ease-out 1 forwards;
+}
+
+.impact-ring:nth-child(2) {
+  animation-delay: 0.08s;
+}
+
+.impact-ring:nth-child(3) {
+  animation-delay: 0.16s;
+}
+
+/* Wall moves from right toward truck (front of truck) – then disappears on impact */
+@keyframes wall-move-toward-truck {
+  0% {
+    right: -40px;
+    opacity: 1;
+    transform: scale(1);
+  }
+  55% {
+    right: 35%;
+    opacity: 1;
+    transform: scale(1);
+  }
+  58% {
+    right: 32%;
+    opacity: 1;
+    transform: scale(1);
+  }
+  62% {
+    right: 32%;
+    opacity: 0.5;
+    transform: scale(0.95);
+  }
+  65% {
+    right: 32%;
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  100% {
+    right: 32%;
+    opacity: 0;
+    transform: scale(0.8);
+  }
+}
+
+/* Truck: drive in place (bounce), then stop at crash */
+@keyframes truck-drive-then-crash {
+  0%,
+  55% {
+    transform: translateY(0);
+  }
+  5%,
+  15%,
+  25%,
+  35%,
+  45% {
+    transform: translateY(1px);
+  }
+  10%,
+  20%,
+  30%,
+  40%,
+  50% {
+    transform: translateY(0);
+  }
+  62% {
+    transform: translateY(0);
+  }
+  64% {
+    transform: translateY(-4px);
+  }
+  66%,
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes truck-body-driving {
+  0%,
+  10%,
+  20%,
+  30%,
+  40%,
+  50%,
+  60% {
+    animation-timing-function: cubic-bezier(0.33, 0, 0.67, 0);
+    transform: translate(0, 0) rotate(0);
+  }
+  5%,
+  15%,
+  25%,
+  35%,
+  45%,
+  55% {
+    animation-timing-function: cubic-bezier(0.33, 1, 0.67, 1);
+    transform: translate(0, 1px) rotate(-0.75deg);
+  }
+  62%,
+  100% {
+    transform: translate(0, 0) rotate(0);
+  }
+}
+
+@keyframes truck-line-driving {
+  0% {
+    stroke-dashoffset: -18;
+  }
+  60% {
+    stroke-dashoffset: 78;
+  }
+  62%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+  }
+}
+
+@keyframes truck-outside1-driving {
+  0% {
+    stroke-dashoffset: 105;
+  }
+  60% {
+    stroke-dashoffset: -105;
+  }
+  62%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+  }
+}
+
+@keyframes truck-outside2-driving {
+  0% {
+    stroke-dashoffset: 168;
+  }
+  60% {
+    stroke-dashoffset: -42;
+  }
+  62%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+  }
+}
+
+@keyframes truck-outside3-driving {
+  0% {
+    stroke-dashoffset: 192;
+  }
+  60% {
+    stroke-dashoffset: -18;
+  }
+  62%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+  }
+}
+
+@keyframes truck-wheel-driving {
+  0%,
+  10%,
+  20%,
+  30%,
+  40%,
+  50%,
+  60% {
+    animation-timing-function: cubic-bezier(0.33, 0, 0.67, 0);
+    transform: translate(0, 0);
+  }
+  5%,
+  15%,
+  25%,
+  35%,
+  45%,
+  55% {
+    animation-timing-function: cubic-bezier(0.33, 1, 0.67, 1);
+    transform: translate(0, -1px);
+  }
+  62%,
+  100% {
+    transform: translate(0, 0);
+  }
+}
+
+@keyframes truck-wheel-spin-driving {
+  0% {
+    stroke-dashoffset: -15.71;
+    transform: rotate(0);
+  }
+  60% {
+    stroke-dashoffset: 15.71;
+    transform: rotate(-2520deg);
+  }
+  62%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+    transform: rotate(-2520deg);
+  }
+}
+
+@keyframes truck-window1-driving {
+  0% {
+    stroke-dashoffset: -21;
+  }
+  60% {
+    stroke-dashoffset: 189;
+  }
+  62%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+  }
+}
+
+@keyframes truck-window2-driving {
+  0% {
+    stroke-dashoffset: -39;
+  }
+  60% {
+    stroke-dashoffset: 171;
+  }
+  62%,
+  100% {
+    stroke-dashoffset: 0;
+    stroke-dasharray: none;
+  }
+}
+
+@keyframes road-move {
+  0% {
+    background-position: 0 0;
+  }
+  62% {
+    background-position: -248px 0;
+  }
+  100% {
+    background-position: -248px 0;
+  }
+}
+
+@keyframes explosion-flash {
+  0%,
+  58% {
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+  }
+  62% {
+    width: 50px;
+    height: 50px;
+    opacity: 1;
+  }
+  64% {
+    width: 60px;
+    height: 60px;
+    opacity: 0.8;
+  }
+  66%,
+  100% {
+    width: 40px;
+    height: 40px;
+    opacity: 0;
+  }
+}
+
+@keyframes exp-particle-1 {
+  0%,
+  59% {
+    opacity: 0;
+    left: 50%;
+    top: 50%;
+  }
+  62% {
+    opacity: 1;
+    left: 50%;
+    top: 50%;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    left: 80%;
+    top: 20%;
+  }
+}
+
+@keyframes exp-particle-2 {
+  0%,
+  59% {
+    opacity: 0;
+    left: 50%;
+    top: 50%;
+  }
+  62% {
+    opacity: 1;
+    left: 50%;
+    top: 50%;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    left: 20%;
+    top: 30%;
+  }
+}
+
+@keyframes exp-particle-3 {
+  0%,
+  59% {
+    opacity: 0;
+    left: 50%;
+    top: 50%;
+  }
+  62% {
+    opacity: 1;
+    left: 50%;
+    top: 50%;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    left: 70%;
+    top: 70%;
+  }
+}
+
+@keyframes exp-particle-4 {
+  0%,
+  59% {
+    opacity: 0;
+    left: 50%;
+    top: 50%;
+  }
+  62% {
+    opacity: 1;
+    left: 50%;
+    top: 50%;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    left: 30%;
+    top: 80%;
+  }
+}
+
+@keyframes exp-particle-5 {
+  0%,
+  59% {
+    opacity: 0;
+    left: 50%;
+    top: 50%;
+  }
+  62% {
+    opacity: 1;
+    left: 50%;
+    top: 50%;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    left: 90%;
+    top: 50%;
+  }
+}
+
+@keyframes exp-particle-6 {
+  0%,
+  59% {
+    opacity: 0;
+    left: 50%;
+    top: 50%;
+  }
+  62% {
+    opacity: 1;
+    left: 50%;
+    top: 50%;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    left: 10%;
+    top: 60%;
+  }
+}
+
+@keyframes exp-particle-7 {
+  0%,
+  59% {
+    opacity: 0;
+    left: 50%;
+    top: 50%;
+  }
+  62% {
+    opacity: 1;
+    left: 50%;
+    top: 50%;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    left: 60%;
+    top: 10%;
+  }
+}
+
+@keyframes exp-particle-8 {
+  0%,
+  59% {
+    opacity: 0;
+    left: 50%;
+    top: 50%;
+  }
+  62% {
+    opacity: 1;
+    left: 50%;
+    top: 50%;
+  }
+  75%,
+  100% {
+    opacity: 0;
+    left: 40%;
+    top: 15%;
+  }
+}
+
+@keyframes impact-ring-crash {
+  0%,
+  58% {
+    width: 20px;
+    height: 20px;
+    opacity: 0;
+  }
+  62% {
+    width: 30px;
+    height: 30px;
+    opacity: 1;
+  }
+  75%,
+  100% {
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+  }
+}
+
+@keyframes shake-text {
+  0%,
+  58%,
+  75%,
+  100% {
+    transform: translateX(0);
+  }
+  62%,
+  64%,
+  66%,
+  68% {
+    transform: translateX(-4px);
+  }
+  63%,
+  65%,
+  67%,
+  69% {
+    transform: translateX(4px);
+  }
+}
+
+.try-again-btn {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-foreground);
+  background-color: var(--primary);
+  border: none;
+  border-radius: var(--radius, 0.6rem);
+  cursor: pointer;
+  transition:
+    opacity 0.2s,
+    transform 0.2s;
+}
+
+.try-again-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.05);
+}
+
+@media (max-width: 640px) {
+  .error-title {
+    font-size: 1.5rem;
+  }
+
+  .error-message {
+    font-size: 1rem;
+  }
+
+  .truck {
+    width: 8em;
+  }
+}

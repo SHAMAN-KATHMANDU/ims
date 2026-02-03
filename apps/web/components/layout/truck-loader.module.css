@@ -1,0 +1,194 @@
+/* Truck loader – uses theme: --primary, --accent */
+.truck {
+  --dur: 3s;
+  display: block;
+  width: 12em;
+  height: auto;
+  color: var(--primary);
+}
+
+.truck line,
+.truck polyline,
+.truck polygon,
+.truck circle {
+  stroke: currentColor;
+}
+
+.truck [class*="__line"],
+.truck [class*="__window"] {
+  stroke: var(--accent);
+}
+
+.truck__body,
+.truck__line,
+.truck__outside1,
+.truck__outside2,
+.truck__outside3,
+.truck__wheel,
+.truck__wheelSpin,
+.truck__window1,
+.truck__window2 {
+  animation: truckBody var(--dur) linear infinite;
+}
+
+.truck__body {
+  transform-origin: 17px 11px;
+}
+
+.truck__line {
+  animation-name: truckLine;
+}
+
+.truck__outside1 {
+  animation-name: truckOutside1;
+}
+
+.truck__outside2 {
+  animation-name: truckOutside2;
+}
+
+.truck__outside3 {
+  animation-name: truckOutside3;
+}
+
+.truck__wheel {
+  animation-name: truckWheel;
+}
+
+.truck__wheelSpin {
+  animation-name: truckWheelSpin;
+  transform-origin: 6.5px 17px;
+}
+
+.truck__wheel:nth-child(2) {
+  animation-delay: calc(var(--dur) * 0.0625);
+}
+
+.truck__wheel:nth-child(2) .truck__wheelSpin {
+  transform-origin: 27px 17px;
+}
+
+.truck__window1 {
+  animation-name: truckWindow1;
+}
+
+.truck__window2 {
+  animation-name: truckWindow2;
+}
+
+@keyframes truckBody {
+  0%,
+  12.5%,
+  25%,
+  37.5%,
+  50%,
+  62.5%,
+  75%,
+  87.5%,
+  100% {
+    animation-timing-function: cubic-bezier(0.33, 0, 0.67, 0);
+    transform: translate(0, 0) rotate(0);
+  }
+  6.25%,
+  18.75%,
+  31.25%,
+  43.75%,
+  56.25%,
+  68.75%,
+  81.25%,
+  93.75% {
+    animation-timing-function: cubic-bezier(0.33, 1, 0.67, 1);
+    transform: translate(0, 1px) rotate(-0.75deg);
+  }
+}
+
+@keyframes truckLine {
+  from {
+    stroke-dashoffset: -18;
+  }
+  to {
+    stroke-dashoffset: 78;
+  }
+}
+
+@keyframes truckOutside1 {
+  from {
+    stroke-dashoffset: 105;
+  }
+  to {
+    stroke-dashoffset: -105;
+  }
+}
+
+@keyframes truckOutside2 {
+  from {
+    stroke-dashoffset: 168;
+  }
+  to {
+    stroke-dashoffset: -42;
+  }
+}
+
+@keyframes truckOutside3 {
+  from {
+    stroke-dashoffset: 192;
+  }
+  to {
+    stroke-dashoffset: -18;
+  }
+}
+
+@keyframes truckWheel {
+  0%,
+  12.5%,
+  25%,
+  37.5%,
+  50%,
+  62.5%,
+  75%,
+  87.5%,
+  100% {
+    animation-timing-function: cubic-bezier(0.33, 0, 0.67, 0);
+    transform: translate(0, 0);
+  }
+  6.25%,
+  18.75%,
+  31.25%,
+  43.75%,
+  56.25%,
+  68.75%,
+  81.25%,
+  93.75% {
+    animation-timing-function: cubic-bezier(0.33, 1, 0.67, 1);
+    transform: translate(0, -1px);
+  }
+}
+
+@keyframes truckWheelSpin {
+  from {
+    stroke-dashoffset: -15.71;
+    transform: rotate(0);
+  }
+  to {
+    stroke-dashoffset: 15.71;
+    transform: rotate(-4turn);
+  }
+}
+
+@keyframes truckWindow1 {
+  from {
+    stroke-dashoffset: -21;
+  }
+  to {
+    stroke-dashoffset: 189;
+  }
+}
+
+@keyframes truckWindow2 {
+  from {
+    stroke-dashoffset: -39;
+  }
+  to {
+    stroke-dashoffset: 171;
+  }
+}

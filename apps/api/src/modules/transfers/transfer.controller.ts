@@ -223,6 +223,30 @@ class TransferController {
         itemCount: validatedItems.length,
       });
 
+      // Audit log: CREATE_TRANSFER
+      try {
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user.id,
+            action: "CREATE_TRANSFER",
+            resource: "transfer",
+            resourceId: transfer.id,
+            details: {
+              transferCode: transfer.transferCode,
+              fromLocationId: fromLocationId,
+              toLocationId: toLocationId,
+            },
+            ip:
+              (req as any).ip ??
+              (req.socket as any)?.remoteAddress ??
+              undefined,
+            userAgent: req.get("user-agent") ?? undefined,
+          },
+        });
+      } catch (auditErr) {
+        console.error("Audit log CREATE_TRANSFER failed:", auditErr);
+      }
+
       res.status(201).json({
         message: "Transfer request created successfully",
         transfer,

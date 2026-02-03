@@ -81,8 +81,8 @@ export function SalesTable({
   const allSelected =
     sales.length > 0 && sales.every((s) => selectedSales.has(s.id));
 
-  // Calculate column count for empty state (S.N. + optional checkbox + rest)
-  const baseColumnCount = 9; // S.N., Sale Code, Type, Location, Customer, Total, Payment Method, Date, Actions
+  // Calculate column count for empty state (S.N. + optional checkbox + Credit + rest)
+  const baseColumnCount = 10; // S.N., Sale Code, Type, Credit, Location, Customer, Total, Payment Method, Date, Actions
   const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
 
   if (isLoading) {
@@ -99,6 +99,7 @@ export function SalesTable({
               )}
               <TableHead>Sale Code</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Credit</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead className="text-right">Total</TableHead>
@@ -167,9 +168,11 @@ export function SalesTable({
               )}
               <TableHead>Sale Code</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Credit</TableHead>
               <TableHead>Location</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead>Payment Method</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -203,6 +206,7 @@ export function SalesTable({
             )}
             <TableHead>Sale Code</TableHead>
             <TableHead>Type</TableHead>
+            <TableHead>Credit</TableHead>
             <TableHead>Location</TableHead>
             <TableHead>Customer</TableHead>
             <TableHead className="text-right">Total</TableHead>
@@ -212,8 +216,22 @@ export function SalesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sales.map((sale, index) => (
-            <TableRow key={sale.id}>
+          {sales.map((sale, index) => {
+            const isCredit = sale.isCreditSale === true;
+            const amountPaid =
+              sale.payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+            const fullyPaid = isCredit && amountPaid >= Number(sale.total);
+            // Amber row only when credit sale is still unpaid; white when fully paid
+            const isCreditUnpaid = isCredit && !fullyPaid;
+            return (
+            <TableRow
+              key={sale.id}
+              className={
+                isCreditUnpaid
+                  ? "bg-amber-50/50 dark:bg-amber-950/20"
+                  : undefined
+              }
+            >
               <TableCell className="text-muted-foreground">
                 {getSerialNumber(index)}
               </TableCell>
@@ -239,6 +257,27 @@ export function SalesTable({
                 >
                   {getSaleTypeLabel(sale.type)}
                 </Badge>
+              </TableCell>
+              <TableCell>
+                {isCredit ? (
+                  fullyPaid ? (
+                    <Badge
+                      variant="outline"
+                      className="bg-muted/50 text-foreground dark:text-white"
+                    >
+                      Yes (Paid)
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant="outline"
+                      className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                    >
+                      Yes
+                    </Badge>
+                  )
+                ) : (
+                  <span className="text-muted-foreground">No</span>
+                )}
               </TableCell>
               <TableCell>{sale.location.name}</TableCell>
               <TableCell>
@@ -280,7 +319,8 @@ export function SalesTable({
                 </Button>
               </TableCell>
             </TableRow>
-          ))}
+          );
+          })}
         </TableBody>
       </Table>
     </div>

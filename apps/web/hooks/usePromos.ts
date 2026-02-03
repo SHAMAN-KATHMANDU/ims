@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * React Query wrappers for promos. Business logic and API calls live in promoService; hooks only wire query/mutation and cache keys.
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getPromos,

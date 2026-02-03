@@ -1,5 +1,11 @@
 "use client";
 
+/**
+ * Legacy analytics overview (summary cards, location bars, daily trend).
+ * Superseded by Sales & Revenue analytics at reports/analytics (SalesRevenuePage).
+ * Kept for reference or dashboard widgets; primary analytics use reports/analytics.
+ */
+
 import { useState } from "react";
 import {
   Card,
