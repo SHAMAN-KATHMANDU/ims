@@ -120,12 +120,21 @@ importers:
 
   apps/web:
     dependencies:
+      "@dnd-kit/core":
+        specifier: ^6.1.0
+        version: 6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      "@dnd-kit/sortable":
+        specifier: ^8.0.0
+        version: 8.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
+      "@dnd-kit/utilities":
+        specifier: ^3.2.2
+        version: 3.2.2(react@19.2.0)
       "@hookform/resolvers":
         specifier: ^3.10.0
         version: 3.10.0(react-hook-form@7.70.0(react@19.2.0))
       "@imc-trading/react-pivottable":
         specifier: ^0.2.13
-        version: 0.2.13(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@dnd-kit/sortable@7.0.2(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0))(@dnd-kit/utilities@3.2.2(react@19.2.0))(immutability-helper@3.1.1)(react@19.2.0)
+        version: 0.2.13(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@dnd-kit/sortable@8.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0))(@dnd-kit/utilities@3.2.2(react@19.2.0))(immutability-helper@3.1.1)(react@19.2.0)
       "@radix-ui/react-accordion":
         specifier: 1.2.2
         version: 1.2.2(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -240,6 +249,9 @@ importers:
       embla-carousel-react:
         specifier: 8.5.1
         version: 8.5.1(react@19.2.0)
+      immutability-helper:
+        specifier: ^3.1.1
+        version: 3.1.1
       input-otp:
         specifier: 1.4.1
         version: 1.4.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -477,13 +489,13 @@ packages:
       react: ">=16.8.0"
       react-dom: ">=16.8.0"
 
-  "@dnd-kit/sortable@7.0.2":
+  "@dnd-kit/sortable@8.0.0":
     resolution:
       {
-        integrity: sha512-wDkBHHf9iCi1veM834Gbk1429bd4lHX4RpAwT0y2cHLf246GAvU2sVw/oxWNpPKQNQRQaeGXhAVgrOl1IT+iyA==,
+        integrity: sha512-U3jk5ebVXe1Lr7c2wU7SBZjcWdQP+j7peHJfCspnA81enlu88Mgd7CC8Q+pub9ubP7eKVETzJW+IBAhsqbSu/g==,
       }
     peerDependencies:
-      "@dnd-kit/core": ^6.0.7
+      "@dnd-kit/core": ^6.1.0
       react: ">=16.8.0"
 
   "@dnd-kit/utilities@3.2.2":
@@ -8281,7 +8293,7 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
       tslib: 2.8.1
 
-  "@dnd-kit/sortable@7.0.2(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)":
+  "@dnd-kit/sortable@8.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)":
     dependencies:
       "@dnd-kit/core": 6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       "@dnd-kit/utilities": 3.2.2(react@19.2.0)
@@ -8395,10 +8407,10 @@ snapshots:
 
   "@humanwhocodes/retry@0.4.3": {}
 
-  "@imc-trading/react-pivottable@0.2.13(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@dnd-kit/sortable@7.0.2(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0))(@dnd-kit/utilities@3.2.2(react@19.2.0))(immutability-helper@3.1.1)(react@19.2.0)":
+  "@imc-trading/react-pivottable@0.2.13(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(@dnd-kit/sortable@8.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0))(@dnd-kit/utilities@3.2.2(react@19.2.0))(immutability-helper@3.1.1)(react@19.2.0)":
     dependencies:
       "@dnd-kit/core": 6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
-      "@dnd-kit/sortable": 7.0.2(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
+      "@dnd-kit/sortable": 8.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
       "@dnd-kit/utilities": 3.2.2(react@19.2.0)
       immutability-helper: 3.1.1
       react: 19.2.0
