@@ -238,7 +238,9 @@ export function ProductTable({
           <div className="flex flex-nowrap items-center gap-2 w-full sm:w-auto">
             {/* Filter button/controls – always visible alongside search */}
             {filterBar != null ? (
-              <div className="flex shrink-0 items-center gap-2">{filterBar}</div>
+              <div className="flex shrink-0 items-center gap-2">
+                {filterBar}
+              </div>
             ) : null}
             <div className="relative flex-1 min-w-[140px] max-w-[280px]">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
@@ -521,7 +523,9 @@ export function ProductTable({
                                         (s, inv) => s + inv.quantity,
                                         0,
                                       )
-                                    : variation.stockQuantity ?? 0;
+                                    : (variation.stockQuantity ?? 0);
+                                  const subVars = variation.subVariations ?? [];
+                                  const hasSubVariants = subVars.length > 0;
 
                                   return (
                                     <div
@@ -536,28 +540,78 @@ export function ProductTable({
                                           <div className="text-xs font-medium text-muted-foreground">
                                             Total: {totalStock}
                                           </div>
-                                          {hasLocationInventory && (
-                                            <div className="space-y-1.5">
+                                          {!hasSubVariants &&
+                                            hasLocationInventory && (
+                                              <div className="space-y-1.5">
+                                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                                  By location
+                                                </div>
+                                                <div className="flex flex-wrap gap-2">
+                                                  {variation.locationInventory!.map(
+                                                    (inv) => (
+                                                      <div
+                                                        key={inv.location.id}
+                                                        className="rounded-md border bg-muted/50 px-2.5 py-1.5 text-xs"
+                                                      >
+                                                        <span className="font-medium text-foreground">
+                                                          {inv.location.name}
+                                                        </span>
+                                                        <span className="ml-1.5 text-muted-foreground">
+                                                          {inv.quantity}
+                                                        </span>
+                                                      </div>
+                                                    ),
+                                                  )}
+                                                </div>
+                                              </div>
+                                            )}
+                                          {hasSubVariants && (
+                                            <div className="space-y-2">
                                               <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                                By location
+                                                Sub-variants
                                               </div>
-                                              <div className="flex flex-wrap gap-2">
-                                                {variation.locationInventory!.map(
-                                                  (inv) => (
-                                                    <div
-                                                      key={inv.location.id}
-                                                      className="rounded-md border bg-muted/50 px-2.5 py-1.5 text-xs"
-                                                    >
-                                                      <span className="font-medium text-foreground">
-                                                        {inv.location.name}
-                                                      </span>
-                                                      <span className="ml-1.5 text-muted-foreground">
-                                                        {inv.quantity}
-                                                      </span>
-                                                    </div>
-                                                  ),
-                                                )}
-                                              </div>
+                                              {subVars.map((sub) => {
+                                                const subInvs = (
+                                                  variation.locationInventory ??
+                                                  []
+                                                ).filter(
+                                                  (inv) =>
+                                                    inv.subVariationId ===
+                                                    sub.id,
+                                                );
+                                                const subTotal = subInvs.reduce(
+                                                  (s, inv) => s + inv.quantity,
+                                                  0,
+                                                );
+                                                return (
+                                                  <div
+                                                    key={sub.id}
+                                                    className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs"
+                                                  >
+                                                    <span className="font-medium text-foreground">
+                                                      {sub.name}
+                                                    </span>
+                                                    <span className="ml-1.5 text-muted-foreground">
+                                                      Total: {subTotal}
+                                                    </span>
+                                                    {subInvs.length > 0 && (
+                                                      <div className="flex flex-wrap gap-1.5 mt-1">
+                                                        {subInvs.map((inv) => (
+                                                          <span
+                                                            key={
+                                                              inv.location.id
+                                                            }
+                                                            className="text-muted-foreground"
+                                                          >
+                                                            {inv.location.name}:{" "}
+                                                            {inv.quantity}
+                                                          </span>
+                                                        ))}
+                                                      </div>
+                                                    )}
+                                                  </div>
+                                                );
+                                              })}
                                             </div>
                                           )}
                                         </div>

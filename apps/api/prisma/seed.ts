@@ -833,13 +833,115 @@ async function main() {
 
     if (!location) {
       location = await prisma.location.create({
-        data: loc,
+        data: {
+          ...loc,
+          isDefaultWarehouse: loc.name === "Main Warehouse",
+        } as any,
       });
       console.log(`✅ Created location: ${loc.name} (${loc.type})`);
     } else {
+      const locWithDefault = location as { isDefaultWarehouse?: boolean };
+      if (
+        loc.name === "Main Warehouse" &&
+        locWithDefault.isDefaultWarehouse !== true
+      ) {
+        await prisma.location.update({
+          where: { id: location.id },
+          data: { isDefaultWarehouse: true } as any,
+        });
+        console.log(`✅ Set Main Warehouse as default warehouse`);
+      }
       console.log(`⚠️  Location "${loc.name}" already exists. Skipping.`);
     }
     locations[loc.name] = { id: location.id };
+  }
+
+  // ============================================
+  // 6b. ADD VARIATION PHOTOS (optional – for demo)
+  // ============================================
+  const variationsWithoutPhotos = await prisma.productVariation.findMany({
+    where: { photos: { none: {} } },
+    select: { id: true },
+    take: 30,
+  });
+
+  for (const v of variationsWithoutPhotos) {
+    await prisma.variationPhoto.create({
+      data: {
+        variationId: v.id,
+        photoUrl: `https://picsum.photos/seed/${v.id}/400/300`,
+        isPrimary: true,
+      },
+    });
+  }
+  if (variationsWithoutPhotos.length > 0) {
+    console.log(
+      `✅ Added primary photo for ${variationsWithoutPhotos.length} variations`,
+    );
+  }
+
+  // ============================================
+  // 6c. ADD SUB-VARIATIONS (e.g. S, M, L) FOR SOME CLOTHING PRODUCTS
+  // ============================================
+  const mainWarehouseForSubVars = locations["Main Warehouse"];
+  const clothingProducts = await prisma.product.findMany({
+    where: { category: { name: "Clothing" } },
+    include: { variations: { take: 1 } },
+    take: 8,
+  });
+
+  const sizeNames = ["S", "M", "L", "XL"];
+  let subVariantCount = 0;
+
+  for (const product of clothingProducts) {
+    const variation = product.variations[0];
+    if (!variation) continue;
+
+    const existingSubs = await (prisma as any).productSubVariation.count({
+      where: { variationId: variation.id },
+    });
+    if (existingSubs > 0) continue;
+
+    for (const size of sizeNames) {
+      await (prisma as any).productSubVariation.create({
+        data: { variationId: variation.id, name: size },
+      });
+      subVariantCount++;
+    }
+
+    if (mainWarehouseForSubVars) {
+      for (const size of sizeNames) {
+        const sub = await (prisma as any).productSubVariation.findUnique({
+          where: {
+            variationId_name: { variationId: variation.id, name: size },
+          },
+        });
+        if (sub) {
+          const qty = 5 + Math.floor(Math.random() * 15);
+          await (prisma.locationInventory as any).upsert({
+            where: {
+              locationId_variationId_subVariationId: {
+                locationId: mainWarehouseForSubVars.id,
+                variationId: variation.id,
+                subVariationId: sub.id,
+              },
+            },
+            create: {
+              locationId: mainWarehouseForSubVars.id,
+              variationId: variation.id,
+              subVariationId: sub.id,
+              quantity: qty,
+            },
+            update: { quantity: { increment: qty } },
+          });
+        }
+      }
+    }
+  }
+  if (subVariantCount > 0) {
+    console.log(
+      `✅ Created ${subVariantCount} sub-variants (sizes) for ${clothingProducts.length} clothing products with warehouse stock`,
+    );
   }
 
   // ============================================
@@ -855,24 +957,24 @@ async function main() {
     });
 
     for (const variation of allVariations) {
-      // Check if inventory record already exists
-      const existingInventory = await prisma.locationInventory.findUnique({
+      // Check if inventory record already exists (variation-level, no sub-variant)
+      const existingInventory = await prisma.locationInventory.findFirst({
         where: {
-          locationId_variationId: {
-            locationId: mainWarehouse.id,
-            variationId: variation.id,
-          },
-        },
+          locationId: mainWarehouse.id,
+          variationId: variation.id,
+          subVariationId: null,
+        } as any,
       });
 
       if (!existingInventory && variation.stockQuantity > 0) {
-        // Create inventory record for warehouse with current stock
+        // Create inventory record for warehouse with current stock (variation-level)
         await prisma.locationInventory.create({
           data: {
             locationId: mainWarehouse.id,
             variationId: variation.id,
+            subVariationId: null,
             quantity: variation.stockQuantity,
-          },
+          } as any,
         });
       }
     }
@@ -1326,23 +1428,21 @@ async function main() {
         warehouseStock * (0.15 + Math.random() * 0.15),
       );
 
-      // Check if showroom inventory already exists
-      const existingA = await prisma.locationInventory.findUnique({
+      // Check if showroom inventory already exists (variation-level)
+      const existingA = await prisma.locationInventory.findFirst({
         where: {
-          locationId_variationId: {
-            locationId: showroomA.id,
-            variationId: inv.variationId,
-          },
-        },
+          locationId: showroomA.id,
+          variationId: inv.variationId,
+          subVariationId: null,
+        } as any,
       });
 
-      const existingB = await prisma.locationInventory.findUnique({
+      const existingB = await prisma.locationInventory.findFirst({
         where: {
-          locationId_variationId: {
-            locationId: showroomB.id,
-            variationId: inv.variationId,
-          },
-        },
+          locationId: showroomB.id,
+          variationId: inv.variationId,
+          subVariationId: null,
+        } as any,
       });
 
       if (!existingA && toShowroomA > 0) {
@@ -1350,8 +1450,9 @@ async function main() {
           data: {
             locationId: showroomA.id,
             variationId: inv.variationId,
+            subVariationId: null,
             quantity: toShowroomA,
-          },
+          } as any,
         });
         distributedCount++;
       }
@@ -1361,8 +1462,9 @@ async function main() {
           data: {
             locationId: showroomB.id,
             variationId: inv.variationId,
+            subVariationId: null,
             quantity: toShowroomB,
-          },
+          } as any,
         });
         distributedCount++;
       }

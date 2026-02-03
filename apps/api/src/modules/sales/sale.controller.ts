@@ -41,6 +41,7 @@ class SaleController {
         memberName?: string;
         items: Array<{
           variationId: string;
+          subVariationId?: string | null;
           quantity: number;
           promoCode?: string;
         }>;
@@ -123,6 +124,7 @@ class SaleController {
       // Process items and validate stock & discounts
       const processedItems: Array<{
         variationId: string;
+        subVariationId: string | null;
         quantity: number;
         unitPrice: number;
         totalMrp: number;
@@ -141,10 +143,11 @@ class SaleController {
           });
         }
 
-        // Get variation with product info and active discounts
+        // Get variation with product info, sub-variants, and active discounts
         const variation = await prisma.productVariation.findUnique({
           where: { id: item.variationId },
           include: {
+            subVariations: { select: { id: true, name: true } },
             product: {
               include: {
                 discounts: {
@@ -178,20 +181,44 @@ class SaleController {
           });
         }
 
-        // Check stock at this location
+        const hasSubVariants = variation.subVariations?.length > 0;
+        const subVariationId = item.subVariationId ?? null;
+        if (hasSubVariants && !subVariationId) {
+          return res.status(400).json({
+            message: `Variation ${variation.color} has sub-variants; please specify subVariationId for each line item`,
+          });
+        }
+        if (!hasSubVariants && subVariationId) {
+          return res.status(400).json({
+            message: `Variation ${variation.color} has no sub-variants; do not send subVariationId`,
+          });
+        }
+        if (subVariationId) {
+          const belongs = variation.subVariations?.some(
+            (s) => s.id === subVariationId,
+          );
+          if (!belongs) {
+            return res.status(400).json({
+              message: `Sub-variation ${subVariationId} does not belong to variation ${item.variationId}`,
+            });
+          }
+        }
+
+        // Check stock at this location (and sub-variant when applicable)
         const inventory = await prisma.locationInventory.findUnique({
           where: {
-            locationId_variationId: {
+            locationId_variationId_subVariationId: {
               locationId,
               variationId: item.variationId,
-            },
+              subVariationId,
+            } as any,
           },
         });
 
         const availableStock = inventory?.quantity || 0;
         if (availableStock < item.quantity) {
           return res.status(400).json({
-            message: `Insufficient stock for ${variation.product.name} (${variation.color})`,
+            message: `Insufficient stock for ${variation.product.name} (${variation.color}${subVariationId ? ` / sub-variant` : ""})`,
             available: availableStock,
             requested: item.quantity,
           });
@@ -360,6 +387,7 @@ class SaleController {
 
         processedItems.push({
           variationId: item.variationId,
+          subVariationId: subVariationId ?? null,
           quantity: item.quantity,
           unitPrice,
           totalMrp: itemSubtotal,
@@ -405,6 +433,7 @@ class SaleController {
             items: {
               create: processedItems.map((item) => ({
                 variationId: item.variationId,
+                subVariationId: item.subVariationId ?? undefined,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
                 totalMrp: item.totalMrp,
@@ -442,20 +471,22 @@ class SaleController {
                     },
                   },
                 },
+                subVariation: { select: { id: true, name: true } },
               },
             },
             payments: true,
           },
         });
 
-        // Deduct inventory for each item
+        // Deduct inventory for each item (variation-level or sub-variant level)
         for (const item of processedItems) {
           await tx.locationInventory.update({
             where: {
-              locationId_variationId: {
+              locationId_variationId_subVariationId: {
                 locationId,
                 variationId: item.variationId,
-              },
+                subVariationId: item.subVariationId,
+              } as any,
             },
             data: {
               quantity: {
@@ -522,6 +553,7 @@ class SaleController {
         memberName?: string;
         items: Array<{
           variationId: string;
+          subVariationId?: string | null;
           quantity: number;
           promoCode?: string;
         }>;
@@ -573,6 +605,7 @@ class SaleController {
         const variation = await prisma.productVariation.findUnique({
           where: { id: item.variationId },
           include: {
+            subVariations: { select: { id: true, name: true } },
             product: {
               include: {
                 discounts: {
@@ -604,12 +637,21 @@ class SaleController {
           });
         }
 
+        const prevSubVariationId = item.subVariationId ?? null;
+        const prevHasSubVariants = (variation.subVariations?.length ?? 0) > 0;
+        if (prevHasSubVariants && !prevSubVariationId) {
+          return res.status(400).json({
+            message: `Variation ${variation.color} has sub-variants; specify subVariationId`,
+          });
+        }
+
         const inventory = await prisma.locationInventory.findUnique({
           where: {
-            locationId_variationId: {
+            locationId_variationId_subVariationId: {
               locationId,
               variationId: item.variationId,
-            },
+              subVariationId: prevSubVariationId,
+            } as any,
           },
         });
         const availableStock = inventory?.quantity || 0;
@@ -905,6 +947,7 @@ class SaleController {
                   },
                 },
               },
+              subVariation: { select: { id: true, name: true } },
             },
           },
         },
@@ -1958,6 +2001,7 @@ class SaleController {
                   },
                 },
               },
+              subVariation: { select: { id: true, name: true } },
             },
           },
         },

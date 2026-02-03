@@ -126,6 +126,8 @@ function getBestMemberDiscountId(
 
 interface SaleItem {
   variationId: string;
+  subVariationId?: string | null;
+  subVariationName?: string;
   productName: string;
   color: string;
   imsCode: string;
@@ -345,6 +347,7 @@ export function NewSaleForm({
       memberName: memberName.trim() || undefined,
       items: items.map((i) => ({
         variationId: i.variationId,
+        subVariationId: i.subVariationId ?? undefined,
         quantity: i.quantity,
         promoCode: i.promoCode?.trim() || undefined,
       })),
@@ -376,9 +379,12 @@ export function NewSaleForm({
 
   // Add item to sale
   const handleAddItem = async (inventoryItem: LocationInventoryItem) => {
-    // Check if already added
+    // Match by (variationId, subVariationId) so sub-variants are separate lines
     const existingIndex = items.findIndex(
-      (item) => item.variationId === inventoryItem.variationId,
+      (item) =>
+        item.variationId === inventoryItem.variationId &&
+        (item.subVariationId ?? null) ===
+          (inventoryItem.subVariationId ?? null),
     );
 
     if (existingIndex !== -1) {
@@ -432,6 +438,8 @@ export function NewSaleForm({
       ...items,
       {
         variationId: inventoryItem.variationId,
+        subVariationId: inventoryItem.subVariationId ?? undefined,
+        subVariationName: inventoryItem.subVariation?.name,
         productName: inventoryItem.variation.product.name,
         color: inventoryItem.variation.color,
         imsCode: inventoryItem.variation.product.imsCode,
@@ -591,6 +599,7 @@ export function NewSaleForm({
       memberName: memberName.trim() || undefined,
       items: items.map((item) => ({
         variationId: item.variationId,
+        subVariationId: item.subVariationId ?? undefined,
         quantity: item.quantity,
         promoCode: item.promoCode?.trim() || undefined,
       })),
@@ -748,6 +757,9 @@ export function NewSaleForm({
                                       <div className="text-sm text-muted-foreground">
                                         {item.variation.product.imsCode} -{" "}
                                         {item.variation.color}
+                                        {item.subVariation?.name
+                                          ? ` / ${item.subVariation.name}`
+                                          : ""}
                                       </div>
                                     </div>
                                     <div className="text-right">
@@ -867,7 +879,7 @@ export function NewSaleForm({
                               <div className="divide-y">
                                 {items.map((item, index) => (
                                   <div
-                                    key={item.variationId}
+                                    key={`${item.variationId}-${item.subVariationId ?? "v"}-${index}`}
                                     className="flex items-start gap-1.5 p-2 w-full"
                                   >
                                     <div className="flex-1 min-w-0 overflow-hidden pr-1">
@@ -899,6 +911,9 @@ export function NewSaleForm({
                                       <div className="space-y-0.5">
                                         <div className="text-[10px] text-muted-foreground truncate">
                                           {item.imsCode} - {item.color}
+                                          {item.subVariationName
+                                            ? ` / ${item.subVariationName}`
+                                            : ""}
                                         </div>
                                         <div className="text-[10px] text-muted-foreground">
                                           {formatCurrency(item.unitPrice)} x{" "}

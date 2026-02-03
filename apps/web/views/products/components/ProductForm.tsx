@@ -42,6 +42,7 @@ interface ProductFormProps {
     field: "color" | "stockQuantity",
     value: string,
   ) => void;
+  onUpdateSubVariants: (index: number, subVariants: string[]) => void;
   onAddPhoto: (variationIndex: number, photoUrl: string) => void;
   onRemovePhoto: (variationIndex: number, photoIndex: number) => void;
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
@@ -76,6 +77,7 @@ export function ProductForm({
   onAddVariation,
   onRemoveVariation,
   onUpdateVariation,
+  onUpdateSubVariants,
   onAddPhoto,
   onRemovePhoto,
   onSetPrimaryPhoto,
@@ -247,6 +249,7 @@ export function ProductForm({
                   onAdd={onAddVariation}
                   onRemove={onRemoveVariation}
                   onUpdate={onUpdateVariation}
+                  onUpdateSubVariants={onUpdateSubVariants}
                   onAddPhoto={onAddPhoto}
                   onRemovePhoto={onRemovePhoto}
                   onSetPrimaryPhoto={onSetPrimaryPhoto}
