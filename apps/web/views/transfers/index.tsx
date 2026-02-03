@@ -1,14 +1,13 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
-import { useActiveLocations } from "@/hooks/useLocation";
-import { getLocationInventory } from "@/services/inventoryService";
 import {
   useTransfersPaginated,
   useTransfer,
-  useCreateTransfer,
   useApproveTransfer,
   useStartTransit,
   useCompleteTransfer,
@@ -19,7 +18,6 @@ import {
   DEFAULT_LIMIT,
 } from "@/hooks/useTransfer";
 import { TransferTable } from "./components/TransferTable";
-import { TransferForm } from "./components/TransferForm";
 import { TransferDetail } from "./components/TransferDetail";
 import {
   Select,
@@ -39,7 +37,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Plus } from "lucide-react";
 
 const STATUS_OPTIONS: { value: TransferStatus | "ALL"; label: string }[] = [
   { value: "ALL", label: "All Statuses" },
@@ -51,6 +50,9 @@ const STATUS_OPTIONS: { value: TransferStatus | "ALL"; label: string }[] = [
 ];
 
 export function TransfersPage() {
+  const params = useParams();
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
 
@@ -62,7 +64,6 @@ export function TransfersPage() {
   );
 
   // Dialog state
-  const [formOpen, setFormOpen] = useState(false);
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(
     null,
   );
@@ -86,10 +87,7 @@ export function TransfersPage() {
     selectedTransferId || "",
   );
 
-  const { data: locations = [] } = useActiveLocations();
-
   // Mutations
-  const createTransferMutation = useCreateTransfer();
   const approveTransferMutation = useApproveTransfer();
   const startTransitMutation = useStartTransit();
   const completeTransferMutation = useCompleteTransfer();
@@ -185,24 +183,6 @@ export function TransfersPage() {
     }
   };
 
-  const handleCreateTransfer = async (
-    data: Parameters<typeof createTransferMutation.mutateAsync>[0],
-  ) => {
-    try {
-      await createTransferMutation.mutateAsync(data);
-      toast({ title: "Transfer created successfully" });
-      setFormOpen(false);
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Failed to create transfer";
-      toast({
-        title: "Error",
-        description: message,
-        variant: "destructive",
-      });
-    }
-  };
-
   // For transfer detail actions
   const handleDetailApprove = async () => {
     if (!selectedTransfer) return;
@@ -225,12 +205,6 @@ export function TransfersPage() {
     handleCancelClick(selectedTransfer);
   };
 
-  // Get inventory for a location (for transfer form)
-  const fetchLocationInventory = useCallback(async (locationId: string) => {
-    const response = await getLocationInventory(locationId, { limit: 1000 });
-    return response.data;
-  }, []);
-
   const isActionLoading =
     approveTransferMutation.isPending ||
     startTransitMutation.isPending ||
@@ -247,7 +221,7 @@ export function TransfersPage() {
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:flex-1">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -269,18 +243,16 @@ export function TransfersPage() {
               ))}
             </SelectContent>
           </Select>
+          <Button asChild variant="default" size="sm" className="sm:ml-auto">
+            <Link
+              href={`${basePath}/transfers/new`}
+              className="inline-flex items-center gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Create transfer request
+            </Link>
+          </Button>
         </div>
-
-        {isAdmin && (
-          <TransferForm
-            open={formOpen}
-            onOpenChange={setFormOpen}
-            locations={locations}
-            onSubmit={handleCreateTransfer}
-            isLoading={createTransferMutation.isPending}
-            getLocationInventory={fetchLocationInventory}
-          />
-        )}
       </div>
 
       <TransferTable

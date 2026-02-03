@@ -32,6 +32,7 @@ interface DonutChartProps {
   title?: string;
   formatValue?: (n: number) => string;
   colors?: string[];
+  ariaLabel?: string;
 }
 
 export function DonutChart({
@@ -39,6 +40,7 @@ export function DonutChart({
   title,
   formatValue = formatCurrency,
   colors = DEFAULT_COLORS,
+  ariaLabel,
 }: DonutChartProps) {
   const config: ChartConfig = {};
   data.forEach((d, i) => {
@@ -47,20 +49,31 @@ export function DonutChart({
 
   if (data.length === 0) {
     return (
-      <div className="flex aspect-square items-center justify-center text-muted-foreground text-sm">
+      <div
+        className="flex aspect-square items-center justify-center text-muted-foreground text-sm"
+        aria-label={ariaLabel ?? "Donut chart (no data)"}
+      >
         No data
       </div>
     );
   }
 
   return (
-    <div className="w-full">
+    <div
+      className="min-w-0 w-full max-w-full"
+      aria-label={
+        ariaLabel ?? (title ? `Donut chart: ${title}` : "Donut chart")
+      }
+    >
       {title && (
         <p className="text-sm font-medium text-muted-foreground mb-2">
           {title}
         </p>
       )}
-      <ChartContainer config={config} className="w-full aspect-square">
+      <ChartContainer
+        config={config}
+        className="min-w-0 w-full max-w-full aspect-square"
+      >
         <PieChart>
           <Pie
             data={data}

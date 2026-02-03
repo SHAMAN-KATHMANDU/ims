@@ -112,6 +112,7 @@ export function useProductsPaginated(params: ProductListParams = {}) {
     dateTo: params.dateTo,
     sortBy: params.sortBy,
     sortOrder: params.sortOrder,
+    lowStock: params.lowStock,
   };
 
   return useQuery({

@@ -1,0 +1,23 @@
+/**
+ * Scoped styles for Reports (analytics) pages. Targets [data-reports] so
+ * Recharts/shadcn chart selectors do not apply; Chart.js and pivot containers
+ * have stable dimensions.
+ */
+[data-reports].reports-container {
+  /* Ensure chart and table containers don't collapse */
+  --reports-chart-min-height: 280px;
+}
+
+[data-reports] canvas {
+  max-width: 100%;
+}
+
+/* Scope pivot table so its styles don't break the rest of the app */
+.reports-pivot .pvtAxisContainer,
+.reports-pivot .pvtRenderer,
+.reports-pivot table.pvtTable {
+  font-size: 0.875rem;
+}
+.reports-pivot .pvtTable {
+  border-collapse: collapse;
+}

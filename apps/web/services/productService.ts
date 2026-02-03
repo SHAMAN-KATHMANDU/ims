@@ -107,6 +107,8 @@ export interface ProductListParams {
   dateTo?: string;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  /** When true, only products with at least one location inventory quantity below threshold (e.g. 5). */
+  lowStock?: boolean;
 }
 
 export type { PaginationMeta } from "@/lib/apiTypes";
@@ -232,6 +234,7 @@ export async function getProducts(
     dateTo,
     sortBy,
     sortOrder,
+    lowStock,
   } = params;
 
   const queryParams = new URLSearchParams();
@@ -266,6 +269,9 @@ export async function getProducts(
   }
   if (sortOrder) {
     queryParams.set("sortOrder", sortOrder);
+  }
+  if (lowStock) {
+    queryParams.set("lowStock", "1");
   }
 
   try {

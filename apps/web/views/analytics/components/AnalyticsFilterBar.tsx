@@ -38,7 +38,8 @@ import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import type { User } from "@/services/userService";
 
 export function AnalyticsFilterBar() {
-  const { filters, setFilters, setPreset, setDateRange } = useAnalyticsFilters();
+  const { filters, setFilters, setPreset, setDateRange } =
+    useAnalyticsFilters();
   const isAdmin = useAuthStore(selectIsAdmin);
   const { data: locations = [] } = useActiveLocations();
   const { data: users = [] } = useUsers({ limit: 500 });
@@ -58,17 +59,23 @@ export function AnalyticsFilterBar() {
   const endDate = filters.dateTo ? new Date(filters.dateTo) : undefined;
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="flex min-w-0 w-full max-w-full flex-wrap items-center gap-2">
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 gap-2 text-sm shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 text-sm shrink-0"
+          >
             <Filter className="h-4 w-4" />
             Filters
           </Button>
         </PopoverTrigger>
         <PopoverContent className="w-[340px] p-3" align="start">
           <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground">Date range</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Date range
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {ANALYTICS_PRESETS.map(({ id, label }) => (
                 <Button
@@ -104,7 +111,11 @@ export function AnalyticsFilterBar() {
                       mode="single"
                       selected={startDate}
                       onSelect={(d) =>
-                        d && setDateRange(format(d, "yyyy-MM-dd"), filters.dateTo ?? format(d, "yyyy-MM-dd"))
+                        d &&
+                        setDateRange(
+                          format(d, "yyyy-MM-dd"),
+                          filters.dateTo ?? format(d, "yyyy-MM-dd"),
+                        )
                       }
                     />
                   </PopoverContent>
@@ -131,7 +142,11 @@ export function AnalyticsFilterBar() {
                       mode="single"
                       selected={endDate}
                       onSelect={(d) =>
-                        d && setDateRange(filters.dateFrom ?? format(d, "yyyy-MM-dd"), format(d, "yyyy-MM-dd"))
+                        d &&
+                        setDateRange(
+                          filters.dateFrom ?? format(d, "yyyy-MM-dd"),
+                          format(d, "yyyy-MM-dd"),
+                        )
                       }
                     />
                   </PopoverContent>
@@ -139,7 +154,9 @@ export function AnalyticsFilterBar() {
               </div>
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground pt-2">Location</p>
+            <p className="text-xs font-medium text-muted-foreground pt-2">
+              Location
+            </p>
             <div className="max-h-32 overflow-y-auto space-y-2 border rounded-md p-2">
               {allLocations.length === 0 ? (
                 <p className="text-xs text-muted-foreground">No locations</p>
@@ -164,7 +181,9 @@ export function AnalyticsFilterBar() {
               )}
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground pt-1">Sale type</p>
+            <p className="text-xs font-medium text-muted-foreground pt-1">
+              Sale type
+            </p>
             <Select
               value={filters.saleType ?? "all"}
               onValueChange={(v) =>
@@ -183,7 +202,9 @@ export function AnalyticsFilterBar() {
               </SelectContent>
             </Select>
 
-            <p className="text-xs font-medium text-muted-foreground">Credit status</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Credit status
+            </p>
             <Select
               value={filters.creditStatus}
               onValueChange={(v) =>
@@ -202,10 +223,14 @@ export function AnalyticsFilterBar() {
 
             {isAdmin && (
               <>
-                <p className="text-xs font-medium text-muted-foreground">User</p>
+                <p className="text-xs font-medium text-muted-foreground">
+                  User
+                </p>
                 <Select
                   value={filters.userId ?? "all"}
-                  onValueChange={(v) => setFilters({ userId: v === "all" ? undefined : v })}
+                  onValueChange={(v) =>
+                    setFilters({ userId: v === "all" ? undefined : v })
+                  }
                 >
                   <SelectTrigger className="h-8 text-sm">
                     <SelectValue placeholder="All users" />
@@ -222,7 +247,9 @@ export function AnalyticsFilterBar() {
               </>
             )}
 
-            <p className="text-xs font-medium text-muted-foreground">Category</p>
+            <p className="text-xs font-medium text-muted-foreground">
+              Category
+            </p>
             <Select
               value={filters.categoryId ?? "all"}
               onValueChange={(v) =>

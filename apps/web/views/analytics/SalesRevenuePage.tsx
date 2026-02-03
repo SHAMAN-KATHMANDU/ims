@@ -6,7 +6,9 @@
  * Drill-down: click View sales on composition/user opens table; row click opens SaleDetail.
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -24,21 +26,42 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useAnalyticsFilters } from "@/hooks/useAnalyticsFilters";
-import { useSalesRevenueAnalytics } from "@/hooks/useAnalytics";
+import {
+  useSalesRevenueAnalytics,
+  useDiscountAnalytics,
+  usePaymentTrendsAnalytics,
+  useLocationComparisonAnalytics,
+} from "@/hooks/useAnalytics";
+import { useAuthStore, selectUserRole } from "@/stores/auth-store";
 import { useSalesPaginated, useSale } from "@/hooks/useSales";
 import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
 import {
-  KpiCards,
-  TimeSeriesLineChart,
-  DonutChart,
-  CreditTimeSeriesChart,
-  AgingBucketsBar,
-  BarChartByUser,
-} from "@/components/charts";
+  ReportsLineChart,
+  ReportsDoughnutChart,
+  ReportsBarChart,
+  ReportsAgingBar,
+  getReportChartColor,
+} from "@/components/reports-charts";
 import { SalesTable } from "@/views/sales/components/SalesTable";
 import { SaleDetail } from "@/views/sales/components/SaleDetail";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { formatCurrency } from "@/lib/format";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   DollarSign,
   Receipt,
@@ -47,6 +70,9 @@ import {
   CreditCard,
   Users,
   List,
+  Search,
+  MapPin,
+  Wallet,
 } from "lucide-react";
 import type { Sale } from "@/hooks/useSales";
 
@@ -55,12 +81,79 @@ type DrillDown =
   | { type: "user"; id: string; label: string };
 
 export function SalesRevenuePage() {
+  const params = useParams();
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
+  const userRole = useAuthStore(selectUserRole);
+  const isUserRole = userRole === "user";
   const { apiParams, filters } = useAnalyticsFilters();
   const { data, isLoading } = useSalesRevenueAnalytics(apiParams);
+  const { data: discountData, isLoading: discountLoading } =
+    useDiscountAnalytics(apiParams);
+  const { data: paymentTrendsData, isLoading: paymentTrendsLoading } =
+    usePaymentTrendsAnalytics(apiParams);
+  const { data: locationComparisonData, isLoading: locationComparisonLoading } =
+    useLocationComparisonAnalytics(apiParams);
   const [drillDown, setDrillDown] = useState<DrillDown | null>(null);
   const [drillPage, setDrillPage] = useState(1);
   const [drillPageSize] = useState(10);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
+  const [userPerformanceSearch, setUserPerformanceSearch] = useState("");
+  const [revenueTimeScale, setRevenueTimeScale] = useState<"linear" | "log">(
+    "linear",
+  );
+  const [creditTimeScale, setCreditTimeScale] = useState<"linear" | "log">(
+    "linear",
+  );
+  const [creditAgingScale, setCreditAgingScale] = useState<"linear" | "log">(
+    "linear",
+  );
+  const [userPerfScale, setUserPerfScale] = useState<"linear" | "log">(
+    "linear",
+  );
+  const [primaryKpiMetric, setPrimaryKpiMetric] = useState<
+    "totalRevenue" | "netRevenue" | "salesCount" | "avgOrderValue"
+  >("totalRevenue");
+  const [discountTimeScale, setDiscountTimeScale] = useState<"linear" | "log">(
+    "linear",
+  );
+  const [paymentTrendsScale, setPaymentTrendsScale] = useState<
+    "linear" | "log"
+  >("linear");
+  const [locationSearch, setLocationSearch] = useState("");
+
+  // Payment method series from payment trends: keys except "date"
+  const paymentMethodSeries = useMemo(() => {
+    const ts = paymentTrendsData?.timeSeries ?? [];
+    if (ts.length === 0) return [];
+    const keys = new Set<string>();
+    ts.forEach((row) => {
+      Object.keys(row).forEach((k) => {
+        if (k !== "date") keys.add(k);
+      });
+    });
+    return Array.from(keys)
+      .sort()
+      .map((method, i) => ({
+        dataKey: method,
+        label: method,
+        color: getReportChartColor(i),
+      }));
+  }, [paymentTrendsData?.timeSeries]);
+
+  const filteredLocationComparison = useMemo(() => {
+    const list = locationComparisonData ?? [];
+    if (!locationSearch.trim()) return list;
+    const q = locationSearch.trim().toLowerCase();
+    return list.filter((l) => (l.locationName ?? "").toLowerCase().includes(q));
+  }, [locationComparisonData, locationSearch]);
+
+  const filteredUserPerformance = useMemo(() => {
+    const list = data?.userPerformance ?? [];
+    if (isUserRole || !userPerformanceSearch.trim()) return list;
+    const q = userPerformanceSearch.trim().toLowerCase();
+    return list.filter((u) => (u.username ?? "").toLowerCase().includes(q));
+  }, [data?.userPerformance, userPerformanceSearch, isUserRole]);
 
   const startDateParam =
     typeof apiParams.dateFrom === "string"
@@ -161,37 +254,161 @@ export function SalesRevenuePage() {
           value: formatCurrency(data.kpis.outstandingCredit),
           sublabel: "Unpaid balance",
           icon: CreditCard,
+          href: `${basePath}/sales?credit=credit`,
         },
       ]
     : [];
 
+  const primaryKpiValue = data
+    ? primaryKpiMetric === "totalRevenue"
+      ? formatCurrency(data.kpis.totalRevenue)
+      : primaryKpiMetric === "netRevenue"
+        ? formatCurrency(data.kpis.netRevenue)
+        : primaryKpiMetric === "salesCount"
+          ? String(data.kpis.salesCount)
+          : formatCurrency(data.kpis.avgOrderValue)
+    : null;
+  const primaryKpiSublabel =
+    primaryKpiMetric === "totalRevenue"
+      ? "Gross (before discount)"
+      : primaryKpiMetric === "netRevenue"
+        ? `${data?.kpis.salesCount ?? 0} sales`
+        : primaryKpiMetric === "salesCount"
+          ? "Orders"
+          : "Per sale";
+
   return (
-    <div className="space-y-6 min-w-0">
-      <div>
-        <h1 className="text-3xl font-bold text-balance">
+    <div
+      className="reports-container min-w-0 w-full max-w-full space-y-6 overflow-x-auto"
+      data-reports
+    >
+      <header className="min-w-0">
+        <h1 className="text-2xl font-bold text-balance md:text-3xl">
           Sales & Revenue Analytics
         </h1>
-        <p className="text-muted-foreground mt-2">
+        <p className="text-muted-foreground mt-2 text-sm md:text-base">
           Revenue, cash flow, and sales performance
         </p>
+        {isUserRole && (
+          <p className="text-muted-foreground mt-1 text-xs" role="status">
+            Showing your performance
+          </p>
+        )}
+      </header>
+
+      <div className="min-w-0">
+        <AnalyticsFilterBar />
       </div>
 
-      <AnalyticsFilterBar />
+      <div className="grid min-w-0 gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+        <Card className="min-w-0 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Key metric</CardTitle>
+            <Select
+              value={primaryKpiMetric}
+              onValueChange={(v) =>
+                setPrimaryKpiMetric(
+                  v as
+                    | "totalRevenue"
+                    | "netRevenue"
+                    | "salesCount"
+                    | "avgOrderValue",
+                )
+              }
+            >
+              <SelectTrigger className="h-7 w-[120px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="totalRevenue">Total revenue</SelectItem>
+                <SelectItem value="netRevenue">Net revenue</SelectItem>
+                <SelectItem value="salesCount">Sales count</SelectItem>
+                <SelectItem value="avgOrderValue">Avg order value</SelectItem>
+              </SelectContent>
+            </Select>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <Skeleton className="h-8 w-24" />
+            ) : (
+              <>
+                <div className="text-2xl font-bold">
+                  {primaryKpiValue ?? "-"}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {primaryKpiSublabel}
+                </p>
+              </>
+            )}
+          </CardContent>
+        </Card>
+        {kpiItems.map((item, i) => {
+          const card = (
+            <Card className="min-w-0 shadow-sm">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">
+                  {item.label}
+                </CardTitle>
+                {item.icon && (
+                  <item.icon className="h-4 w-4 text-muted-foreground" />
+                )}
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : (
+                  <>
+                    <div className="text-2xl font-bold">{item.value}</div>
+                    {item.sublabel && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {item.sublabel}
+                      </p>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          );
+          return "href" in item && item.href ? (
+            <Link
+              key={i}
+              href={item.href}
+              className="block focus:outline-none focus:ring-2 focus:ring-ring rounded-lg"
+            >
+              {card}
+            </Link>
+          ) : (
+            <div key={i}>{card}</div>
+          );
+        })}
+      </div>
 
-      <KpiCards items={kpiItems} isLoading={isLoading} />
-
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle>Revenue over time</CardTitle>
-          <CardDescription>
-            Gross revenue, net revenue, and discount by day
-          </CardDescription>
+      <Card className="min-w-0 shadow-sm">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
+          <div>
+            <CardTitle>Revenue over time</CardTitle>
+            <CardDescription>
+              Gross revenue, net revenue, and discount by day
+            </CardDescription>
+          </div>
+          <Select
+            value={revenueTimeScale}
+            onValueChange={(v) => setRevenueTimeScale(v as "linear" | "log")}
+          >
+            <SelectTrigger className="w-[100px] h-8 text-xs">
+              <SelectValue placeholder="Scale" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="linear">Linear</SelectItem>
+              <SelectItem value="log">Log</SelectItem>
+            </SelectContent>
+          </Select>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0 overflow-hidden">
           {isLoading ? (
             <Skeleton className="h-[300px] w-full" />
           ) : data?.timeSeries?.length ? (
-            <TimeSeriesLineChart
+            <ReportsLineChart
               data={
                 data.timeSeries as unknown as Array<Record<string, unknown>>
               }
@@ -199,19 +416,25 @@ export function SalesRevenuePage() {
                 {
                   dataKey: "gross",
                   label: "Gross revenue",
-                  color: "hsl(var(--chart-1))",
+                  color: getReportChartColor(0),
                 },
                 {
                   dataKey: "net",
                   label: "Net revenue",
-                  color: "hsl(var(--chart-2))",
+                  color: getReportChartColor(1),
                 },
                 {
                   dataKey: "discount",
                   label: "Discount",
-                  color: "hsl(var(--chart-3))",
+                  color: getReportChartColor(2),
                 },
               ]}
+              xLabel="Date"
+              yLabel="Amount"
+              ariaLabel="Revenue over time: gross, net, discount by day"
+              scale={revenueTimeScale}
+              formatValue={formatCurrency}
+              height={300}
             />
           ) : (
             <div className="h-[300px] flex items-center justify-center text-muted-foreground">
@@ -228,18 +451,24 @@ export function SalesRevenuePage() {
             By location, payment method, or sale type
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0 overflow-hidden">
           {isLoading ? (
             <Skeleton className="h-[320px] w-full" />
           ) : (
-            <Tabs defaultValue="location" className="w-full">
-              <TabsList>
-                <TabsTrigger value="location">By location</TabsTrigger>
-                <TabsTrigger value="payment">By payment method</TabsTrigger>
-                <TabsTrigger value="type">By sale type</TabsTrigger>
+            <Tabs defaultValue="location" className="min-w-0 w-full">
+              <TabsList className="w-full max-w-full overflow-x-auto flex-nowrap justify-start">
+                <TabsTrigger value="location" className="shrink-0">
+                  By location
+                </TabsTrigger>
+                <TabsTrigger value="payment" className="shrink-0">
+                  By payment method
+                </TabsTrigger>
+                <TabsTrigger value="type" className="shrink-0">
+                  By sale type
+                </TabsTrigger>
               </TabsList>
               <TabsContent value="location">
-                <DonutChart
+                <ReportsDoughnutChart
                   data={
                     data?.composition.byLocation.map((c) => ({
                       name: c.locationName,
@@ -248,6 +477,7 @@ export function SalesRevenuePage() {
                     })) ?? []
                   }
                   title="Revenue by location"
+                  formatValue={formatCurrency}
                 />
                 {data?.composition.byLocation.length ? (
                   <div className="flex flex-wrap gap-2 mt-3">
@@ -273,7 +503,7 @@ export function SalesRevenuePage() {
                 ) : null}
               </TabsContent>
               <TabsContent value="payment">
-                <DonutChart
+                <ReportsDoughnutChart
                   data={
                     data?.composition.byPaymentMethod.map((c) => ({
                       name: c.method,
@@ -282,10 +512,11 @@ export function SalesRevenuePage() {
                     })) ?? []
                   }
                   title="Revenue by payment method"
+                  formatValue={formatCurrency}
                 />
               </TabsContent>
               <TabsContent value="type">
-                <DonutChart
+                <ReportsDoughnutChart
                   data={
                     data?.composition.bySaleType.map((c) => ({
                       name: c.type,
@@ -294,6 +525,7 @@ export function SalesRevenuePage() {
                     })) ?? []
                   }
                   title="Revenue by sale type"
+                  formatValue={formatCurrency}
                 />
               </TabsContent>
             </Tabs>
@@ -301,17 +533,283 @@ export function SalesRevenuePage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Credit issued vs paid</CardTitle>
-            <CardDescription>Over time</CardDescription>
+      {/* Discount analytics: over time, by user, by location */}
+      <Card className="min-w-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Percent className="h-5 w-5 shrink-0" />
+            Discount analytics
+          </CardTitle>
+          <CardDescription>
+            Discount over time and by user or location
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="min-w-0 overflow-hidden">
+          {discountLoading ? (
+            <Skeleton className="h-[320px] w-full" />
+          ) : (
+            <Tabs defaultValue="overTime" className="min-w-0 w-full">
+              <TabsList className="w-full max-w-full overflow-x-auto flex-nowrap justify-start">
+                <TabsTrigger value="overTime" className="shrink-0">
+                  Over time
+                </TabsTrigger>
+                <TabsTrigger value="byUser" className="shrink-0">
+                  By user
+                </TabsTrigger>
+                <TabsTrigger value="byLocation" className="shrink-0">
+                  By location
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="overTime">
+                <div className="flex flex-row flex-wrap items-center justify-between gap-2 mb-2">
+                  <span className="text-xs text-muted-foreground">Amount</span>
+                  <Select
+                    value={discountTimeScale}
+                    onValueChange={(v) =>
+                      setDiscountTimeScale(v as "linear" | "log")
+                    }
+                  >
+                    <SelectTrigger className="w-[100px] h-8 text-xs">
+                      <SelectValue placeholder="Scale" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="linear">Linear</SelectItem>
+                      <SelectItem value="log">Log</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {discountData?.discountOverTime?.length ? (
+                  <ReportsLineChart
+                    data={
+                      discountData.discountOverTime as unknown as Array<
+                        Record<string, unknown>
+                      >
+                    }
+                    series={[
+                      {
+                        dataKey: "discount",
+                        label: "Discount",
+                        color: getReportChartColor(2),
+                      },
+                    ]}
+                    xLabel="Date"
+                    yLabel="Discount"
+                    ariaLabel="Discount over time"
+                    scale={discountTimeScale}
+                    formatValue={formatCurrency}
+                    height={300}
+                  />
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No discount over time data
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="byUser">
+                {discountData?.byUser?.length ? (
+                  <ReportsBarChart
+                    data={discountData.byUser.map((u) => ({
+                      userId: u.userId,
+                      username: u.username,
+                      value: u.discount,
+                    }))}
+                    valueLabel="Discount"
+                    xLabel="User"
+                    yLabel="Discount"
+                    formatValue={formatCurrency}
+                    height={300}
+                  />
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No discount by user data
+                  </div>
+                )}
+              </TabsContent>
+              <TabsContent value="byLocation">
+                {discountData?.byLocation?.length ? (
+                  <ReportsDoughnutChart
+                    data={discountData.byLocation.map((l) => ({
+                      name: l.locationName,
+                      value: l.discount,
+                      id: l.locationId,
+                    }))}
+                    title="Discount by location"
+                    ariaLabel="Discount by location"
+                    formatValue={formatCurrency}
+                  />
+                ) : (
+                  <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                    No discount by location data
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Payment method over time */}
+      <Card className="min-w-0 shadow-sm">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Wallet className="h-5 w-5 shrink-0" />
+              Payment method over time
+            </CardTitle>
+            <CardDescription>Daily totals by payment method</CardDescription>
+          </div>
+          <Select
+            value={paymentTrendsScale}
+            onValueChange={(v) => setPaymentTrendsScale(v as "linear" | "log")}
+          >
+            <SelectTrigger className="w-[100px] h-8 text-xs">
+              <SelectValue placeholder="Scale" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="linear">Linear</SelectItem>
+              <SelectItem value="log">Log</SelectItem>
+            </SelectContent>
+          </Select>
+        </CardHeader>
+        <CardContent className="min-w-0 overflow-hidden">
+          {paymentTrendsLoading ? (
+            <Skeleton className="h-[300px] w-full" />
+          ) : paymentTrendsData?.timeSeries?.length &&
+            paymentMethodSeries.length > 0 ? (
+            <ReportsLineChart
+              data={
+                paymentTrendsData.timeSeries as unknown as Array<
+                  Record<string, unknown>
+                >
+              }
+              series={paymentMethodSeries}
+              xLabel="Date"
+              yLabel="Amount"
+              ariaLabel="Payment method over time"
+              scale={paymentTrendsScale}
+              formatValue={formatCurrency}
+              height={300}
+            />
+          ) : (
+            <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+              No payment trends data
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Location comparison */}
+      <Card className="min-w-0 shadow-sm">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <MapPin className="h-5 w-5 shrink-0" />
+            Location comparison
+          </CardTitle>
+          <CardDescription>
+            Revenue, sales count, and discount per location
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="min-w-0 overflow-x-auto">
+          {locationComparisonLoading ? (
+            <Skeleton className="h-48 w-full" />
+          ) : filteredLocationComparison.length > 0 ? (
+            <>
+              <div className="relative mb-3">
+                <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  placeholder="Search by location name..."
+                  value={locationSearch}
+                  onChange={(e) => setLocationSearch(e.target.value)}
+                  className="pl-8 h-9 text-sm max-w-xs"
+                  aria-label="Search location comparison"
+                />
+              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Location</TableHead>
+                    <TableHead className="text-right">Revenue</TableHead>
+                    <TableHead className="text-right">Sales</TableHead>
+                    <TableHead className="text-right">Discount</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLocationComparison.map((l) => (
+                    <TableRow key={l.locationId}>
+                      <TableCell className="font-medium">
+                        {l.locationName}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(l.revenue)}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {l.salesCount}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {formatCurrency(l.discount)}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </>
+          ) : (
+            <div className="h-32 flex items-center justify-center text-muted-foreground">
+              No location data
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid min-w-0 gap-4 md:grid-cols-2">
+        <Card className="min-w-0 shadow-sm">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
+            <div>
+              <CardTitle>Credit issued vs paid</CardTitle>
+              <CardDescription>Over time</CardDescription>
+            </div>
+            <Select
+              value={creditTimeScale}
+              onValueChange={(v) => setCreditTimeScale(v as "linear" | "log")}
+            >
+              <SelectTrigger className="w-[100px] h-8 text-xs">
+                <SelectValue placeholder="Scale" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="linear">Linear</SelectItem>
+                <SelectItem value="log">Log</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0 overflow-hidden">
             {isLoading ? (
               <Skeleton className="h-[280px] w-full" />
             ) : data?.credit.timeSeries?.length ? (
-              <CreditTimeSeriesChart data={data.credit.timeSeries} />
+              <ReportsLineChart
+                data={
+                  data.credit.timeSeries as unknown as Array<
+                    Record<string, unknown>
+                  >
+                }
+                series={[
+                  {
+                    dataKey: "issued",
+                    label: "Credit issued",
+                    color: getReportChartColor(0),
+                  },
+                  {
+                    dataKey: "paid",
+                    label: "Credit paid",
+                    color: getReportChartColor(1),
+                  },
+                ]}
+                xLabel="Date"
+                yLabel="Amount"
+                ariaLabel="Credit issued vs paid over time"
+                scale={creditTimeScale}
+                formatValue={formatCurrency}
+                height={280}
+              />
             ) : (
               <div className="h-[280px] flex items-center justify-center text-muted-foreground">
                 No credit data
@@ -320,16 +818,31 @@ export function SalesRevenuePage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm">
-          <CardHeader>
-            <CardTitle>Credit aging</CardTitle>
-            <CardDescription>Outstanding by days overdue</CardDescription>
+        <Card className="min-w-0 shadow-sm">
+          <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
+            <div>
+              <CardTitle>Credit aging</CardTitle>
+              <CardDescription>Outstanding by days overdue</CardDescription>
+            </div>
+            <Select
+              value={creditAgingScale}
+              onValueChange={(v) => setCreditAgingScale(v as "linear" | "log")}
+            >
+              <SelectTrigger className="w-[100px] h-8 text-xs">
+                <SelectValue placeholder="Scale" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="linear">Linear</SelectItem>
+                <SelectItem value="log">Log</SelectItem>
+              </SelectContent>
+            </Select>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0 overflow-hidden">
             {isLoading ? (
               <Skeleton className="h-48 w-full" />
             ) : (
-              <AgingBucketsBar
+              <ReportsAgingBar
+                scale={creditAgingScale}
                 data={[
                   { bucket: "0-7 days", value: data?.credit.aging["0-7"] ?? 0 },
                   {
@@ -338,86 +851,140 @@ export function SalesRevenuePage() {
                   },
                   { bucket: "30+ days", value: data?.credit.aging["30+"] ?? 0 },
                 ]}
+                formatValue={formatCurrency}
+                xLabel="Amount"
+                yLabel="Bucket"
+                height={180}
               />
             )}
           </CardContent>
         </Card>
       </div>
 
-      <Card className="shadow-sm">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            User performance
-          </CardTitle>
-          <CardDescription>
-            Revenue, sales count, and avg discount per user
-          </CardDescription>
+      <Card className="min-w-0 shadow-sm">
+        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
+          <div>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 shrink-0" />
+              {isUserRole ? "Your performance" : "User performance"}
+            </CardTitle>
+            <CardDescription>
+              {isUserRole
+                ? "Your revenue, sales count, and avg discount"
+                : "Revenue, sales count, and avg discount per user"}
+            </CardDescription>
+          </div>
+          <Select
+            value={userPerfScale}
+            onValueChange={(v) => setUserPerfScale(v as "linear" | "log")}
+          >
+            <SelectTrigger className="w-[100px] h-8 text-xs shrink-0">
+              <SelectValue placeholder="Scale" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="linear">Linear</SelectItem>
+              <SelectItem value="log">Log</SelectItem>
+            </SelectContent>
+          </Select>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0 overflow-hidden">
           {isLoading ? (
             <Skeleton className="h-64 w-full" />
           ) : data?.userPerformance?.length ? (
-            <Tabs defaultValue="revenue" className="w-full">
-              <TabsList>
-                <TabsTrigger value="revenue">Revenue</TabsTrigger>
-                <TabsTrigger value="count">Sales count</TabsTrigger>
-                <TabsTrigger value="discount">Avg discount</TabsTrigger>
-              </TabsList>
-              <TabsContent value="revenue">
-                <BarChartByUser
-                  data={data.userPerformance.map((u) => ({
-                    userId: u.userId,
-                    username: u.username,
-                    value: u.revenue,
-                  }))}
-                  valueLabel="Revenue"
-                />
-                {data.userPerformance.length ? (
-                  <div className="flex flex-wrap gap-2 mt-3">
-                    {data.userPerformance.map((u) => (
-                      <Button
-                        key={u.userId}
-                        variant="outline"
-                        size="sm"
-                        className="text-xs"
-                        onClick={() =>
-                          openDrill({
-                            type: "user",
-                            id: u.userId,
-                            label: u.username,
-                          })
-                        }
-                      >
-                        <List className="h-3 w-3 mr-1" />
-                        View sales: {u.username}
-                      </Button>
-                    ))}
-                  </div>
-                ) : null}
-              </TabsContent>
-              <TabsContent value="count">
-                <BarChartByUser
-                  data={data.userPerformance.map((u) => ({
-                    userId: u.userId,
-                    username: u.username,
-                    value: u.salesCount,
-                  }))}
-                  valueLabel="Sales count"
-                  formatValue={(n) => String(Math.round(n))}
-                />
-              </TabsContent>
-              <TabsContent value="discount">
-                <BarChartByUser
-                  data={data.userPerformance.map((u) => ({
-                    userId: u.userId,
-                    username: u.username,
-                    value: u.avgDiscount,
-                  }))}
-                  valueLabel="Avg discount"
-                />
-              </TabsContent>
-            </Tabs>
+            <>
+              {!isUserRole && (
+                <div className="relative mb-3">
+                  <Search className="absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by username..."
+                    value={userPerformanceSearch}
+                    onChange={(e) => setUserPerformanceSearch(e.target.value)}
+                    className="pl-8 h-9 text-sm max-w-xs"
+                    aria-label="Search user performance"
+                  />
+                </div>
+              )}
+              <Tabs defaultValue="revenue" className="min-w-0 w-full">
+                <TabsList className="w-full max-w-full overflow-x-auto flex-nowrap justify-start">
+                  <TabsTrigger value="revenue" className="shrink-0">
+                    Revenue
+                  </TabsTrigger>
+                  <TabsTrigger value="count" className="shrink-0">
+                    Sales count
+                  </TabsTrigger>
+                  <TabsTrigger value="discount" className="shrink-0">
+                    Avg discount
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="revenue">
+                  <ReportsBarChart
+                    data={filteredUserPerformance.map((u) => ({
+                      userId: u.userId,
+                      username: u.username,
+                      value: u.revenue,
+                    }))}
+                    valueLabel="Revenue"
+                    xLabel={isUserRole ? "You" : "User"}
+                    yLabel="Revenue"
+                    scale={userPerfScale}
+                    formatValue={formatCurrency}
+                    height={280}
+                  />
+                  {filteredUserPerformance.length ? (
+                    <div className="flex flex-wrap gap-2 mt-3">
+                      {filteredUserPerformance.map((u) => (
+                        <Button
+                          key={u.userId}
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          onClick={() =>
+                            openDrill({
+                              type: "user",
+                              id: u.userId,
+                              label: u.username,
+                            })
+                          }
+                        >
+                          <List className="h-3 w-3 mr-1" />
+                          View sales: {u.username}
+                        </Button>
+                      ))}
+                    </div>
+                  ) : null}
+                </TabsContent>
+                <TabsContent value="count">
+                  <ReportsBarChart
+                    data={filteredUserPerformance.map((u) => ({
+                      userId: u.userId,
+                      username: u.username,
+                      value: u.salesCount,
+                    }))}
+                    valueLabel="Sales count"
+                    formatValue={(n) => String(Math.round(n))}
+                    xLabel={isUserRole ? "You" : "User"}
+                    yLabel="Sales count"
+                    scale={userPerfScale}
+                    height={280}
+                  />
+                </TabsContent>
+                <TabsContent value="discount">
+                  <ReportsBarChart
+                    data={filteredUserPerformance.map((u) => ({
+                      userId: u.userId,
+                      username: u.username,
+                      value: u.avgDiscount,
+                    }))}
+                    valueLabel="Avg discount"
+                    xLabel={isUserRole ? "You" : "User"}
+                    yLabel="Avg discount"
+                    scale={userPerfScale}
+                    formatValue={formatCurrency}
+                    height={280}
+                  />
+                </TabsContent>
+              </Tabs>
+            </>
           ) : (
             <div className="h-64 flex items-center justify-center text-muted-foreground">
               No user performance data
@@ -435,6 +1002,28 @@ export function SalesRevenuePage() {
           </SheetHeader>
           {drillDown && (
             <div className="mt-4 space-y-4">
+              {(() => {
+                const q = new URLSearchParams();
+                if (filters.dateFrom) q.set("start", filters.dateFrom);
+                if (filters.dateTo) q.set("end", filters.dateTo);
+                if (drillDown.type === "user") q.set("userId", drillDown.id);
+                if (drillDown.type === "location")
+                  q.set("locationId", drillDown.id);
+                const salesPageHref = q.toString()
+                  ? `${basePath}/sales?${q.toString()}`
+                  : `${basePath}/sales`;
+                return (
+                  <p className="text-sm text-muted-foreground">
+                    <Link
+                      href={salesPageHref}
+                      className="font-medium text-primary hover:underline"
+                    >
+                      Open in Sales page
+                    </Link>
+                    {" with same filters"}
+                  </p>
+                );
+              })()}
               {drillLoading ? (
                 <Skeleton className="h-48 w-full" />
               ) : (
