@@ -1,12 +1,17 @@
 /**
  * Location Service
  *
- * Service layer for location (warehouse/showroom) management operations.
- * Uses the shared axios instance from lib/axios.
+ * Single source for location (warehouse/showroom) API calls.
+ * All location HTTP requests must go through this file. Do not add React or UI logic.
  */
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+} from "@/lib/apiTypes";
 
 // ============================================
 // Types
@@ -38,14 +43,7 @@ export interface LocationListParams {
   activeOnly?: boolean;
 }
 
-export interface PaginationMeta {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
+export type { PaginationMeta };
 
 export interface PaginatedLocationsResponse {
   data: Location[];
@@ -82,8 +80,7 @@ interface LocationResponse {
 // API Functions
 // ============================================
 
-export const DEFAULT_PAGE = 1;
-export const DEFAULT_LIMIT = 10;
+export { DEFAULT_PAGE, DEFAULT_LIMIT };
 
 /**
  * Get all locations with pagination and filtering

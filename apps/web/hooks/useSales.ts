@@ -1,10 +1,16 @@
 "use client";
 
+/**
+ * React Query wrappers for sales. Business logic and API calls live in salesService; hooks only wire query/mutation and cache keys.
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getSales,
   getSaleById,
+  getSalesSinceLastLogin,
   createSale,
+  addPaymentToSale,
   getSalesSummary,
   getSalesByLocation,
   getDailySales,
@@ -17,6 +23,7 @@ import {
   type SalesSummary,
   type LocationSalesStat,
   type DailySalesStat,
+  type PaymentMethod,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   getSaleTypeLabel,
@@ -35,6 +42,7 @@ export type {
   SalesSummary,
   LocationSalesStat,
   DailySalesStat,
+  PaymentMethod,
 };
 
 // Re-export defaults and helpers
@@ -66,6 +74,8 @@ export const salesKeys = {
     [...salesKeys.analytics(), "by-location", params] as const,
   daily: (params: { locationId?: string; days?: number }) =>
     [...salesKeys.analytics(), "daily", params] as const,
+  sinceLastLogin: (params: { page?: number; limit?: number }) =>
+    [...salesKeys.all, "since-last-login", params] as const,
 };
 
 // ============================================
@@ -73,25 +83,32 @@ export const salesKeys = {
 // ============================================
 
 /**
- * Hook for fetching paginated sales with filtering
+ * Hook for fetching paginated sales with filtering.
+ * Pass enabled: false to skip fetch (e.g. drill-down closed).
  */
-export function useSalesPaginated(params: SalesListParams = {}) {
+export function useSalesPaginated(
+  params: SalesListParams & { enabled?: boolean } = {},
+) {
+  const { enabled = true, ...rest } = params;
   const normalizedParams: SalesListParams = {
-    page: params.page ?? DEFAULT_PAGE,
-    limit: params.limit ?? DEFAULT_LIMIT,
-    locationId: params.locationId,
-    type: params.type,
-    startDate: params.startDate,
-    endDate: params.endDate,
-    search: params.search?.trim() || "",
-    sortBy: params.sortBy ?? "createdAt",
-    sortOrder: params.sortOrder ?? "desc",
+    page: rest.page ?? DEFAULT_PAGE,
+    limit: rest.limit ?? DEFAULT_LIMIT,
+    locationId: rest.locationId,
+    createdById: rest.createdById,
+    type: rest.type,
+    isCreditSale: rest.isCreditSale,
+    startDate: rest.startDate,
+    endDate: rest.endDate,
+    search: rest.search?.trim() || "",
+    sortBy: rest.sortBy ?? "createdAt",
+    sortOrder: rest.sortOrder ?? "desc",
   };
 
   return useQuery({
     queryKey: salesKeys.list(normalizedParams),
     queryFn: () => getSales(normalizedParams),
     placeholderData: (previousData) => previousData,
+    enabled,
   });
 }
 
@@ -103,6 +120,24 @@ export function useSale(id: string) {
     queryKey: salesKeys.detail(id),
     queryFn: () => getSaleById(id),
     enabled: !!id,
+  });
+}
+
+/**
+ * Hook for fetching current user's sales since last login (User Sales Report)
+ */
+export function useSalesSinceLastLogin(params: {
+  page?: number;
+  limit?: number;
+} = {}) {
+  const normalizedParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+  };
+  return useQuery({
+    queryKey: salesKeys.sinceLastLogin(normalizedParams),
+    queryFn: () => getSalesSinceLastLogin(normalizedParams),
+    placeholderData: (previousData) => previousData,
   });
 }
 
@@ -119,6 +154,31 @@ export function useCreateSale() {
       queryClient.refetchQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.analytics() });
       queryClient.invalidateQueries({ queryKey: ["inventory"] });
+    },
+  });
+}
+
+/**
+ * Hook for adding a payment to a credit sale
+ */
+export function useAddPaymentToSale() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      method,
+      amount,
+    }: {
+      saleId: string;
+      method: PaymentMethod;
+      amount: number;
+    }) => addPaymentToSale(saleId, method, amount),
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: salesKeys.detail(variables.saleId),
+      });
+      queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
     },
   });
 }

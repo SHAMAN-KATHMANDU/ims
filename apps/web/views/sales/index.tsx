@@ -1,9 +1,14 @@
 "use client";
 
-import { useState, useCallback } from "react";
+/**
+ * Orchestrates sales list, filters, detail panel, and dialogs; uses hooks for data and mutations.
+ * Do not add API calls or business rules here; use hooks and services.
+ */
+
+import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/useToast";
 import { useActiveLocations } from "@/hooks/useLocation";
-import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { useAuthStore, selectIsAdmin, selectUserRole } from "@/stores/auth-store";
 import {
   useSaleSelectionStore,
   selectSelectedSaleIds,
@@ -23,31 +28,13 @@ import { SalesTable } from "./components/SalesTable";
 import { NewSaleForm } from "./components/NewSaleForm";
 import { SaleDetail } from "./components/SaleDetail";
 import { SaleBulkUploadDialog } from "./components/SaleBulkUploadDialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
+import { SalesFilterBar } from "./components/SalesFilterBar";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Calendar } from "@/components/ui/calendar";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  Search,
-  CalendarIcon,
-  X,
   Download,
   Upload,
   FileSpreadsheet,
   FileText,
-  Filter,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -65,22 +52,26 @@ import {
   startOfWeek,
   endOfWeek,
 } from "date-fns";
-import { cn } from "@/lib/utils";
 import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
 
-const TYPE_OPTIONS: { value: SaleType | "ALL"; label: string }[] = [
-  { value: "ALL", label: "All Types" },
-  { value: "GENERAL", label: "General" },
-  { value: "MEMBER", label: "Member" },
-];
-
 export function SalesPage() {
   const { toast } = useToast();
+  const userRole = useAuthStore(selectUserRole);
   const isAdmin = useAuthStore(selectIsAdmin);
+  const isUserRole = userRole === "user";
   const canManageSales = isAdmin;
+
+  // For role "user", default date range to today
+  useEffect(() => {
+    if (isUserRole && startDate === undefined && endDate === undefined) {
+      const today = new Date();
+      setStartDate(startOfDay(today));
+      setEndDate(endOfDay(today));
+    }
+  }, [isUserRole]); // eslint-disable-line react-hooks/exhaustive-deps -- only set default once when user
 
   // Zustand store for sale selection
   const selectedSaleIds = useSaleSelectionStore(selectSelectedSaleIds);
@@ -92,6 +83,9 @@ export function SalesPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<SaleType | "ALL">("ALL");
+  const [creditFilter, setCreditFilter] = useState<
+    "ALL" | "credit" | "non-credit"
+  >("ALL");
   const [locationFilter, setLocationFilter] = useState<string>("ALL");
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
@@ -107,6 +101,12 @@ export function SalesPage() {
     limit: pageSize,
     search,
     type: typeFilter === "ALL" ? undefined : typeFilter,
+    isCreditSale:
+      creditFilter === "credit"
+        ? true
+        : creditFilter === "non-credit"
+          ? false
+          : undefined,
     locationId: locationFilter === "ALL" ? undefined : locationFilter,
     startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
     endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
@@ -148,6 +148,11 @@ export function SalesPage() {
 
   const handleTypeChange = useCallback((value: string) => {
     setTypeFilter(value as SaleType | "ALL");
+    setPage(DEFAULT_PAGE);
+  }, []);
+
+  const handleCreditFilterChange = useCallback((value: string) => {
+    setCreditFilter(value as "ALL" | "credit" | "non-credit");
     setPage(DEFAULT_PAGE);
   }, []);
 
@@ -195,7 +200,7 @@ export function SalesPage() {
   };
 
   const today = new Date();
-  const dateShortcuts = [
+  const allDateShortcuts = [
     { label: "Today", start: startOfDay(today), end: endOfDay(today) },
     {
       label: "Yesterday",
@@ -218,12 +223,15 @@ export function SalesPage() {
       end: endOfDay(today),
     },
   ];
+  const dateShortcuts = isUserRole
+    ? allDateShortcuts.slice(0, 2)
+    : allDateShortcuts;
 
-  const applyDateShortcut = (start: Date, end: Date) => {
+  const applyDateShortcut = useCallback((start: Date, end: Date) => {
     setStartDate(start);
     setEndDate(end);
     setPage(DEFAULT_PAGE);
-  };
+  }, []);
 
   // Export handlers
   const handleExport = useCallback(
@@ -274,160 +282,32 @@ export function SalesPage() {
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        {/* Minimal filter bar – search + Filters popover (like Catalog) */}
-        <div className="flex items-center gap-2">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search sales..."
-              value={search}
-              onChange={handleSearchChange}
-              className="pl-8 h-9 text-sm w-full min-w-[180px] max-w-[240px]"
-            />
-          </div>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-9 gap-2 text-sm shrink-0"
-              >
-                <Filter className="h-4 w-4" />
-                Filters
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-80 p-3" align="end">
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground">
-                  Type & showroom
-                </p>
-                <div className="grid gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Type</Label>
-                    <Select value={typeFilter} onValueChange={handleTypeChange}>
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {TYPE_OPTIONS.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Showroom</Label>
-                    <Select
-                      value={locationFilter}
-                      onValueChange={handleLocationChange}
-                    >
-                      <SelectTrigger className="h-8 text-sm">
-                        <SelectValue placeholder="Showroom" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="ALL">All Showrooms</SelectItem>
-                        {showrooms.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-                <p className="text-xs font-medium text-muted-foreground pt-1">
-                  Date range
-                </p>
-                <div className="flex flex-wrap gap-1.5">
-                  {dateShortcuts.map(({ label, start, end }) => (
-                    <Button
-                      key={label}
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs"
-                      onClick={() => applyDateShortcut(start, end)}
-                    >
-                      {label}
-                    </Button>
-                  ))}
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="space-y-1">
-                    <Label className="text-xs">From</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "h-8 w-full justify-start text-left font-normal text-sm",
-                            !startDate && "text-muted-foreground",
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                          {startDate ? format(startDate, "MMM d") : "Select"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={startDate}
-                          onSelect={(date) => {
-                            setStartDate(date);
-                            setPage(DEFAULT_PAGE);
-                          }}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">To</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className={cn(
-                            "h-8 w-full justify-start text-left font-normal text-sm",
-                            !endDate && "text-muted-foreground",
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                          {endDate ? format(endDate, "MMM d") : "Select"}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={endDate}
-                          onSelect={(date) => {
-                            setEndDate(date);
-                            setPage(DEFAULT_PAGE);
-                          }}
-                          initialFocus
-                        />
-                      </PopoverContent>
-                    </Popover>
-                  </div>
-                </div>
-                {(startDate || endDate) && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-full text-xs"
-                    onClick={clearDateFilters}
-                  >
-                    <X className="h-3.5 w-3.5 mr-2" />
-                    Clear dates
-                  </Button>
-                )}
-              </div>
-            </PopoverContent>
-          </Popover>
-        </div>
+        <SalesFilterBar
+          search={search}
+          onSearchChange={handleSearchChange}
+          typeFilter={typeFilter}
+          onTypeChange={handleTypeChange}
+          creditFilter={creditFilter}
+          onCreditChange={handleCreditFilterChange}
+          locationFilter={locationFilter}
+          onLocationChange={handleLocationChange}
+          startDate={startDate}
+          endDate={endDate}
+          onStartDateChange={(date) => {
+            setStartDate(date);
+            setPage(DEFAULT_PAGE);
+          }}
+          onEndDateChange={(date) => {
+            setEndDate(date);
+            setPage(DEFAULT_PAGE);
+          }}
+          onClearDates={clearDateFilters}
+          showrooms={showrooms}
+          dateShortcuts={dateShortcuts}
+          onDateShortcut={applyDateShortcut}
+          isUserRole={isUserRole}
+          today={today}
+        />
 
         <div className="flex items-center gap-2">
           {canManageSales && (

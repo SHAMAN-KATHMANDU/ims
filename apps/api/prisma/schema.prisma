@@ -13,12 +13,13 @@ datasource db {
 // ============================================
 
 model User {
-  id        String   @id @default(uuid())
-  username  String   @unique
-  password  String
-  role      Role     @default(user)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          String    @id @default(uuid())
+  username    String    @unique
+  password    String
+  role        Role      @default(user)
+  lastLoginAt DateTime? @map("last_login_at")
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
   // Relations
   productsCreated   Product[]     @relation("ProductCreator")
@@ -26,6 +27,8 @@ model User {
   transfersApproved Transfer[]    @relation("TransferApprover")
   transferLogs      TransferLog[]
   salesCreated      Sale[]        @relation("SaleCreator")
+  auditLogs         AuditLog[]
+  errorReports      ErrorReport[]
 
   @@map("users")
 }
@@ -359,17 +362,18 @@ enum MemberStatus {
 }
 
 model Sale {
-  id          String   @id @default(uuid()) @map("sale_id")
-  saleCode    String   @unique @map("sale_code") @db.VarChar(50)
-  type        SaleType @default(GENERAL)
-  locationId  String   @map("location_id")
-  memberId    String?  @map("member_id")
-  subtotal    Decimal  @db.Decimal(12, 2)
-  discount    Decimal  @default(0) @db.Decimal(12, 2)
-  total       Decimal  @db.Decimal(12, 2)
-  notes       String?  @db.Text
-  createdById String   @map("created_by_id")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid()) @map("sale_id")
+  saleCode     String   @unique @map("sale_code") @db.VarChar(50)
+  type         SaleType @default(GENERAL)
+  isCreditSale Boolean  @default(false) @map("is_credit_sale")
+  locationId   String   @map("location_id")
+  memberId     String?  @map("member_id")
+  subtotal     Decimal  @db.Decimal(12, 2)
+  discount     Decimal  @default(0) @db.Decimal(12, 2)
+  total        Decimal  @db.Decimal(12, 2)
+  notes        String?  @db.Text
+  createdById  String   @map("created_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
 
   location  Location   @relation(fields: [locationId], references: [id], onDelete: Restrict)
   member    Member?    @relation(fields: [memberId], references: [id], onDelete: Restrict)
@@ -472,4 +476,48 @@ model PromoCodeProduct {
 
   @@unique([promoCodeId, productId])
   @@map("promo_code_products")
+}
+
+// ============================================
+// AUDIT LOG (User actions)
+// ============================================
+
+model AuditLog {
+  id         String   @id @default(uuid()) @map("audit_log_id")
+  userId     String   @map("user_id")
+  action     String   @map("action") @db.VarChar(100)
+  resource   String?  @map("resource") @db.VarChar(100)
+  resourceId String?  @map("resource_id") @db.VarChar(100)
+  details    Json?
+  ip         String?  @map("ip") @db.VarChar(45)
+  userAgent  String?  @map("user_agent") @db.VarChar(500)
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("audit_logs")
+}
+
+// ============================================
+// ERROR REPORTS (from top bar)
+// ============================================
+
+enum ErrorReportStatus {
+  OPEN
+  REVIEWED
+  RESOLVED
+}
+
+model ErrorReport {
+  id          String            @id @default(uuid()) @map("error_report_id")
+  userId      String            @map("user_id")
+  title       String            @map("title") @db.VarChar(255)
+  description String?           @map("description") @db.Text
+  pageUrl     String?           @map("page_url") @db.VarChar(500)
+  status      ErrorReportStatus @default(OPEN) @map("status")
+  createdAt   DateTime          @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@map("error_reports")
 }

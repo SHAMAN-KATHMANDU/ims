@@ -1,24 +1,42 @@
-// import { Router } from "express";
-// import verifyToken from "@/middlewares/authMiddleware";
-// import authorizeRoles from "@/middlewares/roleMiddleware";
-// import analyticsController from "@/modules/analytics/analytics.controller";
+import { Router } from "express";
+import verifyToken from "@/middlewares/authMiddleware";
+import authorizeRoles from "@/middlewares/roleMiddleware";
+import analyticsController from "@/modules/analytics/analytics.controller";
+import { analyticsCacheMiddleware } from "@/modules/analytics/analyticsCacheMiddleware";
 
-// const analyticsRouter = Router();
+const analyticsRouter = Router();
 
-// // All analytics routes are protected by authentication and authorization
-// analyticsRouter.use(verifyToken);
+analyticsRouter.use(verifyToken);
 
-// // User analytics (superadmin only)
-// analyticsRouter.get("/users/overview", verifyToken, authorizeRoles("superAdmin"), analyticsController.getUserAnalytics);
-// analyticsRouter.get("/users/growth", verifyToken, authorizeRoles("superAdmin"), analyticsController.getUserGrowth);
-// analyticsRouter.get("/users/activity", verifyToken, authorizeRoles("superAdmin"), analyticsController.getUserActivity);
-// // Product analytics (superAdmin and admin only)
-// analyticsRouter.get("/products/overview", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getProductAnalytics);
-// analyticsRouter.get("/products/by-category", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getProductByCategory);
-// analyticsRouter.get("/products/top-products", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getTopProducts);
-// analyticsRouter.get("/products/inventory-status", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getInventoryStatus);
-// analyticsRouter.get("/products/low-stock", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getLowStock);
-// analyticsRouter.get("/products/proce-analysis", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getProceAnalysis);
-// analyticsRouter.get("/products/discount-analysis", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getDiscountAnalysis);
-// analyticsRouter.get("/products/variation-summary", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getVariationSummary);
-// analyticsRouter.get("/products/sales-performance", verifyToken, authorizeRoles("superAdmin", "admin"), analyticsController.getSalesPerformance);
+// Overview (admin and superAdmin only)
+analyticsRouter.get(
+  "/overview",
+  authorizeRoles("admin", "superAdmin"),
+  analyticsController.getOverview.bind(analyticsController),
+);
+
+// Sales & Revenue analytics: user sees own data only (enforced in controller via filter/role)
+analyticsRouter.get(
+  "/sales-revenue",
+  authorizeRoles("user", "admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getSalesRevenue.bind(analyticsController),
+);
+
+// Inventory & Operations: admin/superAdmin only (workspace-level data)
+analyticsRouter.get(
+  "/inventory-ops",
+  authorizeRoles("admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getInventoryOps.bind(analyticsController),
+);
+
+// Customers, Products & Promotions: admin/superAdmin only (user sees own sales in composition)
+analyticsRouter.get(
+  "/customers-promos",
+  authorizeRoles("admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getCustomersPromos.bind(analyticsController),
+);
+
+export default analyticsRouter;

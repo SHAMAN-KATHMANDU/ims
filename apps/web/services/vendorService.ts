@@ -1,5 +1,17 @@
+/**
+ * Vendor Service
+ *
+ * Single source for vendor API calls. All vendor HTTP requests must go through this file.
+ * Do not add React or UI logic.
+ */
+
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+} from "@/lib/apiTypes";
 
 export interface VendorProduct {
   id: string;
@@ -29,15 +41,6 @@ export interface VendorListParams {
   search?: string;
 }
 
-export interface PaginationMeta {
-  currentPage: number;
-  totalPages: number;
-  totalItems: number;
-  itemsPerPage: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
-
 export interface PaginatedVendorsResponse {
   data: Vendor[];
   pagination: PaginationMeta;
@@ -61,8 +64,7 @@ interface VendorResponse {
   vendor: Vendor;
 }
 
-export const DEFAULT_PAGE = 1;
-export const DEFAULT_LIMIT = 10;
+export { DEFAULT_PAGE, DEFAULT_LIMIT };
 
 export async function getVendors(
   params: VendorListParams = {},

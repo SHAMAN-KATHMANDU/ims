@@ -1,5 +1,9 @@
 "use client";
 
+/**
+ * React Query wrappers for members. Business logic and API calls live in memberService; hooks only wire query/mutation and cache keys.
+ */
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getMembers,

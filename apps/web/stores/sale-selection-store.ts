@@ -1,16 +1,14 @@
 "use client";
 
-import { create } from "zustand";
+/**
+ * Sale selection store (multi-select for export). Built from createSelectionStore; single point of change there.
+ */
 
-// ============================================
-// Types
-// ============================================
+import { create } from "zustand";
+import { selectionStoreImpl } from "./createSelectionStore";
 
 interface SaleSelectionState {
-  // State
   selectedSaleIds: Set<string>;
-
-  // Actions
   addSale: (saleId: string) => void;
   removeSale: (saleId: string) => void;
   toggleSale: (saleId: string) => void;
@@ -19,61 +17,22 @@ interface SaleSelectionState {
   isSelected: (saleId: string) => boolean;
 }
 
-// ============================================
-// Store
-// ============================================
-
-export const useSaleSelectionStore = create<SaleSelectionState>()(
-  (set, get) => ({
-    // Initial state
+export const useSaleSelectionStore = create<SaleSelectionState>()((set, get) => {
+  const impl = selectionStoreImpl(
+    set as (p: Record<string, unknown> | ((s: Record<string, unknown>) => Record<string, unknown>)) => void,
+    get as unknown as () => Record<string, unknown>,
+    "selectedSaleIds",
+  );
+  return {
     selectedSaleIds: new Set(),
-
-    // Actions
-    addSale: (saleId) => {
-      set((state) => {
-        const newSet = new Set(state.selectedSaleIds);
-        newSet.add(saleId);
-        return { selectedSaleIds: newSet };
-      });
-    },
-
-    removeSale: (saleId) => {
-      set((state) => {
-        const newSet = new Set(state.selectedSaleIds);
-        newSet.delete(saleId);
-        return { selectedSaleIds: newSet };
-      });
-    },
-
-    toggleSale: (saleId) => {
-      set((state) => {
-        const newSet = new Set(state.selectedSaleIds);
-        if (newSet.has(saleId)) {
-          newSet.delete(saleId);
-        } else {
-          newSet.add(saleId);
-        }
-        return { selectedSaleIds: newSet };
-      });
-    },
-
-    setSales: (saleIds) => {
-      set({ selectedSaleIds: new Set(saleIds) });
-    },
-
-    clearSelection: () => {
-      set({ selectedSaleIds: new Set() });
-    },
-
-    isSelected: (saleId) => {
-      return get().selectedSaleIds.has(saleId);
-    },
-  }),
-);
-
-// ============================================
-// Selectors (for optimized re-renders)
-// ============================================
+    addSale: impl.add,
+    removeSale: impl.remove,
+    toggleSale: impl.toggle,
+    setSales: impl.set,
+    clearSelection: impl.clearSelection,
+    isSelected: impl.isSelected,
+  };
+});
 
 export const selectSelectedSaleIds = (state: SaleSelectionState) =>
   state.selectedSaleIds;

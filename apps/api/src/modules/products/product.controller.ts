@@ -334,6 +334,29 @@ class ProductController {
         }
       }
 
+      // Audit log: CREATE_PRODUCT
+      try {
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user!.id,
+            action: "CREATE_PRODUCT",
+            resource: "product",
+            resourceId: product.id,
+            details: {
+              imsCode: product.imsCode,
+              name: product.name,
+            },
+            ip:
+              (req as any).ip ??
+              (req.socket as any)?.remoteAddress ??
+              undefined,
+            userAgent: req.get("user-agent") ?? undefined,
+          },
+        });
+      } catch (auditErr) {
+        console.error("Audit log CREATE_PRODUCT failed:", auditErr);
+      }
+
       res.status(201).json({
         message: "Product created successfully",
         product,
@@ -902,6 +925,29 @@ class ProductController {
           },
         },
       });
+
+      // Audit log: UPDATE_PRODUCT
+      try {
+        await prisma.auditLog.create({
+          data: {
+            userId: req.user!.id,
+            action: "UPDATE_PRODUCT",
+            resource: "product",
+            resourceId: updatedProduct.id,
+            details: {
+              imsCode: updatedProduct.imsCode,
+              name: updatedProduct.name,
+            },
+            ip:
+              (req as any).ip ??
+              (req.socket as any)?.remoteAddress ??
+              undefined,
+            userAgent: req.get("user-agent") ?? undefined,
+          },
+        });
+      } catch (auditErr) {
+        console.error("Audit log UPDATE_PRODUCT failed:", auditErr);
+      }
 
       res.status(200).json({
         message: "Product updated successfully",

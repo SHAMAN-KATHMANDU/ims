@@ -83,7 +83,7 @@ product/
 The main `ProductPage` component is imported and used in:
 
 ```
-apps/web/app/admin/dashboard/product/page.tsx
+apps/web/app/[workspace]/product/page.tsx
 ```
 
 The component automatically handles:

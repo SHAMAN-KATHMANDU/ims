@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import {
+  PROTECTED_ROUTE_PREFIXES,
+  AUTH_ROUTES,
+  getWorkspaceRoot,
+} from "@/config/routes";
 
 /**
  * Next.js Middleware for Route Protection
@@ -10,12 +15,6 @@ import type { NextRequest } from "next/server";
  * Note: We check for token existence only. Role-based access
  * is handled client-side where we have the full user object.
  */
-
-// Routes that require authentication
-const protectedRoutes = ["/admin"];
-
-// Routes only for unauthenticated users
-const authRoutes = ["/login"];
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -36,35 +35,31 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  // Redirect root path based on auth status
+  const workspaceRoot = getWorkspaceRoot();
+
   if (pathname === "/") {
     if (hasToken) {
-      return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+      return NextResponse.redirect(new URL(workspaceRoot, request.url));
     }
     return NextResponse.redirect(new URL("/login", request.url));
   }
 
-  // Check if current path matches protected routes
-  const isProtectedRoute = protectedRoutes.some(
+  const isProtectedRoute = PROTECTED_ROUTE_PREFIXES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
 
-  // Check if current path is an auth route (login, register, etc.)
-  const isAuthRoute = authRoutes.some(
+  const isAuthRoute = AUTH_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );
 
-  // Redirect to login if accessing protected route without token
   if (isProtectedRoute && !hasToken) {
     const loginUrl = new URL("/login", request.url);
-    // Save the original URL to redirect back after login
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  // Redirect to dashboard if accessing auth routes with token
   if (isAuthRoute && hasToken) {
-    return NextResponse.redirect(new URL("/admin/dashboard", request.url));
+    return NextResponse.redirect(new URL(workspaceRoot, request.url));
   }
 
   return NextResponse.next();

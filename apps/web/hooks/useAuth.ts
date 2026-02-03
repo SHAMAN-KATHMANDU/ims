@@ -1,8 +1,14 @@
 "use client";
 
+/**
+ * Auth hook: Zustand store + TanStack Query for login/logout and current user.
+ * Business logic and API calls live in authService; this hook wires store, query, and redirects.
+ */
+
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getWorkspaceRoot } from "@/config/routes";
 import {
   login as loginApi,
   getCurrentUser,
@@ -77,12 +83,9 @@ export function useAuth() {
     mutationFn: (credentials: LoginCredentials) =>
       loginApi(credentials.username, credentials.password),
     onSuccess: ({ token, user }) => {
-      // Update Zustand store
       setAuth(user, token);
-      // Invalidate user query to refetch
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
-      // Redirect
-      router.push("/admin/dashboard");
+      router.push(getWorkspaceRoot());
       router.refresh();
     },
   });
