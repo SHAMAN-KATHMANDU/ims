@@ -17,6 +17,7 @@ export interface LocationInventoryItem {
   id: string;
   locationId: string;
   variationId: string;
+  subVariationId?: string | null;
   quantity: number;
   createdAt: string;
   updatedAt: string;
@@ -39,6 +40,7 @@ export interface LocationInventoryItem {
       isPrimary: boolean;
     }>;
   };
+  subVariation?: { id: string; name: string };
 }
 
 export interface LocationInventoryParams {
@@ -67,6 +69,8 @@ export interface ProductStockByLocation {
   variations: Array<{
     variationId: string;
     color: string;
+    subVariationId?: string;
+    subVariation?: { id: string; name: string };
     quantity: number;
   }>;
   totalQuantity: number;

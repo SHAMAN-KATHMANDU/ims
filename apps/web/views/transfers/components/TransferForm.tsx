@@ -36,6 +36,8 @@ import type { CreateTransferData } from "@/hooks/useTransfer";
 
 interface TransferItem {
   variationId: string;
+  subVariationId?: string | null;
+  subVariationName?: string;
   productName: string;
   color: string;
   quantity: number;
@@ -45,6 +47,8 @@ interface TransferItem {
 interface InventoryItem {
   id: string;
   variationId: string;
+  subVariationId?: string | null;
+  subVariation?: { id: string; name: string };
   quantity: number;
   variation: {
     id: string;
@@ -82,7 +86,7 @@ export function TransferForm({
     [],
   );
   const [loadingInventory, setLoadingInventory] = useState(false);
-  const [selectedVariationId, setSelectedVariationId] = useState("");
+  const [selectedInventoryId, setSelectedInventoryId] = useState("");
   const [quantity, setQuantity] = useState("1");
 
   // Load inventory when source location changes
@@ -110,29 +114,30 @@ export function TransferForm({
       setToLocationId("");
       setNotes("");
       setItems([]);
-      setSelectedVariationId("");
+      setSelectedInventoryId("");
       setQuantity("1");
     }
   }, [open]);
 
   const handleAddItem = () => {
-    if (!selectedVariationId || !quantity) return;
+    if (!selectedInventoryId || !quantity) return;
 
     const inventoryItem = availableInventory.find(
-      (inv) => inv.variationId === selectedVariationId,
+      (inv) => inv.id === selectedInventoryId,
     );
     if (!inventoryItem) return;
 
     const parsedQuantity = parseInt(quantity);
     if (isNaN(parsedQuantity) || parsedQuantity <= 0) return;
 
-    // Check if item already exists
+    const subVariationId = inventoryItem.subVariationId ?? null;
     const existingIndex = items.findIndex(
-      (item) => item.variationId === selectedVariationId,
+      (item) =>
+        item.variationId === inventoryItem.variationId &&
+        (item.subVariationId ?? null) === subVariationId,
     );
 
     if (existingIndex >= 0) {
-      // Update quantity
       const newItems = [...items];
       const itemToUpdate = newItems[existingIndex];
       if (itemToUpdate) {
@@ -140,11 +145,12 @@ export function TransferForm({
         setItems(newItems);
       }
     } else {
-      // Add new item
       setItems([
         ...items,
         {
-          variationId: selectedVariationId,
+          variationId: inventoryItem.variationId,
+          subVariationId: inventoryItem.subVariationId ?? undefined,
+          subVariationName: inventoryItem.subVariation?.name,
           productName: inventoryItem.variation.product.name,
           color: inventoryItem.variation.color,
           quantity: parsedQuantity,
@@ -153,12 +159,23 @@ export function TransferForm({
       ]);
     }
 
-    setSelectedVariationId("");
+    setSelectedInventoryId("");
     setQuantity("1");
   };
 
-  const handleRemoveItem = (variationId: string) => {
-    setItems(items.filter((item) => item.variationId !== variationId));
+  const handleRemoveItem = (
+    variationId: string,
+    subVariationId?: string | null,
+  ) => {
+    setItems(
+      items.filter(
+        (item) =>
+          !(
+            item.variationId === variationId &&
+            (item.subVariationId ?? null) === (subVariationId ?? null)
+          ),
+      ),
+    );
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -179,9 +196,9 @@ export function TransferForm({
 
   const activeLocations = locations.filter((loc) => loc.isActive);
   const selectedInventoryItem = availableInventory.find(
-    (inv) => inv.variationId === selectedVariationId,
+    (inv) => inv.id === selectedInventoryId,
   );
-  const maxQuantity = selectedInventoryItem?.quantity || 0;
+  const maxQuantity = selectedInventoryItem?.quantity ?? 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -252,8 +269,8 @@ export function TransferForm({
                 <Label>Add Items</Label>
                 <div className="flex gap-2">
                   <Select
-                    value={selectedVariationId}
-                    onValueChange={setSelectedVariationId}
+                    value={selectedInventoryId}
+                    onValueChange={setSelectedInventoryId}
                     disabled={loadingInventory}
                   >
                     <SelectTrigger className="flex-1">
@@ -269,11 +286,11 @@ export function TransferForm({
                       {availableInventory
                         .filter((inv) => inv.quantity > 0)
                         .map((inv) => (
-                          <SelectItem
-                            key={inv.variationId}
-                            value={inv.variationId}
-                          >
-                            {inv.variation.product.name} - {inv.variation.color}{" "}
+                          <SelectItem key={inv.id} value={inv.id}>
+                            {inv.variation.product.name} - {inv.variation.color}
+                            {inv.subVariation?.name
+                              ? ` / ${inv.subVariation.name}`
+                              : ""}{" "}
                             ({inv.quantity} available)
                           </SelectItem>
                         ))}
@@ -292,7 +309,7 @@ export function TransferForm({
                     type="button"
                     variant="secondary"
                     onClick={handleAddItem}
-                    disabled={!selectedVariationId || !quantity}
+                    disabled={!selectedInventoryId || !quantity}
                   >
                     Add
                   </Button>
@@ -315,12 +332,19 @@ export function TransferForm({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {items.map((item) => (
-                        <TableRow key={item.variationId}>
+                      {items.map((item, idx) => (
+                        <TableRow
+                          key={`${item.variationId}-${item.subVariationId ?? "v"}-${idx}`}
+                        >
                           <TableCell className="font-medium">
                             {item.productName}
                           </TableCell>
-                          <TableCell>{item.color}</TableCell>
+                          <TableCell>
+                            {item.color}
+                            {item.subVariationName
+                              ? ` / ${item.subVariationName}`
+                              : ""}
+                          </TableCell>
                           <TableCell className="text-right">
                             {item.quantity}
                           </TableCell>
@@ -329,7 +353,12 @@ export function TransferForm({
                               type="button"
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleRemoveItem(item.variationId)}
+                              onClick={() =>
+                                handleRemoveItem(
+                                  item.variationId,
+                                  item.subVariationId,
+                                )
+                              }
                             >
                               <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
