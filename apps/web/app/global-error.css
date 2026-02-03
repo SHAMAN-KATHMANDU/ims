@@ -1,10 +1,14 @@
-/* Global error – truck crash. Self-contained so we don't import globals.css (avoids Turbopack CSS chunk error). */
+/* Global error – truck crash, fun & friendly. Self-contained so we don't import globals.css (avoids Turbopack CSS chunk error). */
 
 :root {
-  --background: #fafaf9;
+  --background: #fefce8;
   --foreground: #1c1917;
   --muted-foreground: #78716c;
   --primary: #4d7c5c;
+  --primary-foreground: #fafaf9;
+  --destructive: #dc2626;
+  --radius: 0.75rem;
+  --accent: #ca8a04;
 }
 
 .global-error-body {
@@ -14,35 +18,108 @@
 }
 
 .error-container {
-  background-color: var(--background);
+  background: linear-gradient(165deg, #fefce8 0%, #fef9c3 35%, #fef3c7 100%);
   color: var(--foreground);
   display: flex;
   flex-direction: column;
   justify-content: center;
   align-items: center;
   font-family:
+    "Segoe UI",
     system-ui,
     -apple-system,
     sans-serif;
   min-height: 100vh;
   padding: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Floating doodles in the background */
+.error-bg-doodles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.15;
+  background-image:
+    radial-gradient(circle at 10% 20%, var(--primary) 2px, transparent 2px),
+    radial-gradient(circle at 90% 80%, var(--accent) 3px, transparent 3px),
+    radial-gradient(circle at 70% 15%, var(--primary) 1.5px, transparent 1.5px),
+    radial-gradient(circle at 25% 85%, var(--accent) 2px, transparent 2px),
+    radial-gradient(circle at 50% 50%, var(--primary) 1px, transparent 1px);
+  background-size:
+    120px 120px,
+    180px 180px,
+    90px 90px,
+    140px 140px,
+    200px 200px;
+  background-position:
+    0 0,
+    40px 60px,
+    130px 20px,
+    70px 100px,
+    0 0;
+  animation: doodle-float 20s ease-in-out infinite;
+}
+
+@keyframes doodle-float {
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1);
+  }
+  50% {
+    transform: translate(-10px, -5px) scale(1.02);
+  }
 }
 
 .error-content {
   text-align: center;
-  max-width: 600px;
+  max-width: 560px;
+  position: relative;
+  z-index: 1;
+}
+
+.error-badge {
+  display: inline-block;
+  font-size: 0.875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--primary);
+  background: rgba(77, 124, 92, 0.12);
+  padding: 0.35rem 0.85rem;
+  border-radius: 999px;
+  margin-bottom: 1rem;
+  animation: badge-pop 0.6s ease-out;
+}
+
+@keyframes badge-pop {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
 }
 
 .error-title {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 1rem;
+  font-size: 2.25rem;
+  font-weight: 800;
+  margin-bottom: 0.75rem;
   color: var(--foreground);
+  letter-spacing: -0.02em;
   animation: shake-text 6s ease-in-out 1 forwards;
 }
 
 .error-message {
   font-size: 1.125rem;
+  line-height: 1.6;
   margin-bottom: 2rem;
   color: var(--muted-foreground);
 }
@@ -735,31 +812,69 @@
   }
 }
 
+.error-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+}
+
 .try-again-btn {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.875rem 1.75rem;
+  font-size: 1.0625rem;
+  font-weight: 700;
   color: var(--primary-foreground);
-  background-color: var(--primary);
+  background: linear-gradient(135deg, var(--primary) 0%, #3d6b4a 100%);
   border: none;
-  border-radius: var(--radius, 0.6rem);
+  border-radius: var(--radius);
   cursor: pointer;
+  box-shadow: 0 4px 14px rgba(77, 124, 92, 0.35);
   transition:
-    opacity 0.2s,
-    transform 0.2s;
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .try-again-btn:hover {
-  opacity: 0.9;
-  transform: scale(1.05);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 6px 20px rgba(77, 124, 92, 0.45);
+}
+
+.try-again-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+.btn-emoji {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.home-link {
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  text-decoration: none;
+  transition: color 0.2s;
+}
+
+.home-link:hover {
+  color: var(--primary);
+  text-decoration: underline;
 }
 
 @media (max-width: 640px) {
   .error-title {
-    font-size: 1.5rem;
+    font-size: 1.625rem;
   }
 
   .error-message {
+    font-size: 1rem;
+  }
+
+  .try-again-btn {
+    padding: 0.75rem 1.5rem;
     font-size: 1rem;
   }
 

@@ -39,4 +39,36 @@ analyticsRouter.get(
   analyticsController.getCustomersPromos.bind(analyticsController),
 );
 
+// Discount analytics: user sees own only (backend enforces)
+analyticsRouter.get(
+  "/discount",
+  authorizeRoles("user", "admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getDiscountAnalytics.bind(analyticsController),
+);
+
+// Payment method trends over time
+analyticsRouter.get(
+  "/payment-trends",
+  authorizeRoles("user", "admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getPaymentTrends.bind(analyticsController),
+);
+
+// Location comparison
+analyticsRouter.get(
+  "/location-comparison",
+  authorizeRoles("user", "admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getLocationComparison.bind(analyticsController),
+);
+
+// Member cohort (new vs repeat)
+analyticsRouter.get(
+  "/member-cohort",
+  authorizeRoles("admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getMemberCohort.bind(analyticsController),
+);
+
 export default analyticsRouter;

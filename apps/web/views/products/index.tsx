@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useForm } from "@/hooks/useForm";
 import {
@@ -47,6 +48,7 @@ import {
   FileText,
   Filter,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -66,6 +68,9 @@ import type {
 } from "./types";
 
 export function ProductPage() {
+  const searchParams = useSearchParams();
+  const hasAppliedUrlParams = useRef(false);
+
   // ============================================
   // Pagination State
   // ============================================
@@ -81,7 +86,40 @@ export function ProductPage() {
     dateTo: undefined,
     sortBy: "dateCreated",
     sortOrder: "desc",
+    lowStock: undefined,
   });
+
+  // Apply URL search params once on mount (e.g. from dashboard/analytics links)
+  useEffect(() => {
+    if (hasAppliedUrlParams.current) return;
+    const lowStock = searchParams.get("lowStock");
+    const locationId = searchParams.get("locationId") || undefined;
+    const categoryId = searchParams.get("categoryId") || undefined;
+    const vendorId = searchParams.get("vendorId") || undefined;
+    const dateFrom = searchParams.get("dateFrom") || undefined;
+    const dateTo = searchParams.get("dateTo") || undefined;
+    if (
+      lowStock !== null ||
+      locationId !== undefined ||
+      categoryId !== undefined ||
+      vendorId !== undefined ||
+      dateFrom !== undefined ||
+      dateTo !== undefined
+    ) {
+      hasAppliedUrlParams.current = true;
+      setPaginationParams((prev) => ({
+        ...prev,
+        page: DEFAULT_PAGE,
+        lowStock:
+          lowStock === "1" || lowStock === "true" ? true : prev.lowStock,
+        locationId: locationId ?? prev.locationId,
+        categoryId: categoryId ?? prev.categoryId,
+        vendorId: vendorId ?? prev.vendorId,
+        dateFrom: dateFrom ?? prev.dateFrom,
+        dateTo: dateTo ?? prev.dateTo,
+      }));
+    }
+  }, [searchParams]);
 
   // Fetch paginated products
   const {
@@ -190,6 +228,14 @@ export function ProductPage() {
     },
     [],
   );
+
+  const handleLowStockChange = useCallback((checked: boolean) => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      lowStock: checked ? true : undefined,
+    }));
+  }, []);
 
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
@@ -892,6 +938,21 @@ export function ProductPage() {
                 </PopoverTrigger>
                 <PopoverContent className="w-80 p-3" align="end">
                   <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="lowStock"
+                        checked={paginationParams.lowStock === true}
+                        onCheckedChange={(c) =>
+                          handleLowStockChange(c === true)
+                        }
+                      />
+                      <Label
+                        htmlFor="lowStock"
+                        className="text-xs font-medium cursor-pointer"
+                      >
+                        Low stock only (quantity &lt; 5)
+                      </Label>
+                    </div>
                     <p className="text-xs font-medium text-muted-foreground">
                       Category & vendor
                     </p>
