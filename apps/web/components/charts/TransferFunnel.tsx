@@ -21,16 +21,18 @@ const STEPS = [
 interface TransferFunnelProps {
   data: TransferFunnelCounts;
   formatValue?: (n: number) => string;
+  ariaLabel?: string;
 }
 
 export function TransferFunnel({
   data,
   formatValue = (n) => String(n),
+  ariaLabel = "Transfer funnel: Pending to Completed",
 }: TransferFunnelProps) {
   const max = Math.max(...STEPS.map((s) => data[s.key]), 1);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3" role="region" aria-label={ariaLabel}>
       {STEPS.map(({ key, label }) => {
         const value = data[key];
         const pct = max > 0 ? (value / max) * 100 : 0;

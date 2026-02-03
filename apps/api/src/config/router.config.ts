@@ -17,7 +17,7 @@ import promoRouter from "@/modules/promos/promo.router";
 import auditRouter from "@/modules/audit/audit.router";
 import errorReportRouter from "@/modules/error-reports/error-report.router";
 import analyticsRouter from "@/modules/analytics/analytics.router";
-// import homeRouter from "@/modules/home/home.router";
+import dashboardRouter from "@/modules/dashboard/dashboard.router";
 
 const router = Router();
 
@@ -42,6 +42,6 @@ router.use("/promos", promoRouter);
 router.use("/audit-logs", auditRouter);
 router.use("/error-reports", errorReportRouter);
 router.use("/analytics", analyticsRouter);
-// router.use("/home", homeRouter);
+router.use("/dashboard", dashboardRouter);
 
 export default router;

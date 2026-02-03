@@ -31,6 +31,7 @@ import {
 } from "@/components/ui/table";
 import { Plus, Trash2, ArrowRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
 import type { Location } from "@/hooks/useLocation";
 import type { CreateTransferData } from "@/hooks/useTransfer";
 
@@ -68,6 +69,8 @@ interface TransferFormProps {
   onSubmit: (data: CreateTransferData) => Promise<void>;
   isLoading?: boolean;
   getLocationInventory: (locationId: string) => Promise<InventoryItem[]>;
+  /** When true, render form inline (e.g. on a dedicated page) without dialog. */
+  inline?: boolean;
 }
 
 export function TransferForm({
@@ -77,6 +80,7 @@ export function TransferForm({
   onSubmit,
   isLoading,
   getLocationInventory,
+  inline = false,
 }: TransferFormProps) {
   const [fromLocationId, setFromLocationId] = useState("");
   const [toLocationId, setToLocationId] = useState("");
@@ -107,9 +111,9 @@ export function TransferForm({
     }
   }, [fromLocationId, getLocationInventory]);
 
-  // Reset form when dialog closes
+  // Reset form when dialog closes; when inline, reset on mount
   useEffect(() => {
-    if (!open) {
+    if (!open && !inline) {
       setFromLocationId("");
       setToLocationId("");
       setNotes("");
@@ -117,7 +121,7 @@ export function TransferForm({
       setSelectedInventoryId("");
       setQuantity("1");
     }
-  }, [open]);
+  }, [open, inline]);
 
   const handleAddItem = () => {
     if (!selectedInventoryId || !quantity) return;
@@ -200,6 +204,229 @@ export function TransferForm({
   );
   const maxQuantity = selectedInventoryItem?.quantity ?? 0;
 
+  const formHeader = inline ? (
+    <div className="space-y-1.5 pb-4">
+      <h2 className="text-lg font-semibold leading-none tracking-tight">
+        Create Transfer
+      </h2>
+      <p className="text-sm text-muted-foreground">
+        Transfer products between locations. Select source and destination, then
+        add items to transfer.
+      </p>
+    </div>
+  ) : (
+    <DialogHeader>
+      <DialogTitle>Create Transfer</DialogTitle>
+      <DialogDescription>
+        Transfer products between locations. Select source and destination, then
+        add items to transfer.
+      </DialogDescription>
+    </DialogHeader>
+  );
+
+  const formFooter = (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => onOpenChange(false)}
+      >
+        Cancel
+      </Button>
+      <Button
+        type="submit"
+        disabled={
+          isLoading || !fromLocationId || !toLocationId || items.length === 0
+        }
+      >
+        {isLoading ? "Creating..." : "Create Transfer"}
+      </Button>
+    </>
+  );
+
+  const formContent = (
+    <form onSubmit={handleSubmit}>
+      {formHeader}
+
+      <div className="grid gap-4 py-4">
+        {/* Location Selection */}
+        <div className="grid grid-cols-[1fr,auto,1fr] items-end gap-4">
+          <div className="grid gap-2">
+            <Label htmlFor="from">From Location *</Label>
+            <Select value={fromLocationId} onValueChange={setFromLocationId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select source" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeLocations
+                  .filter((loc) => loc.id !== toLocationId)
+                  .map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name} ({location.type})
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
+
+          <div className="grid gap-2">
+            <Label htmlFor="to">To Location *</Label>
+            <Select value={toLocationId} onValueChange={setToLocationId}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select destination" />
+              </SelectTrigger>
+              <SelectContent>
+                {activeLocations
+                  .filter((loc) => loc.id !== fromLocationId)
+                  .map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name} ({location.type})
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        {/* Item Selection */}
+        {fromLocationId && (
+          <div className="grid gap-2">
+            <Label>Add Items</Label>
+            <div className="flex gap-2">
+              <Select
+                value={selectedInventoryId}
+                onValueChange={setSelectedInventoryId}
+                disabled={loadingInventory}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue
+                    placeholder={
+                      loadingInventory
+                        ? "Loading inventory..."
+                        : "Select product"
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableInventory
+                    .filter((inv) => inv.quantity > 0)
+                    .map((inv) => (
+                      <SelectItem key={inv.id} value={inv.id}>
+                        {inv.variation.product.name} - {inv.variation.color}
+                        {inv.subVariation?.name
+                          ? ` / ${inv.subVariation.name}`
+                          : ""}{" "}
+                        ({inv.quantity} available)
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                min="1"
+                max={maxQuantity}
+                value={quantity}
+                onChange={(e) => setQuantity(e.target.value)}
+                className="w-24"
+                placeholder="Qty"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={handleAddItem}
+                disabled={!selectedInventoryId || !quantity}
+              >
+                Add
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Items List */}
+        {items.length > 0 && (
+          <div className="grid gap-2">
+            <Label>Transfer Items ({items.length})</Label>
+            <ScrollArea className="h-[200px] rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Product</TableHead>
+                    <TableHead>Color</TableHead>
+                    <TableHead className="text-right">Quantity</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {items.map((item, idx) => (
+                    <TableRow
+                      key={`${item.variationId}-${item.subVariationId ?? "v"}-${idx}`}
+                    >
+                      <TableCell className="font-medium">
+                        {item.productName}
+                      </TableCell>
+                      <TableCell>
+                        {item.color}
+                        {item.subVariationName
+                          ? ` / ${item.subVariationName}`
+                          : ""}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {item.quantity}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() =>
+                            handleRemoveItem(
+                              item.variationId,
+                              item.subVariationId,
+                            )
+                          }
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </div>
+        )}
+
+        {/* Notes */}
+        <div className="grid gap-2">
+          <Label htmlFor="notes">Notes (optional)</Label>
+          <Textarea
+            id="notes"
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Add any notes about this transfer..."
+            rows={2}
+          />
+        </div>
+      </div>
+
+      {inline ? (
+        <div className="flex justify-end gap-2 pt-4">{formFooter}</div>
+      ) : (
+        <DialogFooter>{formFooter}</DialogFooter>
+      )}
+    </form>
+  );
+
+  if (inline) {
+    return (
+      <Card className="max-w-2xl">
+        <CardContent className="pt-6">{formContent}</CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogTrigger asChild>
@@ -208,204 +435,7 @@ export function TransferForm({
           New Transfer
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>Create Transfer</DialogTitle>
-            <DialogDescription>
-              Transfer products between locations. Select source and
-              destination, then add items to transfer.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="grid gap-4 py-4">
-            {/* Location Selection */}
-            <div className="grid grid-cols-[1fr,auto,1fr] items-end gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="from">From Location *</Label>
-                <Select
-                  value={fromLocationId}
-                  onValueChange={setFromLocationId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeLocations
-                      .filter((loc) => loc.id !== toLocationId)
-                      .map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.name} ({location.type})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
-
-              <div className="grid gap-2">
-                <Label htmlFor="to">To Location *</Label>
-                <Select value={toLocationId} onValueChange={setToLocationId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select destination" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {activeLocations
-                      .filter((loc) => loc.id !== fromLocationId)
-                      .map((location) => (
-                        <SelectItem key={location.id} value={location.id}>
-                          {location.name} ({location.type})
-                        </SelectItem>
-                      ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            {/* Item Selection */}
-            {fromLocationId && (
-              <div className="grid gap-2">
-                <Label>Add Items</Label>
-                <div className="flex gap-2">
-                  <Select
-                    value={selectedInventoryId}
-                    onValueChange={setSelectedInventoryId}
-                    disabled={loadingInventory}
-                  >
-                    <SelectTrigger className="flex-1">
-                      <SelectValue
-                        placeholder={
-                          loadingInventory
-                            ? "Loading inventory..."
-                            : "Select product"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {availableInventory
-                        .filter((inv) => inv.quantity > 0)
-                        .map((inv) => (
-                          <SelectItem key={inv.id} value={inv.id}>
-                            {inv.variation.product.name} - {inv.variation.color}
-                            {inv.subVariation?.name
-                              ? ` / ${inv.subVariation.name}`
-                              : ""}{" "}
-                            ({inv.quantity} available)
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    min="1"
-                    max={maxQuantity}
-                    value={quantity}
-                    onChange={(e) => setQuantity(e.target.value)}
-                    className="w-24"
-                    placeholder="Qty"
-                  />
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    onClick={handleAddItem}
-                    disabled={!selectedInventoryId || !quantity}
-                  >
-                    Add
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Items List */}
-            {items.length > 0 && (
-              <div className="grid gap-2">
-                <Label>Transfer Items ({items.length})</Label>
-                <ScrollArea className="h-[200px] rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Product</TableHead>
-                        <TableHead>Color</TableHead>
-                        <TableHead className="text-right">Quantity</TableHead>
-                        <TableHead className="w-[50px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {items.map((item, idx) => (
-                        <TableRow
-                          key={`${item.variationId}-${item.subVariationId ?? "v"}-${idx}`}
-                        >
-                          <TableCell className="font-medium">
-                            {item.productName}
-                          </TableCell>
-                          <TableCell>
-                            {item.color}
-                            {item.subVariationName
-                              ? ` / ${item.subVariationName}`
-                              : ""}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {item.quantity}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                handleRemoveItem(
-                                  item.variationId,
-                                  item.subVariationId,
-                                )
-                              }
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </ScrollArea>
-              </div>
-            )}
-
-            {/* Notes */}
-            <div className="grid gap-2">
-              <Label htmlFor="notes">Notes (optional)</Label>
-              <Textarea
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Add any notes about this transfer..."
-                rows={2}
-              />
-            </div>
-          </div>
-
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              disabled={
-                isLoading ||
-                !fromLocationId ||
-                !toLocationId ||
-                items.length === 0
-              }
-            >
-              {isLoading ? "Creating..." : "Create Transfer"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+      <DialogContent className="max-w-2xl">{formContent}</DialogContent>
     </Dialog>
   );
 }

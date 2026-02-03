@@ -23,6 +23,7 @@ interface QuadrantChartProps {
   data: QuadrantPoint[];
   xLabel?: string;
   yLabel?: string;
+  ariaLabel?: string;
 }
 
 const config: ChartConfig = {
@@ -34,6 +35,7 @@ export function QuadrantChart({
   data,
   xLabel = "Sales velocity",
   yLabel = "Stock quantity",
+  ariaLabel = "Quadrant chart",
 }: QuadrantChartProps) {
   const scatterData = data.map((d) => ({
     ...d,
@@ -43,43 +45,51 @@ export function QuadrantChart({
 
   if (scatterData.length === 0) {
     return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground text-sm">
+      <div
+        className="flex h-64 items-center justify-center text-muted-foreground text-sm"
+        aria-label={ariaLabel}
+      >
         No data
       </div>
     );
   }
 
   return (
-    <ChartContainer config={config} className="w-full h-64">
-      <ScatterChart margin={{ left: 12, right: 12 }}>
-        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-        <XAxis
-          type="number"
-          dataKey="velocity"
-          name={xLabel}
-          tickLine={false}
-          axisLine={false}
-        />
-        <YAxis
-          type="number"
-          dataKey="quantity"
-          name={yLabel}
-          tickLine={false}
-          axisLine={false}
-        />
-        <ChartTooltip
-          content={
-            <ChartTooltipContent
-              labelKey="name"
-              formatter={(v, name) => [
-                String(v),
-                name === "velocity" ? xLabel : yLabel,
-              ]}
-            />
-          }
-        />
-        <Scatter data={scatterData} fill="hsl(var(--chart-1))" name="Items" />
-      </ScatterChart>
-    </ChartContainer>
+    <div aria-label={ariaLabel}>
+      <ChartContainer
+        config={config}
+        className="min-w-0 w-full max-w-full h-64"
+      >
+        <ScatterChart margin={{ left: 12, right: 12 }}>
+          <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+          <XAxis
+            type="number"
+            dataKey="velocity"
+            name={xLabel}
+            tickLine={false}
+            axisLine={false}
+          />
+          <YAxis
+            type="number"
+            dataKey="quantity"
+            name={yLabel}
+            tickLine={false}
+            axisLine={false}
+          />
+          <ChartTooltip
+            content={
+              <ChartTooltipContent
+                labelKey="name"
+                formatter={(v, name) => [
+                  String(v),
+                  name === "velocity" ? xLabel : yLabel,
+                ]}
+              />
+            }
+          />
+          <Scatter data={scatterData} fill="hsl(var(--chart-1))" name="Items" />
+        </ScatterChart>
+      </ChartContainer>
+    </div>
   );
 }

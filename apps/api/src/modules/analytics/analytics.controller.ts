@@ -395,8 +395,7 @@ class AnalyticsController {
 
       let totalStockValueCost = 0;
       let totalStockValueMrp = 0;
-      let lowStockCount = 0;
-      let outOfStockCount = 0;
+      const variationTotal: Record<string, number> = {};
       const categoryLocationValue: Record<string, Record<string, number>> = {};
       const productQuantity: Record<string, number> = {};
       const aging0_30: number[] = [];
@@ -404,6 +403,7 @@ class AnalyticsController {
       const aging61_90: number[] = [];
       const aging90Plus: number[] = [];
       const now = new Date();
+      const LOW_STOCK_THRESHOLD = 5;
 
       for (const inv of inventoryItems) {
         const qty = inv.quantity;
@@ -411,8 +411,8 @@ class AnalyticsController {
         const mrp = Number(inv.variation.product.mrp ?? 0);
         totalStockValueCost += qty * cost;
         totalStockValueMrp += qty * mrp;
-        if (qty === 0) outOfStockCount += 1;
-        else if (qty <= 5) lowStockCount += 1;
+        const vid = inv.variation.id;
+        variationTotal[vid] = (variationTotal[vid] ?? 0) + qty;
 
         const catName = inv.variation.product.category?.name ?? "Other";
         if (!categoryLocationValue[catName]) {
@@ -431,6 +431,15 @@ class AnalyticsController {
         else if (days <= 60) aging31_60.push(value);
         else if (days <= 90) aging61_90.push(value);
         else aging90Plus.push(value);
+      }
+
+      // Low stock = variant total < threshold (so [2, 10] → one variant is low). Out of stock = variant total === 0.
+      let lowStockCount = 0;
+      let outOfStockCount = 0;
+      for (const total of Object.values(variationTotal)) {
+        const t = Number(total);
+        if (t === 0) outOfStockCount += 1;
+        if (t < LOW_STOCK_THRESHOLD) lowStockCount += 1;
       }
 
       const velocityQuantity = Object.entries(productQuantity).map(
@@ -636,6 +645,247 @@ class AnalyticsController {
       console.error("Get customers promos error:", error);
       res.status(500).json({
         message: "Error fetching customers promos analytics",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Discount analytics: discount over time, by user, by location.
+   * Reuses getSalesWhereForAnalytics for filters and role.
+   */
+  async getDiscountAnalytics(req: Request, res: Response) {
+    try {
+      const role = (req as any).user?.role as string | undefined;
+      const currentUserId = (req as any).user?.id as string | undefined;
+      const { where } = getSalesWhereForAnalytics(
+        req.query,
+        role,
+        currentUserId,
+      );
+
+      const [salesForTimeSeries, byUser, byLocation] = await Promise.all([
+        prisma.sale.findMany({
+          where,
+          select: { discount: true, createdAt: true },
+          orderBy: { createdAt: "asc" },
+        }),
+        prisma.sale.groupBy({
+          by: ["createdById"],
+          where,
+          _sum: { discount: true },
+        }),
+        prisma.sale.groupBy({
+          by: ["locationId"],
+          where,
+          _sum: { discount: true },
+        }),
+      ]);
+
+      const dailyMap: Record<string, number> = {};
+      for (const s of salesForTimeSeries) {
+        const d = s.createdAt.toISOString().slice(0, 10);
+        dailyMap[d] = (dailyMap[d] ?? 0) + Number(s.discount);
+      }
+      const discountOverTime = Object.entries(dailyMap)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, discount]) => ({ date, discount }));
+
+      const userIds = [...new Set(byUser.map((u) => u.createdById))];
+      const users =
+        userIds.length > 0
+          ? await prisma.user.findMany({
+              where: { id: { in: userIds } },
+              select: { id: true, username: true },
+            })
+          : [];
+      const userMap = Object.fromEntries(users.map((u) => [u.id, u.username]));
+
+      const locationIds = [...new Set(byLocation.map((l) => l.locationId))];
+      const locations =
+        locationIds.length > 0
+          ? await prisma.location.findMany({
+              where: { id: { in: locationIds } },
+              select: { id: true, name: true },
+            })
+          : [];
+      const locationMap = Object.fromEntries(
+        locations.map((l) => [l.id, l.name]),
+      );
+
+      res.status(200).json({
+        message: "Discount analytics fetched",
+        data: {
+          discountOverTime,
+          byUser: byUser.map((u) => ({
+            userId: u.createdById,
+            username: userMap[u.createdById] ?? u.createdById,
+            discount: Number(u._sum.discount ?? 0),
+          })),
+          byLocation: byLocation.map((l) => ({
+            locationId: l.locationId,
+            locationName: locationMap[l.locationId] ?? l.locationId,
+            discount: Number(l._sum.discount ?? 0),
+          })),
+        },
+      });
+    } catch (error: unknown) {
+      console.error("Get discount analytics error:", error);
+      res.status(500).json({
+        message: "Error fetching discount analytics",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Payment method trends over time: daily totals per payment method.
+   */
+  async getPaymentTrends(req: Request, res: Response) {
+    try {
+      const role = (req as any).user?.role as string | undefined;
+      const currentUserId = (req as any).user?.id as string | undefined;
+      const { where } = getSalesWhereForAnalytics(
+        req.query,
+        role,
+        currentUserId,
+      );
+
+      const payments = await prisma.salePayment.findMany({
+        where: { sale: where },
+        select: {
+          method: true,
+          amount: true,
+          sale: { select: { createdAt: true } },
+        },
+      });
+
+      const byDate: Record<string, Record<string, number>> = {};
+      for (const p of payments) {
+        const d = (p.sale as { createdAt: Date }).createdAt
+          .toISOString()
+          .slice(0, 10);
+        if (!byDate[d]) byDate[d] = {};
+        const method = p.method;
+        byDate[d][method] = (byDate[d][method] ?? 0) + Number(p.amount);
+      }
+      const timeSeries = Object.entries(byDate)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+        .map(([date, methods]) => ({ date, ...methods }));
+
+      res.status(200).json({
+        message: "Payment trends fetched",
+        data: { timeSeries },
+      });
+    } catch (error: unknown) {
+      console.error("Get payment trends error:", error);
+      res.status(500).json({
+        message: "Error fetching payment trends",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Location comparison: revenue, sales count, discount per location.
+   */
+  async getLocationComparison(req: Request, res: Response) {
+    try {
+      const role = (req as any).user?.role as string | undefined;
+      const currentUserId = (req as any).user?.id as string | undefined;
+      const { where } = getSalesWhereForAnalytics(
+        req.query,
+        role,
+        currentUserId,
+      );
+
+      const byLocation = await prisma.sale.groupBy({
+        by: ["locationId"],
+        where,
+        _sum: { total: true, discount: true },
+        _count: true,
+      });
+
+      const locationIds = [...new Set(byLocation.map((l) => l.locationId))];
+      const locations =
+        locationIds.length > 0
+          ? await prisma.location.findMany({
+              where: { id: { in: locationIds } },
+              select: { id: true, name: true },
+            })
+          : [];
+      const locationMap = Object.fromEntries(
+        locations.map((l) => [l.id, l.name]),
+      );
+
+      res.status(200).json({
+        message: "Location comparison fetched",
+        data: byLocation.map((l) => ({
+          locationId: l.locationId,
+          locationName: locationMap[l.locationId] ?? l.locationId,
+          revenue: Number(l._sum.total ?? 0),
+          salesCount: l._count,
+          discount: Number(l._sum.discount ?? 0),
+        })),
+      });
+    } catch (error: unknown) {
+      console.error("Get location comparison error:", error);
+      res.status(500).json({
+        message: "Error fetching location comparison",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  /**
+   * Member cohort: new vs repeat customers in period (count and revenue).
+   */
+  async getMemberCohort(req: Request, res: Response) {
+    try {
+      const role = (req as any).user?.role as string | undefined;
+      const currentUserId = (req as any).user?.id as string | undefined;
+      const { where } = getSalesWhereForAnalytics(
+        req.query,
+        role,
+        currentUserId,
+      );
+
+      const byMember = await prisma.sale.groupBy({
+        by: ["memberId"],
+        where: { ...where, memberId: { not: null } },
+        _count: true,
+        _sum: { total: true },
+      });
+
+      let newCount = 0;
+      let repeatCount = 0;
+      let newRevenue = 0;
+      let repeatRevenue = 0;
+      for (const row of byMember) {
+        const count = row._count;
+        const revenue = Number(row._sum.total ?? 0);
+        if (count === 1) {
+          newCount += 1;
+          newRevenue += revenue;
+        } else {
+          repeatCount += 1;
+          repeatRevenue += revenue;
+        }
+      }
+
+      res.status(200).json({
+        message: "Member cohort fetched",
+        data: {
+          newCount,
+          repeatCount,
+          newRevenue,
+          repeatRevenue,
+        },
+      });
+    } catch (error: unknown) {
+      console.error("Get member cohort error:", error);
+      res.status(500).json({
+        message: "Error fetching member cohort",
         error: error instanceof Error ? error.message : String(error),
       });
     }

@@ -225,3 +225,121 @@ export async function getCustomersPromos(
     handleApiError(error, "fetch customers promos analytics");
   }
 }
+
+// ============================================
+// Discount analytics
+// ============================================
+
+export interface DiscountOverTimePoint {
+  date: string;
+  discount: number;
+}
+
+export interface DiscountByUser {
+  userId: string;
+  username: string;
+  discount: number;
+}
+
+export interface DiscountByLocation {
+  locationId: string;
+  locationName: string;
+  discount: number;
+}
+
+export interface DiscountAnalyticsData {
+  discountOverTime: DiscountOverTimePoint[];
+  byUser: DiscountByUser[];
+  byLocation: DiscountByLocation[];
+}
+
+export async function getDiscountAnalytics(
+  params: AnalyticsApiParams = {},
+): Promise<DiscountAnalyticsData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{
+      message: string;
+      data: DiscountAnalyticsData;
+    }>(`/analytics/discount${q ? `?${q}` : ""}`);
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch discount analytics");
+  }
+}
+
+// ============================================
+// Payment trends (time series by method)
+// ============================================
+
+export interface PaymentTrendsData {
+  timeSeries: Array<Record<string, string | number>>;
+}
+
+export async function getPaymentTrends(
+  params: AnalyticsApiParams = {},
+): Promise<PaymentTrendsData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{
+      message: string;
+      data: PaymentTrendsData;
+    }>(`/analytics/payment-trends${q ? `?${q}` : ""}`);
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch payment trends");
+  }
+}
+
+// ============================================
+// Location comparison
+// ============================================
+
+export interface LocationComparisonItem {
+  locationId: string;
+  locationName: string;
+  revenue: number;
+  salesCount: number;
+  discount: number;
+}
+
+export async function getLocationComparison(
+  params: AnalyticsApiParams = {},
+): Promise<LocationComparisonItem[]> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{
+      message: string;
+      data: LocationComparisonItem[];
+    }>(`/analytics/location-comparison${q ? `?${q}` : ""}`);
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch location comparison");
+  }
+}
+
+// ============================================
+// Member cohort (new vs repeat)
+// ============================================
+
+export interface MemberCohortData {
+  newCount: number;
+  repeatCount: number;
+  newRevenue: number;
+  repeatRevenue: number;
+}
+
+export async function getMemberCohort(
+  params: AnalyticsApiParams = {},
+): Promise<MemberCohortData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{
+      message: string;
+      data: MemberCohortData;
+    }>(`/analytics/member-cohort${q ? `?${q}` : ""}`);
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch member cohort");
+  }
+}

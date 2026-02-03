@@ -391,6 +391,8 @@ class ProductController {
       const vendorId = req.query.vendorId as string | undefined;
       const dateFrom = req.query.dateFrom as string | undefined;
       const dateTo = req.query.dateTo as string | undefined;
+      const lowStock =
+        req.query.lowStock === "1" || req.query.lowStock === "true";
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -460,18 +462,46 @@ class ProductController {
         }
       }
 
-      // If locationId is provided, filter products that have inventory at that location
-      if (locationId) {
-        where.variations = {
-          some: {
-            locationInventory: {
-              some: {
-                locationId,
-                quantity: { gt: 0 },
+      // Low stock: by variant total (sum across all locations), not per location
+      const LOW_STOCK_THRESHOLD = 5;
+      let lowStockVariationIds: string[] = [];
+      if (lowStock) {
+        const byVariant = await prisma.locationInventory.groupBy({
+          by: ["variationId"],
+          _sum: { quantity: true },
+        });
+        // Any variant with total < threshold makes the product low stock (including 0)
+        lowStockVariationIds = byVariant
+          .filter((r) => Number(r._sum?.quantity ?? 0) < LOW_STOCK_THRESHOLD)
+          .map((r) => r.variationId);
+      }
+
+      if (locationId || lowStock) {
+        if (locationId && lowStock && lowStockVariationIds.length > 0) {
+          // At this location and variant total is low
+          where.variations = {
+            some: {
+              id: { in: lowStockVariationIds },
+              locationInventory: {
+                some: { locationId: locationId, quantity: { gt: 0 } },
               },
             },
-          },
-        };
+          };
+        } else if (locationId) {
+          where.variations = {
+            some: {
+              locationInventory: {
+                some: { locationId, quantity: { gt: 0 } },
+              },
+            },
+          };
+        } else if (lowStock && lowStockVariationIds.length > 0) {
+          where.variations = {
+            some: { id: { in: lowStockVariationIds } },
+          };
+        } else if (lowStock) {
+          where.variations = { some: { id: { in: [] } } };
+        }
       }
 
       // Calculate skip for pagination

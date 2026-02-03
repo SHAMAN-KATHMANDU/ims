@@ -16,6 +16,7 @@ export interface HeatmapRow {
 interface HeatmapTableProps {
   rows: HeatmapRow[];
   formatValue?: (n: number) => string;
+  ariaLabel?: string;
 }
 
 function getLocationKeys(rows: HeatmapRow[]): string[] {
@@ -38,6 +39,7 @@ function getColorForValue(value: number, max: number): string {
 export function HeatmapTable({
   rows,
   formatValue = formatCurrency,
+  ariaLabel = "Heatmap table: categories by locations",
 }: HeatmapTableProps) {
   const locationKeys = getLocationKeys(rows);
   const maxVal = Math.max(
@@ -47,14 +49,17 @@ export function HeatmapTable({
 
   if (rows.length === 0) {
     return (
-      <div className="flex h-32 items-center justify-center text-muted-foreground text-sm">
+      <div
+        className="flex h-32 items-center justify-center text-muted-foreground text-sm"
+        aria-label={ariaLabel}
+      >
         No data
       </div>
     );
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="overflow-x-auto" role="region" aria-label={ariaLabel}>
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="border-b">

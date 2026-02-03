@@ -25,11 +25,11 @@ export function KpiCards({ items, isLoading, className }: KpiCardsProps) {
     <div
       className={
         className ??
-        "grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 min-w-0"
+        "grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
       }
     >
       {items.map((item, i) => (
-        <Card key={i} className="shadow-sm">
+        <Card key={i} className="min-w-0 shadow-sm">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
             {item.icon && (
