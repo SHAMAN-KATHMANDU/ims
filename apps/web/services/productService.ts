@@ -571,7 +571,7 @@ export async function bulkUploadProducts(
     formData.append("file", file);
 
     const response = await api.post<BulkUploadResponse>(
-      "/products/bulk-upload",
+      "/bulk/upload/products",
       formData,
       {
         onUploadProgress: (progressEvent) => {
@@ -632,8 +632,9 @@ export async function downloadProducts(
       queryParams.set("ids", productIds.join(","));
     }
 
+    queryParams.set("type", "products");
     const response = await api.get<Blob>(
-      `/products/download?${queryParams.toString()}`,
+      `/bulk/download?${queryParams.toString()}`,
       { responseType: "blob" },
     );
 
@@ -652,7 +653,7 @@ export async function downloadProducts(
  */
 export async function downloadBulkUploadTemplate(): Promise<void> {
   try {
-    const response = await api.get<Blob>("/products/bulk-upload/template", {
+    const response = await api.get<Blob>("/bulk/template?type=products", {
       responseType: "blob",
     });
     downloadBlobFromResponse(response, "products_bulk_upload_template.xlsx");
