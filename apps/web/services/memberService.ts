@@ -304,7 +304,7 @@ export async function bulkUploadMembers(
     formData.append("file", file);
 
     const response = await api.post<MemberBulkUploadResponse>(
-      "/members/bulk-upload",
+      "/bulk/upload/members",
       formData,
       {
         onUploadProgress: (progressEvent) => {
@@ -364,9 +364,10 @@ export async function downloadMembers(
     if (memberIds && memberIds.length > 0) {
       queryParams.set("ids", memberIds.join(","));
     }
+    queryParams.set("type", "members");
 
     const response = await api.get<Blob>(
-      `/members/download?${queryParams.toString()}`,
+      `/bulk/download?${queryParams.toString()}`,
       { responseType: "blob" },
     );
 
@@ -385,7 +386,7 @@ export async function downloadMembers(
  */
 export async function downloadBulkUploadTemplate(): Promise<void> {
   try {
-    const response = await api.get<Blob>("/members/bulk-upload/template", {
+    const response = await api.get<Blob>("/bulk/template?type=members", {
       responseType: "blob",
     });
     downloadBlobFromResponse(response, "members_bulk_upload_template.xlsx");
