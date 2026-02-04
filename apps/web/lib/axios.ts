@@ -25,13 +25,17 @@ const api = axios.create({
   },
 });
 
-// Request interceptor: Attach JWT token to all requests
+// Request interceptor: Attach JWT token; allow multipart when body is FormData
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Access Zustand store directly (not a hook - this is outside React)
     const token = useAuthStore.getState().token;
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // When sending FormData, remove default Content-Type so axios/browser sets multipart/form-data with boundary
+    if (config.data instanceof FormData && config.headers) {
+      delete config.headers["Content-Type"];
     }
     return config;
   },
