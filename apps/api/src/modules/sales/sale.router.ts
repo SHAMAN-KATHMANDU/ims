@@ -2,7 +2,6 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import saleController from "@/modules/sales/sale.controller";
-import { uploadSingle } from "@/config/multer.config";
 
 const saleRouter = Router();
 
@@ -265,118 +264,6 @@ saleRouter.get(
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   saleController.getDailySales,
-);
-
-/**
- * @swagger
- * /sales/bulk-upload/template:
- *   get:
- *     summary: Download bulk upload template (Excel with headers)
- *     tags: [Sales]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Excel template file
- *         content:
- *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
- *             schema:
- *               type: string
- *               format: binary
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden
- */
-saleRouter.get(
-  "/bulk-upload/template",
-  verifyToken,
-  authorizeRoles("admin", "superAdmin"),
-  saleController.downloadBulkUploadTemplate,
-);
-
-/**
- * @swagger
- * /sales/bulk-upload:
- *   post:
- *     summary: Bulk upload sales from Excel file
- *     tags: [Sales]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required:
- *               - file
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *                 description: "Excel file (.xlsx, .xls, .xlsm) with columns: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount (required). Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR). If Phone number is provided, sale is marked as Member sale; member is found or created with that phone."
- *     responses:
- *       200:
- *         description: Bulk upload completed
- *       400:
- *         description: Bad request or validation error
- *       401:
- *         description: Unauthorized
- *       403:
- *         description: Forbidden - Admin role required
- */
-saleRouter.post(
-  "/bulk-upload",
-  verifyToken,
-  authorizeRoles("admin", "superAdmin"),
-  uploadSingle,
-  saleController.bulkUploadSales,
-);
-
-/**
- * @swagger
- * /sales/download:
- *   get:
- *     summary: Download sales as Excel or CSV
- *     tags: [Sales]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: format
- *         schema:
- *           type: string
- *           enum: [excel, csv]
- *           default: excel
- *         description: Export format (excel or csv)
- *       - in: query
- *         name: ids
- *         schema:
- *           type: string
- *         description: Comma-separated list of sale IDs to export. If not provided, exports all sales.
- *         example: "id1,id2,id3"
- *     responses:
- *       200:
- *         description: File download
- *         content:
- *           application/vnd.openxmlformats-officedocument.spreadsheetml.sheet:
- *             schema:
- *               type: string
- *               format: binary
- *           text/csv:
- *             schema:
- *               type: string
- *       400:
- *         description: Invalid format
- *       404:
- *         description: No sales found
- */
-saleRouter.get(
-  "/download",
-  verifyToken,
-  authorizeRoles("admin", "user", "superAdmin"),
-  saleController.downloadSales,
 );
 
 /**
