@@ -6,6 +6,7 @@ import { swaggerSpec } from "@/config/swagger.config";
 import { env } from "@/config/env";
 import { errorHandler } from "@/middlewares/errorHandler";
 import { requestIdMiddleware } from "@/middlewares/requestId";
+import { requestLoggingMiddleware } from "@/middlewares/requestLogging";
 import prisma from "@/config/prisma";
 import { getVersion } from "@/config/version";
 
@@ -21,6 +22,9 @@ app.use((req, res, next) => {
 
 // Request ID middleware for tracing
 app.use(requestIdMiddleware);
+
+// Request logging for all /api/v1 calls (method, path, status, duration)
+app.use(requestLoggingMiddleware);
 
 // CORS middleware - uses CORS_ORIGIN from environment
 // In production, this must be set to specific frontend origin(s)

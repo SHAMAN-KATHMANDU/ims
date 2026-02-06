@@ -58,4 +58,12 @@ export const logger = {
       console.log(formatMessage("INFO", message, requestId, data));
     }
   },
+
+  /**
+   * Log API request/response (all environments) for audit and debugging.
+   * Use for request logging middleware only; do not log secrets.
+   */
+  request: (message: string, requestId?: string, data?: any) => {
+    console.log(formatMessage("REQUEST", message, requestId, data));
+  },
 };
