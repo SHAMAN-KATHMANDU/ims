@@ -994,7 +994,10 @@ export function SalesRevenuePage() {
       </Card>
 
       <Sheet open={!!drillDown} onOpenChange={(open) => !open && closeDrill()}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+        <SheetContent
+          className="w-full sm:max-w-2xl overflow-y-auto"
+          aria-describedby={undefined}
+        >
           <SheetHeader>
             <SheetTitle>
               Sales {drillDown ? `for ${drillDown.label}` : ""}
