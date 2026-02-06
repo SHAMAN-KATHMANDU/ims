@@ -7,6 +7,8 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { logger } from "@/config/logger";
+import { env } from "@/config/env";
 
 class UserController {
   // Create user (only superAdmin)
@@ -64,10 +66,11 @@ class UserController {
         user: userWithoutPassword,
       });
     } catch (error: any) {
-      console.error("Create user error:", error);
-      res
-        .status(500)
-        .json({ message: "Error creating user", error: error.message });
+      logger.error("Create user error", req.requestId, error);
+      res.status(500).json({
+        message: "Error creating user",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 
@@ -133,10 +136,11 @@ class UserController {
         ...result,
       });
     } catch (error: any) {
-      console.error("Get all users error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching users", error: error.message });
+      logger.error("Get all users error", req.requestId, error);
+      res.status(500).json({
+        message: "Error fetching users",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 
@@ -167,10 +171,11 @@ class UserController {
         user,
       });
     } catch (error: any) {
-      console.error("Get user by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching user", error: error.message });
+      logger.error("Get user by ID error", req.requestId, error);
+      res.status(500).json({
+        message: "Error fetching user",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 
@@ -238,10 +243,11 @@ class UserController {
         user: updatedUser,
       });
     } catch (error: any) {
-      console.error("Update user error:", error);
-      res
-        .status(500)
-        .json({ message: "Error updating user", error: error.message });
+      logger.error("Update user error", req.requestId, error);
+      res.status(500).json({
+        message: "Error updating user",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 
@@ -276,10 +282,11 @@ class UserController {
         message: "User deleted successfully",
       });
     } catch (error: any) {
-      console.error("Delete user error:", error);
-      res
-        .status(500)
-        .json({ message: "Error deleting user", error: error.message });
+      logger.error("Delete user error", req.requestId, error);
+      res.status(500).json({
+        message: "Error deleting user",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 }
