@@ -1,11 +1,12 @@
 import swaggerJsdoc from "swagger-jsdoc";
 import { SwaggerDefinition } from "swagger-jsdoc";
+import { getVersion } from "@/config/version";
 
 const swaggerDefinition: SwaggerDefinition = {
   openapi: "3.0.0",
   info: {
     title: "IMS API Documentation",
-    version: "1.0.0",
+    version: getVersion(),
     description: "API documentation for Inventory Management System",
     contact: {
       name: "API Support",
