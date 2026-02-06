@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useIsMobile } from "@/hooks/useMobile";
 import { useForm } from "@/hooks/useForm";
 import {
   useProductsPaginated,
@@ -52,6 +55,7 @@ import {
   FileSpreadsheet,
   FileText,
   Filter,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -71,6 +75,12 @@ interface CatalogPageProps {
 }
 
 export function CatalogPage({ readOnly = false }: CatalogPageProps) {
+  const params = useParams();
+  const router = useRouter();
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
+  const isMobile = useIsMobile();
+
   // ============================================
   // Pagination State
   // ============================================
@@ -522,6 +532,10 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
   // Handlers
   const handleEditProduct = (product: Product) => {
+    if (isMobile) {
+      router.push(`${basePath}/product/${product.id}/edit`);
+      return;
+    }
     if (!product || !product.id) {
       toast({
         title: "Error",
@@ -819,35 +833,56 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="outline" onClick={() => setBulkUploadDialog(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Bulk Upload
-            </Button>
-            <ProductForm
-              open={productDialog}
-              onOpenChange={setProductDialog}
-              form={productForm}
-              editingProduct={editingProduct}
-              categories={categories}
-              variations={productVariations}
-              discounts={productDiscounts}
-              discountTypes={discountTypes}
-              onReset={handleResetProduct}
-              onAddVariation={addVariationToForm}
-              onRemoveVariation={removeVariationFromForm}
-              onUpdateVariation={updateVariationInForm}
-              onUpdateSubVariants={updateSubVariantsInForm}
-              onAddPhoto={addPhotoToVariation}
-              onRemovePhoto={removePhotoFromVariation}
-              onSetPrimaryPhoto={setPrimaryPhoto}
-              onAddDiscount={addDiscountToForm}
-              onRemoveDiscount={removeDiscountFromForm}
-              onUpdateDiscount={updateDiscountInForm}
-              onShowError={(title, message) =>
-                setErrorDialog({ open: true, title, message })
-              }
-              validateProduct={validateProduct}
-            />
+            {isMobile ? (
+              <Button variant="outline" asChild>
+                <Link href={`${basePath}/product/bulk-upload`}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Upload
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => setBulkUploadDialog(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+            )}
+            {isMobile ? (
+              <Button asChild>
+                <Link href={`${basePath}/product/new`} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Product
+                </Link>
+              </Button>
+            ) : (
+              <ProductForm
+                open={productDialog}
+                onOpenChange={setProductDialog}
+                form={productForm}
+                editingProduct={editingProduct}
+                categories={categories}
+                variations={productVariations}
+                discounts={productDiscounts}
+                discountTypes={discountTypes}
+                onReset={handleResetProduct}
+                onAddVariation={addVariationToForm}
+                onRemoveVariation={removeVariationFromForm}
+                onUpdateVariation={updateVariationInForm}
+                onUpdateSubVariants={updateSubVariantsInForm}
+                onAddPhoto={addPhotoToVariation}
+                onRemovePhoto={removePhotoFromVariation}
+                onSetPrimaryPhoto={setPrimaryPhoto}
+                onAddDiscount={addDiscountToForm}
+                onRemoveDiscount={removeDiscountFromForm}
+                onUpdateDiscount={updateDiscountInForm}
+                onShowError={(title, message) =>
+                  setErrorDialog({ open: true, title, message })
+                }
+                validateProduct={validateProduct}
+              />
+            )}
           </div>
         )}
       </div>

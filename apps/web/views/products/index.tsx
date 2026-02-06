@@ -1,11 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useIsMobile } from "@/hooks/useMobile";
 import { useForm } from "@/hooks/useForm";
 import {
   useProductsPaginated,
+  useProduct,
   useCategories,
   useDiscountTypes,
   useCreateProduct,
@@ -47,6 +50,7 @@ import {
   FileSpreadsheet,
   FileText,
   Filter,
+  Plus,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -68,8 +72,13 @@ import type {
 } from "./types";
 
 export function ProductPage() {
+  const params = useParams();
+  const router = useRouter();
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
   const searchParams = useSearchParams();
   const hasAppliedUrlParams = useRef(false);
+  const isMobile = useIsMobile();
 
   // ============================================
   // Pagination State
@@ -120,6 +129,79 @@ export function ProductPage() {
       }));
     }
   }, [searchParams]);
+
+  // Open product dialog from URL (e.g. mobile redirect from /product/new or /product/[id]/edit)
+  const addParam = searchParams.get("add");
+  const editIdFromUrl = searchParams.get("edit");
+  const { data: productToEditFromUrl } = useProduct(editIdFromUrl || "");
+
+  useEffect(() => {
+    if (addParam === "1") {
+      setEditingProduct(null);
+      setProductVariations([]);
+      setProductDiscounts([]);
+      productForm.reset();
+      setProductDialog(true);
+      router.replace(`${basePath}/product`, { scroll: false });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addParam, basePath, router]);
+
+  const appliedEditFromUrl = useRef(false);
+  useEffect(() => {
+    if (!editIdFromUrl || !productToEditFromUrl || appliedEditFromUrl.current)
+      return;
+    appliedEditFromUrl.current = true;
+    const product = productToEditFromUrl;
+    setEditingProduct(product);
+    productForm.values.imsCode = product.imsCode;
+    productForm.values.name = product.name;
+    productForm.values.categoryId = product.categoryId;
+    productForm.values.description = product.description || "";
+    productForm.values.length = product.length?.toString() || "";
+    productForm.values.breadth = product.breadth?.toString() || "";
+    productForm.values.height = product.height?.toString() || "";
+    productForm.values.weight = product.weight?.toString() || "";
+    productForm.values.costPrice = product.costPrice.toString();
+    productForm.values.mrp = product.mrp.toString();
+    if (product.variations?.length) {
+      setProductVariations(
+        product.variations.map((v) => ({
+          color: v.color || "",
+          stockQuantity: (v.stockQuantity || 0).toString(),
+          subVariants: (v.subVariations || []).map((s) => s.name),
+          photos: (v.photos || []).map((p) => ({
+            photoUrl: p.photoUrl,
+            isPrimary: p.isPrimary || false,
+          })),
+        })),
+      );
+    } else {
+      setProductVariations([]);
+    }
+    if (product.discounts?.length) {
+      setProductDiscounts(
+        product.discounts.map(
+          (d): ProductDiscountForm => ({
+            discountTypeName: d.discountType?.name || "",
+            discountPercentage: (d.discountPercentage || 0).toString(),
+            startDate: d.startDate
+              ? new Date(d.startDate).toISOString().split("T")[0] || ""
+              : "",
+            endDate: d.endDate
+              ? new Date(d.endDate).toISOString().split("T")[0] || ""
+              : "",
+            isActive: d.isActive !== undefined ? d.isActive : true,
+          }),
+        ),
+      );
+    } else {
+      setProductDiscounts([]);
+    }
+    setProductDialog(true);
+    router.replace(`${basePath}/product`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editIdFromUrl, productToEditFromUrl, basePath, router]);
 
   // Fetch paginated products
   const {
@@ -572,6 +654,10 @@ export function ProductPage() {
 
   // Handlers
   const handleEditProduct = (product: Product) => {
+    if (isMobile) {
+      router.push(`${basePath}/product/${product.id}/edit`);
+      return;
+    }
     if (!product || !product.id) {
       toast({
         title: "Error",
@@ -870,40 +956,58 @@ export function ProductPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                <Button
-                  variant="outline"
-                  onClick={() => setBulkUploadDialog(true)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Bulk Upload
-                </Button>
-                <ProductForm
-                  open={productDialog}
-                  onOpenChange={setProductDialog}
-                  form={productForm}
-                  editingProduct={editingProduct}
-                  categories={categories}
-                  variations={productVariations}
-                  discounts={productDiscounts}
-                  discountTypes={discountTypes}
-                  defaultLocationId={defaultLocationIdForCreate}
-                  onDefaultLocationChange={setDefaultLocationIdForCreate}
-                  onReset={handleResetProduct}
-                  onAddVariation={addVariationToForm}
-                  onRemoveVariation={removeVariationFromForm}
-                  onUpdateVariation={updateVariationInForm}
-                  onUpdateSubVariants={updateSubVariantsInForm}
-                  onAddPhoto={addPhotoToVariation}
-                  onRemovePhoto={removePhotoFromVariation}
-                  onSetPrimaryPhoto={setPrimaryPhoto}
-                  onAddDiscount={addDiscountToForm}
-                  onRemoveDiscount={removeDiscountFromForm}
-                  onUpdateDiscount={updateDiscountInForm}
-                  onShowError={(title, message) =>
-                    setErrorDialog({ open: true, title, message })
-                  }
-                  validateProduct={validateProduct}
-                />
+                {isMobile ? (
+                  <Button variant="outline" asChild>
+                    <Link href={`${basePath}/product/bulk-upload`}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Bulk Upload
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkUploadDialog(true)}
+                  >
+                    <Upload className="h-4 w-4 mr-2" />
+                    Bulk Upload
+                  </Button>
+                )}
+                {isMobile ? (
+                  <Button asChild>
+                    <Link href={`${basePath}/product/new`} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Product
+                    </Link>
+                  </Button>
+                ) : (
+                  <ProductForm
+                    open={productDialog}
+                    onOpenChange={setProductDialog}
+                    form={productForm}
+                    editingProduct={editingProduct}
+                    categories={categories}
+                    variations={productVariations}
+                    discounts={productDiscounts}
+                    discountTypes={discountTypes}
+                    defaultLocationId={defaultLocationIdForCreate}
+                    onDefaultLocationChange={setDefaultLocationIdForCreate}
+                    onReset={handleResetProduct}
+                    onAddVariation={addVariationToForm}
+                    onRemoveVariation={removeVariationFromForm}
+                    onUpdateVariation={updateVariationInForm}
+                    onUpdateSubVariants={updateSubVariantsInForm}
+                    onAddPhoto={addPhotoToVariation}
+                    onRemovePhoto={removePhotoFromVariation}
+                    onSetPrimaryPhoto={setPrimaryPhoto}
+                    onAddDiscount={addDiscountToForm}
+                    onRemoveDiscount={removeDiscountFromForm}
+                    onUpdateDiscount={updateDiscountInForm}
+                    onShowError={(title, message) =>
+                      setErrorDialog({ open: true, title, message })
+                    }
+                    validateProduct={validateProduct}
+                  />
+                )}
               </div>
             )}
           </div>

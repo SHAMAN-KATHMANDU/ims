@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsSuperAdmin } from "@/stores/auth-store";
 import {
@@ -13,6 +15,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/useLocation";
+import { useIsMobile } from "@/hooks/useMobile";
 import { LocationForm } from "./components/LocationForm";
 import { LocationTable } from "./components/LocationTable";
 import {
@@ -25,12 +28,18 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 export function LocationsPage() {
+  const params = useParams();
+  const router = useRouter();
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isSuperAdmin = useAuthStore(selectIsSuperAdmin);
+  const isMobile = useIsMobile();
 
   // Pagination state
   const [page, setPage] = useState(DEFAULT_PAGE);
@@ -71,6 +80,10 @@ export function LocationsPage() {
   );
 
   const handleEdit = (location: Location) => {
+    if (isMobile) {
+      router.push(`${basePath}/locations/${location.id}/edit`);
+      return;
+    }
     setEditingLocation(location);
     setFormOpen(true);
   };
@@ -158,19 +171,27 @@ export function LocationsPage() {
           />
         </div>
 
-        {isSuperAdmin && (
-          <LocationForm
-            open={formOpen}
-            onOpenChange={setFormOpen}
-            editingLocation={editingLocation}
-            onSubmit={handleSubmit}
-            onReset={handleReset}
-            isLoading={
-              createLocationMutation.isPending ||
-              updateLocationMutation.isPending
-            }
-          />
-        )}
+        {isSuperAdmin &&
+          (isMobile ? (
+            <Button asChild>
+              <Link href={`${basePath}/locations/new`} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Location
+              </Link>
+            </Button>
+          ) : (
+            <LocationForm
+              open={formOpen}
+              onOpenChange={setFormOpen}
+              editingLocation={editingLocation}
+              onSubmit={handleSubmit}
+              onReset={handleReset}
+              isLoading={
+                createLocationMutation.isPending ||
+                updateLocationMutation.isPending
+              }
+            />
+          ))}
       </div>
 
       <LocationTable

@@ -18,13 +18,15 @@ import auditRouter from "@/modules/audit/audit.router";
 import errorReportRouter from "@/modules/error-reports/error-report.router";
 import analyticsRouter from "@/modules/analytics/analytics.router";
 import dashboardRouter from "@/modules/dashboard/dashboard.router";
+import { getVersion } from "@/config/version";
+import bulkRouter from "@/modules/bulk/bulk.router";
 
 const router = Router();
 
 router.get("/", (req: Request, res: Response) => {
   res.status(200).json({
     message: "API is running",
-    version: "1.0.0",
+    version: getVersion(),
   });
 });
 
@@ -43,5 +45,6 @@ router.use("/audit-logs", auditRouter);
 router.use("/error-reports", errorReportRouter);
 router.use("/analytics", analyticsRouter);
 router.use("/dashboard", dashboardRouter);
+router.use("/bulk", bulkRouter);
 
 export default router;
