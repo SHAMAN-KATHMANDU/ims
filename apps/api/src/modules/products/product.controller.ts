@@ -16,6 +16,8 @@ import {
   type ExcelProductRow,
   type ValidationError,
 } from "./bulkUpload.validation";
+import { logger } from "@/config/logger";
+import { env } from "@/config/env";
 
 class ProductController {
   // Create product (admin and superAdmin only)
@@ -354,7 +356,11 @@ class ProductController {
           },
         });
       } catch (auditErr) {
-        console.error("Audit log CREATE_PRODUCT failed:", auditErr);
+        logger.error(
+          "Audit log CREATE_PRODUCT failed",
+          req.requestId,
+          auditErr,
+        );
       }
 
       res.status(201).json({
@@ -362,7 +368,7 @@ class ProductController {
         product,
       });
     } catch (error: any) {
-      console.error("Create product error:", error);
+      logger.error("Create product error", req.requestId, error);
       // Handle unique constraint violation
       if (error.code === "P2002") {
         return res.status(400).json({
@@ -563,7 +569,7 @@ class ProductController {
         ...result,
       });
     } catch (error: any) {
-      console.error("Get all products error:", error);
+      logger.error("Get all products error", req.requestId, error);
       res
         .status(500)
         .json({ message: "Error fetching products", error: error.message });
@@ -641,9 +647,7 @@ class ProductController {
         discounts,
       } = req.body;
 
-      console.log(
-        `[UpdateProduct] Attempting to update product with ID: ${id}`,
-      );
+      logger.log(`[UpdateProduct] Attempting to update product with ID: ${id}`);
 
       // Check if product exists
       const existingProduct = await prisma.product.findUnique({
@@ -651,7 +655,7 @@ class ProductController {
       });
 
       if (!existingProduct) {
-        console.log(
+        logger.log(
           `[UpdateProduct] Product with ID ${id} not found in database`,
         );
         return res.status(404).json({
@@ -660,7 +664,7 @@ class ProductController {
         });
       }
 
-      console.log(
+      logger.log(
         `[UpdateProduct] Product found: ${existingProduct.name} (${existingProduct.imsCode})`,
       );
 
@@ -976,7 +980,11 @@ class ProductController {
           },
         });
       } catch (auditErr) {
-        console.error("Audit log UPDATE_PRODUCT failed:", auditErr);
+        logger.error(
+          "Audit log UPDATE_PRODUCT failed",
+          req.requestId,
+          auditErr,
+        );
       }
 
       res.status(200).json({
@@ -984,7 +992,7 @@ class ProductController {
         product: updatedProduct,
       });
     } catch (error: any) {
-      console.error("Update product error:", error);
+      logger.error("Update product error", req.requestId, error);
       // Handle unique constraint violation
       if (error.code === "P2002") {
         return res.status(400).json({
@@ -1022,7 +1030,7 @@ class ProductController {
         message: "Product deleted successfully",
       });
     } catch (error: any) {
-      console.error("Delete product error:", error);
+      logger.error("Delete product error", req.requestId, error);
       res
         .status(500)
         .json({ message: "Error deleting product", error: error.message });
@@ -1076,7 +1084,7 @@ class ProductController {
         ...result,
       });
     } catch (error: any) {
-      console.error("Get categories error:", error);
+      logger.error("Get categories error", req.requestId, error);
       res
         .status(500)
         .json({ message: "Error fetching categories", error: error.message });
@@ -1130,7 +1138,7 @@ class ProductController {
         ...result,
       });
     } catch (error: any) {
-      console.error("Get discount types error:", error);
+      logger.error("Get discount types error", req.requestId, error);
       res.status(500).json({
         message: "Error fetching discount types",
         error: error.message,
@@ -1221,7 +1229,7 @@ class ProductController {
         ...result,
       });
     } catch (error: any) {
-      console.error("Get all product discounts error:", error);
+      logger.error("Get all product discounts error", req.requestId, error);
       res.status(500).json({
         message: "Error fetching product discounts",
         error: error.message,
@@ -1314,7 +1322,7 @@ class ProductController {
         discounts: formattedDiscounts,
       });
     } catch (error: any) {
-      console.error("Get product discounts error:", error);
+      logger.error("Get product discounts error", req.requestId, error);
       res.status(500).json({
         message: "Error fetching product discounts",
         error: error.message,
@@ -1949,7 +1957,7 @@ class ProductController {
       try {
         fs.unlinkSync(filePath);
       } catch (cleanupError) {
-        console.error("Error cleaning up file:", cleanupError);
+        logger.error("Error cleaning up file", req.requestId, cleanupError);
       }
 
       // Return response
@@ -1971,11 +1979,11 @@ class ProductController {
         try {
           fs.unlinkSync(req.file.path);
         } catch (cleanupError) {
-          console.error("Error cleaning up file:", cleanupError);
+          logger.error("Error cleaning up file", req.requestId, cleanupError);
         }
       }
 
-      console.error("Bulk upload error:", error);
+      logger.error("Bulk upload error", req.requestId, error);
       res.status(500).json({
         message: "Error processing bulk upload",
         error: error.message,
@@ -2057,7 +2065,7 @@ class ProductController {
       const buffer = await workbook.xlsx.writeBuffer();
       res.send(buffer);
     } catch (error: any) {
-      console.error("Download template error:", error);
+      logger.error("Download template error", req.requestId, error);
       res.status(500).json({
         message: "Error generating template",
         error: error.message,
@@ -2287,7 +2295,7 @@ class ProductController {
         res.send(csvRows.join("\n"));
       }
     } catch (error: any) {
-      console.error("Download products error:", error);
+      logger.error("Download products error", req.requestId, error);
       res.status(500).json({
         message: "Error downloading products",
         error: error.message,
