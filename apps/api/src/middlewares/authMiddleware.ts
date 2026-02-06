@@ -1,5 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import { env } from "@/config/env";
+import { logger } from "@/config/logger";
 
 const verifyToken = (req: Request, res: Response, next: NextFunction) => {
   let token: string | undefined;
@@ -15,13 +17,12 @@ const verifyToken = (req: Request, res: Response, next: NextFunction) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+    const decoded = jwt.verify(token, env.jwtSecret) as any;
 
     // Ensure the decoded token has required fields
     if (!decoded.id || !decoded.role) {
       return res.status(401).json({
         message: "Token is missing required fields (id or role)",
-        decoded: decoded,
       });
     }
 
@@ -33,10 +34,9 @@ const verifyToken = (req: Request, res: Response, next: NextFunction) => {
 
     next();
   } catch (err: any) {
-    console.error("Token verification error:", err);
+    logger.error("Token verification error:", err);
     return res.status(401).json({
       message: "Token is not valid",
-      error: err.message,
     });
   }
 };

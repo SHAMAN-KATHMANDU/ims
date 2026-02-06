@@ -5,6 +5,8 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { logger } from "@/config/logger";
+import { env } from "@/config/env";
 
 class VendorController {
   // Create vendor (admin and superAdmin only)
@@ -44,16 +46,17 @@ class VendorController {
         vendor,
       });
     } catch (error: any) {
-      console.error("Create vendor error:", error);
+      logger.error("Create vendor error", req.requestId, error);
       if (error.code === "P2002") {
         return res.status(400).json({
           message: "Vendor with this name already exists",
           error: error.message,
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error creating vendor", error: error.message });
+      res.status(500).json({
+        message: "Error creating vendor",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 
@@ -122,10 +125,11 @@ class VendorController {
         ...result,
       });
     } catch (error: any) {
-      console.error("Get all vendors error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching vendors", error: error.message });
+      logger.error("Get all vendors error", req.requestId, error);
+      res.status(500).json({
+        message: "Error fetching vendors",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 
@@ -170,10 +174,11 @@ class VendorController {
         vendor,
       });
     } catch (error: any) {
-      console.error("Get vendor by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching vendor", error: error.message });
+      logger.error("Get vendor by ID error", req.requestId, error);
+      res.status(500).json({
+        message: "Error fetching vendor",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 
@@ -229,16 +234,17 @@ class VendorController {
         vendor: updatedVendor,
       });
     } catch (error: any) {
-      console.error("Update vendor error:", error);
+      logger.error("Update vendor error", req.requestId, error);
       if (error.code === "P2002") {
         return res.status(400).json({
           message: "Vendor with this name already exists",
           error: error.message,
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error updating vendor", error: error.message });
+      res.status(500).json({
+        message: "Error updating vendor",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 
@@ -282,10 +288,11 @@ class VendorController {
         message: "Vendor deleted successfully",
       });
     } catch (error: any) {
-      console.error("Delete vendor error:", error);
-      res
-        .status(500)
-        .json({ message: "Error deleting vendor", error: error.message });
+      logger.error("Delete vendor error", req.requestId, error);
+      res.status(500).json({
+        message: "Error deleting vendor",
+        ...(env.isDev && { error: error.message }),
+      });
     }
   }
 }
