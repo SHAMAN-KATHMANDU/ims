@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { z } from "zod";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckMember } from "@/hooks/useMember";
@@ -22,7 +22,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -34,23 +33,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { FormSection } from "@/components/ui/form-section";
 import {
   Plus,
   Minus,
@@ -59,9 +48,6 @@ import {
   User,
   ShoppingCart,
   Loader2,
-  CreditCard,
-  FileText,
-  Tag,
 } from "lucide-react";
 
 // Zod schema for phone validation
@@ -156,6 +142,8 @@ interface NewSaleFormProps {
   locations: Location[];
   onSubmit: (data: CreateSaleData) => Promise<void>;
   isLoading?: boolean;
+  /** When true, render form only (no Dialog/trigger). For use on dedicated pages (e.g. mobile). */
+  inline?: boolean;
 }
 
 export function NewSaleForm({
@@ -164,6 +152,7 @@ export function NewSaleForm({
   locations,
   onSubmit,
   isLoading,
+  inline = false,
 }: NewSaleFormProps) {
   // Form state
   const [locationId, setLocationId] = useState("");
@@ -296,12 +285,10 @@ export function NewSaleForm({
   // Get showrooms only
   const showrooms = locations.filter((l) => l.type === "SHOWROOM");
 
-  const [activeTab, setActiveTab] = useState<
-    "products" | "payment" | "details"
-  >("products");
   const completeSaleClickedRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
-  const [previewResult, setPreviewResult] = useState<SalePreviewResponse | null>(null);
+  const [previewResult, setPreviewResult] =
+    useState<SalePreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
   // Load inventory when location changes
@@ -373,16 +360,42 @@ export function NewSaleForm({
     };
   }, [locationId, memberPhone, memberName, items, items.length]);
 
-  // Filter inventory by search
-  const filteredInventory = inventory.filter((item) => {
-    if (!productSearch) return true;
-    const search = productSearch.toLowerCase();
-    return (
-      item.variation.product.name.toLowerCase().includes(search) ||
-      item.variation.product.imsCode.toLowerCase().includes(search) ||
-      item.variation.color.toLowerCase().includes(search)
-    );
-  });
+  // Filter inventory by search - handles multi-word searches where words can match product OR variation
+  // Example: "buddha red" matches products with "buddha" in name AND "red" in variation (order independent)
+  const filteredInventory = useMemo(() => {
+    if (!productSearch.trim()) return [];
+
+    const searchTerms = productSearch
+      .toLowerCase()
+      .trim()
+      .split(/\s+/)
+      .filter((term) => term.length > 0);
+
+    if (searchTerms.length === 0) return [];
+
+    return inventory.filter((item) => {
+      const productName = item.variation.product.name.toLowerCase();
+      const imsCode = item.variation.product.imsCode.toLowerCase();
+      const color = item.variation.color.toLowerCase();
+      const subVariationName = item.subVariation?.name?.toLowerCase() || "";
+      const categoryName =
+        item.variation.product.category?.name?.toLowerCase() || "";
+
+      // Collect all searchable text fields
+      const productFields = [productName, imsCode, categoryName].filter(
+        Boolean,
+      );
+      const variationFields = [color, subVariationName].filter(Boolean);
+      const allFields = [...productFields, ...variationFields];
+
+      // For multi-word search: each word must match at least one field
+      // Words can match product fields OR variation fields independently
+      return searchTerms.every((term) => {
+        // Check if this term matches any field
+        return allFields.some((field) => field.includes(term));
+      });
+    });
+  }, [inventory, productSearch]);
 
   // Add item to sale
   const handleAddItem = async (inventoryItem: LocationInventoryItem) => {
@@ -518,6 +531,7 @@ export function NewSaleForm({
   let totalDiscount = 0;
   if (discountMode === "aggregate") {
     if (aggregateDiscountAmount > 0) {
+      // Ensure discount doesn't exceed subtotal
       totalDiscount =
         Math.round(Math.min(aggregateDiscountAmount, subtotal) * 100) / 100;
     } else if (aggregateDiscountId && aggregateDiscountId !== "none") {
@@ -675,6 +689,681 @@ export function NewSaleForm({
     onOpenChange(newOpen);
   };
 
+  const formContent = (
+    <form
+      ref={formRef}
+      onSubmit={handleSubmit}
+      className="flex flex-col h-full overflow-hidden"
+      onKeyDown={(e) => {
+        if (e.key !== "Enter") return;
+        const target = e.target as HTMLElement;
+        if (target.tagName === "TEXTAREA") return;
+        if (
+          target.tagName === "BUTTON" &&
+          (target as HTMLButtonElement).type === "submit"
+        )
+          return;
+        e.preventDefault();
+      }}
+    >
+      {inline ? (
+        <div className="px-6 pt-6 pb-4 shrink-0 border-b border-border/50 flex flex-col gap-2">
+          <h1 className="text-2xl font-bold font-mono tracking-tight">
+            NEW SALE
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Record a sale from a showroom. Inventory will be deducted
+            automatically.
+          </p>
+        </div>
+      ) : (
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b border-border/50">
+          <DialogTitle className="text-2xl font-bold font-mono tracking-tight">
+            NEW SALE
+          </DialogTitle>
+          <DialogDescription>
+            Record a sale from a showroom. Inventory will be deducted
+            automatically.
+          </DialogDescription>
+        </DialogHeader>
+      )}
+
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <div className="p-6">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] gap-6">
+            {/* Left Panel: Location, Customer, Products */}
+            <div className="space-y-6">
+              {/* Location & Customer Panel */}
+              <div className="form-panel">
+                <FormSection title="Location & Customer">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Showroom *
+                      </Label>
+                      <Select value={locationId} onValueChange={setLocationId}>
+                        <SelectTrigger className="bg-surface border-border/50">
+                          <SelectValue placeholder="Select showroom" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {showrooms.map((loc) => (
+                            <SelectItem key={loc.id} value={loc.id}>
+                              {loc.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-medium text-muted-foreground">
+                        Customer Phone
+                      </Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          type="tel"
+                          value={memberPhone}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setMemberPhone(v);
+                            if (v.trim()) {
+                              const r = phoneSchema.safeParse(v.trim());
+                              setPhoneError(
+                                r.success
+                                  ? null
+                                  : (r.error.errors[0]?.message ?? "Invalid"),
+                              );
+                            } else setPhoneError(null);
+                          }}
+                          placeholder="9800000000"
+                          className={cn(
+                            "pl-9 bg-surface border-border/50",
+                            phoneError && "border-destructive",
+                          )}
+                        />
+                      </div>
+                      {phoneError && (
+                        <p className="text-xs text-destructive">{phoneError}</p>
+                      )}
+                      {memberPhone && !phoneError && (
+                        <div className="flex items-center gap-2 flex-wrap mt-2">
+                          {checkingMember ? (
+                            <span className="text-xs text-muted-foreground">
+                              Checking...
+                            </span>
+                          ) : memberCheck?.isMember ? (
+                            <Badge className="bg-[#00FF94] text-[#0A0E27] text-xs font-mono font-bold uppercase px-2 py-0.5">
+                              Member
+                            </Badge>
+                          ) : (
+                            <Input
+                              type="text"
+                              value={memberName}
+                              onChange={(e) => setMemberName(e.target.value)}
+                              placeholder="Customer name (optional)"
+                              className="h-8 text-sm bg-surface border-border/50"
+                            />
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 mt-4">
+                    <Checkbox
+                      id="credit-sale"
+                      checked={isCreditSale}
+                      disabled={!memberPhone.trim()}
+                      onCheckedChange={(c) => setIsCreditSale(c === true)}
+                      className="border-border/50 data-[state=checked]:bg-accent data-[state=checked]:border-accent"
+                    />
+                    <Label
+                      htmlFor="credit-sale"
+                      className="text-sm font-normal cursor-pointer"
+                    >
+                      Credit Sale (Pay Later)
+                    </Label>
+                  </div>
+                  {!memberPhone.trim() && (
+                    <p className="text-xs text-muted-foreground mt-2 ml-7">
+                      Enter customer phone (member) to enable credit sale.
+                    </p>
+                  )}
+                </FormSection>
+              </div>
+
+              {/* Products Search */}
+              {locationId && (
+                <div className="form-panel">
+                  <FormSection title="Add Product">
+                    <div className="space-y-3">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={productSearch}
+                          onChange={(e) => setProductSearch(e.target.value)}
+                          placeholder="Search by product name, variation, color... (e.g., 'buddha red' or 'red buddha')"
+                          className="pl-9"
+                        />
+                      </div>
+                      {inventoryLoading ? (
+                        <div className="flex justify-center py-4">
+                          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : productSearch.trim() ? (
+                        filteredInventory.length === 0 ? (
+                          <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
+                            No products found. Try a different search term.
+                          </div>
+                        ) : (
+                          <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
+                            {filteredInventory.map((inv) => {
+                              const variantLabel = [
+                                inv.variation.color,
+                                inv.subVariation?.name,
+                              ]
+                                .filter(Boolean)
+                                .join(" / ");
+                              return (
+                                <div
+                                  key={inv.id}
+                                  className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                                  onClick={() => {
+                                    handleAddItem(inv);
+                                    setProductSearch("");
+                                  }}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">
+                                      {inv.variation.product.name}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                                      {inv.variation.product.imsCode} •{" "}
+                                      {variantLabel || "Default"}
+                                      {inv.variation.product.category?.name && (
+                                        <span className="ml-2">
+                                          •{" "}
+                                          {inv.variation.product.category.name}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <div className="ml-4 flex items-center gap-4 shrink-0">
+                                    <div className="text-right">
+                                      <div className="font-semibold text-sm">
+                                        {formatCurrency(
+                                          Number(inv.variation.product.mrp),
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        Stock: {inv.quantity}
+                                      </div>
+                                    </div>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleAddItem(inv);
+                                        setProductSearch("");
+                                      }}
+                                    >
+                                      <Plus className="h-4 w-4 mr-1" />
+                                      Add
+                                    </Button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )
+                      ) : (
+                        <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
+                          Start typing to search products and variations...
+                        </div>
+                      )}
+                    </div>
+                  </FormSection>
+                </div>
+              )}
+
+              {/* Cart Panel */}
+              <div className="form-panel flex flex-col">
+                <FormSection title="Shopping Cart">
+                  {items.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-12">
+                      <div className="text-muted-foreground text-sm">
+                        Cart is empty
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Add products to get started
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Discount Mode */}
+                      <div className="space-y-3 mb-4">
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            variant={
+                              discountMode === "individual"
+                                ? "default"
+                                : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setDiscountMode("individual")}
+                            className="flex-1 text-xs"
+                          >
+                            Per Item
+                          </Button>
+                          <Button
+                            type="button"
+                            variant={
+                              discountMode === "aggregate"
+                                ? "default"
+                                : "outline"
+                            }
+                            size="sm"
+                            onClick={() => setDiscountMode("aggregate")}
+                            className="flex-1 text-xs"
+                          >
+                            Whole Sale
+                          </Button>
+                        </div>
+                        {discountMode === "aggregate" && (
+                          <div className="space-y-2 p-3 bg-muted/30 border rounded-lg">
+                            <Label className="text-xs font-medium">
+                              Aggregate Discount (Flat Amount)
+                            </Label>
+                            <div className="flex items-center gap-2">
+                              <Input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={aggregateDiscountAmount || ""}
+                                onChange={(e) => {
+                                  const val = Number(e.target.value);
+                                  setAggregateDiscountAmount(
+                                    val >= 0 ? val : 0,
+                                  );
+                                }}
+                                placeholder="0.00"
+                                className="h-9"
+                              />
+                              {aggregateDiscountAmount > 0 && (
+                                <div className="text-sm font-semibold text-green-600 whitespace-nowrap">
+                                  -{formatCurrency(aggregateDiscountAmount)}
+                                </div>
+                              )}
+                            </div>
+                            {aggregateDiscountAmount > subtotal && (
+                              <p className="text-xs text-destructive">
+                                Discount cannot exceed subtotal
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Cart Items */}
+                      <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                        {items.map((item, index) => (
+                          <div
+                            key={`${item.variationId}-${item.subVariationId ?? "v"}-${index}`}
+                            className="bg-muted/30 border rounded-lg p-4 space-y-3"
+                          >
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1 min-w-0">
+                                <div className="font-semibold text-sm">
+                                  {item.productName}
+                                </div>
+                                <div className="text-xs text-muted-foreground font-mono mt-1">
+                                  {item.imsCode} · {item.color}
+                                  {item.subVariationName
+                                    ? ` / ${item.subVariationName}`
+                                    : ""}
+                                </div>
+                              </div>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleRemoveItem(index)}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 border-border/50"
+                                onClick={() => handleQuantityChange(index, -1)}
+                                disabled={item.quantity <= 1}
+                              >
+                                <Minus className="h-3 w-3" />
+                              </Button>
+                              <span className="w-10 text-center font-mono font-semibold">
+                                {item.quantity}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                className="h-7 w-7 border-border/50"
+                                onClick={() => handleQuantityChange(index, 1)}
+                                disabled={item.quantity >= item.maxQuantity}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            </div>
+
+                            {discountMode === "individual" &&
+                              item.availableDiscounts &&
+                              item.availableDiscounts.length > 0 && (
+                                <Select
+                                  value={item.selectedDiscountId ?? "none"}
+                                  onValueChange={(value) => {
+                                    const next = [...items];
+                                    const row = next[index];
+                                    if (row) row.selectedDiscountId = value;
+                                    setItems(next);
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs">
+                                    <SelectValue placeholder="Select discount" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="none">
+                                      No Discount
+                                    </SelectItem>
+                                    {item.availableDiscounts.map((d) => (
+                                      <SelectItem key={d.id} value={d.id}>
+                                        {formatDiscountLabel(d)}
+                                      </SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+
+                            <div className="flex justify-between items-center pt-2 border-t">
+                              <span className="text-xs text-muted-foreground">
+                                Line Total
+                              </span>
+                              <div className="text-right">
+                                <div className="font-bold font-mono">
+                                  {formatCurrency(
+                                    item.unitPrice * item.quantity,
+                                  )}
+                                </div>
+                                {discountMode === "individual" &&
+                                  calculateItemDiscount(item) > 0 && (
+                                    <div className="text-xs text-green-600 font-mono">
+                                      -
+                                      {formatCurrency(
+                                        calculateItemDiscount(item),
+                                      )}
+                                    </div>
+                                  )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </FormSection>
+              </div>
+            </div>
+
+            {/* Right Panel: Payment, Summary */}
+            {items.length > 0 && (
+              <div className="space-y-6">
+                <div className="form-panel flex flex-col">
+                  {/* Promo Code */}
+                  <FormSection title="Promo Code">
+                    <div className="relative">
+                      <Input
+                        value={promoCode}
+                        onChange={(e) =>
+                          setPromoCode(e.target.value.toUpperCase())
+                        }
+                        placeholder="Enter promo code..."
+                        className="uppercase"
+                        disabled={promoCodeValidating}
+                      />
+                      {promoCodeValidating && (
+                        <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                      )}
+                      {promoCode && !promoCodeError && !promoCodeValidating && (
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-green-600">
+                          Applied
+                        </span>
+                      )}
+                    </div>
+                    {promoCodeError && (
+                      <p className="text-xs text-destructive mt-2">
+                        {promoCodeError}
+                      </p>
+                    )}
+                  </FormSection>
+
+                  {/* Payment */}
+                  <FormSection title="Payment">
+                    <div className="flex gap-2">
+                      <Select
+                        value={selectedPaymentMethod}
+                        onValueChange={(v) =>
+                          setSelectedPaymentMethod(v as PaymentMethod)
+                        }
+                      >
+                        <SelectTrigger className="w-[120px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="CASH">Cash</SelectItem>
+                          <SelectItem value="CARD">Card</SelectItem>
+                          <SelectItem value="CHEQUE">Cheque</SelectItem>
+                          <SelectItem value="FONEPAY">Fonepay</SelectItem>
+                          <SelectItem value="QR">QR</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder={
+                          remainingAmount > 0
+                            ? `Remaining: ${formatCurrency(remainingAmount)}`
+                            : "Amount..."
+                        }
+                        className="flex-1"
+                        onKeyDown={(e) =>
+                          e.key === "Enter" &&
+                          (e.preventDefault(), handleAddPayment())
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="secondary"
+                        size="sm"
+                        onClick={handleAddPayment}
+                        disabled={!paymentAmount || Number(paymentAmount) <= 0}
+                      >
+                        Add
+                      </Button>
+                      {remainingAmount > 0.01 && (
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={handleAddRemaining}
+                        >
+                          Pay Full
+                        </Button>
+                      )}
+                    </div>
+                    {payments.length > 0 && (
+                      <div className="mt-3 space-y-2 max-h-[150px] overflow-y-auto">
+                        {payments.map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex items-center justify-between p-2 bg-muted rounded border"
+                          >
+                            <Badge variant="outline" className="text-xs">
+                              {p.method}
+                            </Badge>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold font-mono">
+                                {formatCurrency(p.amount)}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                onClick={() => handleRemovePayment(p.id)}
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Total:{" "}
+                      <span className="font-semibold font-mono">
+                        {formatCurrency(totalPayment)}
+                      </span>
+                      {Math.abs(expectedTotal - totalPayment) > 0.01 && (
+                        <span className="text-warning ml-1">
+                          · Must match {formatCurrency(expectedTotal)}
+                        </span>
+                      )}
+                    </p>
+                  </FormSection>
+
+                  {/* Summary */}
+                  <div className="bg-muted/50 border rounded-lg p-4 mt-6 space-y-2">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Subtotal</span>
+                      <span className="font-mono font-semibold">
+                        {formatCurrency(subtotal)}
+                      </span>
+                    </div>
+                    {totalDiscount > 0 && (
+                      <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Discount</span>
+                        <span className="font-mono font-semibold text-green-600">
+                          -{formatCurrency(totalDiscount)}
+                        </span>
+                      </div>
+                    )}
+                    {previewResult?.promoDiscount != null &&
+                      previewResult.promoDiscount > 0 && (
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">Promo</span>
+                          <span className="font-mono font-semibold text-green-600">
+                            -{formatCurrency(previewResult.promoDiscount)}
+                          </span>
+                        </div>
+                      )}
+                    <div className="flex justify-between items-center pt-2 border-t">
+                      <span className="font-semibold">Amount to Pay</span>
+                      <span className="text-xl font-bold font-mono">
+                        {previewLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          formatCurrency(expectedTotal)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Notes */}
+                  <FormSection title="Notes" className="mt-6">
+                    <Textarea
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                      placeholder="Add notes for this sale..."
+                      rows={3}
+                      className="resize-none"
+                    />
+                  </FormSection>
+
+                  {/* Validation Error */}
+                  {Math.abs(expectedTotal - totalPayment) > 0.01 &&
+                    !isCreditSale && (
+                      <div className="bg-destructive/10 border border-destructive rounded-lg p-3 text-sm text-destructive mt-4">
+                        Payment mismatch: {formatCurrency(totalPayment)} paid,{" "}
+                        {formatCurrency(expectedTotal)} required
+                      </div>
+                    )}
+
+                  {/* Complete Sale Button */}
+                  <Button
+                    type="button"
+                    disabled={
+                      isLoading ||
+                      !locationId ||
+                      items.length === 0 ||
+                      (!isCreditSale &&
+                        (totalPayment <= 0 ||
+                          Math.abs(totalPayment - expectedTotal) > 0.01))
+                    }
+                    className="w-full mt-6 font-semibold h-11"
+                    onClick={() => {
+                      completeSaleClickedRef.current = true;
+                      formRef.current?.requestSubmit();
+                    }}
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart className="mr-2 h-4 w-4" />
+                        Complete Sale
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {!inline && (
+        <div className="px-6 py-4 border-t border-border/50 shrink-0 bg-background flex justify-end gap-4">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => handleOpenChange(false)}
+            disabled={isLoading}
+          >
+            Cancel
+          </Button>
+        </div>
+      )}
+    </form>
+  );
+
+  if (inline) {
+    return (
+      <div className="flex flex-col min-h-0 w-full max-w-4xl">
+        {formContent}
+      </div>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -684,911 +1373,7 @@ export function NewSaleForm({
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-        <form
-          ref={formRef}
-          onSubmit={handleSubmit}
-          className="flex flex-col h-full overflow-hidden"
-          onKeyDown={(e) => {
-            if (e.key !== "Enter") return;
-            const target = e.target as HTMLElement;
-            if (target.tagName === "TEXTAREA") return;
-            if (
-              target.tagName === "BUTTON" &&
-              (target as HTMLButtonElement).type === "submit"
-            )
-              return;
-            e.preventDefault();
-          }}
-        >
-          <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b">
-            <DialogTitle>Create New Sale</DialogTitle>
-            <DialogDescription>
-              Record a sale from a showroom. Inventory will be deducted
-              automatically.
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="flex-1 flex overflow-hidden min-h-0">
-            {/* Main Content Area */}
-            <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-              <Tabs
-                value={activeTab}
-                onValueChange={(v) =>
-                  setActiveTab(v as "products" | "payment" | "details")
-                }
-                className="flex flex-col h-full overflow-hidden"
-              >
-                <TabsList className="grid w-full grid-cols-3 mx-6 mt-4 shrink-0">
-                  <TabsTrigger value="products">
-                    <ShoppingCart className="h-4 w-4 mr-2" />
-                    Products
-                  </TabsTrigger>
-                  <TabsTrigger value="payment" disabled={items.length === 0}>
-                    <CreditCard className="h-4 w-4 mr-2" />
-                    Payment
-                  </TabsTrigger>
-                  <TabsTrigger value="details" disabled={items.length === 0}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Details
-                  </TabsTrigger>
-                </TabsList>
-
-                <div className="flex-1 overflow-hidden min-h-0 px-6 mt-4">
-                  <ScrollArea className="h-full">
-                    <TabsContent
-                      value="products"
-                      className="space-y-4 py-4 mt-0"
-                    >
-                      {/* Product Search and Add */}
-                      {locationId && (
-                        <div className="space-y-2">
-                          <Label>Add Products</Label>
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                              value={productSearch}
-                              onChange={(e) => setProductSearch(e.target.value)}
-                              placeholder="Search by product name, code, or color..."
-                              className="pl-9"
-                            />
-                          </div>
-
-                          {/* Available Products */}
-                          {inventoryLoading ? (
-                            <div className="flex items-center justify-center py-4">
-                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : productSearch ? (
-                            <div className="border rounded-md max-h-48 overflow-y-auto">
-                              {filteredInventory.length === 0 ? (
-                                <div className="p-4 text-center text-muted-foreground text-sm">
-                                  No products found
-                                </div>
-                              ) : (
-                                filteredInventory.slice(0, 10).map((item) => (
-                                  <div
-                                    key={item.id}
-                                    className="flex items-center justify-between p-3 hover:bg-muted/50 cursor-pointer border-b last:border-b-0"
-                                    onClick={() => handleAddItem(item)}
-                                  >
-                                    <div>
-                                      <div className="font-medium">
-                                        {item.variation.product.name}
-                                      </div>
-                                      <div className="text-sm text-muted-foreground">
-                                        {item.variation.product.imsCode} -{" "}
-                                        {item.variation.color}
-                                        {item.subVariation?.name
-                                          ? ` / ${item.subVariation.name}`
-                                          : ""}
-                                      </div>
-                                    </div>
-                                    <div className="text-right">
-                                      <div className="font-medium">
-                                        {formatCurrency(
-                                          Number(item.variation.product.mrp),
-                                        )}
-                                      </div>
-                                      <div className="text-sm text-muted-foreground">
-                                        Stock: {item.quantity}
-                                      </div>
-                                    </div>
-                                  </div>
-                                ))
-                              )}
-                            </div>
-                          ) : null}
-                        </div>
-                      )}
-
-                      {/* Discount Mode Selection */}
-                      {items.length > 0 && (
-                        <div className="space-y-2">
-                          <Label>Discount Type</Label>
-                          <RadioGroup
-                            value={discountMode}
-                            onValueChange={(value) =>
-                              setDiscountMode(
-                                value as "individual" | "aggregate",
-                              )
-                            }
-                            className="flex gap-6"
-                          >
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value="individual"
-                                id="individual"
-                              />
-                              <Label
-                                htmlFor="individual"
-                                className="text-sm font-normal cursor-pointer"
-                              >
-                                Individual (Per Product)
-                              </Label>
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value="aggregate"
-                                id="aggregate"
-                              />
-                              <Label
-                                htmlFor="aggregate"
-                                className="text-sm font-normal cursor-pointer"
-                              >
-                                Aggregate (Whole Sale)
-                              </Label>
-                            </div>
-                          </RadioGroup>
-                        </div>
-                      )}
-
-                      {/* Aggregate Discount */}
-                      {items.length > 0 && discountMode === "aggregate" && (
-                        <div className="space-y-2 border rounded-md p-3 bg-muted/30">
-                          <Label className="flex items-center gap-2">
-                            <Tag className="h-4 w-4" />
-                            Aggregate Discount
-                          </Label>
-                          <div className="flex gap-2">
-                            <div className="flex-1">
-                              <Label className="text-xs text-muted-foreground">
-                                Discount Amount (Flat)
-                              </Label>
-                              <Input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                value={aggregateDiscountAmount || ""}
-                                onChange={(e) => {
-                                  const val = Number(e.target.value);
-                                  setAggregateDiscountAmount(
-                                    val >= 0 ? val : 0,
-                                  );
-                                  if (val > 0) {
-                                    setAggregateDiscountId("none");
-                                  }
-                                }}
-                                placeholder="0.00"
-                                className="h-9"
-                              />
-                            </div>
-                          </div>
-                          {aggregateDiscountAmount > 0 && (
-                            <div className="text-sm text-muted-foreground">
-                              Discount:{" "}
-                              {formatCurrency(aggregateDiscountAmount)}
-                            </div>
-                          )}
-                        </div>
-                      )}
-
-                      {/* Selected Items */}
-                      {items.length > 0 && (
-                        <div className="space-y-2">
-                          <Label>
-                            <ShoppingCart className="inline-block h-4 w-4 mr-1" />
-                            Cart ({items.length} items)
-                          </Label>
-                          <div className="rounded-md border overflow-hidden">
-                            <div
-                              className={
-                                discountMode === "aggregate"
-                                  ? "max-h-[300px] overflow-y-auto"
-                                  : "max-h-[350px] overflow-y-auto"
-                              }
-                            >
-                              <div className="divide-y">
-                                {items.map((item, index) => (
-                                  <div
-                                    key={`${item.variationId}-${item.subVariationId ?? "v"}-${index}`}
-                                    className="flex items-start gap-1.5 p-2 w-full"
-                                  >
-                                    <div className="flex-1 min-w-0 overflow-hidden pr-1">
-                                      {/* Name and Price side by side */}
-                                      <div className="flex items-start justify-between gap-1.5 mb-1">
-                                        <div className="flex-1 min-w-0 overflow-hidden">
-                                          <div className="font-medium text-sm truncate">
-                                            {item.productName}
-                                          </div>
-                                        </div>
-                                        <div className="text-right shrink-0 whitespace-nowrap pl-2">
-                                          <div className="font-medium text-xs">
-                                            {formatCurrency(
-                                              item.unitPrice * item.quantity,
-                                            )}
-                                          </div>
-                                          {discountMode === "individual" &&
-                                            calculateItemDiscount(item) > 0 && (
-                                              <div className="text-[10px] text-green-600">
-                                                -{" "}
-                                                {formatCurrency(
-                                                  calculateItemDiscount(item),
-                                                )}
-                                              </div>
-                                            )}
-                                        </div>
-                                      </div>
-                                      {/* Code and Discount below */}
-                                      <div className="space-y-0.5">
-                                        <div className="text-[10px] text-muted-foreground truncate">
-                                          {item.imsCode} - {item.color}
-                                          {item.subVariationName
-                                            ? ` / ${item.subVariationName}`
-                                            : ""}
-                                        </div>
-                                        <div className="text-[10px] text-muted-foreground">
-                                          {formatCurrency(item.unitPrice)} x{" "}
-                                          {item.quantity}
-                                        </div>
-                                        {discountMode === "individual" && (
-                                          <div className="space-y-1.5 mt-1">
-                                            {/* Available Discounts Table */}
-                                            {item.availableDiscounts &&
-                                              item.availableDiscounts.length >
-                                                0 && (
-                                                <div className="space-y-0.5">
-                                                  <Label className="text-[10px] font-medium">
-                                                    Available Discounts:
-                                                  </Label>
-                                                  <div className="border rounded-md overflow-hidden">
-                                                    <Table>
-                                                      <TableHeader>
-                                                        <TableRow className="h-6">
-                                                          <TableHead className="h-6 px-1.5 text-[10px]">
-                                                            Type
-                                                          </TableHead>
-                                                          <TableHead className="h-6 px-1.5 text-[10px]">
-                                                            Value
-                                                          </TableHead>
-                                                        </TableRow>
-                                                      </TableHeader>
-                                                      <TableBody>
-                                                        {item.availableDiscounts.map(
-                                                          (discount) => (
-                                                            <TableRow
-                                                              key={discount.id}
-                                                              className="h-6"
-                                                            >
-                                                              <TableCell className="h-6 px-1.5 text-[10px]">
-                                                                {
-                                                                  discount.discountType
-                                                                }
-                                                              </TableCell>
-                                                              <TableCell className="h-6 px-1.5 text-[10px]">
-                                                                {discount.valueType ===
-                                                                "FLAT"
-                                                                  ? formatCurrency(
-                                                                      discount.value,
-                                                                    )
-                                                                  : `${discount.value}%`}
-                                                              </TableCell>
-                                                            </TableRow>
-                                                          ),
-                                                        )}
-                                                      </TableBody>
-                                                    </Table>
-                                                  </div>
-                                                </div>
-                                              )}
-                                            {/* Discount Selection Dropdown */}
-                                            <div className="flex items-center gap-1.5">
-                                              <Label className="text-[10px] whitespace-nowrap">
-                                                Select Discount:
-                                              </Label>
-                                              <Select
-                                                value={
-                                                  item.selectedDiscountId ||
-                                                  "none"
-                                                }
-                                                onValueChange={(value) => {
-                                                  const newItems = [...items];
-                                                  newItems[index] = {
-                                                    ...item,
-                                                    selectedDiscountId: value,
-                                                  };
-                                                  setItems(newItems);
-                                                }}
-                                              >
-                                                <SelectTrigger className="h-6 w-32 text-[10px]">
-                                                  <SelectValue placeholder="Select discount" />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                  <SelectItem value="none">
-                                                    No Discount
-                                                  </SelectItem>
-                                                  {item.availableDiscounts?.map(
-                                                    (discount) => (
-                                                      <SelectItem
-                                                        key={discount.id}
-                                                        value={discount.id}
-                                                      >
-                                                        {formatDiscountLabel(
-                                                          discount,
-                                                        )}
-                                                      </SelectItem>
-                                                    ),
-                                                  )}
-                                                </SelectContent>
-                                              </Select>
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="flex items-center gap-0.5 shrink-0">
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-6 w-6 shrink-0"
-                                        onClick={() =>
-                                          handleQuantityChange(index, -1)
-                                        }
-                                        disabled={item.quantity <= 1}
-                                      >
-                                        <Minus className="h-2.5 w-2.5" />
-                                      </Button>
-                                      <span className="w-4 text-center text-[10px] shrink-0">
-                                        {item.quantity}
-                                      </span>
-                                      <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="icon"
-                                        className="h-6 w-6 shrink-0"
-                                        onClick={() =>
-                                          handleQuantityChange(index, 1)
-                                        }
-                                        disabled={
-                                          item.quantity >= item.maxQuantity
-                                        }
-                                      >
-                                        <Plus className="h-2.5 w-2.5" />
-                                      </Button>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        className="h-6 w-6 text-destructive shrink-0"
-                                        onClick={() => handleRemoveItem(index)}
-                                      >
-                                        <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </TabsContent>
-
-                    <TabsContent
-                      value="payment"
-                      className="space-y-4 py-4 mt-0"
-                    >
-                      {/* Credit sale: pay later (members only) */}
-                      <div className="space-y-1">
-                        <div className="flex items-center space-x-2">
-                          <Checkbox
-                            id="credit-sale"
-                            checked={isCreditSale}
-                            disabled={!memberPhone.trim()}
-                            onCheckedChange={(checked) =>
-                              setIsCreditSale(checked === true)
-                            }
-                          />
-                          <Label
-                            htmlFor="credit-sale"
-                            className={cn(
-                              "text-sm font-normal",
-                              memberPhone.trim()
-                                ? "cursor-pointer"
-                                : "cursor-not-allowed text-muted-foreground",
-                            )}
-                          >
-                            This is a credit sale (pay later)
-                          </Label>
-                        </div>
-                        {!memberPhone.trim() && (
-                          <p className="text-xs text-muted-foreground pl-6">
-                            Enter customer phone (member) to enable credit sale.
-                          </p>
-                        )}
-                      </div>
-
-                      {/* Promo first: apply then see amount to pay */}
-                      {items.length > 0 && (
-                        <div className="space-y-2">
-                          <Label>Promo code (optional)</Label>
-                          <div className="flex gap-2">
-                            <div className="relative flex-1">
-                              <Input
-                                type="text"
-                                autoComplete="off"
-                                value={promoCode}
-                                onChange={(e) => {
-                                  setPromoCode(e.target.value.toUpperCase());
-                                }}
-                                placeholder="Enter promo code"
-                                className="flex-1 uppercase"
-                                disabled={promoCodeValidating}
-                              />
-                              {promoCodeValidating && (
-                                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                              )}
-                            </div>
-                          </div>
-                          {promoCodeError && (
-                            <p className="text-xs text-destructive">
-                              {promoCodeError}
-                            </p>
-                          )}
-                          {promoCode &&
-                            !promoCodeError &&
-                            !promoCodeValidating && (
-                              <p className="text-xs text-green-600">
-                                ✓ Promo applied to all items
-                              </p>
-                            )}
-                        </div>
-                      )}
-
-                      {/* Amount to pay (from server: discounts + promo) */}
-                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-muted-foreground">
-                            Subtotal
-                          </span>
-                          <span>{formatCurrency(subtotal)}</span>
-                        </div>
-                        {totalDiscount > 0 && (
-                          <div className="flex justify-between items-center text-sm">
-                            <span className="text-muted-foreground">
-                              {memberCheck?.isMember
-                                ? "Member discount"
-                                : "Discount"}
-                            </span>
-                            <span className="text-green-600">
-                              -{formatCurrency(totalDiscount)}
-                            </span>
-                          </div>
-                        )}
-                        {previewResult?.promoDiscount != null &&
-                          previewResult.promoDiscount > 0 && (
-                            <div className="flex justify-between items-center text-sm">
-                              <span className="text-muted-foreground">
-                                Promo discount
-                              </span>
-                              <span className="text-green-600">
-                                -{formatCurrency(previewResult.promoDiscount)}
-                              </span>
-                            </div>
-                          )}
-                        <div className="flex justify-between items-center pt-2 border-t">
-                          <span className="text-sm font-medium">
-                            Amount to pay
-                            {previewResult && (
-                              <span className="text-muted-foreground font-normal ml-1">
-                                (incl. promo)
-                              </span>
-                            )}
-                          </span>
-                          <span className="text-lg font-semibold">
-                            {previewLoading ? (
-                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            ) : (
-                              formatCurrency(expectedTotal)
-                            )}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Add Payment */}
-                      <div className="space-y-3">
-                        <Label>Add Payment</Label>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Select
-                            value={selectedPaymentMethod}
-                            onValueChange={(value) =>
-                              setSelectedPaymentMethod(value as PaymentMethod)
-                            }
-                          >
-                            <SelectTrigger className="w-[140px] h-9">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="CASH">Cash</SelectItem>
-                              <SelectItem value="CARD">Card</SelectItem>
-                              <SelectItem value="CHEQUE">Cheque</SelectItem>
-                              <SelectItem value="FONEPAY">Fonepay</SelectItem>
-                              <SelectItem value="QR">QR</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={paymentAmount}
-                            onChange={(e) => setPaymentAmount(e.target.value)}
-                            placeholder={
-                              remainingAmount > 0
-                                ? `Remaining: ${formatCurrency(remainingAmount)}`
-                                : "Amount"
-                            }
-                            className="flex-1 min-w-[120px] h-9"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleAddPayment();
-                              }
-                            }}
-                          />
-                          <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={handleAddPayment}
-                            disabled={
-                              !paymentAmount || Number(paymentAmount) <= 0
-                            }
-                            className="h-9"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            Add
-                          </Button>
-                          {remainingAmount > 0.01 && (
-                            <Button
-                              type="button"
-                              onClick={handleAddRemaining}
-                              className="h-9"
-                            >
-                              Pay full ({formatCurrency(remainingAmount)})
-                            </Button>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          Final total (after discounts):{" "}
-                          <span className="font-medium text-foreground">
-                            {formatCurrency(expectedTotal)}
-                          </span>
-                          {isCreditSale
-                            ? ". Credit sale: partial or no payment now; balance can be paid later."
-                            : ". Payment total must match exactly."}
-                        </p>
-                      </div>
-
-                      {/* Payment List */}
-                      {payments.length > 0 && (
-                        <div className="space-y-2">
-                          <Label>Payments ({payments.length})</Label>
-                          <div className="rounded-md border overflow-hidden">
-                            <div className="max-h-[200px] overflow-y-auto">
-                              <div className="divide-y">
-                                {payments.map((payment) => (
-                                  <div
-                                    key={payment.id}
-                                    className="flex items-center justify-between p-3"
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <Badge variant="outline">
-                                        {payment.method}
-                                      </Badge>
-                                      <span className="font-medium">
-                                        {formatCurrency(payment.amount)}
-                                      </span>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="icon"
-                                      className="h-8 w-8 text-destructive"
-                                      onClick={() =>
-                                        handleRemovePayment(payment.id)
-                                      }
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Payment Summary */}
-                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Payment Total</span>
-                          <span className="font-semibold">
-                            {formatCurrency(totalPayment)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Remaining</span>
-                          <span
-                            className={
-                              Math.abs(expectedTotal - totalPayment) < 0.01
-                                ? "font-semibold text-green-600"
-                                : "font-semibold text-orange-600"
-                            }
-                          >
-                            {formatCurrency(expectedTotal - totalPayment)}
-                          </span>
-                        </div>
-                        {Math.abs(expectedTotal - totalPayment) > 0.01 && (
-                          <p className="text-xs text-muted-foreground">
-                            Payment total must match Final Total (after
-                            discounts)
-                          </p>
-                        )}
-                      </div>
-                    </TabsContent>
-
-                    <TabsContent
-                      value="details"
-                      className="space-y-4 py-4 mt-0"
-                    >
-                      {/* Notes */}
-                      <div className="space-y-2">
-                        <Label htmlFor="notes">Notes (Optional)</Label>
-                        <Textarea
-                          id="notes"
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Add any notes about this sale..."
-                          rows={6}
-                        />
-                      </div>
-
-                      {/* Summary */}
-                      <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-                        <div className="text-sm font-medium mb-3">
-                          Sale Summary
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Items</span>
-                          <span>{items.length}</span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span>Total MRP</span>
-                          <span>{formatCurrency(subtotal)}</span>
-                        </div>
-                        {totalDiscount > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span>
-                              {memberCheck?.isMember
-                                ? "Member discount"
-                                : "Total Discount"}
-                            </span>
-                            <span className="text-green-600">
-                              -{formatCurrency(totalDiscount)}
-                            </span>
-                          </div>
-                        )}
-                        <div className="flex justify-between text-sm">
-                          <span>Payment Methods</span>
-                          <span>{payments.length}</span>
-                        </div>
-                        <div className="flex justify-between text-sm font-semibold pt-2 border-t">
-                          <span>Total Payment</span>
-                          <span>{formatCurrency(totalPayment)}</span>
-                        </div>
-                      </div>
-                    </TabsContent>
-                  </ScrollArea>
-                </div>
-              </Tabs>
-            </div>
-
-            {/* Sidebar */}
-            <div className="w-72 border-l bg-muted/30 flex flex-col shrink-0 overflow-hidden">
-              <div className="p-4 border-b shrink-0">
-                <h3 className="text-sm font-semibold">Sale Information</h3>
-              </div>
-              <ScrollArea className="flex-1 min-h-0">
-                <div className="p-4 space-y-4">
-                  {/* Location Selection */}
-                  <div className="space-y-2">
-                    <Label htmlFor="location">Showroom *</Label>
-                    <Select value={locationId} onValueChange={setLocationId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a showroom" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {showrooms.map((location) => (
-                          <SelectItem key={location.id} value={location.id}>
-                            {location.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* Member Phone */}
-                  <div className="space-y-2">
-                    <Label htmlFor="memberPhone">Customer Phone</Label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        id="memberPhone"
-                        type="tel"
-                        value={memberPhone}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          setMemberPhone(value);
-                          // Validate phone number
-                          if (value.trim()) {
-                            const result = phoneSchema.safeParse(value.trim());
-                            if (!result.success) {
-                              setPhoneError(
-                                result.error.errors[0]?.message ||
-                                  "Invalid phone number",
-                              );
-                            } else {
-                              setPhoneError(null);
-                            }
-                          } else {
-                            setPhoneError(null);
-                          }
-                        }}
-                        placeholder="Enter phone"
-                        className={
-                          phoneError ? "pl-9 border-destructive" : "pl-9"
-                        }
-                      />
-                    </div>
-                    {phoneError && (
-                      <p className="text-xs text-destructive">{phoneError}</p>
-                    )}
-                    {memberPhone && !phoneError && (
-                      <div className="space-y-1">
-                        {checkingMember ? (
-                          <span className="text-xs text-muted-foreground">
-                            Checking...
-                          </span>
-                        ) : memberCheck?.isMember ? (
-                          <>
-                            <Badge
-                              variant="secondary"
-                              className="bg-green-100 text-green-800 text-xs"
-                            >
-                              Member
-                            </Badge>
-                            <div className="text-xs text-muted-foreground">
-                              {memberCheck.member?.name ||
-                                memberCheck.member?.phone}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {totalDiscount > 0
-                                ? `Member discount: ${formatCurrency(totalDiscount)}`
-                                : "Member discount will apply"}
-                            </div>
-                          </>
-                        ) : (
-                          <div className="space-y-2">
-                            <span className="text-xs text-muted-foreground">
-                              Will be auto-registered
-                            </span>
-                            <div className="space-y-1">
-                              <Label className="text-xs">
-                                Customer Name (Optional)
-                              </Label>
-                              <Input
-                                type="text"
-                                value={memberName}
-                                onChange={(e) => setMemberName(e.target.value)}
-                                placeholder="Enter customer name"
-                                className="h-8 text-xs"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </ScrollArea>
-            </div>
-          </div>
-
-          <DialogFooter className="px-6 py-4 border-t shrink-0 bg-background flex-row justify-between gap-4">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => handleOpenChange(false)}
-              disabled={isLoading}
-              className="mr-0"
-            >
-              Cancel
-            </Button>
-            <div className="flex items-center gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  if (activeTab === "details") setActiveTab("payment");
-                  else if (activeTab === "payment") setActiveTab("products");
-                }}
-                disabled={activeTab === "products"}
-                className="min-w-[90px]"
-              >
-                Previous
-              </Button>
-              {activeTab === "details" ? (
-                <Button
-                  type="button"
-                  disabled={
-                    isLoading ||
-                    !locationId ||
-                    items.length === 0 ||
-                    (!isCreditSale &&
-                      (totalPayment <= 0 ||
-                        Math.abs(totalPayment - expectedTotal) > 0.01))
-                  }
-                  className="min-w-[140px]"
-                  onClick={() => {
-                    completeSaleClickedRef.current = true;
-                    formRef.current?.requestSubmit();
-                  }}
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <ShoppingCart className="mr-2 h-4 w-4" />
-                      Complete Sale
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  onClick={() => {
-                    if (activeTab === "products") setActiveTab("payment");
-                    else if (activeTab === "payment") setActiveTab("details");
-                  }}
-                  disabled={
-                    (activeTab === "products" &&
-                      (!locationId || items.length === 0)) ||
-                    (activeTab === "payment" &&
-                      !isCreditSale &&
-                      (payments.length === 0 ||
-                        totalPayment <= 0 ||
-                        Math.abs(totalPayment - expectedTotal) > 0.01))
-                  }
-                  className="min-w-[90px]"
-                >
-                  Next
-                </Button>
-              )}
-            </div>
-          </DialogFooter>
-        </form>
+        {formContent}
       </DialogContent>
     </Dialog>
   );

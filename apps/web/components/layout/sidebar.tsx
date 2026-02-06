@@ -465,7 +465,11 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={onToggle}>
-        <SheetContent side="left" className="w-64 p-0">
+        <SheetContent
+          side="left"
+          className="w-64 p-0"
+          aria-describedby={undefined}
+        >
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation Menu</SheetTitle>
           </SheetHeader>
