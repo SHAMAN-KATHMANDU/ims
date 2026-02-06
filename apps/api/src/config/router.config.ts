@@ -18,13 +18,14 @@ import auditRouter from "@/modules/audit/audit.router";
 import errorReportRouter from "@/modules/error-reports/error-report.router";
 import analyticsRouter from "@/modules/analytics/analytics.router";
 import dashboardRouter from "@/modules/dashboard/dashboard.router";
+import { getVersion } from "@/config/version";
 
 const router = Router();
 
 router.get("/", (req: Request, res: Response) => {
   res.status(200).json({
     message: "API is running",
-    version: "1.0.0",
+    version: getVersion(),
   });
 });
 
