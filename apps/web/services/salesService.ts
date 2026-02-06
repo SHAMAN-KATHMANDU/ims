@@ -320,10 +320,12 @@ export async function addPaymentToSale(
 /**
  * Get current user's sales since last login (User Sales Report)
  */
-export async function getSalesSinceLastLogin(params: {
-  page?: number;
-  limit?: number;
-} = {}): Promise<PaginatedSalesResponse> {
+export async function getSalesSinceLastLogin(
+  params: {
+    page?: number;
+    limit?: number;
+  } = {},
+): Promise<PaginatedSalesResponse> {
   const { page = DEFAULT_PAGE, limit = DEFAULT_LIMIT } = params;
   const queryParams = new URLSearchParams();
   queryParams.set("page", String(page));
@@ -566,7 +568,7 @@ export async function bulkUploadSales(
     formData.append("file", file);
 
     const response = await api.post<SaleBulkUploadResponse>(
-      "/sales/bulk-upload",
+      "/bulk/upload/sales",
       formData,
       {
         onUploadProgress: (progressEvent) => {
@@ -626,9 +628,10 @@ export async function downloadSales(
     if (saleIds && saleIds.length > 0) {
       queryParams.set("ids", saleIds.join(","));
     }
+    queryParams.set("type", "sales");
 
     const response = await api.get<Blob>(
-      `/sales/download?${queryParams.toString()}`,
+      `/bulk/download?${queryParams.toString()}`,
       { responseType: "blob" },
     );
 
@@ -647,7 +650,7 @@ export async function downloadSales(
  */
 export async function downloadBulkUploadTemplate(): Promise<void> {
   try {
-    const response = await api.get<Blob>("/sales/bulk-upload/template", {
+    const response = await api.get<Blob>("/bulk/template?type=sales", {
       responseType: "blob",
     });
     downloadBlobFromResponse(response, "sales_bulk_upload_template.xlsx");
