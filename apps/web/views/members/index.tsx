@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import {
@@ -20,6 +22,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/useMember";
+import { useIsMobile } from "@/hooks/useMobile";
 import { MemberTable } from "./components/MemberTable";
 import { MemberForm } from "./components/MemberForm";
 import { MemberDetail } from "./components/MemberDetail";
@@ -32,6 +35,7 @@ import {
   Upload,
   FileSpreadsheet,
   FileText,
+  Plus,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -45,9 +49,14 @@ import {
 } from "@/components/ui/data-table-pagination";
 
 export function MembersPage() {
+  const params = useParams();
+  const router = useRouter();
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
   const canManageMembers = isAdmin;
+  const isMobile = useIsMobile();
 
   // Zustand store for member selection
   const selectedMemberIds = useMemberSelectionStore(selectSelectedMemberIds);
@@ -110,6 +119,10 @@ export function MembersPage() {
   };
 
   const handleEdit = (member: Member) => {
+    if (isMobile) {
+      router.push(`${basePath}/members/${member.id}/edit`);
+      return;
+    }
     setEditingMember(member);
     setFormOpen(true);
   };
@@ -255,19 +268,40 @@ export function MembersPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {canManageMembers && (
-            <Button variant="outline" onClick={() => setBulkUploadDialog(true)}>
-              <Upload className="h-4 w-4 mr-2" />
-              Bulk Upload
-            </Button>
-          )}
-          <MemberForm
-            open={formOpen}
-            onOpenChange={handleFormClose}
-            member={editingMember}
-            onSubmit={handleSubmitMember}
-            isLoading={isFormLoading}
-          />
+          {canManageMembers &&
+            (isMobile ? (
+              <Button variant="outline" asChild>
+                <Link href={`${basePath}/members/bulk-upload`}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Upload
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                onClick={() => setBulkUploadDialog(true)}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
+            ))}
+          {canManageMembers &&
+            (isMobile ? (
+              <Button asChild>
+                <Link href={`${basePath}/members/new`} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Member
+                </Link>
+              </Button>
+            ) : (
+              <MemberForm
+                open={formOpen}
+                onOpenChange={handleFormClose}
+                member={editingMember}
+                onSubmit={handleSubmitMember}
+                isLoading={isFormLoading}
+              />
+            ))}
         </div>
       </div>
 

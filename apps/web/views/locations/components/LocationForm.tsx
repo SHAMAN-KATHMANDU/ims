@@ -37,6 +37,8 @@ interface LocationFormProps {
   }) => Promise<void>;
   onReset: () => void;
   isLoading?: boolean;
+  /** When true, render form only (no Dialog/trigger). For use on dedicated pages (e.g. mobile). */
+  inline?: boolean;
 }
 
 export function LocationForm({
@@ -46,6 +48,7 @@ export function LocationForm({
   onSubmit,
   onReset,
   isLoading,
+  inline = false,
 }: LocationFormProps) {
   const [name, setName] = useState("");
   const [type, setType] = useState<LocationType>("SHOWROOM");
@@ -85,6 +88,109 @@ export function LocationForm({
     onOpenChange(newOpen);
   };
 
+  const formContent = (
+    <form onSubmit={handleSubmit}>
+      {!inline && (
+        <DialogHeader>
+          <DialogTitle>
+            {editingLocation ? "Edit Location" : "Add New Location"}
+          </DialogTitle>
+          <DialogDescription>
+            {editingLocation
+              ? "Update the location details below."
+              : "Create a new warehouse or showroom location."}
+          </DialogDescription>
+        </DialogHeader>
+      )}
+      {inline && (
+        <div className="space-y-1 mb-4">
+          <h2 className="text-2xl font-semibold">
+            {editingLocation ? "Edit Location" : "Add New Location"}
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            {editingLocation
+              ? "Update the location details below."
+              : "Create a new warehouse or showroom location."}
+          </p>
+        </div>
+      )}
+      <div className="grid gap-4 py-4">
+        <div className="grid gap-2">
+          <Label htmlFor="name">Name *</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g., Main Warehouse"
+            required
+          />
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="type">Type *</Label>
+          <Select
+            value={type}
+            onValueChange={(value) => setType(value as LocationType)}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
+              <SelectItem value="SHOWROOM">Showroom</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="grid gap-2">
+          <Label htmlFor="address">Address</Label>
+          <Textarea
+            id="address"
+            value={address}
+            onChange={(e) => setAddress(e.target.value)}
+            placeholder="Enter the location address..."
+            rows={3}
+          />
+        </div>
+        {type === "WAREHOUSE" && (
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="isDefaultWarehouse"
+              checked={isDefaultWarehouse}
+              onCheckedChange={(checked) =>
+                setIsDefaultWarehouse(checked === true)
+              }
+            />
+            <Label
+              htmlFor="isDefaultWarehouse"
+              className="text-sm font-normal cursor-pointer"
+            >
+              Use as default warehouse for new products
+            </Label>
+          </div>
+        )}
+      </div>
+      <DialogFooter>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => handleOpenChange(false)}
+        >
+          Cancel
+        </Button>
+        <Button type="submit" disabled={isLoading || !name.trim()}>
+          {isLoading
+            ? "Saving..."
+            : editingLocation
+              ? "Update Location"
+              : "Create Location"}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+
+  if (inline) {
+    return <div className="max-w-lg">{formContent}</div>;
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -93,90 +199,7 @@ export function LocationForm({
           Add Location
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={handleSubmit}>
-          <DialogHeader>
-            <DialogTitle>
-              {editingLocation ? "Edit Location" : "Add New Location"}
-            </DialogTitle>
-            <DialogDescription>
-              {editingLocation
-                ? "Update the location details below."
-                : "Create a new warehouse or showroom location."}
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name *</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="e.g., Main Warehouse"
-                required
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="type">Type *</Label>
-              <Select
-                value={type}
-                onValueChange={(value) => setType(value as LocationType)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
-                  <SelectItem value="SHOWROOM">Showroom</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="address">Address</Label>
-              <Textarea
-                id="address"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                placeholder="Enter the location address..."
-                rows={3}
-              />
-            </div>
-            {type === "WAREHOUSE" && (
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isDefaultWarehouse"
-                  checked={isDefaultWarehouse}
-                  onCheckedChange={(checked) =>
-                    setIsDefaultWarehouse(checked === true)
-                  }
-                />
-                <Label
-                  htmlFor="isDefaultWarehouse"
-                  className="text-sm font-normal cursor-pointer"
-                >
-                  Use as default warehouse for new products
-                </Label>
-              </div>
-            )}
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => handleOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isLoading || !name.trim()}>
-              {isLoading
-                ? "Saving..."
-                : editingLocation
-                  ? "Update Location"
-                  : "Create Location"}
-            </Button>
-          </DialogFooter>
-        </form>
-      </DialogContent>
+      <DialogContent className="sm:max-w-[425px]">{formContent}</DialogContent>
     </Dialog>
   );
 }

@@ -1,14 +1,15 @@
 import type React from "react";
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { DM_Sans, Space_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryClientProvider } from "@/components/providers/query-client-provider";
 import "./globals.css";
 
-const geistSans = Geist({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-geist-sans",
+  variable: "--font-dm-sans",
+  weight: ["400", "500", "700"],
   display: "swap",
   fallback: [
     "system-ui",
@@ -22,9 +23,10 @@ const geistSans = Geist({
   ],
 });
 
-const geistMono = Geist_Mono({
+const spaceMono = Space_Mono({
   subsets: ["latin"],
-  variable: "--font-geist-mono",
+  variable: "--font-space-mono",
+  weight: ["400", "700"],
   display: "swap",
   fallback: ["monospace"],
 });
@@ -60,7 +62,7 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased`}
+        className={`${dmSans.variable} ${spaceMono.variable} font-sans antialiased`}
       >
         <ThemeProvider
           attribute="class"

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useCallback, useMemo } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import {
   useVendorsPaginated,
@@ -28,7 +30,6 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Table,
@@ -44,9 +45,16 @@ import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
+import { useIsMobile } from "@/hooks/useMobile";
+import { VendorForm } from "./components/VendorForm";
 
 export function VendorPage() {
+  const params = useParams();
+  const router = useRouter();
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -83,21 +91,8 @@ export function VendorPage() {
   const updateMutation = useUpdateVendor();
   const deleteMutation = useDeleteVendor();
 
-  const [formData, setFormData] = useState<CreateOrUpdateVendorData>({
-    name: "",
-    contact: "",
-    phone: "",
-    address: "",
-  });
-
   const resetForm = () => {
     setEditingVendor(null);
-    setFormData({
-      name: "",
-      contact: "",
-      phone: "",
-      address: "",
-    });
   };
 
   const handleSearchChange = useCallback(
@@ -114,33 +109,30 @@ export function VendorPage() {
   };
 
   const handleOpenEdit = (vendor: Vendor) => {
+    if (isMobile) {
+      router.push(`${basePath}/vendors/${vendor.id}/edit`);
+      return;
+    }
     setEditingVendor(vendor);
-    setFormData({
-      name: vendor.name,
-      contact: vendor.contact || "",
-      phone: vendor.phone || "",
-      address: vendor.address || "",
-    });
     setDialogOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (data: CreateOrUpdateVendorData) => {
     try {
       if (editingVendor) {
         await updateMutation.mutateAsync({
           id: editingVendor.id,
-          data: formData,
+          data,
         });
         toast({
           title: "Vendor updated",
-          description: `Vendor "${formData.name}" has been updated.`,
+          description: `Vendor "${data.name}" has been updated.`,
         });
       } else {
-        await createMutation.mutateAsync(formData);
+        await createMutation.mutateAsync(data);
         toast({
           title: "Vendor created",
-          description: `Vendor "${formData.name}" has been created.`,
+          description: `Vendor "${data.name}" has been created.`,
         });
       }
       setDialogOpen(false);
@@ -203,94 +195,33 @@ export function VendorPage() {
           </p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
+        {isMobile ? (
+          <Button asChild>
+            <Link href={`${basePath}/vendors/new`} className="gap-2">
+              <Plus className="h-4 w-4" />
+              New Vendor
+            </Link>
+          </Button>
+        ) : (
+          <>
             <Button onClick={handleOpenCreate}>
               <Plus className="mr-2 h-4 w-4" />
               New Vendor
             </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>
-                {editingVendor ? "Edit Vendor" : "New Vendor"}
-              </DialogTitle>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Name *</label>
-                <Input
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      name: e.target.value,
-                    }))
-                  }
-                  placeholder="Vendor name"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Contact Person</label>
-                <Input
-                  value={formData.contact ?? ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      contact: e.target.value,
-                    }))
-                  }
-                  placeholder="Contact person name or email"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Phone</label>
-                <Input
-                  value={formData.phone ?? ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      phone: e.target.value,
-                    }))
-                  }
-                  placeholder="Contact number"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Address</label>
-                <Input
-                  value={formData.address ?? ""}
-                  onChange={(e) =>
-                    setFormData((prev) => ({
-                      ...prev,
-                      address: e.target.value,
-                    }))
-                  }
-                  placeholder="Vendor address"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2 pt-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={
-                    createMutation.isPending || updateMutation.isPending
-                  }
-                >
-                  {editingVendor ? "Save changes" : "Create vendor"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+            <VendorForm
+              open={dialogOpen}
+              onOpenChange={(o) => {
+                setDialogOpen(o);
+                if (!o) resetForm();
+              }}
+              editingVendor={editingVendor}
+              onSubmit={handleSubmit}
+              onReset={resetForm}
+              isLoading={createMutation.isPending || updateMutation.isPending}
+              renderTrigger={false}
+            />
+          </>
+        )}
       </div>
 
       {/* Vendor Products Dialog */}
