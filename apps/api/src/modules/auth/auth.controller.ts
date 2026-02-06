@@ -3,25 +3,30 @@ import User from "@/models/userModel";
 import prisma from "@/config/prisma";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { env } from "@/config/env";
+import { logger } from "@/config/logger";
 
 class AuthController {
   async logIn(req: Request, res: Response) {
     try {
       const { username, password } = req.body;
 
-      console.log("🔐 Login attempt:", { username, hasPassword: !!password });
+      // Debug logs only in development
+      if (env.isDev) {
+        logger.log("Login attempt", req.requestId, {
+          username,
+          hasPassword: !!password,
+        });
+      }
 
       // Normalize username - trim and handle case
       const normalizedUsername = username?.toString().toLowerCase().trim();
 
       if (!normalizedUsername || !password) {
-        console.log("❌ Missing credentials");
         return res
           .status(400)
           .json({ message: "Username and password are required" });
       }
-
-      console.log("🔐 Login attempt for:", normalizedUsername);
 
       // Try exact match first, then case-insensitive
       let user = await User.findUnique({
@@ -36,32 +41,20 @@ class AuthController {
       }
 
       if (!user) {
-        console.log("❌ User not found:", normalizedUsername);
         return res
           .status(401)
           .json({ message: "Invalid username or password" });
       }
-
-      console.log("✅ User found:", {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-      });
 
       // Verify the password from frontend with the stored hashed password
       // bcrypt.compare handles the comparison securely
       const isMatch = await bcrypt.compare(password.toString(), user.password);
 
-      console.log("🔑 Password match:", isMatch);
-
       if (!isMatch) {
-        console.log("❌ Password mismatch for user:", user.username);
         return res
           .status(401)
           .json({ message: "Invalid username or password" });
       }
-
-      console.log("✅ Login successful for:", user.username);
 
       // Update lastLoginAt and record audit log (LOGIN)
       const now = new Date();
@@ -84,7 +77,7 @@ class AuthController {
       // Generate JWT token
       const token = jwt.sign(
         { id: user.id, username: user.username, role: user.role },
-        process.env.JWT_SECRET!,
+        env.jwtSecret,
         { expiresIn: "24h" },
       );
 
@@ -96,7 +89,7 @@ class AuthController {
         user: userWithoutPassword,
       });
     } catch (error) {
-      console.error("Login error:", error);
+      logger.error("Login error", req.requestId, error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -124,7 +117,7 @@ class AuthController {
 
       res.status(200).json({ user });
     } catch (error) {
-      console.error("Get current user error:", error);
+      logger.error("Get current user error", req.requestId, error);
       res.status(500).json({ message: "Internal server error" });
     }
   }
@@ -135,7 +128,7 @@ class AuthController {
       // This endpoint just confirms the token was valid
       res.status(200).json({ message: "Logout successful" });
     } catch (error) {
-      console.error("Logout error:", error);
+      logger.error("Logout error", req.requestId, error);
       res.status(500).json({ message: "Internal server error" });
     }
   }

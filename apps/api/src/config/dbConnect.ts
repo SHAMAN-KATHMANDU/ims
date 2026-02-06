@@ -1,14 +1,14 @@
-import dotenv from "dotenv";
 import prisma from "@/config/prisma";
+import { logger } from "@/config/logger";
 
-dotenv.config();
+// Note: dotenv.config() is called in env.ts - do not call it here
 
 const dbConnect = async () => {
   try {
     await prisma.$connect();
-    console.log("Connected to PostgreSQL");
+    logger.log("Connected to PostgreSQL");
   } catch (error) {
-    console.log("Error connecting to PostgreSQL", error);
+    logger.error("Error connecting to PostgreSQL", undefined, error);
     process.exit(1);
   }
 };

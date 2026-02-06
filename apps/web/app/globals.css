@@ -7,9 +7,9 @@
    EARTHY LIGHT MODE
    ========================= */
 :root {
-  /* Fonts - These will be populated by Next.js font loader */
-  --font-geist-sans: var(--font-geist-sans);
-  --font-geist-mono: var(--font-geist-mono);
+  /* Fonts - DM Sans and Space Mono */
+  --font-dm-sans: var(--font-dm-sans);
+  --font-space-mono: var(--font-space-mono);
 
   /* Backgrounds */
   --background: oklch(0.985 0.005 95); /* warm paper */
@@ -119,11 +119,11 @@
    ========================= */
 @theme inline {
   --font-sans:
-    var(--font-geist-sans), "Geist", "Geist Fallback", system-ui, -apple-system,
+    var(--font-dm-sans), "DM Sans", system-ui, -apple-system,
     BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-mono:
-    var(--font-geist-mono), "Geist Mono", "Geist Mono Fallback", "SF Mono",
-    Monaco, "Cascadia Code", "Roboto Mono", Consolas, "Courier New", monospace;
+    var(--font-space-mono), "Space Mono", "SF Mono", Monaco, "Cascadia Code",
+    "Roboto Mono", Consolas, "Courier New", monospace;
 
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -173,7 +173,8 @@
   body {
     @apply bg-background text-foreground antialiased;
     font-family:
-      var(--font-geist-sans),
+      var(--font-dm-sans),
+      "DM Sans",
       system-ui,
       -apple-system,
       BlinkMacSystemFont,
@@ -182,6 +183,55 @@
       "Helvetica Neue",
       Arial,
       sans-serif;
+  }
+
+  /* Form section titles */
+  .form-section-title {
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
+    color: var(--accent);
+    margin-bottom: 16px;
+    font-family: var(--font-space-mono), monospace;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .form-section-title::before {
+    content: "";
+    width: 3px;
+    height: 12px;
+    background: var(--accent);
+    border-radius: 2px;
+  }
+
+  /* Glassmorphism panels */
+  .form-panel {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 16px;
+    padding: 24px;
+    backdrop-filter: blur(10px);
+    transition: border-color 0.3s ease;
+  }
+
+  .form-panel:hover {
+    border-color: rgba(255, 255, 255, 0.12);
+  }
+
+  /* Surface color utility */
+  .bg-surface {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .bg-surface\/50 {
+    background: rgba(255, 255, 255, 0.015);
+  }
+
+  .bg-surface\/80 {
+    background: rgba(255, 255, 255, 0.024);
   }
 
   /* Hide spinner controls for number inputs */

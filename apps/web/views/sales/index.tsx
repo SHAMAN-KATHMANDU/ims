@@ -6,8 +6,10 @@
  */
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import Link from "next/link";
+import { useParams, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useIsMobile } from "@/hooks/useMobile";
 import { useActiveLocations } from "@/hooks/useLocation";
 import {
   useAuthStore,
@@ -35,7 +37,13 @@ import { SaleDetail } from "./components/SaleDetail";
 import { SaleBulkUploadDialog } from "./components/SaleBulkUploadDialog";
 import { SalesFilterBar } from "./components/SalesFilterBar";
 import { Button } from "@/components/ui/button";
-import { Download, Upload, FileSpreadsheet, FileText } from "lucide-react";
+import {
+  Download,
+  Upload,
+  FileSpreadsheet,
+  FileText,
+  Plus,
+} from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +66,9 @@ import {
 } from "@/components/ui/data-table-pagination";
 
 export function SalesPage() {
+  const params = useParams();
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
   const { toast } = useToast();
   const searchParams = useSearchParams();
   const hasAppliedUrlParams = useRef(false);
@@ -65,6 +76,7 @@ export function SalesPage() {
   const isAdmin = useAuthStore(selectIsAdmin);
   const isUserRole = userRole === "user";
   const canManageSales = isAdmin;
+  const isMobile = useIsMobile();
 
   // Zustand store for sale selection
   const selectedSaleIds = useSaleSelectionStore(selectSelectedSaleIds);
@@ -376,22 +388,41 @@ export function SalesPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button
-                variant="outline"
-                onClick={() => setBulkUploadDialog(true)}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Bulk Upload
-              </Button>
+              {isMobile ? (
+                <Button variant="outline" asChild>
+                  <Link href={`${basePath}/sales/bulk-upload`}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Bulk Upload
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setBulkUploadDialog(true)}
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Upload
+                </Button>
+              )}
             </>
           )}
-          <NewSaleForm
-            open={formOpen}
-            onOpenChange={setFormOpen}
-            locations={locations}
-            onSubmit={handleCreateSale}
-            isLoading={createSaleMutation.isPending}
-          />
+          {canManageSales &&
+            (isMobile ? (
+              <Button asChild>
+                <Link href={`${basePath}/sales/new`} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  New Sale
+                </Link>
+              </Button>
+            ) : (
+              <NewSaleForm
+                open={formOpen}
+                onOpenChange={setFormOpen}
+                locations={locations}
+                onSubmit={handleCreateSale}
+                isLoading={createSaleMutation.isPending}
+              />
+            ))}
         </div>
       </div>
 

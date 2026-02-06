@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { useState } from "react";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -12,8 +11,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -22,13 +19,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,13 +29,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Trash2, Edit2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -59,75 +42,26 @@ import {
 } from "@/hooks/useUser";
 import { useAuthStore, selectUser } from "@/stores/auth-store";
 import { RoleGuard } from "@/components/auth/role-guard";
-import { UserRole, type UserRoleType } from "@repo/shared";
-
-// Zod schema for user form - dynamic based on edit mode
-const createUserSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["user", "admin", "superAdmin"], {
-    required_error: "Role is required",
-  }),
-});
-
-const updateUserSchema = z.object({
-  username: z.string().min(1, "Username is required"),
-  password: z
-    .string()
-    .optional()
-    .refine((val) => !val || val.length >= 6, {
-      message: "Password must be at least 6 characters",
-    }),
-  role: z.enum(["user", "admin", "superAdmin"], {
-    required_error: "Role is required",
-  }),
-});
-
-type UserFormValues = z.infer<typeof createUserSchema>;
+import { useIsMobile } from "@/hooks/useMobile";
+import { UserForm, type UserFormValues } from "./components/UserForm";
+import { type UserRoleType } from "@repo/shared";
 
 export function UsersPage() {
+  const params = useParams();
+  const router = useRouter();
+  const workspace = (params?.workspace as string) ?? "superadmin";
+  const basePath = `/${workspace}`;
   const { data: users = [], isLoading } = useUsers();
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
   const { toast } = useToast();
   const currentUser = useAuthStore(selectUser);
+  const isMobile = useIsMobile();
 
   const [userDialog, setUserDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
-
-  const {
-    register,
-    handleSubmit,
-    reset,
-    control,
-    formState: { errors, isSubmitting },
-  } = useForm<UserFormValues>({
-    resolver: zodResolver(editingUser ? updateUserSchema : createUserSchema),
-    defaultValues: {
-      username: "",
-      password: "",
-      role: UserRole.USER,
-    },
-  });
-
-  // Reset form when dialog closes or editingUser changes
-  useEffect(() => {
-    if (editingUser) {
-      reset({
-        username: editingUser.username,
-        password: "",
-        role: editingUser.role,
-      });
-    } else {
-      reset({
-        username: "",
-        password: "",
-        role: UserRole.USER,
-      });
-    }
-  }, [editingUser, reset]);
 
   const onSubmit = async (data: UserFormValues) => {
     try {
@@ -155,7 +89,6 @@ export function UsersPage() {
       }
       setUserDialog(false);
       setEditingUser(null);
-      reset();
     } catch (error: unknown) {
       toast({
         title: "Error",
@@ -167,6 +100,10 @@ export function UsersPage() {
   };
 
   const handleEditUser = (user: User) => {
+    if (isMobile) {
+      router.push(`${basePath}/users/${user.id}/edit`);
+      return;
+    }
     setEditingUser(user);
     setUserDialog(true);
   };
@@ -188,7 +125,6 @@ export function UsersPage() {
     setUserDialog(open);
     if (!open) {
       setEditingUser(null);
-      reset();
     }
   };
 
@@ -207,99 +143,33 @@ export function UsersPage() {
 
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">All Users</h2>
-          <Dialog open={userDialog} onOpenChange={handleDialogClose}>
-            <DialogTrigger asChild>
+          {isMobile ? (
+            <Button asChild>
+              <Link href={`${basePath}/users/new`} className="gap-2">
+                <Plus className="h-4 w-4" /> Add User
+              </Link>
+            </Button>
+          ) : (
+            <>
               <Button
                 onClick={() => {
                   setEditingUser(null);
-                  reset();
+                  setUserDialog(true);
                 }}
                 className="gap-2"
               >
                 <Plus className="h-4 w-4" /> Add User
               </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingUser ? "Edit User" : "Add User"}
-                </DialogTitle>
-              </DialogHeader>
-              <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
-                  <Input id="username" {...register("username")} />
-                  {errors.username && (
-                    <p className="text-sm text-destructive">
-                      {errors.username.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">
-                    {editingUser
-                      ? "New Password (leave blank to keep current)"
-                      : "Password"}
-                  </Label>
-                  <Input
-                    id="password"
-                    type="password"
-                    {...register("password")}
-                  />
-                  {errors.password && (
-                    <p className="text-sm text-destructive">
-                      {errors.password.message}
-                    </p>
-                  )}
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="role">Role</Label>
-                  <Controller
-                    name="role"
-                    control={control}
-                    render={({ field }) => (
-                      <Select
-                        value={field.value}
-                        onValueChange={field.onChange}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select role" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="user">User</SelectItem>
-                          <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="superAdmin">
-                            Super Admin
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                  {errors.role && (
-                    <p className="text-sm text-destructive">
-                      {errors.role.message}
-                    </p>
-                  )}
-                </div>
-                <div className="flex gap-2 justify-end">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => handleDialogClose(false)}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting
-                      ? "Saving..."
-                      : editingUser
-                        ? "Update"
-                        : "Add"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+              <UserForm
+                open={userDialog}
+                onOpenChange={handleDialogClose}
+                editingUser={editingUser}
+                onSubmit={onSubmit}
+                onReset={() => setEditingUser(null)}
+                renderTrigger={false}
+              />
+            </>
+          )}
         </div>
 
         <Card>
