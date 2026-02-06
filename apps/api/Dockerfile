@@ -17,7 +17,7 @@ RUN turbo prune api --docker
 FROM base AS installer
 RUN apk update
 RUN apk add --no-cache libc6-compat openssl
-RUN npm install -g pnpm@8.14.1
+RUN npm install -g pnpm@9.0.0
 WORKDIR /app
 
 
