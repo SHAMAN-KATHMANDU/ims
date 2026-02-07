@@ -70,6 +70,18 @@ memberRouter.post(
  *         schema:
  *           type: string
  *         description: Search by phone, name, or email
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [createdAt, updatedAt, name, phone, id]
+ *         description: Sort field. createdAt = date added.
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Sort direction (ascending or descending).
  *     responses:
  *       200:
  *         description: Members retrieved successfully

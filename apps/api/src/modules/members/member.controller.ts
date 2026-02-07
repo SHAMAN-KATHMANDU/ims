@@ -70,16 +70,16 @@ class MemberController {
         req.query,
       );
 
-      // Allowed fields for sorting
+      // Allowed fields for sorting (date added = createdAt); sorting at DB level
       const allowedSortFields = [
-        "id",
-        "phone",
-        "name",
-        "createdAt",
+        "createdAt", // date added
         "updatedAt",
+        "name",
+        "phone",
+        "id",
       ];
 
-      // Get orderBy for Prisma
+      // Get orderBy for Prisma (sortOrder: asc | desc)
       const orderBy = getPrismaOrderBy(
         sortBy,
         sortOrder,

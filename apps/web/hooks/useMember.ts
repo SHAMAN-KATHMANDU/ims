@@ -56,13 +56,15 @@ export const memberKeys = {
 // ============================================
 
 /**
- * Hook for fetching paginated members with search
+ * Hook for fetching paginated members with search and sort
  */
 export function useMembersPaginated(params: MemberListParams = {}) {
   const normalizedParams: MemberListParams = {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
     search: params.search?.trim() || "",
+    sortBy: params.sortBy ?? "createdAt",
+    sortOrder: params.sortOrder ?? "desc",
   };
 
   return useQuery({
