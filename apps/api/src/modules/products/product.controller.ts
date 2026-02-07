@@ -400,19 +400,19 @@ class ProductController {
       const lowStock =
         req.query.lowStock === "1" || req.query.lowStock === "true";
 
-      // Allowed fields for sorting
+      // Allowed fields for sorting (date added = dateCreated); sorting at DB level
       const allowedSortFields = [
-        "id",
-        "imsCode",
+        "dateCreated", // date added
+        "dateModified",
         "name",
+        "imsCode",
         "costPrice",
         "mrp",
-        "dateCreated",
-        "dateModified",
         "vendorId",
+        "id",
       ];
 
-      // Get orderBy for Prisma (support relation sort for vendor name)
+      // Get orderBy for Prisma (sortOrder: asc | desc). Relation sort for vendor name.
       let orderBy: any = getPrismaOrderBy(sortBy, sortOrder, allowedSortFields);
       if (!orderBy && sortBy?.toLowerCase() === "vendorname") {
         orderBy = { vendor: { name: sortOrder } };
