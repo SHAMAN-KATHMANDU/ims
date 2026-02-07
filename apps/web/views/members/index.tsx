@@ -78,7 +78,7 @@ export function MembersPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const [sortBy, setSortBy] = useState<
-    "createdAt" | "updatedAt" | "name" | "phone"
+    "createdAt" | "updatedAt" | "name" | "id"
   >("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
@@ -184,7 +184,7 @@ export function MembersPage() {
 
   const handleSortChange = useCallback((value: string) => {
     const [field, order] = value.split("_") as [
-      "createdAt" | "updatedAt" | "name" | "phone",
+      "createdAt" | "updatedAt" | "name" | "id",
       "asc" | "desc",
     ];
     setSortBy(field);
@@ -275,8 +275,6 @@ export function MembersPage() {
               <SelectItem value="createdAt_asc">Date (oldest first)</SelectItem>
               <SelectItem value="name_asc">Name (A–Z)</SelectItem>
               <SelectItem value="name_desc">Name (Z–A)</SelectItem>
-              <SelectItem value="phone_asc">Phone (A–Z)</SelectItem>
-              <SelectItem value="phone_desc">Phone (Z–A)</SelectItem>
               <SelectItem value="updatedAt_desc">
                 Updated (newest first)
               </SelectItem>
