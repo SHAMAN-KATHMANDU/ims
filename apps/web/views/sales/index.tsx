@@ -95,6 +95,10 @@ export function SalesPage() {
   const [userFilter, setUserFilter] = useState<string | undefined>(undefined);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
+  const [sortBy, setSortBy] = useState<
+    "createdAt" | "total" | "subtotal" | "saleCode"
+  >("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Apply URL search params once on mount (e.g. from dashboard/analytics links)
   useEffect(() => {
@@ -141,7 +145,7 @@ export function SalesPage() {
   const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
 
-  // Data fetching – newest first
+  // Data fetching with backend sorting
   const { data: salesResponse, isLoading: salesLoading } = useSalesPaginated({
     page,
     limit: pageSize,
@@ -157,8 +161,8 @@ export function SalesPage() {
     createdById: userFilter,
     startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
     endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
-    sortBy: "createdAt",
-    sortOrder: "desc",
+    sortBy,
+    sortOrder,
   });
 
   const sales = salesResponse?.data ?? [];
@@ -205,6 +209,16 @@ export function SalesPage() {
 
   const handleLocationChange = useCallback((value: string) => {
     setLocationFilter(value);
+    setPage(DEFAULT_PAGE);
+  }, []);
+
+  const handleSortChange = useCallback((value: string) => {
+    const [field, order] = value.split("_") as [
+      "createdAt" | "total" | "subtotal" | "saleCode",
+      "asc" | "desc",
+    ];
+    setSortBy(field);
+    setSortOrder(order);
     setPage(DEFAULT_PAGE);
   }, []);
 
@@ -338,6 +352,9 @@ export function SalesPage() {
           onCreditChange={handleCreditFilterChange}
           locationFilter={locationFilter}
           onLocationChange={handleLocationChange}
+          sortBy={sortBy}
+          sortOrder={sortOrder}
+          onSortChange={handleSortChange}
           startDate={startDate}
           endDate={endDate}
           onStartDateChange={(date) => {

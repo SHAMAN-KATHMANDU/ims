@@ -21,11 +21,25 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Search, CalendarIcon, X, Filter } from "lucide-react";
+import { Search, CalendarIcon, X, Filter, ArrowUpDown } from "lucide-react";
 import { format, startOfDay, subDays, endOfDay } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { SaleType } from "@/hooks/useSales";
 import type { Location } from "@/services/locationService";
+
+export type SalesSortField = "createdAt" | "total" | "subtotal" | "saleCode";
+export type SalesSortOrder = "asc" | "desc";
+
+const SORT_OPTIONS: { value: string; label: string }[] = [
+  { value: "createdAt_desc", label: "Date (newest first)" },
+  { value: "createdAt_asc", label: "Date (oldest first)" },
+  { value: "total_desc", label: "Total (high to low)" },
+  { value: "total_asc", label: "Total (low to high)" },
+  { value: "subtotal_desc", label: "Subtotal (high to low)" },
+  { value: "subtotal_asc", label: "Subtotal (low to high)" },
+  { value: "saleCode_asc", label: "Sale code (A–Z)" },
+  { value: "saleCode_desc", label: "Sale code (Z–A)" },
+];
 
 const TYPE_OPTIONS: { value: SaleType | "ALL"; label: string }[] = [
   { value: "ALL", label: "All Types" },
@@ -48,6 +62,9 @@ export interface SalesFilterBarProps {
   onCreditChange: (value: string) => void;
   locationFilter: string;
   onLocationChange: (value: string) => void;
+  sortBy: SalesSortField;
+  sortOrder: SalesSortOrder;
+  onSortChange: (value: string) => void;
   startDate: Date | undefined;
   endDate: Date | undefined;
   onStartDateChange: (date: Date | undefined) => void;
@@ -69,6 +86,9 @@ export function SalesFilterBar({
   onCreditChange,
   locationFilter,
   onLocationChange,
+  sortBy,
+  sortOrder,
+  onSortChange,
   startDate,
   endDate,
   onStartDateChange,
@@ -80,6 +100,7 @@ export function SalesFilterBar({
   isUserRole,
   today,
 }: SalesFilterBarProps) {
+  const sortValue = `${sortBy}_${sortOrder}`;
   const calendarDisabled = isUserRole
     ? (date: Date) => {
         const d = new Date(date);
@@ -90,7 +111,7 @@ export function SalesFilterBar({
     : undefined;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       <div className="relative">
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
@@ -100,6 +121,19 @@ export function SalesFilterBar({
           className="pl-8 h-9 text-sm w-full min-w-[180px] max-w-[240px]"
         />
       </div>
+      <Select value={sortValue} onValueChange={onSortChange}>
+        <SelectTrigger className="h-9 w-[200px] shrink-0 gap-2 text-sm">
+          <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+          <SelectValue placeholder="Sort by" />
+        </SelectTrigger>
+        <SelectContent>
+          {SORT_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
       <Popover>
         <PopoverTrigger asChild>
           <Button
