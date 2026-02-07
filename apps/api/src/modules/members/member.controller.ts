@@ -75,7 +75,6 @@ class MemberController {
         "createdAt", // date added
         "updatedAt",
         "name",
-        "phone",
         "id",
       ];
 
