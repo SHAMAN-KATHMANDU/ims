@@ -918,16 +918,18 @@ class SaleController {
         }
       }
 
-      // Allowed fields for sorting
+      // Allowed fields for sorting (date added = createdAt, total cost = total)
       const allowedSortFields = [
-        "id",
+        "createdAt", // date added
+        "total", // total cost
+        "subtotal",
+        "discount",
         "saleCode",
         "type",
-        "total",
-        "createdAt",
+        "id",
       ];
 
-      // Get orderBy for Prisma
+      // Get orderBy for Prisma (sortOrder: asc | desc)
       const orderBy = getPrismaOrderBy(
         sortBy,
         sortOrder,

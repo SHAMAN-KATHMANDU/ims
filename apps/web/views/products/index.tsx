@@ -51,6 +51,7 @@ import {
   FileText,
   Filter,
   Plus,
+  ArrowUpDown,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -1029,6 +1030,39 @@ export function ProductPage() {
                 allLabel="All"
                 className="h-9 w-[130px] text-sm"
               />
+              <Select
+                value={`${paginationParams.sortBy ?? "dateCreated"}-${paginationParams.sortOrder ?? "desc"}`}
+                onValueChange={(v) => {
+                  const [sortBy, sortOrder] = v.split("-") as [
+                    string,
+                    "asc" | "desc",
+                  ];
+                  handleSortChange(sortBy, sortOrder);
+                }}
+              >
+                <SelectTrigger className="h-9 w-[200px] shrink-0 gap-2 text-sm">
+                  <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="dateCreated-desc">
+                    Date (newest first)
+                  </SelectItem>
+                  <SelectItem value="dateCreated-asc">
+                    Date (oldest first)
+                  </SelectItem>
+                  <SelectItem value="name-asc">Name (A–Z)</SelectItem>
+                  <SelectItem value="name-desc">Name (Z–A)</SelectItem>
+                  <SelectItem value="mrp-desc">MRP (high–low)</SelectItem>
+                  <SelectItem value="mrp-asc">MRP (low–high)</SelectItem>
+                  <SelectItem value="costPrice-desc">
+                    Cost (high–low)
+                  </SelectItem>
+                  <SelectItem value="costPrice-asc">Cost (low–high)</SelectItem>
+                  <SelectItem value="vendorname-asc">Vendor (A–Z)</SelectItem>
+                  <SelectItem value="vendorname-desc">Vendor (Z–A)</SelectItem>
+                </SelectContent>
+              </Select>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -1121,7 +1155,7 @@ export function ProductPage() {
                       </div>
                     </div>
                     <p className="text-xs font-medium text-muted-foreground pt-1">
-                      Date & sort
+                      Date range
                     </p>
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
@@ -1142,41 +1176,6 @@ export function ProductPage() {
                           className="h-8 text-sm"
                         />
                       </div>
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Sort</Label>
-                      <Select
-                        value={`${paginationParams.sortBy ?? "dateCreated"}-${paginationParams.sortOrder ?? "desc"}`}
-                        onValueChange={(v) => {
-                          const [sortBy, sortOrder] = v.split("-") as [
-                            string,
-                            "asc" | "desc",
-                          ];
-                          handleSortChange(sortBy, sortOrder);
-                        }}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="dateCreated-desc">
-                            Newest first
-                          </SelectItem>
-                          <SelectItem value="dateCreated-asc">
-                            Oldest first
-                          </SelectItem>
-                          <SelectItem value="name-asc">Name A–Z</SelectItem>
-                          <SelectItem value="name-desc">Name Z–A</SelectItem>
-                          <SelectItem value="mrp-desc">MRP high–low</SelectItem>
-                          <SelectItem value="mrp-asc">MRP low–high</SelectItem>
-                          <SelectItem value="vendorname-asc">
-                            Vendor A–Z
-                          </SelectItem>
-                          <SelectItem value="vendorname-desc">
-                            Vendor Z–A
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
                     </div>
                   </div>
                 </PopoverContent>

@@ -107,6 +107,31 @@ productRouter.post(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [dateCreated, dateModified, name, imsCode, costPrice, mrp, vendorId, id]
+ *         description: Sort field. dateCreated = date added. Use vendorName for vendor name (relation sort).
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Sort direction (ascending or descending).
  *     responses:
  *       200:
  *         description: Products retrieved successfully
