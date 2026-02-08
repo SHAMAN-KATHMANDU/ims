@@ -30,12 +30,20 @@ import { MemberBulkUploadDialog } from "./components/MemberBulkUploadDialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Search,
   Download,
   Upload,
   FileSpreadsheet,
   FileText,
   Plus,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -69,6 +77,10 @@ export function MembersPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<
+    "createdAt" | "updatedAt" | "name" | "id"
+  >("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Dialog state
   const [formOpen, setFormOpen] = useState(false);
@@ -76,12 +88,14 @@ export function MembersPage() {
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
 
-  // Data fetching
+  // Data fetching with backend sorting
   const { data: membersResponse, isLoading: membersLoading } =
     useMembersPaginated({
       page,
       limit: pageSize,
       search,
+      sortBy,
+      sortOrder,
     });
 
   const members = membersResponse?.data ?? [];
@@ -168,6 +182,16 @@ export function MembersPage() {
   const isFormLoading =
     createMemberMutation.isPending || updateMemberMutation.isPending;
 
+  const handleSortChange = useCallback((value: string) => {
+    const [field, order] = value.split("_") as [
+      "createdAt" | "updatedAt" | "name" | "id",
+      "asc" | "desc",
+    ];
+    setSortBy(field);
+    setSortOrder(order);
+    setPage(DEFAULT_PAGE);
+  }, []);
+
   const handlePageSizeChange = useCallback((newSize: number) => {
     setPageSize(newSize);
     setPage(DEFAULT_PAGE);
@@ -226,14 +250,39 @@ export function MembersPage() {
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search by phone, name, or email..."
-            value={search}
-            onChange={handleSearchChange}
-            className="pl-9 w-full sm:w-[300px]"
-          />
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search by phone, name, or email..."
+              value={search}
+              onChange={handleSearchChange}
+              className="pl-9 w-full sm:w-[300px]"
+            />
+          </div>
+          <Select
+            value={`${sortBy}_${sortOrder}`}
+            onValueChange={handleSortChange}
+          >
+            <SelectTrigger className="h-9 w-[200px] shrink-0 gap-2 text-sm">
+              <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="createdAt_desc">
+                Date (newest first)
+              </SelectItem>
+              <SelectItem value="createdAt_asc">Date (oldest first)</SelectItem>
+              <SelectItem value="name_asc">Name (A–Z)</SelectItem>
+              <SelectItem value="name_desc">Name (Z–A)</SelectItem>
+              <SelectItem value="updatedAt_desc">
+                Updated (newest first)
+              </SelectItem>
+              <SelectItem value="updatedAt_asc">
+                Updated (oldest first)
+              </SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         <div className="flex items-center gap-2">

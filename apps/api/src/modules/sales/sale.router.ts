@@ -132,6 +132,18 @@ saleRouter.post(
  *         name: search
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [createdAt, total, subtotal, discount, saleCode, type, id]
+ *         description: Sort field. createdAt = date added, total = total cost.
+ *       - in: query
+ *         name: sortOrder
+ *         schema:
+ *           type: string
+ *           enum: [asc, desc]
+ *         description: Sort direction (ascending or descending).
  *     responses:
  *       200:
  *         description: Sales retrieved successfully
