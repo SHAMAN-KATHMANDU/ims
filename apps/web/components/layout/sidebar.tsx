@@ -20,10 +20,16 @@ import {
   Percent,
   Tags,
   Bug,
+  Building2,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useAuthStore, selectUserRole } from "@/stores/auth-store";
+import {
+  useAuthStore,
+  selectUserRole,
+  selectTenant,
+} from "@/stores/auth-store";
 import type { UserRole } from "@/utils/auth";
+import { Badge } from "../ui/badge";
 import { useMemo, useState } from "react";
 import {
   Collapsible,
@@ -228,6 +234,7 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const pathname = usePathname();
   const userRole = useAuthStore(selectUserRole);
+  const tenant = useAuthStore(selectTenant);
   const isMobile = useIsMobile();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     MAIN: true,
@@ -294,15 +301,34 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
 
   const sidebarContent = (
     <>
-      {/* Header */}
+      {/* Header with tenant info */}
       <div className="flex h-16 items-center justify-between px-4 border-b border-border">
-        {isOpen && (
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded bg-primary flex items-center justify-center">
-              <span className="text-primary-foreground font-bold text-lg">
-                S
-              </span>
+        {isOpen ? (
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="h-8 w-8 rounded bg-primary flex items-center justify-center shrink-0">
+              <Building2 className="h-4 w-4 text-primary-foreground" />
             </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold truncate">
+                {tenant?.name ?? "IMS"}
+              </p>
+              {tenant && (
+                <Badge
+                  variant={
+                    tenant.subscriptionStatus === "ACTIVE"
+                      ? "default"
+                      : "secondary"
+                  }
+                  className="text-[10px] h-4 px-1"
+                >
+                  {tenant.plan}
+                </Badge>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center mx-auto">
+            <Building2 className="h-4 w-4 text-primary-foreground" />
           </div>
         )}
         {!isMobile && (

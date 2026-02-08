@@ -25,10 +25,13 @@ import { Plus } from "lucide-react";
 import type { User } from "@/hooks/useUser";
 import { UserRole } from "@repo/shared";
 
+/** Tenant-level roles (excludes platformAdmin which is system-level) */
+const TENANT_ROLES = ["user", "admin", "superAdmin"] as const;
+
 const createUserSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["user", "admin", "superAdmin"], {
+  role: z.enum(TENANT_ROLES, {
     required_error: "Role is required",
   }),
 });
@@ -41,7 +44,7 @@ const updateUserSchema = z.object({
     .refine((val) => !val || val.length >= 6, {
       message: "Password must be at least 6 characters",
     }),
-  role: z.enum(["user", "admin", "superAdmin"], {
+  role: z.enum(TENANT_ROLES, {
     required_error: "Role is required",
   }),
 });
@@ -89,7 +92,7 @@ export function UserForm({
       reset({
         username: editingUser.username,
         password: "",
-        role: editingUser.role,
+        role: editingUser.role as (typeof TENANT_ROLES)[number],
       });
     } else {
       reset({

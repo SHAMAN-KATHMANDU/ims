@@ -14,7 +14,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Moon, Sun, LogOut, Menu, Settings, Bug } from "lucide-react";
+import {
+  Moon,
+  Sun,
+  LogOut,
+  Menu,
+  Settings,
+  Bug,
+  Building2,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { ReportErrorDialog } from "./ReportErrorDialog";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -26,7 +34,7 @@ interface TopBarProps {
 export function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const { user, logout, isLoggingOut } = useAuth();
+  const { user, tenant, logout, isLoggingOut } = useAuth();
   const isMobile = useIsMobile();
   const [reportErrorOpen, setReportErrorOpen] = useState(false);
 
@@ -87,8 +95,14 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>
-              {username ? `@${username}` : "My Account"}
+            <DropdownMenuLabel className="space-y-1">
+              <p>{username ? `@${username}` : "My Account"}</p>
+              {tenant && (
+                <p className="text-xs font-normal text-muted-foreground flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  {tenant.name}
+                </p>
+              )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>

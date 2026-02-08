@@ -96,7 +96,7 @@ class SaleController {
         const normalizedPhone = memberPhone.replace(/[\s-]/g, "").trim();
 
         // Find or create member
-        member = await prisma.member.findUnique({
+        member = await prisma.member.findFirst({
           where: { phone: normalizedPhone },
         });
 
@@ -104,6 +104,7 @@ class SaleController {
           // Auto-create member with phone and optional name
           member = await prisma.member.create({
             data: {
+              tenantId: req.user!.tenantId,
               phone: normalizedPhone,
               name: memberName?.trim() || null,
             },
@@ -126,7 +127,7 @@ class SaleController {
       // Get "Member" discount type for member sales
       let memberDiscountType = null;
       if (saleType === "MEMBER") {
-        memberDiscountType = await prisma.discountType.findUnique({
+        memberDiscountType = await prisma.discountType.findFirst({
           where: { name: "Member" },
         });
       }
@@ -318,7 +319,7 @@ class SaleController {
 
         // Apply promo code logic (per product, processed after base discounts)
         if (item.promoCode) {
-          const promo = await prisma.promoCode.findUnique({
+          const promo = await prisma.promoCode.findFirst({
             where: { code: item.promoCode },
             include: {
               products: {
@@ -443,6 +444,7 @@ class SaleController {
         // Create the sale
         const newSale = await tx.sale.create({
           data: {
+            tenantId: req.user!.tenantId,
             saleCode: generateSaleCode(),
             type: saleType,
             isCreditSale: creditSale,
@@ -562,6 +564,7 @@ class SaleController {
       try {
         await prisma.auditLog.create({
           data: {
+            tenantId: req.user?.tenantId || null,
             userId: req.user!.id,
             action: "CREATE_SALE",
             resource: "sale",
@@ -648,7 +651,7 @@ class SaleController {
         const normalizedPhone = String(memberPhone)
           .replace(/[\s-]/g, "")
           .trim();
-        member = await prisma.member.findUnique({
+        member = await prisma.member.findFirst({
           where: { phone: normalizedPhone },
           select: { id: true, isActive: true },
         });
@@ -792,7 +795,7 @@ class SaleController {
         }
 
         if (item.promoCode) {
-          const promo = await prisma.promoCode.findUnique({
+          const promo = await prisma.promoCode.findFirst({
             where: { code: item.promoCode },
             include: {
               products: { include: { product: true } },
@@ -1951,12 +1954,15 @@ class SaleController {
 
           const phoneVal = firstRow.phone;
           if (phoneVal && phoneVal.length > 0) {
-            let member = await prisma.member.findUnique({
+            let member = await prisma.member.findFirst({
               where: { phone: phoneVal },
             });
             if (!member) {
               member = await prisma.member.create({
-                data: { phone: phoneVal },
+                data: {
+                  tenantId: req.user!.tenantId,
+                  phone: phoneVal,
+                },
               });
             }
             memberId = member.id;
@@ -2067,6 +2073,7 @@ class SaleController {
           // Create sale
           const sale = await prisma.sale.create({
             data: {
+              tenantId: req.user!.tenantId,
               ...(group.saleId && { id: group.saleId }),
               saleCode: generateSaleCode(),
               type: saleType,

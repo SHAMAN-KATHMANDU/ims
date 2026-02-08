@@ -31,7 +31,7 @@ class MemberController {
       const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
 
       // Check if member already exists
-      const existingMember = await prisma.member.findUnique({
+      const existingMember = await prisma.member.findFirst({
         where: { phone: normalizedPhone },
       });
 
@@ -44,6 +44,7 @@ class MemberController {
 
       const member = await prisma.member.create({
         data: {
+          tenantId: req.user!.tenantId,
           phone: normalizedPhone,
           name: name || null,
           email: email || null,
@@ -140,7 +141,7 @@ class MemberController {
       // Normalize phone number
       const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
 
-      const member = await prisma.member.findUnique({
+      const member = await prisma.member.findFirst({
         where: { phone: normalizedPhone },
         include: {
           _count: {
@@ -244,7 +245,7 @@ class MemberController {
         const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
         // Check if new phone is already taken by another member
         if (normalizedPhone !== existingMember.phone) {
-          const phoneExists = await prisma.member.findUnique({
+          const phoneExists = await prisma.member.findFirst({
             where: { phone: normalizedPhone },
           });
 
@@ -305,7 +306,7 @@ class MemberController {
       // Normalize phone number
       const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
 
-      const member = await prisma.member.findUnique({
+      const member = await prisma.member.findFirst({
         where: { phone: normalizedPhone },
         select: {
           id: true,
@@ -617,7 +618,7 @@ class MemberController {
             }
           }
 
-          const existingByPhone = await prisma.member.findUnique({
+          const existingByPhone = await prisma.member.findFirst({
             where: { phone: normalizedPhone },
           });
           if (existingByPhone) {
@@ -631,6 +632,7 @@ class MemberController {
 
           const member = await prisma.member.create({
             data: {
+              tenantId: req.user!.tenantId,
               ...(r.id && { id: r.id }),
               phone: normalizedPhone,
               name: r.name ?? null,

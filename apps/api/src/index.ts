@@ -1,6 +1,6 @@
 import http from "http";
 import app from "@/config/express.config";
-import prisma from "@/config/prisma";
+import { basePrisma as prisma } from "@/config/prisma";
 import dbConnect from "@/config/dbConnect";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";

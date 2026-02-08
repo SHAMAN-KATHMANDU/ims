@@ -4,13 +4,12 @@ import dotenv from "dotenv";
 import * as path from "path";
 
 // Load environment variables from project root
-// seed.ts is in apps/api/prisma/, so we go up 3 levels to reach project root
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Starting seed...");
+  console.log("🌱 Starting seed...\n");
 
   // Get superAdmin credentials from environment variables
   const superAdminUsername = process.env.SUPERADMIN_USERNAME;
@@ -23,10 +22,169 @@ async function main() {
   }
 
   // ============================================
-  // 1. CREATE SUPER ADMIN USER
+  // 0. CREATE PLAN LIMITS & PRICING PLANS
   // ============================================
-  let superAdmin = await prisma.user.findUnique({
-    where: { username: superAdminUsername },
+  console.log("--- Setting up plan configuration ---");
+
+  const planLimitsData = [
+    {
+      tier: "STARTER" as const,
+      maxUsers: 3,
+      maxProducts: 100,
+      maxLocations: 2,
+      maxMembers: 500,
+      bulkUpload: false,
+      analytics: false,
+      promoManagement: false,
+      auditLogs: false,
+      apiAccess: false,
+    },
+    {
+      tier: "PROFESSIONAL" as const,
+      maxUsers: 10,
+      maxProducts: 1000,
+      maxLocations: 10,
+      maxMembers: 5000,
+      bulkUpload: true,
+      analytics: true,
+      promoManagement: true,
+      auditLogs: false,
+      apiAccess: false,
+    },
+    {
+      tier: "ENTERPRISE" as const,
+      maxUsers: -1, // unlimited
+      maxProducts: -1,
+      maxLocations: -1,
+      maxMembers: -1,
+      bulkUpload: true,
+      analytics: true,
+      promoManagement: true,
+      auditLogs: true,
+      apiAccess: true,
+    },
+  ];
+
+  for (const pl of planLimitsData) {
+    await prisma.planLimit.upsert({
+      where: { tier: pl.tier },
+      update: pl,
+      create: pl,
+    });
+  }
+  console.log("✅ Plan limits configured (STARTER, PROFESSIONAL, ENTERPRISE)");
+
+  // Pricing plans (in NPR)
+  const pricingData = [
+    {
+      tier: "STARTER" as const,
+      billingCycle: "MONTHLY" as const,
+      price: 2000,
+      originalPrice: null,
+    },
+    {
+      tier: "STARTER" as const,
+      billingCycle: "ANNUAL" as const,
+      price: 20000,
+      originalPrice: 24000,
+    },
+    {
+      tier: "PROFESSIONAL" as const,
+      billingCycle: "MONTHLY" as const,
+      price: 5000,
+      originalPrice: null,
+    },
+    {
+      tier: "PROFESSIONAL" as const,
+      billingCycle: "ANNUAL" as const,
+      price: 50000,
+      originalPrice: 60000,
+    },
+    {
+      tier: "ENTERPRISE" as const,
+      billingCycle: "MONTHLY" as const,
+      price: 12000,
+      originalPrice: null,
+    },
+    {
+      tier: "ENTERPRISE" as const,
+      billingCycle: "ANNUAL" as const,
+      price: 120000,
+      originalPrice: 144000,
+    },
+  ];
+
+  for (const pp of pricingData) {
+    await prisma.pricingPlan.upsert({
+      where: {
+        tier_billingCycle: { tier: pp.tier, billingCycle: pp.billingCycle },
+      },
+      update: { price: pp.price, originalPrice: pp.originalPrice },
+      create: pp,
+    });
+  }
+  console.log("✅ Pricing plans configured\n");
+
+  // ============================================
+  // 1. CREATE DEFAULT TENANT
+  // ============================================
+  console.log("--- Setting up default tenant ---");
+
+  let defaultTenant = await prisma.tenant.findUnique({
+    where: { slug: "default" },
+  });
+
+  if (!defaultTenant) {
+    defaultTenant = await prisma.tenant.create({
+      data: {
+        name: "Default Organization",
+        slug: "default",
+        plan: "PROFESSIONAL",
+        isTrial: false,
+        subscriptionStatus: "ACTIVE",
+        planExpiresAt: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000), // 1 year
+      },
+    });
+    console.log(
+      `✅ Created default tenant: "${defaultTenant.name}" (slug: ${defaultTenant.slug})`,
+    );
+  } else {
+    console.log(
+      `⚠️  Default tenant already exists (slug: ${defaultTenant.slug})`,
+    );
+  }
+
+  const tenantId = defaultTenant.id;
+
+  // ============================================
+  // 1b. CREATE PLATFORM ADMIN USER
+  // ============================================
+  let platformAdmin = await prisma.user.findFirst({
+    where: { role: "platformAdmin" },
+  });
+
+  if (!platformAdmin) {
+    const hashedPlatformPw = await bcrypt.hash("platform123", 10);
+    platformAdmin = await prisma.user.create({
+      data: {
+        tenantId, // Platform admin is assigned to default tenant for FK
+        username: "platform",
+        password: hashedPlatformPw,
+        role: "platformAdmin",
+      },
+    });
+    console.log(
+      `✅ Created platform admin user (username: platform, password: platform123)`,
+    );
+  } else {
+    console.log(`⚠️  Platform admin already exists`);
+  }
+
+  // ============================================
+  // 1c. CREATE SUPER ADMIN USER (for default tenant)
+  // ============================================
+  let superAdmin = await prisma.user.findFirst({
+    where: { tenantId, username: superAdminUsername },
   });
 
   if (superAdmin) {
@@ -37,19 +195,22 @@ async function main() {
     const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
     superAdmin = await prisma.user.create({
       data: {
+        tenantId,
         username: superAdminUsername,
         password: hashedPassword,
         role: "superAdmin",
       },
     });
-    console.log("✅ Created superAdmin user");
-    console.log(`   Username: ${superAdmin.username}`);
-    console.log(`   Role: ${superAdmin.role}`);
+    console.log(
+      `✅ Created superAdmin user: ${superAdmin.username} (tenant: default)`,
+    );
   }
 
   // ============================================
-  // 2. CREATE DISCOUNT TYPES
+  // 2. CREATE DISCOUNT TYPES (tenant-scoped)
   // ============================================
+  console.log("\n--- Setting up tenant data ---");
+
   const discountTypeNames = ["Non-Member", "Member", "Wholesale", "Special"];
   const discountTypeDescriptions: Record<string, string> = {
     "Non-Member": "Regular discount for walk-in / non-member customers",
@@ -61,13 +222,14 @@ async function main() {
   const discountTypes: Record<string, { id: string }> = {};
 
   for (const name of discountTypeNames) {
-    let discountType = await prisma.discountType.findUnique({
-      where: { name },
+    let discountType = await prisma.discountType.findFirst({
+      where: { tenantId, name },
     });
 
     if (!discountType) {
       discountType = await prisma.discountType.create({
         data: {
+          tenantId,
           name,
           description: discountTypeDescriptions[name] || null,
         },
@@ -80,7 +242,7 @@ async function main() {
   }
 
   // ============================================
-  // 3. CREATE VENDORS
+  // 3. CREATE VENDORS (tenant-scoped)
   // ============================================
   const vendorsData = [
     {
@@ -118,13 +280,13 @@ async function main() {
   const vendors: Record<string, { id: string }> = {};
 
   for (const vendorData of vendorsData) {
-    let vendor = await prisma.vendor.findUnique({
-      where: { name: vendorData.name },
+    let vendor = await prisma.vendor.findFirst({
+      where: { tenantId, name: vendorData.name },
     });
 
     if (!vendor) {
       vendor = await prisma.vendor.create({
-        data: vendorData,
+        data: { tenantId, ...vendorData },
       });
       console.log(`✅ Created vendor: ${vendorData.name}`);
     } else {
@@ -133,7 +295,6 @@ async function main() {
     vendors[vendorData.name] = { id: vendor.id };
   }
 
-  // Map categories to vendors
   const categoryVendorMap: Record<string, string> = {
     Electronics: "Global Electronics Ltd",
     Furniture: "Comfort Furniture Co",
@@ -143,7 +304,7 @@ async function main() {
   };
 
   // ============================================
-  // 4. CREATE CATEGORIES
+  // 4. CREATE CATEGORIES (tenant-scoped)
   // ============================================
   const categoriesData = [
     { name: "Electronics", description: "Electronic devices and gadgets" },
@@ -156,13 +317,13 @@ async function main() {
   const categories: Record<string, { id: string }> = {};
 
   for (const cat of categoriesData) {
-    let category = await prisma.category.findUnique({
-      where: { name: cat.name },
+    let category = await prisma.category.findFirst({
+      where: { tenantId, name: cat.name },
     });
 
     if (!category) {
       category = await prisma.category.create({
-        data: cat,
+        data: { tenantId, ...cat },
       });
       console.log(`✅ Created category: ${cat.name}`);
     } else {
@@ -199,18 +360,12 @@ async function main() {
 
     for (const subName of subs) {
       let sub = await prisma.subCategory.findFirst({
-        where: {
-          name: subName,
-          categoryId: category.id,
-        },
+        where: { name: subName, categoryId: category.id },
       });
 
       if (!sub) {
         sub = await prisma.subCategory.create({
-          data: {
-            name: subName,
-            categoryId: category.id,
-          },
+          data: { name: subName, categoryId: category.id },
         });
         console.log(`✅ Created subcategory: ${catName} / ${subName}`);
       } else {
@@ -228,11 +383,20 @@ async function main() {
   }
 
   // ============================================
-  // 5. CREATE PRODUCTS WITH VARIATIONS
+  // 5. CREATE PRODUCTS WITH VARIATIONS (tenant-scoped)
   // ============================================
-
-  // Product templates for bulk generation
-  const productTemplates = {
+  const productTemplates: Record<
+    string,
+    Array<{
+      namePrefix: string;
+      baseCost: number;
+      baseMrp: number;
+      weight: number;
+      length?: number;
+      breadth?: number;
+      height?: number;
+    }>
+  > = {
     Electronics: [
       {
         namePrefix: "Wireless Bluetooth Headphones",
@@ -264,51 +428,6 @@ async function main() {
         baseMrp: 89.99,
         weight: 0.6,
       },
-      { namePrefix: "USB-C Hub", baseCost: 20, baseMrp: 59.99, weight: 0.15 },
-      {
-        namePrefix: "Mechanical Keyboard",
-        baseCost: 55,
-        baseMrp: 129.99,
-        weight: 0.9,
-      },
-      {
-        namePrefix: "Gaming Mouse",
-        baseCost: 25,
-        baseMrp: 69.99,
-        weight: 0.12,
-      },
-      { namePrefix: "Webcam HD", baseCost: 40, baseMrp: 99.99, weight: 0.2 },
-      {
-        namePrefix: "Monitor Stand",
-        baseCost: 30,
-        baseMrp: 79.99,
-        weight: 2.5,
-      },
-      { namePrefix: "Laptop Stand", baseCost: 25, baseMrp: 59.99, weight: 1.2 },
-      {
-        namePrefix: "Phone Charger Fast",
-        baseCost: 15,
-        baseMrp: 39.99,
-        weight: 0.1,
-      },
-      {
-        namePrefix: "Smart Plug WiFi",
-        baseCost: 12,
-        baseMrp: 29.99,
-        weight: 0.08,
-      },
-      {
-        namePrefix: "LED Desk Lamp",
-        baseCost: 22,
-        baseMrp: 54.99,
-        weight: 0.8,
-      },
-      {
-        namePrefix: "Wireless Charging Pad",
-        baseCost: 18,
-        baseMrp: 44.99,
-        weight: 0.15,
-      },
     ],
     Furniture: [
       {
@@ -338,69 +457,6 @@ async function main() {
         breadth: 30,
         height: 180,
       },
-      {
-        namePrefix: "Coffee Table",
-        baseCost: 60,
-        baseMrp: 149.99,
-        weight: 12,
-        length: 100,
-        breadth: 50,
-        height: 45,
-      },
-      {
-        namePrefix: "Storage Cabinet",
-        baseCost: 120,
-        baseMrp: 279.99,
-        weight: 25,
-        length: 80,
-        breadth: 40,
-        height: 150,
-      },
-      {
-        namePrefix: "Filing Cabinet",
-        baseCost: 90,
-        baseMrp: 199.99,
-        weight: 18,
-        length: 40,
-        breadth: 50,
-        height: 70,
-      },
-      {
-        namePrefix: "Side Table",
-        baseCost: 35,
-        baseMrp: 89.99,
-        weight: 5,
-        length: 45,
-        breadth: 45,
-        height: 55,
-      },
-      {
-        namePrefix: "TV Stand",
-        baseCost: 100,
-        baseMrp: 229.99,
-        weight: 22,
-        length: 150,
-        breadth: 40,
-        height: 50,
-      },
-      {
-        namePrefix: "Dining Chair",
-        baseCost: 45,
-        baseMrp: 109.99,
-        weight: 6,
-        length: 45,
-        breadth: 45,
-        height: 90,
-      },
-      {
-        namePrefix: "Bar Stool",
-        baseCost: 55,
-        baseMrp: 129.99,
-        weight: 7,
-        length: 40,
-        breadth: 40,
-        height: 75,
-      },
     ],
     Clothing: [
       {
@@ -422,34 +478,6 @@ async function main() {
         baseMrp: 59.99,
         weight: 0.6,
       },
-      { namePrefix: "Polo Shirt", baseCost: 15, baseMrp: 44.99, weight: 0.25 },
-      { namePrefix: "Chino Pants", baseCost: 22, baseMrp: 64.99, weight: 0.4 },
-      {
-        namePrefix: "Winter Jacket",
-        baseCost: 60,
-        baseMrp: 149.99,
-        weight: 1.2,
-      },
-      {
-        namePrefix: "Running Shorts",
-        baseCost: 12,
-        baseMrp: 34.99,
-        weight: 0.15,
-      },
-      { namePrefix: "Formal Shirt", baseCost: 25, baseMrp: 69.99, weight: 0.3 },
-      {
-        namePrefix: "Cardigan Sweater",
-        baseCost: 30,
-        baseMrp: 79.99,
-        weight: 0.5,
-      },
-      {
-        namePrefix: "Athletic Socks Pack",
-        baseCost: 8,
-        baseMrp: 24.99,
-        weight: 0.15,
-      },
-      { namePrefix: "Beanie Hat", baseCost: 10, baseMrp: 29.99, weight: 0.1 },
     ],
     Sports: [
       {
@@ -468,30 +496,6 @@ async function main() {
         weight: 0.5,
       },
       { namePrefix: "Dumbbell Set", baseCost: 45, baseMrp: 99.99, weight: 10 },
-      { namePrefix: "Jump Rope Pro", baseCost: 8, baseMrp: 24.99, weight: 0.3 },
-      { namePrefix: "Foam Roller", baseCost: 15, baseMrp: 39.99, weight: 0.8 },
-      { namePrefix: "Kettlebell", baseCost: 25, baseMrp: 59.99, weight: 8 },
-      { namePrefix: "Pull-Up Bar", baseCost: 20, baseMrp: 49.99, weight: 2 },
-      {
-        namePrefix: "Ab Roller Wheel",
-        baseCost: 10,
-        baseMrp: 29.99,
-        weight: 0.5,
-      },
-      {
-        namePrefix: "Boxing Gloves",
-        baseCost: 25,
-        baseMrp: 64.99,
-        weight: 0.6,
-      },
-      {
-        namePrefix: "Tennis Racket",
-        baseCost: 35,
-        baseMrp: 89.99,
-        weight: 0.3,
-      },
-      { namePrefix: "Basketball", baseCost: 18, baseMrp: 44.99, weight: 0.6 },
-      { namePrefix: "Soccer Ball", baseCost: 15, baseMrp: 39.99, weight: 0.45 },
     ],
     Books: [
       {
@@ -521,82 +525,17 @@ async function main() {
         breadth: 17,
         height: 4,
       },
-      {
-        namePrefix: "Web Development Mastery",
-        baseCost: 22,
-        baseMrp: 54.99,
-        weight: 0.7,
-        length: 23,
-        breadth: 15,
-        height: 2.5,
-      },
-      {
-        namePrefix: "Database Design Patterns",
-        baseCost: 28,
-        baseMrp: 64.99,
-        weight: 0.85,
-        length: 24,
-        breadth: 16,
-        height: 3,
-      },
-      {
-        namePrefix: "Cloud Computing Essentials",
-        baseCost: 26,
-        baseMrp: 59.99,
-        weight: 0.75,
-        length: 23,
-        breadth: 15,
-        height: 2.8,
-      },
-      {
-        namePrefix: "DevOps Practices",
-        baseCost: 24,
-        baseMrp: 57.99,
-        weight: 0.7,
-        length: 23,
-        breadth: 15,
-        height: 2.5,
-      },
-      {
-        namePrefix: "UI/UX Design Principles",
-        baseCost: 22,
-        baseMrp: 52.99,
-        weight: 0.65,
-        length: 22,
-        breadth: 14,
-        height: 2.2,
-      },
-      {
-        namePrefix: "Cybersecurity Fundamentals",
-        baseCost: 27,
-        baseMrp: 62.99,
-        weight: 0.8,
-        length: 24,
-        breadth: 16,
-        height: 3,
-      },
-      {
-        namePrefix: "API Design Patterns",
-        baseCost: 23,
-        baseMrp: 55.99,
-        weight: 0.7,
-        length: 23,
-        breadth: 15,
-        height: 2.5,
-      },
     ],
   };
 
-  // Color variations by category
   const colorVariations: Record<string, string[]> = {
-    Electronics: ["Black", "White", "Silver", "Space Gray", "Blue", "Red"],
-    Furniture: ["Black", "White", "Walnut", "Oak", "Gray", "Espresso"],
-    Clothing: ["Black", "White", "Navy Blue", "Gray", "Red", "Green", "Beige"],
-    Sports: ["Black", "Blue", "Red", "Green", "Purple", "Orange", "Pink"],
+    Electronics: ["Black", "White", "Silver", "Space Gray"],
+    Furniture: ["Black", "White", "Walnut", "Oak"],
+    Clothing: ["Black", "White", "Navy Blue", "Gray", "Red"],
+    Sports: ["Black", "Blue", "Red", "Green"],
     Books: ["Hardcover", "Paperback"],
   };
 
-  // Discount configurations
   const discountConfigs = [
     [{ type: "Non-Member", percentage: 10 }],
     [
@@ -612,46 +551,9 @@ async function main() {
       { type: "Member", percentage: 20 },
       { type: "Wholesale", percentage: 30 },
     ],
-    [{ type: "Special", percentage: 25 }],
-    [{ type: "Wholesale", percentage: 20 }],
-    [
-      { type: "Member", percentage: 15 },
-      { type: "Wholesale", percentage: 25 },
-    ],
   ];
 
-  // Product name modifiers for variety
-  const modifiers = [
-    "Pro",
-    "Elite",
-    "Classic",
-    "Premium",
-    "Ultra",
-    "Lite",
-    "Plus",
-    "Max",
-    "Mini",
-    "Standard",
-  ];
-
-  // Generate products
-  const productsData: Array<{
-    imsCode: string;
-    name: string;
-    category: string;
-    subCategoryName?: string;
-    description: string;
-    costPrice: number;
-    mrp: number;
-    weight?: number;
-    length?: number;
-    breadth?: number;
-    height?: number;
-    variations: Array<{ color: string; stockQuantity: number }>;
-    discounts: Array<{ type: string; percentage: number }>;
-  }> = [];
-
-  // Category codes for IMS
+  const modifiers = ["Pro", "Elite", "Classic", "Premium", "Ultra"];
   const categoryCodes: Record<string, string> = {
     Electronics: "ELEC",
     Furniture: "FURN",
@@ -659,8 +561,7 @@ async function main() {
     Sports: "SPRT",
     Books: "BOOK",
   };
-
-  let productCounter: Record<string, number> = {
+  const productCounter: Record<string, number> = {
     Electronics: 0,
     Furniture: 0,
     Clothing: 0,
@@ -668,7 +569,6 @@ async function main() {
     Books: 0,
   };
 
-  // Generate 75 products across categories
   for (const [category, templates] of Object.entries(productTemplates)) {
     const colors = colorVariations[category] || ["Default"];
 
@@ -676,135 +576,92 @@ async function main() {
       productCounter[category]++;
       const counter = productCounter[category];
       const modifier = modifiers[(counter - 1) % modifiers.length];
-
-      // Create unique product name with modifier
       const productName = `${template.namePrefix} ${modifier}`;
       const imsCode = `${categoryCodes[category]}-${String(counter).padStart(3, "0")}`;
-
-      // Random price variation (±10%)
       const priceVariation = 0.9 + Math.random() * 0.2;
       const costPrice =
         Math.round(template.baseCost * priceVariation * 100) / 100;
       const mrp = Math.round(template.baseMrp * priceVariation * 100) / 100;
-
-      // Select 2-4 random colors for variations
       const numVariations = Math.min(
         colors.length,
-        2 + Math.floor(Math.random() * 3),
+        2 + Math.floor(Math.random() * 2),
       );
       const shuffledColors = [...colors].sort(() => Math.random() - 0.5);
       const selectedColors = shuffledColors.slice(0, numVariations);
-
-      // Random stock quantities
       const variations = selectedColors.map((color) => ({
         color,
         stockQuantity: 10 + Math.floor(Math.random() * 90),
       }));
-
-      // Select random discount configuration
       const discounts =
         discountConfigs[Math.floor(Math.random() * discountConfigs.length)] ||
         [];
-
-      // Pick a subcategory for this product if available
       const subConfig = subCategoriesConfig[category] || [];
       const subCategoryName =
         subConfig.length > 0
           ? subConfig[(counter - 1) % subConfig.length]
           : undefined;
 
-      productsData.push({
-        imsCode,
-        name: productName,
-        category,
-        subCategoryName,
-        description: `High-quality ${productName.toLowerCase()} - ${category.toLowerCase()} category`,
-        costPrice,
-        mrp,
-        weight: template.weight,
-        length: "length" in template ? template.length : undefined,
-        breadth: "breadth" in template ? template.breadth : undefined,
-        height: "height" in template ? template.height : undefined,
-        variations,
-        discounts,
+      const existingProduct = await prisma.product.findFirst({
+        where: { tenantId, imsCode },
       });
-    }
-  }
-
-  for (const productData of productsData) {
-    // Check if product already exists
-    const existingProduct = await prisma.product.findUnique({
-      where: { imsCode: productData.imsCode },
-    });
-
-    if (existingProduct) {
-      console.log(
-        `⚠️  Product "${productData.name}" (${productData.imsCode}) already exists. Skipping.`,
-      );
-      continue;
-    }
-
-    // Get vendor for this category
-    const vendorName = categoryVendorMap[productData.category];
-    const vendorId = vendorName ? vendors[vendorName]?.id : null;
-
-    // Resolve subcategory if configured
-    let subCategoryId: string | null = null;
-    if (productData.subCategoryName) {
-      const key = `${productData.category}:${productData.subCategoryName}`;
-      const sub = subCategories[key];
-      if (sub) {
-        subCategoryId = sub.id;
+      if (existingProduct) {
+        continue;
       }
+
+      const vendorName = categoryVendorMap[category];
+      const vendorId = vendorName ? vendors[vendorName]?.id : null;
+      let subCategoryId: string | null = null;
+      if (subCategoryName) {
+        const key = `${category}:${subCategoryName}`;
+        const sub = subCategories[key];
+        if (sub) subCategoryId = sub.id;
+      }
+
+      const product = await prisma.product.create({
+        data: {
+          tenantId,
+          imsCode,
+          name: productName,
+          categoryId: categories[category].id,
+          subCategory: subCategoryName || null,
+          subCategoryId,
+          description: `High-quality ${productName.toLowerCase()} - ${category.toLowerCase()} category`,
+          costPrice,
+          mrp,
+          finalSp: mrp,
+          vendorId: vendorId || null,
+          length: template.length,
+          breadth: template.breadth,
+          height: template.height,
+          weight: template.weight,
+          createdById: superAdmin.id,
+          variations: {
+            create: variations.map((v) => ({
+              color: v.color,
+              stockQuantity: v.stockQuantity,
+            })),
+          },
+          discounts: {
+            create: discounts.map((d) => ({
+              discountTypeId: discountTypes[d.type].id,
+              discountPercentage: d.percentage,
+              valueType: "PERCENTAGE",
+              value: d.percentage,
+              isActive: true,
+            })),
+          },
+        },
+        include: { variations: true },
+      });
+
+      console.log(
+        `✅ Created product: ${product.name} (${product.imsCode}) with ${product.variations.length} variations`,
+      );
     }
-
-    // Create product with variations and discounts
-    const product = await prisma.product.create({
-      data: {
-        imsCode: productData.imsCode,
-        name: productData.name,
-        categoryId: categories[productData.category].id,
-        subCategory: productData.subCategoryName || null,
-        subCategoryId,
-        description: productData.description,
-        costPrice: productData.costPrice,
-        mrp: productData.mrp,
-        finalSp: productData.mrp, // Default final SP to MRP
-        vendorId: vendorId || null,
-        length: productData.length,
-        breadth: productData.breadth,
-        height: productData.height,
-        weight: productData.weight,
-        createdById: superAdmin.id,
-        variations: {
-          create: productData.variations.map((v) => ({
-            color: v.color,
-            stockQuantity: v.stockQuantity,
-          })),
-        },
-        discounts: {
-          create: productData.discounts.map((d) => ({
-            discountTypeId: discountTypes[d.type].id,
-            discountPercentage: d.percentage,
-            valueType: "PERCENTAGE",
-            value: d.percentage,
-            isActive: true,
-          })),
-        },
-      },
-      include: {
-        variations: true,
-        discounts: true,
-      },
-    });
-
-    console.log(
-      `✅ Created product: ${product.name} (${product.imsCode}) with ${product.variations.length} variations`,
-    );
   }
 
   // ============================================
-  // 6. CREATE DEFAULT LOCATIONS (WAREHOUSE & SHOWROOMS)
+  // 6. CREATE LOCATIONS (tenant-scoped)
   // ============================================
   const locationsData = [
     {
@@ -827,137 +684,38 @@ async function main() {
   const locations: Record<string, { id: string }> = {};
 
   for (const loc of locationsData) {
-    let location = await prisma.location.findUnique({
-      where: { name: loc.name },
+    let location = await prisma.location.findFirst({
+      where: { tenantId, name: loc.name },
     });
 
     if (!location) {
       location = await prisma.location.create({
         data: {
-          ...loc,
+          tenantId,
+          name: loc.name,
+          type: loc.type,
+          address: loc.address,
           isDefaultWarehouse: loc.name === "Main Warehouse",
-        } as any,
+        },
       });
       console.log(`✅ Created location: ${loc.name} (${loc.type})`);
     } else {
-      const locWithDefault = location as { isDefaultWarehouse?: boolean };
-      if (
-        loc.name === "Main Warehouse" &&
-        locWithDefault.isDefaultWarehouse !== true
-      ) {
-        await prisma.location.update({
-          where: { id: location.id },
-          data: { isDefaultWarehouse: true } as any,
-        });
-        console.log(`✅ Set Main Warehouse as default warehouse`);
-      }
       console.log(`⚠️  Location "${loc.name}" already exists. Skipping.`);
     }
     locations[loc.name] = { id: location.id };
   }
 
   // ============================================
-  // 6b. ADD VARIATION PHOTOS (optional – for demo)
-  // ============================================
-  const variationsWithoutPhotos = await prisma.productVariation.findMany({
-    where: { photos: { none: {} } },
-    select: { id: true },
-    take: 30,
-  });
-
-  for (const v of variationsWithoutPhotos) {
-    await prisma.variationPhoto.create({
-      data: {
-        variationId: v.id,
-        photoUrl: `https://picsum.photos/seed/${v.id}/400/300`,
-        isPrimary: true,
-      },
-    });
-  }
-  if (variationsWithoutPhotos.length > 0) {
-    console.log(
-      `✅ Added primary photo for ${variationsWithoutPhotos.length} variations`,
-    );
-  }
-
-  // ============================================
-  // 6c. ADD SUB-VARIATIONS (e.g. S, M, L) FOR SOME CLOTHING PRODUCTS
-  // ============================================
-  const mainWarehouseForSubVars = locations["Main Warehouse"];
-  const clothingProducts = await prisma.product.findMany({
-    where: { category: { name: "Clothing" } },
-    include: { variations: { take: 1 } },
-    take: 8,
-  });
-
-  const sizeNames = ["S", "M", "L", "XL"];
-  let subVariantCount = 0;
-
-  for (const product of clothingProducts) {
-    const variation = product.variations[0];
-    if (!variation) continue;
-
-    const existingSubs = await (prisma as any).productSubVariation.count({
-      where: { variationId: variation.id },
-    });
-    if (existingSubs > 0) continue;
-
-    for (const size of sizeNames) {
-      await (prisma as any).productSubVariation.create({
-        data: { variationId: variation.id, name: size },
-      });
-      subVariantCount++;
-    }
-
-    if (mainWarehouseForSubVars) {
-      for (const size of sizeNames) {
-        const sub = await (prisma as any).productSubVariation.findUnique({
-          where: {
-            variationId_name: { variationId: variation.id, name: size },
-          },
-        });
-        if (sub) {
-          const qty = 5 + Math.floor(Math.random() * 15);
-          await (prisma.locationInventory as any).upsert({
-            where: {
-              locationId_variationId_subVariationId: {
-                locationId: mainWarehouseForSubVars.id,
-                variationId: variation.id,
-                subVariationId: sub.id,
-              },
-            },
-            create: {
-              locationId: mainWarehouseForSubVars.id,
-              variationId: variation.id,
-              subVariationId: sub.id,
-              quantity: qty,
-            },
-            update: { quantity: { increment: qty } },
-          });
-        }
-      }
-    }
-  }
-  if (subVariantCount > 0) {
-    console.log(
-      `✅ Created ${subVariantCount} sub-variants (sizes) for ${clothingProducts.length} clothing products with warehouse stock`,
-    );
-  }
-
-  // ============================================
   // 7. MIGRATE STOCK TO LOCATION INVENTORY
   // ============================================
-  // Get the main warehouse location
   const mainWarehouse = locations["Main Warehouse"];
 
   if (mainWarehouse) {
-    // Get all product variations
     const allVariations = await prisma.productVariation.findMany({
       select: { id: true, stockQuantity: true },
     });
 
     for (const variation of allVariations) {
-      // Check if inventory record already exists (variation-level, no sub-variant)
       const existingInventory = await prisma.locationInventory.findFirst({
         where: {
           locationId: mainWarehouse.id,
@@ -967,7 +725,6 @@ async function main() {
       });
 
       if (!existingInventory && variation.stockQuantity > 0) {
-        // Create inventory record for warehouse with current stock (variation-level)
         await prisma.locationInventory.create({
           data: {
             locationId: mainWarehouse.id,
@@ -984,136 +741,78 @@ async function main() {
   }
 
   // ============================================
-  // 8. CREATE SAMPLE TRANSFERS BETWEEN LOCATIONS
+  // 8. DISTRIBUTE STOCK TO SHOWROOMS
   // ============================================
   const showroomA = locations["Showroom A"];
   const showroomB = locations["Showroom B"];
 
-  // Only seed transfers if we have the required locations
-  if (mainWarehouse && showroomA && showroomB) {
-    const existingTransfers = await prisma.transfer.count();
+  if (showroomA && showroomB && mainWarehouse) {
+    const warehouseInventory = await prisma.locationInventory.findMany({
+      where: { locationId: mainWarehouse.id },
+    });
 
-    if (existingTransfers === 0) {
-      // Get some variations from warehouse inventory to use in transfers
-      const warehouseInventoryForTransfers =
-        await prisma.locationInventory.findMany({
-          where: { locationId: mainWarehouse.id, quantity: { gt: 30 } },
-          select: {
-            variationId: true,
-            quantity: true,
-          },
-          take: 15,
-        });
+    let distributedCount = 0;
+    for (const inv of warehouseInventory) {
+      if (inv.quantity < 20) continue;
+      const toA = Math.floor(inv.quantity * (0.2 + Math.random() * 0.2));
+      const toB = Math.floor(inv.quantity * (0.15 + Math.random() * 0.15));
 
-      // Helper to generate transfer code
-      function generateTransferCode(index: number): string {
-        const date = new Date();
-        date.setDate(date.getDate() - Math.floor(Math.random() * 60)); // Last 60 days
-        const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-        const random = String(index).padStart(3, "0");
-        return `TR-${dateStr}-${random}`;
-      }
+      const existingA = await prisma.locationInventory.findFirst({
+        where: {
+          locationId: showroomA.id,
+          variationId: inv.variationId,
+          subVariationId: null,
+        } as any,
+      });
+      const existingB = await prisma.locationInventory.findFirst({
+        where: {
+          locationId: showroomB.id,
+          variationId: inv.variationId,
+          subVariationId: null,
+        } as any,
+      });
 
-      let transferIndex = 1;
-
-      // Create a few example transfers:
-      //  - Warehouse -> Showroom A (COMPLETED)
-      //  - Warehouse -> Showroom B (COMPLETED)
-      //  - Showroom A -> Showroom B (PENDING)
-      const transferDefinitions: Array<{
-        fromId: string;
-        toId: string;
-        status: "PENDING" | "COMPLETED";
-        note: string;
-      }> = [
-        {
-          fromId: mainWarehouse.id,
-          toId: showroomA.id,
-          status: "COMPLETED",
-          note: "Initial stock allocation to Showroom A",
-        },
-        {
-          fromId: mainWarehouse.id,
-          toId: showroomB.id,
-          status: "COMPLETED",
-          note: "Initial stock allocation to Showroom B",
-        },
-        {
-          fromId: showroomA.id,
-          toId: showroomB.id,
-          status: "PENDING",
-          note: "Requested inter-showroom transfer",
-        },
-      ];
-
-      for (const def of transferDefinitions) {
-        // Pick 3–5 random variations for this transfer
-        const shuffled = [...warehouseInventoryForTransfers].sort(
-          () => Math.random() - 0.5,
-        );
-        const itemsForTransfer = shuffled.slice(
-          0,
-          3 + Math.floor(Math.random() * 3),
-        );
-
-        if (itemsForTransfer.length === 0) continue;
-
-        const transfer = await prisma.transfer.create({
+      if (!existingA && toA > 0) {
+        await prisma.locationInventory.create({
           data: {
-            transferCode: generateTransferCode(transferIndex++),
-            fromLocationId: def.fromId,
-            toLocationId: def.toId,
-            status: def.status,
-            notes: def.note,
-            createdById: superAdmin.id,
-            approvedById: def.status === "COMPLETED" ? superAdmin.id : null,
-            approvedAt: def.status === "COMPLETED" ? new Date() : null,
-            completedAt: def.status === "COMPLETED" ? new Date() : null,
-            items: {
-              create: itemsForTransfer.map((inv) => ({
-                variationId: inv.variationId,
-                // Move up to 10 units but never more than half the warehouse stock
-                quantity: Math.max(
-                  1,
-                  Math.min(10, Math.floor(inv.quantity / 2)),
-                ),
-              })),
-            },
-          },
+            locationId: showroomA.id,
+            variationId: inv.variationId,
+            subVariationId: null,
+            quantity: toA,
+          } as any,
         });
-
-        await prisma.transferLog.create({
-          data: {
-            transferId: transfer.id,
-            action: def.status === "COMPLETED" ? "COMPLETED" : "CREATED",
-            details: {
-              seeded: true,
-              note: def.note,
-            },
-            userId: superAdmin.id,
-          },
-        });
+        distributedCount++;
       }
-
-      console.log("✅ Created sample transfers between locations");
-    } else {
-      console.log("⚠️  Transfers already exist. Skipping transfer seeding.");
+      if (!existingB && toB > 0) {
+        await prisma.locationInventory.create({
+          data: {
+            locationId: showroomB.id,
+            variationId: inv.variationId,
+            subVariationId: null,
+            quantity: toB,
+          } as any,
+        });
+        distributedCount++;
+      }
+    }
+    if (distributedCount > 0) {
+      console.log(
+        `✅ Distributed stock to showrooms (${distributedCount} inventory records)`,
+      );
     }
   }
 
   // ============================================
-  // 9. CREATE SAMPLE MEMBERS (CUSTOMERS)
+  // 9. CREATE SAMPLE MEMBERS (tenant-scoped)
   // ============================================
   const membersData = [
     {
       phone: "9841000001",
       name: "Rajesh Sharma",
       email: "rajesh.sharma@email.com",
-      notes: "VIP customer",
       gender: "Male",
       age: 45,
       address: "Thamel, Kathmandu",
-      birthday: new Date("1978-05-15"),
       memberStatus: "VIP" as const,
     },
     {
@@ -1123,7 +822,6 @@ async function main() {
       gender: "Female",
       age: 32,
       address: "Patan, Lalitpur",
-      birthday: new Date("1991-08-22"),
       memberStatus: "ACTIVE" as const,
     },
     {
@@ -1133,18 +831,15 @@ async function main() {
       gender: "Male",
       age: 28,
       address: "Baneshwor, Kathmandu",
-      birthday: new Date("1995-11-10"),
       memberStatus: "ACTIVE" as const,
     },
     {
       phone: "9841000004",
       name: "Priya Singh",
       email: "priya.singh@email.com",
-      notes: "Corporate buyer",
       gender: "Female",
       age: 35,
       address: "New Road, Kathmandu",
-      birthday: new Date("1988-03-18"),
       memberStatus: "ACTIVE" as const,
     },
     {
@@ -1153,106 +848,6 @@ async function main() {
       gender: "Male",
       age: 40,
       address: "Koteshwor, Kathmandu",
-      birthday: new Date("1983-07-25"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000006",
-      name: "Anita Gurung",
-      email: "anita.g@email.com",
-      gender: "Female",
-      age: 29,
-      address: "Bhaktapur",
-      birthday: new Date("1994-12-05"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000007",
-      name: "Ramesh Adhikari",
-      email: "ramesh.a@email.com",
-      gender: "Male",
-      age: 38,
-      address: "Kalimati, Kathmandu",
-      birthday: new Date("1985-09-30"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000008",
-      name: "Sita Rai",
-      gender: "Female",
-      age: 26,
-      address: "Jawalakhel, Lalitpur",
-      birthday: new Date("1997-04-12"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000009",
-      name: "Krishna Bhattarai",
-      email: "krishna.b@email.com",
-      notes: "Wholesale inquiries",
-      gender: "Male",
-      age: 42,
-      address: "Gongabu, Kathmandu",
-      birthday: new Date("1981-06-20"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000010",
-      name: "Gita Shrestha",
-      email: "gita.shrestha@email.com",
-      gender: "Female",
-      age: 31,
-      address: "Buddhanagar, Kathmandu",
-      birthday: new Date("1992-10-08"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000011",
-      name: "Hari Prasad",
-      email: "hari.p@email.com",
-      gender: "Male",
-      age: 36,
-      address: "Maitidevi, Kathmandu",
-      birthday: new Date("1987-02-14"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000012",
-      name: "Maya Tamang",
-      gender: "Female",
-      age: 24,
-      address: "Balaju, Kathmandu",
-      birthday: new Date("1999-01-28"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000013",
-      name: "Prakash Karki",
-      email: "prakash.k@email.com",
-      gender: "Male",
-      age: 33,
-      address: "Tahachal, Kathmandu",
-      birthday: new Date("1990-09-15"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000014",
-      name: "Kamala Devi",
-      email: "kamala.d@email.com",
-      gender: "Female",
-      age: 27,
-      address: "Chabahil, Kathmandu",
-      birthday: new Date("1996-07-03"),
-      memberStatus: "ACTIVE" as const,
-    },
-    {
-      phone: "9841000015",
-      name: "Suresh Lama",
-      notes: "Frequent buyer",
-      gender: "Male",
-      age: 39,
-      address: "Sankhamul, Kathmandu",
-      birthday: new Date("1984-11-19"),
       memberStatus: "ACTIVE" as const,
     },
   ];
@@ -1260,28 +855,27 @@ async function main() {
   const members: Record<string, { id: string; phone: string }> = {};
 
   for (const memberData of membersData) {
-    let member = await prisma.member.findUnique({
-      where: { phone: memberData.phone },
+    let member = await prisma.member.findFirst({
+      where: { tenantId, phone: memberData.phone },
     });
 
     if (!member) {
       const memberSince = new Date();
       memberSince.setDate(
         memberSince.getDate() - Math.floor(Math.random() * 365),
-      ); // Random date in last year
+      );
 
       member = await prisma.member.create({
         data: {
+          tenantId,
           phone: memberData.phone,
           name: memberData.name || null,
           email: memberData.email || null,
-          notes: memberData.notes || null,
           gender: memberData.gender || null,
           age: memberData.age || null,
           address: memberData.address || null,
-          birthday: memberData.birthday || null,
           memberStatus: memberData.memberStatus || "ACTIVE",
-          memberSince: memberSince,
+          memberSince,
           totalSales: 0,
         },
       });
@@ -1295,11 +889,11 @@ async function main() {
   }
 
   // ============================================
-  // 9. CREATE PROMO CODES
+  // 10. CREATE PROMO CODES (tenant-scoped)
   // ============================================
-  // Get some products for promo code associations
   const allProducts = await prisma.product.findMany({
-    take: 20, // Use first 20 products for promo codes
+    where: { tenantId },
+    take: 10,
     select: { id: true },
   });
 
@@ -1309,261 +903,103 @@ async function main() {
       description: "Welcome discount for new customers",
       valueType: "PERCENTAGE" as const,
       value: 10,
-      overrideDiscounts: false,
-      allowStacking: true,
       eligibility: "ALL" as const,
       validFrom: new Date(),
-      validTo: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000), // 90 days from now
+      validTo: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000),
       usageLimit: 100,
-      isActive: true,
-      productIds: allProducts.slice(0, 10).map((p) => p.id), // First 10 products
+      productIds: allProducts.slice(0, 5).map((p) => p.id),
     },
     {
       code: "MEMBER20",
       description: "Exclusive member discount",
       valueType: "PERCENTAGE" as const,
       value: 20,
-      overrideDiscounts: false,
-      allowStacking: false,
       eligibility: "MEMBER" as const,
       validFrom: new Date(),
-      validTo: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000), // 180 days
+      validTo: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000),
       usageLimit: 50,
-      isActive: true,
-      productIds: allProducts.slice(5, 15).map((p) => p.id), // Products 5-15
-    },
-    {
-      code: "FLAT500",
-      description: "Flat Rs. 500 off on selected items",
-      valueType: "FLAT" as const,
-      value: 500,
-      overrideDiscounts: true,
-      allowStacking: false,
-      eligibility: "ALL" as const,
-      validFrom: new Date(),
-      validTo: new Date(Date.now() + 60 * 24 * 60 * 60 * 1000), // 60 days
-      usageLimit: 30,
-      isActive: true,
-      productIds: allProducts.slice(0, 5).map((p) => p.id), // First 5 products
-    },
-    {
-      code: "SUMMER25",
-      description: "Summer sale - 25% off",
-      valueType: "PERCENTAGE" as const,
-      value: 25,
-      overrideDiscounts: false,
-      allowStacking: true,
-      eligibility: "ALL" as const,
-      validFrom: new Date(),
-      validTo: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000), // 45 days
-      usageLimit: null, // Unlimited
-      isActive: true,
-      productIds: allProducts.map((p) => p.id), // All products
+      productIds: allProducts.slice(3, 8).map((p) => p.id),
     },
   ];
 
-  const promoCodes: Record<string, { id: string }> = {};
-
   for (const promoData of promoCodeData) {
-    let promo = await prisma.promoCode.findUnique({
-      where: { code: promoData.code },
+    let promo = await prisma.promoCode.findFirst({
+      where: { tenantId, code: promoData.code },
     });
 
     if (!promo) {
       promo = await prisma.promoCode.create({
         data: {
+          tenantId,
           code: promoData.code,
           description: promoData.description,
           valueType: promoData.valueType,
           value: promoData.value,
-          overrideDiscounts: promoData.overrideDiscounts,
-          allowStacking: promoData.allowStacking,
           eligibility: promoData.eligibility,
           validFrom: promoData.validFrom,
           validTo: promoData.validTo,
           usageLimit: promoData.usageLimit,
-          isActive: promoData.isActive,
+          isActive: true,
           products: {
-            create: promoData.productIds.map((productId) => ({
-              productId,
-            })),
+            create: promoData.productIds.map((productId) => ({ productId })),
           },
         },
       });
-      console.log(
-        `✅ Created promo code: ${promoData.code} (${promoData.productIds.length} products)`,
-      );
+      console.log(`✅ Created promo code: ${promoData.code}`);
     } else {
       console.log(
         `⚠️  Promo code "${promoData.code}" already exists. Skipping.`,
       );
     }
-    promoCodes[promoData.code] = { id: promo.id };
   }
 
   // ============================================
-  // 10. DISTRIBUTE STOCK TO SHOWROOMS
+  // 11. CREATE SAMPLE SALES (tenant-scoped)
   // ============================================
-  // showroomA and showroomB are already declared in section 8
-
-  if (showroomA && showroomB && mainWarehouse) {
-    // Get all variations with warehouse inventory
-    const warehouseInventory = await prisma.locationInventory.findMany({
-      where: { locationId: mainWarehouse.id },
-      include: { variation: true },
-    });
-
-    let distributedCount = 0;
-
-    for (const inv of warehouseInventory) {
-      // Distribute some stock to showrooms (keep most in warehouse)
-      const warehouseStock = inv.quantity;
-      if (warehouseStock < 20) continue; // Skip if not enough stock
-
-      // Calculate distribution (20-40% to each showroom)
-      const toShowroomA = Math.floor(
-        warehouseStock * (0.2 + Math.random() * 0.2),
-      );
-      const toShowroomB = Math.floor(
-        warehouseStock * (0.15 + Math.random() * 0.15),
-      );
-
-      // Check if showroom inventory already exists (variation-level)
-      const existingA = await prisma.locationInventory.findFirst({
-        where: {
-          locationId: showroomA.id,
-          variationId: inv.variationId,
-          subVariationId: null,
-        } as any,
-      });
-
-      const existingB = await prisma.locationInventory.findFirst({
-        where: {
-          locationId: showroomB.id,
-          variationId: inv.variationId,
-          subVariationId: null,
-        } as any,
-      });
-
-      if (!existingA && toShowroomA > 0) {
-        await prisma.locationInventory.create({
-          data: {
-            locationId: showroomA.id,
-            variationId: inv.variationId,
-            subVariationId: null,
-            quantity: toShowroomA,
-          } as any,
-        });
-        distributedCount++;
-      }
-
-      if (!existingB && toShowroomB > 0) {
-        await prisma.locationInventory.create({
-          data: {
-            locationId: showroomB.id,
-            variationId: inv.variationId,
-            subVariationId: null,
-            quantity: toShowroomB,
-          } as any,
-        });
-        distributedCount++;
-      }
-    }
-
-    if (distributedCount > 0) {
-      console.log(
-        `✅ Distributed stock to showrooms (${distributedCount} inventory records)`,
-      );
-    }
-  }
-
-  // ============================================
-  // 11. CREATE SAMPLE SALES
-  // ============================================
-  // Helper to generate sale code
   function generateSaleCode(index: number): string {
     const date = new Date();
-    date.setDate(date.getDate() - Math.floor(Math.random() * 30)); // Random date in last 30 days
+    date.setDate(date.getDate() - Math.floor(Math.random() * 30));
     const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-    const random = String(index).padStart(4, "0");
-    return `SL-${dateStr}-${random}`;
+    return `SL-${dateStr}-${String(index).padStart(4, "0")}`;
   }
 
-  // Get showroom inventory for sales
-  const showroomAInventory = await prisma.locationInventory.findMany({
-    where: { locationId: showroomA?.id, quantity: { gt: 0 } },
-    include: {
-      variation: {
-        include: {
-          product: {
-            include: {
-              discounts: {
-                where: { isActive: true },
-                include: { discountType: true },
+  const existingSalesCount = await prisma.sale.count({ where: { tenantId } });
+
+  if (existingSalesCount === 0 && showroomA) {
+    const showroomInventory = await prisma.locationInventory.findMany({
+      where: { locationId: showroomA.id, quantity: { gt: 0 } },
+      include: {
+        variation: {
+          include: {
+            product: {
+              include: {
+                discounts: {
+                  where: { isActive: true },
+                  include: { discountType: true },
+                },
               },
             },
           },
         },
       },
-    },
-    take: 50,
-  });
+      take: 30,
+    });
 
-  const showroomBInventory = await prisma.locationInventory.findMany({
-    where: { locationId: showroomB?.id, quantity: { gt: 0 } },
-    include: {
-      variation: {
-        include: {
-          product: {
-            include: {
-              discounts: {
-                where: { isActive: true },
-                include: { discountType: true },
-              },
-            },
-          },
-        },
-      },
-    },
-    take: 50,
-  });
-
-  // Check if sales already exist
-  const existingSalesCount = await prisma.sale.count();
-
-  if (
-    existingSalesCount === 0 &&
-    showroomAInventory.length > 0 &&
-    showroomBInventory.length > 0
-  ) {
     const memberPhones = Object.keys(members);
     let saleIndex = 1;
 
-    // Create 30 sales
-    for (let i = 0; i < 30; i++) {
-      // Randomly choose showroom
-      const isShowroomA = Math.random() > 0.5;
-      const locationId = isShowroomA ? showroomA!.id : showroomB!.id;
-      const inventory = isShowroomA ? showroomAInventory : showroomBInventory;
+    for (let i = 0; i < 10; i++) {
+      if (showroomInventory.length === 0) break;
 
-      if (inventory.length === 0) continue;
-
-      // Randomly choose if this is a member sale (60% chance)
-      const isMemberSale = Math.random() < 0.6;
+      const isMemberSale = Math.random() < 0.5;
       const memberPhone = isMemberSale
         ? memberPhones[Math.floor(Math.random() * memberPhones.length)]
         : null;
       const member = memberPhone ? members[memberPhone] : null;
 
-      // Get member discount type
-      const memberDiscountType = await prisma.discountType.findUnique({
-        where: { name: "Member" },
-      });
-
-      // Select 1-4 random items for this sale
-      const numItems = 1 + Math.floor(Math.random() * 4);
-      const shuffledInventory = [...inventory].sort(() => Math.random() - 0.5);
-      const selectedItems = shuffledInventory.slice(0, numItems);
+      const numItems = 1 + Math.floor(Math.random() * 3);
+      const shuffled = [...showroomInventory].sort(() => Math.random() - 0.5);
+      const selectedItems = shuffled.slice(0, numItems);
 
       let subtotal = 0;
       let totalDiscount = 0;
@@ -1578,33 +1014,18 @@ async function main() {
       }> = [];
 
       for (const item of selectedItems) {
-        const quantity = 1 + Math.floor(Math.random() * 3);
+        const quantity = 1 + Math.floor(Math.random() * 2);
         const unitPrice = Number(item.variation.product.mrp);
-
-        // Calculate discount (member discount if available)
-        let discountPercent = 0;
-        let discountAmount = 0;
-        if (isMemberSale && memberDiscountType) {
-          const memberDiscount = item.variation.product.discounts.find(
-            (d) => d.discountTypeId === memberDiscountType.id,
-          );
-          if (memberDiscount) {
-            if (memberDiscount.valueType === "FLAT") {
-              discountAmount = Number(memberDiscount.value);
-            } else {
-              discountPercent = Number(memberDiscount.value);
-            }
-          }
-        }
-
         const itemSubtotal = unitPrice * quantity;
-        const effectiveDiscount =
-          Math.min(
-            itemSubtotal,
-            discountAmount + itemSubtotal * (discountPercent / 100),
-          ) || 0;
+        let discountPercent = 0;
+        if (isMemberSale) {
+          const memberDiscount = item.variation.product.discounts.find(
+            (d) => d.discountType.name === "Member",
+          );
+          if (memberDiscount) discountPercent = Number(memberDiscount.value);
+        }
+        const effectiveDiscount = itemSubtotal * (discountPercent / 100);
         const lineTotal = itemSubtotal - effectiveDiscount;
-
         subtotal += itemSubtotal;
         totalDiscount += effectiveDiscount;
 
@@ -1620,119 +1041,419 @@ async function main() {
       }
 
       const total = subtotal - totalDiscount;
-
-      // Generate payment breakdown (mix of payment methods)
-      const paymentMethods: Array<
-        "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR"
-      > = ["CASH", "CARD", "FONEPAY", "QR"];
-      const payments: Array<{
-        method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
-        amount: number;
-      }> = [];
-
-      if (total < 500) {
-        // Small amount - single payment method
-        payments.push({
-          method:
-            paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-          amount: total,
-        });
-      } else {
-        // Larger amount - split payment
-        const numPayments = Math.random() > 0.7 ? 2 : 1; // 30% chance of split payment
-        if (numPayments === 2) {
-          const firstAmount = Math.floor(total * 0.6);
-          payments.push({
-            method: "CARD",
-            amount: firstAmount,
-          });
-          payments.push({
-            method: "CASH",
-            amount: total - firstAmount,
-          });
-        } else {
-          payments.push({
-            method:
-              paymentMethods[Math.floor(Math.random() * paymentMethods.length)],
-            amount: total,
-          });
-        }
-      }
-
-      // Create sale with random date in last 30 days
       const saleDate = new Date();
       saleDate.setDate(saleDate.getDate() - Math.floor(Math.random() * 30));
-      saleDate.setHours(9 + Math.floor(Math.random() * 10)); // Business hours
-      saleDate.setMinutes(Math.floor(Math.random() * 60));
 
       try {
-        const sale = await prisma.sale.create({
+        await prisma.sale.create({
           data: {
+            tenantId,
             saleCode: generateSaleCode(saleIndex),
             type: isMemberSale ? "MEMBER" : "GENERAL",
-            locationId,
+            locationId: showroomA.id,
             memberId: member?.id || null,
             subtotal,
             discount: totalDiscount,
             total,
             createdById: superAdmin.id,
             createdAt: saleDate,
-            items: {
-              create: saleItems,
-            },
-            payments: {
-              create: payments,
-            },
+            items: { create: saleItems },
+            payments: { create: [{ method: "CASH", amount: total }] },
           },
         });
-
-        // Update member aggregation if this is a member sale
-        if (member) {
-          const fullMember = await prisma.member.findUnique({
-            where: { id: member.id },
-          });
-
-          await prisma.member.update({
-            where: { id: member.id },
-            data: {
-              totalSales: {
-                increment: total,
-              },
-              ...(fullMember &&
-                !fullMember.memberSince && { memberSince: saleDate }),
-              ...(fullMember &&
-                !fullMember.firstPurchase && { firstPurchase: saleDate }),
-            },
-          });
-        }
-
-        console.log(
-          `✅ Created sale: ${sale.saleCode} (${isMemberSale ? "Member" : "General"}) - ${saleItems.length} items - Rs.${total.toFixed(2)}`,
-        );
         saleIndex++;
-      } catch (error) {
-        // Skip if duplicate sale code
+      } catch {
         continue;
       }
     }
-
     console.log(`✅ Created ${saleIndex - 1} sample sales`);
   } else if (existingSalesCount > 0) {
+    console.log(`⚠️  Sales already exist (${existingSalesCount}). Skipping.`);
+  }
+
+  // ============================================
+  // 12. CREATE SECOND TEST TENANT (for multi-tenant testing)
+  // ============================================
+  console.log("\n--- Setting up test tenant (Asha Boutique) ---");
+
+  let testTenant = await prisma.tenant.findUnique({
+    where: { slug: "test-org" },
+  });
+
+  if (!testTenant) {
+    testTenant = await prisma.tenant.create({
+      data: {
+        name: "Asha Boutique",
+        slug: "test-org",
+        plan: "STARTER",
+        isTrial: true,
+        trialEndsAt: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
+        subscriptionStatus: "TRIAL",
+      },
+    });
     console.log(
-      `⚠️  Sales already exist (${existingSalesCount}). Skipping sales creation.`,
+      `✅ Created test tenant: "${testTenant.name}" (slug: test-org)`,
+    );
+  } else {
+    console.log(`⚠️  Test tenant already exists (slug: test-org)`);
+  }
+
+  const testTenantId = testTenant.id;
+
+  // --- Test tenant admin user ---
+  let testAdmin = await prisma.user.findFirst({
+    where: { tenantId: testTenantId, username: "testadmin" },
+  });
+  if (!testAdmin) {
+    const testAdminPw = await bcrypt.hash("test123", 10);
+    testAdmin = await prisma.user.create({
+      data: {
+        tenantId: testTenantId,
+        username: "testadmin",
+        password: testAdminPw,
+        role: "superAdmin",
+      },
+    });
+    console.log(`✅ Created test tenant admin: testadmin / test123`);
+  }
+
+  // --- Test tenant regular user ---
+  let testUser = await prisma.user.findFirst({
+    where: { tenantId: testTenantId, username: "testuser" },
+  });
+  if (!testUser) {
+    const testUserPw = await bcrypt.hash("test123", 10);
+    testUser = await prisma.user.create({
+      data: {
+        tenantId: testTenantId,
+        username: "testuser",
+        password: testUserPw,
+        role: "user",
+      },
+    });
+    console.log(`✅ Created test tenant user: testuser / test123`);
+  }
+
+  // --- Test tenant discount types ---
+  const testDiscountTypes: Record<string, { id: string }> = {};
+  for (const name of discountTypeNames) {
+    let dt = await prisma.discountType.findFirst({
+      where: { tenantId: testTenantId, name },
+    });
+    if (!dt) {
+      dt = await prisma.discountType.create({
+        data: { tenantId: testTenantId, name },
+      });
+    }
+    testDiscountTypes[name] = { id: dt.id };
+  }
+  console.log(`✅ Test tenant discount types ready`);
+
+  // --- Test tenant vendors (different from default) ---
+  const testVendorsData = [
+    {
+      name: "Silk Road Fabrics",
+      contact: "orders@silkroadfabrics.com",
+      phone: "+977-1-6660001",
+      address: "Ason Tole, Kathmandu",
+    },
+    {
+      name: "Mountain Craft Supplies",
+      contact: "info@mountaincraft.com",
+      phone: "+977-1-6660002",
+      address: "Bhaktapur Durbar Square Area",
+    },
+  ];
+
+  const testVendors: Record<string, { id: string }> = {};
+  for (const v of testVendorsData) {
+    let vendor = await prisma.vendor.findFirst({
+      where: { tenantId: testTenantId, name: v.name },
+    });
+    if (!vendor) {
+      vendor = await prisma.vendor.create({
+        data: { tenantId: testTenantId, ...v },
+      });
+      console.log(`✅ Created test vendor: ${v.name}`);
+    }
+    testVendors[v.name] = { id: vendor.id };
+  }
+
+  // --- Test tenant categories (completely different catalog) ---
+  const testCategoriesData = [
+    { name: "Women's Wear", description: "Sarees, kurtis, and ethnic wear" },
+    {
+      name: "Accessories",
+      description: "Jewelry, bags, and fashion accessories",
+    },
+    {
+      name: "Men's Wear",
+      description: "Shirts, pants, and ethnic wear for men",
+    },
+  ];
+
+  const testCategories: Record<string, { id: string }> = {};
+  for (const cat of testCategoriesData) {
+    let category = await prisma.category.findFirst({
+      where: { tenantId: testTenantId, name: cat.name },
+    });
+    if (!category) {
+      category = await prisma.category.create({
+        data: { tenantId: testTenantId, ...cat },
+      });
+      console.log(`✅ Created test category: ${cat.name}`);
+    }
+    testCategories[cat.name] = { id: category.id };
+  }
+
+  // --- Test tenant products (boutique products, different from default electronics/furniture) ---
+  const testProductsData = [
+    {
+      imsCode: "AB-001",
+      name: "Pashmina Shawl Premium",
+      category: "Women's Wear",
+      vendor: "Silk Road Fabrics",
+      costPrice: 1200,
+      mrp: 2999,
+      variations: [
+        { color: "Crimson Red", stockQuantity: 15 },
+        { color: "Royal Blue", stockQuantity: 12 },
+        { color: "Ivory White", stockQuantity: 8 },
+      ],
+    },
+    {
+      imsCode: "AB-002",
+      name: "Handloom Cotton Saree",
+      category: "Women's Wear",
+      vendor: "Silk Road Fabrics",
+      costPrice: 800,
+      mrp: 1899,
+      variations: [
+        { color: "Teal", stockQuantity: 20 },
+        { color: "Maroon", stockQuantity: 10 },
+      ],
+    },
+    {
+      imsCode: "AB-003",
+      name: "Embroidered Kurta Set",
+      category: "Women's Wear",
+      vendor: "Silk Road Fabrics",
+      costPrice: 650,
+      mrp: 1499,
+      variations: [
+        { color: "Olive Green", stockQuantity: 18 },
+        { color: "Mustard", stockQuantity: 14 },
+        { color: "Peach", stockQuantity: 9 },
+      ],
+    },
+    {
+      imsCode: "AB-004",
+      name: "Silver Jhumka Earrings",
+      category: "Accessories",
+      vendor: "Mountain Craft Supplies",
+      costPrice: 400,
+      mrp: 999,
+      variations: [
+        { color: "Silver", stockQuantity: 30 },
+        { color: "Gold Plated", stockQuantity: 25 },
+      ],
+    },
+    {
+      imsCode: "AB-005",
+      name: "Handwoven Dhaka Topi",
+      category: "Men's Wear",
+      vendor: "Mountain Craft Supplies",
+      costPrice: 300,
+      mrp: 699,
+      variations: [
+        { color: "Traditional Red", stockQuantity: 40 },
+        { color: "Classic Multicolor", stockQuantity: 35 },
+      ],
+    },
+    {
+      imsCode: "AB-006",
+      name: "Beaded Necklace Set",
+      category: "Accessories",
+      vendor: "Mountain Craft Supplies",
+      costPrice: 550,
+      mrp: 1299,
+      variations: [
+        { color: "Turquoise", stockQuantity: 12 },
+        { color: "Coral", stockQuantity: 10 },
+      ],
+    },
+    {
+      imsCode: "AB-007",
+      name: "Daura Suruwal Classic",
+      category: "Men's Wear",
+      vendor: "Silk Road Fabrics",
+      costPrice: 900,
+      mrp: 2199,
+      variations: [
+        { color: "White", stockQuantity: 15 },
+        { color: "Cream", stockQuantity: 12 },
+      ],
+    },
+  ];
+
+  for (const tp of testProductsData) {
+    const exists = await prisma.product.findFirst({
+      where: { tenantId: testTenantId, imsCode: tp.imsCode },
+    });
+    if (exists) continue;
+
+    const product = await prisma.product.create({
+      data: {
+        tenantId: testTenantId,
+        imsCode: tp.imsCode,
+        name: tp.name,
+        categoryId: testCategories[tp.category]!.id,
+        description: `${tp.name} - Asha Boutique exclusive`,
+        costPrice: tp.costPrice,
+        mrp: tp.mrp,
+        finalSp: tp.mrp,
+        vendorId: testVendors[tp.vendor]?.id || null,
+        createdById: testAdmin.id,
+        variations: {
+          create: tp.variations.map((v) => ({
+            color: v.color,
+            stockQuantity: v.stockQuantity,
+          })),
+        },
+        discounts: {
+          create: [
+            {
+              discountTypeId: testDiscountTypes["Non-Member"].id,
+              discountPercentage: 5,
+              valueType: "PERCENTAGE",
+              value: 5,
+              isActive: true,
+            },
+            {
+              discountTypeId: testDiscountTypes["Member"].id,
+              discountPercentage: 12,
+              valueType: "PERCENTAGE",
+              value: 12,
+              isActive: true,
+            },
+          ],
+        },
+      },
+      include: { variations: true },
+    });
+    console.log(
+      `✅ Created test product: ${product.name} (${product.imsCode}) with ${product.variations.length} variations`,
     );
   }
 
-  console.log("\n🎉 Seeding completed successfully!");
-  console.log("📝 You can now log in with the credentials from your .env file");
-  console.log("🏢 Vendors have been created");
-  console.log("📦 Sample products have been added to the database");
-  console.log("📍 Locations (Warehouse & Showrooms) have been created");
+  // --- Test tenant location ---
+  let testLocation = await prisma.location.findFirst({
+    where: { tenantId: testTenantId, name: "Main Store" },
+  });
+  if (!testLocation) {
+    testLocation = await prisma.location.create({
+      data: {
+        tenantId: testTenantId,
+        name: "Main Store",
+        type: "SHOWROOM",
+        address: "Durbar Marg, Kathmandu",
+        isDefaultWarehouse: true,
+      },
+    });
+    console.log(`✅ Created test location: Main Store`);
+  }
+
+  // Populate test location inventory
+  const testVariations = await prisma.productVariation.findMany({
+    where: { product: { tenantId: testTenantId } },
+    select: { id: true, stockQuantity: true },
+  });
+  for (const tv of testVariations) {
+    const existingInv = await prisma.locationInventory.findFirst({
+      where: {
+        locationId: testLocation.id,
+        variationId: tv.id,
+        subVariationId: null,
+      } as any,
+    });
+    if (!existingInv && tv.stockQuantity > 0) {
+      await prisma.locationInventory.create({
+        data: {
+          locationId: testLocation.id,
+          variationId: tv.id,
+          subVariationId: null,
+          quantity: tv.stockQuantity,
+        } as any,
+      });
+    }
+  }
   console.log(
-    "👥 Sample members (customers) with full profile data have been created",
+    `✅ Populated test location inventory (${testVariations.length} items)`,
   );
-  console.log("🎟️  Promo codes have been created");
-  console.log("🧾 Sample sales with payment breakdowns have been generated");
+
+  // --- Test tenant members ---
+  const testMembersData = [
+    {
+      phone: "9801000001",
+      name: "Sita Devi Rana",
+      gender: "Female",
+      age: 38,
+      address: "Lazimpat, Kathmandu",
+      memberStatus: "VIP" as const,
+    },
+    {
+      phone: "9801000002",
+      name: "Hari Bahadur Gurung",
+      gender: "Male",
+      age: 52,
+      address: "Thamel, Kathmandu",
+      memberStatus: "ACTIVE" as const,
+    },
+    {
+      phone: "9801000003",
+      name: "Kamala Shrestha",
+      gender: "Female",
+      age: 29,
+      address: "Patan, Lalitpur",
+      memberStatus: "ACTIVE" as const,
+    },
+  ];
+
+  for (const tm of testMembersData) {
+    const exists = await prisma.member.findFirst({
+      where: { tenantId: testTenantId, phone: tm.phone },
+    });
+    if (!exists) {
+      await prisma.member.create({
+        data: {
+          tenantId: testTenantId,
+          phone: tm.phone,
+          name: tm.name,
+          gender: tm.gender,
+          age: tm.age,
+          address: tm.address,
+          memberStatus: tm.memberStatus,
+          memberSince: new Date(),
+          totalSales: 0,
+        },
+      });
+      console.log(`✅ Created test member: ${tm.name} (${tm.phone})`);
+    }
+  }
+
+  // ============================================
+  // DONE
+  // ============================================
+  console.log("\n🎉 Seeding completed successfully!");
+  console.log("\n📋 Login credentials:");
+  console.log(`   Platform Admin: platform / platform123`);
+  console.log(
+    `   Default Tenant SuperAdmin: ${superAdminUsername} / (from .env)`,
+  );
+  console.log(`   Test Tenant SuperAdmin: testadmin / test123`);
+  console.log("\n🏢 Tenants:");
+  console.log(`   Default: slug=default, plan=PROFESSIONAL`);
+  console.log(`   Test:    slug=test-org, plan=STARTER (trial)`);
 }
 
 main()

@@ -29,6 +29,8 @@ const verifyToken = (req: Request, res: Response, next: NextFunction) => {
     req.user = {
       id: decoded.id,
       role: decoded.role,
+      tenantId: decoded.tenantId,
+      tenantSlug: decoded.tenantSlug,
       ...decoded,
     };
 
