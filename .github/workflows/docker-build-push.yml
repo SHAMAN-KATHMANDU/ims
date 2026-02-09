@@ -7,11 +7,19 @@ on:
       - master
       - develop
       - devlop
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
+      - develop
+      - devlop
   workflow_dispatch: # Allow manual trigger
 
 env:
   REGISTRY: docker.io
-  # Docker Hub repositories (no env suffix; dev/prod are tags)
+  # Use merge commit SHA when triggered by PR merge, else push commit SHA
+  COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
   API_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/dev-api-ims
   WEB_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/dev-web-ims
 
@@ -19,20 +27,26 @@ jobs:
   build-and-push-dev:
     name: Build & Push Dev Images
     runs-on: ubuntu-latest
-    if: contains(fromJson('["refs/heads/develop","refs/heads/devlop"]'), github.ref)
+    if: |
+      (github.event_name == 'push' && contains(fromJson('["refs/heads/develop","refs/heads/devlop"]'), github.ref)) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'develop' || github.event.pull_request.base.ref == 'devlop'))
 
     permissions:
       contents: read
+      pull-requests: read
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
 
       - name: Detect changed paths
         id: changes
         uses: dorny/paths-filter@v3
         with:
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           filters: |
             api:
               - "apps/api/**"
@@ -59,7 +73,7 @@ jobs:
           push: true
           tags: |
             ${{ env.API_IMAGE_NAME }}:dev
-            ${{ env.API_IMAGE_NAME }}:dev-${{ github.sha }}
+            ${{ env.API_IMAGE_NAME }}:dev-${{ env.COMMIT_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -77,27 +91,33 @@ jobs:
           push: true
           tags: |
             ${{ env.WEB_IMAGE_NAME }}:dev
-            ${{ env.WEB_IMAGE_NAME }}:dev-${{ github.sha }}
+            ${{ env.WEB_IMAGE_NAME }}:dev-${{ env.COMMIT_SHA }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   build-and-push-prod:
     name: Build & Push Prod Images
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: |
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'master'))
 
     permissions:
       contents: read
+      pull-requests: read
       packages: write
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
 
       - name: Detect changed paths
         id: changes
         uses: dorny/paths-filter@v3
         with:
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           filters: |
             api:
               - "apps/api/**"
@@ -124,7 +144,7 @@ jobs:
           push: true
           tags: |
             ${{ env.API_IMAGE_NAME }}:prod
-            ${{ env.API_IMAGE_NAME }}:prod-${{ github.sha }}
+            ${{ env.API_IMAGE_NAME }}:prod-${{ env.COMMIT_SHA }}
             ${{ env.API_IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
@@ -143,7 +163,7 @@ jobs:
           push: true
           tags: |
             ${{ env.WEB_IMAGE_NAME }}:prod
-            ${{ env.WEB_IMAGE_NAME }}:prod-${{ github.sha }}
+            ${{ env.WEB_IMAGE_NAME }}:prod-${{ env.COMMIT_SHA }}
             ${{ env.WEB_IMAGE_NAME }}:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
