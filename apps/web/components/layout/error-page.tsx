@@ -18,7 +18,7 @@ export function ErrorPage() {
             <ShieldAlert className="h-8 w-8 text-destructive" />
           </div>
           <CardTitle className="text-2xl font-bold">
-            Unauthorized Access
+            Unauthorized Access sad
           </CardTitle>
           <CardDescription>
             You don&apos;t have permission to access this page. Please log in to
