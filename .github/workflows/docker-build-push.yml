@@ -5,17 +5,21 @@ on:
     branches:
       - main
       - master
+      - develop
+      - devlop
   workflow_dispatch: # Allow manual trigger
 
 env:
   REGISTRY: docker.io
-  # Change these to your Docker Hub username/organization
+  # Docker Hub repositories (no env suffix; dev/prod are tags)
   API_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/dev-api-ims
   WEB_IMAGE_NAME: ${{ secrets.DOCKERHUB_USERNAME }}/dev-web-ims
 
 jobs:
-  build-and-push:
+  build-and-push-dev:
+    name: Build & Push Dev Images
     runs-on: ubuntu-latest
+    if: contains(fromJson('["refs/heads/develop","refs/heads/devlop"]'), github.ref)
 
     permissions:
       contents: read
@@ -24,6 +28,18 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api:
+              - "apps/api/**"
+            web:
+              - "apps/web/**"
+            shared:
+              - "packages/**"
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -34,55 +50,100 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Extract metadata for API
-        id: meta-api
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.API_IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Extract metadata for Web
-        id: meta-web
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.WEB_IMAGE_NAME }}
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push API image
+      - name: Build and push API image (dev)
+        if: steps.changes.outputs.api == 'true' || steps.changes.outputs.shared == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./apps/api/Dockerfile
           push: true
-          tags: ${{ steps.meta-api.outputs.tags }}
-          labels: ${{ steps.meta-api.outputs.labels }}
+          tags: |
+            ${{ env.API_IMAGE_NAME }}:dev
+            ${{ env.API_IMAGE_NAME }}:dev-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Create environment file for Web
+      - name: Create environment file for Web (dev)
+        if: steps.changes.outputs.web == 'true' || steps.changes.outputs.shared == 'true'
         run: |
           tee ./apps/web/.env <<<"${{ vars.DEV_UI }}"
 
-      - name: Build and push Web image
+      - name: Build and push Web image (dev)
+        if: steps.changes.outputs.web == 'true' || steps.changes.outputs.shared == 'true'
         uses: docker/build-push-action@v5
         with:
           context: .
           file: ./apps/web/Dockerfile
           push: true
-          tags: ${{ steps.meta-web.outputs.tags }}
-          labels: ${{ steps.meta-web.outputs.labels }}
+          tags: |
+            ${{ env.WEB_IMAGE_NAME }}:dev
+            ${{ env.WEB_IMAGE_NAME }}:dev-${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Image digest
+  build-and-push-prod:
+    name: Build & Push Prod Images
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Detect changed paths
+        id: changes
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            api:
+              - "apps/api/**"
+            web:
+              - "apps/web/**"
+            shared:
+              - "packages/**"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push API image (prod)
+        if: steps.changes.outputs.api == 'true' || steps.changes.outputs.shared == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.API_IMAGE_NAME }}:prod
+            ${{ env.API_IMAGE_NAME }}:prod-${{ github.sha }}
+            ${{ env.API_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Create environment file for Web (prod)
+        if: steps.changes.outputs.web == 'true' || steps.changes.outputs.shared == 'true'
         run: |
-          echo "API Image: ${{ env.API_IMAGE_NAME }}"
-          echo "API Digest: ${{ steps.meta-api.outputs.digest }}"
-          echo "Web Image: ${{ env.WEB_IMAGE_NAME }}"
-          echo "Web Digest: ${{ steps.meta-web.outputs.digest }}"
+          tee ./apps/web/.env <<<"${{ vars.PROD_UI }}"
+
+      - name: Build and push Web image (prod)
+        if: steps.changes.outputs.web == 'true' || steps.changes.outputs.shared == 'true'
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.WEB_IMAGE_NAME }}:prod
+            ${{ env.WEB_IMAGE_NAME }}:prod-${{ github.sha }}
+            ${{ env.WEB_IMAGE_NAME }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
