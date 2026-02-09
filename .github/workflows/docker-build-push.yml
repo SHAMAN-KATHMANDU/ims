@@ -33,6 +33,7 @@ jobs:
 
     permissions:
       contents: read
+      pull-requests: read
       packages: write
 
     steps:
@@ -103,6 +104,7 @@ jobs:
 
     permissions:
       contents: read
+      pull-requests: read
       packages: write
 
     steps:
