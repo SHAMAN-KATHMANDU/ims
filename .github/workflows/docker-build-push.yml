@@ -7,6 +7,11 @@ on:
       - master
       - develop
       - devlop
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - master
   workflow_dispatch: # Allow manual trigger
 
 env:
@@ -84,7 +89,9 @@ jobs:
   build-and-push-prod:
     name: Build & Push Prod Images
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+    if: |
+      (github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')) ||
+      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (github.event.pull_request.base.ref == 'main' || github.event.pull_request.base.ref == 'master'))
 
     permissions:
       contents: read
@@ -93,11 +100,14 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
 
       - name: Detect changed paths
         id: changes
         uses: dorny/paths-filter@v3
         with:
+          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
           filters: |
             api:
               - "apps/api/**"
