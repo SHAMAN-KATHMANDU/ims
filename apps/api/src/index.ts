@@ -17,7 +17,7 @@ const startServer = async () => {
     // Startup validation checks
     logger.log("Starting server...");
     logger.log(`Environment: ${env.nodeEnv}`);
-    logger.log(`Port: ${PORT}, Host: ${HOST} `);
+    logger.log(`Port: ${PORT}, Host: ${HOST}`);
 
     // Validate environment configuration
     if (env.isProd || env.isStaging) {
