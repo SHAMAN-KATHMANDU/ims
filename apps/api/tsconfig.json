@@ -2,7 +2,6 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "CommonJS",
-    "rootDir": "src",
     "outDir": "dist",
     "strict": true,
     "esModuleInterop": true,
@@ -14,9 +13,14 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src/**/*"],
+  "include": ["src/**/*", "prisma/**/*"],
+  "exclude": ["node_modules", "dist"],
   "ts-node": {
     "files": true,
-    "require": ["tsconfig-paths/register"]
+    "transpileOnly": true,
+    "compilerOptions": {
+      "module": "CommonJS",
+      "esModuleInterop": true
+    }
   }
 }
