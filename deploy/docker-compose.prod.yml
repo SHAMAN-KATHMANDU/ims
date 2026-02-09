@@ -1,0 +1,57 @@
+# Prod stack for EC2 – uses images from Docker Hub (tag :prod).
+# Watchtower (see watchtower.prod.yml) pulls new :prod images and restarts prod_web / prod_api.
+
+services:
+  prod_db:
+    image: postgres:16
+    container_name: prod_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ims}
+    volumes:
+      - prod_db_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    networks:
+      - prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  prod_api:
+    image: rpandox/dev-api-ims:prod
+    container_name: prod_api
+    restart: always
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      prod_db:
+        condition: service_healthy
+    networks:
+      - prod
+
+  prod_web:
+    image: rpandox/dev-web-ims:prod
+    container_name: prod_web
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prod_api
+    networks:
+      - prod
+
+networks:
+  prod:
+    driver: bridge
+
+volumes:
+  prod_db_data:
