@@ -21,6 +21,7 @@ import {
   Tags,
   Bug,
   Building2,
+  ShieldCheck,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -55,6 +56,23 @@ interface NavSection {
 
 // Define nav sections
 const navSections: NavSection[] = [
+  {
+    title: "PLATFORM",
+    items: [
+      {
+        path: "",
+        label: "Dashboard",
+        icon: Home,
+        roles: ["platformAdmin"],
+      },
+      {
+        path: "platform/tenants",
+        label: "Tenants",
+        icon: ShieldCheck,
+        roles: ["platformAdmin"],
+      },
+    ],
+  },
   {
     title: "MAIN",
     items: [
@@ -237,6 +255,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const tenant = useAuthStore(selectTenant);
   const isMobile = useIsMobile();
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    PLATFORM: true,
     MAIN: true,
     SALES: true,
     PRODUCTS: true,
