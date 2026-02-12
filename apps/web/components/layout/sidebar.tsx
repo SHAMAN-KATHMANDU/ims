@@ -186,6 +186,18 @@ const navSections: NavSection[] = [
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
       },
+      {
+        path: "reports/analytics/trends",
+        label: "Trends",
+        icon: BarChart3,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "reports/analytics/financial",
+        label: "Financial",
+        icon: BarChart3,
+        roles: ["user", "admin", "superAdmin"],
+      },
     ],
   },
   {
