@@ -52,6 +52,7 @@ import {
   Filter,
   Plus,
   ArrowUpDown,
+  X,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -319,6 +320,35 @@ export function ProductPage() {
       lowStock: checked ? true : undefined,
     }));
   }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setPaginationParams({
+      page: DEFAULT_PAGE,
+      limit: DEFAULT_LIMIT,
+      search: "",
+      locationId: undefined,
+      categoryId: undefined,
+      subCategory: undefined,
+      vendorId: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      sortBy: "dateCreated",
+      sortOrder: "desc",
+      lowStock: undefined,
+    });
+  }, []);
+
+  const hasActiveFilters =
+    (paginationParams.search ?? "") !== "" ||
+    paginationParams.locationId != null ||
+    paginationParams.categoryId != null ||
+    paginationParams.subCategory != null ||
+    paginationParams.vendorId != null ||
+    paginationParams.dateFrom != null ||
+    paginationParams.dateTo != null ||
+    paginationParams.lowStock === true ||
+    (paginationParams.sortBy ?? "dateCreated") !== "dateCreated" ||
+    (paginationParams.sortOrder ?? "desc") !== "desc";
 
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
@@ -1074,9 +1104,14 @@ export function ProductPage() {
                     Filters
                   </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-80 p-3" align="end">
-                  <div className="space-y-3">
-                    <div className="flex items-center space-x-2">
+                <PopoverContent
+                  className="w-[min(90vw,380px)] max-h-[min(85vh,440px)] overflow-y-auto p-3"
+                  align="end"
+                  side="bottom"
+                  sideOffset={4}
+                >
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                    <div className="col-span-2 flex items-center space-x-2">
                       <Checkbox
                         id="lowStock"
                         checked={paginationParams.lowStock === true}
@@ -1091,95 +1126,102 @@ export function ProductPage() {
                         Low stock only (quantity &lt; 5)
                       </Label>
                     </div>
-                    <p className="text-xs font-medium text-muted-foreground">
+                    <p className="text-xs font-medium text-muted-foreground col-span-2">
                       Category & vendor
                     </p>
-                    <div className="grid gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Category</Label>
-                        <Select
-                          value={paginationParams.categoryId ?? "all"}
-                          onValueChange={handleCategoryChange}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="All" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            {categories.map((c) => (
-                              <SelectItem key={c.id} value={c.id}>
-                                {c.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Subcategory</Label>
-                        <Select
-                          value={paginationParams.subCategory ?? "all"}
-                          onValueChange={handleSubCategoryChange}
-                          disabled={!paginationParams.categoryId}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="All" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            {subcategories.map((name) => (
-                              <SelectItem key={name} value={name}>
-                                {name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Vendor</Label>
-                        <Select
-                          value={paginationParams.vendorId ?? "all"}
-                          onValueChange={handleVendorChange}
-                        >
-                          <SelectTrigger className="h-8 text-sm">
-                            <SelectValue placeholder="All" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">All</SelectItem>
-                            {vendors.map((v) => (
-                              <SelectItem key={v.id} value={v.id}>
-                                {v.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Category</Label>
+                      <Select
+                        value={paginationParams.categoryId ?? "all"}
+                        onValueChange={handleCategoryChange}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {categories.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <p className="text-xs font-medium text-muted-foreground pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-xs">Subcategory</Label>
+                      <Select
+                        value={paginationParams.subCategory ?? "all"}
+                        onValueChange={handleSubCategoryChange}
+                        disabled={!paginationParams.categoryId}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {subcategories.map((name) => (
+                            <SelectItem key={name} value={name}>
+                              {name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="col-span-2 space-y-1">
+                      <Label className="text-xs">Vendor</Label>
+                      <Select
+                        value={paginationParams.vendorId ?? "all"}
+                        onValueChange={handleVendorChange}
+                      >
+                        <SelectTrigger className="h-8 text-sm">
+                          <SelectValue placeholder="All" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">All</SelectItem>
+                          {vendors.map((v) => (
+                            <SelectItem key={v.id} value={v.id}>
+                              {v.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-xs font-medium text-muted-foreground col-span-2 pt-1">
                       Date range
                     </p>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div className="space-y-1">
-                        <Label className="text-xs">From</Label>
-                        <Input
-                          type="date"
-                          value={paginationParams.dateFrom ?? ""}
-                          onChange={(e) => handleDateFromChange(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">To</Label>
-                        <Input
-                          type="date"
-                          value={paginationParams.dateTo ?? ""}
-                          onChange={(e) => handleDateToChange(e.target.value)}
-                          className="h-8 text-sm"
-                        />
-                      </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">From</Label>
+                      <Input
+                        type="date"
+                        value={paginationParams.dateFrom ?? ""}
+                        onChange={(e) => handleDateFromChange(e.target.value)}
+                        className="h-8 text-sm"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">To</Label>
+                      <Input
+                        type="date"
+                        value={paginationParams.dateTo ?? ""}
+                        onChange={(e) => handleDateToChange(e.target.value)}
+                        className="h-8 text-sm"
+                      />
                     </div>
                   </div>
                 </PopoverContent>
               </Popover>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs"
+                  onClick={clearAllFilters}
+                >
+                  <X className="h-3.5 w-3.5 mr-2" />
+                  Clear filters
+                </Button>
+              )}
             </>
           }
           // Pagination props

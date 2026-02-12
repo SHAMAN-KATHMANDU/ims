@@ -185,8 +185,8 @@ function filtersToSearchParams(
 }
 
 /**
- * Returns filters parsed from URL and a setter that updates URL (merge with current params).
- * Use the same hook on all three analytics pages so filter state is shared via URL.
+ * Returns filters parsed from URL and setters. State lives in URL.
+ * Use the same hook on all analytics pages so filter state is shared.
  */
 export function useAnalyticsFilters(): {
   filters: AnalyticsFilters;
@@ -195,6 +195,10 @@ export function useAnalyticsFilters(): {
   setFilters: (update: AnalyticsFiltersUpdate) => void;
   setPreset: (preset: string) => void;
   setDateRange: (dateFrom: string, dateTo: string) => void;
+  /** Reset all filters to defaults (preset last30, no locations/type/credit/user/category/vendor). */
+  clearFilters: () => void;
+  /** True if any filter other than default preset is applied. */
+  hasActiveFilters: boolean;
 } {
   const pathname = usePathname();
   const router = useRouter();
@@ -217,6 +221,15 @@ export function useAnalyticsFilters(): {
     if (filters.vendorId) p.vendorId = filters.vendorId;
     return p;
   }, [filters]);
+
+  const hasActiveFilters =
+    filters.locationIds.length > 0 ||
+    filters.saleType != null ||
+    filters.creditStatus !== "all" ||
+    filters.userId != null ||
+    filters.categoryId != null ||
+    filters.vendorId != null ||
+    filters.preset === "custom";
 
   const setFilters = useCallback(
     (update: AnalyticsFiltersUpdate) => {
@@ -254,5 +267,25 @@ export function useAnalyticsFilters(): {
     [pathname, router, searchParams],
   );
 
-  return { filters, apiParams, setFilters, setPreset, setDateRange };
+  const clearFilters = useCallback(() => {
+    const preset = DEFAULT_FILTERS.preset ?? "last30";
+    const range = getPresetRange(preset);
+    const params = new URLSearchParams();
+    params.set("preset", preset);
+    if (range) {
+      params.set("dateFrom", range.dateFrom);
+      params.set("dateTo", range.dateTo);
+    }
+    router.replace(`${pathname}?${params.toString()}`);
+  }, [pathname, router]);
+
+  return {
+    filters,
+    apiParams,
+    setFilters,
+    setPreset,
+    setDateRange,
+    clearFilters,
+    hasActiveFilters,
+  };
 }
