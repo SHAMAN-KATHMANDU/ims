@@ -18,18 +18,20 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Detect which paths changed so we can run jobs conditionally
+  # Detect which paths changed so we can run jobs conditionally.
+  # For PRs from forks, GITHUB_TOKEN has restricted API access; we set all outputs true so full CI runs.
   changes:
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ steps.filter.outputs.api }}
-      web: ${{ steps.filter.outputs.web }}
-      shared: ${{ steps.filter.outputs.shared }}
-      any: ${{ steps.filter.outputs.any }}
+      api: ${{ steps.changes_filter.outputs.api || steps.fork_outputs.outputs.api }}
+      web: ${{ steps.changes_filter.outputs.web || steps.fork_outputs.outputs.web }}
+      shared: ${{ steps.changes_filter.outputs.shared || steps.fork_outputs.outputs.shared }}
+      any: ${{ steps.changes_filter.outputs.any || steps.fork_outputs.outputs.any }}
     steps:
       - uses: actions/checkout@v4
-      - name: Detect changed paths
-        id: filter
+      - name: Detect changed paths (same-repo PR or push)
+        id: changes_filter
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: dorny/paths-filter@v3
         with:
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
@@ -44,6 +46,14 @@ jobs:
               - "apps/api/**"
               - "apps/web/**"
               - "packages/**"
+      - name: Set all changes for fork PR (no API access)
+        id: fork_outputs
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "api=true" >> "$GITHUB_OUTPUT"
+          echo "web=true" >> "$GITHUB_OUTPUT"
+          echo "shared=true" >> "$GITHUB_OUTPUT"
+          echo "any=true" >> "$GITHUB_OUTPUT"
 
   lint-api:
     name: Lint API
