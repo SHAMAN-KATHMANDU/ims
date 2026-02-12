@@ -32,6 +32,10 @@ on:
         type: boolean
         default: false
 
+permissions:
+  contents: read
+  pull-requests: read
+
 concurrency:
   group: build-dev-${{ github.ref }}
   cancel-in-progress: false
@@ -40,18 +44,20 @@ env:
   COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
 
 jobs:
+  # For merged PRs from forks, GITHUB_TOKEN has restricted API access; we set all outputs true so both images build.
   changes:
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ steps.filter.outputs.api }}
-      web: ${{ steps.filter.outputs.web }}
-      shared: ${{ steps.filter.outputs.shared }}
+      api: ${{ steps.changes_filter.outputs.api || steps.fork_outputs.outputs.api }}
+      web: ${{ steps.changes_filter.outputs.web || steps.fork_outputs.outputs.web }}
+      shared: ${{ steps.changes_filter.outputs.shared || steps.fork_outputs.outputs.shared }}
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
-      - name: Detect changed paths
-        id: filter
+      - name: Detect changed paths (same-repo or push)
+        id: changes_filter
+        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: dorny/paths-filter@v3
         with:
           base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
@@ -62,6 +68,13 @@ jobs:
               - "apps/web/**"
             shared:
               - "packages/**"
+      - name: Set all changes for fork PR (no API access)
+        id: fork_outputs
+        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
+        run: |
+          echo "api=true" >> "$GITHUB_OUTPUT"
+          echo "web=true" >> "$GITHUB_OUTPUT"
+          echo "shared=true" >> "$GITHUB_OUTPUT"
 
   build-api:
     name: Build API (dev)
