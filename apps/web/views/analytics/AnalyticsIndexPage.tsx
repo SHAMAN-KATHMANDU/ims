@@ -42,7 +42,7 @@ export function AnalyticsIndexPage() {
         path: `${base}/reports/analytics/customers`,
         title: "Customers & Promotions",
         description:
-          "Member KPIs, product performance, promo effectiveness, and cohort insights.",
+          "Member KPIs, product performance, promo effectiveness and cohort insights.",
         icon: Users,
       },
     ],

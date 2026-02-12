@@ -1,0 +1,144 @@
+# Cleanup old Docker Hub image tags and GitHub Actions cache.
+# Runs weekly (schedule) or manually. Protects tags: latest, prod, dev.
+# No deployment or SSH.
+
+name: Cleanup
+
+on:
+  schedule:
+    # Weekly, Sunday 02:00 UTC
+    - cron: "0 2 * * 0"
+  workflow_dispatch:
+    inputs:
+      days_to_keep:
+        description: "Delete image tags older than this many days"
+        required: false
+        type: number
+        default: 30
+      dry_run:
+        description: "Only list what would be deleted; do not delete"
+        required: false
+        type: boolean
+        default: true
+
+concurrency:
+  group: cleanup-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  clean-docker-hub:
+    name: Clean Docker Hub tags
+    runs-on: ubuntu-latest
+    env:
+      HUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
+      HUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+      DAYS: ${{ github.event.inputs.days_to_keep || 30 }}
+      # Schedule runs perform deletes; manual default is dry run
+      DRY_RUN: ${{ github.event_name == 'schedule' && 'false' || (github.event.inputs.dry_run == 'false' && 'false' || 'true') }}
+    steps:
+      - name: Clean old image tags (dev-api-ims, dev-web-ims)
+        run: |
+          set -e
+          PROTECTED="latest prod dev"
+          REPOS="dev-api-ims dev-web-ims"
+          for REPO in $REPOS; do
+            echo "::group::$REPO"
+            # Login to Docker Hub and get token for Hub API (list tags with last_updated)
+            LOGIN=$(curl -s -X POST "https://hub.docker.com/v2/users/login/" \
+              -H "Content-Type: application/json" \
+              -d "{\"username\":\"$HUB_USER\",\"password\":\"$HUB_TOKEN\"}")
+            HUB_JWT=$(echo "$LOGIN" | jq -r '.token // empty')
+            if [ -z "$HUB_JWT" ]; then
+              echo "Could not get Docker Hub token (check DOCKERHUB_USERNAME/DOCKERHUB_TOKEN)"
+              continue
+            fi
+            # Paginate through tags
+            PAGE=1
+            while true; do
+              TAGS_JSON=$(curl -s -H "Authorization: JWT $HUB_JWT" \
+                "https://hub.docker.com/v2/repositories/$HUB_USER/$REPO/tags/?page_size=100&page=$PAGE")
+              echo "$TAGS_JSON" | jq -r '.results[]? | "\(.name)|\(.last_updated)"' | while IFS='|' read -r TAG UPDATED; do
+                [ -z "$TAG" ] && continue
+                # Skip protected tags
+                if echo "$PROTECTED" | grep -q "^$TAG$"; then
+                  echo "Protecting $REPO:$TAG"
+                  continue
+                fi
+                # Parse date and compare (last_updated is ISO format)
+                UPDATED_TS=$(date -d "$UPDATED" +%s 2>/dev/null || date -j -f "%Y-%m-%dT%H:%M:%S" "${UPDATED%%.*}" +%s 2>/dev/null || echo 0)
+                NOW=$(date +%s)
+                AGE_DAYS=$(( (NOW - UPDATED_TS) / 86400 ))
+                if [ "$AGE_DAYS" -gt "$DAYS" ]; then
+                  echo "Would delete $REPO:$TAG (age ${AGE_DAYS}d)"
+                  if [ "$DRY_RUN" != "true" ]; then
+                    # Get registry token and delete by digest
+                    REG_TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:$HUB_USER/$REPO:pull,push" \
+                      --user "$HUB_USER:$HUB_TOKEN" | jq -r '.token')
+                    DIGEST=$(curl -sI -H "Accept: application/vnd.docker.distribution.manifest.v2+json" \
+                      -H "Authorization: Bearer $REG_TOKEN" \
+                      "https://registry-1.docker.io/v2/$HUB_USER/$REPO/manifests/$TAG" | grep -i docker-content-digest | awk '{print $2}' | tr -d '\r')
+                    if [ -n "$DIGEST" ]; then
+                      HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X DELETE \
+                        -H "Authorization: Bearer $REG_TOKEN" \
+                        "https://registry-1.docker.io/v2/$HUB_USER/$REPO/manifests/$DIGEST")
+                      if [ "$HTTP" = "202" ] || [ "$HTTP" = "204" ]; then
+                        echo "Deleted $REPO:$TAG"
+                      else
+                        echo "Delete failed for $REPO:$TAG (HTTP $HTTP)" >&2
+                      fi
+                    fi
+                  fi
+                fi
+              done
+              HAS_NEXT=$(echo "$TAGS_JSON" | jq -r '.next // empty')
+              [ -z "$HAS_NEXT" ] && break
+              PAGE=$((PAGE + 1))
+            done
+            echo "::endgroup::"
+          done
+
+  clean-actions-cache:
+    name: Clean GitHub Actions cache
+    runs-on: ubuntu-latest
+    steps:
+      - name: Delete caches older than 7 days
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const retentionDays = 7;
+            // Schedule runs perform deletes; manual default is dry run
+            const dryRun = context.eventName === 'schedule' ? false : ('${{ github.event.inputs.dry_run }}' !== 'false');
+            const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
+            let page = 1;
+            let deleted = 0;
+            while (true) {
+              const { data } = await github.rest.actions.getActionsCacheList({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                per_page: 100,
+                page
+              });
+              if (!data.actions_caches || data.actions_caches.length === 0) break;
+              for (const cache of data.actions_caches) {
+                const createdAt = new Date(cache.created_at);
+                if (createdAt < cutoff) {
+                  if (dryRun) {
+                    console.log(`[dry run] Would delete cache: ${cache.key} (id: ${cache.id})`);
+                  } else {
+                    await github.rest.actions.deleteActionsCacheById({
+                      owner: context.repo.owner,
+                      repo: context.repo.repo,
+                      cache_id: cache.id
+                    });
+                    console.log(`Deleted cache: ${cache.key}`);
+                    deleted++;
+                  }
+                }
+              }
+              page++;
+            }
+            if (dryRun) {
+              console.log('Dry run: no caches were deleted.');
+            } else {
+              console.log(`Deleted ${deleted} cache(s).`);
+            }
