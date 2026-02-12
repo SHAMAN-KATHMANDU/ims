@@ -73,17 +73,19 @@ import {
   tooltipStyle,
   axisTick,
   gridProps,
+  type ChartTooltipProps,
+  type ChartTooltipPayloadItem,
 } from "./reportTheme";
 import type { Sale } from "@/services/salesService";
 
-const DarkTooltip = ({ active, payload, label }: any) => {
+const DarkTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   if (!active || !payload) return null;
   return (
     <div style={tooltipStyle}>
       <div style={{ fontWeight: 600, color: C.text, marginBottom: 6 }}>
         {label}
       </div>
-      {payload.map((p: any, i: number) => (
+      {payload.map((p: ChartTooltipPayloadItem, i: number) => (
         <div key={i} style={{ color: p.color || C.text, marginBottom: 2 }}>
           {p.name}: {typeof p.value === "number" ? fN(p.value) : p.value}
         </div>
@@ -124,7 +126,7 @@ export function SalesRevenuePage() {
   const basePath = `/${workspace}`;
   const userRole = useAuthStore(selectUserRole);
   const isUserRole = userRole === "user";
-  const { apiParams, filters, setPreset } = useAnalyticsFilters();
+  const { apiParams, filters } = useAnalyticsFilters();
   const { data, isLoading } = useSalesRevenueAnalytics(apiParams);
   const { data: extData, isLoading: extLoading } =
     useSalesExtendedAnalytics(apiParams);

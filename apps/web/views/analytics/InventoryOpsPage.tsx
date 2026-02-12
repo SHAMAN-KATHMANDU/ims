@@ -50,22 +50,6 @@ import {
   gridProps,
 } from "./reportTheme";
 
-const DarkTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload) return null;
-  return (
-    <div style={tooltipStyle}>
-      <div style={{ fontWeight: 600, color: C.text, marginBottom: 6 }}>
-        {label}
-      </div>
-      {payload.map((p: any, i: number) => (
-        <div key={i} style={{ color: p.color || C.text, marginBottom: 2 }}>
-          {p.name}: {typeof p.value === "number" ? fN(p.value) : p.value}
-        </div>
-      ))}
-    </div>
-  );
-};
-
 function ProgressBar({
   v,
   mx,

@@ -1870,7 +1870,7 @@ class AnalyticsController {
       // Add discount/subtotal per unique sale (avoid double counting)
       const processedSales = new Set<string>();
       for (const item of saleItems) {
-        const sale = item.sale as {
+        const sale = item.sale as unknown as {
           createdAt: Date;
           discount: number;
           subtotal: number;
@@ -2142,9 +2142,7 @@ class AnalyticsController {
           };
         });
 
-        const summaryWs = workbook.addWorksheet("Summary", {
-          firstSheet: true,
-        });
+        const summaryWs = workbook.addWorksheet("Summary");
         summaryWs.addRow(["Report", "Customers & Promotions"]);
         summaryWs.addRow(["Total Members", memberCount]);
         summaryWs.addRow(["New in Period", newMembersInPeriod]);
@@ -2258,9 +2256,7 @@ class AnalyticsController {
             ),
           }));
 
-        const summaryWs = workbook.addWorksheet("Summary", {
-          firstSheet: true,
-        });
+        const summaryWs = workbook.addWorksheet("Summary");
         summaryWs.addRow(["Report", "Trends & Patterns"]);
         summaryWs.addRow(["Months", monthlyTotals.length]);
         summaryWs.getRow(1).font = { bold: true };
@@ -2365,7 +2361,7 @@ class AnalyticsController {
         }
         const processedSales = new Set<string>();
         for (const item of saleItems) {
-          const sale = item.sale as {
+          const sale = item.sale as unknown as {
             createdAt: Date;
             discount: number;
             subtotal: number;
@@ -2425,9 +2421,7 @@ class AnalyticsController {
           }))
           .sort((a, b) => b.marginPct - a.marginPct);
 
-        const summaryWs = workbook.addWorksheet("Summary", {
-          firstSheet: true,
-        });
+        const summaryWs = workbook.addWorksheet("Summary");
         summaryWs.addRow(["Report", "Financial Analytics"]);
         summaryWs.addRow(["Days", grossProfitTimeSeries.length]);
         summaryWs.getRow(1).font = { bold: true };

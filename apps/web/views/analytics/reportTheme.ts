@@ -61,6 +61,20 @@ export function fP(v: number): string {
   return `${v.toFixed(1)}%`;
 }
 
+/* ─── TOOLTIP TYPES (Recharts) ─── */
+
+export interface ChartTooltipPayloadItem {
+  name?: string;
+  value?: number | string;
+  color?: string;
+}
+
+export interface ChartTooltipProps {
+  active?: boolean;
+  payload?: ChartTooltipPayloadItem[];
+  label?: string;
+}
+
 /* ─── CHART STYLE OBJECTS ─── */
 
 /** Recharts tooltip container style */
