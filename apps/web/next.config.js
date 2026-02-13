@@ -3,11 +3,13 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Monorepo root (where pnpm-lock.yaml and node_modules live) so Turbopack finds next
+const monorepoRoot = path.resolve(__dirname, "..", "..");
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Turbopack: resolve from app directory so Next.js package is found in monorepo
   turbopack: {
-    root: __dirname,
+    root: monorepoRoot,
   },
 
   // Standalone output for optimized Docker builds
