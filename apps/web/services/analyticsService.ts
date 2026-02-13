@@ -343,3 +343,355 @@ export async function getMemberCohort(
     handleApiError(error, "fetch member cohort");
   }
 }
+
+// ============================================
+// Sales Extended response types
+// ============================================
+
+export interface MonthlyAggregate {
+  month: string;
+  gross: number;
+  net: number;
+  discount: number;
+  count: number;
+}
+
+export interface GrowthRate {
+  month: string;
+  growthPct: number;
+}
+
+export interface DayOfWeekBucket {
+  day: string;
+  revenue: number;
+  count: number;
+}
+
+export interface HourOfDayBucket {
+  hour: number;
+  revenue: number;
+  count: number;
+}
+
+export interface SalesExtendedData {
+  monthlyAggregates: MonthlyAggregate[];
+  growthRates: GrowthRate[];
+  basketMetrics: {
+    avgBasketSize: number;
+    totalItems: number;
+    totalSales: number;
+  };
+  dayOfWeek: DayOfWeekBucket[];
+  hourOfDay: HourOfDayBucket[];
+  grossProfit: number;
+  grossMargin: number;
+  revenuePerMember: number;
+  discountRatio: number;
+}
+
+export async function getSalesExtended(
+  params: AnalyticsApiParams = {},
+): Promise<SalesExtendedData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{
+      message: string;
+      data: SalesExtendedData;
+    }>(`/analytics/sales-extended${q ? `?${q}` : ""}`);
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch sales extended analytics");
+  }
+}
+
+// ============================================
+// Product Insights response types
+// ============================================
+
+export interface AbcProduct {
+  productId: string;
+  name: string;
+  revenue: number;
+  quantity: number;
+  cost: number;
+  margin: number;
+  categoryName: string;
+  cumulativePct: number;
+  grade: "A" | "B" | "C";
+}
+
+export interface SellThroughItem {
+  productId: string;
+  productName: string;
+  unitsSold: number;
+  currentStock: number;
+  sellThroughRate: number;
+}
+
+export interface CoPurchasePair {
+  product1: { id: string; name: string };
+  product2: { id: string; name: string };
+  frequency: number;
+}
+
+export interface RevenueByCategoryItem {
+  category: string;
+  revenue: number;
+  cost: number;
+  quantity: number;
+  margin: number;
+}
+
+export interface ProductInsightsData {
+  abcClassification: AbcProduct[];
+  sellThroughRates: SellThroughItem[];
+  coPurchasePairs: CoPurchasePair[];
+  revenueByCategory: RevenueByCategoryItem[];
+}
+
+export async function getProductInsights(
+  params: AnalyticsApiParams = {},
+): Promise<ProductInsightsData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{
+      message: string;
+      data: ProductInsightsData;
+    }>(`/analytics/product-insights${q ? `?${q}` : ""}`);
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch product insights");
+  }
+}
+
+// ============================================
+// Inventory Extended response types
+// ============================================
+
+export interface DaysOnHandItem {
+  productId: string;
+  productName: string;
+  currentStock: number;
+  dailySalesRate: number;
+  daysOnHand: number;
+}
+
+export interface DeadStockItem {
+  productId: string;
+  productName: string;
+  currentStock: number;
+  stockValue: number;
+}
+
+export interface SellThroughByLocation {
+  locationId: string;
+  locationName: string;
+  unitsSold: number;
+  currentStock: number;
+  sellThroughRate: number;
+}
+
+export interface InventoryExtendedData {
+  turnoverRatio: number;
+  stockToSalesRatio: number;
+  daysOnHand: DaysOnHandItem[];
+  deadStock: DeadStockItem[];
+  sellThroughByLocation: SellThroughByLocation[];
+}
+
+export async function getInventoryExtended(
+  params: AnalyticsApiParams = {},
+): Promise<InventoryExtendedData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{
+      message: string;
+      data: InventoryExtendedData;
+    }>(`/analytics/inventory-extended${q ? `?${q}` : ""}`);
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch inventory extended analytics");
+  }
+}
+
+// ============================================
+// Customer Insights response types
+// ============================================
+
+export interface ClvBucket {
+  range: string;
+  count: number;
+}
+
+export interface RfmSegment {
+  segment: string;
+  count: number;
+  revenue: number;
+}
+
+export interface MemberGrowthPoint {
+  month: string;
+  count: number;
+}
+
+export interface NewVsReturningPoint {
+  month: string;
+  newRevenue: number;
+  returningRevenue: number;
+}
+
+export interface CustomerInsightsData {
+  clvDistribution: ClvBucket[];
+  avgClv: number;
+  retentionRate: number;
+  churnRate: number;
+  rfmSegments: RfmSegment[];
+  avgOrderFrequencyDays: number;
+  memberGrowth: MemberGrowthPoint[];
+  newVsReturningTimeSeries: NewVsReturningPoint[];
+}
+
+export async function getCustomerInsights(
+  params: AnalyticsApiParams = {},
+): Promise<CustomerInsightsData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{
+      message: string;
+      data: CustomerInsightsData;
+    }>(`/analytics/customer-insights${q ? `?${q}` : ""}`);
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch customer insights");
+  }
+}
+
+// ============================================
+// Trends response types
+// ============================================
+
+export interface MonthlyTotal {
+  month: string;
+  revenue: number;
+  count: number;
+  discount: number;
+  momGrowth: number;
+}
+
+export interface SeasonalityPoint {
+  month: string;
+  index: number;
+}
+
+export interface CohortRetentionMonth {
+  monthOffset: number;
+  activeCount: number;
+  rate: number;
+}
+
+export interface CohortRetentionRow {
+  cohortMonth: string;
+  size: number;
+  retention: CohortRetentionMonth[];
+}
+
+export interface PeakHourDay {
+  day: string;
+  hours: Array<{ hour: number; revenue: number }>;
+}
+
+export interface TrendsData {
+  monthlyTotals: MonthlyTotal[];
+  seasonalityIndex: SeasonalityPoint[];
+  cohortRetention: CohortRetentionRow[];
+  peakHours: PeakHourDay[];
+}
+
+export async function getTrends(
+  params: AnalyticsApiParams = {},
+): Promise<TrendsData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{ message: string; data: TrendsData }>(
+      `/analytics/trends${q ? `?${q}` : ""}`,
+    );
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch trends analytics");
+  }
+}
+
+// ============================================
+// Financial response types
+// ============================================
+
+export interface GrossProfitPoint {
+  date: string;
+  revenue: number;
+  cogs: number;
+  grossProfit: number;
+  discountRatio: number;
+}
+
+export interface CogsByCategoryItem {
+  category: string;
+  cogs: number;
+  revenue: number;
+}
+
+export interface CogsByLocationItem {
+  locationId: string;
+  locationName: string;
+  cogs: number;
+}
+
+export interface MarginByCategoryItem {
+  category: string;
+  revenue: number;
+  cogs: number;
+  margin: number;
+  marginPct: number;
+}
+
+export interface FinancialData {
+  grossProfitTimeSeries: GrossProfitPoint[];
+  cogsByCategory: CogsByCategoryItem[];
+  cogsByLocation: CogsByLocationItem[];
+  marginByCategory: MarginByCategoryItem[];
+}
+
+export async function getFinancial(
+  params: AnalyticsApiParams = {},
+): Promise<FinancialData> {
+  const q = buildQueryString(params);
+  try {
+    const response = await api.get<{ message: string; data: FinancialData }>(
+      `/analytics/financial${q ? `?${q}` : ""}`,
+    );
+    return response.data.data;
+  } catch (error) {
+    handleApiError(error, "fetch financial analytics");
+  }
+}
+
+// ============================================
+// Export analytics (blob download)
+// ============================================
+
+export async function exportAnalytics(
+  exportType: string,
+  format: "csv" | "excel" = "excel",
+  params: AnalyticsApiParams = {},
+): Promise<import("axios").AxiosResponse<Blob>> {
+  const q = buildQueryString(params);
+  const typeParam = `type=${exportType}&format=${format}`;
+  const qs = q ? `${typeParam}&${q}` : typeParam;
+  try {
+    const response = await api.get<Blob>(`/analytics/export?${qs}`, {
+      responseType: "blob",
+    });
+    return response;
+  } catch (error) {
+    handleApiError(error, `export ${exportType} analytics`);
+  }
+}

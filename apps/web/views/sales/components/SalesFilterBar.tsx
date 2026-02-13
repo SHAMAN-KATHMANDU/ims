@@ -70,6 +70,8 @@ export interface SalesFilterBarProps {
   onStartDateChange: (date: Date | undefined) => void;
   onEndDateChange: (date: Date | undefined) => void;
   onClearDates: () => void;
+  onClearAllFilters?: () => void;
+  hasActiveFilters?: boolean;
   showrooms: Location[];
   dateShortcuts: DateShortcut[];
   onDateShortcut: (start: Date, end: Date) => void;
@@ -94,6 +96,8 @@ export function SalesFilterBar({
   onStartDateChange,
   onEndDateChange,
   onClearDates,
+  onClearAllFilters,
+  hasActiveFilters,
   showrooms,
   dateShortcuts,
   onDateShortcut,
@@ -145,61 +149,64 @@ export function SalesFilterBar({
             Filters
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-80 p-3" align="end">
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground">
+        <PopoverContent
+          className="w-[min(90vw,380px)] max-h-[min(85vh,480px)] overflow-y-auto p-3"
+          align="end"
+          side="bottom"
+          sideOffset={4}
+        >
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <p className="text-xs font-medium text-muted-foreground col-span-2">
               Type, credit & showroom
             </p>
-            <div className="grid gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">Type</Label>
-                <Select value={typeFilter} onValueChange={onTypeChange}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {TYPE_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Credit</Label>
-                <Select value={creditFilter} onValueChange={onCreditChange}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Credit" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All</SelectItem>
-                    <SelectItem value="credit">Credit only</SelectItem>
-                    <SelectItem value="non-credit">Non-credit only</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">Showroom</Label>
-                <Select value={locationFilter} onValueChange={onLocationChange}>
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="Showroom" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="ALL">All Showrooms</SelectItem>
-                    {showrooms.map((location) => (
-                      <SelectItem key={location.id} value={location.id}>
-                        {location.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Type</Label>
+              <Select value={typeFilter} onValueChange={onTypeChange}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {TYPE_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <p className="text-xs font-medium text-muted-foreground pt-1">
+            <div className="space-y-1">
+              <Label className="text-xs">Credit</Label>
+              <Select value={creditFilter} onValueChange={onCreditChange}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Credit" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All</SelectItem>
+                  <SelectItem value="credit">Credit only</SelectItem>
+                  <SelectItem value="non-credit">Non-credit only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 space-y-1">
+              <Label className="text-xs">Showroom</Label>
+              <Select value={locationFilter} onValueChange={onLocationChange}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Showroom" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Showrooms</SelectItem>
+                  {showrooms.map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <p className="text-xs font-medium text-muted-foreground col-span-2 pt-1">
               Date range
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="col-span-2 flex flex-wrap gap-1.5">
               {dateShortcuts.map(({ label, start, end }) => (
                 <Button
                   key={label}
@@ -212,67 +219,65 @@ export function SalesFilterBar({
                 </Button>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">From</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "h-8 w-full justify-start text-left font-normal text-sm",
-                        !startDate && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                      {startDate ? format(startDate, "MMM d") : "Select"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={onStartDateChange}
-                      disabled={calendarDisabled}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">To</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "h-8 w-full justify-start text-left font-normal text-sm",
-                        !endDate && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                      {endDate ? format(endDate, "MMM d") : "Select"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={onEndDateChange}
-                      disabled={calendarDisabled}
-                      initialFocus
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 w-full justify-start text-left font-normal text-sm",
+                      !startDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {startDate ? format(startDate, "MMM d") : "Select"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={onStartDateChange}
+                    disabled={calendarDisabled}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 w-full justify-start text-left font-normal text-sm",
+                      !endDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {endDate ? format(endDate, "MMM d") : "Select"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={onEndDateChange}
+                    disabled={calendarDisabled}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
             {(startDate || endDate) && (
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-full text-xs"
+                className="h-8 w-full text-xs col-span-2"
                 onClick={onClearDates}
               >
                 <X className="h-3.5 w-3.5 mr-2" />
@@ -282,6 +287,17 @@ export function SalesFilterBar({
           </div>
         </PopoverContent>
       </Popover>
+      {hasActiveFilters && onClearAllFilters && (
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={onClearAllFilters}
+        >
+          <X className="h-3.5 w-3.5 mr-2" />
+          Clear filters
+        </Button>
+      )}
     </div>
   );
 }

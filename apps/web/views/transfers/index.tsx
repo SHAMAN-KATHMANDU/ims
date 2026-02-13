@@ -38,7 +38,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, X } from "lucide-react";
 
 const STATUS_OPTIONS: { value: TransferStatus | "ALL"; label: string }[] = [
   { value: "ALL", label: "All Statuses" },
@@ -106,6 +106,13 @@ export function TransfersPage() {
     setStatusFilter(value as TransferStatus | "ALL");
     setPage(DEFAULT_PAGE);
   }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setSearch("");
+    setStatusFilter("ALL");
+    setPage(DEFAULT_PAGE);
+  }, []);
+  const hasActiveFilters = search !== "" || statusFilter !== "ALL";
 
   const handleView = (transfer: Transfer) => {
     setSelectedTransferId(transfer.id);
@@ -243,6 +250,17 @@ export function TransfersPage() {
               ))}
             </SelectContent>
           </Select>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={clearAllFilters}
+            >
+              <X className="h-3.5 w-3.5 mr-2" />
+              Clear filters
+            </Button>
+          )}
           <Button asChild variant="default" size="sm" className="sm:ml-auto">
             <Link
               href={`${basePath}/transfers/new`}

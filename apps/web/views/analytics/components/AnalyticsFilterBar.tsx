@@ -38,8 +38,14 @@ import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import type { User } from "@/services/userService";
 
 export function AnalyticsFilterBar() {
-  const { filters, setFilters, setPreset, setDateRange } =
-    useAnalyticsFilters();
+  const {
+    filters,
+    setFilters,
+    setPreset,
+    setDateRange,
+    clearFilters,
+    hasActiveFilters,
+  } = useAnalyticsFilters();
   const isAdmin = useAuthStore(selectIsAdmin);
   const { data: locations = [] } = useActiveLocations();
   const { data: users = [] } = useUsers({ limit: 500 });
@@ -71,12 +77,17 @@ export function AnalyticsFilterBar() {
             Filters
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-[340px] p-3" align="start">
-          <div className="space-y-3">
-            <p className="text-xs font-medium text-muted-foreground">
+        <PopoverContent
+          className="w-[min(90vw,420px)] max-h-[min(85vh,560px)] overflow-y-auto p-3"
+          align="start"
+          side="bottom"
+          sideOffset={4}
+        >
+          <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+            <p className="text-xs font-medium text-muted-foreground col-span-2">
               Date range
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="col-span-2 flex flex-wrap gap-1.5">
               {ANALYTICS_PRESETS.map(({ id, label }) => (
                 <Button
                   key={id}
@@ -89,140 +100,144 @@ export function AnalyticsFilterBar() {
                 </Button>
               ))}
             </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="space-y-1">
-                <Label className="text-xs">From</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "h-8 w-full justify-start text-left font-normal text-sm",
-                        !startDate && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                      {startDate ? format(startDate, "MMM d") : "Select"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={startDate}
-                      onSelect={(d) =>
-                        d &&
-                        setDateRange(
-                          format(d, "yyyy-MM-dd"),
-                          filters.dateTo ?? format(d, "yyyy-MM-dd"),
-                        )
-                      }
-                    />
-                  </PopoverContent>
-                </Popover>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs">To</Label>
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className={cn(
-                        "h-8 w-full justify-start text-left font-normal text-sm",
-                        !endDate && "text-muted-foreground",
-                      )}
-                    >
-                      <CalendarIcon className="mr-2 h-3.5 w-3.5" />
-                      {endDate ? format(endDate, "MMM d") : "Select"}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <Calendar
-                      mode="single"
-                      selected={endDate}
-                      onSelect={(d) =>
-                        d &&
-                        setDateRange(
-                          filters.dateFrom ?? format(d, "yyyy-MM-dd"),
-                          format(d, "yyyy-MM-dd"),
-                        )
-                      }
-                    />
-                  </PopoverContent>
-                </Popover>
+            <div className="space-y-1">
+              <Label className="text-xs">From</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 w-full justify-start text-left font-normal text-sm",
+                      !startDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {startDate ? format(startDate, "MMM d") : "Select"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(d) =>
+                      d &&
+                      setDateRange(
+                        format(d, "yyyy-MM-dd"),
+                        filters.dateTo ?? format(d, "yyyy-MM-dd"),
+                      )
+                    }
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">To</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className={cn(
+                      "h-8 w-full justify-start text-left font-normal text-sm",
+                      !endDate && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                    {endDate ? format(endDate, "MMM d") : "Select"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={endDate}
+                    onSelect={(d) =>
+                      d &&
+                      setDateRange(
+                        filters.dateFrom ?? format(d, "yyyy-MM-dd"),
+                        format(d, "yyyy-MM-dd"),
+                      )
+                    }
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="col-span-2 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Location
+              </p>
+              <div className="max-h-28 overflow-y-auto scrollbar-hide space-y-2 border rounded-md p-2">
+                {allLocations.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">No locations</p>
+                ) : (
+                  allLocations.map((loc) => (
+                    <div key={loc.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`loc-${loc.id}`}
+                        checked={filters.locationIds.includes(loc.id)}
+                        onCheckedChange={(checked) =>
+                          handleLocationToggle(loc.id, checked === true)
+                        }
+                      />
+                      <label
+                        htmlFor={`loc-${loc.id}`}
+                        className="text-sm font-normal cursor-pointer"
+                      >
+                        {loc.name}
+                      </label>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
 
-            <p className="text-xs font-medium text-muted-foreground pt-2">
-              Location
-            </p>
-            <div className="max-h-32 overflow-y-auto space-y-2 border rounded-md p-2">
-              {allLocations.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No locations</p>
-              ) : (
-                allLocations.map((loc) => (
-                  <div key={loc.id} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`loc-${loc.id}`}
-                      checked={filters.locationIds.includes(loc.id)}
-                      onCheckedChange={(checked) =>
-                        handleLocationToggle(loc.id, checked === true)
-                      }
-                    />
-                    <label
-                      htmlFor={`loc-${loc.id}`}
-                      className="text-sm font-normal cursor-pointer"
-                    >
-                      {loc.name}
-                    </label>
-                  </div>
-                ))
-              )}
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Sale type
+              </p>
+              <Select
+                value={filters.saleType ?? "all"}
+                onValueChange={(v) =>
+                  setFilters({
+                    saleType:
+                      v === "all" ? undefined : (v as AnalyticsSaleType),
+                  })
+                }
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="GENERAL">General</SelectItem>
+                  <SelectItem value="MEMBER">Member</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-
-            <p className="text-xs font-medium text-muted-foreground pt-1">
-              Sale type
-            </p>
-            <Select
-              value={filters.saleType ?? "all"}
-              onValueChange={(v) =>
-                setFilters({
-                  saleType: v === "all" ? undefined : (v as AnalyticsSaleType),
-                })
-              }
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="All types" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All types</SelectItem>
-                <SelectItem value="GENERAL">General</SelectItem>
-                <SelectItem value="MEMBER">Member</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <p className="text-xs font-medium text-muted-foreground">
-              Credit status
-            </p>
-            <Select
-              value={filters.creditStatus}
-              onValueChange={(v) =>
-                setFilters({ creditStatus: v as AnalyticsCreditStatus })
-              }
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="credit">Credit only</SelectItem>
-                <SelectItem value="non-credit">Non-credit only</SelectItem>
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Credit status
+              </p>
+              <Select
+                value={filters.creditStatus}
+                onValueChange={(v) =>
+                  setFilters({ creditStatus: v as AnalyticsCreditStatus })
+                }
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="credit">Credit only</SelectItem>
+                  <SelectItem value="non-credit">Non-credit only</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
 
             {isAdmin && (
-              <>
+              <div className="space-y-1">
                 <p className="text-xs font-medium text-muted-foreground">
                   User
                 </p>
@@ -244,74 +259,64 @@ export function AnalyticsFilterBar() {
                     ))}
                   </SelectContent>
                 </Select>
-              </>
+              </div>
             )}
-
-            <p className="text-xs font-medium text-muted-foreground">
-              Category
-            </p>
-            <Select
-              value={filters.categoryId ?? "all"}
-              onValueChange={(v) =>
-                setFilters({ categoryId: v === "all" ? undefined : v })
-              }
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="All categories" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All categories</SelectItem>
-                {categories.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>
-                    {c.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-
-            <p className="text-xs font-medium text-muted-foreground">Vendor</p>
-            <Select
-              value={filters.vendorId ?? "all"}
-              onValueChange={(v) =>
-                setFilters({ vendorId: v === "all" ? undefined : v })
-              }
-            >
-              <SelectTrigger className="h-8 text-sm">
-                <SelectValue placeholder="All vendors" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All vendors</SelectItem>
-                {vendors.map((v) => (
-                  <SelectItem key={v.id} value={v.id}>
-                    {v.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Category
+              </p>
+              <Select
+                value={filters.categoryId ?? "all"}
+                onValueChange={(v) =>
+                  setFilters({ categoryId: v === "all" ? undefined : v })
+                }
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="All categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All categories</SelectItem>
+                  {categories.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-2 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">
+                Vendor
+              </p>
+              <Select
+                value={filters.vendorId ?? "all"}
+                onValueChange={(v) =>
+                  setFilters({ vendorId: v === "all" ? undefined : v })
+                }
+              >
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="All vendors" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All vendors</SelectItem>
+                  {vendors.map((v) => (
+                    <SelectItem key={v.id} value={v.id}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </PopoverContent>
       </Popover>
 
-      {(filters.locationIds.length > 0 ||
-        filters.saleType ||
-        filters.creditStatus !== "all" ||
-        filters.userId ||
-        filters.categoryId ||
-        filters.vendorId) && (
+      {hasActiveFilters && (
         <Button
           variant="ghost"
           size="sm"
           className="h-8 text-xs"
-          onClick={() =>
-            setFilters({
-              locationIds: [],
-              saleType: undefined,
-              creditStatus: "all",
-              userId: undefined,
-              categoryId: undefined,
-              vendorId: undefined,
-            })
-          }
+          onClick={clearFilters}
         >
           <X className="h-3.5 w-3.5 mr-2" />
           Clear filters
