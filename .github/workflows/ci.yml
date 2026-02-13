@@ -34,7 +34,8 @@ jobs:
         if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: dorny/paths-filter@v3
         with:
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+          # base only for push; on pull_request the action ignores base and uses PR base ref
+          base: ${{ github.event_name == 'push' && (github.event.before || 'HEAD~1') || '' }}
           filters: |
             api:
               - "apps/api/**"
@@ -63,8 +64,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Uses pnpm version from package.json "packageManager" to avoid mismatch
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -82,8 +82,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Uses pnpm version from package.json "packageManager" to avoid mismatch
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -101,8 +100,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Uses pnpm version from package.json "packageManager" to avoid mismatch
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -121,8 +119,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Uses pnpm version from package.json "packageManager" to avoid mismatch
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -141,8 +138,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
-        with:
-          version: 9
+        # Uses pnpm version from package.json "packageManager" to avoid mismatch
       - uses: actions/setup-node@v4
         with:
           node-version-file: ".nvmrc"
@@ -160,6 +156,7 @@ jobs:
     permissions:
       contents: read
       security-events: write
+      actions: read
     steps:
       - uses: actions/checkout@v4
       - name: Run Trivy vulnerability scanner (filesystem)
@@ -174,6 +171,6 @@ jobs:
           output: "trivy-results.sarif"
       - name: Upload Trivy scan results
         if: always() && hashFiles('trivy-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: "trivy-results.sarif"
