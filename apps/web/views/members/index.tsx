@@ -44,6 +44,7 @@ import {
   FileText,
   Plus,
   ArrowUpDown,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -87,6 +88,16 @@ export function MembersPage() {
   const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [editingMember, setEditingMember] = useState<Member | null>(null);
   const [selectedMemberId, setSelectedMemberId] = useState<string | null>(null);
+
+  // Clear filters
+  const clearAllFilters = useCallback(() => {
+    setSearch("");
+    setSortBy("createdAt");
+    setSortOrder("desc");
+    setPage(DEFAULT_PAGE);
+  }, []);
+  const hasActiveFilters =
+    search !== "" || sortBy !== "createdAt" || sortOrder !== "desc";
 
   // Data fetching with backend sorting
   const { data: membersResponse, isLoading: membersLoading } =
@@ -283,6 +294,17 @@ export function MembersPage() {
               </SelectItem>
             </SelectContent>
           </Select>
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={clearAllFilters}
+            >
+              <X className="h-3.5 w-3.5 mr-2" />
+              Clear filters
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">

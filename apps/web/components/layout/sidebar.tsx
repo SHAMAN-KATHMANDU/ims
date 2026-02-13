@@ -23,8 +23,13 @@ import {
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthStore, selectUserRole } from "@/stores/auth-store";
+import {
+  useSidebarStore,
+  selectSidebarWidth,
+  selectSetSidebarWidth,
+} from "@/stores/sidebar-store";
 import type { UserRole } from "@/utils/auth";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -186,6 +191,18 @@ const navSections: NavSection[] = [
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
       },
+      {
+        path: "reports/analytics/trends",
+        label: "Trends",
+        icon: BarChart3,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "reports/analytics/financial",
+        label: "Financial",
+        icon: BarChart3,
+        roles: ["user", "admin", "superAdmin"],
+      },
     ],
   },
   {
@@ -229,6 +246,31 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const pathname = usePathname();
   const userRole = useAuthStore(selectUserRole);
   const isMobile = useIsMobile();
+  const sidebarWidth = useSidebarStore(selectSidebarWidth);
+  const setSidebarWidth = useSidebarStore(selectSetSidebarWidth);
+  const [resizing, setResizing] = useState(false);
+  const startX = useRef(0);
+  const startWidth = useRef(0);
+
+  useEffect(() => {
+    if (!resizing) return;
+    const onMove = (e: MouseEvent) => {
+      const delta = e.clientX - startX.current;
+      setSidebarWidth(startWidth.current + delta);
+    };
+    const onUp = () => setResizing(false);
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+    return () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [resizing, setSidebarWidth]);
+
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     MAIN: true,
     SALES: true,
@@ -323,7 +365,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto p-4 space-y-6">
+      <nav className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6">
         {filteredSections.map((section) => (
           <Collapsible
             key={section.title}
@@ -481,15 +523,29 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     );
   }
 
-  // Desktop: Regular sidebar
+  // Desktop: Regular sidebar (resizable when open)
   return (
     <aside
       className={cn(
-        "relative flex flex-col border-r border-border bg-background transition-all duration-300",
-        isOpen ? "w-64" : "w-20",
+        "relative flex flex-col border-r border-border bg-background shrink-0",
+        !isOpen && "transition-all duration-300",
       )}
+      style={isOpen ? { width: sidebarWidth } : { width: 80 }}
     >
       {sidebarContent}
+      {!isMobile && isOpen && (
+        <button
+          type="button"
+          aria-label="Resize sidebar"
+          className="absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 active:bg-primary/30 transition-colors z-10"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            startX.current = e.clientX;
+            startWidth.current = sidebarWidth;
+            setResizing(true);
+          }}
+        />
+      )}
     </aside>
   );
 }

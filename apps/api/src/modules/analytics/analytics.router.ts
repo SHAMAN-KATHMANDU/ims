@@ -71,4 +71,59 @@ analyticsRouter.get(
   analyticsController.getMemberCohort.bind(analyticsController),
 );
 
+// Sales Extended (growth, basket size, peak hours, gross profit)
+analyticsRouter.get(
+  "/sales-extended",
+  authorizeRoles("user", "admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getSalesExtended.bind(analyticsController),
+);
+
+// Product Insights (ABC, sell-through, co-purchase, category revenue)
+analyticsRouter.get(
+  "/product-insights",
+  authorizeRoles("admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getProductInsights.bind(analyticsController),
+);
+
+// Inventory Extended (turnover, DOH, stock-to-sales, dead stock, sell-through by location)
+analyticsRouter.get(
+  "/inventory-extended",
+  authorizeRoles("admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getInventoryExtended.bind(analyticsController),
+);
+
+// Customer Insights (CLV, retention, churn, RFM, frequency, member growth)
+analyticsRouter.get(
+  "/customer-insights",
+  authorizeRoles("admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getCustomerInsights.bind(analyticsController),
+);
+
+// Trends (monthly totals, seasonality, cohort retention, peak hours)
+analyticsRouter.get(
+  "/trends",
+  authorizeRoles("user", "admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getTrends.bind(analyticsController),
+);
+
+// Financial (gross profit, COGS, margins)
+analyticsRouter.get(
+  "/financial",
+  authorizeRoles("admin", "superAdmin"),
+  analyticsCacheMiddleware,
+  analyticsController.getFinancial.bind(analyticsController),
+);
+
+// Export analytics (CSV or Excel)
+analyticsRouter.get(
+  "/export",
+  authorizeRoles("user", "admin", "superAdmin"),
+  analyticsController.exportAnalytics.bind(analyticsController),
+);
+
 export default analyticsRouter;
