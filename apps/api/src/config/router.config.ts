@@ -20,6 +20,15 @@ import analyticsRouter from "@/modules/analytics/analytics.router";
 import dashboardRouter from "@/modules/dashboard/dashboard.router";
 import { getVersion } from "@/config/version";
 import bulkRouter from "@/modules/bulk/bulk.router";
+import companyRouter from "@/modules/companies/company.router";
+import contactRouter from "@/modules/contacts/contact.router";
+import leadRouter from "@/modules/leads/lead.router";
+import pipelineRouter from "@/modules/pipelines/pipeline.router";
+import dealRouter from "@/modules/deals/deal.router";
+import taskRouter from "@/modules/tasks/task.router";
+import activityRouter from "@/modules/activities/activity.router";
+import notificationRouter from "@/modules/notifications/notification.router";
+import crmRouter from "@/modules/crm/crm.router";
 
 const router = Router();
 
@@ -46,5 +55,14 @@ router.use("/error-reports", errorReportRouter);
 router.use("/analytics", analyticsRouter);
 router.use("/dashboard", dashboardRouter);
 router.use("/bulk", bulkRouter);
+router.use("/companies", companyRouter);
+router.use("/contacts", contactRouter);
+router.use("/leads", leadRouter);
+router.use("/pipelines", pipelineRouter);
+router.use("/deals", dealRouter);
+router.use("/tasks", taskRouter);
+router.use("/activities", activityRouter);
+router.use("/notifications", notificationRouter);
+router.use("/crm", crmRouter);
 
 export default router;

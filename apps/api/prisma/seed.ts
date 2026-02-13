@@ -1723,6 +1723,413 @@ async function main() {
     );
   }
 
+  // ============================================
+  // CRM: DEFAULT PIPELINE
+  // ============================================
+  const defaultPipeline = await prisma.pipeline.findFirst({
+    where: { isDefault: true },
+  });
+
+  let pipeline = defaultPipeline;
+  if (!pipeline) {
+    pipeline = await prisma.pipeline.create({
+      data: {
+        name: "Sales Pipeline",
+        isDefault: true,
+        stages: [
+          { id: "1", name: "Qualification", order: 1, probability: 10 },
+          { id: "2", name: "Proposal", order: 2, probability: 30 },
+          { id: "3", name: "Negotiation", order: 3, probability: 60 },
+          { id: "4", name: "Closed Won", order: 4, probability: 100 },
+          { id: "5", name: "Closed Lost", order: 5, probability: 0 },
+        ],
+      },
+    });
+    console.log("✅ Created default CRM Sales Pipeline");
+  } else {
+    console.log("⚠️  Default pipeline already exists. Skipping.");
+  }
+
+  const stageNames = ((pipeline?.stages as Array<{ name: string }>) || []).map(
+    (s) => s.name,
+  );
+  const firstStage = stageNames[0] || "Qualification";
+
+  // ============================================
+  // 12. CRM: COMPANIES (default: no company)
+  // ============================================
+  const companiesData = [
+    {
+      name: "Tech Solutions Nepal",
+      website: "https://techsolutions.com.np",
+      address: "Thamel, Kathmandu",
+      phone: "+977-1-5551001",
+    },
+    {
+      name: "Green Energy Pvt Ltd",
+      website: "https://greenenergy.com.np",
+      address: "Lalitpur",
+      phone: "+977-1-5551002",
+    },
+    {
+      name: "Himalayan Trading Co",
+      website: null,
+      address: "New Road, Kathmandu",
+      phone: "+977-1-5551003",
+    },
+    {
+      name: "Digital Innovations",
+      website: "https://digitalinnovations.np",
+      address: "Baneshwor",
+      phone: null,
+    },
+    {
+      name: "Sunrise Enterprises",
+      website: null,
+      address: "Patan",
+      phone: "+977-1-5551005",
+    },
+  ];
+
+  const companies: Record<string, { id: string }> = {};
+  for (const c of companiesData) {
+    let company = await prisma.company.findFirst({ where: { name: c.name } });
+    if (!company) {
+      company = await prisma.company.create({
+        data: {
+          name: c.name,
+          website: c.website || null,
+          address: c.address || null,
+          phone: c.phone || null,
+        },
+      });
+      console.log(`✅ Created company: ${c.name}`);
+    }
+    companies[c.name] = { id: company.id };
+  }
+
+  // ============================================
+  // 13. CRM: CONTACT TAGS
+  // ============================================
+  const tagNames = ["VIP", "Hot Lead", "Follow-up", "Corporate", "Wholesale"];
+  const contactTags: Record<string, { id: string }> = {};
+  for (const name of tagNames) {
+    let tag = await prisma.contactTag.findUnique({ where: { name } });
+    if (!tag) {
+      tag = await prisma.contactTag.create({ data: { name } });
+      console.log(`✅ Created contact tag: ${name}`);
+    }
+    contactTags[name] = { id: tag.id };
+  }
+
+  // ============================================
+  // 14. CRM: CONTACTS
+  // ============================================
+  const contactsData: Array<{
+    firstName: string;
+    lastName?: string;
+    email?: string;
+    phone?: string;
+    companyName?: string;
+    memberPhone?: string;
+    tagNames?: string[];
+  }> = [
+    {
+      firstName: "Raj",
+      lastName: "Sharma",
+      email: "raj@techsolutions.com.np",
+      phone: "9841000001",
+      companyName: "Tech Solutions Nepal",
+      memberPhone: "9841000001",
+      tagNames: ["Corporate", "VIP"],
+    },
+    {
+      firstName: "Sunita",
+      lastName: "Patel",
+      email: "sunita@greenenergy.com.np",
+      phone: "9841000002",
+      companyName: "Green Energy Pvt Ltd",
+      memberPhone: "9841000002",
+      tagNames: ["Corporate"],
+    },
+    {
+      firstName: "Amit",
+      lastName: "Kumar",
+      email: "amit@email.com",
+      phone: "9841000003",
+      companyName: "Himalayan Trading Co",
+      memberPhone: "9841000003",
+      tagNames: ["Follow-up"],
+    },
+    {
+      firstName: "Priya",
+      lastName: "Singh",
+      email: "priya@digitalinnovations.np",
+      phone: "9841000004",
+      companyName: "Digital Innovations",
+      memberPhone: "9841000004",
+      tagNames: ["Hot Lead", "Corporate"],
+    },
+    {
+      firstName: "Bikash",
+      lastName: "Thapa",
+      phone: "9841000005",
+      memberPhone: "9841000005",
+      tagNames: [],
+    },
+    {
+      firstName: "Anita",
+      lastName: "Gurung",
+      email: "anita@email.com",
+      phone: "9841000006",
+      companyName: "Sunrise Enterprises",
+      memberPhone: "9841000006",
+      tagNames: [],
+    },
+    {
+      firstName: "Ramesh",
+      lastName: "Adhikari",
+      email: "ramesh@email.com",
+      phone: "9841000007",
+      tagNames: ["Follow-up"],
+    },
+    {
+      firstName: "Sita",
+      lastName: "Rai",
+      phone: "9841000008",
+      memberPhone: "9841000008",
+      tagNames: [],
+    },
+    {
+      firstName: "Krishna",
+      lastName: "Bhattarai",
+      email: "krishna@email.com",
+      phone: "9841000009",
+      tagNames: ["Wholesale"],
+    },
+  ];
+
+  const createdContacts: Record<string, { id: string }> = {};
+  for (const c of contactsData) {
+    const existingByPhone = c.phone
+      ? await prisma.contact.findFirst({ where: { phone: c.phone } })
+      : null;
+    if (existingByPhone) continue;
+
+    const companyId = c.companyName ? companies[c.companyName]?.id : null;
+    const memberId = c.memberPhone ? members[c.memberPhone]?.id : null;
+    const tagIds = (c.tagNames || [])
+      .map((n) => contactTags[n]?.id)
+      .filter(Boolean) as string[];
+
+    const contact = await prisma.contact.create({
+      data: {
+        firstName: c.firstName,
+        lastName: c.lastName || null,
+        email: c.email || null,
+        phone: c.phone || null,
+        companyId,
+        memberId,
+        ownedById: superAdmin.id,
+        createdById: superAdmin.id,
+        tagLinks:
+          tagIds.length > 0
+            ? { create: tagIds.map((tagId) => ({ tagId })) }
+            : undefined,
+      },
+    });
+    createdContacts[`${c.firstName} ${c.lastName || ""}`.trim()] = {
+      id: contact.id,
+    };
+    console.log(`✅ Created contact: ${c.firstName} ${c.lastName || ""}`);
+  }
+
+  // ============================================
+  // 15. CRM: LEADS
+  // ============================================
+  const leadsData = [
+    {
+      name: "Nepal Telecom Project",
+      email: "procurement@ntc.gov.np",
+      phone: "9841111001",
+      companyName: "NTC",
+      status: "NEW" as const,
+      source: "Website",
+    },
+    {
+      name: "Hotel Himalaya",
+      email: "manager@hotelhimalaya.com",
+      phone: "9841111002",
+      companyName: "Hotel Himalaya",
+      status: "CONTACTED" as const,
+      source: "Referral",
+    },
+    {
+      name: "College of IT",
+      email: "it@college.edu.np",
+      phone: "9841111003",
+      companyName: "College of IT",
+      status: "QUALIFIED" as const,
+      source: "Cold Call",
+    },
+    {
+      name: "Startup XYZ",
+      email: "founder@startup.xyz",
+      status: "NEW" as const,
+      source: "Website",
+    },
+  ];
+
+  const createdLeads: Record<string, { id: string }> = {};
+  for (const l of leadsData) {
+    const lead = await prisma.lead.create({
+      data: {
+        name: l.name,
+        email: l.email || null,
+        phone: l.phone || null,
+        companyName: l.companyName || null,
+        status: l.status,
+        source: l.source || null,
+        assignedToId: superAdmin.id,
+        createdById: superAdmin.id,
+      },
+    });
+    createdLeads[l.name] = { id: lead.id };
+    console.log(`✅ Created lead: ${l.name}`);
+  }
+
+  // ============================================
+  // 16. CRM: DEALS
+  // ============================================
+  if (pipeline) {
+    const dealsData: Array<{
+      name: string;
+      value: number;
+      contactKey?: string;
+      memberPhone?: string;
+      companyName?: string;
+    }> = [
+      {
+        name: "Tech Solutions - Enterprise License",
+        value: 250000,
+        contactKey: "Raj Sharma",
+        companyName: "Tech Solutions Nepal",
+      },
+      {
+        name: "Green Energy - Solar Panel Order",
+        value: 180000,
+        contactKey: "Sunita Patel",
+        companyName: "Green Energy Pvt Ltd",
+      },
+      {
+        name: "Himalayan Trading - Bulk Order",
+        value: 95000,
+        contactKey: "Amit Kumar",
+        companyName: "Himalayan Trading Co",
+      },
+      {
+        name: "Digital Innovations - Consulting",
+        value: 120000,
+        contactKey: "Priya Singh",
+        companyName: "Digital Innovations",
+      },
+      {
+        name: "Bikash Thapa - Personal Order",
+        value: 45000,
+        memberPhone: "9841000005",
+      },
+      {
+        name: "Sunrise Enterprises - Office Furniture",
+        value: 320000,
+        contactKey: "Anita Gurung",
+        companyName: "Sunrise Enterprises",
+      },
+    ];
+
+    for (const d of dealsData) {
+      const contactId = d.contactKey ? createdContacts[d.contactKey]?.id : null;
+      const memberId = d.memberPhone ? members[d.memberPhone]?.id : null;
+      const companyId = d.companyName ? companies[d.companyName]?.id : null;
+
+      await prisma.deal.create({
+        data: {
+          name: d.name,
+          value: d.value,
+          stage: firstStage,
+          probability: 10,
+          status: "OPEN",
+          contactId: contactId || null,
+          memberId: memberId || null,
+          companyId: companyId || null,
+          pipelineId: pipeline.id,
+          assignedToId: superAdmin.id,
+          createdById: superAdmin.id,
+        },
+      });
+      console.log(`✅ Created deal: ${d.name}`);
+    }
+  }
+
+  // ============================================
+  // 17. CRM: TASKS
+  // ============================================
+  const contactIdsForTasks = Object.values(createdContacts);
+  const createdDeals = await prisma.deal.findMany({
+    take: 3,
+    select: { id: true },
+  });
+  const taskTitles = [
+    "Follow up with Raj",
+    "Send proposal to Green Energy",
+    "Call Amit for negotiation",
+    "Prepare quote for Priya",
+    "Schedule demo with Bikash",
+  ];
+  for (let i = 0; i < Math.min(5, taskTitles.length); i++) {
+    await prisma.task.create({
+      data: {
+        title: taskTitles[i],
+        dueDate: new Date(Date.now() + (i + 1) * 24 * 60 * 60 * 1000),
+        completed: false,
+        contactId: contactIdsForTasks[i]?.id || null,
+        dealId: createdDeals[i]?.id || null,
+        assignedToId: superAdmin.id,
+      },
+    });
+    console.log(`✅ Created task: ${taskTitles[i]}`);
+  }
+
+  // ============================================
+  // 18. CRM: ACTIVITIES
+  // ============================================
+  const firstContactId = contactIdsForTasks[0]?.id;
+  const firstDealId = createdDeals[0]?.id;
+  if (firstContactId || firstDealId) {
+    await prisma.activity.create({
+      data: {
+        type: "CALL",
+        subject: "Initial discovery call",
+        notes: "Discussed requirements and timeline",
+        activityAt: new Date(),
+        contactId: firstContactId || null,
+        dealId: firstDealId || null,
+        createdById: superAdmin.id,
+      },
+    });
+    await prisma.activity.create({
+      data: {
+        type: "MEETING",
+        subject: "Proposal presentation",
+        notes: "Scheduled for next week",
+        activityAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
+        contactId: firstContactId || null,
+        dealId: firstDealId || null,
+        createdById: superAdmin.id,
+      },
+    });
+    console.log("✅ Created sample activities");
+  }
+
   console.log("\n🎉 Seeding completed successfully!");
   console.log("📝 You can now log in with the credentials from your .env file");
   console.log("🏢 Vendors have been created");
