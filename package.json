@@ -14,7 +14,9 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "ts-node prisma/seed.ts",
     "prisma:reset": "prisma migrate reset --force",
-    "check-user": "ts-node scripts/check-user.ts"
+    "check-user": "ts-node scripts/check-user.ts",
+    "trivy": "docker run --rm -v \"$(pwd):/app\" -w /app aquasec/trivy:latest fs . --severity CRITICAL,HIGH --ignore-unfixed",
+    "trivy:quick": "docker run --rm -v \"$(pwd):/app\" -w /app aquasec/trivy:latest fs . --scanners vuln --severity CRITICAL,HIGH --ignore-unfixed"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx}": [
