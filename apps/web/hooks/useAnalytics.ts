@@ -13,6 +13,12 @@ import {
   getPaymentTrends,
   getLocationComparison,
   getMemberCohort,
+  getSalesExtended,
+  getProductInsights,
+  getInventoryExtended,
+  getCustomerInsights,
+  getTrends,
+  getFinancial,
   type SalesRevenueData,
   type InventoryOpsData,
   type CustomersPromosData,
@@ -20,6 +26,12 @@ import {
   type PaymentTrendsData,
   type LocationComparisonItem,
   type MemberCohortData,
+  type SalesExtendedData,
+  type ProductInsightsData,
+  type InventoryExtendedData,
+  type CustomerInsightsData,
+  type TrendsData,
+  type FinancialData,
   type AnalyticsApiParams,
 } from "@/services/analyticsService";
 
@@ -39,6 +51,18 @@ export const analyticsKeys = {
     [...analyticsKeys.all, "location-comparison", params] as const,
   memberCohort: (params: AnalyticsApiParams) =>
     [...analyticsKeys.all, "member-cohort", params] as const,
+  salesExtended: (params: AnalyticsApiParams) =>
+    [...analyticsKeys.all, "sales-extended", params] as const,
+  productInsights: (params: AnalyticsApiParams) =>
+    [...analyticsKeys.all, "product-insights", params] as const,
+  inventoryExtended: (params: AnalyticsApiParams) =>
+    [...analyticsKeys.all, "inventory-extended", params] as const,
+  customerInsights: (params: AnalyticsApiParams) =>
+    [...analyticsKeys.all, "customer-insights", params] as const,
+  trends: (params: AnalyticsApiParams) =>
+    [...analyticsKeys.all, "trends", params] as const,
+  financial: (params: AnalyticsApiParams) =>
+    [...analyticsKeys.all, "financial", params] as const,
 };
 
 /**
@@ -122,6 +146,66 @@ export function useMemberCohortAnalytics(apiParams: AnalyticsApiParams = {}) {
   });
 }
 
+/** Fetch Sales Extended analytics (growth, basket, peak hours, margin). */
+export function useSalesExtendedAnalytics(apiParams: AnalyticsApiParams = {}) {
+  return useQuery({
+    queryKey: analyticsKeys.salesExtended(apiParams),
+    queryFn: () => getSalesExtended(apiParams),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/** Fetch Product Insights (ABC, sell-through, co-purchase, category revenue). */
+export function useProductInsightsAnalytics(
+  apiParams: AnalyticsApiParams = {},
+) {
+  return useQuery({
+    queryKey: analyticsKeys.productInsights(apiParams),
+    queryFn: () => getProductInsights(apiParams),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/** Fetch Inventory Extended (turnover, DOH, dead stock, sell-through by location). */
+export function useInventoryExtendedAnalytics(
+  apiParams: AnalyticsApiParams = {},
+) {
+  return useQuery({
+    queryKey: analyticsKeys.inventoryExtended(apiParams),
+    queryFn: () => getInventoryExtended(apiParams),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/** Fetch Customer Insights (CLV, retention, churn, RFM, frequency, member growth). */
+export function useCustomerInsightsAnalytics(
+  apiParams: AnalyticsApiParams = {},
+) {
+  return useQuery({
+    queryKey: analyticsKeys.customerInsights(apiParams),
+    queryFn: () => getCustomerInsights(apiParams),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/** Fetch Trends (monthly totals, seasonality, cohort retention, peak hours). */
+export function useTrendsAnalytics(apiParams: AnalyticsApiParams = {}) {
+  return useQuery({
+    queryKey: analyticsKeys.trends(apiParams),
+    queryFn: () => getTrends(apiParams),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+/** Fetch Financial (gross profit, COGS, margins). */
+export function useFinancialAnalytics(apiParams: AnalyticsApiParams = {}) {
+  return useQuery({
+    queryKey: analyticsKeys.financial(apiParams),
+    queryFn: () => getFinancial(apiParams),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
 export type {
   SalesRevenueData,
   InventoryOpsData,
@@ -130,5 +214,11 @@ export type {
   PaymentTrendsData,
   LocationComparisonItem,
   MemberCohortData,
+  SalesExtendedData,
+  ProductInsightsData,
+  InventoryExtendedData,
+  CustomerInsightsData,
+  TrendsData,
+  FinancialData,
   AnalyticsApiParams,
 };
