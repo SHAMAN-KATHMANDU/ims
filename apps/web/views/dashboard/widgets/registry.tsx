@@ -24,6 +24,7 @@ import { SuperAdminAuditInsights } from "./SuperAdminAuditInsights";
 import { SuperAdminRiskIndicators } from "./SuperAdminRiskIndicators";
 import { SuperAdminDataIntegrity } from "./SuperAdminDataIntegrity";
 import { SuperAdminShortcuts } from "./SuperAdminShortcuts";
+import { CrmShortcuts } from "./CrmShortcuts";
 
 export interface DashboardWidgetConfig {
   id: string;
@@ -117,6 +118,13 @@ const WIDGETS: DashboardWidgetConfig[] = [
     id: "admin-shortcuts",
     requiredRoles: ["admin", "superAdmin"],
     component: AdminShortcuts,
+    dataSource: "none",
+    refreshBehavior: "static",
+  },
+  {
+    id: "crm-shortcuts",
+    requiredRoles: ["user", "admin", "superAdmin"],
+    component: CrmShortcuts,
     dataSource: "none",
     refreshBehavior: "static",
   },

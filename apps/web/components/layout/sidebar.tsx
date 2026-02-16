@@ -20,6 +20,12 @@ import {
   Percent,
   Tags,
   Bug,
+  LayoutDashboard,
+  Contact,
+  Target,
+  Handshake,
+  CheckSquare,
+  Bell,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthStore, selectUserRole } from "@/stores/auth-store";
@@ -61,6 +67,59 @@ const navSections: NavSection[] = [
         path: "",
         label: "Dashboard",
         icon: Home,
+        roles: ["user", "admin", "superAdmin"],
+      },
+    ],
+  },
+  {
+    title: "CRM",
+    items: [
+      {
+        path: "crm",
+        label: "Dashboard",
+        icon: LayoutDashboard,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "crm/companies",
+        label: "Companies",
+        icon: Factory,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "crm/contacts",
+        label: "Contacts",
+        icon: Contact,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "crm/leads",
+        label: "Leads",
+        icon: Target,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "crm/deals",
+        label: "Deals",
+        icon: Handshake,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "crm/tasks",
+        label: "Tasks",
+        icon: CheckSquare,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "crm/reports",
+        label: "Reports",
+        icon: BarChart3,
+        roles: ["user", "admin", "superAdmin"],
+      },
+      {
+        path: "crm/notifications",
+        label: "Notifications",
+        icon: Bell,
         roles: ["user", "admin", "superAdmin"],
       },
     ],
@@ -273,6 +332,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     MAIN: true,
+    CRM: true,
     SALES: true,
     PRODUCTS: true,
     INVENTORY: true,

@@ -64,3 +64,64 @@ export const upload = multer({
 
 // Middleware for single file upload
 export const uploadSingle = upload.single("file");
+
+// Attachment storage - store in uploads/attachments subfolder
+const attachmentsDir = path.join(uploadsDir, "attachments");
+if (!fs.existsSync(attachmentsDir)) {
+  fs.mkdirSync(attachmentsDir, { recursive: true });
+}
+
+const attachmentStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, attachmentsDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname) || "";
+    const safeName = (file.originalname || "file")
+      .replace(/[^a-zA-Z0-9.-]/g, "_")
+      .slice(0, 50);
+    cb(null, `contact-${uniqueSuffix}-${safeName}${ext}`);
+  },
+});
+
+// Attachment file filter - allow common document and image types
+const attachmentFileFilter = (
+  _req: Express.Request,
+  file: Express.Multer.File,
+  cb: multer.FileFilterCallback,
+) => {
+  const allowedMimes = [
+    "application/pdf",
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ];
+  const allowedExts = [
+    ".pdf",
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".webp",
+    ".doc",
+    ".docx",
+  ];
+  const ext = path.extname(file.originalname || "").toLowerCase();
+  const isValid =
+    allowedMimes.includes(file.mimetype) || allowedExts.includes(ext);
+  if (isValid) {
+    cb(null, true);
+  } else {
+    cb(new Error("Invalid file type. Allowed: PDF, images, Word documents."));
+  }
+};
+
+export const uploadAttachment = multer({
+  storage: attachmentStorage,
+  fileFilter: attachmentFileFilter,
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+}).single("file");
