@@ -203,6 +203,15 @@ export function MembersPage() {
     setPage(DEFAULT_PAGE);
   }, []);
 
+  const handleColumnSort = useCallback(
+    (newSortBy: string, newSortOrder: "asc" | "desc") => {
+      setSortBy(newSortBy as "createdAt" | "updatedAt" | "name" | "id");
+      setSortOrder(newSortOrder);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+
   const handlePageSizeChange = useCallback((newSize: number) => {
     setPageSize(newSize);
     setPage(DEFAULT_PAGE);
@@ -379,6 +388,9 @@ export function MembersPage() {
       <MemberTable
         members={members}
         isLoading={membersLoading}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleColumnSort}
         onView={handleView}
         onEdit={handleEdit}
         // Selection props

@@ -42,6 +42,8 @@ export function usePromosPaginated(params: PromoListParams = {}) {
     limit: params.limit ?? DEFAULT_LIMIT,
     search: params.search?.trim() || "",
     isActive: params.isActive,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   };
 
   return useQuery({

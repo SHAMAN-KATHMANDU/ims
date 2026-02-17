@@ -9,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,9 @@ import { Eye } from "lucide-react";
 interface SalesTableProps {
   sales: Sale[];
   isLoading?: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onView: (sale: Sale) => void;
   currentPage?: number;
   itemsPerPage?: number;
@@ -36,12 +40,16 @@ interface SalesTableProps {
 export function SalesTable({
   sales,
   isLoading,
+  sortBy,
+  sortOrder,
+  onSort,
   onView,
   currentPage = 1,
   itemsPerPage = 10,
   selectedSales = new Set(),
   onSelectionChange,
 }: SalesTableProps) {
+  const canSort = Boolean(onSort);
   // Calculate starting serial number for current page
   const getSerialNumber = (index: number) => {
     return (currentPage - 1) * itemsPerPage + index + 1;
@@ -204,14 +212,48 @@ export function SalesTable({
                 />
               </TableHead>
             )}
-            <TableHead>Sale Code</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="saleCode"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+              >
+                Sale Code
+              </SortableTableHead>
+            ) : (
+              <TableHead>Sale Code</TableHead>
+            )}
             <TableHead>Type</TableHead>
             <TableHead>Credit</TableHead>
             <TableHead>Location</TableHead>
             <TableHead>Customer</TableHead>
-            <TableHead className="text-right">Total</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="total"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+                className="text-right"
+              >
+                Total
+              </SortableTableHead>
+            ) : (
+              <TableHead className="text-right">Total</TableHead>
+            )}
             <TableHead>Payment Method</TableHead>
-            <TableHead>Date</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="createdAt"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+              >
+                Date
+              </SortableTableHead>
+            ) : (
+              <TableHead>Date</TableHead>
+            )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>

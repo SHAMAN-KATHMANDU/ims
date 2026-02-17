@@ -108,6 +108,8 @@ export interface TransferListParams {
   fromLocationId?: string;
   toLocationId?: string;
   locationId?: string; // Either from or to
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginatedTransfersResponse {
@@ -163,6 +165,8 @@ export async function getTransfers(
     fromLocationId,
     toLocationId,
     locationId,
+    sortBy,
+    sortOrder,
   } = params;
 
   const queryParams = new URLSearchParams();
@@ -182,6 +186,12 @@ export async function getTransfers(
   }
   if (locationId) {
     queryParams.set("locationId", locationId);
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
   }
 
   try {

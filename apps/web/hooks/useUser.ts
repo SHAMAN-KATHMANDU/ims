@@ -31,7 +31,12 @@ export const userKeys = {
 /**
  * Hook for fetching all users
  */
-export function useUsers(params?: { page?: number; limit?: number }) {
+export function useUsers(params?: {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}) {
   return useQuery({
     queryKey: [...userKeys.lists(), params],
     queryFn: () => getAllUsers(params),

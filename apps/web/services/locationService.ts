@@ -45,6 +45,8 @@ export interface LocationListParams {
   /** @deprecated Use status instead */
   activeOnly?: boolean;
   status?: LocationStatusFilter;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export type { PaginationMeta };
@@ -99,6 +101,8 @@ export async function getLocations(
     type,
     activeOnly,
     status,
+    sortBy,
+    sortOrder,
   } = params;
 
   const queryParams = new URLSearchParams();
@@ -115,6 +119,12 @@ export async function getLocations(
   }
   if (status && status !== "all") {
     queryParams.set("status", status);
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
   }
 
   try {

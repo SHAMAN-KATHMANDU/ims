@@ -7,6 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,9 @@ interface LocationTableProps {
   locations: Location[];
   isLoading?: boolean;
   canManage: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onEdit: (location: Location) => void;
   onDelete: (location: Location) => void;
 }
@@ -33,9 +37,13 @@ export function LocationTable({
   locations,
   isLoading,
   canManage,
+  sortBy,
+  sortOrder,
+  onSort,
   onEdit,
   onDelete,
 }: LocationTableProps) {
+  const canSort = Boolean(onSort);
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -100,8 +108,31 @@ export function LocationTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Type</TableHead>
+            {canSort ? (
+              <>
+                <SortableTableHead
+                  sortKey="name"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Name
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="type"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Type
+                </SortableTableHead>
+              </>
+            ) : (
+              <>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+              </>
+            )}
             <TableHead>Default warehouse</TableHead>
             <TableHead>Address</TableHead>
             <TableHead>Status</TableHead>

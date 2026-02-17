@@ -38,6 +38,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { SortOrder } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
@@ -55,6 +56,8 @@ export function LocationsPage() {
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<LocationType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<LocationStatusFilter>("all");
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
   // Dialog states
   const [formOpen, setFormOpen] = useState(false);
@@ -74,6 +77,8 @@ export function LocationsPage() {
     search,
     type: typeFilter === "all" ? undefined : typeFilter,
     status: statusFilter,
+    sortBy,
+    sortOrder,
   });
 
   const locations = locationsResponse?.data ?? [];
@@ -101,6 +106,15 @@ export function LocationsPage() {
     setStatusFilter(value as LocationStatusFilter);
     setPage(DEFAULT_PAGE);
   }, []);
+
+  const handleSort = useCallback(
+    (newSortBy: string, newSortOrder: SortOrder) => {
+      setSortBy(newSortBy);
+      setSortOrder(newSortOrder);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
 
   const handleEdit = (location: Location) => {
     if (isMobile) {
@@ -262,6 +276,9 @@ export function LocationsPage() {
         locations={locations}
         isLoading={isLoading}
         canManage={isSuperAdmin}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleSort}
         onEdit={handleEdit}
         onDelete={setLocationToDelete}
       />

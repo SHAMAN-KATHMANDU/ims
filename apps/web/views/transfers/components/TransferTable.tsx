@@ -7,6 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -41,6 +42,9 @@ interface TransferTableProps {
   transfers: Transfer[];
   isLoading?: boolean;
   canManage: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onView: (transfer: Transfer) => void;
   onApprove: (transfer: Transfer) => void;
   onStartTransit: (transfer: Transfer) => void;
@@ -71,12 +75,16 @@ export function TransferTable({
   transfers,
   isLoading,
   canManage,
+  sortBy,
+  sortOrder,
+  onSort,
   onView,
   onApprove,
   onStartTransit,
   onComplete,
   onCancel,
 }: TransferTableProps) {
+  const canSort = Boolean(onSort);
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -141,11 +149,44 @@ export function TransferTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Transfer Code</TableHead>
-            <TableHead>Route</TableHead>
-            <TableHead>Items</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Created</TableHead>
+            {canSort ? (
+              <>
+                <SortableTableHead
+                  sortKey="transferCode"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Transfer Code
+                </SortableTableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>Items</TableHead>
+                <SortableTableHead
+                  sortKey="status"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Status
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="createdAt"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Created
+                </SortableTableHead>
+              </>
+            ) : (
+              <>
+                <TableHead>Transfer Code</TableHead>
+                <TableHead>Route</TableHead>
+                <TableHead>Items</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Created</TableHead>
+              </>
+            )}
             <TableHead className="w-[70px]">Actions</TableHead>
           </TableRow>
         </TableHeader>

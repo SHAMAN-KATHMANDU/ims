@@ -85,6 +85,8 @@ export function useTransfersPaginated(params: TransferListParams = {}) {
     fromLocationId: params.fromLocationId,
     toLocationId: params.toLocationId,
     locationId: params.locationId,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   };
 
   return useQuery({

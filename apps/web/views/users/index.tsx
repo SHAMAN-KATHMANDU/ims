@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -18,6 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import {
   AlertDialog,
@@ -51,17 +52,27 @@ export function UsersPage() {
   const router = useRouter();
   const workspace = (params?.workspace as string) ?? "superadmin";
   const basePath = `/${workspace}`;
-  const { data: users = [], isLoading } = useUsers();
+  const [userDialog, setUserDialog] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [sortBy, setSortBy] = useState<string>("username");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const handleColumnSort = useCallback((by: string, order: "asc" | "desc") => {
+    setSortBy(by);
+    setSortOrder(order);
+  }, []);
+
+  const { data: users = [], isLoading } = useUsers({
+    sortBy,
+    sortOrder,
+  });
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
   const { toast } = useToast();
   const currentUser = useAuthStore(selectUser);
   const isMobile = useIsMobile();
-
-  const [userDialog, setUserDialog] = useState(false);
-  const [editingUser, setEditingUser] = useState<User | null>(null);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
   const onSubmit = async (data: UserFormValues) => {
     try {
@@ -186,9 +197,30 @@ export function UsersPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Username</TableHead>
-                    <TableHead>Role</TableHead>
-                    <TableHead>Created At</TableHead>
+                    <SortableTableHead
+                      sortKey="username"
+                      currentSortBy={sortBy}
+                      currentSortOrder={sortOrder}
+                      onSort={handleColumnSort}
+                    >
+                      Username
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="role"
+                      currentSortBy={sortBy}
+                      currentSortOrder={sortOrder}
+                      onSort={handleColumnSort}
+                    >
+                      Role
+                    </SortableTableHead>
+                    <SortableTableHead
+                      sortKey="createdAt"
+                      currentSortBy={sortBy}
+                      currentSortOrder={sortOrder}
+                      onSort={handleColumnSort}
+                    >
+                      Created At
+                    </SortableTableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>

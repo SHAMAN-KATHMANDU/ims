@@ -39,6 +39,8 @@ export interface VendorListParams {
   page?: number;
   limit?: number;
   search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginatedVendorsResponse {
@@ -69,13 +71,25 @@ export { DEFAULT_PAGE, DEFAULT_LIMIT };
 export async function getVendors(
   params: VendorListParams = {},
 ): Promise<PaginatedVendorsResponse> {
-  const { page = DEFAULT_PAGE, limit = DEFAULT_LIMIT, search } = params;
+  const {
+    page = DEFAULT_PAGE,
+    limit = DEFAULT_LIMIT,
+    search,
+    sortBy,
+    sortOrder,
+  } = params;
 
   const queryParams = new URLSearchParams();
   queryParams.set("page", String(page));
   queryParams.set("limit", String(limit));
   if (search?.trim()) {
     queryParams.set("search", search.trim());
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
   }
 
   try {

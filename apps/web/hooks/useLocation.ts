@@ -66,6 +66,8 @@ export function useLocationsPaginated(params: LocationListParams = {}) {
     type: params.type,
     activeOnly: params.activeOnly,
     status: params.status,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   };
 
   return useQuery({

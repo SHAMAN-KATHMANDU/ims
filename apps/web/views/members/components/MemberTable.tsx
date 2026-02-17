@@ -9,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -20,6 +21,9 @@ import { Eye, Edit } from "lucide-react";
 interface MemberTableProps {
   members: Member[];
   isLoading?: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onView: (member: Member) => void;
   onEdit: (member: Member) => void;
   // Selection props
@@ -30,11 +34,15 @@ interface MemberTableProps {
 export function MemberTable({
   members,
   isLoading,
+  sortBy,
+  sortOrder,
+  onSort,
   onView,
   onEdit,
   selectedMembers = new Set(),
   onSelectionChange,
 }: MemberTableProps) {
+  const canSort = Boolean(onSort);
   // Selection handlers
   const handleSelectMember = useCallback(
     (memberId: string, checked: boolean) => {
@@ -171,11 +179,33 @@ export function MemberTable({
               </TableHead>
             )}
             <TableHead>Phone</TableHead>
-            <TableHead>Name</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="name"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+              >
+                Name
+              </SortableTableHead>
+            ) : (
+              <TableHead>Name</TableHead>
+            )}
             <TableHead>Email</TableHead>
             <TableHead>Total Sales</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Joined</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="createdAt"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+              >
+                Joined
+              </SortableTableHead>
+            ) : (
+              <TableHead>Joined</TableHead>
+            )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>

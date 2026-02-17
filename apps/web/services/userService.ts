@@ -58,6 +58,8 @@ interface UserResponse {
 export interface GetAllUsersParams {
   page?: number;
   limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 /**
@@ -68,6 +70,9 @@ export async function getAllUsers(params?: GetAllUsersParams): Promise<User[]> {
     const queryParams = new URLSearchParams();
     if (params?.page != null) queryParams.set("page", String(params.page));
     if (params?.limit != null) queryParams.set("limit", String(params.limit));
+    if (params?.sortBy != null) queryParams.set("sortBy", params.sortBy);
+    if (params?.sortOrder != null)
+      queryParams.set("sortOrder", params.sortOrder);
     const query = queryParams.toString();
     const url = query ? `/users?${query}` : "/users";
     const response = await api.get<UsersResponse>(url);
