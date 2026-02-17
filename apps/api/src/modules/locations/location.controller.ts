@@ -71,9 +71,10 @@ class LocationController {
         req.query,
       );
 
-      // Parse type filter from query
+      // Parse type and status filters from query
       const typeFilter = req.query.type as string | undefined;
       const activeOnly = req.query.activeOnly === "true";
+      const statusFilter = req.query.status as string | undefined;
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -107,8 +108,10 @@ class LocationController {
         where.type = typeFilter;
       }
 
-      if (activeOnly) {
+      if (activeOnly || statusFilter === "active") {
         where.isActive = true;
+      } else if (statusFilter === "inactive") {
+        where.isActive = false;
       }
 
       // Calculate skip for pagination
