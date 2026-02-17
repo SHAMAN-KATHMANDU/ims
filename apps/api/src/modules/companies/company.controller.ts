@@ -1,0 +1,190 @@
+import { Request, Response } from "express";
+import prisma from "@/config/prisma";
+import {
+  getPaginationParams,
+  createPaginationResult,
+  getPrismaOrderBy,
+} from "@/utils/pagination";
+
+class CompanyController {
+  async create(req: Request, res: Response) {
+    try {
+      const { name, website, address, phone } = req.body;
+      if (!name || typeof name !== "string" || !name.trim()) {
+        return res.status(400).json({ message: "Company name is required" });
+      }
+
+      const company = await prisma.company.create({
+        data: {
+          name: name.trim(),
+          website: website?.trim() || null,
+          address: address?.trim() || null,
+          phone: phone?.trim() || null,
+        },
+      });
+
+      res
+        .status(201)
+        .json({ message: "Company created successfully", company });
+    } catch (error: unknown) {
+      console.error("Create company error:", error);
+      res.status(500).json({
+        message: "Error creating company",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  async getAll(req: Request, res: Response) {
+    try {
+      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
+        req.query,
+      );
+
+      const allowedSortFields = ["createdAt", "updatedAt", "name", "id"];
+      const orderBy = getPrismaOrderBy(
+        sortBy,
+        sortOrder,
+        allowedSortFields,
+      ) || {
+        name: "asc",
+      };
+
+      const where: { OR?: Array<Record<string, unknown>> } = {};
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { website: { contains: search, mode: "insensitive" as const } },
+        ];
+      }
+
+      const skip = (page - 1) * limit;
+
+      const [totalItems, companies] = await Promise.all([
+        prisma.company.count({ where }),
+        prisma.company.findMany({
+          where,
+          orderBy,
+          skip,
+          take: limit,
+          include: {
+            _count: { select: { contacts: true, deals: true } },
+          },
+        }),
+      ]);
+
+      const result = createPaginationResult(companies, totalItems, page, limit);
+      res.status(200).json({ message: "OK", ...result });
+    } catch (error: unknown) {
+      console.error("Get companies error:", error);
+      res.status(500).json({
+        message: "Error fetching companies",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  async getById(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const company = await prisma.company.findUnique({
+        where: { id },
+        include: {
+          contacts: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              email: true,
+              phone: true,
+            },
+          },
+          _count: { select: { deals: true } },
+        },
+      });
+
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      res.status(200).json({ message: "OK", company });
+    } catch (error: unknown) {
+      console.error("Get company by id error:", error);
+      res.status(500).json({
+        message: "Error fetching company",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  async update(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { name, website, address, phone } = req.body;
+
+      const existing = await prisma.company.findUnique({ where: { id } });
+      if (!existing) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      const company = await prisma.company.update({
+        where: { id },
+        data: {
+          ...(name !== undefined && { name: name?.trim() || existing.name }),
+          ...(website !== undefined && { website: website?.trim() || null }),
+          ...(address !== undefined && { address: address?.trim() || null }),
+          ...(phone !== undefined && { phone: phone?.trim() || null }),
+        },
+      });
+
+      res
+        .status(200)
+        .json({ message: "Company updated successfully", company });
+    } catch (error: unknown) {
+      console.error("Update company error:", error);
+      res.status(500).json({
+        message: "Error updating company",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  async delete(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const existing = await prisma.company.findUnique({ where: { id } });
+      if (!existing) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+
+      await prisma.company.delete({ where: { id } });
+      res.status(200).json({ message: "Company deleted successfully" });
+    } catch (error: unknown) {
+      console.error("Delete company error:", error);
+      res.status(500).json({
+        message: "Error deleting company",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  async listForSelect(req: Request, res: Response) {
+    try {
+      const companies = await prisma.company.findMany({
+        orderBy: { name: "asc" },
+        select: { id: true, name: true },
+        take: 500,
+      });
+      res.status(200).json({ message: "OK", companies });
+    } catch (error: unknown) {
+      console.error("List companies for select error:", error);
+      res.status(500).json({
+        message: "Error fetching companies",
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+}
+
+export default new CompanyController();
