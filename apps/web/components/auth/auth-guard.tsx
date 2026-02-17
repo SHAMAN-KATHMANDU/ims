@@ -10,6 +10,11 @@ import type { UserRole } from "@/utils/auth";
 interface AuthGuardProps {
   children: React.ReactNode;
   /**
+   * Path to redirect to when not authenticated (e.g. /ruby/login when slug is in URL).
+   * Default: "/login"
+   */
+  loginPath?: string;
+  /**
    * Optional: Restrict to specific roles.
    * If not provided, just checks authentication.
    */
@@ -49,6 +54,7 @@ interface AuthGuardProps {
  */
 export function AuthGuard({
   children,
+  loginPath = "/login",
   roles,
   unauthorizedPath = "/401",
 }: AuthGuardProps) {
@@ -59,10 +65,9 @@ export function AuthGuard({
     // Wait for hydration
     if (!isHydrated) return;
 
-    // Not authenticated - redirect to login
-    // (Middleware should catch this, but this is a fallback)
+    // Not authenticated - redirect to login (slug-based path when in tenant URL)
     if (!isAuthenticated) {
-      router.push("/login");
+      router.push(loginPath);
       return;
     }
 
@@ -70,7 +75,15 @@ export function AuthGuard({
     if (roles && user && !roles.includes(user.role)) {
       router.push(unauthorizedPath);
     }
-  }, [isAuthenticated, isHydrated, user, roles, unauthorizedPath, router]);
+  }, [
+    isAuthenticated,
+    isHydrated,
+    user,
+    roles,
+    unauthorizedPath,
+    loginPath,
+    router,
+  ]);
 
   // Show loading while hydrating
   if (isLoading || !isHydrated) {

@@ -17,9 +17,7 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 
-// Organization = tenant slug (e.g. "ruby" or "system")
 const loginSchema = z.object({
-  organization: z.string().min(1, "Organization is required"),
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
@@ -27,10 +25,10 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 /**
- * Login form: organization (slug), username, password.
- * Sends X-Tenant-Slug so the API looks up the user in that tenant.
+ * Login form: username and password. Tenant slug comes from the URL (e.g. /ruby/login)
+ * and is passed as a prop; it is sent as X-Tenant-Slug on login.
  */
-export default function LoginForm() {
+export default function LoginForm({ tenantSlug }: { tenantSlug: string }) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -42,7 +40,6 @@ export default function LoginForm() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
-      organization: "",
       username: "",
       password: "",
     },
@@ -50,11 +47,16 @@ export default function LoginForm() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setSubmitError(null);
+    const slug = tenantSlug?.trim().toLowerCase();
+    if (!slug) {
+      setSubmitError("Invalid organization URL. Use your organization's link.");
+      return;
+    }
     try {
       await login({
         username: data.username,
         password: data.password,
-        tenantSlug: data.organization.trim().toLowerCase(),
+        tenantSlug: slug,
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Login failed");
@@ -73,22 +75,6 @@ export default function LoginForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="organization">Organization</Label>
-            <Input
-              id="organization"
-              type="text"
-              placeholder="Organization name"
-              disabled={isSubmitting}
-              {...register("organization")}
-            />
-            {errors.organization && (
-              <p className="text-sm text-destructive">
-                {errors.organization.message}
-              </p>
-            )}
-          </div>
-
           <div className="space-y-2">
             <Label htmlFor="username">Username</Label>
             <Input

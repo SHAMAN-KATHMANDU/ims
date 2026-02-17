@@ -59,18 +59,22 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Don't redirect on login endpoint or if already on login page
       const requestUrl = error.config?.url || "";
       const isLoginEndpoint =
         requestUrl.includes("auth/login") || requestUrl.endsWith("/auth/login");
-      const isOnLoginPage =
-        typeof window !== "undefined" && window.location.pathname === "/login";
+      if (isLoginEndpoint) return Promise.reject(error);
 
-      if (!isLoginEndpoint && !isOnLoginPage) {
-        // Clear auth state in Zustand store
+      const pathname =
+        typeof window !== "undefined" ? window.location.pathname : "";
+      const segments = pathname.split("/").filter(Boolean);
+      const slug = segments[0];
+      const isOnLoginPage = segments[1] === "login";
+
+      if (!isOnLoginPage) {
         useAuthStore.getState().clearAuth();
         if (typeof window !== "undefined") {
-          window.location.href = "/login";
+          const loginPath = slug ? `/${slug}/login` : "/";
+          window.location.href = loginPath;
         }
       }
     }

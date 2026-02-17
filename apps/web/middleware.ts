@@ -1,31 +1,27 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
-  PROTECTED_ROUTE_PREFIXES,
-  AUTH_ROUTES,
+  getSlugFromPathname,
   getWorkspaceRoot,
+  getLoginPath,
+  isLoginPath,
+  isProtectedPath,
 } from "@/config/routes";
 
 /**
  * Next.js Middleware for Route Protection
  *
- * This runs on the server BEFORE the page loads, preventing
- * flash of content and providing first-line security.
- *
- * Note: We check for token existence only. Role-based access
- * is handled client-side where we have the full user object.
+ * Tenant is identified by the first path segment (e.g. /ruby/login, /ruby).
+ * - / → show landing (no redirect to login; user must use org URL)
+ * - /:slug/login → auth route (allow without token)
+ * - /:slug/... (rest) → protected (redirect to /:slug/login if no token)
  */
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Get token from Zustand persisted storage
-  // Zustand persist middleware stores in localStorage, but we can also check cookies
-  // For middleware, we need to use cookies since localStorage isn't available server-side
   const authStorage = request.cookies.get("auth-storage");
-
   let hasToken = false;
-
   if (authStorage?.value) {
     try {
       const parsed = JSON.parse(authStorage.value);
@@ -35,31 +31,43 @@ export function middleware(request: NextRequest) {
     }
   }
 
-  const workspaceRoot = getWorkspaceRoot();
-
-  if (pathname === "/") {
-    if (hasToken) {
-      return NextResponse.redirect(new URL(workspaceRoot, request.url));
-    }
-    return NextResponse.redirect(new URL("/login", request.url));
+  // Legacy /login (no slug): redirect to root
+  if (pathname === "/login") {
+    return NextResponse.redirect(new URL("/", request.url));
   }
 
-  const isProtectedRoute = PROTECTED_ROUTE_PREFIXES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
+  // Root: if logged in, redirect to tenant root (we use default slug; they may have tenant in store)
+  if (pathname === "/") {
+    if (hasToken) {
+      // Prefer tenant from cookie if available
+      try {
+        const parsed = authStorage?.value
+          ? JSON.parse(authStorage.value)
+          : null;
+        const slug = parsed?.state?.tenant?.slug;
+        const root = slug ? getWorkspaceRoot(slug) : getWorkspaceRoot();
+        return NextResponse.redirect(new URL(root, request.url));
+      } catch {
+        return NextResponse.redirect(new URL(getWorkspaceRoot(), request.url));
+      }
+    }
+    // Not logged in: allow / (landing page)
+    return NextResponse.next();
+  }
 
-  const isAuthRoute = AUTH_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
+  const slug = getSlugFromPathname(pathname);
+  const loginRoute = slug ? getLoginPath(slug) : null;
+  const isLogin = isLoginPath(pathname);
+  const isProtected = isProtectedPath(pathname);
 
-  if (isProtectedRoute && !hasToken) {
-    const loginUrl = new URL("/login", request.url);
+  if (isProtected && !hasToken && slug) {
+    const loginUrl = new URL(loginRoute!, request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthRoute && hasToken) {
-    return NextResponse.redirect(new URL(workspaceRoot, request.url));
+  if (isLogin && hasToken && slug) {
+    return NextResponse.redirect(new URL(getWorkspaceRoot(slug), request.url));
   }
 
   return NextResponse.next();

@@ -8,7 +8,7 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getWorkspaceRoot } from "@/config/routes";
+import { getWorkspaceRoot, getLoginPath } from "@/config/routes";
 import {
   login as loginApi,
   getCurrentUser,
@@ -93,7 +93,10 @@ export function useAuth() {
     onSuccess: ({ token, user, tenant }) => {
       setAuth(user, token, tenant);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
-      router.push(getWorkspaceRoot());
+      const root = tenant?.slug
+        ? getWorkspaceRoot(tenant.slug)
+        : getWorkspaceRoot();
+      router.push(root);
       router.refresh();
     },
   });
@@ -102,12 +105,9 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: logoutApi,
     onSettled: () => {
-      // Always clear auth, even if API fails
       clearAuth();
-      // Clear all queries
       queryClient.clear();
-      // Redirect
-      router.push("/login");
+      router.push("/");
       router.refresh();
     },
   });
