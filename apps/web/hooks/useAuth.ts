@@ -8,7 +8,7 @@
 import { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getWorkspaceRoot, getLoginPath } from "@/config/routes";
+import { getWorkspaceRoot } from "@/config/routes";
 import {
   login as loginApi,
   getCurrentUser,
