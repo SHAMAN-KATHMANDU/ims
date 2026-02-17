@@ -1,0 +1,27 @@
+name: Technical Debt
+description: Code quality or maintainability improvement
+title: "[Tech Debt]: "
+labels: ["technical-debt"]
+assignees: []
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description
+    validations:
+      required: true
+  - type: input
+    id: location
+    attributes:
+      label: Location
+      placeholder: Files or modules
+  - type: textarea
+    id: reason
+    attributes:
+      label: Reason
+      placeholder: Why refactor?
+  - type: textarea
+    id: approach
+    attributes:
+      label: Proposed approach

@@ -1,0 +1,32 @@
+name: Security Issue
+description: Report a security concern
+title: "[Security]: "
+labels: ["security"]
+assignees: []
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Low
+        - Medium
+        - High
+        - Critical
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce

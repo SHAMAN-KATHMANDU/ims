@@ -1,0 +1,26 @@
+name: Epic
+description: Large initiative spanning multiple issues
+title: "[Epic]: "
+labels: ["epic"]
+assignees: []
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description
+    validations:
+      required: true
+  - type: textarea
+    id: goals
+    attributes:
+      label: Goals / scope
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Success criteria
+  - type: input
+    id: related
+    attributes:
+      label: Related issues
+      placeholder: "#123, #456"

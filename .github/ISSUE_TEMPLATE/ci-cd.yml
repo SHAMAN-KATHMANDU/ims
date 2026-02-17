@@ -1,0 +1,30 @@
+name: CI/CD
+description: CI/CD pipeline or workflow change
+title: "[CI]: "
+labels: ["ci"]
+assignees: []
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Workflow
+        - Build
+        - Test
+        - Other
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+  - type: input
+    id: affected
+    attributes:
+      label: Affected files / workflows

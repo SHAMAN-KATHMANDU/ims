@@ -1,0 +1,23 @@
+name: Feature Request
+description: Suggest a new feature
+title: "[Feat]: "
+labels: ["enhancement"]
+assignees: []
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description
+    validations:
+      required: true
+  - type: textarea
+    id: motivation
+    attributes:
+      label: Problem / motivation
+      placeholder: Why is this needed?
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      placeholder: What should it do?

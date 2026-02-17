@@ -62,6 +62,7 @@ Husky is configured to run pre-commit checks automatically. After `pnpm install`
 
 **What happens on commit:**
 
+- 📝 **Commitlint** validates commit message (conventional commits)
 - ✨ **Prettier** formats staged files
 - 🔎 **ESLint** checks for code issues
 - 📝 **TypeScript** validates types across all packages
@@ -147,28 +148,23 @@ docker-compose -f docker-compose.prod.yml up -d
 
 ## CI/CD
 
+### Branching & Releases
+
+- **main** — single permanent branch. All work branches from `main`.
+- **Staging** — auto-deploys when PRs are squash-merged into `main`.
+- **Production** — manual release via [GitHub Releases](https://docs.github.com/en/repositories/releasing-projects-on-github). Tags (e.g. `v1.0.0`) control prod.
+
+See [.github/WORKFLOW_GUIDE.md](.github/WORKFLOW_GUIDE.md), [.github/COMMIT_CONVENTION.md](.github/COMMIT_CONVENTION.md), [.github/RELEASE_PROCESS.md](.github/RELEASE_PROCESS.md) for details. For server deployment (EC2, Watchtower, rollback), see [docs/SERVER-DEPLOYMENT.md](docs/SERVER-DEPLOYMENT.md).
+
 ### GitHub Actions
 
-The project includes a CI/CD pipeline that automatically builds and pushes Docker images to Docker Hub.
+**Setup:** Add `DOCKERHUB_USERNAME`, `DOCKERHUB_TOKEN` secrets and `PROD_UI`, `DEV_UI` variables in repo Settings → Actions.
 
-**Setup:**
+**Workflows:**
 
-1. Go to your GitHub repo → **Settings** → **Secrets and variables** → **Actions**
-
-2. Add these secrets:
-
-   | Secret               | Description              |
-   | -------------------- | ------------------------ |
-   | `DOCKERHUB_USERNAME` | Your Docker Hub username |
-   | `DOCKERHUB_TOKEN`    | Docker Hub access token  |
-
-3. Push to `main` branch to trigger the build
-
-**What it does:**
-
-- Builds `api` and `web` Docker images
-- Pushes to Docker Hub with tags: `latest`, branch name, commit SHA
-- Watchtower on your server auto-pulls new images
+- **CI** — lint, typecheck, tests, PR title validation on every push/PR
+- **Build and Push (Staging)** — on merge to `main` → pushes `:dev` images
+- **Release (Production)** — on publish of a release → pushes `:<tag>`, `:prod`, `:latest`
 
 ## Project Structure
 
@@ -251,10 +247,11 @@ git commit -m "your message"
 
 ## Contributing
 
-1. Create a feature branch
+1. Branch from `main` (e.g. `#42-feat/my-feature`)
 2. Make your changes
-3. Commit (hooks will run automatically)
-4. Push and create a PR
+3. Commit with [conventional commits](.github/COMMIT_CONVENTION.md) (hooks enforce format)
+4. Push and create a PR with a conventional title
+5. Squash merge to `main` after approval
 
 ## License
 

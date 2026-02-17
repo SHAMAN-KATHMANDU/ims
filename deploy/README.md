@@ -2,6 +2,8 @@
 
 Copy this folder to each EC2 instance, create a `.env` file, then start the app stack and Watchtower.
 
+**See [docs/SERVER-DEPLOYMENT.md](../docs/SERVER-DEPLOYMENT.md)** for the full server deployment guide (tag-based CI/CD, rollback, troubleshooting).
+
 ## Prerequisites
 
 - Terraform has been applied and you have the **dev** and **prod** EC2 public IPs and SSH key path (see [infra/README.md](../infra/README.md)).
