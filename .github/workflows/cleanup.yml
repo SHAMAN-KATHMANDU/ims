@@ -1,5 +1,5 @@
 # Cleanup old Docker Hub image tags and GitHub Actions cache.
-# Runs weekly (schedule) or manually. Protects tags: latest, prod, dev.
+# Runs weekly (schedule) or manually. Protects: latest, prod, dev, staging, and semver tags (v*.*.*).
 # No deployment or SSH.
 
 name: Cleanup
@@ -39,7 +39,7 @@ jobs:
       - name: Clean old image tags (dev-api-ims, dev-web-ims)
         run: |
           set -e
-          PROTECTED="latest prod dev"
+          PROTECTED="latest prod dev staging"
           REPOS="dev-api-ims dev-web-ims"
           for REPO in $REPOS; do
             echo "::group::$REPO"
@@ -59,9 +59,14 @@ jobs:
                 "https://hub.docker.com/v2/repositories/$HUB_USER/$REPO/tags/?page_size=100&page=$PAGE")
               echo "$TAGS_JSON" | jq -r '.results[]? | "\(.name)|\(.last_updated)"' | while IFS='|' read -r TAG UPDATED; do
                 [ -z "$TAG" ] && continue
-                # Skip protected tags
-                if echo "$PROTECTED" | grep -q "^$TAG$"; then
+                # Skip protected tags (latest, prod, dev, staging)
+                if echo "$PROTECTED" | tr ' ' '\n' | grep -qx "$TAG"; then
                   echo "Protecting $REPO:$TAG"
+                  continue
+                fi
+                # Skip semver tags (v1.0.0, v1.2.3-beta, etc.)
+                if echo "$TAG" | grep -qE '^v[0-9]+\.[0-9]+\.[0-9]+'; then
+                  echo "Protecting $REPO:$TAG (semver)"
                   continue
                 fi
                 # Parse date and compare (last_updated is ISO format)

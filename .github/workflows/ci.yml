@@ -18,6 +18,22 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  pr-title:
+    name: PR title check
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - run: pnpm install --frozen-lockfile
+      - name: Validate PR title
+        run: |
+          echo "${{ github.event.pull_request.title }}" | pnpm exec commitlint
+
   # Detect which paths changed so we can run jobs conditionally.
   # For PRs from forks, GITHUB_TOKEN has restricted API access; we set all outputs true so full CI runs.
   changes:

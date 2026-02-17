@@ -1,0 +1,28 @@
+name: Deployment
+description: Deployment-related issue or change
+title: "[Deploy]: "
+labels: ["deployment"]
+assignees: []
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Staging
+        - Production
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+  - type: textarea
+    id: rollback
+    attributes:
+      label: Rollback plan

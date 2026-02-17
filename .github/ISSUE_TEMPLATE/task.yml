@@ -1,0 +1,26 @@
+name: Task
+description: Discrete work item
+title: "[Task]: "
+labels: ["task"]
+assignees: []
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+  - type: input
+    id: parent
+    attributes:
+      label: Parent epic / issue
+      placeholder: "#123"
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria

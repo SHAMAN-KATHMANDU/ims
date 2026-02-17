@@ -1,0 +1,34 @@
+name: Customer Feedback
+description: Feedback from users or customers
+title: "[Feedback]: "
+labels: ["feedback"]
+assignees: []
+body:
+  - type: input
+    id: summary
+    attributes:
+      label: Summary
+      placeholder: One-line description
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Source
+      options:
+        - User
+        - Support
+        - Sales
+        - Other
+  - type: textarea
+    id: feedback
+    attributes:
+      label: Feedback
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low
+        - Medium
+        - High
