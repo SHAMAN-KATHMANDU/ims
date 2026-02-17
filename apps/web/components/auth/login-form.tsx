@@ -15,17 +15,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Eye, EyeOff, Building2 } from "lucide-react";
+import { Eye, EyeOff } from "lucide-react";
 
-// Zod schema for validation
+// Organization = tenant slug (e.g. "ruby" or "system")
 const loginSchema = z.object({
+  organization: z.string().min(1, "Organization is required"),
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
 });
@@ -33,17 +27,13 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 /**
- * Login Form Component
- *
- * Uses react-hook-form for form state management
- * and Zod for schema validation.
- * Includes an optional tenant selector for multi-tenant testing.
+ * Login form: organization (slug), username, password.
+ * Sends X-Tenant-Slug so the API looks up the user in that tenant.
  */
 export default function LoginForm() {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [tenantSlug, setTenantSlug] = useState<string>("default");
 
   const {
     register,
@@ -52,6 +42,7 @@ export default function LoginForm() {
   } = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
     defaultValues: {
+      organization: "",
       username: "",
       password: "",
     },
@@ -63,7 +54,7 @@ export default function LoginForm() {
       await login({
         username: data.username,
         password: data.password,
-        tenantSlug: tenantSlug || undefined,
+        tenantSlug: data.organization.trim().toLowerCase(),
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Login failed");
@@ -82,21 +73,20 @@ export default function LoginForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-          {/* Organization Selector */}
           <div className="space-y-2">
-            <Label htmlFor="tenant" className="flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5" />
-              Organization
-            </Label>
-            <Select value={tenantSlug} onValueChange={setTenantSlug}>
-              <SelectTrigger id="tenant" disabled={isSubmitting}>
-                <SelectValue placeholder="Select organization" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="default">Default Organization</SelectItem>
-                <SelectItem value="test-org">Asha Boutique (Test)</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label htmlFor="organization">Organization</Label>
+            <Input
+              id="organization"
+              type="text"
+              placeholder="Organization name"
+              disabled={isSubmitting}
+              {...register("organization")}
+            />
+            {errors.organization && (
+              <p className="text-sm text-destructive">
+                {errors.organization.message}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
@@ -158,27 +148,6 @@ export default function LoginForm() {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Logging in..." : "Login"}
           </Button>
-
-          {/* Quick test credentials hint */}
-          <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-md space-y-1">
-            <p className="font-medium">Test credentials:</p>
-            {tenantSlug === "default" ? (
-              <p>
-                Username from <code className="text-xs">.env</code> file
-              </p>
-            ) : (
-              <>
-                <p>
-                  Admin: <code className="text-xs">testadmin</code> /{" "}
-                  <code className="text-xs">test123</code>
-                </p>
-                <p>
-                  User: <code className="text-xs">testuser</code> /{" "}
-                  <code className="text-xs">test123</code>
-                </p>
-              </>
-            )}
-          </div>
         </form>
       </CardContent>
     </Card>

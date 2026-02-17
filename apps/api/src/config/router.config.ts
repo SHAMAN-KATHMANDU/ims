@@ -40,7 +40,7 @@ router.get("/", (req: Request, res: Response) => {
 });
 
 // ============================================
-// Auth routes (public — no tenant middleware)
+// Auth routes (no tenant middleware; tenant from X-Tenant-Slug)
 // ============================================
 router.use("/auth", authRouter);
 
