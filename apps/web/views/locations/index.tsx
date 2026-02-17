@@ -142,12 +142,19 @@ export function LocationsPage() {
       setLocationToDelete(null);
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : "Failed to delete location";
+        error instanceof Error
+          ? error.message
+          : typeof (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message === "string"
+            ? (error as { response: { data: { message: string } } }).response
+                .data.message
+            : "Failed to delete location";
       toast({
         title: "Error",
         description: message,
         variant: "destructive",
       });
+      setLocationToDelete(null);
     }
   };
 
@@ -218,13 +225,20 @@ export function LocationsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteLocationMutation.isPending
-                ? "Deactivating..."
-                : "Deactivate"}
+            <AlertDialogAction asChild>
+              <Button
+                type="button"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteLocationMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleDelete();
+                }}
+              >
+                {deleteLocationMutation.isPending
+                  ? "Deactivating..."
+                  : "Deactivate"}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

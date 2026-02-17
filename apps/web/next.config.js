@@ -3,7 +3,7 @@ import { fileURLToPath } from "url";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-// Monorepo root (where pnpm-lock.yaml and node_modules live) so Turbopack finds next
+// Monorepo root so Turbopack resolves next and tailwindcss from one place (root has tailwindcss for this)
 const monorepoRoot = path.resolve(__dirname, "..", "..");
 
 /** @type {import('next').NextConfig} */

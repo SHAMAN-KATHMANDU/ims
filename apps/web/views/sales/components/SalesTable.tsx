@@ -224,102 +224,102 @@ export function SalesTable({
             // Amber row only when credit sale is still unpaid; white when fully paid
             const isCreditUnpaid = isCredit && !fullyPaid;
             return (
-            <TableRow
-              key={sale.id}
-              className={
-                isCreditUnpaid
-                  ? "bg-amber-50/50 dark:bg-amber-950/20"
-                  : undefined
-              }
-            >
-              <TableCell className="text-muted-foreground">
-                {getSerialNumber(index)}
-              </TableCell>
-              {onSelectionChange && (
-                <TableCell
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-12"
-                >
-                  <Checkbox
-                    checked={selectedSales.has(sale.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectSale(sale.id, checked === true)
-                    }
-                    aria-label={`Select ${sale.saleCode}`}
-                  />
+              <TableRow
+                key={sale.id}
+                className={
+                  isCreditUnpaid
+                    ? "bg-amber-50/50 dark:bg-amber-950/20"
+                    : undefined
+                }
+              >
+                <TableCell className="text-muted-foreground">
+                  {getSerialNumber(index)}
                 </TableCell>
-              )}
-              <TableCell className="font-medium">{sale.saleCode}</TableCell>
-              <TableCell>
-                <Badge
-                  className={getSaleTypeColor(sale.type)}
-                  variant="outline"
-                >
-                  {getSaleTypeLabel(sale.type)}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {isCredit ? (
-                  fullyPaid ? (
-                    <Badge
-                      variant="outline"
-                      className="bg-muted/50 text-foreground dark:text-white"
-                    >
-                      Yes (Paid)
-                    </Badge>
+                {onSelectionChange && (
+                  <TableCell
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-12"
+                  >
+                    <Checkbox
+                      checked={selectedSales.has(sale.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectSale(sale.id, checked === true)
+                      }
+                      aria-label={`Select ${sale.saleCode}`}
+                    />
+                  </TableCell>
+                )}
+                <TableCell className="font-medium">{sale.saleCode}</TableCell>
+                <TableCell>
+                  <Badge
+                    className={getSaleTypeColor(sale.type)}
+                    variant="outline"
+                  >
+                    {getSaleTypeLabel(sale.type)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {isCredit ? (
+                    fullyPaid ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-muted/50 text-foreground dark:text-white"
+                      >
+                        Yes (Paid)
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                      >
+                        Yes
+                      </Badge>
+                    )
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                    >
-                      Yes
-                    </Badge>
-                  )
-                ) : (
-                  <span className="text-muted-foreground">No</span>
-                )}
-              </TableCell>
-              <TableCell>{sale.location.name}</TableCell>
-              <TableCell>
-                {sale.member ? (
-                  <div>
-                    <div className="font-medium">{sale.member.phone}</div>
-                    {sale.member.name && (
-                      <div className="text-sm text-muted-foreground">
-                        {sale.member.name}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">
-                    Walk-in Customer
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="text-right font-medium">
-                {formatCurrency(Number(sale.total))}
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {sale.payments && sale.payments.length > 0
-                    ? (sale.payments[0]?.method ?? "N/A")
-                    : "N/A"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {format(new Date(sale.createdAt), "MMM d, yyyy h:mm a")}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onView(sale)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          );
+                    <span className="text-muted-foreground">No</span>
+                  )}
+                </TableCell>
+                <TableCell>{sale.location.name}</TableCell>
+                <TableCell>
+                  {sale.member ? (
+                    <div>
+                      <div className="font-medium">{sale.member.phone}</div>
+                      {sale.member.name && (
+                        <div className="text-sm text-muted-foreground">
+                          {sale.member.name}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Walk-in Customer
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-medium">
+                  {formatCurrency(Number(sale.total))}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {sale.payments && sale.payments.length > 0
+                      ? (sale.payments[0]?.method ?? "N/A")
+                      : "N/A"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {format(new Date(sale.createdAt), "MMM d, yyyy h:mm a")}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onView(sale)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
           })}
         </TableBody>
       </Table>

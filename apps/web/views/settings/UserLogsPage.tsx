@@ -2,12 +2,7 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -137,7 +132,9 @@ export function UserLogsPage() {
                   <SelectItem value="ALL">All</SelectItem>
                   <SelectItem value="LOGIN">LOGIN</SelectItem>
                   <SelectItem value="CREATE_SALE">CREATE_SALE</SelectItem>
-                  <SelectItem value="CREATE_TRANSFER">CREATE_TRANSFER</SelectItem>
+                  <SelectItem value="CREATE_TRANSFER">
+                    CREATE_TRANSFER
+                  </SelectItem>
                   <SelectItem value="CREATE_PRODUCT">CREATE_PRODUCT</SelectItem>
                   <SelectItem value="UPDATE_PRODUCT">UPDATE_PRODUCT</SelectItem>
                 </SelectContent>
@@ -270,7 +267,8 @@ export function UserLogsPage() {
                             {log.resource && (
                               <span className="text-sm">
                                 {log.resource}
-                                {log.resourceId && ` #${log.resourceId.slice(0, 8)}`}
+                                {log.resourceId &&
+                                  ` #${log.resourceId.slice(0, 8)}`}
                               </span>
                             )}
                           </TableCell>

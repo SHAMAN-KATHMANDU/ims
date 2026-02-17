@@ -2,12 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -263,7 +258,9 @@ export function ErrorReportsPage() {
                       <TableHead>User</TableHead>
                       <TableHead>Title</TableHead>
                       <TableHead>Status</TableHead>
-                      <TableHead className="max-w-[200px]">Description</TableHead>
+                      <TableHead className="max-w-[200px]">
+                        Description
+                      </TableHead>
                       <TableHead className="max-w-[180px]">Page URL</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>

@@ -15,7 +15,9 @@ export interface SelectionStoreImpl {
   isSelected: (id: string) => boolean;
 }
 
-type SetState<T> = (partial: T | Partial<T> | ((state: T) => T | Partial<T>)) => void;
+type SetState<T> = (
+  partial: T | Partial<T> | ((state: T) => T | Partial<T>),
+) => void;
 type GetState<T> = () => T;
 
 /**

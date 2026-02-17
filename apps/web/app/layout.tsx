@@ -4,6 +4,7 @@ import { DM_Sans, Space_Mono } from "next/font/google";
 import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryClientProvider } from "@/components/providers/query-client-provider";
+import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
 
 const dmSans = DM_Sans({
@@ -71,6 +72,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           <QueryClientProvider>{children}</QueryClientProvider>
+          <Toaster />
         </ThemeProvider>
         <Analytics />
       </body>

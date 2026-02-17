@@ -234,6 +234,22 @@ class LocationController {
       }
 
       if (isActive !== undefined) {
+        // Warehouses: require at least one active warehouse at all times
+        if (
+          isActive === false &&
+          existingLocation.type === "WAREHOUSE" &&
+          existingLocation.isActive
+        ) {
+          const activeWarehouseCount = await prisma.location.count({
+            where: { type: "WAREHOUSE", isActive: true },
+          });
+          if (activeWarehouseCount <= 1) {
+            return res.status(400).json({
+              message:
+                "At least one warehouse must remain active. Please activate another warehouse before deactivating this one.",
+            });
+          }
+        }
         updateData.isActive = isActive;
       }
 
@@ -308,6 +324,19 @@ class LocationController {
           message:
             "Cannot delete location with pending transfers. Complete or cancel all transfers first.",
         });
+      }
+
+      // Warehouses: require at least one active warehouse at all times (soft delete = deactivate)
+      if (existingLocation.type === "WAREHOUSE" && existingLocation.isActive) {
+        const activeWarehouseCount = await prisma.location.count({
+          where: { type: "WAREHOUSE", isActive: true },
+        });
+        if (activeWarehouseCount <= 1) {
+          return res.status(400).json({
+            message:
+              "At least one warehouse must remain active. Please activate another warehouse before deactivating this one.",
+          });
+        }
       }
 
       // Soft delete - set isActive to false

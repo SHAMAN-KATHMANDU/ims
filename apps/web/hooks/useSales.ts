@@ -126,10 +126,12 @@ export function useSale(id: string) {
 /**
  * Hook for fetching current user's sales since last login (User Sales Report)
  */
-export function useSalesSinceLastLogin(params: {
-  page?: number;
-  limit?: number;
-} = {}) {
+export function useSalesSinceLastLogin(
+  params: {
+    page?: number;
+    limit?: number;
+  } = {},
+) {
   const normalizedParams = {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,

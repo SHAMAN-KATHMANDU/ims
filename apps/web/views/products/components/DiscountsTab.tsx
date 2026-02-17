@@ -93,14 +93,17 @@ export function DiscountsTab() {
     [],
   );
 
-  const handleSortChange = useCallback((sortBy: string, sortOrder: "asc" | "desc") => {
-    setParams((prev: ProductDiscountListParams) => ({
-      ...prev,
-      page: DEFAULT_PAGE,
-      sortBy,
-      sortOrder,
-    }));
-  }, []);
+  const handleSortChange = useCallback(
+    (sortBy: string, sortOrder: "asc" | "desc") => {
+      setParams((prev: ProductDiscountListParams) => ({
+        ...prev,
+        page: DEFAULT_PAGE,
+        sortBy,
+        sortOrder,
+      }));
+    },
+    [],
+  );
 
   const handlePageChange = useCallback((page: number) => {
     setParams((prev: ProductDiscountListParams) => ({ ...prev, page }));
@@ -126,7 +129,8 @@ export function DiscountsTab() {
       <div className="flex flex-col gap-2">
         <h2 className="text-xl font-semibold">All Discounts</h2>
         <p className="text-sm text-muted-foreground">
-          View and filter product discounts. To add or edit discounts, edit the product.
+          View and filter product discounts. To add or edit discounts, edit the
+          product.
         </p>
       </div>
 
@@ -150,7 +154,9 @@ export function DiscountsTab() {
           </PopoverTrigger>
           <PopoverContent className="w-80 p-3" align="start">
             <div className="space-y-3">
-              <p className="text-xs font-medium text-muted-foreground">Filter by</p>
+              <p className="text-xs font-medium text-muted-foreground">
+                Filter by
+              </p>
               <div className="grid gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Product</Label>
@@ -183,7 +189,9 @@ export function DiscountsTab() {
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
                       {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -192,7 +200,9 @@ export function DiscountsTab() {
                   <Label className="text-xs">Discount type</Label>
                   <Select
                     value={params.discountTypeId ?? "all"}
-                    onValueChange={(v) => handleFilterChange("discountTypeId", v)}
+                    onValueChange={(v) =>
+                      handleFilterChange("discountTypeId", v)
+                    }
                   >
                     <SelectTrigger className="h-8 text-sm">
                       <SelectValue placeholder="All" />
@@ -200,7 +210,9 @@ export function DiscountsTab() {
                     <SelectContent>
                       <SelectItem value="all">All</SelectItem>
                       {discountTypes.map((dt) => (
-                        <SelectItem key={dt.id} value={dt.id}>{dt.name}</SelectItem>
+                        <SelectItem key={dt.id} value={dt.id}>
+                          {dt.name}
+                        </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -210,7 +222,10 @@ export function DiscountsTab() {
                   <Select
                     value={`${params.sortBy ?? "createdAt"}-${params.sortOrder ?? "desc"}`}
                     onValueChange={(v) => {
-                      const [sortBy, sortOrder] = v.split("-") as [string, "asc" | "desc"];
+                      const [sortBy, sortOrder] = v.split("-") as [
+                        string,
+                        "asc" | "desc",
+                      ];
                       handleSortChange(sortBy, sortOrder);
                     }}
                   >
@@ -218,12 +233,24 @@ export function DiscountsTab() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="createdAt-desc">Newest first</SelectItem>
-                      <SelectItem value="createdAt-asc">Oldest first</SelectItem>
-                      <SelectItem value="productName-asc">Product A–Z</SelectItem>
-                      <SelectItem value="productName-desc">Product Z–A</SelectItem>
-                      <SelectItem value="discountTypeName-asc">Type A–Z</SelectItem>
-                      <SelectItem value="discountTypeName-desc">Type Z–A</SelectItem>
+                      <SelectItem value="createdAt-desc">
+                        Newest first
+                      </SelectItem>
+                      <SelectItem value="createdAt-asc">
+                        Oldest first
+                      </SelectItem>
+                      <SelectItem value="productName-asc">
+                        Product A–Z
+                      </SelectItem>
+                      <SelectItem value="productName-desc">
+                        Product Z–A
+                      </SelectItem>
+                      <SelectItem value="discountTypeName-asc">
+                        Type A–Z
+                      </SelectItem>
+                      <SelectItem value="discountTypeName-desc">
+                        Type Z–A
+                      </SelectItem>
                       <SelectItem value="value-desc">Value high–low</SelectItem>
                       <SelectItem value="value-asc">Value low–high</SelectItem>
                     </SelectContent>
@@ -239,9 +266,7 @@ export function DiscountsTab() {
         <CardHeader>
           <CardTitle>Discounts</CardTitle>
           <CardDescription>
-            {pagination
-              ? `${pagination.totalItems} discount(s)`
-              : "Loading…"}
+            {pagination ? `${pagination.totalItems} discount(s)` : "Loading…"}
           </CardDescription>
         </CardHeader>
         <CardContent>
