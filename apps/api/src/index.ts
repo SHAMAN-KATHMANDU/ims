@@ -21,7 +21,7 @@ const startServer = async () => {
 
     // Validate environment configuration
     if (env.isProd || env.isStaging) {
-      logger.log("Production/Staging mode - validating configuration...");
+      logger.log("Production/Staging mode - validating configuration....");
       if (!env.jwtSecret) {
         logger.error("FATAL: JWT_SECRET is required in production/staging");
         process.exit(1);

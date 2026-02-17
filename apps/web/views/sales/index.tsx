@@ -260,6 +260,26 @@ export function SalesPage() {
     setPage(DEFAULT_PAGE);
   };
 
+  const clearAllFilters = useCallback(() => {
+    setSearch("");
+    setTypeFilter("ALL");
+    setCreditFilter("ALL");
+    setLocationFilter("ALL");
+    setUserFilter(undefined);
+    setStartDate(undefined);
+    setEndDate(undefined);
+    setPage(DEFAULT_PAGE);
+  }, []);
+
+  const hasActiveFilters =
+    search !== "" ||
+    typeFilter !== "ALL" ||
+    creditFilter !== "ALL" ||
+    locationFilter !== "ALL" ||
+    userFilter != null ||
+    startDate != null ||
+    endDate != null;
+
   const today = new Date();
   const allDateShortcuts = [
     { label: "Today", start: startOfDay(today), end: endOfDay(today) },
@@ -366,6 +386,8 @@ export function SalesPage() {
             setPage(DEFAULT_PAGE);
           }}
           onClearDates={clearDateFilters}
+          onClearAllFilters={clearAllFilters}
+          hasActiveFilters={hasActiveFilters}
           showrooms={showrooms}
           dateShortcuts={dateShortcuts}
           onDateShortcut={applyDateShortcut}

@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * Analytics index: landing page with links to Sales & Revenue, Inventory & Operations,
- * and Customers & Promotions reports.
+ * Analytics index: landing page with links to all analytics reports.
  */
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useMemo } from "react";
 import {
   Card,
   CardContent,
@@ -14,8 +14,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Package, Users, Receipt } from "lucide-react";
-import { useMemo } from "react";
+import { Receipt, Package, Users, TrendingUp, Banknote } from "lucide-react";
 
 export function AnalyticsIndexPage() {
   const params = useParams();
@@ -28,22 +27,36 @@ export function AnalyticsIndexPage() {
         path: `${base}/reports/analytics/sales`,
         title: "Sales & Revenue",
         description:
-          "Revenue over time, composition by location and payment, credit analytics, and user performance.",
+          "Revenue trends, composition by location and payment, credit analytics, user performance, growth rates, and basket analysis.",
         icon: Receipt,
       },
       {
         path: `${base}/reports/analytics/inventory`,
         title: "Inventory & Operations",
         description:
-          "Stock value, health quadrant, heatmap by category and location, aging, and transfer funnel.",
+          "Stock health, aging, turnover ratio, days on hand, dead stock, sell-through by location, and transfer funnel.",
         icon: Package,
       },
       {
         path: `${base}/reports/analytics/customers`,
         title: "Customers & Promotions",
         description:
-          "Member KPIs, product performance, promo effectiveness, and cohort insights.",
+          "Member insights, CLV, RFM segmentation, retention/churn, product performance, ABC classification, and promo effectiveness.",
         icon: Users,
+      },
+      {
+        path: `${base}/reports/analytics/trends`,
+        title: "Trends & Patterns",
+        description:
+          "MoM growth rates, moving averages, seasonality index, cohort retention matrix, and peak hours heatmap.",
+        icon: TrendingUp,
+      },
+      {
+        path: `${base}/reports/analytics/financial`,
+        title: "Financial Analytics",
+        description:
+          "Gross profit over time, COGS breakdown by category and location, discount ratio trends, and margin analysis.",
+        icon: Banknote,
       },
     ],
     [base],

@@ -40,7 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Trash2, Edit, Plus, Search, Eye } from "lucide-react";
+import { Trash2, Edit, Plus, Search, Eye, X } from "lucide-react";
 import {
   DataTablePagination,
   type PaginationState,
@@ -173,6 +173,12 @@ export function VendorPage() {
     setPageSize(newSize);
     setPage(DEFAULT_PAGE);
   }, []);
+
+  const clearAllFilters = useCallback(() => {
+    setSearch("");
+    setPage(DEFAULT_PAGE);
+  }, []);
+  const hasActiveFilters = search !== "";
 
   const vendorPagination: PaginationState | null = pagination
     ? {
@@ -312,6 +318,17 @@ export function VendorPage() {
                 onChange={handleSearchChange}
               />
             </div>
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={clearAllFilters}
+              >
+                <X className="h-3.5 w-3.5 mr-2" />
+                Clear filters
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
