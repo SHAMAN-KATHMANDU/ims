@@ -4,6 +4,7 @@ import {
   getPaginationParams,
   createPaginationResult,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 class ErrorReportController {
   async create(req: Request, res: Response) {
@@ -45,12 +46,8 @@ class ErrorReportController {
         message: "Error report submitted",
         report,
       });
-    } catch (error: any) {
-      console.error("Create error report:", error);
-      res.status(500).json({
-        message: "Error submitting report",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create error report failed");
     }
   }
 
@@ -97,12 +94,8 @@ class ErrorReportController {
         message: "Error reports fetched",
         ...result,
       });
-    } catch (error: any) {
-      console.error("List error reports:", error);
-      res.status(500).json({
-        message: "Error fetching reports",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List error reports failed");
     }
   }
 
@@ -131,15 +124,13 @@ class ErrorReportController {
         message: "Status updated",
         report,
       });
-    } catch (error: any) {
-      if (error.code === "P2025") {
-        return res.status(404).json({ message: "Report not found" });
-      }
-      console.error("Update error report status:", error);
-      res.status(500).json({
-        message: "Error updating status",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Update error report status failed",
+      );
     }
   }
 }

@@ -256,7 +256,7 @@ export function TransferTable({
                         )}
                         {canCancel(transfer) && (
                           <DropdownMenuItem
-                            className="text-destructive"
+                            variant="destructive"
                             onClick={() => onCancel(transfer)}
                           >
                             <XCircle className="mr-2 h-4 w-4" />

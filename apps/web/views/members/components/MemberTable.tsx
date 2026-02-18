@@ -251,6 +251,7 @@ export function MemberTable({
                     variant="ghost"
                     size="icon"
                     onClick={() => onView(member)}
+                    aria-label="View member"
                   >
                     <Eye className="h-4 w-4" />
                   </Button>
@@ -258,6 +259,7 @@ export function MemberTable({
                     variant="ghost"
                     size="icon"
                     onClick={() => onEdit(member)}
+                    aria-label="Edit member"
                   >
                     <Edit className="h-4 w-4" />
                   </Button>

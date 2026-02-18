@@ -253,6 +253,7 @@ export function UsersPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleEditUser(user)}
+                            aria-label="Edit user"
                           >
                             <Edit2 className="h-4 w-4" />
                           </Button>
@@ -260,6 +261,7 @@ export function UsersPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDeleteClick(user)}
+                            aria-label="Delete user"
                           >
                             <Trash2 className="h-4 w-4 text-destructive" />
                           </Button>

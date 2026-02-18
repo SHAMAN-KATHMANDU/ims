@@ -5,8 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
-import { logger } from "@/config/logger";
-import { env } from "@/config/env";
+import { sendControllerError } from "@/utils/controllerError";
 
 class VendorController {
   // Create vendor (admin and superAdmin only)
@@ -46,18 +45,14 @@ class VendorController {
         message: "Vendor created successfully",
         vendor,
       });
-    } catch (error: any) {
-      logger.error("Create vendor error", req.requestId, error);
-      if (error.code === "P2002") {
-        return res.status(400).json({
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
           message: "Vendor with this name already exists",
-          error: error.message,
         });
       }
-      res.status(500).json({
-        message: "Error creating vendor",
-        ...(env.isDev && { error: error.message }),
-      });
+      return sendControllerError(req, res, error, "Create vendor error");
     }
   }
 
@@ -125,12 +120,8 @@ class VendorController {
         message: "Vendors fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get all vendors error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching vendors",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all vendors error");
     }
   }
 
@@ -171,12 +162,8 @@ class VendorController {
         message: "Vendor fetched successfully",
         vendor,
       });
-    } catch (error: any) {
-      logger.error("Get vendor by ID error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching vendor",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get vendor by ID error");
     }
   }
 
@@ -232,12 +219,8 @@ class VendorController {
         message: "Vendor products fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get vendor products error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching vendor products",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get vendor products error");
     }
   }
 
@@ -292,18 +275,14 @@ class VendorController {
         message: "Vendor updated successfully",
         vendor: updatedVendor,
       });
-    } catch (error: any) {
-      logger.error("Update vendor error", req.requestId, error);
-      if (error.code === "P2002") {
-        return res.status(400).json({
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
           message: "Vendor with this name already exists",
-          error: error.message,
         });
       }
-      res.status(500).json({
-        message: "Error updating vendor",
-        ...(env.isDev && { error: error.message }),
-      });
+      return sendControllerError(req, res, error, "Update vendor error");
     }
   }
 
@@ -348,12 +327,8 @@ class VendorController {
       res.status(200).json({
         message: "Vendor deleted successfully",
       });
-    } catch (error: any) {
-      logger.error("Delete vendor error", req.requestId, error);
-      res.status(500).json({
-        message: "Error deleting vendor",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete vendor error");
     }
   }
 }

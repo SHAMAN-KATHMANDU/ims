@@ -13,48 +13,88 @@ interface ApiErrorResponse {
 }
 
 /**
- * Handle API errors and convert to user-friendly messages
+ * User-friendly messages for every error type (single source of truth).
  */
-export function handleApiError(error: unknown, context: string): never {
-  // Handle axios errors
+const MESSAGES = {
+  network:
+    "We couldn't reach the server. Check your internet connection and try again.",
+  timeout: "The request took too long. Please try again.",
+  sessionExpired: "Your session has expired. Please sign in again.",
+  forbidden: "You don't have permission to do this.",
+  validation: "Please check your input and try again.",
+  notFound: "The requested item was not found.",
+  conflict:
+    "This action conflicts with existing data. Please refresh and try again.",
+  fileTooLarge: "The file is too large. Please choose a smaller file.",
+  rateLimit: "Too many requests. Please wait a moment and try again.",
+  server: "Something went wrong on our end. Please try again in a few minutes.",
+  serverUnavailable:
+    "The service is temporarily unavailable. Please try again in a few minutes.",
+  unknown: "Something went wrong. Please try again.",
+} as const;
+
+/**
+ * Get a user-friendly message from any API error (Axios, timeout, network, status codes).
+ * Use for toasts and for throwing a consistent Error in handleApiError.
+ */
+export function getApiErrorMessage(error: unknown, context?: string): string {
   if (isAxiosError(error)) {
     const status = error.response?.status;
-    const message = error.response?.data?.message || error.message;
+    const backendMessage =
+      typeof error.response?.data?.message === "string" &&
+      error.response.data.message.trim() !== ""
+        ? error.response.data.message.trim()
+        : null;
 
-    // Network error
     if (error.code === "ERR_NETWORK") {
-      throw new Error(
-        "Cannot connect to server. Please check your network connection.",
-      );
+      return MESSAGES.network;
+    }
+    if (error.code === "ECONNABORTED") {
+      return MESSAGES.timeout;
     }
 
-    // HTTP status code errors
     switch (status) {
       case 400:
-        throw new Error(message || `Invalid data provided for ${context}`);
+        return backendMessage ?? MESSAGES.validation;
       case 401:
-        throw new Error(`Unauthorized: Please log in to ${context}`);
+        return backendMessage ?? MESSAGES.sessionExpired;
       case 403:
-        throw new Error(`Forbidden: You don't have permission to ${context}`);
+        return backendMessage ?? MESSAGES.forbidden;
       case 404:
-        throw new Error(`${context} not found`);
+        return backendMessage ?? MESSAGES.notFound;
+      case 408:
+        return MESSAGES.timeout;
       case 409:
-        throw new Error(message || `Conflict while trying to ${context}`);
+        return backendMessage ?? MESSAGES.conflict;
+      case 413:
+        return MESSAGES.fileTooLarge;
+      case 429:
+        return MESSAGES.rateLimit;
+      case 500:
+        return MESSAGES.server;
+      case 502:
+      case 503:
+        return MESSAGES.serverUnavailable;
       default:
         if (status && status >= 500) {
-          throw new Error("Server error: Please try again later");
+          return MESSAGES.server;
         }
-        throw new Error(message || `Failed to ${context}`);
+        return backendMessage ?? MESSAGES.unknown;
     }
   }
 
-  // Re-throw if already an Error
-  if (error instanceof Error) {
-    throw error;
+  if (error instanceof Error && error.message) {
+    return error.message;
   }
+  return context ? `${MESSAGES.unknown} (${context})` : MESSAGES.unknown;
+}
 
-  // Unknown error
-  throw new Error(`An unexpected error occurred while trying to ${context}`);
+/**
+ * Handle API errors and convert to user-friendly messages (rethrows).
+ */
+export function handleApiError(error: unknown, context: string): never {
+  const message = getApiErrorMessage(error, context);
+  throw new Error(message);
 }
 
 /**

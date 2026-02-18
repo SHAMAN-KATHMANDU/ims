@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
@@ -56,11 +57,7 @@ class TaskController {
 
       res.status(201).json({ message: "Task created successfully", task });
     } catch (error: unknown) {
-      console.error("Create task error:", error);
-      res.status(500).json({
-        message: "Error creating task",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Create task error");
     }
   }
 
@@ -129,11 +126,7 @@ class TaskController {
       const result = createPaginationResult(tasks, totalItems, page, limit);
       res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
-      console.error("Get tasks error:", error);
-      res.status(500).json({
-        message: "Error fetching tasks",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get tasks error");
     }
   }
 
@@ -157,11 +150,7 @@ class TaskController {
 
       res.status(200).json({ message: "OK", task });
     } catch (error: unknown) {
-      console.error("Get task by id error:", error);
-      res.status(500).json({
-        message: "Error fetching task",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get task by id error");
     }
   }
 
@@ -208,11 +197,7 @@ class TaskController {
 
       res.status(200).json({ message: "Task updated successfully", task });
     } catch (error: unknown) {
-      console.error("Update task error:", error);
-      res.status(500).json({
-        message: "Error updating task",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Update task error");
     }
   }
 
@@ -233,11 +218,7 @@ class TaskController {
 
       res.status(200).json({ message: "Task completed", task });
     } catch (error: unknown) {
-      console.error("Complete task error:", error);
-      res.status(500).json({
-        message: "Error completing task",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Complete task error");
     }
   }
 
@@ -253,11 +234,7 @@ class TaskController {
       await prisma.task.delete({ where: { id } });
       res.status(200).json({ message: "Task deleted successfully" });
     } catch (error: unknown) {
-      console.error("Delete task error:", error);
-      res.status(500).json({
-        message: "Error deleting task",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete task error");
     }
   }
 }

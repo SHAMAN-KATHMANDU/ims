@@ -15,7 +15,10 @@ const app = express();
 // Request timeout middleware (30 seconds default)
 app.use((req, res, next) => {
   req.setTimeout(30000, () => {
-    res.status(408).json({ message: "Request timeout", statusCode: 408 });
+    res.status(408).json({
+      message: "The request took too long. Please try again.",
+      statusCode: 408,
+    });
   });
   next();
 });

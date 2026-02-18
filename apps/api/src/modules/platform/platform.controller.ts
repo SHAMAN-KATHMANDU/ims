@@ -8,7 +8,7 @@
 import { Request, Response } from "express";
 import { basePrisma } from "@/config/prisma";
 import bcrypt from "bcryptjs";
-import { logger } from "@/config/logger";
+import { sendControllerError } from "@/utils/controllerError";
 
 class PlatformController {
   /**
@@ -107,9 +107,8 @@ class PlatformController {
         tenant: result.tenant,
         adminUser: result.adminUser,
       });
-    } catch (error) {
-      logger.error("Create tenant error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create tenant error");
     }
   }
 
@@ -134,9 +133,8 @@ class PlatformController {
       });
 
       res.status(200).json({ tenants });
-    } catch (error) {
-      logger.error("List tenants error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List tenants error");
     }
   }
 
@@ -176,9 +174,8 @@ class PlatformController {
       }
 
       res.status(200).json({ tenant });
-    } catch (error) {
-      logger.error("Get tenant error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get tenant error");
     }
   }
 
@@ -263,9 +260,8 @@ class PlatformController {
       });
 
       res.status(200).json({ tenant });
-    } catch (error) {
-      logger.error("Update tenant error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Update tenant error");
     }
   }
 
@@ -302,9 +298,8 @@ class PlatformController {
         message: `Plan changed to ${plan}`,
         tenant,
       });
-    } catch (error) {
-      logger.error("Change plan error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Change plan error");
     }
   }
 
@@ -335,9 +330,8 @@ class PlatformController {
         message: "Tenant deactivated",
         tenant: updatedTenant,
       });
-    } catch (error) {
-      logger.error("Deactivate tenant error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Deactivate tenant error");
     }
   }
 
@@ -371,9 +365,8 @@ class PlatformController {
         message: "Tenant activated",
         tenant: updatedTenant,
       });
-    } catch (error) {
-      logger.error("Activate tenant error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Activate tenant error");
     }
   }
 
@@ -415,9 +408,8 @@ class PlatformController {
           count: p._count,
         })),
       });
-    } catch (error) {
-      logger.error("Platform stats error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Platform stats error");
     }
   }
 
@@ -435,9 +427,8 @@ class PlatformController {
       });
 
       res.status(200).json({ planLimits });
-    } catch (error) {
-      logger.error("List plan limits error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List plan limits error");
     }
   }
 
@@ -464,9 +455,8 @@ class PlatformController {
       }
 
       res.status(200).json({ planLimit });
-    } catch (error) {
-      logger.error("Get plan limit error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get plan limit error");
     }
   }
 
@@ -530,9 +520,8 @@ class PlatformController {
         message: "Plan limit saved successfully",
         planLimit,
       });
-    } catch (error) {
-      logger.error("Upsert plan limit error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Upsert plan limit error");
     }
   }
 
@@ -555,12 +544,12 @@ class PlatformController {
       });
 
       res.status(200).json({ message: "Plan limit deleted successfully" });
-    } catch (error: any) {
-      if (error.code === "P2025") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
         return res.status(404).json({ message: "Plan limit not found" });
       }
-      logger.error("Delete plan limit error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+      return sendControllerError(req, res, error, "Delete plan limit error");
     }
   }
 
@@ -578,9 +567,8 @@ class PlatformController {
       });
 
       res.status(200).json({ pricingPlans });
-    } catch (error) {
-      logger.error("List pricing plans error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List pricing plans error");
     }
   }
 
@@ -620,9 +608,8 @@ class PlatformController {
       }
 
       res.status(200).json({ pricingPlan });
-    } catch (error) {
-      logger.error("Get pricing plan error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get pricing plan error");
     }
   }
 
@@ -674,15 +661,15 @@ class PlatformController {
         message: "Pricing plan created successfully",
         pricingPlan,
       });
-    } catch (error: any) {
-      if (error.code === "P2002") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
         return res.status(409).json({
           message:
             "Pricing plan with this tier and billing cycle already exists",
         });
       }
-      logger.error("Create pricing plan error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+      return sendControllerError(req, res, error, "Create pricing plan error");
     }
   }
 
@@ -733,12 +720,12 @@ class PlatformController {
         message: "Pricing plan updated successfully",
         pricingPlan,
       });
-    } catch (error: any) {
-      if (error.code === "P2025") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
         return res.status(404).json({ message: "Pricing plan not found" });
       }
-      logger.error("Update pricing plan error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+      return sendControllerError(req, res, error, "Update pricing plan error");
     }
   }
 
@@ -774,12 +761,12 @@ class PlatformController {
       });
 
       res.status(200).json({ message: "Pricing plan deleted successfully" });
-    } catch (error: any) {
-      if (error.code === "P2025") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
         return res.status(404).json({ message: "Pricing plan not found" });
       }
-      logger.error("Delete pricing plan error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+      return sendControllerError(req, res, error, "Delete pricing plan error");
     }
   }
 
@@ -814,9 +801,8 @@ class PlatformController {
       });
 
       res.status(200).json({ subscriptions });
-    } catch (error) {
-      logger.error("List subscriptions error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List subscriptions error");
     }
   }
 
@@ -849,9 +835,8 @@ class PlatformController {
       }
 
       res.status(200).json({ subscription });
-    } catch (error) {
-      logger.error("Get subscription error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get subscription error");
     }
   }
 
@@ -936,9 +921,8 @@ class PlatformController {
         message: "Subscription created successfully",
         subscription,
       });
-    } catch (error) {
-      logger.error("Create subscription error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create subscription error");
     }
   }
 
@@ -1018,12 +1002,12 @@ class PlatformController {
         message: "Subscription updated successfully",
         subscription,
       });
-    } catch (error: any) {
-      if (error.code === "P2025") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
         return res.status(404).json({ message: "Subscription not found" });
       }
-      logger.error("Update subscription error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+      return sendControllerError(req, res, error, "Update subscription error");
     }
   }
 
@@ -1039,12 +1023,12 @@ class PlatformController {
       });
 
       res.status(200).json({ message: "Subscription deleted successfully" });
-    } catch (error: any) {
-      if (error.code === "P2025") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
         return res.status(404).json({ message: "Subscription not found" });
       }
-      logger.error("Delete subscription error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+      return sendControllerError(req, res, error, "Delete subscription error");
     }
   }
 
@@ -1084,9 +1068,8 @@ class PlatformController {
       });
 
       res.status(200).json({ payments });
-    } catch (error) {
-      logger.error("List tenant payments error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List tenant payments error");
     }
   }
 
@@ -1123,9 +1106,8 @@ class PlatformController {
       }
 
       res.status(200).json({ payment });
-    } catch (error) {
-      logger.error("Get tenant payment error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get tenant payment error");
     }
   }
 
@@ -1242,9 +1224,13 @@ class PlatformController {
         message: "Payment created successfully",
         payment,
       });
-    } catch (error) {
-      logger.error("Create tenant payment error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Create tenant payment error",
+      );
     }
   }
 
@@ -1309,12 +1295,17 @@ class PlatformController {
         message: "Payment updated successfully",
         payment,
       });
-    } catch (error: any) {
-      if (error.code === "P2025") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
         return res.status(404).json({ message: "Payment not found" });
       }
-      logger.error("Update tenant payment error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Update tenant payment error",
+      );
     }
   }
 
@@ -1330,12 +1321,17 @@ class PlatformController {
       });
 
       res.status(200).json({ message: "Payment deleted successfully" });
-    } catch (error: any) {
-      if (error.code === "P2025") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
         return res.status(404).json({ message: "Payment not found" });
       }
-      logger.error("Delete tenant payment error", undefined, error);
-      res.status(500).json({ message: "Internal server error" });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Delete tenant payment error",
+      );
     }
   }
 }

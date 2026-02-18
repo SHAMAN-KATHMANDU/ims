@@ -15,6 +15,7 @@ import {
   type ExcelMemberRow,
   type ValidationError,
 } from "./bulkUpload.validation";
+import { sendControllerError } from "@/utils/controllerError";
 
 class MemberController {
   // Create a new member
@@ -56,11 +57,8 @@ class MemberController {
         message: "Member created successfully",
         member,
       });
-    } catch (error: any) {
-      console.error("Create member error:", error);
-      res
-        .status(500)
-        .json({ message: "Error creating member", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create member error");
     }
   }
 
@@ -123,11 +121,8 @@ class MemberController {
         message: "Members fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get all members error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching members", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all members error");
     }
   }
 
@@ -158,11 +153,8 @@ class MemberController {
         message: "Member fetched successfully",
         member,
       });
-    } catch (error: any) {
-      console.error("Get member by phone error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching member", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get member by phone error");
     }
   }
 
@@ -213,11 +205,8 @@ class MemberController {
         message: "Member fetched successfully",
         member,
       });
-    } catch (error: any) {
-      console.error("Get member by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching member", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get member by ID error");
     }
   }
 
@@ -288,11 +277,8 @@ class MemberController {
         message: "Member updated successfully",
         member: updatedMember,
       });
-    } catch (error: any) {
-      console.error("Update member error:", error);
-      res
-        .status(500)
-        .json({ message: "Error updating member", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Update member error");
     }
   }
 
@@ -320,11 +306,8 @@ class MemberController {
         isMember: !!member && member.isActive,
         member: member || null,
       });
-    } catch (error: any) {
-      console.error("Check member error:", error);
-      res
-        .status(500)
-        .json({ message: "Error checking member", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Check member error");
     }
   }
 
@@ -679,7 +662,7 @@ class MemberController {
         skipped: skippedMembers,
         errors,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (req.file?.path) {
         try {
           fs.unlinkSync(req.file.path);
@@ -687,20 +670,7 @@ class MemberController {
           console.error("Error cleaning up file:", e);
         }
       }
-      console.error("Bulk upload members error:", error);
-      res.status(500).json({
-        message: "Error processing bulk upload",
-        error: error.message,
-        summary: {
-          total: 0,
-          created: createdMembers.length,
-          skipped: skippedMembers.length,
-          errors: errors.length,
-        },
-        created: createdMembers,
-        skipped: skippedMembers,
-        errors,
-      });
+      return sendControllerError(req, res, error, "Bulk upload members error");
     }
   }
 
@@ -758,12 +728,8 @@ class MemberController {
       );
       const buffer = await workbook.xlsx.writeBuffer();
       res.send(buffer);
-    } catch (error: any) {
-      console.error("Download template error:", error);
-      res.status(500).json({
-        message: "Error generating template",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download template error");
     }
   }
 
@@ -942,11 +908,8 @@ class MemberController {
 
         res.send(csvRows.join("\n"));
       }
-    } catch (error: any) {
-      console.error("Download members error:", error);
-      res
-        .status(500)
-        .json({ message: "Error downloading members", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download members error");
     }
   }
 }

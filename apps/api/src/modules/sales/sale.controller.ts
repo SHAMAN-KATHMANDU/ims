@@ -15,6 +15,7 @@ import {
   type ExcelSaleRow,
   type ValidationError,
 } from "./bulkUpload.validation";
+import { sendControllerError } from "@/utils/controllerError";
 
 // Generate a unique sale code
 function generateSaleCode(): string {
@@ -589,16 +590,8 @@ class SaleController {
         message: "Sale created successfully",
         sale,
       });
-    } catch (error: any) {
-      console.error("Create sale error:", error);
-      if (error.code === "P2002") {
-        return res.status(500).json({
-          message: "Error creating sale. Please try again.",
-        });
-      }
-      res
-        .status(500)
-        .json({ message: "Error creating sale", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create sale error");
     }
   }
 
@@ -873,11 +866,7 @@ class SaleController {
         promoDiscount: Math.round(totalPromoDiscount * 100) / 100,
       });
     } catch (error: unknown) {
-      console.error("Preview sale error:", error);
-      res.status(500).json({
-        message: "Error computing preview",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Preview sale error");
     }
   }
 
@@ -1020,11 +1009,8 @@ class SaleController {
         message: "Sales fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get all sales error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching sales", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all sales error");
     }
   }
 
@@ -1081,12 +1067,13 @@ class SaleController {
         message: "Sales since last login",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get sales since last login error:", error);
-      res.status(500).json({
-        message: "Error fetching sales",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get sales since last login error",
+      );
     }
   }
 
@@ -1146,11 +1133,8 @@ class SaleController {
         message: "Sale fetched successfully",
         sale,
       });
-    } catch (error: any) {
-      console.error("Get sale by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching sale", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get sale by ID error");
     }
   }
 
@@ -1252,11 +1236,8 @@ class SaleController {
         sale: updatedSale,
         payment,
       });
-    } catch (error: any) {
-      console.error("Add payment error:", error);
-      res
-        .status(500)
-        .json({ message: "Error adding payment", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Add payment error");
     }
   }
 
@@ -1323,12 +1304,8 @@ class SaleController {
           },
         },
       });
-    } catch (error: any) {
-      console.error("Get sales summary error:", error);
-      res.status(500).json({
-        message: "Error fetching sales summary",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get sales summary error");
     }
   }
 
@@ -1384,12 +1361,13 @@ class SaleController {
         message: "Sales by location fetched successfully",
         data: locationStats,
       });
-    } catch (error: any) {
-      console.error("Get sales by location error:", error);
-      res.status(500).json({
-        message: "Error fetching sales by location",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get sales by location error",
+      );
     }
   }
 
@@ -1470,11 +1448,8 @@ class SaleController {
         message: "Daily sales fetched successfully",
         data: Object.values(dailyData),
       });
-    } catch (error: any) {
-      console.error("Get daily sales error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching daily sales", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get daily sales error");
     }
   }
 
@@ -2144,7 +2119,7 @@ class SaleController {
         skipped: skippedSales,
         errors,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (req.file?.path) {
         try {
           fs.unlinkSync(req.file.path);
@@ -2152,20 +2127,7 @@ class SaleController {
           console.error("Error cleaning up file:", e);
         }
       }
-      console.error("Bulk upload sales error:", error);
-      res.status(500).json({
-        message: "Error processing bulk upload",
-        error: error.message,
-        summary: {
-          total: 0,
-          created: createdSales.length,
-          skipped: skippedSales.length,
-          errors: errors.length,
-        },
-        created: createdSales,
-        skipped: skippedSales,
-        errors,
-      });
+      return sendControllerError(req, res, error, "Bulk upload sales error");
     }
   }
 
@@ -2235,12 +2197,8 @@ class SaleController {
       );
       const buffer = await workbook.xlsx.writeBuffer();
       res.send(buffer);
-    } catch (error: any) {
-      console.error("Download template error:", error);
-      res.status(500).json({
-        message: "Error generating template",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download template error");
     }
   }
 
@@ -2518,11 +2476,8 @@ class SaleController {
 
         res.send(csvRows.join("\n"));
       }
-    } catch (error: any) {
-      console.error("Download sales error:", error);
-      res
-        .status(500)
-        .json({ message: "Error downloading sales", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download sales error");
     }
   }
 }

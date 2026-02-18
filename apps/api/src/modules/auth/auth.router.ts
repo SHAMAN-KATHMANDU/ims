@@ -1,6 +1,7 @@
 import { Router } from "express";
 import authController from "@/modules/auth/auth.controller";
 import verifyToken from "@/middlewares/authMiddleware";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const authRouter = Router();
 
@@ -45,7 +46,7 @@ const authRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-authRouter.post("/login", authController.logIn);
+authRouter.post("/login", asyncHandler(authController.logIn));
 
 /**
  * @swagger
@@ -68,7 +69,7 @@ authRouter.post("/login", authController.logIn);
  *       401:
  *         description: Unauthorized
  */
-authRouter.get("/me", verifyToken, authController.getCurrentUser);
+authRouter.get("/me", verifyToken, asyncHandler(authController.getCurrentUser));
 
 /**
  * @swagger
@@ -82,6 +83,6 @@ authRouter.get("/me", verifyToken, authController.getCurrentUser);
  *       200:
  *         description: Logout successful
  */
-authRouter.post("/logout", verifyToken, authController.logOut);
+authRouter.post("/logout", verifyToken, asyncHandler(authController.logOut));
 
 export default authRouter;
