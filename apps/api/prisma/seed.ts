@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import * as path from "path";
 
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../.env") });
 
 const prisma = new PrismaClient();
 
@@ -12,6 +13,12 @@ const PLATFORM_ADMIN_USERNAME =
   process.env.SEED_PLATFORM_ADMIN_USERNAME ?? "platform";
 const PLATFORM_ADMIN_PASSWORD = process.env.SEED_PLATFORM_ADMIN_PASSWORD;
 
+// Test tenants (test1, test2): use X-Tenant-Slug: test1 or test2, then login with username "admin" or "user" and this password:
+const TEST_TENANT_PASSWORD = "test123";
+
+// Ruby tenant: blank slate — X-Tenant-Slug: ruby, username "admin", password "admin123"
+const RUBY_TENANT_PASSWORD = "admin123";
+
 function requireEnv(name: string, value: string | undefined): string {
   if (!value || !value.trim()) {
     throw new Error(
@@ -19,6 +26,1197 @@ function requireEnv(name: string, value: string | undefined): string {
     );
   }
   return value.trim();
+}
+
+async function seedTestTenant(
+  slug: string,
+  name: string,
+  defaultPassword: string,
+) {
+  const existing = await prisma.tenant.findUnique({ where: { slug } });
+  if (existing) {
+    await deleteTenantBySlug(slug);
+    console.log(
+      `🗑️  Deleted existing tenant "${slug}" to reseed with full data.`,
+    );
+  }
+
+  const hashedPassword = await bcrypt.hash(defaultPassword, 10);
+  const now = new Date();
+  const periodStart = new Date(now);
+  const periodEnd = new Date(now);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+  // 1. Tenant + Subscription
+  const tenant = await prisma.tenant.create({
+    data: {
+      name,
+      slug,
+      plan: "PROFESSIONAL",
+      isActive: true,
+      isTrial: false,
+      subscriptionStatus: "ACTIVE",
+      planExpiresAt: periodEnd,
+      trialEndsAt: null,
+      settings: { timezone: "Asia/Kathmandu", currency: "NPR" },
+    },
+  });
+
+  const subscription = await prisma.subscription.create({
+    data: {
+      tenantId: tenant.id,
+      plan: "PROFESSIONAL",
+      billingCycle: "MONTHLY",
+      status: "ACTIVE",
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
+      trialEndsAt: null,
+    },
+  });
+
+  // 2. Users (admin + user) — usernames are "admin" / "user" per tenant so login with X-Tenant-Slug works
+  const adminUser = await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      username: "admin",
+      password: hashedPassword,
+      role: "admin",
+    },
+  });
+  const staffUser = await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      username: "user",
+      password: hashedPassword,
+      role: "user",
+    },
+  });
+
+  // 3. Categories + SubCategories
+  const cat1 = await prisma.category.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Furniture",
+      description: "Furniture and home items",
+    },
+  });
+  await prisma.subCategory.createMany({
+    data: [
+      { categoryId: cat1.id, name: "Sofas" },
+      { categoryId: cat1.id, name: "Tables" },
+    ],
+  });
+  const subCatSofas = await prisma.subCategory.findFirst({
+    where: { categoryId: cat1.id, name: "Sofas" },
+  });
+  const subCatTables = await prisma.subCategory.findFirst({
+    where: { categoryId: cat1.id, name: "Tables" },
+  });
+
+  const cat2 = await prisma.category.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Electronics",
+      description: "Electronic devices",
+    },
+  });
+  await prisma.subCategory.createMany({
+    data: [
+      { categoryId: cat2.id, name: "Phones" },
+      { categoryId: cat2.id, name: "Accessories" },
+    ],
+  });
+  const cat3 = await prisma.category.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Apparel",
+      description: "Clothing and wear",
+    },
+  });
+  await prisma.subCategory.createMany({
+    data: [
+      { categoryId: cat3.id, name: "Men" },
+      { categoryId: cat3.id, name: "Women" },
+      { categoryId: cat3.id, name: "Kids" },
+    ],
+  });
+  const cat4 = await prisma.category.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Home & Kitchen",
+      description: "Kitchen and home goods",
+    },
+  });
+  await prisma.subCategory.createMany({
+    data: [
+      { categoryId: cat4.id, name: "Cookware" },
+      { categoryId: cat4.id, name: "Decor" },
+    ],
+  });
+
+  // 4. Vendors
+  const vendor1 = await prisma.vendor.create({
+    data: {
+      tenantId: tenant.id,
+      name: `${name} Vendor A`,
+      contact: "Vendor Contact",
+      phone: "9810000001",
+      address: "Kathmandu",
+    },
+  });
+  const vendor2 = await prisma.vendor.create({
+    data: {
+      tenantId: tenant.id,
+      name: `${name} Vendor B`,
+      contact: "Vendor B Contact",
+      phone: "9810000002",
+    },
+  });
+  const vendor3 = await prisma.vendor.create({
+    data: {
+      tenantId: tenant.id,
+      name: `${name} Vendor C`,
+      contact: "Vendor C Contact",
+      phone: "9810000003",
+      address: "Lalitpur",
+    },
+  });
+
+  // 5. Locations (warehouse + showroom + extra)
+  const warehouse = await prisma.location.create({
+    data: {
+      tenantId: tenant.id,
+      name: `${name} Main Warehouse`,
+      type: "WAREHOUSE",
+      address: "Warehouse St 1",
+      isActive: true,
+      isDefaultWarehouse: true,
+    },
+  });
+  const showroom = await prisma.location.create({
+    data: {
+      tenantId: tenant.id,
+      name: `${name} Showroom`,
+      type: "SHOWROOM",
+      address: "Showroom Ave 1",
+      isActive: true,
+      isDefaultWarehouse: false,
+    },
+  });
+  const outlet = await prisma.location.create({
+    data: {
+      tenantId: tenant.id,
+      name: `${name} Outlet`,
+      type: "SHOWROOM",
+      address: "Outlet Park",
+      isActive: true,
+      isDefaultWarehouse: false,
+    },
+  });
+
+  // 6. DiscountTypes
+  const discountTypePercent = await prisma.discountType.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Member Discount",
+      description: "Percentage off for members",
+    },
+  });
+  const discountTypeFlat = await prisma.discountType.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Seasonal Flat",
+      description: "Flat amount off",
+    },
+  });
+
+  // 7. Products with variations and inventory
+  const product1 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P001`,
+      name: "Wooden Sofa",
+      categoryId: cat1.id,
+      subCategory: "Sofas",
+      subCategoryId: subCatSofas?.id ?? null,
+      description: "Classic wooden sofa",
+      costPrice: 25000,
+      mrp: 35000,
+      finalSp: 32000,
+      vendorId: vendor1.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product2 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P002`,
+      name: "Dining Table",
+      categoryId: cat1.id,
+      subCategory: "Tables",
+      subCategoryId: subCatTables?.id ?? null,
+      costPrice: 18000,
+      mrp: 25000,
+      finalSp: 23000,
+      vendorId: vendor1.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product3 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P003`,
+      name: "LED Lamp",
+      categoryId: cat2.id,
+      subCategory: "Accessories",
+      costPrice: 500,
+      mrp: 800,
+      finalSp: 750,
+      vendorId: vendor2.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product4 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P004`,
+      name: "Bookshelf",
+      categoryId: cat1.id,
+      subCategory: "Tables",
+      costPrice: 4500,
+      mrp: 6500,
+      finalSp: 6000,
+      vendorId: vendor1.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product5 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P005`,
+      name: "Wireless Earbuds",
+      categoryId: cat2.id,
+      subCategory: "Accessories",
+      costPrice: 1200,
+      mrp: 1999,
+      finalSp: 1799,
+      vendorId: vendor2.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product6 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P006`,
+      name: "Cotton T-Shirt",
+      categoryId: cat3.id,
+      subCategory: "Men",
+      costPrice: 400,
+      mrp: 899,
+      finalSp: 799,
+      vendorId: vendor3.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product7 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P007`,
+      name: "Non-Stick Pan",
+      categoryId: cat4.id,
+      subCategory: "Cookware",
+      costPrice: 800,
+      mrp: 1499,
+      finalSp: 1299,
+      vendorId: vendor3.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product8 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P008`,
+      name: "Wall Clock",
+      categoryId: cat4.id,
+      subCategory: "Decor",
+      costPrice: 350,
+      mrp: 699,
+      finalSp: 599,
+      vendorId: vendor1.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product9 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P009`,
+      name: "Desk Chair",
+      categoryId: cat1.id,
+      subCategory: "Sofas",
+      costPrice: 3200,
+      mrp: 4999,
+      finalSp: 4499,
+      vendorId: vendor1.id,
+      createdById: adminUser.id,
+    },
+  });
+  const product10 = await prisma.product.create({
+    data: {
+      tenantId: tenant.id,
+      imsCode: `${slug.toUpperCase()}-P010`,
+      name: "Power Bank",
+      categoryId: cat2.id,
+      subCategory: "Accessories",
+      costPrice: 900,
+      mrp: 1599,
+      finalSp: 1399,
+      vendorId: vendor2.id,
+      createdById: adminUser.id,
+    },
+  });
+
+  const var1p1 = await prisma.productVariation.create({
+    data: {
+      productId: product1.id,
+      color: "Brown",
+      stockQuantity: 10,
+    },
+  });
+  const var2p1 = await prisma.productVariation.create({
+    data: {
+      productId: product1.id,
+      color: "White",
+      stockQuantity: 5,
+    },
+  });
+  const var1p2 = await prisma.productVariation.create({
+    data: {
+      productId: product2.id,
+      color: "Natural",
+      stockQuantity: 8,
+    },
+  });
+  const var1p3 = await prisma.productVariation.create({
+    data: {
+      productId: product3.id,
+      color: "White",
+      stockQuantity: 50,
+    },
+  });
+  const var1p4 = await prisma.productVariation.create({
+    data: { productId: product4.id, color: "Oak", stockQuantity: 12 },
+  });
+  const var2p4 = await prisma.productVariation.create({
+    data: { productId: product4.id, color: "Walnut", stockQuantity: 8 },
+  });
+  const var1p5 = await prisma.productVariation.create({
+    data: { productId: product5.id, color: "Black", stockQuantity: 40 },
+  });
+  const var2p5 = await prisma.productVariation.create({
+    data: { productId: product5.id, color: "White", stockQuantity: 35 },
+  });
+  const var1p6 = await prisma.productVariation.create({
+    data: { productId: product6.id, color: "Navy", stockQuantity: 100 },
+  });
+  const var2p6 = await prisma.productVariation.create({
+    data: { productId: product6.id, color: "Black", stockQuantity: 80 },
+  });
+  const var1p7 = await prisma.productVariation.create({
+    data: { productId: product7.id, color: "Silver", stockQuantity: 25 },
+  });
+  const var1p8 = await prisma.productVariation.create({
+    data: { productId: product8.id, color: "Black", stockQuantity: 30 },
+  });
+  const var1p9 = await prisma.productVariation.create({
+    data: { productId: product9.id, color: "Grey", stockQuantity: 15 },
+  });
+  const var1p10 = await prisma.productVariation.create({
+    data: { productId: product10.id, color: "Black", stockQuantity: 45 },
+  });
+
+  const subVar1 = await prisma.productSubVariation.create({
+    data: { variationId: var1p1.id, name: "Standard" },
+  });
+  const subVar2 = await prisma.productSubVariation.create({
+    data: { variationId: var1p1.id, name: "Large" },
+  });
+
+  await prisma.variationPhoto.create({
+    data: {
+      variationId: var1p1.id,
+      photoUrl: "https://example.com/sofa-brown.jpg",
+      isPrimary: true,
+    },
+  });
+
+  await prisma.productDiscount.createMany({
+    data: [
+      {
+        productId: product1.id,
+        discountTypeId: discountTypePercent.id,
+        discountPercentage: 10,
+        valueType: "PERCENTAGE",
+        value: 10,
+        isActive: true,
+      },
+      {
+        productId: product2.id,
+        discountTypeId: discountTypeFlat.id,
+        discountPercentage: 0,
+        valueType: "FLAT",
+        value: 500,
+        isActive: true,
+      },
+      {
+        productId: product4.id,
+        discountTypeId: discountTypePercent.id,
+        discountPercentage: 8,
+        valueType: "PERCENTAGE",
+        value: 8,
+        isActive: true,
+      },
+      {
+        productId: product6.id,
+        discountTypeId: discountTypeFlat.id,
+        discountPercentage: 0,
+        valueType: "FLAT",
+        value: 50,
+        isActive: true,
+      },
+    ],
+  });
+
+  // Location inventory
+  await prisma.locationInventory.createMany({
+    data: [
+      {
+        locationId: warehouse.id,
+        variationId: var1p1.id,
+        subVariationId: subVar1.id,
+        quantity: 6,
+      },
+      {
+        locationId: warehouse.id,
+        variationId: var1p1.id,
+        subVariationId: subVar2.id,
+        quantity: 4,
+      },
+      { locationId: warehouse.id, variationId: var2p1.id, quantity: 5 },
+      { locationId: warehouse.id, variationId: var1p2.id, quantity: 8 },
+      { locationId: warehouse.id, variationId: var1p3.id, quantity: 30 },
+      { locationId: warehouse.id, variationId: var1p4.id, quantity: 10 },
+      { locationId: warehouse.id, variationId: var2p4.id, quantity: 6 },
+      { locationId: warehouse.id, variationId: var1p5.id, quantity: 25 },
+      { locationId: warehouse.id, variationId: var1p6.id, quantity: 60 },
+      { locationId: warehouse.id, variationId: var1p7.id, quantity: 15 },
+      { locationId: warehouse.id, variationId: var1p8.id, quantity: 20 },
+      { locationId: warehouse.id, variationId: var1p9.id, quantity: 10 },
+      { locationId: warehouse.id, variationId: var1p10.id, quantity: 30 },
+      {
+        locationId: showroom.id,
+        variationId: var1p1.id,
+        subVariationId: subVar1.id,
+        quantity: 2,
+      },
+      { locationId: showroom.id, variationId: var1p3.id, quantity: 20 },
+      { locationId: showroom.id, variationId: var1p4.id, quantity: 2 },
+      { locationId: showroom.id, variationId: var1p5.id, quantity: 15 },
+      { locationId: showroom.id, variationId: var1p6.id, quantity: 20 },
+      { locationId: outlet.id, variationId: var1p6.id, quantity: 20 },
+      { locationId: outlet.id, variationId: var1p8.id, quantity: 10 },
+    ],
+  });
+
+  // 8. Members
+  const member1 = await prisma.member.create({
+    data: {
+      tenantId: tenant.id,
+      phone: `9800000001-${slug}`,
+      name: "Ram Sharma",
+      email: "ram@example.com",
+      notes: "VIP customer",
+      isActive: true,
+      memberStatus: "VIP",
+      totalSales: 0,
+      memberSince: new Date(),
+    },
+  });
+  const member2 = await prisma.member.create({
+    data: {
+      tenantId: tenant.id,
+      phone: `9800000002-${slug}`,
+      name: "Sita Devi",
+      email: "sita@example.com",
+      isActive: true,
+      memberStatus: "ACTIVE",
+      totalSales: 0,
+    },
+  });
+  const member3 = await prisma.member.create({
+    data: {
+      tenantId: tenant.id,
+      phone: `9800000003-${slug}`,
+      name: "Gita Karki",
+      email: "gita@example.com",
+      memberStatus: "ACTIVE",
+      totalSales: 0,
+    },
+  });
+  const member4 = await prisma.member.create({
+    data: {
+      tenantId: tenant.id,
+      phone: `9800000004-${slug}`,
+      name: "Krishna Thapa",
+      email: "krishna@example.com",
+      memberStatus: "VIP",
+      totalSales: 0,
+    },
+  });
+  const member5 = await prisma.member.create({
+    data: {
+      tenantId: tenant.id,
+      phone: `9800000005-${slug}`,
+      name: "Anita Gurung",
+      email: "anita@example.com",
+      memberStatus: "ACTIVE",
+      totalSales: 0,
+    },
+  });
+  const member6 = await prisma.member.create({
+    data: {
+      tenantId: tenant.id,
+      phone: `9800000006-${slug}`,
+      name: "Bikash Rai",
+      memberStatus: "PROSPECT",
+      totalSales: 0,
+    },
+  });
+  const member7 = await prisma.member.create({
+    data: {
+      tenantId: tenant.id,
+      phone: `9800000007-${slug}`,
+      name: "Puja Maharjan",
+      email: "puja@example.com",
+      memberStatus: "ACTIVE",
+      totalSales: 0,
+    },
+  });
+  const member8 = await prisma.member.create({
+    data: {
+      tenantId: tenant.id,
+      phone: `9800000008-${slug}`,
+      name: "Rajesh Shrestha",
+      email: "rajesh@example.com",
+      memberStatus: "INACTIVE",
+      totalSales: 0,
+    },
+  });
+
+  // 9. Transfers
+  const transfer = await prisma.transfer.create({
+    data: {
+      tenantId: tenant.id,
+      transferCode: `${slug.toUpperCase()}-TRF-001`,
+      fromLocationId: warehouse.id,
+      toLocationId: showroom.id,
+      status: "COMPLETED",
+      notes: "Initial stock transfer",
+      createdById: adminUser.id,
+      approvedById: adminUser.id,
+      approvedAt: now,
+      completedAt: now,
+    },
+  });
+  await prisma.transferItem.createMany({
+    data: [
+      {
+        transferId: transfer.id,
+        variationId: var1p1.id,
+        subVariationId: subVar1.id,
+        quantity: 2,
+      },
+      { transferId: transfer.id, variationId: var1p3.id, quantity: 10 },
+    ],
+  });
+  await prisma.transferLog.create({
+    data: {
+      transferId: transfer.id,
+      action: "created",
+      details: {},
+      userId: adminUser.id,
+    },
+  });
+  const transfer2 = await prisma.transfer.create({
+    data: {
+      tenantId: tenant.id,
+      transferCode: `${slug.toUpperCase()}-TRF-002`,
+      fromLocationId: warehouse.id,
+      toLocationId: outlet.id,
+      status: "COMPLETED",
+      notes: "Stock for outlet",
+      createdById: staffUser.id,
+      approvedById: adminUser.id,
+      approvedAt: now,
+      completedAt: now,
+    },
+  });
+  await prisma.transferItem.createMany({
+    data: [
+      { transferId: transfer2.id, variationId: var1p6.id, quantity: 20 },
+      { transferId: transfer2.id, variationId: var1p8.id, quantity: 10 },
+    ],
+  });
+  await prisma.transferLog.createMany({
+    data: [
+      {
+        transferId: transfer2.id,
+        action: "created",
+        details: {},
+        userId: staffUser.id,
+      },
+      {
+        transferId: transfer2.id,
+        action: "approved",
+        details: {},
+        userId: adminUser.id,
+      },
+    ],
+  });
+  const transfer3 = await prisma.transfer.create({
+    data: {
+      tenantId: tenant.id,
+      transferCode: `${slug.toUpperCase()}-TRF-003`,
+      fromLocationId: warehouse.id,
+      toLocationId: showroom.id,
+      status: "PENDING",
+      notes: "Pending approval",
+      createdById: staffUser.id,
+    },
+  });
+  await prisma.transferItem.createMany({
+    data: [
+      { transferId: transfer3.id, variationId: var1p5.id, quantity: 5 },
+      { transferId: transfer3.id, variationId: var1p9.id, quantity: 3 },
+    ],
+  });
+
+  // 10. Sales with items and payments
+  const sale1 = await prisma.sale.create({
+    data: {
+      tenantId: tenant.id,
+      saleCode: `${slug.toUpperCase()}-S001`,
+      type: "MEMBER",
+      isCreditSale: false,
+      locationId: showroom.id,
+      memberId: member1.id,
+      subtotal: 64000,
+      discount: 3200,
+      total: 60800,
+      createdById: staffUser.id,
+    },
+  });
+  await prisma.saleItem.create({
+    data: {
+      saleId: sale1.id,
+      variationId: var1p1.id,
+      subVariationId: subVar1.id,
+      quantity: 2,
+      unitPrice: 32000,
+      totalMrp: 64000,
+      discountPercent: 5,
+      discountAmount: 3200,
+      lineTotal: 60800,
+    },
+  });
+  await prisma.salePayment.createMany({
+    data: [{ saleId: sale1.id, method: "CASH", amount: 60800 }],
+  });
+
+  const sale2 = await prisma.sale.create({
+    data: {
+      tenantId: tenant.id,
+      saleCode: `${slug.toUpperCase()}-S002`,
+      type: "GENERAL",
+      isCreditSale: false,
+      locationId: showroom.id,
+      subtotal: 750,
+      discount: 0,
+      total: 750,
+      createdById: adminUser.id,
+    },
+  });
+  await prisma.saleItem.create({
+    data: {
+      saleId: sale2.id,
+      variationId: var1p3.id,
+      quantity: 1,
+      unitPrice: 750,
+      totalMrp: 750,
+      discountPercent: 0,
+      discountAmount: 0,
+      lineTotal: 750,
+    },
+  });
+  await prisma.salePayment.create({
+    data: { saleId: sale2.id, method: "CASH", amount: 750 },
+  });
+  const sale3 = await prisma.sale.create({
+    data: {
+      tenantId: tenant.id,
+      saleCode: `${slug.toUpperCase()}-S003`,
+      type: "MEMBER",
+      isCreditSale: false,
+      locationId: showroom.id,
+      memberId: member3.id,
+      subtotal: 11997,
+      discount: 600,
+      total: 11397,
+      createdById: adminUser.id,
+    },
+  });
+  await prisma.saleItem.createMany({
+    data: [
+      {
+        saleId: sale3.id,
+        variationId: var1p5.id,
+        quantity: 2,
+        unitPrice: 1799,
+        totalMrp: 3598,
+        discountPercent: 5,
+        discountAmount: 180,
+        lineTotal: 3418,
+      },
+      {
+        saleId: sale3.id,
+        variationId: var1p10.id,
+        quantity: 2,
+        unitPrice: 1399,
+        totalMrp: 2798,
+        discountPercent: 5,
+        discountAmount: 140,
+        lineTotal: 2658,
+      },
+      {
+        saleId: sale3.id,
+        variationId: var1p8.id,
+        quantity: 2,
+        unitPrice: 599,
+        totalMrp: 1198,
+        discountPercent: 5,
+        discountAmount: 60,
+        lineTotal: 1138,
+      },
+    ],
+  });
+  await prisma.salePayment.createMany({
+    data: [
+      { saleId: sale3.id, method: "CASH", amount: 6000 },
+      { saleId: sale3.id, method: "CARD", amount: 5397 },
+    ],
+  });
+  const sale4 = await prisma.sale.create({
+    data: {
+      tenantId: tenant.id,
+      saleCode: `${slug.toUpperCase()}-S004`,
+      type: "GENERAL",
+      isCreditSale: false,
+      locationId: outlet.id,
+      subtotal: 1598,
+      discount: 0,
+      total: 1598,
+      createdById: staffUser.id,
+    },
+  });
+  await prisma.saleItem.create({
+    data: {
+      saleId: sale4.id,
+      variationId: var1p6.id,
+      quantity: 2,
+      unitPrice: 799,
+      totalMrp: 1598,
+      discountPercent: 0,
+      discountAmount: 0,
+      lineTotal: 1598,
+    },
+  });
+  await prisma.salePayment.create({
+    data: { saleId: sale4.id, method: "CASH", amount: 1598 },
+  });
+  const sale5 = await prisma.sale.create({
+    data: {
+      tenantId: tenant.id,
+      saleCode: `${slug.toUpperCase()}-S005`,
+      type: "MEMBER",
+      isCreditSale: false,
+      locationId: showroom.id,
+      memberId: member4.id,
+      subtotal: 12990,
+      discount: 1300,
+      total: 11690,
+      createdById: adminUser.id,
+    },
+  });
+  await prisma.saleItem.create({
+    data: {
+      saleId: sale5.id,
+      variationId: var1p4.id,
+      quantity: 2,
+      unitPrice: 6000,
+      totalMrp: 12000,
+      discountPercent: 10,
+      discountAmount: 1200,
+      lineTotal: 10800,
+    },
+  });
+  await prisma.salePayment.createMany({
+    data: [{ saleId: sale5.id, method: "CASH", amount: 11690 }],
+  });
+  const sale6 = await prisma.sale.create({
+    data: {
+      tenantId: tenant.id,
+      saleCode: `${slug.toUpperCase()}-S006`,
+      type: "MEMBER",
+      isCreditSale: false,
+      locationId: showroom.id,
+      memberId: member1.id,
+      subtotal: 4499,
+      discount: 225,
+      total: 4274,
+      createdById: staffUser.id,
+    },
+  });
+  await prisma.saleItem.create({
+    data: {
+      saleId: sale6.id,
+      variationId: var1p9.id,
+      quantity: 1,
+      unitPrice: 4499,
+      totalMrp: 4499,
+      discountPercent: 5,
+      discountAmount: 225,
+      lineTotal: 4274,
+    },
+  });
+  await prisma.salePayment.create({
+    data: { saleId: sale6.id, method: "CASH", amount: 4274 },
+  });
+  const sale7 = await prisma.sale.create({
+    data: {
+      tenantId: tenant.id,
+      saleCode: `${slug.toUpperCase()}-S007`,
+      type: "GENERAL",
+      isCreditSale: false,
+      locationId: showroom.id,
+      subtotal: 2598,
+      discount: 0,
+      total: 2598,
+      createdById: staffUser.id,
+    },
+  });
+  await prisma.saleItem.createMany({
+    data: [
+      {
+        saleId: sale7.id,
+        variationId: var1p7.id,
+        quantity: 2,
+        unitPrice: 1299,
+        totalMrp: 2598,
+        discountPercent: 0,
+        discountAmount: 0,
+        lineTotal: 2598,
+      },
+    ],
+  });
+  await prisma.salePayment.create({
+    data: { saleId: sale7.id, method: "QR", amount: 2598 },
+  });
+  const sale8 = await prisma.sale.create({
+    data: {
+      tenantId: tenant.id,
+      saleCode: `${slug.toUpperCase()}-S008`,
+      type: "MEMBER",
+      isCreditSale: false,
+      locationId: outlet.id,
+      memberId: member5.id,
+      subtotal: 2397,
+      discount: 120,
+      total: 2277,
+      createdById: staffUser.id,
+    },
+  });
+  await prisma.saleItem.createMany({
+    data: [
+      {
+        saleId: sale8.id,
+        variationId: var1p6.id,
+        quantity: 3,
+        unitPrice: 799,
+        totalMrp: 2397,
+        discountPercent: 5,
+        discountAmount: 120,
+        lineTotal: 2277,
+      },
+    ],
+  });
+  await prisma.salePayment.create({
+    data: { saleId: sale8.id, method: "CASH", amount: 2277 },
+  });
+
+  // 11. PromoCodes
+  const promo = await prisma.promoCode.create({
+    data: {
+      tenantId: tenant.id,
+      code: `${slug.toUpperCase()}10`,
+      description: "10% off",
+      valueType: "PERCENTAGE",
+      value: 10,
+      overrideDiscounts: false,
+      allowStacking: false,
+      eligibility: "ALL",
+      validFrom: now,
+      validTo: periodEnd,
+      usageLimit: 100,
+      usageCount: 0,
+      isActive: true,
+    },
+  });
+  await prisma.promoCodeProduct.createMany({
+    data: [
+      { promoCodeId: promo.id, productId: product1.id },
+      { promoCodeId: promo.id, productId: product2.id },
+      { promoCodeId: promo.id, productId: product4.id },
+      { promoCodeId: promo.id, productId: product6.id },
+    ],
+  });
+  const promoFlat = await prisma.promoCode.create({
+    data: {
+      tenantId: tenant.id,
+      code: `${slug.toUpperCase()}FLAT50`,
+      description: "Flat 50 off",
+      valueType: "FLAT",
+      value: 50,
+      overrideDiscounts: false,
+      allowStacking: false,
+      eligibility: "MEMBER",
+      validFrom: now,
+      validTo: periodEnd,
+      usageLimit: 50,
+      usageCount: 0,
+      isActive: true,
+    },
+  });
+  await prisma.promoCodeProduct.createMany({
+    data: [
+      { promoCodeId: promoFlat.id, productId: product6.id },
+      { promoCodeId: promoFlat.id, productId: product8.id },
+    ],
+  });
+
+  // 12. Tenant payment (optional)
+  await prisma.tenantPayment.create({
+    data: {
+      tenantId: tenant.id,
+      subscriptionId: subscription.id,
+      amount: 2999,
+      currency: "NPR",
+      gateway: "KHALTI",
+      status: "COMPLETED",
+      paidFor: "PROFESSIONAL",
+      billingCycle: "MONTHLY",
+      periodStart,
+      periodEnd,
+      verifiedAt: now,
+      verifiedBy: "seed",
+    },
+  });
+
+  // 13. Audit log entries
+  await prisma.auditLog.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        userId: adminUser.id,
+        action: "tenant.seeded",
+        resource: "tenant",
+        resourceId: tenant.id,
+        details: { slug, name },
+      },
+      {
+        tenantId: tenant.id,
+        userId: adminUser.id,
+        action: "sale.created",
+        resource: "sale",
+        resourceId: sale1.id,
+      },
+      {
+        tenantId: tenant.id,
+        userId: staffUser.id,
+        action: "transfer.created",
+        resource: "transfer",
+        resourceId: transfer2.id,
+      },
+      {
+        tenantId: tenant.id,
+        userId: adminUser.id,
+        action: "product.created",
+        resource: "product",
+        resourceId: product4.id,
+      },
+      {
+        tenantId: tenant.id,
+        userId: adminUser.id,
+        action: "member.created",
+        resource: "member",
+        resourceId: member4.id,
+      },
+    ],
+  });
+
+  console.log(
+    `✅ Created tenant "${slug}" (${name}) with users, categories, products, vendors, locations, members, sales, transfers, promos, subscription.`,
+  );
+}
+
+async function deleteTenantBySlug(slug: string) {
+  const existing = await prisma.tenant.findUnique({ where: { slug } });
+  if (!existing) return;
+  const tid = existing.id;
+  await prisma.transferLog.deleteMany({
+    where: { transfer: { tenantId: tid } },
+  });
+  await prisma.auditLog.deleteMany({ where: { tenantId: tid } });
+  await prisma.errorReport.deleteMany({ where: { tenantId: tid } });
+  await prisma.salePayment.deleteMany({ where: { sale: { tenantId: tid } } });
+  await prisma.saleItem.deleteMany({ where: { sale: { tenantId: tid } } });
+  await prisma.sale.deleteMany({ where: { tenantId: tid } });
+  await prisma.transferItem.deleteMany({
+    where: { transfer: { tenantId: tid } },
+  });
+  await prisma.transfer.deleteMany({ where: { tenantId: tid } });
+  const locIds = await prisma.location
+    .findMany({ where: { tenantId: tid }, select: { id: true } })
+    .then((r) => r.map((l) => l.id));
+  if (locIds.length)
+    await prisma.locationInventory.deleteMany({
+      where: { locationId: { in: locIds } },
+    });
+  const productIds = await prisma.product
+    .findMany({ where: { tenantId: tid }, select: { id: true } })
+    .then((r) => r.map((p) => p.id));
+  const variationIds = productIds.length
+    ? await prisma.productVariation
+        .findMany({
+          where: { productId: { in: productIds } },
+          select: { id: true },
+        })
+        .then((r) => r.map((v) => v.id))
+    : [];
+  if (variationIds.length) {
+    await prisma.variationPhoto.deleteMany({
+      where: { variationId: { in: variationIds } },
+    });
+    await prisma.locationInventory.deleteMany({
+      where: { variationId: { in: variationIds } },
+    });
+    await prisma.productSubVariation.deleteMany({
+      where: { variationId: { in: variationIds } },
+    });
+    await prisma.productVariation.deleteMany({
+      where: { id: { in: variationIds } },
+    });
+  }
+  if (productIds.length) {
+    await prisma.productDiscount.deleteMany({
+      where: { productId: { in: productIds } },
+    });
+    await prisma.promoCodeProduct.deleteMany({
+      where: { productId: { in: productIds } },
+    });
+  }
+  await prisma.product.deleteMany({ where: { tenantId: tid } });
+  const categoryIds = await prisma.category
+    .findMany({ where: { tenantId: tid }, select: { id: true } })
+    .then((r) => r.map((c) => c.id));
+  if (categoryIds.length)
+    await prisma.subCategory.deleteMany({
+      where: { categoryId: { in: categoryIds } },
+    });
+  await prisma.category.deleteMany({ where: { tenantId: tid } });
+  await prisma.discountType.deleteMany({ where: { tenantId: tid } });
+  await prisma.vendor.deleteMany({ where: { tenantId: tid } });
+  await prisma.location.deleteMany({ where: { tenantId: tid } });
+  await prisma.member.deleteMany({ where: { tenantId: tid } });
+  await prisma.promoCode.deleteMany({ where: { tenantId: tid } });
+  await prisma.tenantPayment.deleteMany({ where: { tenantId: tid } });
+  await prisma.subscription.deleteMany({ where: { tenantId: tid } });
+  await prisma.user.deleteMany({ where: { tenantId: tid } });
+  await prisma.tenant.delete({ where: { id: tid } });
+}
+
+/** Ruby tenant: blank slate — only tenant, admin user (admin/admin123), one location, one category. */
+async function seedRubyTenant() {
+  await deleteTenantBySlug("ruby");
+  const hashedPassword = await bcrypt.hash(RUBY_TENANT_PASSWORD, 10);
+  const now = new Date();
+  const periodEnd = new Date(now);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: "Ruby",
+      slug: "ruby",
+      plan: "STARTER",
+      isActive: true,
+      isTrial: true,
+      subscriptionStatus: "TRIAL",
+      trialEndsAt: periodEnd,
+      planExpiresAt: null,
+      settings: { timezone: "Asia/Kathmandu", currency: "NPR" },
+    },
+  });
+
+  await prisma.subscription.create({
+    data: {
+      tenantId: tenant.id,
+      plan: "STARTER",
+      billingCycle: "MONTHLY",
+      status: "TRIAL",
+      currentPeriodStart: now,
+      currentPeriodEnd: periodEnd,
+      trialEndsAt: periodEnd,
+    },
+  });
+
+  const adminUser = await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      username: "admin",
+      password: hashedPassword,
+      role: "admin",
+    },
+  });
+
+  await prisma.location.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Main Location",
+      type: "WAREHOUSE",
+      isActive: true,
+      isDefaultWarehouse: true,
+    },
+  });
+
+  await prisma.category.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Uncategorized",
+      description: "Default category",
+    },
+  });
+
+  console.log(
+    `✅ Created Ruby tenant (blank slate): X-Tenant-Slug: ruby, username: admin, password: admin123`,
+  );
 }
 
 async function main() {
@@ -70,6 +1268,13 @@ async function main() {
       `⚠️  Platform admin "${PLATFORM_ADMIN_USERNAME}" already exists.`,
     );
   }
+
+  // 3. Test tenants (test1, test2) with full data
+  await seedTestTenant("test1", "Test Tenant 1", TEST_TENANT_PASSWORD);
+  await seedTestTenant("test2", "Test Tenant 2", TEST_TENANT_PASSWORD);
+
+  // 4. Ruby tenant — blank slate: admin / admin123
+  await seedRubyTenant();
 
   console.log("\n✅ Seed complete.");
 }
