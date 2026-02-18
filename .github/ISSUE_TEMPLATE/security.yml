@@ -1,32 +1,61 @@
 name: Security Issue
-description: Report a security concern
+description: Report a security concern — handle sensitively; avoid posting sensitive details in public
 title: "[Security]: "
-labels: ["security"]
+labels: ["security", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line description of the security concern
+      placeholder: "e.g. JWT token exposed in client-side error logs"
     validations:
       required: true
   - type: dropdown
     id: severity
     attributes:
       label: Severity
+      description: Impact if exploited
       options:
-        - Low
-        - Medium
-        - High
-        - Critical
+        - Low — Minor information disclosure, low impact
+        - Medium — Moderate impact, requires specific conditions
+        - High — Significant impact, data exposure or privilege escalation
+        - Critical — Immediate risk, data breach, or system compromise
     validations:
       required: true
   - type: textarea
     id: description
     attributes:
       label: Description
+      description: Describe the vulnerability. Avoid posting credentials or sensitive data.
+      placeholder: |
+        [Describe the issue without exposing sensitive details]
+        - What is vulnerable?
+        - What could an attacker do?
+    validations:
+      required: true
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce
+      label: Steps to Reproduce
+      description: How to reproduce (redact sensitive info)
+      placeholder: |
+        1. [Step]
+        2. [Step]
+        3. Observe: [result]
+  - type: textarea
+    id: impact
+    attributes:
+      label: Impact
+      description: Who/what is affected? What data or systems are at risk?
+  - type: textarea
+    id: remediation
+    attributes:
+      label: Suggested Remediation (optional)
+      description: If you have ideas for fixing it
+  - type: markdown
+    attributes:
+      value: |
+        **For sensitive vulnerabilities:** Consider reporting privately to the maintainers.
+        **Suggested labels:** `security` `needs-triage` `priority: high` (if Critical/High)

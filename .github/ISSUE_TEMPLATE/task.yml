@@ -1,26 +1,61 @@
 name: Task
-description: Discrete work item
+description: Discrete work item — typically a child of an Epic or standalone chore
 title: "[Task]: "
-labels: ["task"]
+labels: ["task", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line description of the task
+      placeholder: "e.g. Add delete button to Warehouse table with role check"
     validations:
       required: true
   - type: textarea
     id: description
     attributes:
       label: Description
+      description: Detailed description of what needs to be done
+      placeholder: |
+        Implement the delete functionality for warehouses in the locations view.
+        Include:
+        - Button visibility based on user role
+        - Confirmation dialog
+        - API integration
+    validations:
+      required: true
   - type: input
     id: parent
     attributes:
-      label: Parent epic / issue
+      label: Parent Epic / Issue
+      description: Link to parent epic or related issue
       placeholder: "#123"
   - type: textarea
     id: acceptance
     attributes:
-      label: Acceptance criteria
+      label: Acceptance Criteria
+      description: Specific, testable criteria — must be met for task completion
+      placeholder: |
+        - [ ] Delete button renders for Super Admin
+        - [ ] Delete button disabled for Org Admin with tooltip
+        - [ ] Confirmation dialog shows warehouse name
+        - [ ] API DELETE /warehouses/:id returns 204 on success
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low
+        - Medium
+        - High
+  - type: textarea
+    id: notes
+    attributes:
+      label: Technical Notes / Dependencies
+      description: Implementation hints, dependencies, blockers
+  - type: markdown
+    attributes:
+      value: "**Suggested labels:** `task` `frontend` or `backend` `needs-triage`"

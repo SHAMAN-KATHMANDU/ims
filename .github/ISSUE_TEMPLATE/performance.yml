@@ -1,28 +1,75 @@
 name: Performance Issue
-description: Report slow or resource-heavy behavior
+description: Report slow or resource-heavy behavior with metrics and environment context
 title: "[Perf]: "
-labels: ["performance"]
+labels: ["performance", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line description of the performance problem
+      placeholder: "e.g. Warehouse list page takes 8+ seconds to load"
     validations:
       required: true
   - type: input
     id: where
     attributes:
       label: Where
-      placeholder: Page, API, or component
+      description: Page, API endpoint, or component
+      placeholder: "e.g. /warehouses, GET /api/warehouses, LocationTable.tsx"
+    validations:
+      required: true
   - type: textarea
     id: observed
     attributes:
-      label: Observed
-      placeholder: Slow response, high memory, etc.
-  - type: input
+      label: Observed Behavior
+      description: What is slow? Include metrics if available.
+      placeholder: |
+        - Page load: 8+ seconds
+        - API response: 4.2s for 500 records
+        - Memory: [if relevant]
+        - CPU: [if relevant]
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What would be acceptable?
+      placeholder: "Page load under 2 seconds. API under 1 second."
+  - type: textarea
     id: environment
     attributes:
       label: Environment
-      placeholder: Load, data size
+      description: Load, data size, browser, device
+      placeholder: |
+        App: ims.shamankathmandu.com (staging/prod)
+        Data: ~500 warehouses, 50 showrooms
+        Browser: Chrome 120
+        Network: [if relevant - e.g. 3G, slow connection]
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      options:
+        - Low — Minor slowdown, acceptable
+        - Medium — Noticeable, affects UX
+        - High — Blocks usage, unusable
+        - Critical — Outage or system freeze
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: How to reproduce the slow behavior
+      placeholder: |
+        1. Log in as [role]
+        2. Navigate to [page]
+        3. [Action that triggers slowness]
+  - type: markdown
+    attributes:
+      value: "**Suggested labels:** `performance` `frontend` or `backend` `needs-triage`"

@@ -1,30 +1,63 @@
 name: CI/CD
-description: CI/CD pipeline or workflow change
+description: CI/CD pipeline, workflow, or build/test configuration change
 title: "[CI]: "
-labels: ["ci"]
+labels: ["ci", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line description of the CI/CD change or issue
+      placeholder: "e.g. Add PR title validation job to CI workflow"
     validations:
       required: true
   - type: dropdown
     id: type
     attributes:
       label: Type
+      description: What part of CI/CD is affected?
       options:
-        - Workflow
-        - Build
-        - Test
+        - Workflow — GitHub Actions workflow change
+        - Build — Docker build, dependencies
+        - Test — Test configuration, coverage
+        - Lint / Typecheck — Code quality checks
         - Other
+    validations:
+      required: true
   - type: textarea
     id: description
     attributes:
       label: Description
+      description: What needs to change? Or what is failing?
+      placeholder: |
+        **For changes:** Describe the desired behavior.
+        **For failures:** Describe the error, which job fails, and any logs.
+    validations:
+      required: true
   - type: input
     id: affected
     attributes:
-      label: Affected files / workflows
+      label: Affected Files / Workflows
+      description: Which workflows, configs, or scripts are involved?
+      placeholder: ".github/workflows/ci.yml, apps/api/Dockerfile"
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce (for failures)
+      description: How to trigger the CI failure
+      placeholder: |
+        1. Open PR with title "invalid"
+        2. CI runs
+        3. pr-title job fails with [error]
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria (for changes)
+      description: How do we know the change works?
+      placeholder: |
+        - [ ] PR with invalid title fails
+        - [ ] PR with valid conventional commit title passes
+  - type: markdown
+    attributes:
+      value: "**Suggested labels:** `ci` `needs-triage`"
