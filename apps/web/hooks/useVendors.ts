@@ -8,13 +8,16 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getVendors,
   getVendorById,
+  getVendorProducts,
   createVendor,
   updateVendor,
   deleteVendor,
   type Vendor,
   type VendorProduct,
   type VendorListParams,
+  type VendorProductsParams,
   type PaginatedVendorsResponse,
+  type PaginatedVendorProductsResponse,
   type CreateOrUpdateVendorData,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
@@ -24,7 +27,9 @@ export type {
   Vendor,
   VendorProduct,
   VendorListParams,
+  VendorProductsParams,
   PaginatedVendorsResponse,
+  PaginatedVendorProductsResponse,
   CreateOrUpdateVendorData,
 };
 
@@ -36,6 +41,8 @@ export const vendorKeys = {
   list: (params: VendorListParams) => [...vendorKeys.lists(), params] as const,
   details: () => [...vendorKeys.all, "detail"] as const,
   detail: (id: string) => [...vendorKeys.details(), id] as const,
+  products: (vendorId: string, params: VendorProductsParams) =>
+    [...vendorKeys.detail(vendorId), "products", params] as const,
 };
 
 export function useVendorsPaginated(params: VendorListParams = {}) {
@@ -59,6 +66,24 @@ export function useVendor(id: string) {
     queryKey: vendorKeys.detail(id),
     queryFn: () => getVendorById(id),
     enabled: !!id,
+  });
+}
+
+export function useVendorProducts(
+  vendorId: string,
+  params: VendorProductsParams = {},
+) {
+  const normalizedParams: VendorProductsParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? 20,
+    search: params.search?.trim() ?? "",
+  };
+
+  return useQuery({
+    queryKey: vendorKeys.products(vendorId, normalizedParams),
+    queryFn: () => getVendorProducts(vendorId, normalizedParams),
+    enabled: !!vendorId,
+    placeholderData: (previousData) => previousData,
   });
 }
 

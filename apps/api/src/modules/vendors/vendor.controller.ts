@@ -133,7 +133,7 @@ class VendorController {
     }
   }
 
-  // Get vendor by ID
+  // Get vendor by ID (no products; use GET /vendors/:id/products for paginated products)
   async getVendorById(req: Request, res: Response) {
     try {
       const id = Array.isArray(req.params.id)
@@ -146,17 +146,14 @@ class VendorController {
 
       const vendor = await prisma.vendor.findUnique({
         where: { id },
-        include: {
-          products: {
-            select: {
-              id: true,
-              imsCode: true,
-              name: true,
-              mrp: true,
-              costPrice: true,
-            },
-            take: 20,
-          },
+        select: {
+          id: true,
+          name: true,
+          contact: true,
+          phone: true,
+          address: true,
+          createdAt: true,
+          updatedAt: true,
           _count: {
             select: {
               products: true,
@@ -177,6 +174,67 @@ class VendorController {
       logger.error("Get vendor by ID error", req.requestId, error);
       res.status(500).json({
         message: "Error fetching vendor",
+        ...(env.isDev && { error: error.message }),
+      });
+    }
+  }
+
+  // Get vendor products (paginated, optional search)
+  async getVendorProducts(req: Request, res: Response) {
+    try {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+
+      if (!id) {
+        return res.status(400).json({ message: "Vendor ID is required" });
+      }
+
+      const { page, limit, search } = getPaginationParams(req.query);
+      const productLimit = Math.min(50, Math.max(1, limit));
+      const productPage = Math.max(1, page);
+      const skip = (productPage - 1) * productLimit;
+
+      const where: { vendorId: string; OR?: unknown[] } = { vendorId: id };
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { imsCode: { contains: search, mode: "insensitive" as const } },
+        ];
+      }
+
+      const [totalItems, products] = await Promise.all([
+        prisma.product.count({ where }),
+        prisma.product.findMany({
+          where,
+          select: {
+            id: true,
+            imsCode: true,
+            name: true,
+            mrp: true,
+            costPrice: true,
+          },
+          orderBy: { name: "asc" },
+          skip,
+          take: productLimit,
+        }),
+      ]);
+
+      const result = createPaginationResult(
+        products,
+        totalItems,
+        productPage,
+        productLimit,
+      );
+
+      res.status(200).json({
+        message: "Vendor products fetched successfully",
+        ...result,
+      });
+    } catch (error: any) {
+      logger.error("Get vendor products error", req.requestId, error);
+      res.status(500).json({
+        message: "Error fetching vendor products",
         ...(env.isDev && { error: error.message }),
       });
     }
@@ -275,8 +333,10 @@ class VendorController {
       }
 
       if (vendor._count.products > 0) {
+        const count = vendor._count.products;
         return res.status(400).json({
-          message: "Cannot delete vendor with existing products",
+          message: `Cannot delete vendor — ${count} product${count === 1 ? "" : "s"} are associated. Please reassign or remove those products first.`,
+          productCount: count,
         });
       }
 
