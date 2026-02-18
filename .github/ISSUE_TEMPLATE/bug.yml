@@ -1,28 +1,79 @@
 name: Bug Report
-description: Report a bug
+description: Report a bug with full context for effective triage and resolution
 title: "[Bug]: "
-labels: ["bug"]
+labels: ["bug", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line description of the issue
+      placeholder: "e.g. No delete option for Showrooms/Warehouses"
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Describe the problem. Include what feature is broken, who is affected, and the impact.
+      placeholder: |
+        There is no ability to [X] from the UI. If [restriction exists], the system provides no feedback to [affected users].
     validations:
       required: true
   - type: textarea
     id: steps
     attributes:
-      label: Steps to reproduce
-      placeholder: "1.\n2.\n3."
+      label: Steps to Reproduce
+      description: Numbered steps to reproduce the bug
+      placeholder: |
+        1. Log in as [role]
+        2. Navigate to [page/feature]
+        3. Attempt to [action]
+        4. Observe: [what happens]
+    validations:
+      required: true
   - type: textarea
     id: expected
     attributes:
-      label: Expected vs actual
-      placeholder: "Expected:\nActual:"
-  - type: input
+      label: Expected Behavior
+      description: What should happen in this scenario
+      placeholder: "If [restriction]: show disabled button with tooltip. If permitted: provide [action] with confirmation."
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happens
+      placeholder: "No [option] exists in the UI. No messaging explains this restriction."
+  - type: textarea
     id: environment
     attributes:
       label: Environment
-      placeholder: OS, browser, version
+      description: App URL, affected roles, OS, browser
+      placeholder: |
+        App: ims.shamankathmandu.com (or staging URL)
+        Affected roles: [list roles - e.g. Org Admin, Staff, All]
+        Browser: [if relevant]
+    validations:
+      required: true
+  - type: dropdown
+    id: severity
+    attributes:
+      label: Severity
+      description: Impact assessment
+      options:
+        - Low — Minor, workaround exists
+        - Medium — Affects some users, workaround possible
+        - High — Core feature broken, no workaround
+        - Critical — Data loss, security, or outage
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Product decisions needed, related issues, workarounds
+      placeholder: "Needs product decision: [question]? Related to #issue."
+  - type: markdown
+    attributes:
+      value: "**Suggested labels:** `bug` `frontend` or `backend` `priority: high` `needs-triage`"

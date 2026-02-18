@@ -1,23 +1,69 @@
 name: Feature Request
-description: Suggest a new feature
+description: Suggest a new feature with clear problem statement and proposed solution
 title: "[Feat]: "
-labels: ["enhancement"]
+labels: ["enhancement", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line description of the feature
+      placeholder: "e.g. Add delete option for Warehouses with role-based visibility"
     validations:
       required: true
   - type: textarea
-    id: motivation
+    id: problem
     attributes:
-      label: Problem / motivation
-      placeholder: Why is this needed?
+      label: Problem / Motivation
+      description: What problem does this solve? Who is affected?
+      placeholder: |
+        Currently, [users] cannot [action]. This causes [pain point].
+        Affected users: [roles or user segments]
+    validations:
+      required: true
   - type: textarea
     id: solution
     attributes:
-      label: Proposed solution
-      placeholder: What should it do?
+      label: Proposed Solution
+      description: How should this work? Be specific.
+      placeholder: |
+        Add a [delete] button that:
+        - For Super Admin: enabled with confirmation dialog
+        - For Org Admin/Staff: disabled with tooltip "Only Super Admins can delete"
+    validations:
+      required: true
+  - type: textarea
+    id: user_stories
+    attributes:
+      label: User Stories (optional)
+      description: As a [role], I want to [action] so that [benefit]
+      placeholder: |
+        As an Org Admin, I want to see why I cannot delete a warehouse so that I understand the restriction.
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: Specific, testable criteria for done
+      placeholder: |
+        - [ ] Delete button visible to Super Admin
+        - [ ] Delete button disabled for other roles with tooltip
+        - [ ] Confirmation dialog before delete
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low — Nice to have
+        - Medium — Important, planned
+        - High — Critical for roadmap
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Mockups, related features, constraints
+  - type: markdown
+    attributes:
+      value: "**Suggested labels:** `enhancement` `frontend` or `backend` `needs-triage`"

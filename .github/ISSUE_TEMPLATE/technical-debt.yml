@@ -1,27 +1,65 @@
 name: Technical Debt
-description: Code quality or maintainability improvement
+description: Code quality, maintainability, or refactoring improvement — not a bug or feature
 title: "[Tech Debt]: "
-labels: ["technical-debt"]
+labels: ["technical-debt", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line description of the debt to address
+      placeholder: "e.g. Extract warehouse API calls into dedicated service layer"
     validations:
       required: true
   - type: input
     id: location
     attributes:
       label: Location
-      placeholder: Files or modules
+      description: Files, modules, or components affected
+      placeholder: "e.g. apps/web/views/locations/, packages/shared/"
+    validations:
+      required: true
   - type: textarea
     id: reason
     attributes:
-      label: Reason
-      placeholder: Why refactor?
+      label: Reason / Current State
+      description: Why is this debt? What is wrong with the current approach?
+      placeholder: |
+        - Logic is duplicated across [files]
+        - Hard to test due to [reason]
+        - Violates [principle]
+        - Legacy pattern, no longer aligned with [standard]
+    validations:
+      required: true
   - type: textarea
     id: approach
     attributes:
-      label: Proposed approach
+      label: Proposed Approach
+      description: How should we refactor? Be specific.
+      placeholder: |
+        - Create [WarehouseService] in packages/shared
+        - Move API calls from components to service
+        - Add unit tests for service
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low — Nice to have
+        - Medium — Should address soon
+        - High — Blocking or high risk
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance Criteria
+      description: How do we know the refactor is complete?
+      placeholder: |
+        - [ ] No duplicated logic
+        - [ ] Tests pass
+        - [ ] No behavior change (refactor only)
+  - type: markdown
+    attributes:
+      value: "**Suggested labels:** `technical-debt` `refactor` `needs-triage`"

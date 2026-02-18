@@ -1,28 +1,68 @@
 name: Deployment
-description: Deployment-related issue or change
+description: Deployment-related issue, change, or incident — staging, production, or infrastructure
 title: "[Deploy]: "
-labels: ["deployment"]
+labels: ["deployment", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line description
+      placeholder: "e.g. Staging not updating after merge to main"
     validations:
       required: true
   - type: dropdown
     id: environment
     attributes:
       label: Environment
+      description: Which environment is affected?
       options:
-        - Staging
+        - Staging (dev)
         - Production
+        - Both
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Type
+      options:
+        - Incident — Something is broken
+        - Change request — New config or process
+        - Documentation — Deploy docs update
   - type: textarea
     id: description
     attributes:
       label: Description
+      description: What is the issue or what change is needed?
+      placeholder: |
+        **For incidents:** What is failing? When did it start?
+        **For changes:** What needs to be deployed or configured?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to Reproduce (for incidents)
+      description: How to observe the deployment issue
+      placeholder: |
+        1. Merge PR to main
+        2. Wait for workflow to complete
+        3. Check staging EC2 — containers not updated
   - type: textarea
     id: rollback
     attributes:
-      label: Rollback plan
+      label: Rollback Plan (for changes)
+      description: How to revert if deployment fails
+      placeholder: |
+        - Publish release for previous tag (e.g. v1.1.0)
+        - Or: manually pull previous images on EC2
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional Context
+      description: Related workflows, recent changes, logs
+  - type: markdown
+    attributes:
+      value: "**Suggested labels:** `deployment` `staging` or `production` `needs-triage`"

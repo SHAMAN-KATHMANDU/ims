@@ -1,26 +1,62 @@
 name: Epic
-description: Large initiative spanning multiple issues
+description: Large initiative spanning multiple issues — capture goals, scope, and success criteria
 title: "[Epic]: "
-labels: ["epic"]
+labels: ["epic", "needs-triage"]
 assignees: []
 body:
   - type: input
     id: summary
     attributes:
       label: Summary
-      placeholder: One-line description
+      description: One-line epic title
+      placeholder: "e.g. Warehouse and Showroom Management Enhancements"
     validations:
       required: true
   - type: textarea
     id: goals
     attributes:
-      label: Goals / scope
+      label: Goals / Scope
+      description: What are we trying to achieve? What is in scope and out of scope?
+      placeholder: |
+        **Goals:**
+        - Enable full CRUD for warehouses and showrooms
+        - Role-based permissions for delete operations
+        - Clear UX for restricted actions
+
+        **Out of scope:** [list what is excluded]
+    validations:
+      required: true
   - type: textarea
     id: criteria
     attributes:
-      label: Success criteria
-  - type: input
+      label: Success Criteria
+      description: How do we know when this epic is done?
+      placeholder: |
+        - All user roles see appropriate UI for their permissions
+        - Super Admins can delete warehouses/showrooms with confirmation
+        - Non-Super Admins see disabled button with explanatory tooltip
+        - Documentation updated
+  - type: textarea
     id: related
     attributes:
-      label: Related issues
-      placeholder: "#123, #456"
+      label: Related Issues / Child Tasks
+      description: Link to issues that belong to this epic
+      placeholder: "#123, #124, #125"
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - Low
+        - Medium
+        - High
+    validations:
+      required: true
+  - type: textarea
+    id: timeline
+    attributes:
+      label: Timeline / Milestones (optional)
+      description: Target dates or phases
+  - type: markdown
+    attributes:
+      value: "**Suggested labels:** `epic` `needs-triage`"
