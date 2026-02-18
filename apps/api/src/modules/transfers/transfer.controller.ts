@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 // Generate a unique transfer code
 function generateTransferCode(): string {
@@ -253,17 +254,8 @@ class TransferController {
         message: "Transfer request created successfully",
         transfer,
       });
-    } catch (error: any) {
-      console.error("Create transfer error:", error);
-      if (error.code === "P2002") {
-        // Unique constraint violation, regenerate code and try again
-        return res.status(500).json({
-          message: "Error creating transfer. Please try again.",
-        });
-      }
-      res
-        .status(500)
-        .json({ message: "Error creating transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create transfer error");
     }
   }
 
@@ -363,11 +355,8 @@ class TransferController {
         message: "Transfers fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get all transfers error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching transfers", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all transfers error");
     }
   }
 
@@ -428,11 +417,8 @@ class TransferController {
         message: "Transfer fetched successfully",
         transfer,
       });
-    } catch (error: any) {
-      console.error("Get transfer by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get transfer by ID error");
     }
   }
 
@@ -538,11 +524,8 @@ class TransferController {
         message: "Transfer approved successfully",
         transfer: updatedTransfer,
       });
-    } catch (error: any) {
-      console.error("Approve transfer error:", error);
-      res
-        .status(500)
-        .json({ message: "Error approving transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Approve transfer error");
     }
   }
 
@@ -629,11 +612,8 @@ class TransferController {
         message: "Transfer marked as in transit. Stock deducted from source.",
         transfer: updatedTransfer,
       });
-    } catch (error: any) {
-      console.error("Start transit error:", error);
-      res
-        .status(500)
-        .json({ message: "Error starting transit", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Start transit error");
     }
   }
 
@@ -729,11 +709,8 @@ class TransferController {
         message: "Transfer completed successfully. Stock added to destination.",
         transfer: updatedTransfer,
       });
-    } catch (error: any) {
-      console.error("Complete transfer error:", error);
-      res
-        .status(500)
-        .json({ message: "Error completing transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Complete transfer error");
     }
   }
 
@@ -821,11 +798,8 @@ class TransferController {
         message: `Transfer cancelled successfully${transfer.status === "IN_TRANSIT" ? ". Stock restored to source location." : "."}`,
         transfer: updatedTransfer,
       });
-    } catch (error: any) {
-      console.error("Cancel transfer error:", error);
-      res
-        .status(500)
-        .json({ message: "Error cancelling transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Cancel transfer error");
     }
   }
 
@@ -859,12 +833,8 @@ class TransferController {
         transferCode: transfer.transferCode,
         logs,
       });
-    } catch (error: any) {
-      console.error("Get transfer logs error:", error);
-      res.status(500).json({
-        message: "Error fetching transfer logs",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get transfer logs error");
     }
   }
 }

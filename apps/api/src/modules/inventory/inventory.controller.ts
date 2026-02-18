@@ -4,6 +4,7 @@ import {
   getPaginationParams,
   createPaginationResult,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 class InventoryController {
   // Get inventory for a specific location
@@ -112,12 +113,13 @@ class InventoryController {
         },
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get location inventory error:", error);
-      res.status(500).json({
-        message: "Error fetching location inventory",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get location inventory error",
+      );
     }
   }
 
@@ -220,12 +222,8 @@ class InventoryController {
         totalStock,
         inventoryByLocation: Object.values(inventoryByLocation),
       });
-    } catch (error: any) {
-      console.error("Get product stock error:", error);
-      res.status(500).json({
-        message: "Error fetching product stock",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get product stock error");
     }
   }
 
@@ -355,12 +353,8 @@ class InventoryController {
           reason: reason || "Manual adjustment",
         },
       });
-    } catch (error: any) {
-      console.error("Adjust inventory error:", error);
-      res.status(500).json({
-        message: "Error adjusting inventory",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Adjust inventory error");
     }
   }
 
@@ -456,12 +450,8 @@ class InventoryController {
           quantity: inventory.quantity,
         },
       });
-    } catch (error: any) {
-      console.error("Set inventory error:", error);
-      res.status(500).json({
-        message: "Error setting inventory",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Set inventory error");
     }
   }
 
@@ -517,12 +507,13 @@ class InventoryController {
         },
         locationStats,
       });
-    } catch (error: any) {
-      console.error("Get inventory summary error:", error);
-      res.status(500).json({
-        message: "Error fetching inventory summary",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get inventory summary error",
+      );
     }
   }
 }

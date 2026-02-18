@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
+import { sendControllerError } from "@/utils/controllerError";
 
 class AuthController {
   async logIn(req: Request, res: Response) {
@@ -156,9 +157,8 @@ class AuthController {
           trialEndsAt: tenant.trialEndsAt,
         },
       });
-    } catch (error) {
-      logger.error("Login error", req.requestId, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Login error");
     }
   }
 
@@ -199,9 +199,8 @@ class AuthController {
       });
 
       res.status(200).json({ user, tenant });
-    } catch (error) {
-      logger.error("Get current user error", req.requestId, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get current user error");
     }
   }
 
@@ -210,9 +209,8 @@ class AuthController {
       // Since JWT is stateless, logout is handled on frontend by removing token
       // This endpoint just confirms the token was valid
       res.status(200).json({ message: "Logout successful" });
-    } catch (error) {
-      logger.error("Logout error", req.requestId, error);
-      res.status(500).json({ message: "Internal server error" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Logout error");
     }
   }
 }

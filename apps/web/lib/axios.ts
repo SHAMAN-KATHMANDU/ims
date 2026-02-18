@@ -9,10 +9,13 @@
  * - Automatic auth token injection from Zustand store
  * - Automatic tenant slug injection (X-Tenant-Slug header)
  * - 401 response handling (auto-logout)
+ * - Global toast on API error (except 401)
  */
 
 import axios, { type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/stores/auth-store";
+import { getApiErrorMessage } from "@/lib/apiError";
+import { toast } from "@/hooks/useToast";
 
 // API base URL from environment variable with fallback
 const API_BASE_URL =
@@ -54,7 +57,7 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
-// Response interceptor: Handle 401 globally
+// Response interceptor: Handle 401 globally; show toast for all other API errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -76,6 +79,14 @@ api.interceptors.response.use(
           const loginPath = slug ? `/${slug}/login` : "/";
           window.location.href = loginPath;
         }
+      }
+    } else {
+      const skipToast = (
+        error.config as { skipGlobalErrorToast?: boolean } | undefined
+      )?.skipGlobalErrorToast;
+      if (typeof window !== "undefined" && skipToast !== true) {
+        const message = getApiErrorMessage(error);
+        toast({ title: message, variant: "destructive" });
       }
     }
     return Promise.reject(error);

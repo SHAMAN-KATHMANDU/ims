@@ -4,6 +4,7 @@ import {
   parseAnalyticsFilters,
   getSalesWhereForAnalytics,
 } from "./analytics.filters";
+import { sendControllerError } from "@/utils/controllerError";
 
 /** Calculate month difference between two "YYYY-MM" strings. */
 function monthDifference(from: string, to: string): number {
@@ -85,11 +86,7 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get analytics error:", error);
-      res.status(500).json({
-        message: "Error fetching analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get analytics error");
     }
   }
 
@@ -335,11 +332,12 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get sales revenue analytics error:", error);
-      res.status(500).json({
-        message: "Error fetching sales revenue analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get sales revenue analytics error",
+      );
     }
   }
 
@@ -510,11 +508,7 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get inventory ops error:", error);
-      res.status(500).json({
-        message: "Error fetching inventory ops analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get inventory ops error");
     }
   }
 
@@ -649,11 +643,7 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get customers promos error:", error);
-      res.status(500).json({
-        message: "Error fetching customers promos analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get customers promos error");
     }
   }
 
@@ -737,11 +727,12 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get discount analytics error:", error);
-      res.status(500).json({
-        message: "Error fetching discount analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get discount analytics error",
+      );
     }
   }
 
@@ -785,11 +776,7 @@ class AnalyticsController {
         data: { timeSeries },
       });
     } catch (error: unknown) {
-      console.error("Get payment trends error:", error);
-      res.status(500).json({
-        message: "Error fetching payment trends",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get payment trends error");
     }
   }
 
@@ -836,11 +823,12 @@ class AnalyticsController {
         })),
       });
     } catch (error: unknown) {
-      console.error("Get location comparison error:", error);
-      res.status(500).json({
-        message: "Error fetching location comparison",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get location comparison error",
+      );
     }
   }
 
@@ -1004,11 +992,7 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get sales extended error:", error);
-      res.status(500).json({
-        message: "Error fetching sales extended analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get sales extended error");
     }
   }
 
@@ -1194,11 +1178,7 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get product insights error:", error);
-      res.status(500).json({
-        message: "Error fetching product insights",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get product insights error");
     }
   }
 
@@ -1401,11 +1381,12 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get inventory extended error:", error);
-      res.status(500).json({
-        message: "Error fetching inventory extended analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get inventory extended error",
+      );
     }
   }
 
@@ -1649,11 +1630,12 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get customer insights error:", error);
-      res.status(500).json({
-        message: "Error fetching customer insights",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get customer insights error",
+      );
     }
   }
 
@@ -1787,11 +1769,7 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get trends error:", error);
-      res.status(500).json({
-        message: "Error fetching trends analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get trends error");
     }
   }
 
@@ -1947,11 +1925,7 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get financial error:", error);
-      res.status(500).json({
-        message: "Error fetching financial analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get financial error");
     }
   }
 
@@ -2500,11 +2474,7 @@ class AnalyticsController {
         res.send(rows.join("\n"));
       }
     } catch (error: unknown) {
-      console.error("Export analytics error:", error);
-      res.status(500).json({
-        message: "Error exporting analytics",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Export analytics error");
     }
   }
 
@@ -2554,11 +2524,7 @@ class AnalyticsController {
         },
       });
     } catch (error: unknown) {
-      console.error("Get member cohort error:", error);
-      res.status(500).json({
-        message: "Error fetching member cohort",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get member cohort error");
     }
   }
 }

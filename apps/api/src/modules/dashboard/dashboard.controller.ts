@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { sendControllerError } from "@/utils/controllerError";
 import prisma from "@/config/prisma";
 import { getCached, setCached } from "./dashboardCache";
 import type {
@@ -197,11 +198,12 @@ class DashboardController {
       setCached(cacheKey, userId, data);
       res.status(200).json({ message: "OK", data });
     } catch (error: unknown) {
-      console.error("Dashboard getUserSummary error:", error);
-      res.status(500).json({
-        message: "Error fetching dashboard",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Dashboard getUserSummary error",
+      );
     }
   }
 
@@ -356,11 +358,12 @@ class DashboardController {
       setCached(cacheKey, userId, data);
       res.status(200).json({ message: "OK", data });
     } catch (error: unknown) {
-      console.error("Dashboard getAdminSummary error:", error);
-      res.status(500).json({
-        message: "Error fetching dashboard",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Dashboard getAdminSummary error",
+      );
     }
   }
 
@@ -475,11 +478,12 @@ class DashboardController {
       setCached(cacheKey, userId, data);
       res.status(200).json({ message: "OK", data });
     } catch (error: unknown) {
-      console.error("Dashboard getSuperAdminSummary error:", error);
-      res.status(500).json({
-        message: "Error fetching dashboard",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Dashboard getSuperAdminSummary error",
+      );
     }
   }
 }

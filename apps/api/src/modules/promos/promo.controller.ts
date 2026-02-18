@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 class PromoController {
   // Create promo code
@@ -94,11 +95,8 @@ class PromoController {
         message: "Promo code created successfully",
         promo,
       });
-    } catch (error: any) {
-      console.error("Create promo error:", error);
-      return res
-        .status(500)
-        .json({ message: "Error creating promo code", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create promo error");
     }
   }
 
@@ -168,11 +166,8 @@ class PromoController {
         message: "Promo codes fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get promos error:", error);
-      return res
-        .status(500)
-        .json({ message: "Error fetching promo codes", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get promos error");
     }
   }
 
@@ -204,12 +199,8 @@ class PromoController {
         message: "Promo code fetched successfully",
         promo,
       });
-    } catch (error: any) {
-      console.error("Get promo by ID error:", error);
-      return res.status(500).json({
-        message: "Error fetching promo code",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get promo by ID error");
     }
   }
 
@@ -345,11 +336,8 @@ class PromoController {
         message: "Promo code updated successfully",
         promo,
       });
-    } catch (error: any) {
-      console.error("Update promo error:", error);
-      return res
-        .status(500)
-        .json({ message: "Error updating promo code", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Update promo error");
     }
   }
 
@@ -415,11 +403,8 @@ class PromoController {
       return res.status(200).json({
         message: "Promo code deactivated successfully",
       });
-    } catch (error: any) {
-      console.error("Delete promo error:", error);
-      return res
-        .status(500)
-        .json({ message: "Error deleting promo code", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete promo error");
     }
   }
 }

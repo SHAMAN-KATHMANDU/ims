@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 class LocationController {
   // Create location (superAdmin only)
@@ -57,11 +58,8 @@ class LocationController {
         message: "Location created successfully",
         location,
       });
-    } catch (error: any) {
-      console.error("Create location error:", error);
-      res
-        .status(500)
-        .json({ message: "Error creating location", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create location error");
     }
   }
 
@@ -144,11 +142,8 @@ class LocationController {
         message: "Locations fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get all locations error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching locations", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all locations error");
     }
   }
 
@@ -180,11 +175,8 @@ class LocationController {
         message: "Location fetched successfully",
         location,
       });
-    } catch (error: any) {
-      console.error("Get location by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching location", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get location by ID error");
     }
   }
 
@@ -286,11 +278,8 @@ class LocationController {
         message: "Location updated successfully",
         location: updatedLocation,
       });
-    } catch (error: any) {
-      console.error("Update location error:", error);
-      res
-        .status(500)
-        .json({ message: "Error updating location", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Update location error");
     }
   }
 
@@ -352,11 +341,8 @@ class LocationController {
       res.status(200).json({
         message: "Location deactivated successfully",
       });
-    } catch (error: any) {
-      console.error("Delete location error:", error);
-      res
-        .status(500)
-        .json({ message: "Error deleting location", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete location error");
     }
   }
 
@@ -440,12 +426,13 @@ class LocationController {
         location,
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get location inventory error:", error);
-      res.status(500).json({
-        message: "Error fetching location inventory",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get location inventory error",
+      );
     }
   }
 }

@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
@@ -61,11 +62,7 @@ class LeadController {
 
       res.status(201).json({ message: "Lead created successfully", lead });
     } catch (error: unknown) {
-      console.error("Create lead error:", error);
-      res.status(500).json({
-        message: "Error creating lead",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Create lead error");
     }
   }
 
@@ -130,11 +127,7 @@ class LeadController {
       const result = createPaginationResult(leads, totalItems, page, limit);
       res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
-      console.error("Get leads error:", error);
-      res.status(500).json({
-        message: "Error fetching leads",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get leads error");
     }
   }
 
@@ -157,11 +150,7 @@ class LeadController {
 
       res.status(200).json({ message: "OK", lead });
     } catch (error: unknown) {
-      console.error("Get lead by id error:", error);
-      res.status(500).json({
-        message: "Error fetching lead",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get lead by id error");
     }
   }
 
@@ -209,11 +198,7 @@ class LeadController {
 
       res.status(200).json({ message: "Lead updated successfully", lead });
     } catch (error: unknown) {
-      console.error("Update lead error:", error);
-      res.status(500).json({
-        message: "Error updating lead",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Update lead error");
     }
   }
 
@@ -229,11 +214,7 @@ class LeadController {
       await prisma.lead.delete({ where: { id } });
       res.status(200).json({ message: "Lead deleted successfully" });
     } catch (error: unknown) {
-      console.error("Delete lead error:", error);
-      res.status(500).json({
-        message: "Error deleting lead",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete lead error");
     }
   }
 
@@ -376,11 +357,7 @@ class LeadController {
         deal,
       });
     } catch (error: unknown) {
-      console.error("Convert lead error:", error);
-      res.status(500).json({
-        message: "Error converting lead",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Convert lead error");
     }
   }
 
@@ -417,11 +394,7 @@ class LeadController {
 
       res.status(200).json({ message: "Lead assigned", lead });
     } catch (error: unknown) {
-      console.error("Assign lead error:", error);
-      res.status(500).json({
-        message: "Error assigning lead",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Assign lead error");
     }
   }
 }

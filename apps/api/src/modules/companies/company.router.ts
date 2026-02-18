@@ -2,29 +2,30 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import companyController from "./company.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const companyRouter = Router();
 
 companyRouter.use(verifyToken);
 companyRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
-companyRouter.get("/list", companyController.listForSelect);
+companyRouter.get("/list", asyncHandler(companyController.listForSelect));
 companyRouter.post(
   "/",
   authorizeRoles("admin", "superAdmin"),
-  companyController.create,
+  asyncHandler(companyController.create),
 );
-companyRouter.get("/", companyController.getAll);
-companyRouter.get("/:id", companyController.getById);
+companyRouter.get("/", asyncHandler(companyController.getAll));
+companyRouter.get("/:id", asyncHandler(companyController.getById));
 companyRouter.put(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
-  companyController.update,
+  asyncHandler(companyController.update),
 );
 companyRouter.delete(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
-  companyController.delete,
+  asyncHandler(companyController.delete),
 );
 
 export default companyRouter;

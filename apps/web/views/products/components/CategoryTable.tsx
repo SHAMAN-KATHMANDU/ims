@@ -16,7 +16,13 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Edit2, Trash2, Layers } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Edit2, Trash2, Layers, MoreHorizontal } from "lucide-react";
 import type { Category } from "@/hooks/useProduct";
 
 interface CategoryTableProps {
@@ -80,32 +86,35 @@ export function CategoryTable({
                 </TableCell>
                 {canManageProducts && (
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      {onManageSubcategories && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => onManageSubcategories(category)}
-                          title="Manage Subcategories"
-                        >
-                          <Layers className="h-4 w-4" />
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                          <span className="sr-only">Actions</span>
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onEdit(category)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => onDelete(category)}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {onManageSubcategories && (
+                          <DropdownMenuItem
+                            onClick={() => onManageSubcategories(category)}
+                          >
+                            <Layers className="mr-2 h-4 w-4" />
+                            Manage subcategories
+                          </DropdownMenuItem>
+                        )}
+                        <DropdownMenuItem onClick={() => onEdit(category)}>
+                          <Edit2 className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          variant="destructive"
+                          onClick={() => onDelete(category)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 )}
               </TableRow>

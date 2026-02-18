@@ -2,6 +2,7 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import categoryController from "@/modules/categories/category.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const categoryRouter = Router();
 
@@ -53,7 +54,7 @@ categoryRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  categoryController.createCategory,
+  asyncHandler(categoryController.createCategory),
 );
 
 /**
@@ -85,7 +86,7 @@ categoryRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  categoryController.getAllCategories,
+  asyncHandler(categoryController.getAllCategories),
 );
 
 /**
@@ -114,7 +115,7 @@ categoryRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  categoryController.getCategoryById,
+  asyncHandler(categoryController.getCategoryById),
 );
 
 // Get distinct subcategories for a category
@@ -122,7 +123,7 @@ categoryRouter.get(
   "/:id/subcategories",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  categoryController.getCategorySubcategories,
+  asyncHandler(categoryController.getCategorySubcategories),
 );
 
 // Create subcategory for a category
@@ -130,7 +131,7 @@ categoryRouter.post(
   "/:id/subcategories",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  categoryController.createSubcategory,
+  asyncHandler(categoryController.createSubcategory),
 );
 
 // Delete subcategory for a category
@@ -138,7 +139,7 @@ categoryRouter.delete(
   "/:id/subcategories",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  categoryController.deleteSubcategory,
+  asyncHandler(categoryController.deleteSubcategory),
 );
 
 /**
@@ -180,7 +181,7 @@ categoryRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  categoryController.updateCategory,
+  asyncHandler(categoryController.updateCategory),
 );
 
 /**
@@ -210,7 +211,7 @@ categoryRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  categoryController.deleteCategory,
+  asyncHandler(categoryController.deleteCategory),
 );
 
 export default categoryRouter;

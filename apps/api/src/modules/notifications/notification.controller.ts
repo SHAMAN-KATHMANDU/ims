@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
@@ -31,11 +32,7 @@ class NotificationController {
 
       res.status(200).json({ message: "OK", notifications });
     } catch (error: unknown) {
-      console.error("Get notifications error:", error);
-      res.status(500).json({
-        message: "Error fetching notifications",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get notifications error");
     }
   }
 
@@ -82,11 +79,7 @@ class NotificationController {
 
       res.status(200).json({ message: "Notification marked as read" });
     } catch (error: unknown) {
-      console.error("Mark read error:", error);
-      res.status(500).json({
-        message: "Error marking notification as read",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Mark read error");
     }
   }
 
@@ -103,11 +96,7 @@ class NotificationController {
 
       res.status(200).json({ message: "All notifications marked as read" });
     } catch (error: unknown) {
-      console.error("Mark all read error:", error);
-      res.status(500).json({
-        message: "Error marking notifications as read",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Mark all read error");
     }
   }
 }

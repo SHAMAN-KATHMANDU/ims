@@ -2,6 +2,7 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import productController from "@/modules/products/product.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const productRouter = Router();
 
@@ -96,7 +97,7 @@ productRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  productController.createProduct,
+  asyncHandler(productController.createProduct),
 );
 
 /**
@@ -153,7 +154,7 @@ productRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllProducts,
+  asyncHandler(productController.getAllProducts),
 );
 
 /**
@@ -172,7 +173,7 @@ productRouter.get(
   "/categories/list",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllCategories,
+  asyncHandler(productController.getAllCategories),
 );
 
 /**
@@ -191,7 +192,7 @@ productRouter.get(
   "/discount-types/list",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllDiscountTypes,
+  asyncHandler(productController.getAllDiscountTypes),
 );
 
 /**
@@ -255,7 +256,7 @@ productRouter.get(
   "/discounts/list",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getAllProductDiscounts,
+  asyncHandler(productController.getAllProductDiscounts),
 );
 
 /**
@@ -315,7 +316,7 @@ productRouter.get(
   "/:id/discounts",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getProductDiscounts,
+  asyncHandler(productController.getProductDiscounts),
 );
 
 /**
@@ -343,7 +344,7 @@ productRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  productController.getProductById,
+  asyncHandler(productController.getProductById),
 );
 
 /**
@@ -385,7 +386,7 @@ productRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  productController.updateProduct,
+  asyncHandler(productController.updateProduct),
 );
 
 /**
@@ -413,7 +414,7 @@ productRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  productController.deleteProduct,
+  asyncHandler(productController.deleteProduct),
 );
 
 export default productRouter;

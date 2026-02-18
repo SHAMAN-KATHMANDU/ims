@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import { sendControllerError } from "@/utils/controllerError";
 
 class PipelineController {
   async create(req: Request, res: Response) {
@@ -37,11 +38,7 @@ class PipelineController {
         .status(201)
         .json({ message: "Pipeline created successfully", pipeline });
     } catch (error: unknown) {
-      console.error("Create pipeline error:", error);
-      res.status(500).json({
-        message: "Error creating pipeline",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Create pipeline error");
     }
   }
 
@@ -56,11 +53,7 @@ class PipelineController {
 
       res.status(200).json({ message: "OK", pipelines });
     } catch (error: unknown) {
-      console.error("Get pipelines error:", error);
-      res.status(500).json({
-        message: "Error fetching pipelines",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get pipelines error");
     }
   }
 
@@ -79,11 +72,7 @@ class PipelineController {
 
       res.status(200).json({ message: "OK", pipeline });
     } catch (error: unknown) {
-      console.error("Get pipeline by id error:", error);
-      res.status(500).json({
-        message: "Error fetching pipeline",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get pipeline by id error");
     }
   }
 
@@ -119,11 +108,7 @@ class PipelineController {
         .status(200)
         .json({ message: "Pipeline updated successfully", pipeline });
     } catch (error: unknown) {
-      console.error("Update pipeline error:", error);
-      res.status(500).json({
-        message: "Error updating pipeline",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Update pipeline error");
     }
   }
 
@@ -147,11 +132,7 @@ class PipelineController {
       await prisma.pipeline.delete({ where: { id } });
       res.status(200).json({ message: "Pipeline deleted successfully" });
     } catch (error: unknown) {
-      console.error("Delete pipeline error:", error);
-      res.status(500).json({
-        message: "Error deleting pipeline",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete pipeline error");
     }
   }
 }

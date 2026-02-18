@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
 import ExcelJS from "exceljs";
+import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
@@ -131,11 +132,7 @@ class CrmController {
         },
       });
     } catch (error: unknown) {
-      console.error("CRM dashboard error:", error);
-      res.status(500).json({
-        message: "Error fetching CRM dashboard",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "CRM dashboard error");
     }
   }
 
@@ -244,11 +241,7 @@ class CrmController {
         },
       });
     } catch (error: unknown) {
-      console.error("CRM reports error:", error);
-      res.status(500).json({
-        message: "Error fetching CRM reports",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "CRM reports error");
     }
   }
 
@@ -350,11 +343,7 @@ class CrmController {
       );
       res.send(Buffer.from(buffer));
     } catch (error: unknown) {
-      console.error("Export CRM reports error:", error);
-      res.status(500).json({
-        message: "Error exporting reports",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Export CRM reports error");
     }
   }
 }

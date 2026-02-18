@@ -57,9 +57,10 @@ export function ReportErrorDialog({
       setTitle("");
       setDescription("");
       onOpenChange(false);
-    } catch {
+    } catch (error) {
       toast({
         title: "Failed to submit report",
+        description: error instanceof Error ? error.message : undefined,
         variant: "destructive",
       });
     } finally {

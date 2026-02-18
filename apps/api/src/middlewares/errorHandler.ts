@@ -52,7 +52,9 @@ export const errorHandler = (
   // Build error response
   const errorResponse: ErrorResponse = {
     message:
-      statusCode === 500 && !env.isDev ? "Internal server error" : err.message,
+      statusCode === 500 && !env.isDev
+        ? "Something went wrong. Please try again."
+        : err.message,
     statusCode,
   };
 

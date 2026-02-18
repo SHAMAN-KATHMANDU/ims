@@ -9,6 +9,7 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import platformController from "./platform.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const router = Router();
 
@@ -18,62 +19,98 @@ router.use(verifyToken, authorizeRoles("platformAdmin"));
 // ============================================
 // TENANT CRUD
 // ============================================
-router.post("/tenants", platformController.createTenant);
-router.get("/tenants", platformController.listTenants);
-router.get("/tenants/:id", platformController.getTenant);
-router.put("/tenants/:id", platformController.updateTenant);
-router.patch("/tenants/:id/plan", platformController.changePlan);
-router.patch("/tenants/:id/activate", platformController.activateTenant);
-router.delete("/tenants/:id", platformController.deactivateTenant);
+router.post("/tenants", asyncHandler(platformController.createTenant));
+router.get("/tenants", asyncHandler(platformController.listTenants));
+router.get("/tenants/:id", asyncHandler(platformController.getTenant));
+router.put("/tenants/:id", asyncHandler(platformController.updateTenant));
+router.patch("/tenants/:id/plan", asyncHandler(platformController.changePlan));
+router.patch(
+  "/tenants/:id/activate",
+  asyncHandler(platformController.activateTenant),
+);
+router.delete(
+  "/tenants/:id",
+  asyncHandler(platformController.deactivateTenant),
+);
 
 // ============================================
 // PLAN LIMITS CRUD
 // ============================================
-router.get("/plan-limits", platformController.listPlanLimits);
-router.get("/plan-limits/:tier", platformController.getPlanLimit);
-router.post("/plan-limits", platformController.upsertPlanLimit);
-router.put("/plan-limits/:tier", platformController.upsertPlanLimit);
-router.delete("/plan-limits/:tier", platformController.deletePlanLimit);
+router.get("/plan-limits", asyncHandler(platformController.listPlanLimits));
+router.get("/plan-limits/:tier", asyncHandler(platformController.getPlanLimit));
+router.post("/plan-limits", asyncHandler(platformController.upsertPlanLimit));
+router.put(
+  "/plan-limits/:tier",
+  asyncHandler(platformController.upsertPlanLimit),
+);
+router.delete(
+  "/plan-limits/:tier",
+  asyncHandler(platformController.deletePlanLimit),
+);
 
 // ============================================
 // PRICING PLANS CRUD
 // ============================================
-router.get("/pricing-plans", platformController.listPricingPlans);
+router.get("/pricing-plans", asyncHandler(platformController.listPricingPlans));
 router.get(
   "/pricing-plans/:tier/:billingCycle",
-  platformController.getPricingPlan,
+  asyncHandler(platformController.getPricingPlan),
 );
-router.post("/pricing-plans", platformController.createPricingPlan);
+router.post(
+  "/pricing-plans",
+  asyncHandler(platformController.createPricingPlan),
+);
 router.put(
   "/pricing-plans/:tier/:billingCycle",
-  platformController.updatePricingPlan,
+  asyncHandler(platformController.updatePricingPlan),
 );
 router.delete(
   "/pricing-plans/:tier/:billingCycle",
-  platformController.deletePricingPlan,
+  asyncHandler(platformController.deletePricingPlan),
 );
 
 // ============================================
 // SUBSCRIPTIONS CRUD
 // ============================================
-router.get("/subscriptions", platformController.listSubscriptions);
-router.get("/subscriptions/:id", platformController.getSubscription);
-router.post("/subscriptions", platformController.createSubscription);
-router.put("/subscriptions/:id", platformController.updateSubscription);
-router.delete("/subscriptions/:id", platformController.deleteSubscription);
+router.get(
+  "/subscriptions",
+  asyncHandler(platformController.listSubscriptions),
+);
+router.get(
+  "/subscriptions/:id",
+  asyncHandler(platformController.getSubscription),
+);
+router.post(
+  "/subscriptions",
+  asyncHandler(platformController.createSubscription),
+);
+router.put(
+  "/subscriptions/:id",
+  asyncHandler(platformController.updateSubscription),
+);
+router.delete(
+  "/subscriptions/:id",
+  asyncHandler(platformController.deleteSubscription),
+);
 
 // ============================================
 // TENANT PAYMENTS CRUD
 // ============================================
-router.get("/payments", platformController.listTenantPayments);
-router.get("/payments/:id", platformController.getTenantPayment);
-router.post("/payments", platformController.createTenantPayment);
-router.put("/payments/:id", platformController.updateTenantPayment);
-router.delete("/payments/:id", platformController.deleteTenantPayment);
+router.get("/payments", asyncHandler(platformController.listTenantPayments));
+router.get("/payments/:id", asyncHandler(platformController.getTenantPayment));
+router.post("/payments", asyncHandler(platformController.createTenantPayment));
+router.put(
+  "/payments/:id",
+  asyncHandler(platformController.updateTenantPayment),
+);
+router.delete(
+  "/payments/:id",
+  asyncHandler(platformController.deleteTenantPayment),
+);
 
 // ============================================
 // PLATFORM STATS
 // ============================================
-router.get("/stats", platformController.getStats);
+router.get("/stats", asyncHandler(platformController.getStats));
 
 export default router;

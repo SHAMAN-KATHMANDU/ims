@@ -18,6 +18,7 @@ import {
 } from "./bulkUpload.validation";
 import { logger } from "@/config/logger";
 import { env } from "@/config/env";
+import { sendControllerError } from "@/utils/controllerError";
 
 class ProductController {
   // Create product (admin and superAdmin only)
@@ -368,18 +369,14 @@ class ProductController {
         message: "Product created successfully",
         product,
       });
-    } catch (error: any) {
-      logger.error("Create product error", req.requestId, error);
-      // Handle unique constraint violation
-      if (error.code === "P2002") {
-        return res.status(400).json({
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
           message: "Product with this IMS code already exists",
-          error: error.message,
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error creating product", error: error.message });
+      return sendControllerError(req, res, error, "Create product error");
     }
   }
 
@@ -569,11 +566,8 @@ class ProductController {
         locationId: locationId || null,
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get all products error", req.requestId, error);
-      res
-        .status(500)
-        .json({ message: "Error fetching products", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all products error");
     }
   }
 
@@ -617,11 +611,8 @@ class ProductController {
         message: "Product fetched successfully",
         product,
       });
-    } catch (error: any) {
-      console.error("Get product by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching product", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get product by ID error");
     }
   }
 
@@ -992,18 +983,14 @@ class ProductController {
         message: "Product updated successfully",
         product: updatedProduct,
       });
-    } catch (error: any) {
-      logger.error("Update product error", req.requestId, error);
-      // Handle unique constraint violation
-      if (error.code === "P2002") {
-        return res.status(400).json({
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
           message: "Product with this IMS code already exists",
-          error: error.message,
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error updating product", error: error.message });
+      return sendControllerError(req, res, error, "Update product error");
     }
   }
 
@@ -1030,11 +1017,8 @@ class ProductController {
       res.status(200).json({
         message: "Product deleted successfully",
       });
-    } catch (error: any) {
-      logger.error("Delete product error", req.requestId, error);
-      res
-        .status(500)
-        .json({ message: "Error deleting product", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete product error");
     }
   }
 
@@ -1084,11 +1068,8 @@ class ProductController {
         message: "Categories fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get categories error", req.requestId, error);
-      res
-        .status(500)
-        .json({ message: "Error fetching categories", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get categories error");
     }
   }
 
@@ -1138,12 +1119,8 @@ class ProductController {
         message: "Discount types fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get discount types error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching discount types",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get discount types error");
     }
   }
 
@@ -1229,12 +1206,13 @@ class ProductController {
         message: "Product discounts fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get all product discounts error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching product discounts",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get all product discounts error",
+      );
     }
   }
 
@@ -1322,12 +1300,13 @@ class ProductController {
         message: "Product discounts fetched successfully",
         discounts: formattedDiscounts,
       });
-    } catch (error: any) {
-      logger.error("Get product discounts error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching product discounts",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get product discounts error",
+      );
     }
   }
 
@@ -1976,7 +1955,7 @@ class ProductController {
         skipped: skippedProducts,
         errors: errors,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Clean up uploaded file on error
       if (req.file?.path) {
         try {
@@ -1985,13 +1964,7 @@ class ProductController {
           logger.error("Error cleaning up file", req.requestId, cleanupError);
         }
       }
-
-      logger.error("Bulk upload error", req.requestId, error);
-      res.status(500).json({
-        message: "Error processing bulk upload",
-        error: error.message,
-        errors: errors,
-      });
+      return sendControllerError(req, res, error, "Bulk upload error");
     }
   }
 
@@ -2067,12 +2040,8 @@ class ProductController {
       );
       const buffer = await workbook.xlsx.writeBuffer();
       res.send(buffer);
-    } catch (error: any) {
-      logger.error("Download template error", req.requestId, error);
-      res.status(500).json({
-        message: "Error generating template",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download template error");
     }
   }
 
@@ -2297,12 +2266,8 @@ class ProductController {
 
         res.send(csvRows.join("\n"));
       }
-    } catch (error: any) {
-      logger.error("Download products error", req.requestId, error);
-      res.status(500).json({
-        message: "Error downloading products",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download products error");
     }
   }
 }

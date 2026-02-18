@@ -156,7 +156,7 @@ export function TenantTable({
                     </DropdownMenuItem>
                     {tenant.isActive && onDeactivate && (
                       <DropdownMenuItem
-                        className="text-destructive"
+                        variant="destructive"
                         onClick={() => onDeactivate(tenant)}
                       >
                         <UserX className="mr-2 h-4 w-4" />

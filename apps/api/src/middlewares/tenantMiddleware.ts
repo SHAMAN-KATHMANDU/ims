@@ -13,7 +13,7 @@
 import { Request, Response, NextFunction } from "express";
 import { basePrisma } from "@/config/prisma";
 import { runWithTenant } from "@/config/tenantContext";
-import { logger } from "@/config/logger";
+import { sendControllerError } from "@/utils/controllerError";
 
 /**
  * Resolve tenant from JWT and set up tenant context.
@@ -64,9 +64,8 @@ const resolveTenant = async (
     // Run the rest of the middleware chain within tenant context
     // This enables Prisma auto-scoping for all downstream queries
     return runWithTenant(tenantId, () => next());
-  } catch (error) {
-    logger.error("Tenant resolution error", undefined, error);
-    return res.status(500).json({ message: "Internal server error" });
+  } catch (error: unknown) {
+    return sendControllerError(req, res, error, "Tenant resolution error");
   }
 };
 

@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 class CompanyController {
   async create(req: Request, res: Response) {
@@ -27,11 +28,7 @@ class CompanyController {
         .status(201)
         .json({ message: "Company created successfully", company });
     } catch (error: unknown) {
-      console.error("Create company error:", error);
-      res.status(500).json({
-        message: "Error creating company",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Create company error");
     }
   }
 
@@ -76,11 +73,7 @@ class CompanyController {
       const result = createPaginationResult(companies, totalItems, page, limit);
       res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
-      console.error("Get companies error:", error);
-      res.status(500).json({
-        message: "Error fetching companies",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get companies error");
     }
   }
 
@@ -109,11 +102,7 @@ class CompanyController {
 
       res.status(200).json({ message: "OK", company });
     } catch (error: unknown) {
-      console.error("Get company by id error:", error);
-      res.status(500).json({
-        message: "Error fetching company",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get company by id error");
     }
   }
 
@@ -141,11 +130,7 @@ class CompanyController {
         .status(200)
         .json({ message: "Company updated successfully", company });
     } catch (error: unknown) {
-      console.error("Update company error:", error);
-      res.status(500).json({
-        message: "Error updating company",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Update company error");
     }
   }
 
@@ -161,11 +146,7 @@ class CompanyController {
       await prisma.company.delete({ where: { id } });
       res.status(200).json({ message: "Company deleted successfully" });
     } catch (error: unknown) {
-      console.error("Delete company error:", error);
-      res.status(500).json({
-        message: "Error deleting company",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete company error");
     }
   }
 
@@ -178,11 +159,12 @@ class CompanyController {
       });
       res.status(200).json({ message: "OK", companies });
     } catch (error: unknown) {
-      console.error("List companies for select error:", error);
-      res.status(500).json({
-        message: "Error fetching companies",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "List companies for select error",
+      );
     }
   }
 }

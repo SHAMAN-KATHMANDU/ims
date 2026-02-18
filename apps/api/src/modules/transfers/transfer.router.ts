@@ -2,6 +2,7 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import transferController from "@/modules/transfers/transfer.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const transferRouter = Router();
 
@@ -55,7 +56,7 @@ transferRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  transferController.createTransfer,
+  asyncHandler(transferController.createTransfer),
 );
 
 /**
@@ -104,7 +105,7 @@ transferRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  transferController.getAllTransfers,
+  asyncHandler(transferController.getAllTransfers),
 );
 
 /**
@@ -132,7 +133,7 @@ transferRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  transferController.getTransferById,
+  asyncHandler(transferController.getTransferById),
 );
 
 /**
@@ -160,7 +161,7 @@ transferRouter.get(
   "/:id/logs",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  transferController.getTransferLogs,
+  asyncHandler(transferController.getTransferLogs),
 );
 
 /**
@@ -190,7 +191,7 @@ transferRouter.put(
   "/:id/approve",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  transferController.approveTransfer,
+  asyncHandler(transferController.approveTransfer),
 );
 
 /**
@@ -220,7 +221,7 @@ transferRouter.put(
   "/:id/transit",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  transferController.startTransit,
+  asyncHandler(transferController.startTransit),
 );
 
 /**
@@ -250,7 +251,7 @@ transferRouter.put(
   "/:id/complete",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  transferController.completeTransfer,
+  asyncHandler(transferController.completeTransfer),
 );
 
 /**
@@ -288,7 +289,7 @@ transferRouter.put(
   "/:id/cancel",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  transferController.cancelTransfer,
+  asyncHandler(transferController.cancelTransfer),
 );
 
 export default transferRouter;

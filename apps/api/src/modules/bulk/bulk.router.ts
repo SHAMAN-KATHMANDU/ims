@@ -3,6 +3,7 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { uploadSingle } from "@/config/multer.config";
 import * as bulkController from "./bulk.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const bulkRouter = Router();
 
@@ -16,7 +17,7 @@ bulkRouter.post(
   "/upload/:type",
   authorizeRoles("admin", "superAdmin"),
   uploadSingle,
-  bulkController.bulkUpload,
+  asyncHandler(bulkController.bulkUpload),
 );
 
 /**
@@ -25,7 +26,7 @@ bulkRouter.post(
 bulkRouter.get(
   "/template",
   authorizeRoles("admin", "superAdmin"),
-  bulkController.downloadTemplate,
+  asyncHandler(bulkController.downloadTemplate),
 );
 
 /**
@@ -34,7 +35,7 @@ bulkRouter.get(
 bulkRouter.get(
   "/download",
   authorizeRoles("admin", "user", "superAdmin"),
-  bulkController.download,
+  asyncHandler(bulkController.download),
 );
 
 export default bulkRouter;
