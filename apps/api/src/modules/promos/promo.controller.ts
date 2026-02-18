@@ -40,7 +40,7 @@ class PromoController {
         return res.status(400).json({ message: "Valid value is required" });
       }
 
-      const existing = await prisma.promoCode.findUnique({
+      const existing = await prisma.promoCode.findFirst({
         where: { code },
       });
       if (existing) {
@@ -58,6 +58,7 @@ class PromoController {
 
       const promo = await prisma.promoCode.create({
         data: {
+          tenantId: req.user!.tenantId,
           code: code.trim(),
           description: description || null,
           valueType,

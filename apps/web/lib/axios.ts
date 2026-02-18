@@ -7,6 +7,7 @@
  * Features:
  * - Base URL from environment variable
  * - Automatic auth token injection from Zustand store
+ * - Automatic tenant slug injection (X-Tenant-Slug header)
  * - 401 response handling (auto-logout)
  */
 
@@ -25,14 +26,25 @@ const api = axios.create({
   },
 });
 
-// Request interceptor: Attach JWT token; allow multipart when body is FormData
+// Request interceptor: Attach JWT token and tenant slug; allow multipart when body is FormData
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Access Zustand store directly (not a hook - this is outside React)
-    const token = useAuthStore.getState().token;
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const state = useAuthStore.getState();
+
+    if (state.token && config.headers) {
+      config.headers.Authorization = `Bearer ${state.token}`;
     }
+
+    // Attach tenant slug to every request (if available and not already set)
+    if (
+      state.tenant?.slug &&
+      config.headers &&
+      !config.headers["X-Tenant-Slug"]
+    ) {
+      config.headers["X-Tenant-Slug"] = state.tenant.slug;
+    }
+
     // When sending FormData, remove default Content-Type so axios/browser sets multipart/form-data with boundary
     if (config.data instanceof FormData && config.headers) {
       delete config.headers["Content-Type"];
@@ -47,18 +59,22 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Don't redirect on login endpoint or if already on login page
       const requestUrl = error.config?.url || "";
       const isLoginEndpoint =
         requestUrl.includes("auth/login") || requestUrl.endsWith("/auth/login");
-      const isOnLoginPage =
-        typeof window !== "undefined" && window.location.pathname === "/login";
+      if (isLoginEndpoint) return Promise.reject(error);
 
-      if (!isLoginEndpoint && !isOnLoginPage) {
-        // Clear auth state in Zustand store
+      const pathname =
+        typeof window !== "undefined" ? window.location.pathname : "";
+      const segments = pathname.split("/").filter(Boolean);
+      const slug = segments[0];
+      const isOnLoginPage = segments[1] === "login";
+
+      if (!isOnLoginPage) {
         useAuthStore.getState().clearAuth();
         if (typeof window !== "undefined") {
-          window.location.href = "/login";
+          const loginPath = slug ? `/${slug}/login` : "/";
+          window.location.href = loginPath;
         }
       }
     }

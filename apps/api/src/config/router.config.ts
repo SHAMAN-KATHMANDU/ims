@@ -1,8 +1,16 @@
 /**
  * Route registration is the single source of truth; do not maintain a separate list of paths here.
+ *
+ * Middleware chain for tenant-scoped routes:
+ *   verifyToken → resolveTenant → checkSubscription → [route handler]
+ *
+ * Platform admin routes have their own auth chain (no tenant scoping).
  */
 
 import { Request, Response, Router } from "express";
+import verifyToken from "@/middlewares/authMiddleware";
+import resolveTenant from "@/middlewares/tenantMiddleware";
+import checkSubscription from "@/middlewares/subscriptionMiddleware";
 import authRouter from "@/modules/auth/auth.router";
 import userRouter from "@/modules/users/user.router";
 import productRouter from "@/modules/products/product.router";
@@ -20,6 +28,7 @@ import analyticsRouter from "@/modules/analytics/analytics.router";
 import dashboardRouter from "@/modules/dashboard/dashboard.router";
 import { getVersion } from "@/config/version";
 import bulkRouter from "@/modules/bulk/bulk.router";
+import platformRouter from "@/modules/platform/platform.router";
 import companyRouter from "@/modules/companies/company.router";
 import contactRouter from "@/modules/contacts/contact.router";
 import leadRouter from "@/modules/leads/lead.router";
@@ -39,7 +48,22 @@ router.get("/", (req: Request, res: Response) => {
   });
 });
 
+// ============================================
+// Auth routes (no tenant middleware; tenant from X-Tenant-Slug)
+// ============================================
 router.use("/auth", authRouter);
+
+// ============================================
+// Platform admin routes (platformAdmin role only, no tenant scoping)
+// ============================================
+router.use("/platform", platformRouter);
+
+// ============================================
+// Tenant-scoped routes
+// All routes below require: auth → tenant resolution → subscription check
+// ============================================
+router.use(verifyToken, resolveTenant, checkSubscription);
+
 router.use("/users", userRouter);
 router.use("/products", productRouter);
 router.use("/categories", categoryRouter);

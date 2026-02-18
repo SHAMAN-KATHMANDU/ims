@@ -17,8 +17,8 @@ class CategoryController {
         return res.status(400).json({ message: "Category name is required" });
       }
 
-      // Check if category already exists
-      const existingCategory = await prisma.category.findUnique({
+      // Check if category already exists (within this tenant, auto-scoped)
+      const existingCategory = await prisma.category.findFirst({
         where: { name },
       });
 
@@ -35,6 +35,7 @@ class CategoryController {
       // Create category
       const category = await prisma.category.create({
         data: {
+          tenantId: req.user!.tenantId,
           name,
           description: description || null,
         },
@@ -364,7 +365,7 @@ class CategoryController {
 
       // If name is being updated, check if new name already exists
       if (name && name !== existingCategory.name) {
-        const nameExists = await prisma.category.findUnique({
+        const nameExists = await prisma.category.findFirst({
           where: { name },
         });
 

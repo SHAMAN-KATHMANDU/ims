@@ -35,8 +35,8 @@ class UserController {
         });
       }
 
-      // Check if user already exists
-      const existingUser = await User.findUnique({
+      // Check if user already exists (within this tenant, auto-scoped)
+      const existingUser = await User.findFirst({
         where: { username },
       });
 
@@ -52,6 +52,7 @@ class UserController {
 
       const newUser = await User.create({
         data: {
+          tenantId: req.user!.tenantId,
           username,
           password: hashedPassword,
           role: role as Role,
@@ -200,8 +201,8 @@ class UserController {
       const updateData: any = {};
 
       if (username) {
-        // Check if new username is already taken by another user
-        const usernameExists = await User.findUnique({
+        // Check if new username is already taken by another user (within this tenant)
+        const usernameExists = await User.findFirst({
           where: { username },
         });
 

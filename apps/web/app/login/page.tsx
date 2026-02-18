@@ -1,9 +1,9 @@
-import LoginForm from "@/components/auth/login-form";
+import { redirect } from "next/navigation";
 
+/**
+ * Legacy /login: login is now under /[slug]/login (e.g. /ruby/login).
+ * Redirect to root so the user sees the "use your organization link" message.
+ */
 export default function LoginPage() {
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background to-muted/20">
-      <LoginForm />
-    </div>
-  );
+  redirect("/");
 }
