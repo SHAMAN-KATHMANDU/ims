@@ -7,7 +7,7 @@ import { env } from "@/config/env";
 import { errorHandler } from "@/middlewares/errorHandler";
 import { requestIdMiddleware } from "@/middlewares/requestId";
 import { requestLoggingMiddleware } from "@/middlewares/requestLogging";
-import prisma from "@/config/prisma";
+import { basePrisma as prisma } from "@/config/prisma";
 import { getVersion } from "@/config/version";
 
 const app = express();

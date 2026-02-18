@@ -25,7 +25,7 @@ class LocationController {
       }
 
       // Check if location already exists
-      const existingLocation = await prisma.location.findUnique({
+      const existingLocation = await prisma.location.findFirst({
         where: { name },
       });
 
@@ -45,6 +45,7 @@ class LocationController {
 
       const location = await prisma.location.create({
         data: {
+          tenantId: req.user!.tenantId,
           name,
           type: type || "SHOWROOM",
           address: address || null,
@@ -210,7 +211,7 @@ class LocationController {
       if (name !== undefined) {
         // Check if new name is already taken by another location
         if (name !== existingLocation.name) {
-          const nameExists = await prisma.location.findUnique({
+          const nameExists = await prisma.location.findFirst({
             where: { name },
           });
 

@@ -7,29 +7,42 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
-import type { AuthUser } from "@/utils/auth";
+import type { AuthUser, TenantInfo } from "@/utils/auth";
 
 export interface LoginResponse {
   token: string;
   user: AuthUser;
+  tenant: TenantInfo;
 }
 
 interface CurrentUserResponse {
   user: AuthUser;
+  tenant: TenantInfo;
 }
 
 /**
- * Login with username and password
+ * Login with username and password.
+ * Optionally pass a tenant slug for multi-tenant login.
  */
 export async function login(
   username: string,
   password: string,
+  tenantSlug?: string,
 ): Promise<LoginResponse> {
   try {
-    const response = await api.post<LoginResponse>("/auth/login", {
-      username: username.trim().toLowerCase(),
-      password,
-    });
+    const headers: Record<string, string> = {};
+    if (tenantSlug) {
+      headers["X-Tenant-Slug"] = tenantSlug;
+    }
+
+    const response = await api.post<LoginResponse>(
+      "/auth/login",
+      {
+        username: username.trim().toLowerCase(),
+        password,
+      },
+      { headers },
+    );
 
     if (!response.data.token || !response.data.user) {
       throw new Error("Invalid response from server");
@@ -42,12 +55,12 @@ export async function login(
 }
 
 /**
- * Get current user info
+ * Get current user info (includes tenant info)
  */
-export async function getCurrentUser(): Promise<AuthUser | null> {
+export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   try {
     const response = await api.get<CurrentUserResponse>("/auth/me");
-    return response.data.user;
+    return response.data;
   } catch {
     return null;
   }

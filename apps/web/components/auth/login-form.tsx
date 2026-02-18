@@ -17,7 +17,6 @@ import {
 } from "@/components/ui/card";
 import { Eye, EyeOff } from "lucide-react";
 
-// Zod schema for validation
 const loginSchema = z.object({
   username: z.string().min(1, "Username is required"),
   password: z.string().min(1, "Password is required"),
@@ -26,12 +25,10 @@ const loginSchema = z.object({
 type LoginFormValues = z.infer<typeof loginSchema>;
 
 /**
- * Login Form Component
- *
- * Uses react-hook-form for form state management
- * and Zod for schema validation.
+ * Login form: username and password. Tenant slug comes from the URL (e.g. /ruby/login)
+ * and is passed as a prop; it is sent as X-Tenant-Slug on login.
  */
-export default function LoginForm() {
+export default function LoginForm({ tenantSlug }: { tenantSlug: string }) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -50,10 +47,16 @@ export default function LoginForm() {
 
   const onSubmit = async (data: LoginFormValues) => {
     setSubmitError(null);
+    const slug = tenantSlug?.trim().toLowerCase();
+    if (!slug) {
+      setSubmitError("Invalid organization URL. Use your organization's link.");
+      return;
+    }
     try {
       await login({
         username: data.username,
         password: data.password,
+        tenantSlug: slug,
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Login failed");

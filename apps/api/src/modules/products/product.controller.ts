@@ -85,7 +85,7 @@ class ProductController {
 
         // If not found by UUID, try by name
         if (!category) {
-          category = await prisma.category.findUnique({
+          category = await prisma.category.findFirst({
             where: { name: categoryIdentifier },
           });
         }
@@ -117,7 +117,7 @@ class ProductController {
 
           // If not found by ID, try by name
           if (!discountType && discount.discountTypeName) {
-            discountType = await prisma.discountType.findUnique({
+            discountType = await prisma.discountType.findFirst({
               where: { name: discount.discountTypeName },
             });
           }
@@ -130,7 +130,7 @@ class ProductController {
               /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
             )
           ) {
-            discountType = await prisma.discountType.findUnique({
+            discountType = await prisma.discountType.findFirst({
               where: { name: discount.discountTypeId },
             });
           }
@@ -188,6 +188,7 @@ class ProductController {
       // Create product
       const product = await prisma.product.create({
         data: {
+          tenantId: req.user!.tenantId,
           imsCode: imsCode as string,
           name: name as string,
           categoryId: category.id,
@@ -1753,7 +1754,7 @@ class ProductController {
           // If not found in initial map, check database and create if needed
           if (!categoryId) {
             // First try exact match
-            let existingCategory = await prisma.category.findUnique({
+            let existingCategory = await prisma.category.findFirst({
               where: { name: categoryNameOriginal },
             });
 
@@ -1783,6 +1784,7 @@ class ProductController {
               try {
                 const newCategory = await prisma.category.create({
                   data: {
+                    tenantId: req.user!.tenantId,
                     name: categoryNameOriginal,
                   },
                 });
@@ -1793,7 +1795,7 @@ class ProductController {
                 // If creation fails due to unique constraint (race condition),
                 // try to find it again
                 if (createError.code === "P2002") {
-                  const foundCategory = await prisma.category.findUnique({
+                  const foundCategory = await prisma.category.findFirst({
                     where: { name: categoryNameOriginal },
                   });
                   if (foundCategory) {
@@ -1810,7 +1812,7 @@ class ProductController {
           }
 
           // Check if product with this IMS code already exists
-          const existingProduct = await prisma.product.findUnique({
+          const existingProduct = await prisma.product.findFirst({
             where: { imsCode: firstRow.imsCode },
           });
 
@@ -1902,6 +1904,7 @@ class ProductController {
           // Create product
           const product = await prisma.product.create({
             data: {
+              tenantId: req.user!.tenantId,
               imsCode: firstRow.imsCode,
               name: firstRow.name,
               categoryId,

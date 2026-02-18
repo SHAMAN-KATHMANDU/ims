@@ -1,0 +1,1343 @@
+/**
+ * Platform Controller — Tenant CRUD for platform administrators.
+ *
+ * All operations here use basePrisma (unscoped) because platform admins
+ * operate across tenants.
+ */
+
+import { Request, Response } from "express";
+import { basePrisma } from "@/config/prisma";
+import bcrypt from "bcryptjs";
+import { logger } from "@/config/logger";
+
+class PlatformController {
+  /**
+   * Create a new tenant with an initial superAdmin user.
+   */
+  async createTenant(req: Request, res: Response) {
+    try {
+      const {
+        name,
+        slug,
+        plan = "STARTER",
+        adminUsername,
+        adminPassword,
+      } = req.body;
+
+      if (!name || !slug || !adminUsername || !adminPassword) {
+        return res.status(400).json({
+          message:
+            "name, slug, adminUsername, and adminPassword are all required",
+        });
+      }
+
+      // Validate slug format (lowercase, alphanumeric, hyphens only)
+      if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(slug)) {
+        return res.status(400).json({
+          message:
+            "Slug must be lowercase alphanumeric with optional hyphens, 1-63 characters",
+        });
+      }
+
+      // Check slug uniqueness
+      const existingTenant = await basePrisma.tenant.findUnique({
+        where: { slug },
+      });
+      if (existingTenant) {
+        return res
+          .status(409)
+          .json({ message: `Tenant with slug "${slug}" already exists` });
+      }
+
+      // Create tenant + initial superAdmin user in a transaction
+      const trialEndsAt = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 14 days
+
+      const result = await basePrisma.$transaction(async (tx) => {
+        // Create tenant
+        const tenant = await tx.tenant.create({
+          data: {
+            name,
+            slug,
+            plan: plan as any,
+            isTrial: true,
+            trialEndsAt,
+            subscriptionStatus: "TRIAL",
+          },
+        });
+
+        // Create initial superAdmin user for the tenant
+        const hashedPassword = await bcrypt.hash(adminPassword, 10);
+        const adminUser = await tx.user.create({
+          data: {
+            tenantId: tenant.id,
+            username: adminUsername.toLowerCase().trim(),
+            password: hashedPassword,
+            role: "superAdmin",
+          },
+        });
+
+        // Create default discount types for the tenant
+        const discountTypeNames = [
+          "Non-Member",
+          "Member",
+          "Wholesale",
+          "Special",
+        ];
+        for (const dtName of discountTypeNames) {
+          await tx.discountType.create({
+            data: {
+              tenantId: tenant.id,
+              name: dtName,
+            },
+          });
+        }
+
+        return {
+          tenant,
+          adminUser: {
+            id: adminUser.id,
+            username: adminUser.username,
+            role: adminUser.role,
+          },
+        };
+      });
+
+      res.status(201).json({
+        message: "Tenant created successfully",
+        tenant: result.tenant,
+        adminUser: result.adminUser,
+      });
+    } catch (error) {
+      logger.error("Create tenant error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * List all tenants with summary stats.
+   */
+  async listTenants(req: Request, res: Response) {
+    try {
+      const tenants = await basePrisma.tenant.findMany({
+        orderBy: { createdAt: "desc" },
+        include: {
+          _count: {
+            select: {
+              users: true,
+              products: true,
+              locations: true,
+              members: true,
+              sales: true,
+            },
+          },
+        },
+      });
+
+      res.status(200).json({ tenants });
+    } catch (error) {
+      logger.error("List tenants error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Get a single tenant with detailed info.
+   */
+  async getTenant(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { id },
+        include: {
+          _count: {
+            select: {
+              users: true,
+              products: true,
+              locations: true,
+              members: true,
+              sales: true,
+              transfers: true,
+            },
+          },
+          subscriptions: {
+            orderBy: { createdAt: "desc" },
+            take: 5,
+          },
+          payments: {
+            orderBy: { createdAt: "desc" },
+            take: 10,
+          },
+        },
+      });
+
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      res.status(200).json({ tenant });
+    } catch (error) {
+      logger.error("Get tenant error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Update a tenant's details.
+   */
+  async updateTenant(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const {
+        name,
+        slug,
+        isActive,
+        subscriptionStatus,
+        isTrial,
+        trialEndsAt,
+        planExpiresAt,
+        settings,
+      } = req.body;
+
+      // Check if tenant exists
+      const existingTenant = await basePrisma.tenant.findUnique({
+        where: { id },
+      });
+
+      if (!existingTenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      // If slug is being updated, validate it and check uniqueness
+      if (slug !== undefined && slug !== existingTenant.slug) {
+        if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(slug)) {
+          return res.status(400).json({
+            message:
+              "Slug must be lowercase alphanumeric with optional hyphens, 1-63 characters",
+          });
+        }
+
+        const slugExists = await basePrisma.tenant.findUnique({
+          where: { slug },
+        });
+        if (slugExists) {
+          return res
+            .status(409)
+            .json({ message: `Tenant with slug "${slug}" already exists` });
+        }
+      }
+
+      // Validate subscriptionStatus if provided
+      if (subscriptionStatus !== undefined) {
+        const validStatuses = [
+          "TRIAL",
+          "ACTIVE",
+          "PAST_DUE",
+          "SUSPENDED",
+          "LOCKED",
+          "CANCELLED",
+        ];
+        if (!validStatuses.includes(subscriptionStatus)) {
+          return res.status(400).json({
+            message: `subscriptionStatus must be one of: ${validStatuses.join(", ")}`,
+          });
+        }
+      }
+
+      const tenant = await basePrisma.tenant.update({
+        where: { id },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(slug !== undefined && { slug }),
+          ...(isActive !== undefined && { isActive }),
+          ...(subscriptionStatus !== undefined && { subscriptionStatus }),
+          ...(isTrial !== undefined && { isTrial }),
+          ...(trialEndsAt !== undefined && {
+            trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : null,
+          }),
+          ...(planExpiresAt !== undefined && {
+            planExpiresAt: planExpiresAt ? new Date(planExpiresAt) : null,
+          }),
+          ...(settings !== undefined && { settings }),
+        },
+      });
+
+      res.status(200).json({ tenant });
+    } catch (error) {
+      logger.error("Update tenant error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Change a tenant's plan.
+   */
+  async changePlan(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { plan, expiresAt } = req.body;
+
+      if (!plan) {
+        return res.status(400).json({ message: "plan is required" });
+      }
+
+      const validPlans = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      if (!validPlans.includes(plan)) {
+        return res.status(400).json({
+          message: `plan must be one of: ${validPlans.join(", ")}`,
+        });
+      }
+
+      const tenant = await basePrisma.tenant.update({
+        where: { id },
+        data: {
+          plan: plan as any,
+          isTrial: false,
+          subscriptionStatus: "ACTIVE",
+          planExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
+        },
+      });
+
+      res.status(200).json({
+        message: `Plan changed to ${plan}`,
+        tenant,
+      });
+    } catch (error) {
+      logger.error("Change plan error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Deactivate (soft-delete) a tenant.
+   */
+  async deactivateTenant(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { id },
+      });
+
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      const updatedTenant = await basePrisma.tenant.update({
+        where: { id },
+        data: {
+          isActive: false,
+          subscriptionStatus: "CANCELLED",
+        },
+      });
+
+      res.status(200).json({
+        message: "Tenant deactivated",
+        tenant: updatedTenant,
+      });
+    } catch (error) {
+      logger.error("Deactivate tenant error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Activate a tenant (reactivate a deactivated tenant).
+   */
+  async activateTenant(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { id },
+      });
+
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      const updatedTenant = await basePrisma.tenant.update({
+        where: { id },
+        data: {
+          isActive: true,
+          subscriptionStatus:
+            tenant.subscriptionStatus === "CANCELLED"
+              ? "ACTIVE"
+              : tenant.subscriptionStatus,
+        },
+      });
+
+      res.status(200).json({
+        message: "Tenant activated",
+        tenant: updatedTenant,
+      });
+    } catch (error) {
+      logger.error("Activate tenant error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Platform-wide stats overview.
+   */
+  async getStats(req: Request, res: Response) {
+    try {
+      const [
+        totalTenants,
+        activeTenants,
+        trialTenants,
+        totalUsers,
+        totalSales,
+        planDistribution,
+      ] = await Promise.all([
+        basePrisma.tenant.count(),
+        basePrisma.tenant.count({ where: { isActive: true } }),
+        basePrisma.tenant.count({
+          where: { subscriptionStatus: "TRIAL" },
+        }),
+        basePrisma.user.count(),
+        basePrisma.sale.count(),
+        basePrisma.tenant.groupBy({
+          by: ["plan"],
+          _count: true,
+          where: { isActive: true },
+        }),
+      ]);
+
+      res.status(200).json({
+        totalTenants,
+        activeTenants,
+        trialTenants,
+        totalUsers,
+        totalSales,
+        planDistribution: planDistribution.map((p) => ({
+          plan: p.plan,
+          count: p._count,
+        })),
+      });
+    } catch (error) {
+      logger.error("Platform stats error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  // ============================================
+  // PLAN LIMITS CRUD
+  // ============================================
+
+  /**
+   * List all plan limits.
+   */
+  async listPlanLimits(req: Request, res: Response) {
+    try {
+      const planLimits = await basePrisma.planLimit.findMany({
+        orderBy: { tier: "asc" },
+      });
+
+      res.status(200).json({ planLimits });
+    } catch (error) {
+      logger.error("List plan limits error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Get a single plan limit by tier.
+   */
+  async getPlanLimit(req: Request, res: Response) {
+    try {
+      const { tier } = req.params;
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      const planLimit = await basePrisma.planLimit.findUnique({
+        where: { tier: tier as any },
+      });
+
+      if (!planLimit) {
+        return res.status(404).json({ message: "Plan limit not found" });
+      }
+
+      res.status(200).json({ planLimit });
+    } catch (error) {
+      logger.error("Get plan limit error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Create or update a plan limit.
+   */
+  async upsertPlanLimit(req: Request, res: Response) {
+    try {
+      const {
+        tier,
+        maxUsers,
+        maxProducts,
+        maxLocations,
+        maxMembers,
+        bulkUpload,
+        analytics,
+        promoManagement,
+        auditLogs,
+        apiAccess,
+      } = req.body;
+
+      if (!tier) {
+        return res.status(400).json({ message: "tier is required" });
+      }
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      const planLimit = await basePrisma.planLimit.upsert({
+        where: { tier: tier as any },
+        update: {
+          ...(maxUsers !== undefined && { maxUsers }),
+          ...(maxProducts !== undefined && { maxProducts }),
+          ...(maxLocations !== undefined && { maxLocations }),
+          ...(maxMembers !== undefined && { maxMembers }),
+          ...(bulkUpload !== undefined && { bulkUpload }),
+          ...(analytics !== undefined && { analytics }),
+          ...(promoManagement !== undefined && { promoManagement }),
+          ...(auditLogs !== undefined && { auditLogs }),
+          ...(apiAccess !== undefined && { apiAccess }),
+        },
+        create: {
+          tier: tier as any,
+          maxUsers: maxUsers ?? 5,
+          maxProducts: maxProducts ?? 100,
+          maxLocations: maxLocations ?? 2,
+          maxMembers: maxMembers ?? 50,
+          bulkUpload: bulkUpload ?? false,
+          analytics: analytics ?? false,
+          promoManagement: promoManagement ?? false,
+          auditLogs: auditLogs ?? false,
+          apiAccess: apiAccess ?? false,
+        },
+      });
+
+      res.status(200).json({
+        message: "Plan limit saved successfully",
+        planLimit,
+      });
+    } catch (error) {
+      logger.error("Upsert plan limit error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Delete a plan limit.
+   */
+  async deletePlanLimit(req: Request, res: Response) {
+    try {
+      const { tier } = req.params;
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      await basePrisma.planLimit.delete({
+        where: { tier: tier as any },
+      });
+
+      res.status(200).json({ message: "Plan limit deleted successfully" });
+    } catch (error: any) {
+      if (error.code === "P2025") {
+        return res.status(404).json({ message: "Plan limit not found" });
+      }
+      logger.error("Delete plan limit error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  // ============================================
+  // PRICING PLANS CRUD
+  // ============================================
+
+  /**
+   * List all pricing plans.
+   */
+  async listPricingPlans(req: Request, res: Response) {
+    try {
+      const pricingPlans = await basePrisma.pricingPlan.findMany({
+        orderBy: [{ tier: "asc" }, { billingCycle: "asc" }],
+      });
+
+      res.status(200).json({ pricingPlans });
+    } catch (error) {
+      logger.error("List pricing plans error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Get a pricing plan by tier and billing cycle.
+   */
+  async getPricingPlan(req: Request, res: Response) {
+    try {
+      const { tier, billingCycle } = req.params;
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validCycles = ["MONTHLY", "ANNUAL"];
+
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      if (!validCycles.includes(billingCycle)) {
+        return res.status(400).json({
+          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
+        });
+      }
+
+      const pricingPlan = await basePrisma.pricingPlan.findUnique({
+        where: {
+          tier_billingCycle: {
+            tier: tier as any,
+            billingCycle: billingCycle as any,
+          },
+        },
+      });
+
+      if (!pricingPlan) {
+        return res.status(404).json({ message: "Pricing plan not found" });
+      }
+
+      res.status(200).json({ pricingPlan });
+    } catch (error) {
+      logger.error("Get pricing plan error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Create a pricing plan.
+   */
+  async createPricingPlan(req: Request, res: Response) {
+    try {
+      const { tier, billingCycle, price, originalPrice, isActive } = req.body;
+
+      if (!tier || !billingCycle || price === undefined) {
+        return res.status(400).json({
+          message: "tier, billingCycle, and price are required",
+        });
+      }
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validCycles = ["MONTHLY", "ANNUAL"];
+
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      if (!validCycles.includes(billingCycle)) {
+        return res.status(400).json({
+          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
+        });
+      }
+
+      if (typeof price !== "number" || price < 0) {
+        return res.status(400).json({
+          message: "price must be a non-negative number",
+        });
+      }
+
+      const pricingPlan = await basePrisma.pricingPlan.create({
+        data: {
+          tier: tier as any,
+          billingCycle: billingCycle as any,
+          price,
+          originalPrice,
+          isActive: isActive !== undefined ? isActive : true,
+        },
+      });
+
+      res.status(201).json({
+        message: "Pricing plan created successfully",
+        pricingPlan,
+      });
+    } catch (error: any) {
+      if (error.code === "P2002") {
+        return res.status(409).json({
+          message:
+            "Pricing plan with this tier and billing cycle already exists",
+        });
+      }
+      logger.error("Create pricing plan error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Update a pricing plan.
+   */
+  async updatePricingPlan(req: Request, res: Response) {
+    try {
+      const { tier, billingCycle } = req.params;
+      const { price, originalPrice, isActive } = req.body;
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validCycles = ["MONTHLY", "ANNUAL"];
+
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      if (!validCycles.includes(billingCycle)) {
+        return res.status(400).json({
+          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
+        });
+      }
+
+      if (price !== undefined && (typeof price !== "number" || price < 0)) {
+        return res.status(400).json({
+          message: "price must be a non-negative number",
+        });
+      }
+
+      const pricingPlan = await basePrisma.pricingPlan.update({
+        where: {
+          tier_billingCycle: {
+            tier: tier as any,
+            billingCycle: billingCycle as any,
+          },
+        },
+        data: {
+          ...(price !== undefined && { price }),
+          ...(originalPrice !== undefined && { originalPrice }),
+          ...(isActive !== undefined && { isActive }),
+        },
+      });
+
+      res.status(200).json({
+        message: "Pricing plan updated successfully",
+        pricingPlan,
+      });
+    } catch (error: any) {
+      if (error.code === "P2025") {
+        return res.status(404).json({ message: "Pricing plan not found" });
+      }
+      logger.error("Update pricing plan error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Delete a pricing plan.
+   */
+  async deletePricingPlan(req: Request, res: Response) {
+    try {
+      const { tier, billingCycle } = req.params;
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validCycles = ["MONTHLY", "ANNUAL"];
+
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      if (!validCycles.includes(billingCycle)) {
+        return res.status(400).json({
+          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
+        });
+      }
+
+      await basePrisma.pricingPlan.delete({
+        where: {
+          tier_billingCycle: {
+            tier: tier as any,
+            billingCycle: billingCycle as any,
+          },
+        },
+      });
+
+      res.status(200).json({ message: "Pricing plan deleted successfully" });
+    } catch (error: any) {
+      if (error.code === "P2025") {
+        return res.status(404).json({ message: "Pricing plan not found" });
+      }
+      logger.error("Delete pricing plan error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  // ============================================
+  // SUBSCRIPTIONS CRUD
+  // ============================================
+
+  /**
+   * List all subscriptions (optionally filtered by tenant).
+   */
+  async listSubscriptions(req: Request, res: Response) {
+    try {
+      const { tenantId } = req.query;
+
+      const subscriptions = await basePrisma.subscription.findMany({
+        where: tenantId ? { tenantId: tenantId as string } : undefined,
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          _count: {
+            select: {
+              payments: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      res.status(200).json({ subscriptions });
+    } catch (error) {
+      logger.error("List subscriptions error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Get a single subscription.
+   */
+  async getSubscription(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const subscription = await basePrisma.subscription.findUnique({
+        where: { id },
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          payments: {
+            orderBy: { createdAt: "desc" },
+            take: 10,
+          },
+        },
+      });
+
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      res.status(200).json({ subscription });
+    } catch (error) {
+      logger.error("Get subscription error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Create a subscription for a tenant.
+   */
+  async createSubscription(req: Request, res: Response) {
+    try {
+      const {
+        tenantId,
+        plan,
+        billingCycle,
+        status = "TRIAL",
+        currentPeriodStart,
+        currentPeriodEnd,
+        trialEndsAt,
+        gracePeriodEnd,
+      } = req.body;
+
+      if (!tenantId || !plan || !billingCycle) {
+        return res.status(400).json({
+          message: "tenantId, plan, and billingCycle are required",
+        });
+      }
+
+      const validPlans = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validCycles = ["MONTHLY", "ANNUAL"];
+      const validStatuses = [
+        "TRIAL",
+        "ACTIVE",
+        "PAST_DUE",
+        "SUSPENDED",
+        "LOCKED",
+        "CANCELLED",
+      ];
+
+      if (!validPlans.includes(plan)) {
+        return res.status(400).json({
+          message: `plan must be one of: ${validPlans.join(", ")}`,
+        });
+      }
+
+      if (!validCycles.includes(billingCycle)) {
+        return res.status(400).json({
+          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
+        });
+      }
+
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          message: `status must be one of: ${validStatuses.join(", ")}`,
+        });
+      }
+
+      // Check if tenant exists
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
+
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      const subscription = await basePrisma.subscription.create({
+        data: {
+          tenantId,
+          plan: plan as any,
+          billingCycle: billingCycle as any,
+          status: status as any,
+          currentPeriodStart: currentPeriodStart
+            ? new Date(currentPeriodStart)
+            : new Date(),
+          currentPeriodEnd: currentPeriodEnd
+            ? new Date(currentPeriodEnd)
+            : new Date(),
+          trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : undefined,
+          gracePeriodEnd: gracePeriodEnd ? new Date(gracePeriodEnd) : undefined,
+        },
+      });
+
+      res.status(201).json({
+        message: "Subscription created successfully",
+        subscription,
+      });
+    } catch (error) {
+      logger.error("Create subscription error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Update a subscription.
+   */
+  async updateSubscription(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const {
+        plan,
+        billingCycle,
+        status,
+        currentPeriodStart,
+        currentPeriodEnd,
+        trialEndsAt,
+        gracePeriodEnd,
+        cancelledAt,
+      } = req.body;
+
+      const validPlans = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validCycles = ["MONTHLY", "ANNUAL"];
+      const validStatuses = [
+        "TRIAL",
+        "ACTIVE",
+        "PAST_DUE",
+        "SUSPENDED",
+        "LOCKED",
+        "CANCELLED",
+      ];
+
+      if (plan !== undefined && !validPlans.includes(plan)) {
+        return res.status(400).json({
+          message: `plan must be one of: ${validPlans.join(", ")}`,
+        });
+      }
+
+      if (billingCycle !== undefined && !validCycles.includes(billingCycle)) {
+        return res.status(400).json({
+          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
+        });
+      }
+
+      if (status !== undefined && !validStatuses.includes(status)) {
+        return res.status(400).json({
+          message: `status must be one of: ${validStatuses.join(", ")}`,
+        });
+      }
+
+      const subscription = await basePrisma.subscription.update({
+        where: { id },
+        data: {
+          ...(plan !== undefined && { plan: plan as any }),
+          ...(billingCycle !== undefined && {
+            billingCycle: billingCycle as any,
+          }),
+          ...(status !== undefined && { status: status as any }),
+          ...(currentPeriodStart !== undefined && {
+            currentPeriodStart: new Date(currentPeriodStart),
+          }),
+          ...(currentPeriodEnd !== undefined && {
+            currentPeriodEnd: new Date(currentPeriodEnd),
+          }),
+          ...(trialEndsAt !== undefined && {
+            trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : null,
+          }),
+          ...(gracePeriodEnd !== undefined && {
+            gracePeriodEnd: gracePeriodEnd ? new Date(gracePeriodEnd) : null,
+          }),
+          ...(cancelledAt !== undefined && {
+            cancelledAt: cancelledAt ? new Date(cancelledAt) : null,
+          }),
+        },
+      });
+
+      res.status(200).json({
+        message: "Subscription updated successfully",
+        subscription,
+      });
+    } catch (error: any) {
+      if (error.code === "P2025") {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+      logger.error("Update subscription error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Delete a subscription.
+   */
+  async deleteSubscription(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      await basePrisma.subscription.delete({
+        where: { id },
+      });
+
+      res.status(200).json({ message: "Subscription deleted successfully" });
+    } catch (error: any) {
+      if (error.code === "P2025") {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+      logger.error("Delete subscription error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  // ============================================
+  // TENANT PAYMENTS CRUD
+  // ============================================
+
+  /**
+   * List all tenant payments (optionally filtered by tenant or subscription).
+   */
+  async listTenantPayments(req: Request, res: Response) {
+    try {
+      const { tenantId, subscriptionId } = req.query;
+
+      const payments = await basePrisma.tenantPayment.findMany({
+        where: {
+          ...(tenantId && { tenantId: tenantId as string }),
+          ...(subscriptionId && { subscriptionId: subscriptionId as string }),
+        },
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          subscription: {
+            select: {
+              id: true,
+              plan: true,
+              billingCycle: true,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      res.status(200).json({ payments });
+    } catch (error) {
+      logger.error("List tenant payments error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Get a single tenant payment.
+   */
+  async getTenantPayment(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const payment = await basePrisma.tenantPayment.findUnique({
+        where: { id },
+        include: {
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+            },
+          },
+          subscription: {
+            select: {
+              id: true,
+              plan: true,
+              billingCycle: true,
+              status: true,
+            },
+          },
+        },
+      });
+
+      if (!payment) {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+
+      res.status(200).json({ payment });
+    } catch (error) {
+      logger.error("Get tenant payment error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Create a tenant payment.
+   */
+  async createTenantPayment(req: Request, res: Response) {
+    try {
+      const {
+        tenantId,
+        subscriptionId,
+        amount,
+        currency = "NPR",
+        gateway,
+        gatewayTxnId,
+        gatewayResponse,
+        status = "PENDING",
+        paidFor,
+        billingCycle,
+        periodStart,
+        periodEnd,
+        verifiedAt,
+        verifiedBy,
+        notes,
+      } = req.body;
+
+      if (
+        !tenantId ||
+        !subscriptionId ||
+        amount === undefined ||
+        !gateway ||
+        !paidFor ||
+        !billingCycle ||
+        !periodStart ||
+        !periodEnd
+      ) {
+        return res.status(400).json({
+          message:
+            "tenantId, subscriptionId, amount, gateway, paidFor, billingCycle, periodStart, and periodEnd are required",
+        });
+      }
+
+      const validGateways = [
+        "ESEWA",
+        "KHALTI",
+        "FONEPAY",
+        "CONNECTIPS",
+        "BANK_TRANSFER",
+        "MANUAL",
+      ];
+      const validStatuses = ["PENDING", "COMPLETED", "FAILED", "REFUNDED"];
+      const validPlans = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validCycles = ["MONTHLY", "ANNUAL"];
+
+      if (!validGateways.includes(gateway)) {
+        return res.status(400).json({
+          message: `gateway must be one of: ${validGateways.join(", ")}`,
+        });
+      }
+
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({
+          message: `status must be one of: ${validStatuses.join(", ")}`,
+        });
+      }
+
+      if (!validPlans.includes(paidFor)) {
+        return res.status(400).json({
+          message: `paidFor must be one of: ${validPlans.join(", ")}`,
+        });
+      }
+
+      if (!validCycles.includes(billingCycle)) {
+        return res.status(400).json({
+          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
+        });
+      }
+
+      // Check if tenant and subscription exist
+      const [tenant, subscription] = await Promise.all([
+        basePrisma.tenant.findUnique({ where: { id: tenantId } }),
+        basePrisma.subscription.findUnique({ where: { id: subscriptionId } }),
+      ]);
+
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      if (!subscription) {
+        return res.status(404).json({ message: "Subscription not found" });
+      }
+
+      const payment = await basePrisma.tenantPayment.create({
+        data: {
+          tenantId,
+          subscriptionId,
+          amount,
+          currency,
+          gateway: gateway as any,
+          gatewayTxnId,
+          gatewayResponse,
+          status: status as any,
+          paidFor: paidFor as any,
+          billingCycle: billingCycle as any,
+          periodStart: new Date(periodStart),
+          periodEnd: new Date(periodEnd),
+          verifiedAt: verifiedAt ? new Date(verifiedAt) : undefined,
+          verifiedBy,
+          notes,
+        },
+      });
+
+      res.status(201).json({
+        message: "Payment created successfully",
+        payment,
+      });
+    } catch (error) {
+      logger.error("Create tenant payment error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Update a tenant payment.
+   */
+  async updateTenantPayment(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const {
+        amount,
+        currency,
+        gateway,
+        gatewayTxnId,
+        gatewayResponse,
+        status,
+        verifiedAt,
+        verifiedBy,
+        notes,
+      } = req.body;
+
+      const validGateways = [
+        "ESEWA",
+        "KHALTI",
+        "FONEPAY",
+        "CONNECTIPS",
+        "BANK_TRANSFER",
+        "MANUAL",
+      ];
+      const validStatuses = ["PENDING", "COMPLETED", "FAILED", "REFUNDED"];
+
+      if (gateway !== undefined && !validGateways.includes(gateway)) {
+        return res.status(400).json({
+          message: `gateway must be one of: ${validGateways.join(", ")}`,
+        });
+      }
+
+      if (status !== undefined && !validStatuses.includes(status)) {
+        return res.status(400).json({
+          message: `status must be one of: ${validStatuses.join(", ")}`,
+        });
+      }
+
+      const payment = await basePrisma.tenantPayment.update({
+        where: { id },
+        data: {
+          ...(amount !== undefined && { amount }),
+          ...(currency !== undefined && { currency }),
+          ...(gateway !== undefined && { gateway: gateway as any }),
+          ...(gatewayTxnId !== undefined && { gatewayTxnId }),
+          ...(gatewayResponse !== undefined && { gatewayResponse }),
+          ...(status !== undefined && { status: status as any }),
+          ...(verifiedAt !== undefined && {
+            verifiedAt: verifiedAt ? new Date(verifiedAt) : null,
+          }),
+          ...(verifiedBy !== undefined && { verifiedBy }),
+          ...(notes !== undefined && { notes }),
+        },
+      });
+
+      res.status(200).json({
+        message: "Payment updated successfully",
+        payment,
+      });
+    } catch (error: any) {
+      if (error.code === "P2025") {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      logger.error("Update tenant payment error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+
+  /**
+   * Delete a tenant payment.
+   */
+  async deleteTenantPayment(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      await basePrisma.tenantPayment.delete({
+        where: { id },
+      });
+
+      res.status(200).json({ message: "Payment deleted successfully" });
+    } catch (error: any) {
+      if (error.code === "P2025") {
+        return res.status(404).json({ message: "Payment not found" });
+      }
+      logger.error("Delete tenant payment error", undefined, error);
+      res.status(500).json({ message: "Internal server error" });
+    }
+  }
+}
+
+export default new PlatformController();

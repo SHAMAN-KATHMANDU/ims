@@ -279,8 +279,14 @@ class LeadController {
           select: { id: true },
         });
         if (!member) {
+          const tenantId = (req as any).user?.tenantId;
+          if (!tenantId)
+            return res
+              .status(400)
+              .json({ message: "Tenant context required to create member" });
           member = await prisma.member.create({
             data: {
+              tenantId,
               phone: lead.phone.trim(),
               name: lead.name?.trim() || null,
               email: lead.email?.trim() || null,

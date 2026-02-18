@@ -24,6 +24,7 @@ class ErrorReportController {
 
       const report = await prisma.errorReport.create({
         data: {
+          tenantId: req.user?.tenantId || null,
           userId: req.user.id,
           title: title.trim().slice(0, 255),
           description:

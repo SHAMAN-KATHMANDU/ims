@@ -10,6 +10,7 @@
  * 3. Update any role validation logic
  */
 export enum UserRole {
+  PLATFORM_ADMIN = "platformAdmin",
   SUPER_ADMIN = "superAdmin",
   ADMIN = "admin",
   USER = "user",

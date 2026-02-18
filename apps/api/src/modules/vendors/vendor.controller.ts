@@ -18,7 +18,7 @@ class VendorController {
         return res.status(400).json({ message: "Vendor name is required" });
       }
 
-      const existing = await prisma.vendor.findUnique({
+      const existing = await prisma.vendor.findFirst({
         where: { name },
       });
 
@@ -34,6 +34,7 @@ class VendorController {
 
       const vendor = await prisma.vendor.create({
         data: {
+          tenantId: req.user!.tenantId,
           name,
           contact: contact || null,
           phone: phone || null,
@@ -261,7 +262,7 @@ class VendorController {
       }
 
       if (name && name !== existingVendor.name) {
-        const nameExists = await prisma.vendor.findUnique({
+        const nameExists = await prisma.vendor.findFirst({
           where: { name },
         });
 

@@ -181,6 +181,7 @@ class TransferController {
       // Create transfer with items
       const transfer = await prisma.transfer.create({
         data: {
+          tenantId: req.user!.tenantId,
           transferCode: generateTransferCode(),
           fromLocationId,
           toLocationId,
@@ -227,6 +228,7 @@ class TransferController {
       try {
         await prisma.auditLog.create({
           data: {
+            tenantId: req.user?.tenantId || null,
             userId: req.user.id,
             action: "CREATE_TRANSFER",
             resource: "transfer",
