@@ -1276,6 +1276,27 @@ async function main() {
   // 4. Ruby tenant — blank slate: admin / admin123
   await seedRubyTenant();
 
+  // 5. Default CRM pipeline (required for Deals / Pipeline view)
+  const existingPipeline = await prisma.pipeline.findFirst({
+    where: { isDefault: true },
+  });
+  if (!existingPipeline) {
+    await prisma.pipeline.create({
+      data: {
+        name: "Sales Pipeline",
+        isDefault: true,
+        stages: [
+          { id: "1", name: "Qualification", order: 1, probability: 10 },
+          { id: "2", name: "Proposal", order: 2, probability: 30 },
+          { id: "3", name: "Negotiation", order: 3, probability: 60 },
+          { id: "4", name: "Closed Won", order: 4, probability: 100 },
+          { id: "5", name: "Closed Lost", order: 5, probability: 0 },
+        ],
+      },
+    });
+    console.log("✅ Created default Sales Pipeline (for CRM Deals)");
+  }
+
   console.log("\n✅ Seed complete.");
 }
 
