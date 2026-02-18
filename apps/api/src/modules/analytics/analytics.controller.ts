@@ -1804,6 +1804,7 @@ class AnalyticsController {
           },
           sale: {
             select: {
+              id: true,
               createdAt: true,
               locationId: true,
               discount: true,
@@ -1846,22 +1847,22 @@ class AnalyticsController {
       }
 
       // Add discount/subtotal per unique sale (avoid double counting)
-      const processedSales = new Set<string>();
+      const processedSaleIds = new Set<string>();
       for (const item of saleItems) {
         const sale = item.sale as unknown as {
+          id: string;
           createdAt: Date;
           discount: number;
           subtotal: number;
           total: number;
         };
+        const saleId = sale.id;
+        if (processedSaleIds.has(saleId)) continue;
+        processedSaleIds.add(saleId);
         const d = sale.createdAt.toISOString().slice(0, 10);
-        const saleKey = `${d}-${Number(sale.subtotal)}-${Number(sale.total)}`;
-        if (!processedSales.has(saleKey)) {
-          processedSales.add(saleKey);
-          if (dailyMap[d]) {
-            dailyMap[d].discount += Number(sale.discount);
-            dailyMap[d].subtotal += Number(sale.subtotal);
-          }
+        if (dailyMap[d]) {
+          dailyMap[d].discount += Number(sale.discount);
+          dailyMap[d].subtotal += Number(sale.subtotal);
         }
       }
 
@@ -2298,6 +2299,7 @@ class AnalyticsController {
             },
             sale: {
               select: {
+                id: true,
                 createdAt: true,
                 locationId: true,
                 discount: true,
@@ -2333,22 +2335,21 @@ class AnalyticsController {
           categoryMap[catName].cogs += cost;
           locationCogsMap[lid] = (locationCogsMap[lid] ?? 0) + cost;
         }
-        const processedSales = new Set<string>();
+        const processedSaleIds = new Set<string>();
         for (const item of saleItems) {
           const sale = item.sale as unknown as {
+            id: string;
             createdAt: Date;
             discount: number;
             subtotal: number;
             total: number;
           };
+          if (processedSaleIds.has(sale.id)) continue;
+          processedSaleIds.add(sale.id);
           const d = sale.createdAt.toISOString().slice(0, 10);
-          const saleKey = `${d}-${Number(sale.subtotal)}-${Number(sale.total)}`;
-          if (!processedSales.has(saleKey)) {
-            processedSales.add(saleKey);
-            if (dailyMap[d]) {
-              dailyMap[d].discount += Number(sale.discount);
-              dailyMap[d].subtotal += Number(sale.subtotal);
-            }
+          if (dailyMap[d]) {
+            dailyMap[d].discount += Number(sale.discount);
+            dailyMap[d].subtotal += Number(sale.subtotal);
           }
         }
         const grossProfitTimeSeries = Object.entries(dailyMap)

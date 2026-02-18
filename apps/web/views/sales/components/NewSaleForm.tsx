@@ -1248,22 +1248,23 @@ export function NewSaleForm({
                     </p>
                   </FormSection>
 
-                  {/* Summary */}
+                  {/* Order Summary: Subtotal, Discount, Total */}
                   <div className="bg-muted/50 border rounded-lg p-4 mt-6 space-y-2">
+                    <h4 className="text-sm font-semibold mb-2">
+                      Order Summary
+                    </h4>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Subtotal</span>
                       <span className="font-mono font-semibold">
                         {formatCurrency(subtotal)}
                       </span>
                     </div>
-                    {totalDiscount > 0 && (
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Discount</span>
-                        <span className="font-mono font-semibold text-green-600">
-                          -{formatCurrency(totalDiscount)}
-                        </span>
-                      </div>
-                    )}
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">Discount</span>
+                      <span className="font-mono font-semibold text-green-600">
+                        -{formatCurrency(totalDiscount)}
+                      </span>
+                    </div>
                     {previewResult?.promoDiscount != null &&
                       previewResult.promoDiscount > 0 && (
                         <div className="flex justify-between text-sm">
@@ -1274,7 +1275,7 @@ export function NewSaleForm({
                         </div>
                       )}
                     <div className="flex justify-between items-center pt-2 border-t">
-                      <span className="font-semibold">Amount to Pay</span>
+                      <span className="font-semibold">Total</span>
                       <span className="text-xl font-bold font-mono">
                         {previewLoading ? (
                           <Loader2 className="h-5 w-5 animate-spin" />

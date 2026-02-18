@@ -11,7 +11,7 @@ import {
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Check } from "lucide-react";
+import { Search, Plus, Check, Pencil } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -25,7 +25,10 @@ import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/useToast";
+
+type TaskFilterTab = "all" | "incomplete" | "complete";
 
 export function TasksPage() {
   const params = useParams();
@@ -36,15 +39,21 @@ export function TasksPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
-  const [completed, setCompleted] = useState<string>("");
+  const [taskTab, setTaskTab] = useState<TaskFilterTab>("all");
   const [dueToday, setDueToday] = useState(false);
+
+  const completedFilter =
+    taskTab === "incomplete"
+      ? false
+      : taskTab === "complete"
+        ? true
+        : undefined;
 
   const { data, isLoading } = useTasksPaginated({
     page,
     limit: pageSize,
     search,
-    completed:
-      completed === "true" ? true : completed === "false" ? false : undefined,
+    completed: completedFilter,
     dueToday,
   });
 
@@ -75,7 +84,7 @@ export function TasksPage() {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -88,7 +97,20 @@ export function TasksPage() {
             className="pl-9"
           />
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
+          <Tabs
+            value={taskTab}
+            onValueChange={(v) => {
+              setTaskTab(v as TaskFilterTab);
+              setPage(DEFAULT_PAGE);
+            }}
+          >
+            <TabsList>
+              <TabsTrigger value="all">All</TabsTrigger>
+              <TabsTrigger value="incomplete">Incomplete</TabsTrigger>
+              <TabsTrigger value="complete">Complete</TabsTrigger>
+            </TabsList>
+          </Tabs>
           <Button
             variant={dueToday ? "default" : "outline"}
             size="sm"
@@ -98,16 +120,6 @@ export function TasksPage() {
             }}
           >
             Due Today
-          </Button>
-          <Button
-            variant={completed === "false" ? "default" : "outline"}
-            size="sm"
-            onClick={() => {
-              setCompleted(completed === "false" ? "" : "false");
-              setPage(DEFAULT_PAGE);
-            }}
-          >
-            Incomplete
           </Button>
         </div>
       </div>
@@ -205,34 +217,43 @@ export function TasksPage() {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    {!task.completed && (
+                    <div className="flex items-center justify-end gap-1">
+                      <Button variant="ghost" size="sm" asChild>
+                        <Link href={`${basePath}/crm/tasks/${task.id}/edit`}>
+                          <Pencil className="h-4 w-4 mr-1" />
+                          Edit
+                        </Link>
+                      </Button>
+                      {!task.completed && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => {
+                            completeMutation.mutate(task.id, {
+                              onSuccess: () =>
+                                toast({ title: "Task completed" }),
+                            });
+                          }}
+                        >
+                          <Check className="h-4 w-4 mr-1" />
+                          Complete
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
+                        className="text-destructive"
                         onClick={() => {
-                          completeMutation.mutate(task.id, {
-                            onSuccess: () => toast({ title: "Task completed" }),
-                          });
+                          if (confirm("Delete this task?")) {
+                            deleteMutation.mutate(task.id, {
+                              onSuccess: () => toast({ title: "Task deleted" }),
+                            });
+                          }
                         }}
                       >
-                        <Check className="h-4 w-4 mr-1" />
-                        Complete
+                        Delete
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-destructive"
-                      onClick={() => {
-                        if (confirm("Delete this task?")) {
-                          deleteMutation.mutate(task.id, {
-                            onSuccess: () => toast({ title: "Task deleted" }),
-                          });
-                        }
-                      }}
-                    >
-                      Delete
-                    </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
               ))
