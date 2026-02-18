@@ -7,6 +7,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +15,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoreHorizontal, Pencil, Trash2, Warehouse, Store } from "lucide-react";
@@ -24,6 +26,9 @@ interface LocationTableProps {
   locations: Location[];
   isLoading?: boolean;
   canManage: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onEdit: (location: Location) => void;
   onDelete: (location: Location) => void;
 }
@@ -32,9 +37,13 @@ export function LocationTable({
   locations,
   isLoading,
   canManage,
+  sortBy,
+  sortOrder,
+  onSort,
   onEdit,
   onDelete,
 }: LocationTableProps) {
+  const canSort = Boolean(onSort);
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -47,7 +56,7 @@ export function LocationTable({
               <TableHead>Address</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Inventory Items</TableHead>
-              {canManage && <TableHead className="w-[70px]">Actions</TableHead>}
+              <TableHead className="w-[70px]">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -71,11 +80,9 @@ export function LocationTable({
                 <TableCell>
                   <Skeleton className="h-4 w-12" />
                 </TableCell>
-                {canManage && (
-                  <TableCell>
-                    <Skeleton className="h-8 w-8" />
-                  </TableCell>
-                )}
+                <TableCell>
+                  <Skeleton className="h-8 w-8" />
+                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -101,13 +108,36 @@ export function LocationTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>Type</TableHead>
+            {canSort ? (
+              <>
+                <SortableTableHead
+                  sortKey="name"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Name
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="type"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Type
+                </SortableTableHead>
+              </>
+            ) : (
+              <>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+              </>
+            )}
             <TableHead>Default warehouse</TableHead>
             <TableHead>Address</TableHead>
             <TableHead>Status</TableHead>
             <TableHead>Inventory Items</TableHead>
-            {canManage && <TableHead className="w-[70px]">Actions</TableHead>}
+            <TableHead className="w-[70px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -146,31 +176,47 @@ export function LocationTable({
                 </Badge>
               </TableCell>
               <TableCell>{location._count?.inventory || 0}</TableCell>
-              {canManage && (
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Actions</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit(location)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => onDelete(location)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        {location.isActive ? "Deactivate" : "Delete"}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              )}
+              <TableCell>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                      <MoreHorizontal className="h-4 w-4" />
+                      <span className="sr-only">Actions</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    {canManage ? (
+                      <>
+                        <DropdownMenuItem onClick={() => onEdit(location)}>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          className="text-destructive"
+                          onClick={() => onDelete(location)}
+                        >
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {location.isActive ? "Deactivate" : "Delete"}
+                        </DropdownMenuItem>
+                      </>
+                    ) : (
+                      <>
+                        <DropdownMenuLabel className="text-muted-foreground font-normal">
+                          Only Super Admins can edit or deactivate locations.
+                        </DropdownMenuLabel>
+                        <DropdownMenuItem disabled>
+                          <Pencil className="mr-2 h-4 w-4" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem disabled className="text-destructive">
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {location.isActive ? "Deactivate" : "Delete"}
+                        </DropdownMenuItem>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>

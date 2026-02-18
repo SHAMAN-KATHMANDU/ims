@@ -12,6 +12,7 @@ import {
   useDeleteLocation,
   type Location,
   type LocationType,
+  type LocationStatusFilter,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/useLocation";
@@ -30,7 +31,16 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { SortOrder } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
+import { Label } from "@/components/ui/label";
 
 export function LocationsPage() {
   const params = useParams();
@@ -41,9 +51,13 @@ export function LocationsPage() {
   const isSuperAdmin = useAuthStore(selectIsSuperAdmin);
   const isMobile = useIsMobile();
 
-  // Pagination state
+  // Pagination and filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<LocationType | "all">("all");
+  const [statusFilter, setStatusFilter] = useState<LocationStatusFilter>("all");
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
 
   // Dialog states
   const [formOpen, setFormOpen] = useState(false);
@@ -61,6 +75,10 @@ export function LocationsPage() {
     page,
     limit: DEFAULT_LIMIT,
     search,
+    type: typeFilter === "all" ? undefined : typeFilter,
+    status: statusFilter,
+    sortBy,
+    sortOrder,
   });
 
   const locations = locationsResponse?.data ?? [];
@@ -74,6 +92,25 @@ export function LocationsPage() {
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearch(e.target.value);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+
+  const handleTypeChange = useCallback((value: string) => {
+    setTypeFilter(value as LocationType | "all");
+    setPage(DEFAULT_PAGE);
+  }, []);
+
+  const handleStatusChange = useCallback((value: string) => {
+    setStatusFilter(value as LocationStatusFilter);
+    setPage(DEFAULT_PAGE);
+  }, []);
+
+  const handleSort = useCallback(
+    (newSortBy: string, newSortOrder: SortOrder) => {
+      setSortBy(newSortBy);
+      setSortOrder(newSortOrder);
       setPage(DEFAULT_PAGE);
     },
     [],
@@ -142,12 +179,19 @@ export function LocationsPage() {
       setLocationToDelete(null);
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : "Failed to delete location";
+        error instanceof Error
+          ? error.message
+          : typeof (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message === "string"
+            ? (error as { response: { data: { message: string } } }).response
+                .data.message
+            : "Failed to delete location";
       toast({
         title: "Error",
         description: message,
         variant: "destructive",
       });
+      setLocationToDelete(null);
     }
   };
 
@@ -160,44 +204,81 @@ export function LocationsPage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative max-w-sm">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Search locations..."
-            value={search}
-            onChange={handleSearchChange}
-            className="pl-9"
-          />
-        </div>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
+            <div className="relative max-w-sm">
+              <Label htmlFor="locations-search" className="sr-only">
+                Search by name or address
+              </Label>
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                id="locations-search"
+                placeholder="Search by name or address..."
+                value={search}
+                onChange={handleSearchChange}
+                className="pl-9"
+              />
+            </div>
+            <div className="flex flex-col gap-2 sm:w-[180px]">
+              <Label htmlFor="locations-type">Type</Label>
+              <Select value={typeFilter} onValueChange={handleTypeChange}>
+                <SelectTrigger id="locations-type">
+                  <SelectValue placeholder="All types" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
+                  <SelectItem value="SHOWROOM">Showroom</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2 sm:w-[180px]">
+              <Label htmlFor="locations-status">Status</Label>
+              <Select value={statusFilter} onValueChange={handleStatusChange}>
+                <SelectTrigger id="locations-status">
+                  <SelectValue placeholder="All statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All statuses</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="inactive">Inactive</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
 
-        {isSuperAdmin &&
-          (isMobile ? (
-            <Button asChild>
-              <Link href={`${basePath}/locations/new`} className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Location
-              </Link>
-            </Button>
-          ) : (
-            <LocationForm
-              open={formOpen}
-              onOpenChange={setFormOpen}
-              editingLocation={editingLocation}
-              onSubmit={handleSubmit}
-              onReset={handleReset}
-              isLoading={
-                createLocationMutation.isPending ||
-                updateLocationMutation.isPending
-              }
-            />
-          ))}
+          {isSuperAdmin &&
+            (isMobile ? (
+              <Button asChild>
+                <Link href={`${basePath}/locations/new`} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Location
+                </Link>
+              </Button>
+            ) : (
+              <LocationForm
+                open={formOpen}
+                onOpenChange={setFormOpen}
+                editingLocation={editingLocation}
+                onSubmit={handleSubmit}
+                onReset={handleReset}
+                isLoading={
+                  createLocationMutation.isPending ||
+                  updateLocationMutation.isPending
+                }
+              />
+            ))}
+        </div>
       </div>
 
       <LocationTable
         locations={locations}
         isLoading={isLoading}
         canManage={isSuperAdmin}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleSort}
         onEdit={handleEdit}
         onDelete={setLocationToDelete}
       />
@@ -218,13 +299,20 @@ export function LocationsPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {deleteLocationMutation.isPending
-                ? "Deactivating..."
-                : "Deactivate"}
+            <AlertDialogAction asChild>
+              <Button
+                type="button"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                disabled={deleteLocationMutation.isPending}
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleDelete();
+                }}
+              >
+                {deleteLocationMutation.isPending
+                  ? "Deactivating..."
+                  : "Deactivate"}
+              </Button>
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

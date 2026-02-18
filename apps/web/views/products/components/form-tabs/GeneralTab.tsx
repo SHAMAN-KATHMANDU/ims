@@ -155,7 +155,8 @@ export function GeneralTab({
             className="w-full"
           />
           <p className="text-xs text-muted-foreground">
-            New product stock will be added to this location. If not set, the system default warehouse is used.
+            New product stock will be added to this location. If not set, the
+            system default warehouse is used.
           </p>
         </div>
       )}

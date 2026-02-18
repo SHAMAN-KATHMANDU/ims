@@ -31,6 +31,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Search } from "lucide-react";
@@ -61,6 +62,8 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const [showActiveOnly, setShowActiveOnly] = useState(true);
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<PromoCode | null>(null);
@@ -70,6 +73,8 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
     limit: pageSize,
     search,
     isActive: showActiveOnly ? true : undefined,
+    sortBy,
+    sortOrder,
   });
 
   const promos = promosResponse?.data ?? [];
@@ -237,7 +242,18 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Code</TableHead>
+                  <SortableTableHead
+                    sortKey="code"
+                    currentSortBy={sortBy}
+                    currentSortOrder={sortOrder}
+                    onSort={(by, order) => {
+                      setSortBy(by);
+                      setSortOrder(order);
+                      setPage(DEFAULT_PAGE);
+                    }}
+                  >
+                    Code
+                  </SortableTableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Value</TableHead>
                   <TableHead>Eligibility</TableHead>

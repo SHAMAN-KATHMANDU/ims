@@ -17,9 +17,16 @@ interface SaleSelectionState {
   isSelected: (saleId: string) => boolean;
 }
 
-export const useSaleSelectionStore = create<SaleSelectionState>()((set, get) => {
+export const useSaleSelectionStore = create<SaleSelectionState>()((
+  set,
+  get,
+) => {
   const impl = selectionStoreImpl(
-    set as (p: Record<string, unknown> | ((s: Record<string, unknown>) => Record<string, unknown>)) => void,
+    set as (
+      p:
+        | Record<string, unknown>
+        | ((s: Record<string, unknown>) => Record<string, unknown>),
+    ) => void,
     get as unknown as () => Record<string, unknown>,
     "selectedSaleIds",
   );

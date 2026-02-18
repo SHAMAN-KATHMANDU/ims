@@ -35,12 +35,18 @@ export interface Location {
   };
 }
 
+export type LocationStatusFilter = "all" | "active" | "inactive";
+
 export interface LocationListParams {
   page?: number;
   limit?: number;
   search?: string;
   type?: LocationType;
+  /** @deprecated Use status instead */
   activeOnly?: boolean;
+  status?: LocationStatusFilter;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export type { PaginationMeta };
@@ -94,6 +100,9 @@ export async function getLocations(
     search = "",
     type,
     activeOnly,
+    status,
+    sortBy,
+    sortOrder,
   } = params;
 
   const queryParams = new URLSearchParams();
@@ -107,6 +116,15 @@ export async function getLocations(
   }
   if (activeOnly) {
     queryParams.set("activeOnly", "true");
+  }
+  if (status && status !== "all") {
+    queryParams.set("status", status);
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
   }
 
   try {

@@ -1,8 +1,21 @@
 "use client";
 
 import * as React from "react";
+import { ArrowDownIcon, ArrowUpIcon, ArrowUpDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+
+export type SortOrder = "asc" | "desc";
+
+export interface SortableTableHeadProps extends React.ComponentProps<
+  typeof TableHead
+> {
+  sortKey: string;
+  currentSortBy?: string;
+  currentSortOrder?: SortOrder;
+  onSort: (sortBy: string, sortOrder: SortOrder) => void;
+  children: React.ReactNode;
+}
 
 function Table({ className, ...props }: React.ComponentProps<"table">) {
   return (
@@ -78,6 +91,48 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   );
 }
 
+function SortableTableHead({
+  sortKey,
+  currentSortBy,
+  currentSortOrder,
+  onSort,
+  children,
+  className,
+  ...props
+}: SortableTableHeadProps) {
+  const isActive = currentSortBy === sortKey;
+  const handleClick = () => {
+    if (isActive && currentSortOrder === "asc") {
+      onSort(sortKey, "desc");
+    } else {
+      onSort(sortKey, "asc");
+    }
+  };
+  return (
+    <TableHead
+      className={cn("cursor-pointer select-none hover:bg-muted/50", className)}
+      {...props}
+    >
+      <button
+        type="button"
+        className="flex items-center gap-1.5 text-left font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 rounded"
+        onClick={handleClick}
+      >
+        {children}
+        {isActive ? (
+          currentSortOrder === "asc" ? (
+            <ArrowUpIcon className="h-4 w-4 shrink-0 opacity-70" />
+          ) : (
+            <ArrowDownIcon className="h-4 w-4 shrink-0 opacity-70" />
+          )
+        ) : (
+          <ArrowUpDownIcon className="h-4 w-4 shrink-0 opacity-40" />
+        )}
+      </button>
+    </TableHead>
+  );
+}
+
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
   return (
     <td
@@ -113,4 +168,5 @@ export {
   TableRow,
   TableCell,
   TableCaption,
+  SortableTableHead,
 };

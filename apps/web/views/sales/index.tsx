@@ -222,6 +222,15 @@ export function SalesPage() {
     setPage(DEFAULT_PAGE);
   }, []);
 
+  const handleColumnSort = useCallback(
+    (newSortBy: string, newSortOrder: "asc" | "desc") => {
+      setSortBy(newSortBy as "createdAt" | "total" | "subtotal" | "saleCode");
+      setSortOrder(newSortOrder);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+
   const handlePageSizeChange = useCallback((newSize: number) => {
     setPageSize(newSize);
     setPage(DEFAULT_PAGE);
@@ -468,6 +477,9 @@ export function SalesPage() {
       <SalesTable
         sales={sales}
         isLoading={salesLoading}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleColumnSort}
         onView={handleView}
         currentPage={salesPagination?.currentPage || 1}
         itemsPerPage={salesPagination?.itemsPerPage || DEFAULT_LIMIT}

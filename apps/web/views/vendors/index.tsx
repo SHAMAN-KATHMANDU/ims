@@ -38,6 +38,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Search, Eye, X } from "lucide-react";
@@ -59,6 +60,8 @@ export function VendorPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<string>("name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -70,6 +73,8 @@ export function VendorPage() {
     page,
     limit: pageSize,
     search,
+    sortBy,
+    sortOrder,
   });
 
   const vendors = vendorsResponse?.data ?? [];
@@ -336,7 +341,18 @@ export function VendorPage() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <SortableTableHead
+                    sortKey="name"
+                    currentSortBy={sortBy}
+                    currentSortOrder={sortOrder}
+                    onSort={(by, order) => {
+                      setSortBy(by);
+                      setSortOrder(order);
+                      setPage(DEFAULT_PAGE);
+                    }}
+                  >
+                    Name
+                  </SortableTableHead>
                   <TableHead>Contact</TableHead>
                   <TableHead>Phone</TableHead>
                   <TableHead>Address</TableHead>

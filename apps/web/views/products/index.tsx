@@ -1049,6 +1049,9 @@ export function ProductPage() {
           categories={categories}
           canSeeCostPrice={canSeeCostPrice}
           canManageProducts={canManageProducts}
+          sortBy={paginationParams.sortBy ?? "dateCreated"}
+          sortOrder={paginationParams.sortOrder ?? "desc"}
+          onSort={handleSortChange}
           onEdit={handleEditProduct}
           onDelete={setProductToDelete}
           filterBar={

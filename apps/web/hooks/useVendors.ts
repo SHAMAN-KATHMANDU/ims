@@ -43,6 +43,8 @@ export function useVendorsPaginated(params: VendorListParams = {}) {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
     search: params.search?.trim() || "",
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   };
 
   return useQuery({

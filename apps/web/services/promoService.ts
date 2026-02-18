@@ -51,6 +51,8 @@ export interface PromoListParams {
   limit?: number;
   search?: string;
   isActive?: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
 }
 
 export interface PaginatedPromosResponse {
@@ -97,6 +99,8 @@ export async function getPromos(
     limit = DEFAULT_LIMIT,
     search,
     isActive,
+    sortBy,
+    sortOrder,
   } = params;
 
   const queryParams = new URLSearchParams();
@@ -107,6 +111,12 @@ export async function getPromos(
   }
   if (typeof isActive === "boolean") {
     queryParams.set("isActive", String(isActive));
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
   }
 
   try {

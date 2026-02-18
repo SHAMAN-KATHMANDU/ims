@@ -16,6 +16,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -43,6 +44,9 @@ interface ProductTableProps {
   categories: Category[];
   canSeeCostPrice: boolean;
   canManageProducts: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   // Pagination props (required for server-side pagination)
@@ -155,6 +159,9 @@ export function ProductTable({
   categories,
   canSeeCostPrice,
   canManageProducts,
+  sortBy,
+  sortOrder,
+  onSort,
   onEdit,
   onDelete,
   pagination,
@@ -168,6 +175,7 @@ export function ProductTable({
   selectedProducts = new Set(),
   onSelectionChange,
 }: ProductTableProps) {
+  const canSort = Boolean(onSort);
   const [expandedProductId, setExpandedProductId] = useState<string | null>(
     null,
   );
@@ -277,8 +285,30 @@ export function ProductTable({
                   />
                 </TableHead>
               )}
-              <TableHead>IMS Code</TableHead>
-              <TableHead>Name</TableHead>
+              {canSort ? (
+                <SortableTableHead
+                  sortKey="imsCode"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  IMS Code
+                </SortableTableHead>
+              ) : (
+                <TableHead>IMS Code</TableHead>
+              )}
+              {canSort ? (
+                <SortableTableHead
+                  sortKey="name"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Name
+                </SortableTableHead>
+              ) : (
+                <TableHead>Name</TableHead>
+              )}
               <TableHead>Category</TableHead>
               {canSeeCostPrice && <TableHead>Cost Price</TableHead>}
               <TableHead>MRP</TableHead>

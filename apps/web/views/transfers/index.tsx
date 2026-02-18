@@ -62,6 +62,8 @@ export function TransfersPage() {
   const [statusFilter, setStatusFilter] = useState<TransferStatus | "ALL">(
     "ALL",
   );
+  const [sortBy, setSortBy] = useState<string>("createdAt");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Dialog state
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(
@@ -79,6 +81,8 @@ export function TransfersPage() {
       limit: DEFAULT_LIMIT,
       search,
       status: statusFilter === "ALL" ? undefined : statusFilter,
+      sortBy,
+      sortOrder,
     });
 
   const transfers = transfersResponse?.data ?? [];
@@ -113,6 +117,15 @@ export function TransfersPage() {
     setPage(DEFAULT_PAGE);
   }, []);
   const hasActiveFilters = search !== "" || statusFilter !== "ALL";
+
+  const handleColumnSort = useCallback(
+    (newSortBy: string, newSortOrder: "asc" | "desc") => {
+      setSortBy(newSortBy);
+      setSortOrder(newSortOrder);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
 
   const handleView = (transfer: Transfer) => {
     setSelectedTransferId(transfer.id);
@@ -277,6 +290,9 @@ export function TransfersPage() {
         transfers={transfers}
         isLoading={transfersLoading}
         canManage={isAdmin}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleColumnSort}
         onView={handleView}
         onApprove={handleApprove}
         onStartTransit={handleStartTransit}

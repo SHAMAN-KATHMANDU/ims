@@ -17,24 +17,29 @@ interface MemberSelectionState {
   isSelected: (memberId: string) => boolean;
 }
 
-export const useMemberSelectionStore = create<MemberSelectionState>()(
-  (set, get) => {
-    const impl = selectionStoreImpl(
-      set as (p: Record<string, unknown> | ((s: Record<string, unknown>) => Record<string, unknown>)) => void,
-      get as unknown as () => Record<string, unknown>,
-      "selectedMemberIds",
-    );
-    return {
-      selectedMemberIds: new Set(),
-      addMember: impl.add,
-      removeMember: impl.remove,
-      toggleMember: impl.toggle,
-      setMembers: impl.set,
-      clearSelection: impl.clearSelection,
-      isSelected: impl.isSelected,
-    };
-  },
-);
+export const useMemberSelectionStore = create<MemberSelectionState>()((
+  set,
+  get,
+) => {
+  const impl = selectionStoreImpl(
+    set as (
+      p:
+        | Record<string, unknown>
+        | ((s: Record<string, unknown>) => Record<string, unknown>),
+    ) => void,
+    get as unknown as () => Record<string, unknown>,
+    "selectedMemberIds",
+  );
+  return {
+    selectedMemberIds: new Set(),
+    addMember: impl.add,
+    removeMember: impl.remove,
+    toggleMember: impl.toggle,
+    setMembers: impl.set,
+    clearSelection: impl.clearSelection,
+    isSelected: impl.isSelected,
+  };
+});
 
 export const selectSelectedMemberIds = (state: MemberSelectionState) =>
   state.selectedMemberIds;

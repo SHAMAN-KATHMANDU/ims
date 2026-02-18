@@ -18,6 +18,7 @@ import {
   type CreateLocationData,
   type UpdateLocationData,
   type LocationType,
+  type LocationStatusFilter,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/services/locationService";
@@ -26,6 +27,7 @@ import {
 export type {
   Location,
   LocationListParams,
+  LocationStatusFilter,
   PaginatedLocationsResponse,
   CreateLocationData,
   UpdateLocationData,
@@ -63,6 +65,9 @@ export function useLocationsPaginated(params: LocationListParams = {}) {
     search: params.search?.trim() || "",
     type: params.type,
     activeOnly: params.activeOnly,
+    status: params.status,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
   };
 
   return useQuery({

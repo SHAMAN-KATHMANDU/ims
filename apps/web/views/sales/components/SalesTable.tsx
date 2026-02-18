@@ -9,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -25,6 +26,9 @@ import { Eye } from "lucide-react";
 interface SalesTableProps {
   sales: Sale[];
   isLoading?: boolean;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onView: (sale: Sale) => void;
   currentPage?: number;
   itemsPerPage?: number;
@@ -36,12 +40,16 @@ interface SalesTableProps {
 export function SalesTable({
   sales,
   isLoading,
+  sortBy,
+  sortOrder,
+  onSort,
   onView,
   currentPage = 1,
   itemsPerPage = 10,
   selectedSales = new Set(),
   onSelectionChange,
 }: SalesTableProps) {
+  const canSort = Boolean(onSort);
   // Calculate starting serial number for current page
   const getSerialNumber = (index: number) => {
     return (currentPage - 1) * itemsPerPage + index + 1;
@@ -204,14 +212,48 @@ export function SalesTable({
                 />
               </TableHead>
             )}
-            <TableHead>Sale Code</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="saleCode"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+              >
+                Sale Code
+              </SortableTableHead>
+            ) : (
+              <TableHead>Sale Code</TableHead>
+            )}
             <TableHead>Type</TableHead>
             <TableHead>Credit</TableHead>
             <TableHead>Location</TableHead>
             <TableHead>Customer</TableHead>
-            <TableHead className="text-right">Total</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="total"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+                className="text-right"
+              >
+                Total
+              </SortableTableHead>
+            ) : (
+              <TableHead className="text-right">Total</TableHead>
+            )}
             <TableHead>Payment Method</TableHead>
-            <TableHead>Date</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="createdAt"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+              >
+                Date
+              </SortableTableHead>
+            ) : (
+              <TableHead>Date</TableHead>
+            )}
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -224,102 +266,102 @@ export function SalesTable({
             // Amber row only when credit sale is still unpaid; white when fully paid
             const isCreditUnpaid = isCredit && !fullyPaid;
             return (
-            <TableRow
-              key={sale.id}
-              className={
-                isCreditUnpaid
-                  ? "bg-amber-50/50 dark:bg-amber-950/20"
-                  : undefined
-              }
-            >
-              <TableCell className="text-muted-foreground">
-                {getSerialNumber(index)}
-              </TableCell>
-              {onSelectionChange && (
-                <TableCell
-                  onClick={(e) => e.stopPropagation()}
-                  className="w-12"
-                >
-                  <Checkbox
-                    checked={selectedSales.has(sale.id)}
-                    onCheckedChange={(checked) =>
-                      handleSelectSale(sale.id, checked === true)
-                    }
-                    aria-label={`Select ${sale.saleCode}`}
-                  />
+              <TableRow
+                key={sale.id}
+                className={
+                  isCreditUnpaid
+                    ? "bg-amber-50/50 dark:bg-amber-950/20"
+                    : undefined
+                }
+              >
+                <TableCell className="text-muted-foreground">
+                  {getSerialNumber(index)}
                 </TableCell>
-              )}
-              <TableCell className="font-medium">{sale.saleCode}</TableCell>
-              <TableCell>
-                <Badge
-                  className={getSaleTypeColor(sale.type)}
-                  variant="outline"
-                >
-                  {getSaleTypeLabel(sale.type)}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {isCredit ? (
-                  fullyPaid ? (
-                    <Badge
-                      variant="outline"
-                      className="bg-muted/50 text-foreground dark:text-white"
-                    >
-                      Yes (Paid)
-                    </Badge>
+                {onSelectionChange && (
+                  <TableCell
+                    onClick={(e) => e.stopPropagation()}
+                    className="w-12"
+                  >
+                    <Checkbox
+                      checked={selectedSales.has(sale.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectSale(sale.id, checked === true)
+                      }
+                      aria-label={`Select ${sale.saleCode}`}
+                    />
+                  </TableCell>
+                )}
+                <TableCell className="font-medium">{sale.saleCode}</TableCell>
+                <TableCell>
+                  <Badge
+                    className={getSaleTypeColor(sale.type)}
+                    variant="outline"
+                  >
+                    {getSaleTypeLabel(sale.type)}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {isCredit ? (
+                    fullyPaid ? (
+                      <Badge
+                        variant="outline"
+                        className="bg-muted/50 text-foreground dark:text-white"
+                      >
+                        Yes (Paid)
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                      >
+                        Yes
+                      </Badge>
+                    )
                   ) : (
-                    <Badge
-                      variant="outline"
-                      className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
-                    >
-                      Yes
-                    </Badge>
-                  )
-                ) : (
-                  <span className="text-muted-foreground">No</span>
-                )}
-              </TableCell>
-              <TableCell>{sale.location.name}</TableCell>
-              <TableCell>
-                {sale.member ? (
-                  <div>
-                    <div className="font-medium">{sale.member.phone}</div>
-                    {sale.member.name && (
-                      <div className="text-sm text-muted-foreground">
-                        {sale.member.name}
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <span className="text-muted-foreground">
-                    Walk-in Customer
-                  </span>
-                )}
-              </TableCell>
-              <TableCell className="text-right font-medium">
-                {formatCurrency(Number(sale.total))}
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline">
-                  {sale.payments && sale.payments.length > 0
-                    ? (sale.payments[0]?.method ?? "N/A")
-                    : "N/A"}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                {format(new Date(sale.createdAt), "MMM d, yyyy h:mm a")}
-              </TableCell>
-              <TableCell className="text-right">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => onView(sale)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </TableCell>
-            </TableRow>
-          );
+                    <span className="text-muted-foreground">No</span>
+                  )}
+                </TableCell>
+                <TableCell>{sale.location.name}</TableCell>
+                <TableCell>
+                  {sale.member ? (
+                    <div>
+                      <div className="font-medium">{sale.member.phone}</div>
+                      {sale.member.name && (
+                        <div className="text-sm text-muted-foreground">
+                          {sale.member.name}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-muted-foreground">
+                      Walk-in Customer
+                    </span>
+                  )}
+                </TableCell>
+                <TableCell className="text-right font-medium">
+                  {formatCurrency(Number(sale.total))}
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline">
+                    {sale.payments && sale.payments.length > 0
+                      ? (sale.payments[0]?.method ?? "N/A")
+                      : "N/A"}
+                  </Badge>
+                </TableCell>
+                <TableCell>
+                  {format(new Date(sale.createdAt), "MMM d, yyyy h:mm a")}
+                </TableCell>
+                <TableCell className="text-right">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => onView(sale)}
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                </TableCell>
+              </TableRow>
+            );
           })}
         </TableBody>
       </Table>
