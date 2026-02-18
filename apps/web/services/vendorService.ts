@@ -43,6 +43,17 @@ export interface VendorListParams {
   sortOrder?: "asc" | "desc";
 }
 
+export interface VendorProductsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface PaginatedVendorProductsResponse {
+  data: VendorProduct[];
+  pagination: PaginationMeta;
+}
+
 export interface PaginatedVendorsResponse {
   data: Vendor[];
   pagination: PaginationMeta;
@@ -114,6 +125,39 @@ export async function getVendorById(id: string): Promise<Vendor> {
     return response.data.vendor;
   } catch (error) {
     handleApiError(error, `fetch vendor "${id}"`);
+  }
+}
+
+interface VendorProductsApiResponse {
+  message: string;
+  data: VendorProduct[];
+  pagination: PaginationMeta;
+}
+
+export async function getVendorProducts(
+  vendorId: string,
+  params: VendorProductsParams = {},
+): Promise<PaginatedVendorProductsResponse> {
+  if (!vendorId?.trim()) {
+    throw new Error("Vendor ID is required");
+  }
+  const { page = DEFAULT_PAGE, limit = 10, search } = params;
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search?.trim()) {
+    queryParams.set("search", search.trim());
+  }
+  try {
+    const response = await api.get<VendorProductsApiResponse>(
+      `/vendors/${vendorId}/products?${queryParams.toString()}`,
+    );
+    return {
+      data: response.data.data ?? [],
+      pagination: response.data.pagination,
+    };
+  } catch (error) {
+    handleApiError(error, `fetch products for vendor "${vendorId}"`);
   }
 }
 

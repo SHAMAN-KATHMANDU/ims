@@ -90,6 +90,46 @@ vendorRouter.get(
 
 /**
  * @swagger
+ * /vendors/{id}/products:
+ *   get:
+ *     summary: Get vendor products (paginated)
+ *     tags: [Vendors]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vendor products retrieved successfully
+ *       404:
+ *         description: Vendor not found
+ */
+vendorRouter.get(
+  "/:id/products",
+  verifyToken,
+  authorizeRoles("admin", "user", "superAdmin"),
+  vendorController.getVendorProducts,
+);
+
+/**
+ * @swagger
  * /vendors/{id}:
  *   get:
  *     summary: Get vendor by ID

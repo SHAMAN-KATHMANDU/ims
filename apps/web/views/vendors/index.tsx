@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
@@ -10,8 +10,8 @@ import {
   useUpdateVendor,
   useDeleteVendor,
   useVendor,
+  useVendorProducts,
   type Vendor,
-  type VendorProduct,
   type CreateOrUpdateVendorData,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
@@ -25,6 +25,15 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   Dialog,
   DialogContent,
@@ -68,6 +77,11 @@ export function VendorPage() {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [activeVendorId, setActiveVendorId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
+  const [productPage, setProductPage] = useState(DEFAULT_PAGE);
+  const productLimit = 10;
+  const [deleteBlockedVendor, setDeleteBlockedVendor] = useState<Vendor | null>(
+    null,
+  );
 
   const { data: vendorsResponse, isLoading } = useVendorsPaginated({
     page,
@@ -81,16 +95,14 @@ export function VendorPage() {
   const pagination = vendorsResponse?.pagination;
 
   const { data: activeVendor } = useVendor(activeVendorId || "");
-  const filteredProducts: VendorProduct[] = useMemo(() => {
-    if (!activeVendor?.products) return [];
-    const term = productSearch.trim().toLowerCase();
-    if (!term) return activeVendor.products;
-    return activeVendor.products.filter((p) => {
-      const name = p.name.toLowerCase();
-      const code = p.imsCode.toLowerCase();
-      return name.includes(term) || code.includes(term);
+  const { data: vendorProductsResponse, isLoading: vendorProductsLoading } =
+    useVendorProducts(activeVendorId || "", {
+      page: productPage,
+      limit: productLimit,
+      search: productSearch,
     });
-  }, [activeVendor, productSearch]);
+  const vendorProducts = vendorProductsResponse?.data ?? [];
+  const vendorProductsPagination = vendorProductsResponse?.pagination;
 
   const createMutation = useCreateVendor();
   const updateMutation = useUpdateVendor();
@@ -153,6 +165,11 @@ export function VendorPage() {
   };
 
   const handleDelete = async (vendor: Vendor) => {
+    const productCount = vendor._count?.products ?? 0;
+    if (productCount > 0) {
+      setDeleteBlockedVendor(vendor);
+      return;
+    }
     if (!confirm(`Are you sure you want to delete vendor "${vendor.name}"?`)) {
       return;
     }
@@ -163,12 +180,13 @@ export function VendorPage() {
         description: `Vendor "${vendor.name}" has been deleted.`,
       });
     } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to delete vendor. Please try again.";
       toast({
-        title: "Error",
-        description:
-          error instanceof Error
-            ? error.message
-            : "Failed to delete vendor. Make sure it has no products.",
+        title: "Cannot delete vendor",
+        description: message,
         variant: "destructive",
       });
     }
@@ -198,6 +216,39 @@ export function VendorPage() {
 
   return (
     <div className="space-y-6">
+      {/* Block delete when vendor has associated products */}
+      <AlertDialog
+        open={!!deleteBlockedVendor}
+        onOpenChange={(open) => {
+          if (!open) setDeleteBlockedVendor(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cannot delete vendor</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteBlockedVendor && (
+                <>
+                  This vendor is linked to{" "}
+                  <strong>
+                    {deleteBlockedVendor._count?.products ?? 0} product
+                    {(deleteBlockedVendor._count?.products ?? 0) === 1
+                      ? ""
+                      : "s"}
+                  </strong>
+                  . Please reassign or remove those products first.
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setDeleteBlockedVendor(null)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Vendors</h1>
@@ -243,6 +294,7 @@ export function VendorPage() {
           if (!open) {
             setActiveVendorId(null);
             setProductSearch("");
+            setProductPage(DEFAULT_PAGE);
           }
         }}
       >
@@ -259,7 +311,10 @@ export function VendorPage() {
                 placeholder="Search products by name or IMS code..."
                 className="pl-8"
                 value={productSearch}
-                onChange={(e) => setProductSearch(e.target.value)}
+                onChange={(e) => {
+                  setProductSearch(e.target.value);
+                  setProductPage(DEFAULT_PAGE);
+                }}
               />
             </div>
             <div className="rounded-md border">
@@ -273,7 +328,16 @@ export function VendorPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProducts.length === 0 ? (
+                  {vendorProductsLoading ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={4}
+                        className="text-center py-6 text-muted-foreground"
+                      >
+                        Loading products…
+                      </TableCell>
+                    </TableRow>
+                  ) : vendorProducts.length === 0 ? (
                     <TableRow>
                       <TableCell
                         colSpan={4}
@@ -283,7 +347,7 @@ export function VendorPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filteredProducts.map((product) => (
+                    vendorProducts.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell className="font-mono">
                           {product.imsCode}
@@ -301,6 +365,21 @@ export function VendorPage() {
                 </TableBody>
               </Table>
             </div>
+            {vendorProductsPagination &&
+              vendorProductsPagination.totalItems > 0 && (
+                <DataTablePagination
+                  pagination={{
+                    currentPage: vendorProductsPagination.currentPage,
+                    totalPages: vendorProductsPagination.totalPages,
+                    totalItems: vendorProductsPagination.totalItems,
+                    itemsPerPage: vendorProductsPagination.itemsPerPage,
+                    hasNextPage: vendorProductsPagination.hasNextPage,
+                    hasPrevPage: vendorProductsPagination.hasPrevPage,
+                  }}
+                  onPageChange={setProductPage}
+                  isLoading={vendorProductsLoading}
+                />
+              )}
           </div>
         </DialogContent>
       </Dialog>
