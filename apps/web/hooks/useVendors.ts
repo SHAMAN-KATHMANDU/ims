@@ -75,7 +75,7 @@ export function useVendorProducts(
 ) {
   const normalizedParams: VendorProductsParams = {
     page: params.page ?? DEFAULT_PAGE,
-    limit: params.limit ?? 20,
+    limit: params.limit ?? 10,
     search: params.search?.trim() ?? "",
   };
 

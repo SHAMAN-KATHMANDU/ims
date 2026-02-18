@@ -141,7 +141,7 @@ export async function getVendorProducts(
   if (!vendorId?.trim()) {
     throw new Error("Vendor ID is required");
   }
-  const { page = DEFAULT_PAGE, limit = 20, search } = params;
+  const { page = DEFAULT_PAGE, limit = 10, search } = params;
   const queryParams = new URLSearchParams();
   queryParams.set("page", String(page));
   queryParams.set("limit", String(limit));

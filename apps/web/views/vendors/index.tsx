@@ -78,7 +78,7 @@ export function VendorPage() {
   const [activeVendorId, setActiveVendorId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
   const [productPage, setProductPage] = useState(DEFAULT_PAGE);
-  const productLimit = 20;
+  const productLimit = 10;
   const [deleteBlockedVendor, setDeleteBlockedVendor] = useState<Vendor | null>(
     null,
   );
