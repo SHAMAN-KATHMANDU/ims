@@ -1385,6 +1385,7 @@ class ProductController {
   async bulkUploadProducts(req: Request, res: Response) {
     const errors: ValidationError[] = [];
     const createdProducts: any[] = [];
+    const updatedProducts: any[] = [];
     const skippedProducts: any[] = [];
 
     try {
@@ -1413,6 +1414,7 @@ class ProductController {
       // Map of expected headers to their normalized forms
       const headerMappings: Record<string, string[]> = {
         imsCode: ["imscode", "ims_code", "ims"],
+        location: ["location", "locationname", "location_id", "locationid"],
         category: ["category"],
         subCategory: ["subcategory", "sub-category", "sub_category"],
         name: ["nameofproduct", "name", "productname", "product_name"],
@@ -1517,6 +1519,7 @@ class ProductController {
         // Validate that required columns are found
         const requiredColumns = [
           "imsCode",
+          "location",
           "category",
           "name",
           "variation",
@@ -1533,7 +1536,7 @@ class ProductController {
             message: "Missing required columns in CSV file",
             missingColumns,
             foundColumns: Object.keys(csvColumnMap),
-            hint: "Please ensure your CSV file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+            hint: "Please ensure your CSV file has headers: IMS Code, Location, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
           });
         }
 
@@ -1549,6 +1552,7 @@ class ProductController {
 
           const rowData = {
             imsCode: getCellValue("imsCode"),
+            location: getCellValue("location"),
             category: getCellValue("category"),
             subCategory: getCellValue("subCategory"),
             name: getCellValue("name"),
@@ -1666,6 +1670,7 @@ class ProductController {
         // Validate that required columns are found
         const requiredColumns = [
           "imsCode",
+          "location",
           "category",
           "name",
           "variation",
@@ -1682,7 +1687,7 @@ class ProductController {
             message: "Missing required columns in Excel file",
             missingColumns,
             foundColumns: Object.keys(excelColumnMap),
-            hint: "Please ensure your Excel file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+            hint: "Please ensure your Excel file has headers: IMS Code, Location, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
           });
         }
 
@@ -1699,6 +1704,7 @@ class ProductController {
 
           const rowData = {
             imsCode: getCellValue("imsCode"),
+            location: getCellValue("location"),
             category: getCellValue("category"),
             subCategory: getCellValue("subCategory"),
             name: getCellValue("name"),
@@ -1758,15 +1764,23 @@ class ProductController {
       }
 
       const tenantId = req.user!.tenantId;
-      // Get all categories and discount types for lookup (tenant-scoped)
-      const allCategories = await prisma.category.findMany({
-        where: { tenantId },
-        select: { id: true, name: true },
-      });
-      const allDiscountTypes = await prisma.discountType.findMany({
-        where: { tenantId },
-        select: { id: true, name: true },
-      });
+      // Get all categories, discount types, and locations for lookup (tenant-scoped)
+      const [allCategories, allDiscountTypes, allLocations] = await Promise.all(
+        [
+          prisma.category.findMany({
+            where: { tenantId },
+            select: { id: true, name: true },
+          }),
+          prisma.discountType.findMany({
+            where: { tenantId },
+            select: { id: true, name: true },
+          }),
+          prisma.location.findMany({
+            where: { tenantId, isActive: true },
+            select: { id: true, name: true },
+          }),
+        ],
+      );
 
       // Create lookup maps
       const categoryMap = new Map(
@@ -1775,14 +1789,41 @@ class ProductController {
       const discountTypeMap = new Map(
         allDiscountTypes.map((dt) => [dt.name.toLowerCase(), dt.id]),
       );
+      const locationByNameMap = new Map(
+        allLocations.map((loc) => [loc.name.toLowerCase().trim(), loc.id]),
+      );
+      const locationByIdMap = new Map(
+        allLocations.map((loc) => [loc.id, loc.id]),
+      );
 
-      // Group rows by IMS code and name (same product, different variations)
+      // Resolve location for each row; invalid location -> row-level error and exclude from processing
+      type RowWithLocation = ExcelProductRow & { locationId: string };
+      const rowsWithLocation: RowWithLocation[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const locationInput = String(row.location).trim();
+        const locationId =
+          locationByIdMap.get(locationInput) ??
+          locationByNameMap.get(locationInput.toLowerCase());
+        if (!locationId) {
+          errors.push({
+            row: i + 2,
+            field: "location",
+            message: `Location "${locationInput}" not found. Use an existing showroom/warehouse name or ID.`,
+            value: locationInput,
+          });
+          continue;
+        }
+        rowsWithLocation.push({ ...row, locationId });
+      }
+
+      // Group rows by IMS code and name (same product, different variations/locations)
       const productGroups = new Map<
         string,
-        { product: ExcelProductRow; variations: ExcelProductRow[] }
+        { product: RowWithLocation; variations: RowWithLocation[] }
       >();
 
-      rows.forEach((row) => {
+      rowsWithLocation.forEach((row) => {
         const key = `${row.imsCode}-${row.name}`;
         if (!productGroups.has(key)) {
           productGroups.set(key, {
@@ -1864,30 +1905,81 @@ class ProductController {
             }
           }
 
-          // Check if product with this IMS code already exists
+          // Find product by IMS code (scoped to tenant); same IMS code in different locations is one product with multiple LocationInventory rows
           const existingProduct = await prisma.product.findFirst({
-            where: { imsCode: firstRow.imsCode },
+            where: { tenantId, imsCode: firstRow.imsCode },
+            include: { variations: true },
           });
 
           if (existingProduct) {
-            errors.push({
-              row: rows.indexOf(firstRow) + 2,
-              field: "imsCode",
-              message: `Product with IMS code "${firstRow.imsCode}" already exists`,
-              value: firstRow.imsCode,
-            });
-            skippedProducts.push({
-              imsCode: firstRow.imsCode,
-              name: firstRow.name,
-              reason: `Product with IMS code "${firstRow.imsCode}" already exists`,
+            // Product exists: upsert LocationInventory for each row (location + variation + quantity)
+            const variationByColor = new Map(
+              existingProduct.variations.map((v) => [v.color.toLowerCase(), v]),
+            );
+            let inventoryUpserted = 0;
+            for (const variationRow of variations) {
+              const variation = variationByColor.get(
+                variationRow.variation.toLowerCase(),
+              );
+              if (!variation) {
+                errors.push({
+                  row: rowsWithLocation.indexOf(variationRow) + 2,
+                  field: "variation",
+                  message: `Variation "${variationRow.variation}" does not exist for product ${firstRow.imsCode}. Add a row with this variation first or create the product.`,
+                  value: variationRow.variation,
+                });
+                continue;
+              }
+              const qty = variationRow.quantity ?? 0;
+              const existing = await prisma.locationInventory.findFirst({
+                where: {
+                  locationId: variationRow.locationId,
+                  variationId: variation.id,
+                  subVariationId: null,
+                },
+              });
+              if (existing) {
+                await prisma.locationInventory.update({
+                  where: { id: existing.id },
+                  data: { quantity: qty },
+                });
+              } else {
+                await prisma.locationInventory.create({
+                  data: {
+                    locationId: variationRow.locationId,
+                    variationId: variation.id,
+                    subVariationId: null,
+                    quantity: qty,
+                  },
+                });
+              }
+              inventoryUpserted++;
+            }
+            const locationNames = [
+              ...new Set(
+                variations.map(
+                  (r) =>
+                    allLocations.find((l) => l.id === r.locationId)?.name ??
+                    r.locationId,
+                ),
+              ),
+            ];
+            updatedProducts.push({
+              imsCode: existingProduct.imsCode,
+              name: existingProduct.name,
+              locations: locationNames,
+              inventoryRowsUpdated: inventoryUpserted,
             });
             continue;
           }
 
-          // Prepare variations
-          const productVariations = variations.map((variationRow) => ({
-            color: variationRow.variation,
-            stockQuantity: variationRow.quantity || 0,
+          // New product: create with variations (stock in LocationInventory per row)
+          const uniqueVariationColors = [
+            ...new Set(variations.map((v) => v.variation.trim())),
+          ];
+          const productVariations = uniqueVariationColors.map((color) => ({
+            color,
+            stockQuantity: 0,
           }));
 
           // Prepare discounts
@@ -1990,6 +2082,39 @@ class ProductController {
             },
           });
 
+          const variationByColor = new Map(
+            product.variations.map((v) => [v.color.toLowerCase(), v]),
+          );
+          for (const variationRow of variations) {
+            const variation = variationByColor.get(
+              variationRow.variation.toLowerCase(),
+            );
+            if (!variation) continue;
+            const qty = variationRow.quantity ?? 0;
+            const existing = await prisma.locationInventory.findFirst({
+              where: {
+                locationId: variationRow.locationId,
+                variationId: variation.id,
+                subVariationId: null,
+              },
+            });
+            if (existing) {
+              await prisma.locationInventory.update({
+                where: { id: existing.id },
+                data: { quantity: qty },
+              });
+            } else {
+              await prisma.locationInventory.create({
+                data: {
+                  locationId: variationRow.locationId,
+                  variationId: variation.id,
+                  subVariationId: null,
+                  quantity: qty,
+                },
+              });
+            }
+          }
+
           createdProducts.push({
             id: product.id,
             imsCode: product.imsCode,
@@ -1997,8 +2122,12 @@ class ProductController {
             variationsCount: product.variations?.length || 0,
           });
         } catch (error: any) {
+          const rowNum =
+            rowsWithLocation.indexOf(firstRow) >= 0
+              ? rowsWithLocation.indexOf(firstRow) + 2
+              : 2;
           errors.push({
-            row: rows.indexOf(firstRow) + 2,
+            row: rowNum,
             message: error.message || "Error creating product",
           });
           skippedProducts.push({
@@ -2022,10 +2151,12 @@ class ProductController {
         summary: {
           total: productGroups.size,
           created: createdProducts.length,
+          updated: updatedProducts.length,
           skipped: skippedProducts.length,
           errors: errors.length,
         },
         created: createdProducts,
+        updated: updatedProducts,
         skipped: skippedProducts,
         errors: errors,
       });
@@ -2050,6 +2181,7 @@ class ProductController {
 
       const headers = [
         { header: "IMS Code", width: 15 },
+        { header: "Location", width: 22 },
         { header: "Category", width: 18 },
         { header: "Sub-Category", width: 15 },
         { header: "Name of Product", width: 28 },
@@ -2068,6 +2200,7 @@ class ProductController {
         { header: "Wholesale Discount", width: 20 },
       ];
       const requiredOptional = [
+        "Required",
         "Required",
         "Required",
         "Optional",

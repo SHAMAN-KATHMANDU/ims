@@ -96,8 +96,10 @@ export function BulkUploadDialog({
         <DialogHeader>
           <DialogTitle>Bulk Upload Products</DialogTitle>
           <DialogDescription>
-            Upload an Excel or CSV file to create multiple products at once.
-            Download the template to see required and optional column headers.
+            Upload an Excel or CSV file to create or update products with
+            location-based stock. Include the <strong>Location</strong> column
+            (showroom/warehouse name or ID). The same IMS code can exist in
+            multiple locations. Download the template for required columns.
           </DialogDescription>
         </DialogHeader>
       )}
@@ -105,8 +107,10 @@ export function BulkUploadDialog({
         <div className="space-y-1 mb-4">
           <h2 className="text-2xl font-semibold">Bulk Upload Products</h2>
           <p className="text-muted-foreground text-sm">
-            Upload an Excel or CSV file to create multiple products at once.
-            Download the template to see required and optional column headers.
+            Upload an Excel or CSV file to create or update products with
+            location-based stock. Include the Location column
+            (showroom/warehouse name or ID). Download the template for required
+            columns.
           </p>
         </div>
       )}
@@ -260,6 +264,13 @@ export function BulkUploadDialog({
                     <span className="font-medium">Created:</span>{" "}
                     {uploadResult.summary.created}
                   </div>
+                  {(uploadResult.summary.updated ?? 0) > 0 && (
+                    <div className="text-blue-600">
+                      <CheckCircle2 className="h-4 w-4 inline mr-1" />
+                      <span className="font-medium">Updated:</span>{" "}
+                      {uploadResult.summary.updated}
+                    </div>
+                  )}
                   {uploadResult.summary.skipped > 0 && (
                     <div className="text-yellow-600">
                       <AlertCircle className="h-4 w-4 inline mr-1" />
@@ -296,6 +307,33 @@ export function BulkUploadDialog({
                           {product.imsCode} - {product.name} (
                           {product.variationsCount} variation
                           {product.variationsCount !== 1 ? "s" : ""})
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </ScrollArea>
+              </div>
+            )}
+
+            {/* Updated Products (inventory at locations) */}
+            {uploadResult.updated?.length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-blue-600">
+                  Inventory Updated ({uploadResult.updated.length})
+                </h4>
+                <ScrollArea className="h-32 rounded-md border p-2">
+                  <div className="space-y-1">
+                    {uploadResult.updated.map((product, idx) => (
+                      <div
+                        key={idx}
+                        className="text-xs flex items-center gap-2 text-blue-700"
+                      >
+                        <CheckCircle2 className="h-3 w-3" />
+                        <span>
+                          {product.imsCode} - {product.name} at{" "}
+                          {product.locations?.join(", ") ?? "—"} (
+                          {product.inventoryRowsUpdated} row
+                          {product.inventoryRowsUpdated !== 1 ? "s" : ""})
                         </span>
                       </div>
                     ))}

@@ -526,8 +526,16 @@ export interface BulkUploadError {
 export interface BulkUploadSummary {
   total: number;
   created: number;
+  updated: number;
   skipped: number;
   errors: number;
+}
+
+export interface UpdatedProduct {
+  imsCode: string;
+  name: string;
+  locations: string[];
+  inventoryRowsUpdated: number;
 }
 
 export interface CreatedProduct {
@@ -547,6 +555,7 @@ export interface BulkUploadResponse {
   message: string;
   summary: BulkUploadSummary;
   created: CreatedProduct[];
+  updated: UpdatedProduct[];
   skipped: SkippedProduct[];
   errors: BulkUploadError[];
 }
