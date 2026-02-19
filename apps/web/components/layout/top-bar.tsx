@@ -147,7 +147,9 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         )}
       </div>
       <div className="flex items-center gap-1 md:gap-2">
-        <NotificationsBell basePath={basePath} />
+        {user?.role !== "platformAdmin" && (
+          <NotificationsBell basePath={basePath} />
+        )}
         <Button
           variant="ghost"
           size="icon"
