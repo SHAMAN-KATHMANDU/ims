@@ -21,7 +21,7 @@ import { env } from "@/config/env";
 import { sendControllerError } from "@/utils/controllerError";
 
 class ProductController {
-  // Create product (admin and superAdmin only)
+  // Create product (admin and superAdmin only). Requires a valid warehouse/location before create (see location resolution below).
   async createProduct(req: Request, res: Response) {
     try {
       const {
@@ -68,11 +68,14 @@ class ProductController {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      // Get all categories and discount types for lookup
+      const tenantId = req.user!.tenantId;
+      // Get all categories and discount types for lookup (tenant-scoped)
       const allCategories = await prisma.category.findMany({
+        where: { tenantId },
         select: { id: true, name: true },
       });
       const allDiscountTypes = await prisma.discountType.findMany({
+        where: { tenantId },
         select: { id: true, name: true },
       });
 
@@ -109,17 +112,17 @@ class ProductController {
         for (const discount of discounts) {
           let discountType = null;
 
-          // Try by ID first
+          // Try by ID first (tenant-scoped)
           if (discount.discountTypeId) {
-            discountType = await prisma.discountType.findUnique({
-              where: { id: discount.discountTypeId },
+            discountType = await prisma.discountType.findFirst({
+              where: { id: discount.discountTypeId, tenantId },
             });
           }
 
           // If not found by ID, try by name
           if (!discountType && discount.discountTypeName) {
             discountType = await prisma.discountType.findFirst({
-              where: { name: discount.discountTypeName },
+              where: { name: discount.discountTypeName, tenantId },
             });
           }
 
@@ -132,7 +135,7 @@ class ProductController {
             )
           ) {
             discountType = await prisma.discountType.findFirst({
-              where: { name: discount.discountTypeId },
+              where: { name: discount.discountTypeId, tenantId },
             });
           }
 
@@ -186,11 +189,68 @@ class ProductController {
         }
       }
 
-      // Create product
+      const trimmedImsCode = (imsCode as string).trim();
+
+      // Explicit duplicate check (tenant-scoped) so we return a clear message and treat trimmed codes as same
+      const existingByImsCode = await prisma.product.findFirst({
+        where: { tenantId, imsCode: trimmedImsCode },
+      });
+      if (existingByImsCode) {
+        return res.status(409).json({
+          message: "Product with this IMS code already exists",
+        });
+      }
+
+      // --- Resolve target warehouse BEFORE creating product (data integrity: every product must be linked to a valid location) ---
+      const defaultLocationId = req.body.defaultLocationId as
+        | string
+        | undefined;
+      let warehouseLocation: { id: string } | null = null;
+
+      if (defaultLocationId) {
+        // Explicit location: must belong to tenant and be active (prefer warehouse)
+        const loc = await prisma.location.findFirst({
+          where: {
+            id: defaultLocationId,
+            tenantId,
+            isActive: true,
+          },
+          select: { id: true, type: true },
+        });
+        if (!loc) {
+          return res.status(400).json({
+            message:
+              "Product creation failed: the selected location is invalid or does not belong to your tenant.",
+          });
+        }
+        warehouseLocation = { id: loc.id };
+      }
+
+      if (!warehouseLocation) {
+        // No explicit location: require tenant's default warehouse (business rule: at least one default warehouse per tenant)
+        const defaultWarehouse = await prisma.location.findFirst({
+          where: {
+            tenantId,
+            type: "WAREHOUSE",
+            isDefaultWarehouse: true,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!defaultWarehouse) {
+          return res.status(400).json({
+            message:
+              "Product creation failed: tenant has no default warehouse configured. Please set a default warehouse in Locations.",
+          });
+        }
+        warehouseLocation = defaultWarehouse;
+      }
+
+      // Create product (we have a valid warehouseLocation; will link variations to it after create)
       const product = await prisma.product.create({
         data: {
-          tenantId: req.user!.tenantId,
-          imsCode: imsCode as string,
+          tenantId,
+          imsCode: trimmedImsCode,
           name: name as string,
           categoryId: category.id,
           description: description || null,
@@ -282,64 +342,41 @@ class ProductController {
         },
       });
 
-      // Add initial stock to default warehouse (or specified location) — only for variations without sub-variants
-      const defaultLocationId = req.body.defaultLocationId as
-        | string
-        | undefined;
-      let warehouseLocation: { id: string } | null = null;
-      if (defaultLocationId) {
-        const loc = await prisma.location.findFirst({
-          where: { id: defaultLocationId, isActive: true },
-          select: { id: true },
-        });
-        warehouseLocation = loc;
-      }
-      if (!warehouseLocation) {
-        warehouseLocation = await prisma.location.findFirst({
-          where: {
-            type: "WAREHOUSE",
-            isDefaultWarehouse: true,
-            isActive: true,
-          },
-          select: { id: true },
-        });
-      }
-      if (!warehouseLocation) {
-        warehouseLocation = await prisma.location.findFirst({
-          where: { type: "WAREHOUSE", isActive: true },
-          select: { id: true },
-        });
-      }
-      if (warehouseLocation && product.variations?.length) {
-        for (const v of product.variations) {
-          const hasSubVariants =
-            Array.isArray((v as any).subVariations) &&
-            (v as any).subVariations.length > 0;
-          if (hasSubVariants) continue; // stock is per location per sub-variant via inventory API
-          const qty = Number(v.stockQuantity) || 0;
-          if (qty > 0) {
-            await prisma.locationInventory.upsert({
+      // Link product to location (warehouseLocation already resolved and validated above)
+      try {
+        if (warehouseLocation && product.variations?.length) {
+          for (const v of product.variations) {
+            const hasSubVariants =
+              Array.isArray((v as any).subVariations) &&
+              (v as any).subVariations.length > 0;
+            if (hasSubVariants) continue; // stock is per location per sub-variant via inventory API
+            const qty = Math.max(0, Number(v.stockQuantity) || 0);
+            // Use findFirst + create/update because Prisma upsert with compound unique + null is unreliable
+            const existing = await prisma.locationInventory.findFirst({
               where: {
-                locationId_variationId_subVariationId: {
-                  locationId: warehouseLocation!.id,
-                  variationId: v.id,
-                  subVariationId: null,
-                } as any,
-              },
-              create: {
                 locationId: warehouseLocation!.id,
                 variationId: v.id,
                 subVariationId: null,
-                quantity: qty,
-              } as any,
-              update: { quantity: { increment: qty } },
+              },
             });
+            if (existing) {
+              await prisma.locationInventory.update({
+                where: { id: existing.id },
+                data: { quantity: { increment: qty } },
+              });
+            } else {
+              await prisma.locationInventory.create({
+                data: {
+                  locationId: warehouseLocation!.id,
+                  variationId: v.id,
+                  subVariationId: null,
+                  quantity: qty,
+                },
+              });
+            }
           }
         }
-      }
 
-      // Audit log: CREATE_PRODUCT
-      try {
         await prisma.auditLog.create({
           data: {
             userId: req.user!.id,
@@ -357,12 +394,13 @@ class ProductController {
             userAgent: req.get("user-agent") ?? undefined,
           },
         });
-      } catch (auditErr) {
+      } catch (postCreateErr) {
         logger.error(
-          "Audit log CREATE_PRODUCT failed",
+          "Post-create step failed (inventory link or audit log)",
           req.requestId,
-          auditErr,
+          postCreateErr,
         );
+        // Still return 201 so the UI shows success; product was created
       }
 
       res.status(201).json({
@@ -370,10 +408,18 @@ class ProductController {
         product,
       });
     } catch (error: unknown) {
-      const e = error as { code?: string };
+      const e = error as { code?: string; meta?: { target?: string[] } };
       if (e.code === "P2002") {
+        const target = e.meta?.target as string[] | undefined;
+        const isImsConflict =
+          !target ||
+          (target.length === 2 &&
+            target.some((f) => f === "imsCode" || f === "ims_code") &&
+            target.some((f) => f === "tenantId" || f === "tenant_id"));
         return res.status(409).json({
-          message: "Product with this IMS code already exists",
+          message: isImsConflict
+            ? "Product with this IMS code already exists"
+            : "A duplicate value was provided (e.g. duplicate variation color).",
         });
       }
       return sendControllerError(req, res, error, "Create product error");
@@ -675,7 +721,22 @@ class ProductController {
       const updateData: any = {};
 
       if (imsCode !== undefined) {
-        updateData.imsCode = imsCode;
+        const trimmedImsCode = String(imsCode).trim();
+        if (trimmedImsCode !== existingProduct.imsCode) {
+          const otherWithSameImsCode = await prisma.product.findFirst({
+            where: {
+              tenantId: existingProduct.tenantId,
+              imsCode: trimmedImsCode,
+              id: { not: id },
+            },
+          });
+          if (otherWithSameImsCode) {
+            return res.status(409).json({
+              message: "Product with this IMS code already exists",
+            });
+          }
+        }
+        updateData.imsCode = trimmedImsCode;
       }
       if (name !== undefined) {
         updateData.name = name;
@@ -860,8 +921,10 @@ class ProductController {
 
       // Handle discounts update if provided
       if (discounts !== undefined) {
-        // Get all discount types for lookup
+        const tenantId = req.user!.tenantId;
+        // Get all discount types for lookup (tenant-scoped)
         const allDiscountTypes = await prisma.discountType.findMany({
+          where: { tenantId },
           select: { id: true, name: true },
         });
 
@@ -874,12 +937,13 @@ class ProductController {
           const resolvedDiscounts = [];
 
           for (const discount of discounts) {
-            // Try to find discount type by ID or name
+            // Try to find discount type by ID or name (tenant-scoped)
             const identifier =
               discount.discountTypeId || discount.discountTypeName;
 
             const discountType = await prisma.discountType.findFirst({
               where: {
+                tenantId,
                 OR: [{ id: identifier }, { name: identifier }],
               },
             });
@@ -984,10 +1048,18 @@ class ProductController {
         product: updatedProduct,
       });
     } catch (error: unknown) {
-      const e = error as { code?: string };
+      const e = error as { code?: string; meta?: { target?: string[] } };
       if (e.code === "P2002") {
+        const target = e.meta?.target as string[] | undefined;
+        const isImsConflict =
+          !target ||
+          (target.length === 2 &&
+            target.some((f) => f === "imsCode" || f === "ims_code") &&
+            target.some((f) => f === "tenantId" || f === "tenant_id"));
         return res.status(409).json({
-          message: "Product with this IMS code already exists",
+          message: isImsConflict
+            ? "Product with this IMS code already exists"
+            : "A duplicate value was provided (e.g. duplicate variation color).",
         });
       }
       return sendControllerError(req, res, error, "Update product error");
@@ -1073,15 +1145,13 @@ class ProductController {
     }
   }
 
-  // Get all discount types (helper endpoint for dropdown/selection)
+  // Get all discount types for current tenant (helper endpoint for dropdown/selection)
   async getAllDiscountTypes(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
 
-      // Allowed fields for sorting
       const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
-
-      // Get orderBy for Prisma
       const orderBy = getPrismaOrderBy(
         sortBy,
         sortOrder,
@@ -1090,13 +1160,13 @@ class ProductController {
         name: "asc",
       };
 
-      // Calculate skip for pagination
       const skip = (page - 1) * limit;
+      const where = { tenantId };
 
-      // Get total count and discount types in parallel
       const [totalItems, discountTypes] = await Promise.all([
-        prisma.discountType.count(),
+        prisma.discountType.count({ where }),
         prisma.discountType.findMany({
+          where,
           select: {
             id: true,
             name: true,
@@ -1686,11 +1756,14 @@ class ProductController {
         });
       }
 
-      // Get all categories and discount types for lookup
+      const tenantId = req.user!.tenantId;
+      // Get all categories and discount types for lookup (tenant-scoped)
       const allCategories = await prisma.category.findMany({
+        where: { tenantId },
         select: { id: true, name: true },
       });
       const allDiscountTypes = await prisma.discountType.findMany({
+        where: { tenantId },
         select: { id: true, name: true },
       });
 

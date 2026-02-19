@@ -396,43 +396,6 @@ export function ProductPage() {
   // Fetch discount types using React Query (cached, no duplicate calls)
   const { data: discountTypes = [] } = useDiscountTypes();
 
-  // Initialize default discounts when opening product dialog for new products
-  useEffect(() => {
-    if (productDialog && productDiscounts.length === 0 && !editingProduct) {
-      const defaultDiscounts = [
-        {
-          discountTypeName: "Normal",
-          discountPercentage: "10",
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        },
-        {
-          discountTypeName: "Special",
-          discountPercentage: "15",
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        },
-        {
-          discountTypeName: "Member",
-          discountPercentage: "20",
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        },
-        {
-          discountTypeName: "Wholesale",
-          discountPercentage: "40",
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        },
-      ];
-      setProductDiscounts(defaultDiscounts);
-    }
-  }, [productDialog, editingProduct, productDiscounts.length]);
-
   // Validation functions
   const validateProduct = (values: ProductFormValues) => {
     const errors: Record<string, string> = {};
@@ -1054,6 +1017,7 @@ export function ProductPage() {
           onSort={handleSortChange}
           onEdit={handleEditProduct}
           onDelete={setProductToDelete}
+          selectedLocationId={paginationParams.locationId ?? undefined}
           filterBar={
             <>
               <LocationSelector

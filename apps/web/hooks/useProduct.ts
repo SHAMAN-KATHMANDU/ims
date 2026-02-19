@@ -119,6 +119,7 @@ export function useProductsPaginated(params: ProductListParams = {}) {
     queryKey: productKeys.list(normalizedParams),
     queryFn: () => getProducts(normalizedParams),
     placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: true,
   });
 }
 
