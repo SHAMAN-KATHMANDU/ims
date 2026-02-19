@@ -13,6 +13,8 @@ const PLATFORM_ADMIN_USERNAME =
   process.env.SEED_PLATFORM_ADMIN_USERNAME ?? "platform";
 const PLATFORM_ADMIN_PASSWORD = process.env.SEED_PLATFORM_ADMIN_PASSWORD;
 
+// Production seed: SEED_MODE=production skips test tenants, uses SEED_TENANTS (slug:Name,slug2:Name2)
+
 // Test tenants (test1, test2): use X-Tenant-Slug: test1 or test2, then login with username "admin" or "user" and this password:
 const TEST_TENANT_PASSWORD = "test123";
 
@@ -1153,6 +1155,103 @@ async function deleteTenantBySlug(slug: string) {
   await prisma.tenant.delete({ where: { id: tid } });
 }
 
+const SEED_MODE = process.env.SEED_MODE ?? "development";
+const isProductionSeed = SEED_MODE === "production";
+
+/**
+ * Create a minimal tenant (idempotent — skips if slug exists).
+ * Used for production: platform admin creates tenants via SEED_TENANTS env.
+ */
+async function seedMinimalTenantIfNotExists(
+  slug: string,
+  name: string,
+  password: string,
+) {
+  const existing = await prisma.tenant.findUnique({ where: { slug } });
+  if (existing) {
+    console.log(`⏭️  Tenant "${slug}" already exists, skipping.`);
+    return;
+  }
+
+  const hashedPassword = await bcrypt.hash(password, 10);
+  const now = new Date();
+  const periodEnd = new Date(now);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+  const tenant = await prisma.tenant.create({
+    data: {
+      name,
+      slug,
+      plan: "STARTER",
+      isActive: true,
+      isTrial: true,
+      subscriptionStatus: "TRIAL",
+      trialEndsAt: periodEnd,
+      planExpiresAt: null,
+      settings: { timezone: "Asia/Kathmandu", currency: "NPR" },
+    },
+  });
+
+  await prisma.subscription.create({
+    data: {
+      tenantId: tenant.id,
+      plan: "STARTER",
+      billingCycle: "MONTHLY",
+      status: "TRIAL",
+      currentPeriodStart: now,
+      currentPeriodEnd: periodEnd,
+      trialEndsAt: periodEnd,
+    },
+  });
+
+  await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      username: "admin",
+      password: hashedPassword,
+      role: "superAdmin",
+    },
+  });
+
+  await prisma.location.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Main Location",
+      type: "WAREHOUSE",
+      isActive: true,
+      isDefaultWarehouse: true,
+    },
+  });
+
+  await prisma.category.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Uncategorized",
+      description: "Default category",
+    },
+  });
+
+  // Default discount types for the tenant
+  await prisma.discountType.createMany({
+    data: [
+      {
+        tenantId: tenant.id,
+        name: "Member Discount",
+        description: "Percentage off for members",
+      },
+      {
+        tenantId: tenant.id,
+        name: "Seasonal Flat",
+        description: "Flat amount off",
+      },
+    ],
+  });
+
+  console.log(
+    `✅ Created minimal tenant "${slug}" (${name}) — X-Tenant-Slug: ${slug}, username: admin`,
+  );
+}
+
 /** Ruby tenant: blank slate — only tenant, admin user (admin/admin123), one location, one category. */
 async function seedRubyTenant() {
   await deleteTenantBySlug("ruby");
@@ -1220,7 +1319,7 @@ async function seedRubyTenant() {
 }
 
 async function main() {
-  console.log("🌱 Starting seed...\n");
+  console.log(`🌱 Starting seed (mode: ${SEED_MODE})...\n`);
 
   const platformAdminPassword = requireEnv(
     "SEED_PLATFORM_ADMIN_PASSWORD",
@@ -1269,12 +1368,33 @@ async function main() {
     );
   }
 
-  // 3. Test tenants (test1, test2) with full data
-  await seedTestTenant("test1", "Test Tenant 1", TEST_TENANT_PASSWORD);
-  await seedTestTenant("test2", "Test Tenant 2", TEST_TENANT_PASSWORD);
-
-  // 4. Ruby tenant — blank slate: admin / admin123
-  await seedRubyTenant();
+  if (isProductionSeed) {
+    // Production: create only minimal tenants from SEED_TENANTS env
+    // Format: slug1:Name 1,slug2:Name 2 or slug1:Name 1:password,...
+    const tenantPassword = process.env.SEED_TENANT_PASSWORD ?? "ChangeMe123!";
+    const tenantsEnv = process.env.SEED_TENANTS?.trim();
+    if (tenantsEnv) {
+      for (const part of tenantsEnv.split(",").map((s) => s.trim())) {
+        if (!part) continue;
+        const segments = part.split(":");
+        const slug = segments[0]?.trim();
+        const name = segments[1]?.trim() ?? slug;
+        const password = segments[2]?.trim() ?? tenantPassword;
+        if (slug) {
+          await seedMinimalTenantIfNotExists(slug, name, password);
+        }
+      }
+    } else {
+      console.log(
+        "⏭️  SEED_TENANTS not set — no tenants created. Add tenants via Platform Admin UI.",
+      );
+    }
+  } else {
+    // Development: full demo data
+    await seedTestTenant("test1", "Test Tenant 1", TEST_TENANT_PASSWORD);
+    await seedTestTenant("test2", "Test Tenant 2", TEST_TENANT_PASSWORD);
+    await seedRubyTenant();
+  }
 
   // 5. Default CRM pipeline (required for Deals / Pipeline view)
   const existingPipeline = await prisma.pipeline.findFirst({
