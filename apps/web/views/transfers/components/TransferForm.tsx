@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -93,8 +93,8 @@ export function TransferForm({
   );
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [selectedInventoryId, setSelectedInventoryId] = useState("");
-  const [quantity, setQuantity] = useState("1");
-  const [completeNow, setCompleteNow] = useState(true);
+  const [quantity, setQuantity] = useState("");
+  const [completeNow, setCompleteNow] = useState(false);
 
   // Load inventory when source location changes
   useEffect(() => {
@@ -122,7 +122,7 @@ export function TransferForm({
       setNotes("");
       setItems([]);
       setSelectedInventoryId("");
-      setQuantity("1");
+      setQuantity("");
     }
   }, [open, inline]);
 
@@ -167,7 +167,7 @@ export function TransferForm({
     }
 
     setSelectedInventoryId("");
-    setQuantity("1");
+    setQuantity("");
   };
 
   const handleRemoveItem = (
@@ -303,8 +303,10 @@ export function TransferForm({
             <Label>Add Items</Label>
             <div className="flex gap-2">
               <Select
-                value={selectedInventoryId}
-                onValueChange={setSelectedInventoryId}
+                value={selectedInventoryId || "__none__"}
+                onValueChange={(v) =>
+                  setSelectedInventoryId(v === "__none__" ? "" : v)
+                }
                 disabled={loadingInventory}
               >
                 <SelectTrigger className="flex-1">
@@ -317,6 +319,11 @@ export function TransferForm({
                   />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__none__">
+                    {loadingInventory
+                      ? "Loading inventory..."
+                      : "Select product"}
+                  </SelectItem>
                   {availableInventory
                     .filter((inv) => inv.quantity > 0)
                     .map((inv) => (
@@ -420,7 +427,7 @@ export function TransferForm({
         {/* Complete now: only on create page (inline) */}
         {inline && (
           <div className="flex items-center gap-2">
-            <Checkbox
+            <Switch
               id="completeNow"
               checked={completeNow}
               onCheckedChange={(checked) => setCompleteNow(checked === true)}

@@ -44,7 +44,7 @@ const locationRouter = Router();
 locationRouter.post(
   "/",
   verifyToken,
-  authorizeRoles("superAdmin"),
+  authorizeRoles("admin", "superAdmin"),
   asyncHandler(locationController.createLocation),
 );
 
@@ -196,7 +196,7 @@ locationRouter.get(
 locationRouter.put(
   "/:id",
   verifyToken,
-  authorizeRoles("superAdmin"),
+  authorizeRoles("admin", "superAdmin"),
   asyncHandler(locationController.updateLocation),
 );
 
@@ -226,7 +226,7 @@ locationRouter.put(
 locationRouter.delete(
   "/:id",
   verifyToken,
-  authorizeRoles("superAdmin"),
+  authorizeRoles("admin", "superAdmin"),
   asyncHandler(locationController.deleteLocation),
 );
 
