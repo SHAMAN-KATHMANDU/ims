@@ -125,11 +125,14 @@ class SaleController {
         });
       }
 
-      // Get "Member" discount type for member sales
+      // Get "Member" discount type for member sales (tenant-scoped)
       let memberDiscountType = null;
-      if (saleType === "MEMBER") {
+      if (saleType === "MEMBER" && req.user?.tenantId) {
         memberDiscountType = await prisma.discountType.findFirst({
-          where: { name: "Member" },
+          where: {
+            tenantId: req.user.tenantId,
+            name: { contains: "Member", mode: "insensitive" },
+          },
         });
       }
 

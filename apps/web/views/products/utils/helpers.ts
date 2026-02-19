@@ -34,6 +34,29 @@ export const getTotalStock = (product: Product): number => {
   );
 };
 
+/** Variation type with optional locationInventory that has location.id */
+type VariationWithLocationInv = {
+  locationInventory?: Array<{ quantity: number; location?: { id: string } }>;
+  stockQuantity?: number;
+};
+
+/**
+ * Get stock quantity at a specific location (sum across all variations' inventory at that location).
+ * When a location is selected in the dropdown, use this so the Stock column shows actual count at that location.
+ */
+export function getStockAtLocation(
+  product: Product,
+  locationId: string,
+): number {
+  if (!product.variations || product.variations.length === 0) return 0;
+  return product.variations.reduce((sum, variation) => {
+    const inv = (variation as VariationWithLocationInv).locationInventory;
+    if (!inv?.length) return sum;
+    const atLocation = inv.find((i) => i.location?.id === locationId);
+    return sum + (atLocation?.quantity ?? 0);
+  }, 0);
+}
+
 /**
  * Get discounted prices for all discount types
  */

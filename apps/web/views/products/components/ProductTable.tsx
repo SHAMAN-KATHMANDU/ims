@@ -42,6 +42,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   getTotalStock,
+  getStockAtLocation,
   getDiscountedPrices,
   getCategoryName,
   calculateDiscountedPrice,
@@ -71,6 +72,8 @@ interface ProductTableProps {
   onSearchChange: (search: string) => void;
   // Optional filter bar rendered inside the table card (Location, Filters popover, etc.)
   filterBar?: React.ReactNode;
+  /** When set, Stock column shows stock at this location only (actual count at location). Otherwise shows total stock. */
+  selectedLocationId?: string;
   // Loading state
   isLoading?: boolean;
   isFetching?: boolean;
@@ -183,6 +186,7 @@ export function ProductTable({
   searchQuery,
   onSearchChange,
   filterBar,
+  selectedLocationId,
   isLoading = false,
   isFetching = false,
   selectedProducts = new Set(),
@@ -359,7 +363,9 @@ export function ProductTable({
               </TableRow>
             ) : (
               products.map((product) => {
-                const totalStock = getTotalStock(product);
+                const displayStock = selectedLocationId
+                  ? getStockAtLocation(product, selectedLocationId)
+                  : getTotalStock(product);
                 const discountedPrices = !canSeeCostPrice
                   ? getDiscountedPrices(product)
                   : {};
@@ -478,7 +484,7 @@ export function ProductTable({
                         </>
                       )}
                       <TableCell>
-                        <span className="font-medium">{totalStock}</span>
+                        <span className="font-medium">{displayStock}</span>
                       </TableCell>
                       <TableCell
                         className="text-right"

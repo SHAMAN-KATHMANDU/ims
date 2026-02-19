@@ -203,8 +203,8 @@ interface CategoriesResponse {
 
 interface DiscountTypesResponse {
   message: string;
-  data: Array<{ id: string; name: string; description?: string }>;
-  pagination: PaginationMeta;
+  data: Array<{ id: string; name: string; description?: string | null }>;
+  pagination?: PaginationMeta;
 }
 
 // ============================================
@@ -398,10 +398,10 @@ export async function getAllCategories(): Promise<Category[]> {
 }
 
 /**
- * Get all discount types
+ * Get all discount types (tenant-scoped)
  */
 export async function getAllDiscountTypes(): Promise<
-  Array<{ id: string; name: string; description?: string }>
+  Array<{ id: string; name: string; description?: string | null }>
 > {
   try {
     const response = await api.get<DiscountTypesResponse>(

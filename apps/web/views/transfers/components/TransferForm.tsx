@@ -14,6 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -66,7 +67,8 @@ interface TransferFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locations: Location[];
-  onSubmit: (data: CreateTransferData) => Promise<void>;
+  /** Second arg: when true, approve + start transit + complete so stock moves immediately. Used on create page. */
+  onSubmit: (data: CreateTransferData, completeNow?: boolean) => Promise<void>;
   isLoading?: boolean;
   getLocationInventory: (locationId: string) => Promise<InventoryItem[]>;
   /** When true, render form inline (e.g. on a dedicated page) without dialog. */
@@ -92,6 +94,7 @@ export function TransferForm({
   const [loadingInventory, setLoadingInventory] = useState(false);
   const [selectedInventoryId, setSelectedInventoryId] = useState("");
   const [quantity, setQuantity] = useState("1");
+  const [completeNow, setCompleteNow] = useState(true);
 
   // Load inventory when source location changes
   useEffect(() => {
@@ -187,15 +190,19 @@ export function TransferForm({
 
     if (!fromLocationId || !toLocationId || items.length === 0) return;
 
-    await onSubmit({
-      fromLocationId,
-      toLocationId,
-      items: items.map((item) => ({
-        variationId: item.variationId,
-        quantity: item.quantity,
-      })),
-      notes: notes || undefined,
-    });
+    await onSubmit(
+      {
+        fromLocationId,
+        toLocationId,
+        items: items.map((item) => ({
+          variationId: item.variationId,
+          subVariationId: item.subVariationId ?? undefined,
+          quantity: item.quantity,
+        })),
+        notes: notes || undefined,
+      },
+      completeNow,
+    );
   };
 
   const activeLocations = locations.filter((loc) => loc.isActive);
@@ -409,6 +416,24 @@ export function TransferForm({
             rows={2}
           />
         </div>
+
+        {/* Complete now: only on create page (inline) */}
+        {inline && (
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="completeNow"
+              checked={completeNow}
+              onCheckedChange={(checked) => setCompleteNow(checked === true)}
+            />
+            <Label
+              htmlFor="completeNow"
+              className="text-sm font-normal cursor-pointer"
+            >
+              Complete transfer now (move stock from source to destination
+              immediately)
+            </Label>
+          </div>
+        )}
       </div>
 
       {inline ? (

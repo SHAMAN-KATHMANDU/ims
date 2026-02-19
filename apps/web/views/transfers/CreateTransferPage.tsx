@@ -5,7 +5,12 @@ import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useActiveLocations } from "@/hooks/useLocation";
 import { getLocationInventory } from "@/services/inventoryService";
-import { useCreateTransfer } from "@/hooks/useTransfer";
+import {
+  useCreateTransfer,
+  useApproveTransfer,
+  useStartTransit,
+  useCompleteTransfer,
+} from "@/hooks/useTransfer";
 import { TransferForm } from "./components/TransferForm";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -24,6 +29,9 @@ export function CreateTransferPage() {
 
   const { data: locations = [] } = useActiveLocations();
   const createTransferMutation = useCreateTransfer();
+  const approveTransferMutation = useApproveTransfer();
+  const startTransitMutation = useStartTransit();
+  const completeTransferMutation = useCompleteTransfer();
 
   const fetchLocationInventory = useCallback(async (locationId: string) => {
     const response = await getLocationInventory(locationId, { limit: 1000 });
@@ -31,10 +39,24 @@ export function CreateTransferPage() {
   }, []);
 
   const handleSubmit = useCallback(
-    async (data: Parameters<typeof createTransferMutation.mutateAsync>[0]) => {
+    async (
+      data: Parameters<typeof createTransferMutation.mutateAsync>[0],
+      completeNow?: boolean,
+    ) => {
       try {
-        await createTransferMutation.mutateAsync(data);
-        toast({ title: "Transfer created successfully" });
+        const transfer = await createTransferMutation.mutateAsync(data);
+        if (completeNow !== false) {
+          await approveTransferMutation.mutateAsync(transfer.id);
+          await startTransitMutation.mutateAsync(transfer.id);
+          await completeTransferMutation.mutateAsync(transfer.id);
+          toast({
+            title: "Transfer completed",
+            description:
+              "Stock has been moved from source to destination location.",
+          });
+        } else {
+          toast({ title: "Transfer created successfully" });
+        }
         router.push(`${basePath}/transfers`);
       } catch (error: unknown) {
         const message =
@@ -46,7 +68,15 @@ export function CreateTransferPage() {
         });
       }
     },
-    [createTransferMutation, toast, router, basePath],
+    [
+      createTransferMutation,
+      approveTransferMutation,
+      startTransitMutation,
+      completeTransferMutation,
+      toast,
+      router,
+      basePath,
+    ],
   );
 
   const handleCancel = useCallback(() => {
@@ -78,7 +108,12 @@ export function CreateTransferPage() {
         onOpenChange={(open) => !open && handleCancel()}
         locations={locations}
         onSubmit={handleSubmit}
-        isLoading={createTransferMutation.isPending}
+        isLoading={
+          createTransferMutation.isPending ||
+          approveTransferMutation.isPending ||
+          startTransitMutation.isPending ||
+          completeTransferMutation.isPending
+        }
         getLocationInventory={fetchLocationInventory}
         inline
       />

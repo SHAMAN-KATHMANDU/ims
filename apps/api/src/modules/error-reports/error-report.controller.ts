@@ -59,7 +59,9 @@ class ErrorReportController {
       const from = req.query.from as string | undefined;
       const to = req.query.to as string | undefined;
 
+      const tenantId = req.user?.tenantId ?? null;
       const where: any = {};
+      if (tenantId) where.tenantId = tenantId;
       if (status && ["OPEN", "REVIEWED", "RESOLVED"].includes(status)) {
         where.status = status;
       }
