@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import { useAuthStore, selectIsSuperAdmin } from "@/stores/auth-store";
+import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import {
   useLocationsPaginated,
   useCreateLocation,
@@ -48,7 +48,7 @@ export function LocationsPage() {
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
-  const isSuperAdmin = useAuthStore(selectIsSuperAdmin);
+  const canManageLocations = useAuthStore(selectIsAdmin);
   const isMobile = useIsMobile();
 
   // Pagination and filter state
@@ -248,7 +248,7 @@ export function LocationsPage() {
             </div>
           </div>
 
-          {isSuperAdmin &&
+          {canManageLocations &&
             (isMobile ? (
               <Button asChild>
                 <Link href={`${basePath}/locations/new`} className="gap-2">
@@ -275,7 +275,7 @@ export function LocationsPage() {
       <LocationTable
         locations={locations}
         isLoading={isLoading}
-        canManage={isSuperAdmin}
+        canManage={canManageLocations}
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSort={handleSort}
