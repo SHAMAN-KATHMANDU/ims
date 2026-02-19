@@ -148,6 +148,10 @@ class PlatformController {
       const tenant = await basePrisma.tenant.findUnique({
         where: { id },
         include: {
+          users: {
+            select: { id: true, username: true, role: true },
+            orderBy: { createdAt: "asc" },
+          },
           _count: {
             select: {
               users: true,
@@ -176,6 +180,60 @@ class PlatformController {
       res.status(200).json({ tenant });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get tenant error");
+    }
+  }
+
+  /**
+   * Reset a tenant user's password (platform admin only, no current password required).
+   */
+  async resetTenantUserPassword(req: Request, res: Response) {
+    try {
+      const { tenantId, userId } = req.params;
+      const { newPassword } = req.body;
+
+      if (!newPassword || typeof newPassword !== "string") {
+        return res.status(400).json({
+          message: "newPassword is required",
+        });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({
+          message: "Password must be at least 6 characters",
+        });
+      }
+
+      const user = await basePrisma.user.findUnique({
+        where: { id: userId },
+      });
+
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      if (user.tenantId !== tenantId) {
+        return res.status(403).json({
+          message: "User does not belong to this tenant",
+        });
+      }
+
+      const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+      await basePrisma.user.update({
+        where: { id: userId },
+        data: { password: hashedPassword },
+      });
+
+      res.status(200).json({
+        message: "Password reset successfully",
+      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Reset tenant user password error",
+      );
     }
   }
 

@@ -22,6 +22,10 @@ router.use(verifyToken, authorizeRoles("platformAdmin"));
 router.post("/tenants", asyncHandler(platformController.createTenant));
 router.get("/tenants", asyncHandler(platformController.listTenants));
 router.get("/tenants/:id", asyncHandler(platformController.getTenant));
+router.patch(
+  "/tenants/:tenantId/users/:userId/password",
+  asyncHandler(platformController.resetTenantUserPassword),
+);
 router.put("/tenants/:id", asyncHandler(platformController.updateTenant));
 router.patch("/tenants/:id/plan", asyncHandler(platformController.changePlan));
 router.patch(

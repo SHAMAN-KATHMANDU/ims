@@ -9,6 +9,7 @@ import {
   changeTenantPlan,
   activateTenant,
   deactivateTenant,
+  resetTenantUserPassword,
   type Tenant,
   type CreateTenantData,
   type UpdateTenantData,
@@ -105,6 +106,24 @@ export function useDeactivateTenant() {
     mutationFn: deactivateTenant,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tenantKeys.lists() });
+    },
+  });
+}
+
+export function useResetTenantUserPassword() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tenantId,
+      userId,
+      newPassword,
+    }: {
+      tenantId: string;
+      userId: string;
+      newPassword: string;
+    }) => resetTenantUserPassword(tenantId, userId, newPassword),
+    onSuccess: (_, { tenantId }) => {
+      queryClient.invalidateQueries({ queryKey: tenantKeys.detail(tenantId) });
     },
   });
 }

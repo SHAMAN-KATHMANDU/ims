@@ -8,7 +8,7 @@ import { TrendsPage } from "@/views/analytics/TrendsPage";
 export default function ReportsAnalyticsTrendsPage() {
   return (
     <AuthGuard
-      roles={["user", "admin", "superAdmin"]}
+      roles={["admin", "superAdmin"]}
       unauthorizedPath={WORKSPACE_ROOT}
     >
       <TrendsPage />

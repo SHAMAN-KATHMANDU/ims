@@ -41,6 +41,7 @@ export interface Tenant {
     sales?: number;
     transfers?: number;
   };
+  users?: { id: string; username: string; role: string }[];
 }
 
 export interface CreateTenantData {
@@ -62,6 +63,15 @@ export interface UpdateTenantData {
   settings?: Record<string, unknown> | null;
 }
 
+export interface PlatformStats {
+  totalTenants: number;
+  activeTenants: number;
+  trialTenants: number;
+  totalUsers: number;
+  totalSales: number;
+  planDistribution: Array<{ plan: string; count: number }>;
+}
+
 // ============================================
 // API
 // ============================================
@@ -78,6 +88,16 @@ interface CreateTenantResponse {
   message: string;
   tenant: Tenant;
   adminUser: { id: string; username: string; role: string };
+}
+
+export async function getPlatformStats(): Promise<PlatformStats> {
+  try {
+    const response = await api.get<PlatformStats>("/platform/stats");
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "fetch platform stats");
+    throw error;
+  }
 }
 
 export async function getTenants(): Promise<Tenant[]> {
@@ -168,5 +188,23 @@ export async function deactivateTenant(id: string): Promise<void> {
     await api.delete(`/platform/tenants/${id}`);
   } catch (error) {
     handleApiError(error, `deactivate tenant "${id}"`);
+  }
+}
+
+export async function resetTenantUserPassword(
+  tenantId: string,
+  userId: string,
+  newPassword: string,
+): Promise<void> {
+  if (!tenantId?.trim()) throw new Error("Tenant ID is required");
+  if (!userId?.trim()) throw new Error("User ID is required");
+  if (!newPassword || newPassword.length < 6)
+    throw new Error("Password must be at least 6 characters");
+  try {
+    await api.patch(`/platform/tenants/${tenantId}/users/${userId}/password`, {
+      newPassword,
+    });
+  } catch (error) {
+    handleApiError(error, "reset tenant user password");
   }
 }
