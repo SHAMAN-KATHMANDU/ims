@@ -29,6 +29,7 @@ import {
   Handshake,
   CheckSquare,
   Bell,
+  Trash2,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -292,6 +293,12 @@ const navSections: NavSection[] = [
   {
     title: "SETTINGS",
     items: [
+      {
+        path: "trash",
+        label: "Trash",
+        icon: Trash2,
+        roles: ["admin", "superAdmin"],
+      },
       {
         path: "settings",
         label: "Settings",

@@ -320,8 +320,9 @@ class VendorController {
         });
       }
 
-      await prisma.vendor.delete({
+      await prisma.vendor.update({
         where: { id },
+        data: { deletedAt: new Date() },
       });
 
       res.status(200).json({

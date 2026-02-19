@@ -41,11 +41,51 @@ const TENANT_SCOPED_MODELS = new Set([
 ]);
 
 /**
+ * Models that support soft delete (trash). Queries filter deletedAt: null by default.
+ */
+const TRASHABLE_MODELS = new Set([
+  "Category",
+  "SubCategory",
+  "Product",
+  "Vendor",
+  "Member",
+  "Location",
+  "PromoCode",
+  "Company",
+  "Contact",
+  "Lead",
+  "Deal",
+  "Task",
+  "Activity",
+  "Pipeline",
+]);
+
+/**
  * Check if a model name (PascalCase) is tenant-scoped.
  */
 function isTenantScoped(model: string | undefined): boolean {
   if (!model) return false;
   return TENANT_SCOPED_MODELS.has(model);
+}
+
+/**
+ * Check if a model supports soft delete.
+ */
+function isTrashable(model: string | undefined): boolean {
+  if (!model) return false;
+  return TRASHABLE_MODELS.has(model);
+}
+
+/**
+ * Inject deletedAt: null for trashable models unless the query already specifies deletedAt.
+ */
+function maybeInjectDeletedAt(
+  model: string | undefined,
+  where: Record<string, unknown> | undefined,
+): Record<string, unknown> | undefined {
+  if (!isTrashable(model) || !where) return where;
+  if ("deletedAt" in where) return where; // Already filtering by deletedAt
+  return { ...where, deletedAt: null };
 }
 
 /**
@@ -64,6 +104,8 @@ const prisma = basePrisma.$extends({
         if (tenantId && isTenantScoped(model)) {
           args.where = { ...args.where, tenantId };
         }
+        args.where = (maybeInjectDeletedAt(model, args.where) ??
+          args.where) as any;
         return query(args);
       },
       async findFirst({ model, args, query }) {
@@ -71,12 +113,16 @@ const prisma = basePrisma.$extends({
         if (tenantId && isTenantScoped(model)) {
           args.where = { ...args.where, tenantId };
         }
+        args.where = (maybeInjectDeletedAt(model, args.where) ??
+          args.where) as any;
         return query(args);
       },
       async findUnique({ model, args, query }) {
         // findUnique uses unique fields, so we don't inject tenantId into where
         // (it would break compound unique lookups). Instead, we rely on the
         // unique constraint including tenantId in the schema.
+        args.where = (maybeInjectDeletedAt(model, args.where) ??
+          args.where) as any;
         return query(args);
       },
       async create({ model, args, query }) {
@@ -140,6 +186,8 @@ const prisma = basePrisma.$extends({
         if (tenantId && isTenantScoped(model)) {
           args.where = { ...args.where, tenantId };
         }
+        args.where = (maybeInjectDeletedAt(model, args.where) ??
+          args.where) as any;
         return query(args);
       },
       async aggregate({ model, args, query }) {
@@ -147,6 +195,8 @@ const prisma = basePrisma.$extends({
         if (tenantId && isTenantScoped(model)) {
           args.where = { ...args.where, tenantId };
         }
+        args.where = (maybeInjectDeletedAt(model, args.where) ??
+          args.where) as any;
         return query(args);
       },
       async groupBy({ model, args, query }) {
@@ -154,6 +204,8 @@ const prisma = basePrisma.$extends({
         if (tenantId && isTenantScoped(model)) {
           args.where = { ...args.where, tenantId };
         }
+        args.where = (maybeInjectDeletedAt(model, args.where) ??
+          args.where) as any;
         return query(args);
       },
     },

@@ -181,7 +181,9 @@ class AuthController {
       });
 
       if (!user) {
-        return res.status(404).json({ message: "User not found" });
+        return res
+          .status(401)
+          .json({ message: "User not found or session invalid" });
       }
 
       // Also fetch fresh tenant info

@@ -260,7 +260,10 @@ class ContactController {
         return res.status(404).json({ message: "Contact not found" });
       }
 
-      await prisma.contact.delete({ where: { id } });
+      await prisma.contact.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Contact deleted successfully" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Delete contact error");
