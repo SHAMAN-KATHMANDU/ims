@@ -1010,8 +1010,9 @@ class ProductController {
         return res.status(404).json({ message: "Product not found" });
       }
 
-      await prisma.product.delete({
+      await prisma.product.update({
         where: { id },
+        data: { deletedAt: new Date() },
       });
 
       res.status(200).json({

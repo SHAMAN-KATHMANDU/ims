@@ -397,7 +397,7 @@ class PromoController {
 
       await prisma.promoCode.update({
         where: { id },
-        data: { isActive: false },
+        data: { isActive: false, deletedAt: new Date() },
       });
 
       return res.status(200).json({

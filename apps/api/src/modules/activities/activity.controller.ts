@@ -138,7 +138,10 @@ class ActivityController {
         return res.status(404).json({ message: "Activity not found" });
       }
 
-      await prisma.activity.delete({ where: { id } });
+      await prisma.activity.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Activity deleted" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Delete activity error");

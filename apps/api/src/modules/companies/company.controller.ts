@@ -143,7 +143,10 @@ class CompanyController {
         return res.status(404).json({ message: "Company not found" });
       }
 
-      await prisma.company.delete({ where: { id } });
+      await prisma.company.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Company deleted successfully" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Delete company error");

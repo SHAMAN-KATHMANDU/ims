@@ -4,6 +4,7 @@ import { basePrisma as prisma } from "@/config/prisma";
 import dbConnect from "@/config/dbConnect";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
+import { startTrashCleanupCron } from "@/jobs/trashCleanup";
 
 // Note: dotenv.config() is called in env.ts - do not call it here
 const PORT = env.port;
@@ -58,6 +59,7 @@ const startServer = async () => {
       logger.log(
         `CORS origins: ${Array.isArray(env.corsOrigin) ? env.corsOrigin.join(", ") : env.corsOrigin}`,
       );
+      startTrashCleanupCron();
       logger.log("Server startup complete");
     });
   } catch (error) {
