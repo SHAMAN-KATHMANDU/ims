@@ -12,6 +12,7 @@ import {
   getDashboardSuperAdminSummary,
   DASHBOARD_STALE_TIME_MS,
 } from "@/services/dashboardService";
+import { getPlatformStats } from "@/services/tenantService";
 import { useAuthStore, selectUserRole } from "@/stores/auth-store";
 
 export const dashboardKeys = {
@@ -20,6 +21,7 @@ export const dashboardKeys = {
   adminSummary: () => [...dashboardKeys.all, "admin-summary"] as const,
   superAdminSummary: () =>
     [...dashboardKeys.all, "superadmin-summary"] as const,
+  platformSummary: () => [...dashboardKeys.all, "platform-summary"] as const,
 };
 
 export function useDashboardUserSummary() {
@@ -49,5 +51,15 @@ export function useDashboardSuperAdminSummary() {
     queryFn: getDashboardSuperAdminSummary,
     staleTime: DASHBOARD_STALE_TIME_MS,
     enabled: role === "superAdmin",
+  });
+}
+
+export function useDashboardPlatformSummary() {
+  const role = useAuthStore(selectUserRole);
+  return useQuery({
+    queryKey: dashboardKeys.platformSummary(),
+    queryFn: getPlatformStats,
+    staleTime: DASHBOARD_STALE_TIME_MS,
+    enabled: role === "platformAdmin",
   });
 }

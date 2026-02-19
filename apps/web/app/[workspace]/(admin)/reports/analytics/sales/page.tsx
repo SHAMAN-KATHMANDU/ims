@@ -8,7 +8,7 @@ import { SalesRevenuePage } from "@/views/analytics/SalesRevenuePage";
 export default function ReportsAnalyticsSalesPage() {
   return (
     <AuthGuard
-      roles={["user", "admin", "superAdmin"]}
+      roles={["admin", "superAdmin"]}
       unauthorizedPath={WORKSPACE_ROOT}
     >
       <SalesRevenuePage />

@@ -19,10 +19,14 @@ All routes live under `/[workspace]` (e.g. `/admin`). Route groups `(admin)` and
 | `transfers`                   | user, admin, superAdmin | `(admin)/transfers/page.tsx`                   | Create + list by role in view  |
 | `locations`                   | admin, superAdmin       | `(admin)/locations/page.tsx`                   | Guarded                        |
 | `vendors`                     | admin, superAdmin       | `(admin)/vendors/page.tsx`                     | Guarded                        |
-| `reports/analytics`           | user, admin, superAdmin | `(admin)/reports/analytics/page.tsx`           | Analytics index; guarded       |
-| `reports/analytics/sales`     | user, admin, superAdmin | `(admin)/reports/analytics/sales/page.tsx`     | Sales & Revenue; guarded       |
+| `reports/analytics`           | admin, superAdmin       | `(admin)/reports/analytics/page.tsx`           | Analytics index; guarded       |
+| `reports/analytics/sales`     | admin, superAdmin       | `(admin)/reports/analytics/sales/page.tsx`     | Sales & Revenue; guarded       |
 | `reports/analytics/inventory` | admin, superAdmin       | `(admin)/reports/analytics/inventory/page.tsx` | Inventory & Ops; guarded       |
 | `reports/analytics/customers` | admin, superAdmin       | `(admin)/reports/analytics/customers/page.tsx` | Customers & Promos; guarded    |
+| `reports/analytics/trends`    | admin, superAdmin       | `(admin)/reports/analytics/trends/page.tsx`    | Trends; guarded                |
+| `reports/analytics/financial` | admin, superAdmin       | `(admin)/reports/analytics/financial/page.tsx` | Financial; guarded             |
+| `reports/crm`                 | admin, superAdmin       | `(admin)/reports/crm/page.tsx`                 | CRM reports; guarded           |
+| `crm/reports`                 | —                       | `(admin)/crm/reports/page.tsx`                 | Redirects to reports/crm       |
 | `settings`                    | admin, superAdmin       | `(admin)/settings/page.tsx`                    | Workspace settings; guarded    |
 | `users`                       | superAdmin              | `(superadmin)/users/page.tsx`                  | Guarded                        |
 | `settings/logs`               | superAdmin              | `(superadmin)/settings/logs/page.tsx`          | User logs; guarded             |

@@ -14,7 +14,14 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Receipt, Package, Users, TrendingUp, Banknote } from "lucide-react";
+import {
+  Receipt,
+  Package,
+  Users,
+  TrendingUp,
+  Banknote,
+  Handshake,
+} from "lucide-react";
 
 export function AnalyticsIndexPage() {
   const params = useParams();
@@ -57,6 +64,13 @@ export function AnalyticsIndexPage() {
         description:
           "Gross profit over time, COGS breakdown by category and location, discount ratio trends, and margin analysis.",
         icon: Banknote,
+      },
+      {
+        path: `${base}/reports/crm`,
+        title: "CRM Reports",
+        description:
+          "Deals won and lost, revenue, conversion rate, sales per user, and leads by source.",
+        icon: Handshake,
       },
     ],
     [base],

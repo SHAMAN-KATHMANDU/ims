@@ -13,6 +13,7 @@ import {
   Warehouse,
   ArrowLeftRight,
   Settings,
+  UserCog,
   Users,
   Receipt,
   UserCheck,
@@ -135,12 +136,6 @@ const navSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
       },
       {
-        path: "crm/reports",
-        label: "Reports",
-        icon: BarChart3,
-        roles: ["user", "admin", "superAdmin"],
-      },
-      {
         path: "crm/notifications",
         label: "Notifications",
         icon: Bell,
@@ -254,13 +249,13 @@ const navSections: NavSection[] = [
         path: "reports/analytics",
         label: "Analytics",
         icon: BarChart3,
-        roles: ["user", "admin", "superAdmin"],
+        roles: ["admin", "superAdmin"],
       },
       {
         path: "reports/analytics/sales",
         label: "Sales & Revenue",
         icon: BarChart3,
-        roles: ["user", "admin", "superAdmin"],
+        roles: ["admin", "superAdmin"],
       },
       {
         path: "reports/analytics/inventory",
@@ -278,19 +273,31 @@ const navSections: NavSection[] = [
         path: "reports/analytics/trends",
         label: "Trends",
         icon: BarChart3,
-        roles: ["user", "admin", "superAdmin"],
+        roles: ["admin", "superAdmin"],
       },
       {
         path: "reports/analytics/financial",
         label: "Financial",
         icon: BarChart3,
-        roles: ["user", "admin", "superAdmin"],
+        roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "reports/crm",
+        label: "CRM Reports",
+        icon: BarChart3,
+        roles: ["admin", "superAdmin"],
       },
     ],
   },
   {
     title: "SETTINGS",
     items: [
+      {
+        path: "settings",
+        label: "Settings",
+        icon: UserCog,
+        roles: ["admin", "superAdmin"],
+      },
       {
         path: "users",
         label: "Users",
