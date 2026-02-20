@@ -1474,24 +1474,26 @@ async function main() {
   ];
 
   for (const ap of addOnPricingData) {
-    await prisma.addOnPricing.upsert({
-      where: {
-        type_tier_billingCycle: {
-          type: ap.type,
-          tier: null as any,
-          billingCycle: "MONTHLY",
-        },
-      },
-      update: { unitPrice: ap.unitPrice },
-      create: {
-        type: ap.type,
-        tier: null,
-        billingCycle: "MONTHLY",
-        unitPrice: ap.unitPrice,
-        minQuantity: 1,
-        isActive: true,
-      },
+    const existing = await prisma.addOnPricing.findFirst({
+      where: { type: ap.type, tier: null, billingCycle: "MONTHLY" },
     });
+    if (existing) {
+      await prisma.addOnPricing.update({
+        where: { id: existing.id },
+        data: { unitPrice: ap.unitPrice },
+      });
+    } else {
+      await prisma.addOnPricing.create({
+        data: {
+          type: ap.type,
+          tier: null,
+          billingCycle: "MONTHLY",
+          unitPrice: ap.unitPrice,
+          minQuantity: 1,
+          isActive: true,
+        },
+      });
+    }
   }
   console.log("✅ Upserted sample add-on pricing");
 
