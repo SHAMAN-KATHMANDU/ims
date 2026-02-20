@@ -375,7 +375,7 @@ export function NewSaleForm({
 
     return inventory.filter((item) => {
       const productName = item.variation.product.name.toLowerCase();
-      const imsCode = item.variation.product.imsCode.toLowerCase();
+      const imsCode = (item.variation.imsCode ?? "").toLowerCase();
       const color = item.variation.color.toLowerCase();
       const subVariationName = item.subVariation?.name?.toLowerCase() || "";
       const categoryName =
@@ -470,7 +470,7 @@ export function NewSaleForm({
         subVariationName: inventoryItem.subVariation?.name,
         productName: inventoryItem.variation.product.name,
         color: inventoryItem.variation.color,
-        imsCode: inventoryItem.variation.product.imsCode,
+        imsCode: inventoryItem.variation.imsCode ?? "",
         unitPrice: Number(inventoryItem.variation.product.mrp),
         quantity: 1,
         maxQuantity: inventoryItem.quantity,
@@ -877,7 +877,7 @@ export function NewSaleForm({
                                       {inv.variation.product.name}
                                     </div>
                                     <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                                      {inv.variation.product.imsCode} •{" "}
+                                      {inv.variation.imsCode} •{" "}
                                       {variantLabel || "Default"}
                                       {inv.variation.product.category?.name && (
                                         <span className="ml-2">

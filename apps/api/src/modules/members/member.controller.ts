@@ -182,7 +182,6 @@ class MemberController {
                         select: {
                           id: true,
                           name: true,
-                          imsCode: true,
                         },
                       },
                     },

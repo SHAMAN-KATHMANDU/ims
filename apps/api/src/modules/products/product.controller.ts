@@ -25,7 +25,6 @@ class ProductController {
   async createProduct(req: Request, res: Response) {
     try {
       const {
-        imsCode,
         name,
         categoryId,
         description,
@@ -36,14 +35,12 @@ class ProductController {
         weight,
         costPrice,
         mrp,
-        variations, //Array of color variations
+        variations, //Array of variations (each must have imsCode)
         discounts, //Array of discounts
+        attributeTypeIds, //Optional: attribute type IDs for this product (EAV)
       } = req.body;
 
       // Validate required fields
-      if (!imsCode) {
-        return res.status(400).json({ message: "IMS code is required" });
-      }
       if (!name) {
         return res.status(400).json({ message: "Product name is required" });
       }
@@ -69,6 +66,24 @@ class ProductController {
       }
 
       const tenantId = req.user!.tenantId;
+      // Require at least one variation with imsCode
+      if (
+        !variations ||
+        !Array.isArray(variations) ||
+        variations.length === 0
+      ) {
+        return res.status(400).json({
+          message: "At least one variation with IMS code is required",
+        });
+      }
+      const missingImsCode = variations.some(
+        (v: any) => !(v.imsCode ?? v.sku)?.trim(),
+      );
+      if (missingImsCode) {
+        return res
+          .status(400)
+          .json({ message: "Each variation must have an IMS code" });
+      }
       // Get all categories and discount types for lookup (tenant-scoped)
       const allCategories = await prisma.category.findMany({
         where: { tenantId },
@@ -189,15 +204,27 @@ class ProductController {
         }
       }
 
-      const trimmedImsCode = (imsCode as string).trim();
-
-      // Explicit duplicate check (tenant-scoped) so we return a clear message and treat trimmed codes as same
-      const existingByImsCode = await prisma.product.findFirst({
-        where: { tenantId, imsCode: trimmedImsCode },
+      // Duplicate IMS code check (variation-level, tenant-scoped)
+      const variationImsCodes = variations
+        .map((v: any) => (v.imsCode ?? v.sku ?? "").trim())
+        .filter(Boolean);
+      const dupes = variationImsCodes.filter(
+        (code: string, i: number) => variationImsCodes.indexOf(code) !== i,
+      );
+      if (dupes.length > 0) {
+        return res.status(400).json({
+          message: "Duplicate IMS codes in variations",
+          duplicateCodes: [...new Set(dupes)],
+        });
+      }
+      const existingVariationIms = await prisma.productVariation.findMany({
+        where: { tenantId, imsCode: { in: variationImsCodes } },
+        select: { imsCode: true },
       });
-      if (existingByImsCode) {
+      if (existingVariationIms.length > 0) {
         return res.status(409).json({
-          message: "Product with this IMS code already exists",
+          message: "One or more IMS codes already exist for this tenant",
+          existing: existingVariationIms.map((v) => v.imsCode),
         });
       }
 
@@ -250,7 +277,6 @@ class ProductController {
       const product = await prisma.product.create({
         data: {
           tenantId,
-          imsCode: trimmedImsCode,
           name: name as string,
           categoryId: category.id,
           description: description || null,
@@ -263,13 +289,27 @@ class ProductController {
           mrp: parseFloat(mrp.toString()),
           vendorId: vendorId || null,
           createdById: req.user!.id,
-          // Add variations (colors with photos)
+          // Add variations (legacy: color/subVariants; new: sku + attributes)
           variations:
             variations && Array.isArray(variations)
               ? {
                   create: variations.map((variation: any) => ({
-                    color: variation.color,
+                    tenantId,
+                    imsCode: (variation.imsCode ?? variation.sku ?? "").trim(),
+                    color: variation.color?.trim() || null,
                     stockQuantity: variation.stockQuantity || 0,
+                    costPriceOverride:
+                      variation.costPriceOverride != null
+                        ? parseFloat(variation.costPriceOverride)
+                        : null,
+                    mrpOverride:
+                      variation.mrpOverride != null
+                        ? parseFloat(variation.mrpOverride)
+                        : null,
+                    finalSpOverride:
+                      variation.finalSpOverride != null
+                        ? parseFloat(variation.finalSpOverride)
+                        : null,
                     photos:
                       variation.photos && Array.isArray(variation.photos)
                         ? {
@@ -291,6 +331,21 @@ class ProductController {
                               )
                               .filter(Boolean)
                               .map((name: string) => ({ name })),
+                          }
+                        : undefined,
+                    attributes:
+                      variation.attributes &&
+                      Array.isArray(variation.attributes)
+                        ? {
+                            create: variation.attributes.map(
+                              (a: {
+                                attributeTypeId: string;
+                                attributeValueId: string;
+                              }) => ({
+                                attributeTypeId: a.attributeTypeId,
+                                attributeValueId: a.attributeValueId,
+                              }),
+                            ),
                           }
                         : undefined,
                   })),
@@ -332,6 +387,16 @@ class ProductController {
             include: {
               photos: true,
               subVariations: true,
+              attributes: {
+                include: {
+                  attributeType: {
+                    select: { id: true, name: true, code: true },
+                  },
+                  attributeValue: {
+                    select: { id: true, value: true, code: true },
+                  },
+                },
+              },
             },
           },
           discounts: {
@@ -341,6 +406,28 @@ class ProductController {
           },
         },
       });
+
+      // Link product attribute types (EAV: which attribute types this product uses)
+      if (
+        attributeTypeIds &&
+        Array.isArray(attributeTypeIds) &&
+        attributeTypeIds.length > 0
+      ) {
+        const validTypeIds = await prisma.attributeType.findMany({
+          where: { id: { in: attributeTypeIds }, tenantId },
+          select: { id: true },
+        });
+        if (validTypeIds.length > 0) {
+          await prisma.productAttributeType.createMany({
+            data: validTypeIds.map((t, i) => ({
+              productId: product.id,
+              attributeTypeId: t.id,
+              displayOrder: i,
+            })),
+            skipDuplicates: true,
+          });
+        }
+      }
 
       // Link product to location (warehouseLocation already resolved and validated above)
       try {
@@ -384,8 +471,9 @@ class ProductController {
             resource: "product",
             resourceId: product.id,
             details: {
-              imsCode: product.imsCode,
               name: product.name,
+              variationImsCodes:
+                product.variations?.map((v) => v.imsCode) ?? [],
             },
             ip:
               (req as any).ip ??
@@ -414,7 +502,7 @@ class ProductController {
         const isImsConflict =
           !target ||
           (target.length === 2 &&
-            target.some((f) => f === "imsCode" || f === "ims_code") &&
+            target.some((f) => f === "ims_code") &&
             target.some((f) => f === "tenantId" || f === "tenant_id"));
         return res.status(409).json({
           message: isImsConflict
@@ -446,10 +534,9 @@ class ProductController {
 
       // Allowed fields for sorting (date added = dateCreated); sorting at DB level
       const allowedSortFields = [
-        "dateCreated", // date added
+        "dateCreated",
         "dateModified",
         "name",
-        "imsCode",
         "costPrice",
         "mrp",
         "vendorId",
@@ -469,7 +556,11 @@ class ProductController {
       const where: any = {};
       if (search) {
         where.OR = [
-          { imsCode: { contains: search, mode: "insensitive" } },
+          {
+            variations: {
+              some: { imsCode: { contains: search, mode: "insensitive" } },
+            },
+          },
           { name: { contains: search, mode: "insensitive" } },
           { description: { contains: search, mode: "insensitive" } },
           {
@@ -561,6 +652,12 @@ class ProductController {
       const variationsInclude: any = {
         photos: true,
         subVariations: { select: { id: true, name: true } },
+        attributes: {
+          include: {
+            attributeType: { select: { id: true, name: true, code: true } },
+            attributeValue: { select: { id: true, value: true, code: true } },
+          },
+        },
         locationInventory: {
           select: {
             quantity: true,
@@ -588,6 +685,11 @@ class ProductController {
                 id: true,
                 username: true,
                 role: true,
+              },
+            },
+            productAttributeTypes: {
+              include: {
+                attributeType: { select: { id: true, name: true, code: true } },
               },
             },
             variations: {
@@ -635,10 +737,25 @@ class ProductController {
               role: true,
             },
           },
+          productAttributeTypes: {
+            include: {
+              attributeType: { select: { id: true, name: true, code: true } },
+            },
+          },
           variations: {
             include: {
               photos: true,
               subVariations: { select: { id: true, name: true } },
+              attributes: {
+                include: {
+                  attributeType: {
+                    select: { id: true, name: true, code: true },
+                  },
+                  attributeValue: {
+                    select: { id: true, value: true, code: true },
+                  },
+                },
+              },
             },
           },
           discounts: {
@@ -669,7 +786,6 @@ class ProductController {
         ? req.params.id[0]
         : req.params.id;
       const {
-        imsCode,
         name,
         categoryId,
         description,
@@ -683,11 +799,11 @@ class ProductController {
         vendorId,
         variations,
         discounts,
+        attributeTypeIds,
       } = req.body;
 
       logger.log(`[UpdateProduct] Attempting to update product with ID: ${id}`);
 
-      // Check if product exists
       const existingProduct = await prisma.product.findUnique({
         where: { id },
       });
@@ -702,9 +818,7 @@ class ProductController {
         });
       }
 
-      logger.log(
-        `[UpdateProduct] Product found: ${existingProduct.name} (${existingProduct.imsCode})`,
-      );
+      logger.log(`[UpdateProduct] Product found: ${existingProduct.name}`);
 
       // If categoryId is being updated, validate it exists
       if (categoryId !== undefined) {
@@ -717,27 +831,7 @@ class ProductController {
         }
       }
 
-      // Prepare update data
       const updateData: any = {};
-
-      if (imsCode !== undefined) {
-        const trimmedImsCode = String(imsCode).trim();
-        if (trimmedImsCode !== existingProduct.imsCode) {
-          const otherWithSameImsCode = await prisma.product.findFirst({
-            where: {
-              tenantId: existingProduct.tenantId,
-              imsCode: trimmedImsCode,
-              id: { not: id },
-            },
-          });
-          if (otherWithSameImsCode) {
-            return res.status(409).json({
-              message: "Product with this IMS code already exists",
-            });
-          }
-        }
-        updateData.imsCode = trimmedImsCode;
-      }
       if (name !== undefined) {
         updateData.name = name;
       }
@@ -885,13 +979,44 @@ class ProductController {
 
         for (const variation of Array.isArray(variations) ? variations : []) {
           const color = (variation.color || "").trim();
-          if (!color || existingVariations.some((e) => e.color === color))
+          const imsCode = (variation.imsCode ?? variation.sku ?? "").trim();
+          const hasImsCode = !!imsCode;
+          const hasColor = !!color;
+          const existingByColor = existingVariations.some(
+            (e) => e.color === color,
+          );
+          const existingByImsCode = hasImsCode
+            ? existingVariations.some((e) => e.imsCode === imsCode)
+            : false;
+          if (
+            (!hasColor && !hasImsCode) ||
+            existingByColor ||
+            existingByImsCode
+          )
             continue;
+          const conflict = await prisma.productVariation.findFirst({
+            where: { tenantId: req.user!.tenantId, imsCode },
+          });
+          if (conflict) continue;
           await prisma.productVariation.create({
             data: {
+              tenantId: req.user!.tenantId,
               productId: id,
-              color,
+              imsCode,
+              color: color || null,
               stockQuantity: variation.stockQuantity || 0,
+              costPriceOverride:
+                variation.costPriceOverride != null
+                  ? parseFloat(variation.costPriceOverride)
+                  : null,
+              mrpOverride:
+                variation.mrpOverride != null
+                  ? parseFloat(variation.mrpOverride)
+                  : null,
+              finalSpOverride:
+                variation.finalSpOverride != null
+                  ? parseFloat(variation.finalSpOverride)
+                  : null,
               photos:
                 variation.photos && Array.isArray(variation.photos)
                   ? {
@@ -912,6 +1037,20 @@ class ProductController {
                         )
                         .filter(Boolean)
                         .map((name: string) => ({ name })),
+                    }
+                  : undefined,
+              attributes:
+                variation.attributes && Array.isArray(variation.attributes)
+                  ? {
+                      create: variation.attributes.map(
+                        (a: {
+                          attributeTypeId: string;
+                          attributeValueId: string;
+                        }) => ({
+                          attributeTypeId: a.attributeTypeId,
+                          attributeValueId: a.attributeValueId,
+                        }),
+                      ),
                     }
                   : undefined,
             },
@@ -991,6 +1130,29 @@ class ProductController {
         }
       }
 
+      if (attributeTypeIds !== undefined) {
+        await prisma.productAttributeType.deleteMany({
+          where: { productId: id },
+        });
+        if (Array.isArray(attributeTypeIds) && attributeTypeIds.length > 0) {
+          const tenantId = req.user!.tenantId;
+          const validTypeIds = await prisma.attributeType.findMany({
+            where: { id: { in: attributeTypeIds }, tenantId },
+            select: { id: true },
+          });
+          if (validTypeIds.length > 0) {
+            await prisma.productAttributeType.createMany({
+              data: validTypeIds.map((t, i) => ({
+                productId: id,
+                attributeTypeId: t.id,
+                displayOrder: i,
+              })),
+              skipDuplicates: true,
+            });
+          }
+        }
+      }
+
       const updatedProduct = await prisma.product.update({
         where: { id },
         data: updateData,
@@ -1003,9 +1165,25 @@ class ProductController {
               role: true,
             },
           },
+          productAttributeTypes: {
+            include: {
+              attributeType: { select: { id: true, name: true, code: true } },
+            },
+          },
           variations: {
             include: {
               photos: true,
+              subVariations: { select: { id: true, name: true } },
+              attributes: {
+                include: {
+                  attributeType: {
+                    select: { id: true, name: true, code: true },
+                  },
+                  attributeValue: {
+                    select: { id: true, value: true, code: true },
+                  },
+                },
+              },
             },
           },
           discounts: {
@@ -1025,7 +1203,6 @@ class ProductController {
             resource: "product",
             resourceId: updatedProduct.id,
             details: {
-              imsCode: updatedProduct.imsCode,
               name: updatedProduct.name,
             },
             ip:
@@ -1054,7 +1231,7 @@ class ProductController {
         const isImsConflict =
           !target ||
           (target.length === 2 &&
-            target.some((f) => f === "imsCode" || f === "ims_code") &&
+            target.some((f) => f === "ims_code") &&
             target.some((f) => f === "tenantId" || f === "tenant_id"));
         return res.status(409).json({
           message: isImsConflict
@@ -1218,7 +1395,13 @@ class ProductController {
       if (search) {
         where.OR = [
           { product: { name: { contains: search, mode: "insensitive" } } },
-          { product: { imsCode: { contains: search, mode: "insensitive" } } },
+          {
+            product: {
+              variations: {
+                some: { imsCode: { contains: search, mode: "insensitive" } },
+              },
+            },
+          },
           {
             discountType: {
               name: { contains: search, mode: "insensitive" },
@@ -1259,7 +1442,6 @@ class ProductController {
               select: {
                 id: true,
                 name: true,
-                imsCode: true,
                 categoryId: true,
                 subCategory: true,
                 subCategoryId: true,
@@ -1418,13 +1600,8 @@ class ProductController {
         category: ["category"],
         subCategory: ["subcategory", "sub-category", "sub_category"],
         name: ["nameofproduct", "name", "productname", "product_name"],
-        variation: [
-          "variations",
-          "variation",
-          "designs",
-          "colors",
-          "variationsdesignscolors",
-        ],
+        attributes: ["attributes", "attribute"],
+        values: ["values", "value"],
         material: ["material"],
         length: ["length"],
         breadth: ["breadth", "bredth", "width"],
@@ -1522,7 +1699,8 @@ class ProductController {
           "location",
           "category",
           "name",
-          "variation",
+          "attributes",
+          "values",
           "costPrice",
           "finalSP",
         ];
@@ -1536,7 +1714,7 @@ class ProductController {
             message: "Missing required columns in CSV file",
             missingColumns,
             foundColumns: Object.keys(csvColumnMap),
-            hint: "Please ensure your CSV file has headers: IMS Code, Location, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+            hint: "Please ensure your CSV file has headers: IMS Code, Location, Category, Name of Product, Attributes, Values, Cost Price, Final SP",
           });
         }
 
@@ -1556,7 +1734,8 @@ class ProductController {
             category: getCellValue("category"),
             subCategory: getCellValue("subCategory"),
             name: getCellValue("name"),
-            variation: getCellValue("variation"),
+            attributes: getCellValue("attributes"),
+            values: getCellValue("values"),
             material: getCellValue("material"),
             length: getCellValue("length"),
             breadth: getCellValue("breadth"),
@@ -1673,7 +1852,8 @@ class ProductController {
           "location",
           "category",
           "name",
-          "variation",
+          "attributes",
+          "values",
           "costPrice",
           "finalSP",
         ];
@@ -1687,14 +1867,13 @@ class ProductController {
             message: "Missing required columns in Excel file",
             missingColumns,
             foundColumns: Object.keys(excelColumnMap),
-            hint: "Please ensure your Excel file has headers: IMS Code, Location, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+            hint: "Please ensure your Excel file has headers: IMS Code, Location, Category, Name of Product, Attributes, Values, Cost Price, Final SP",
           });
         }
 
-        // Parse rows (skip header row - row 1)
+        // Parse rows (skip header row 1 and optional row 2 e.g. "Required"/"Optional" in template)
         worksheet.eachRow((row, rowIndex) => {
-          // Skip header row
-          if (rowIndex === 1) return;
+          if (rowIndex === 1 || rowIndex === 2) return;
 
           // Extract cell values using column map
           const getCellValue = (fieldName: string) => {
@@ -1708,7 +1887,8 @@ class ProductController {
             category: getCellValue("category"),
             subCategory: getCellValue("subCategory"),
             name: getCellValue("name"),
-            variation: getCellValue("variation"),
+            attributes: getCellValue("attributes"),
+            values: getCellValue("values"),
             material: getCellValue("material"),
             length: getCellValue("length"),
             breadth: getCellValue("breadth"),
@@ -1817,14 +1997,14 @@ class ProductController {
         rowsWithLocation.push({ ...row, locationId });
       }
 
-      // Group rows by IMS code and name (same product, different variations/locations)
+      // Group rows by product (category + name). Each row = one variant with its own IMS code and attribute-value pairs.
       const productGroups = new Map<
         string,
         { product: RowWithLocation; variations: RowWithLocation[] }
       >();
 
       rowsWithLocation.forEach((row) => {
-        const key = `${row.imsCode}-${row.name}`;
+        const key = `${row.category.trim().toLowerCase()}|${row.name.trim().toLowerCase()}`;
         if (!productGroups.has(key)) {
           productGroups.set(key, {
             product: row,
@@ -1833,6 +2013,83 @@ class ProductController {
         }
         productGroups.get(key)!.variations.push(row);
       });
+
+      // Helper: ensure AttributeType and AttributeValue exist; return ids (create if needed)
+      const ensureAttributeTypeAndValue = async (
+        tenantId: string,
+        attrName: string,
+        value: string,
+      ): Promise<{ attributeTypeId: string; attributeValueId: string }> => {
+        const code = attrName.trim().toLowerCase().replace(/\s+/g, "_");
+        const nameTrim = attrName.trim();
+        const valueTrim = value.trim();
+        let attrType = await prisma.attributeType.findFirst({
+          where: { tenantId, code },
+          select: { id: true },
+        });
+        if (!attrType) {
+          attrType = await prisma.attributeType.create({
+            data: {
+              tenantId,
+              name: nameTrim,
+              code: code || "attr",
+              displayOrder: 0,
+            },
+            select: { id: true },
+          });
+        }
+        let attrVal = await prisma.attributeValue.findFirst({
+          where: {
+            attributeTypeId: attrType.id,
+            value: valueTrim,
+          },
+          select: { id: true },
+        });
+        if (!attrVal) {
+          attrVal = await prisma.attributeValue.create({
+            data: {
+              attributeTypeId: attrType.id,
+              value: valueTrim,
+              displayOrder: 0,
+            },
+            select: { id: true },
+          });
+        }
+        return {
+          attributeTypeId: attrType.id,
+          attributeValueId: attrVal.id,
+        };
+      };
+
+      const resolveAttributePairs = async (
+        tenantId: string,
+        attributesStr: string,
+        valuesStr: string,
+      ): Promise<
+        Array<{ attributeTypeId: string; attributeValueId: string }>
+      > => {
+        const attrNames = attributesStr
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const vals = valuesStr
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean);
+        const pairs: Array<{
+          attributeTypeId: string;
+          attributeValueId: string;
+        }> = [];
+        for (let i = 0; i < attrNames.length && i < vals.length; i++) {
+          const pair = await ensureAttributeTypeAndValue(
+            tenantId,
+            attrNames[i]!,
+            vals[i]!,
+          );
+          pairs.push(pair);
+        }
+        return pairs;
+      };
 
       // Process each product group
       for (const [key, group] of productGroups.entries()) {
@@ -1905,30 +2162,74 @@ class ProductController {
             }
           }
 
-          // Find product by IMS code (scoped to tenant); same IMS code in different locations is one product with multiple LocationInventory rows
+          // Find product by variation IMS code or by name (scoped to tenant)
           const existingProduct = await prisma.product.findFirst({
-            where: { tenantId, imsCode: firstRow.imsCode },
+            where: {
+              tenantId,
+              OR: [
+                { variations: { some: { imsCode: firstRow.imsCode } } },
+                { name: firstRow.name.trim() },
+              ],
+            },
             include: { variations: true },
           });
 
           if (existingProduct) {
-            // Product exists: upsert LocationInventory for each row (location + variation + quantity)
-            const variationByColor = new Map(
-              existingProduct.variations.map((v) => [v.color.toLowerCase(), v]),
+            // Product exists: find variation by IMS code per row; create new variation if not found (with attributes/values)
+            const variationByImsCode = new Map(
+              existingProduct.variations.map((v) => [
+                v.imsCode.trim().toLowerCase(),
+                v,
+              ]),
             );
             let inventoryUpserted = 0;
             for (const variationRow of variations) {
-              const variation = variationByColor.get(
-                variationRow.variation.toLowerCase(),
-              );
+              const imsCodeTrim = variationRow.imsCode.trim();
+              let variation = variationByImsCode.get(imsCodeTrim.toLowerCase());
               if (!variation) {
-                errors.push({
-                  row: rowsWithLocation.indexOf(variationRow) + 2,
-                  field: "variation",
-                  message: `Variation "${variationRow.variation}" does not exist for product ${firstRow.imsCode}. Add a row with this variation first or create the product.`,
-                  value: variationRow.variation,
+                // Create new variation for this row (new IMS code + attribute-value pairs)
+                const attributePairs = await resolveAttributePairs(
+                  tenantId,
+                  variationRow.attributes,
+                  variationRow.values,
+                );
+                const newVariation = await prisma.productVariation.create({
+                  data: {
+                    tenantId,
+                    productId: existingProduct.id,
+                    imsCode: imsCodeTrim,
+                    color: null,
+                    stockQuantity: 0,
+                    attributes: {
+                      create: attributePairs.map((p) => ({
+                        attributeTypeId: p.attributeTypeId,
+                        attributeValueId: p.attributeValueId,
+                      })),
+                    },
+                  },
                 });
-                continue;
+                variationByImsCode.set(imsCodeTrim.toLowerCase(), newVariation);
+                variation = newVariation;
+                // Link product to attribute types if not already
+                const typeIds = [
+                  ...new Set(attributePairs.map((p) => p.attributeTypeId)),
+                ];
+                for (const typeId of typeIds) {
+                  await prisma.productAttributeType.upsert({
+                    where: {
+                      productId_attributeTypeId: {
+                        productId: existingProduct.id,
+                        attributeTypeId: typeId,
+                      },
+                    },
+                    create: {
+                      productId: existingProduct.id,
+                      attributeTypeId: typeId,
+                      displayOrder: 0,
+                    },
+                    update: {},
+                  });
+                }
               }
               const qty = variationRow.quantity ?? 0;
               const existing = await prisma.locationInventory.findFirst({
@@ -1965,7 +2266,8 @@ class ProductController {
               ),
             ];
             updatedProducts.push({
-              imsCode: existingProduct.imsCode,
+              imsCode:
+                existingProduct.variations?.[0]?.imsCode ?? firstRow.imsCode,
               name: existingProduct.name,
               locations: locationNames,
               inventoryRowsUpdated: inventoryUpserted,
@@ -1973,14 +2275,27 @@ class ProductController {
             continue;
           }
 
-          // New product: create with variations (stock in LocationInventory per row)
-          const uniqueVariationColors = [
-            ...new Set(variations.map((v) => v.variation.trim())),
-          ];
-          const productVariations = uniqueVariationColors.map((color) => ({
-            color,
-            stockQuantity: 0,
-          }));
+          // New product: one variation per row (each row = one IMS code + attribute-value pairs)
+          const productVariationsData: Array<{
+            imsCode: string;
+            stockQuantity: number;
+            attributePairs: Array<{
+              attributeTypeId: string;
+              attributeValueId: string;
+            }>;
+          }> = [];
+          for (const row of variations) {
+            const attributePairs = await resolveAttributePairs(
+              tenantId,
+              row.attributes,
+              row.values,
+            );
+            productVariationsData.push({
+              imsCode: row.imsCode.trim(),
+              stockQuantity: 0,
+              attributePairs,
+            });
+          }
 
           // Prepare discounts
           // Map Excel discount column names to database discount type names
@@ -2046,11 +2361,10 @@ class ProductController {
             }
           }
 
-          // Create product
+          // Create product with one variation per row (each with attribute-value pairs)
           const product = await prisma.product.create({
             data: {
               tenantId: req.user!.tenantId,
-              imsCode: firstRow.imsCode,
               name: firstRow.name,
               categoryId,
               description: firstRow.material || null,
@@ -2062,7 +2376,18 @@ class ProductController {
               mrp: firstRow.finalSP,
               createdById: req.user!.id,
               variations: {
-                create: productVariations,
+                create: productVariationsData.map((v) => ({
+                  tenantId: req.user!.tenantId,
+                  imsCode: v.imsCode,
+                  color: null,
+                  stockQuantity: v.stockQuantity,
+                  attributes: {
+                    create: v.attributePairs.map((p) => ({
+                      attributeTypeId: p.attributeTypeId,
+                      attributeValueId: p.attributeValueId,
+                    })),
+                  },
+                })),
               },
               discounts:
                 discounts.length > 0
@@ -2082,12 +2407,37 @@ class ProductController {
             },
           });
 
-          const variationByColor = new Map(
-            product.variations.map((v) => [v.color.toLowerCase(), v]),
+          // Link product to attribute types used by its variations
+          const attributeTypeIds = [
+            ...new Set(
+              productVariationsData.flatMap((v) =>
+                v.attributePairs.map((p) => p.attributeTypeId),
+              ),
+            ),
+          ];
+          for (let i = 0; i < attributeTypeIds.length; i++) {
+            await prisma.productAttributeType.upsert({
+              where: {
+                productId_attributeTypeId: {
+                  productId: product.id,
+                  attributeTypeId: attributeTypeIds[i]!,
+                },
+              },
+              create: {
+                productId: product.id,
+                attributeTypeId: attributeTypeIds[i]!,
+                displayOrder: i,
+              },
+              update: {},
+            });
+          }
+
+          const variationByImsCode = new Map(
+            product.variations.map((v) => [v.imsCode.trim().toLowerCase(), v]),
           );
           for (const variationRow of variations) {
-            const variation = variationByColor.get(
-              variationRow.variation.toLowerCase(),
+            const variation = variationByImsCode.get(
+              variationRow.imsCode.trim().toLowerCase(),
             );
             if (!variation) continue;
             const qty = variationRow.quantity ?? 0;
@@ -2117,7 +2467,7 @@ class ProductController {
 
           createdProducts.push({
             id: product.id,
-            imsCode: product.imsCode,
+            imsCode: product.variations?.[0]?.imsCode ?? firstRow.imsCode,
             name: product.name,
             variationsCount: product.variations?.length || 0,
           });
@@ -2185,7 +2535,8 @@ class ProductController {
         { header: "Category", width: 18 },
         { header: "Sub-Category", width: 15 },
         { header: "Name of Product", width: 28 },
-        { header: "Variations (Designs/Colors)", width: 28 },
+        { header: "Attributes", width: 22 },
+        { header: "Values", width: 22 },
         { header: "Material", width: 15 },
         { header: "Length", width: 10 },
         { header: "Breadth", width: 10 },
@@ -2206,6 +2557,7 @@ class ProductController {
         "Optional",
         "Required",
         "Required",
+        "Required",
         "Optional",
         "Optional",
         "Optional",
@@ -2218,7 +2570,7 @@ class ProductController {
         "Optional",
         "Optional",
         "Optional",
-      ];
+      ]; // 19 entries for 19 columns (IMS Code through Wholesale Discount)
 
       worksheet.columns = headers.map((h) => ({
         header: h.header,
@@ -2235,6 +2587,162 @@ class ProductController {
         row2.getCell(i + 1).value = text;
       });
       row2.font = { italic: true };
+
+      // Example rows covering all supported cases (user can delete or overwrite)
+      const exampleRows: (string | number | null)[][] = [
+        // 1. Simple: one attribute (color), one variant
+        [
+          "IMS-001",
+          "Main Warehouse",
+          "Apparel",
+          null,
+          "Cotton T-Shirt",
+          "color",
+          "red",
+          "Cotton",
+          null,
+          null,
+          null,
+          null,
+          null,
+          50,
+          500,
+          1000,
+          null,
+          null,
+          null,
+        ],
+        // 2. Same product, second variant (different IMS code)
+        [
+          "IMS-002",
+          "Main Warehouse",
+          "Apparel",
+          null,
+          "Cotton T-Shirt",
+          "color",
+          "blue",
+          "Cotton",
+          null,
+          null,
+          null,
+          null,
+          null,
+          30,
+          500,
+          1000,
+          null,
+          null,
+          null,
+        ],
+        // 3. Multiple attributes (color + size), one variant
+        [
+          "IMS-003",
+          "Main Warehouse",
+          "Apparel",
+          null,
+          "Formal Shirt",
+          "color, size",
+          "red, M",
+          "Cotton",
+          72,
+          56,
+          2,
+          null,
+          null,
+          20,
+          600,
+          1200,
+          null,
+          null,
+          null,
+        ],
+        // 4. Same product, different variant (color + size)
+        [
+          "IMS-004",
+          "Main Warehouse",
+          "Apparel",
+          null,
+          "Formal Shirt",
+          "color, size",
+          "blue, L",
+          "Cotton",
+          null,
+          null,
+          null,
+          null,
+          null,
+          25,
+          600,
+          1200,
+          10,
+          15,
+          20,
+        ],
+        // 5. Three attributes including multi-value size (use hyphen to avoid comma split)
+        [
+          "IMS-005",
+          "Main Warehouse",
+          "Apparel",
+          "Casual",
+          "Hoodie",
+          "color, material, size",
+          "red, cotton, 32-33-34-35",
+          "Polyester",
+          70,
+          60,
+          1.5,
+          null,
+          "Acme Vendors",
+          40,
+          800,
+          1500,
+          5,
+          10,
+          12,
+        ],
+        // 6. Same product, different color/material, same size range
+        [
+          "IMS-006",
+          "Main Warehouse",
+          "Apparel",
+          "Casual",
+          "Hoodie",
+          "color, material, size",
+          "blue, pasmina, 32-33-34-35",
+          "Polyester",
+          null,
+          null,
+          null,
+          null,
+          null,
+          35,
+          800,
+          1500,
+          null,
+          null,
+          null,
+        ],
+      ];
+
+      exampleRows.forEach((rowValues, idx) => {
+        const row = worksheet.getRow(3 + idx);
+        rowValues.forEach((val, colIdx) => {
+          const cell = row.getCell(colIdx + 1);
+          cell.value = val;
+        });
+        row.font = { italic: false };
+      });
+      // Light fill for example rows so they're easy to spot
+      for (let r = 3; r <= 3 + exampleRows.length - 1; r++) {
+        const row = worksheet.getRow(r);
+        for (let c = 1; c <= 19; c++) {
+          row.getCell(c).fill = {
+            type: "pattern",
+            pattern: "solid",
+            fgColor: { argb: "FFF5F5F5" },
+          };
+        }
+      }
 
       const filename = "products_bulk_upload_template.xlsx";
       res.setHeader(
@@ -2367,7 +2875,7 @@ class ProductController {
             : "No discounts";
 
         worksheet.addRow({
-          imsCode: product.imsCode,
+          imsCode: product.variations?.map((v) => v.imsCode).join(", ") ?? "",
           name: product.name,
           category: product.category?.name || "N/A",
           description: product.description || "N/A",
@@ -2454,7 +2962,9 @@ class ProductController {
               : "No discounts";
 
           const row = [
-            escapeCsvValue(product.imsCode),
+            escapeCsvValue(
+              product.variations?.map((v) => v.imsCode).join(", ") ?? "",
+            ),
             escapeCsvValue(product.name),
             escapeCsvValue(product.category?.name || "N/A"),
             escapeCsvValue(product.description || "N/A"),

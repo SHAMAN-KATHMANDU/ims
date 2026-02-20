@@ -24,10 +24,10 @@ export interface LocationInventoryItem {
   updatedAt: string;
   variation: {
     id: string;
+    imsCode: string;
     color: string;
     product: {
       id: string;
-      imsCode: string;
       name: string;
       mrp?: number | string;
       category?: {

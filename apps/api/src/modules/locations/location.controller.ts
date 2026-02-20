@@ -374,7 +374,13 @@ class LocationController {
               product: {
                 OR: [
                   { name: { contains: search, mode: "insensitive" } },
-                  { imsCode: { contains: search, mode: "insensitive" } },
+                  {
+                    variations: {
+                      some: {
+                        imsCode: { contains: search, mode: "insensitive" },
+                      },
+                    },
+                  },
                 ],
               },
             },
@@ -396,7 +402,6 @@ class LocationController {
                 product: {
                   select: {
                     id: true,
-                    imsCode: true,
                     name: true,
                     category: true,
                   },

@@ -171,7 +171,10 @@ export function DiscountsTab() {
                       <SelectItem value="all">All</SelectItem>
                       {products.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} ({p.imsCode})
+                          {p.name} (
+                          {(p as { variations?: Array<{ imsCode?: string }> })
+                            .variations?.[0]?.imsCode ?? "—"}
+                          )
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -305,7 +308,11 @@ export function DiscountsTab() {
                         <TableCell className="font-medium">
                           {discount.product.name}
                           <span className="text-muted-foreground text-xs block">
-                            {discount.product.imsCode}
+                            {(
+                              discount.product as {
+                                variations?: Array<{ imsCode?: string }>;
+                              }
+                            ).variations?.[0]?.imsCode ?? discount.product.name}
                           </span>
                         </TableCell>
                         <TableCell>

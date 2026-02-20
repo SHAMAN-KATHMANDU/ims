@@ -84,7 +84,7 @@ class PromoController {
           products: {
             include: {
               product: {
-                select: { id: true, name: true, imsCode: true },
+                select: { id: true, name: true },
               },
             },
           },
@@ -152,7 +152,7 @@ class PromoController {
             products: {
               include: {
                 product: {
-                  select: { id: true, name: true, imsCode: true },
+                  select: { id: true, name: true },
                 },
               },
             },
@@ -184,7 +184,7 @@ class PromoController {
           products: {
             include: {
               product: {
-                select: { id: true, name: true, imsCode: true },
+                select: { id: true, name: true },
               },
             },
           },
@@ -324,7 +324,7 @@ class PromoController {
             products: {
               include: {
                 product: {
-                  select: { id: true, name: true, imsCode: true },
+                  select: { id: true, name: true },
                 },
               },
             },

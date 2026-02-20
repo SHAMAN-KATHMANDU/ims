@@ -20,6 +20,7 @@ import {
   Factory,
   Percent,
   Tags,
+  Layers,
   Bug,
   Building2,
   ShieldCheck,
@@ -210,6 +211,12 @@ const navSections: NavSection[] = [
         path: "product/categories",
         label: "Categories",
         icon: Tags,
+        roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "product/attribute-types",
+        label: "Attribute Types",
+        icon: Layers,
         roles: ["admin", "superAdmin"],
       },
       {

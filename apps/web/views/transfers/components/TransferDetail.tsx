@@ -154,7 +154,7 @@ export function TransferDetail({
                                 {item.variation.product.name}
                               </p>
                               <p className="text-xs text-muted-foreground">
-                                {item.variation.product.imsCode}
+                                {item.variation.imsCode}
                               </p>
                             </div>
                           </TableCell>

@@ -202,7 +202,13 @@ class VendorController {
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" as const } },
-          { imsCode: { contains: search, mode: "insensitive" as const } },
+          {
+            variations: {
+              some: {
+                imsCode: { contains: search, mode: "insensitive" as const },
+              },
+            },
+          },
         ];
       }
 
@@ -212,7 +218,6 @@ class VendorController {
           where,
           select: {
             id: true,
-            imsCode: true,
             name: true,
             mrp: true,
             costPrice: true,

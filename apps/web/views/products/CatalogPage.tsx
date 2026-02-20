@@ -68,6 +68,7 @@ import type {
   ProductVariationForm,
   ProductDiscountForm,
 } from "./types";
+import { getVariationAttributeDisplay } from "./utils/helpers";
 
 interface CatalogPageProps {
   /** When true, catalog is read-only for all roles (no Add/Bulk Upload/Download/edit/delete). */
@@ -289,7 +290,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const validateProduct = (values: ProductFormValues) => {
     const errors: Record<string, string> = {};
 
-    if (!values.imsCode?.trim()) errors.imsCode = "IMS Code is required";
     if (!values.name?.trim()) errors.name = "Product name is required";
     if (!values.categoryId) errors.categoryId = "Category is required";
 
@@ -317,9 +317,10 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       errors._form = "At least one variation is required";
     } else {
       productVariations.forEach((variation, index) => {
-        if (!variation.color?.trim()) {
-          errors[`variation_${index}_color`] = "Color is required";
+        if (!(variation.imsCode ?? "").trim()) {
+          errors[`variation_${index}_imsCode`] = "IMS code is required";
         }
+        // Variant name (color) is optional; can be auto-filled from attributes
         const stockQuantity = Number(variation.stockQuantity);
         if (
           variation.stockQuantity === undefined ||
@@ -335,6 +336,16 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             "Stock quantity cannot be negative";
         }
       });
+      // Duplicate variation: same IMS code as another variation in the list
+      const imsCodes = productVariations
+        .map((v) => (v.imsCode ?? "").trim())
+        .filter(Boolean);
+      const duplicateIms = imsCodes.some(
+        (code, i) => imsCodes.indexOf(code) !== i,
+      );
+      if (duplicateIms) {
+        errors._form = "This product already exists.";
+      }
     }
 
     return Object.keys(errors).length > 0 ? errors : null;
@@ -343,7 +354,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   // Product form
   const productForm = useForm<ProductFormValues>({
     initialValues: {
-      imsCode: "",
       name: "",
       categoryId: "",
       subCategory: "",
@@ -359,16 +369,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     validate: validateProduct,
     onSubmit: async (values) => {
       try {
-        if (
-          !values.imsCode?.trim() ||
-          !values.name?.trim() ||
-          !values.categoryId
-        ) {
+        if (!values.name?.trim() || !values.categoryId) {
           setErrorDialog({
             open: true,
             title: "Validation Error",
-            message:
-              "Please fill in all required fields (IMS Code, Name, and Category).",
+            message: "Please fill in Name and Category.",
           });
           return;
         }
@@ -416,7 +421,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         const isEditing = !!editingProduct;
 
         const data: CreateProductData = {
-          imsCode: values.imsCode,
           name: values.name,
           categoryId: values.categoryId,
           description: values.description,
@@ -434,6 +438,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           data.variations = productVariations.map((v) => ({
             color: v.color,
             stockQuantity: Number(v.stockQuantity) || 0,
+            imsCode: (v.imsCode ?? "").trim(),
             subVariants:
               v.subVariants && v.subVariants.length > 0
                 ? v.subVariants.filter(Boolean)
@@ -463,6 +468,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             data.variations = productVariations.map((v) => ({
               color: v.color,
               stockQuantity: Number(v.stockQuantity) || 0,
+              imsCode: (v.imsCode ?? "").trim(),
               subVariants:
                 v.subVariants && v.subVariants.length > 0
                   ? v.subVariants.filter(Boolean)
@@ -547,29 +553,55 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     }
 
     setEditingProduct(product);
-    productForm.values.imsCode = product.imsCode;
-    productForm.values.name = product.name;
-    productForm.values.categoryId = product.categoryId;
-    productForm.values.subCategory = product.subCategory || "";
-    productForm.values.description = product.description || "";
-    productForm.values.length = product.length?.toString() || "";
-    productForm.values.breadth = product.breadth?.toString() || "";
-    productForm.values.height = product.height?.toString() || "";
-    productForm.values.weight = product.weight?.toString() || "";
-    productForm.values.costPrice = product.costPrice.toString();
-    productForm.values.mrp = product.mrp.toString();
+    productForm.setValues({
+      name: product.name,
+      categoryId: product.categoryId,
+      subCategory: product.subCategory || "",
+      description: product.description || "",
+      length: product.length?.toString() || "",
+      breadth: product.breadth?.toString() || "",
+      height: product.height?.toString() || "",
+      weight: product.weight?.toString() || "",
+      costPrice: product.costPrice.toString(),
+      mrp: product.mrp.toString(),
+      vendorId: product.vendorId ?? undefined,
+    });
 
     if (product.variations && product.variations.length > 0) {
       setProductVariations(
-        product.variations.map((v) => ({
-          color: v.color || "",
-          stockQuantity: (v.stockQuantity || 0).toString(),
-          subVariants: (v.subVariations || []).map((s) => s.name),
-          photos: (v.photos || []).map((p) => ({
-            photoUrl: p.photoUrl,
-            isPrimary: p.isPrimary || false,
-          })),
-        })),
+        product.variations.map((v) => {
+          const hasLocationInv =
+            v.locationInventory && v.locationInventory.length > 0;
+          const stock = hasLocationInv
+            ? (v.locationInventory as Array<{ quantity: number }>).reduce(
+                (s, inv) => s + inv.quantity,
+                0,
+              )
+            : (v.stockQuantity ?? 0);
+          const autoName = getVariationAttributeDisplay(v);
+          return {
+            color: v.color?.trim() || (autoName !== "—" ? autoName : "") || "",
+            stockQuantity: stock.toString(),
+            imsCode: (v as { imsCode?: string }).imsCode ?? "",
+            subVariants: (v.subVariations || []).map((s) => s.name),
+            photos: (v.photos || []).map((p) => ({
+              photoUrl: p.photoUrl,
+              isPrimary: p.isPrimary || false,
+            })),
+            attributes:
+              (
+                v as {
+                  attributes?: Array<{
+                    attributeTypeId: string;
+                    attributeValueId: string;
+                  }>;
+                }
+              ).attributes?.map((a) => ({
+                attributeTypeId: a.attributeTypeId,
+                attributeValueId: a.attributeValueId,
+              })) ?? [],
+          };
+        }),
       );
     } else {
       setProductVariations([]);
@@ -607,9 +639,16 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
   // Variation handlers
   const addVariationToForm = () => {
-    setProductVariations([
-      ...productVariations,
-      { color: "", stockQuantity: "0", subVariants: [], photos: [] },
+    setProductVariations((prev) => [
+      ...prev,
+      {
+        color: "",
+        stockQuantity: "0",
+        imsCode: "",
+        subVariants: [],
+        photos: [],
+        attributes: [],
+      },
     ]);
   };
 
@@ -619,20 +658,32 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
   const updateVariationInForm = (
     index: number,
-    field: "color" | "stockQuantity",
-    value: string,
+    field: "color" | "stockQuantity" | "imsCode" | "attributes",
+    value:
+      | string
+      | Array<{ attributeTypeId: string; attributeValueId: string }>,
   ) => {
-    const updated = [...productVariations];
-    updated[index] = {
-      color: field === "color" ? value : updated[index]?.color || "",
-      stockQuantity:
-        field === "stockQuantity"
-          ? value
-          : updated[index]?.stockQuantity || "0",
-      subVariants: updated[index]?.subVariants ?? [],
-      photos: updated[index]?.photos || [],
-    };
-    setProductVariations(updated);
+    setProductVariations((prev) => {
+      const updated = [...prev];
+      const prevVar = updated[index];
+      if (!prevVar) return prev;
+      updated[index] = {
+        ...prevVar,
+        color: field === "color" ? (value as string) : prevVar.color,
+        stockQuantity:
+          field === "stockQuantity" ? (value as string) : prevVar.stockQuantity,
+        imsCode:
+          field === "imsCode" ? (value as string) : (prevVar.imsCode ?? ""),
+        attributes:
+          field === "attributes"
+            ? (value as Array<{
+                attributeTypeId: string;
+                attributeValueId: string;
+              }>)
+            : (prevVar.attributes ?? []),
+      };
+      return updated;
+    });
   };
 
   const updateSubVariantsInForm = (index: number, subVariants: string[]) => {
@@ -656,6 +707,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     updated[variationIndex] = {
       color: variation.color || "",
       stockQuantity: variation.stockQuantity || "0",
+      imsCode: variation.imsCode ?? "",
       subVariants: variation.subVariants ?? [],
       photos: [...photos, { photoUrl, isPrimary }],
     };
@@ -678,6 +730,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     updated[variationIndex] = {
       color: variation.color || "",
       stockQuantity: variation.stockQuantity || "0",
+      imsCode: variation.imsCode ?? "",
       subVariants: variation.subVariants ?? [],
       photos: newPhotos,
     };
@@ -696,6 +749,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     updated[variationIndex] = {
       color: variation.color || "",
       stockQuantity: variation.stockQuantity || "0",
+      imsCode: variation.imsCode ?? "",
       subVariants: variation.subVariants ?? [],
       photos: photos,
     };

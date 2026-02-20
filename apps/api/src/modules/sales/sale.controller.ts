@@ -496,7 +496,7 @@ class SaleController {
                 variation: {
                   include: {
                     product: {
-                      select: { id: true, name: true, imsCode: true },
+                      select: { id: true, name: true },
                     },
                   },
                 },
@@ -1112,7 +1112,6 @@ class SaleController {
                     select: {
                       id: true,
                       name: true,
-                      imsCode: true,
                       category: true,
                     },
                   },
@@ -1222,7 +1221,6 @@ class SaleController {
                     select: {
                       id: true,
                       name: true,
-                      imsCode: true,
                       category: true,
                     },
                   },
@@ -1844,10 +1842,20 @@ class SaleController {
       );
 
       const allProducts = await prisma.product.findMany({
-        select: { id: true, imsCode: true, name: true },
+        where: { tenantId: req.user!.tenantId },
+        select: { id: true, name: true },
       });
-      const productMapByIms = new Map(
-        allProducts.map((p) => [p.imsCode.toLowerCase(), p]),
+      const allVariations = await prisma.productVariation.findMany({
+        where: { tenantId: req.user!.tenantId },
+        select: {
+          id: true,
+          imsCode: true,
+          productId: true,
+          product: { select: { id: true, name: true } },
+        },
+      });
+      const variationMapByIms = new Map(
+        allVariations.map((v) => [v.imsCode.toLowerCase(), v]),
       );
       const productMapByName = new Map(
         allProducts.map((p) => [p.name.toLowerCase(), p]),
@@ -1961,34 +1969,33 @@ class SaleController {
           let totalDiscount = 0;
 
           for (const itemRow of group.rows) {
-            // Find product by IMS code or name
             const imsCodeLower = itemRow.productImsCode.toLowerCase();
             const nameLower = itemRow.productName.toLowerCase();
 
-            let product =
-              productMapByIms.get(imsCodeLower) ||
-              productMapByName.get(nameLower);
-
-            if (!product) {
-              errors.push({
-                row: rows.indexOf(itemRow) + 2,
-                field: "productImsCode",
-                message: `Product with IMS code "${itemRow.productImsCode}" or name "${itemRow.productName}" not found`,
-                value: itemRow.productImsCode,
-              });
-              continue;
+            let variation = variationMapByIms.get(imsCodeLower);
+            if (!variation) {
+              const product = productMapByName.get(nameLower);
+              if (product) {
+                variation =
+                  (await prisma.productVariation.findFirst({
+                    where: {
+                      productId: product.id,
+                      color: { equals: itemRow.variation, mode: "insensitive" },
+                    },
+                    select: {
+                      id: true,
+                      imsCode: true,
+                      productId: true,
+                      product: { select: { id: true, name: true } },
+                    },
+                  })) ??
+                  (allVariations.find(
+                    (v) =>
+                      v.productId === product.id &&
+                      v.imsCode.toLowerCase() === imsCodeLower,
+                  ) as typeof variation);
+              }
             }
-
-            // Find variation by productId and color
-            const variation = await prisma.productVariation.findFirst({
-              where: {
-                productId: product.id,
-                color: {
-                  equals: itemRow.variation,
-                  mode: "insensitive",
-                },
-              },
-            });
 
             if (!variation) {
               errors.push({
@@ -2340,7 +2347,7 @@ class SaleController {
               const product = item.variation.product;
               rows.push({
                 ...saleContext,
-                productImsCode: product.imsCode,
+                productImsCode: item.variation.imsCode,
                 productName: product.name,
                 category: product.category?.name ?? "",
                 variation: item.variation.color,

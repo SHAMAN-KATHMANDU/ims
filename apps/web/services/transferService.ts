@@ -32,10 +32,10 @@ export interface TransferItem {
   quantity: number;
   variation: {
     id: string;
+    imsCode: string;
     color: string;
     product: {
       id: string;
-      imsCode: string;
       name: string;
       category?: {
         id: string;

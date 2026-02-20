@@ -43,8 +43,10 @@ model Tenant {
   promoCodes     PromoCode[]
   auditLogs      AuditLog[]
   errorReports   ErrorReport[]
-  subscriptions  Subscription[]
-  payments       TenantPayment[]
+  subscriptions    Subscription[]
+  payments         TenantPayment[]
+  attributeTypes   AttributeType[]
+  productVariations ProductVariation[]
 
   @@map("tenants")
 }
@@ -251,7 +253,6 @@ model SubCategory {
 model Product {
   id            String   @id @default(uuid()) @map("product_id")
   tenantId      String   @map("tenant_id")
-  imsCode       String   @map("ims_code") @db.VarChar(100)
   name          String   @map("product_name") @db.VarChar(255)
   categoryId    String   @map("category_id")
   /// Optional sub-category label for further grouping within a category (denormalized name)
@@ -281,32 +282,107 @@ model Product {
   createdBy    User             @relation("ProductCreator", fields: [createdById], references: [id], onDelete: Restrict)
   vendor       Vendor?          @relation(fields: [vendorId], references: [id], onDelete: SetNull)
   subCategoryRel SubCategory?   @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
-  variations   ProductVariation[]
-  discounts    ProductDiscount[]
-  promoCodes   PromoCodeProduct[]
+  variations           ProductVariation[]
+  discounts            ProductDiscount[]
+  promoCodes           PromoCodeProduct[]
+  productAttributeTypes ProductAttributeType[]
 
-  @@unique([tenantId, imsCode])
   @@map("products")
 }
 
-model ProductVariation {
-  id            String   @id @default(uuid()) @map("variation_id")
-  productId     String   @map("product_id")
-  /// Generic label for the variation (design / color / model)
-  color         String   @db.VarChar(100)
-  stockQuantity Int      @default(0) @map("stock_quantity")
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @updatedAt @map("updated_at")
+// ============================================
+// EAV-STYLE VARIATION ATTRIBUTES (tenant-customizable)
+// ============================================
 
-  product           Product               @relation(fields: [productId], references: [id], onDelete: Cascade)
+model AttributeType {
+  id           String   @id @default(uuid()) @map("attribute_type_id")
+  tenantId     String   @map("tenant_id")
+  name         String   @map("name") @db.VarChar(100)
+  code         String   @map("code") @db.VarChar(50)
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  values    AttributeValue[]
+  productAttributeTypes ProductAttributeType[]
+  variationAttributes   ProductVariationAttribute[]
+
+  @@unique([tenantId, code])
+  @@map("attribute_types")
+}
+
+model AttributeValue {
+  id              String   @id @default(uuid()) @map("attribute_value_id")
+  attributeTypeId String   @map("attribute_type_id")
+  value           String   @map("value") @db.VarChar(255)
+  code            String?  @map("code") @db.VarChar(50)
+  displayOrder    Int      @default(0) @map("display_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  attributeType         AttributeType              @relation(fields: [attributeTypeId], references: [id], onDelete: Cascade)
+  productVariationAttributes ProductVariationAttribute[]
+
+  @@unique([attributeTypeId, value])
+  @@map("attribute_values")
+}
+
+/// Which attribute types apply to a product (e.g. this product uses Color + Size)
+model ProductAttributeType {
+  productId       String @map("product_id")
+  attributeTypeId String @map("attribute_type_id")
+  displayOrder    Int    @default(0) @map("display_order")
+
+  product       Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributeType AttributeType @relation(fields: [attributeTypeId], references: [id], onDelete: Cascade)
+
+  @@id([productId, attributeTypeId])
+  @@map("product_attribute_types")
+}
+
+model ProductVariation {
+  id                String   @id @default(uuid()) @map("variation_id")
+  tenantId          String   @map("tenant_id")
+  productId         String   @map("product_id")
+  /// Unique per-tenant variation identifier (IMS code at variation level).
+  imsCode           String   @map("ims_code") @db.VarChar(100)
+  /// Optional overrides; when null, product base price is used
+  costPriceOverride Decimal? @map("cost_price_override") @db.Decimal(10, 2)
+  mrpOverride       Decimal? @map("mrp_override") @db.Decimal(10, 2)
+  finalSpOverride   Decimal? @map("final_sp_override") @db.Decimal(10, 2)
+  isActive          Boolean  @default(true) @map("is_active")
+  /// Legacy: generic label (design / color / model). Kept for backward compatibility.
+  color             String?  @db.VarChar(100)
+  stockQuantity     Int      @default(0) @map("stock_quantity")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product           Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  attributes        ProductVariationAttribute[]
   subVariations     ProductSubVariation[]
   photos            VariationPhoto[]
   locationInventory LocationInventory[]
   transferItems     TransferItem[]
   saleItems         SaleItem[]
 
-  @@unique([productId, color])
+  @@unique([tenantId, imsCode])
   @@map("product_variations")
+}
+
+/// EAV: links a variation to one value per attribute type (e.g. Color=Red, Size=M)
+model ProductVariationAttribute {
+  variationId       String @map("variation_id")
+  attributeTypeId   String @map("attribute_type_id")
+  attributeValueId  String @map("attribute_value_id")
+
+  variation      ProductVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
+  attributeType  AttributeType   @relation(fields: [attributeTypeId], references: [id], onDelete: Cascade)
+  attributeValue AttributeValue  @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+
+  @@id([variationId, attributeTypeId])
+  @@map("product_variation_attributes")
 }
 
 model ProductSubVariation {

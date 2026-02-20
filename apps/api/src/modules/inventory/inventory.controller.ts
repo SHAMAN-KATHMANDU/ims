@@ -40,7 +40,13 @@ class InventoryController {
               product: {
                 OR: [
                   { name: { contains: search, mode: "insensitive" } },
-                  { imsCode: { contains: search, mode: "insensitive" } },
+                  {
+                    variations: {
+                      some: {
+                        imsCode: { contains: search, mode: "insensitive" },
+                      },
+                    },
+                  },
                 ],
               },
             },
@@ -72,7 +78,6 @@ class InventoryController {
                 product: {
                   select: {
                     id: true,
-                    imsCode: true,
                     name: true,
                     costPrice: true,
                     mrp: true,
@@ -138,6 +143,7 @@ class InventoryController {
           variations: {
             select: {
               id: true,
+              imsCode: true,
               color: true,
               stockQuantity: true,
             },
@@ -215,7 +221,7 @@ class InventoryController {
         message: "Product stock fetched successfully",
         product: {
           id: product.id,
-          imsCode: product.imsCode,
+          imsCode: product.variations?.[0]?.imsCode ?? "",
           name: product.name,
           category: product.category,
         },
@@ -265,7 +271,6 @@ class InventoryController {
           product: {
             select: {
               id: true,
-              imsCode: true,
               name: true,
             },
           },
@@ -397,7 +402,6 @@ class InventoryController {
           product: {
             select: {
               id: true,
-              imsCode: true,
               name: true,
             },
           },

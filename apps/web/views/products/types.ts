@@ -1,5 +1,4 @@
 export type ProductFormValues = {
-  imsCode: string;
   name: string;
   categoryId: string;
   subCategory: string;
@@ -24,6 +23,10 @@ export type ProductVariationForm = {
   /** Sub-variant names (e.g. S, M, L). When set, stock is managed per location per sub-variant. */
   subVariants: string[];
   photos: Array<{ photoUrl: string; isPrimary: boolean }>;
+  /** Unique per-tenant IMS code for this variation. */
+  imsCode?: string;
+  /** EAV: one value per attribute type (e.g. Color=Red, Size=M). */
+  attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
 };
 
 export type ProductDiscountForm = {

@@ -4,10 +4,19 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Trash2, Plus, ListOrdered } from "lucide-react";
 import type { ProductVariationForm } from "../../types";
 import type { UseFormReturn } from "@/hooks/useForm";
 import type { ProductFormValues } from "../../types";
+import type { AttributeType } from "@/hooks/useAttributeTypes";
 
 interface VariationsTabProps {
   variations: ProductVariationForm[];
@@ -16,13 +25,18 @@ interface VariationsTabProps {
   onRemove: (index: number) => void;
   onUpdate: (
     index: number,
-    field: "color" | "stockQuantity",
-    value: string,
+    field: "color" | "stockQuantity" | "imsCode" | "attributes",
+    value:
+      | string
+      | Array<{ attributeTypeId: string; attributeValueId: string }>,
   ) => void;
   onUpdateSubVariants: (index: number, subVariants: string[]) => void;
   onAddPhoto: (variationIndex: number, photoUrl: string) => void;
   onRemovePhoto: (variationIndex: number, photoIndex: number) => void;
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
+  attributeTypes?: AttributeType[];
+  productAttributeTypeIds?: string[];
+  onProductAttributeTypeIdsChange?: (ids: string[]) => void;
 }
 
 export function VariationsTab({
@@ -35,7 +49,56 @@ export function VariationsTab({
   onAddPhoto,
   onRemovePhoto,
   onSetPrimaryPhoto,
+  attributeTypes = [],
+  productAttributeTypeIds = [],
+  onProductAttributeTypeIdsChange,
 }: VariationsTabProps) {
+  const selectedTypes = attributeTypes.filter((t) =>
+    productAttributeTypeIds.includes(t.id),
+  );
+
+  const toggleAttributeType = (typeId: string, checked: boolean) => {
+    if (!onProductAttributeTypeIdsChange) return;
+    if (checked) {
+      onProductAttributeTypeIdsChange([...productAttributeTypeIds, typeId]);
+    } else {
+      onProductAttributeTypeIdsChange(
+        productAttributeTypeIds.filter((id) => id !== typeId),
+      );
+    }
+  };
+
+  const getAttributeDisplayFromIds = (
+    attrs: Array<{ attributeTypeId: string; attributeValueId: string }>,
+  ) => {
+    return attrs
+      .map((a) => {
+        const type = attributeTypes.find((t) => t.id === a.attributeTypeId);
+        const val = type?.values?.find((v) => v.id === a.attributeValueId);
+        return val?.value;
+      })
+      .filter(Boolean)
+      .join(" ");
+  };
+
+  const setVariationAttribute = (
+    index: number,
+    attributeTypeId: string,
+    attributeValueId: string | null,
+  ) => {
+    const current = variations[index]?.attributes ?? [];
+    const rest = current.filter((a) => a.attributeTypeId !== attributeTypeId);
+    const next =
+      attributeValueId == null
+        ? rest
+        : [...rest, { attributeTypeId, attributeValueId }];
+    onUpdate(index, "attributes", next);
+    const display = getAttributeDisplayFromIds(next);
+    if (display) {
+      onUpdate(index, "color", display);
+    }
+  };
+
   const handleBulkAddSubVariants = (index: number) => {
     const raw = prompt(
       "Enter sub-variant names (e.g. S, M, L). Separate by comma or new line:",
@@ -67,7 +130,35 @@ export function VariationsTab({
     );
   };
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
+      {attributeTypes.length > 0 && onProductAttributeTypeIdsChange && (
+        <div className="space-y-2 rounded-lg border p-3 bg-muted/30">
+          <Label className="text-sm font-medium">
+            Attribute types for this product
+          </Label>
+          <p className="text-xs text-muted-foreground">
+            Select which attributes apply (e.g. Color, Size). Then set a value
+            per variation below.
+          </p>
+          <div className="flex flex-wrap gap-4 pt-1">
+            {attributeTypes.map((type) => (
+              <label
+                key={type.id}
+                className="flex items-center gap-2 cursor-pointer"
+              >
+                <Checkbox
+                  checked={productAttributeTypeIds.includes(type.id)}
+                  onCheckedChange={(checked) =>
+                    toggleAttributeType(type.id, !!checked)
+                  }
+                />
+                <span className="text-sm">{type.name}</span>
+              </label>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="flex justify-between items-center">
         <Label>
           Variations <span className="text-destructive">*</span>
@@ -99,10 +190,10 @@ export function VariationsTab({
                   Default Variation
                 </div>
               )}
-              <div className="flex gap-2 items-end">
-                <div className="flex-1 space-y-1">
+              <div className="flex gap-2 items-end flex-wrap">
+                <div className="flex-1 min-w-[120px] space-y-1">
                   <Label htmlFor={`var-color-${index}`} className="text-xs">
-                    Variant name
+                    Variant name (optional, auto-filled from attributes)
                   </Label>
                   <Input
                     id={`var-color-${index}`}
@@ -116,7 +207,23 @@ export function VariationsTab({
                     </p>
                   )}
                 </div>
-                <div className="flex-1 space-y-1">
+                <div className="min-w-[120px] space-y-1">
+                  <Label htmlFor={`var-imscode-${index}`} className="text-xs">
+                    IMS code <span className="text-destructive">*</span>
+                  </Label>
+                  <Input
+                    id={`var-imscode-${index}`}
+                    placeholder="e.g. SHIRT-RED-M"
+                    value={variation.imsCode ?? ""}
+                    onChange={(e) => onUpdate(index, "imsCode", e.target.value)}
+                  />
+                  {form.errors[`variation_${index}_imsCode`] && (
+                    <p className="text-xs text-destructive">
+                      {form.errors[`variation_${index}_imsCode`]}
+                    </p>
+                  )}
+                </div>
+                <div className="flex-1 min-w-[80px] space-y-1">
                   <Label htmlFor={`var-stock-${index}`} className="text-xs">
                     Default stock
                   </Label>
@@ -146,6 +253,41 @@ export function VariationsTab({
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>
               </div>
+
+              {selectedTypes.length > 0 && (
+                <div className="flex flex-wrap gap-3">
+                  {selectedTypes.map((type) => (
+                    <div key={type.id} className="space-y-1 min-w-[100px]">
+                      <Label className="text-xs">{type.name}</Label>
+                      <Select
+                        value={
+                          variation.attributes?.find(
+                            (a) => a.attributeTypeId === type.id,
+                          )?.attributeValueId ?? ""
+                        }
+                        onValueChange={(valueId) =>
+                          setVariationAttribute(index, type.id, valueId || null)
+                        }
+                      >
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder={`Select ${type.name}`} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(type.values ?? []).map((val) => (
+                            <SelectItem
+                              key={val.id}
+                              value={val.id}
+                              className="text-xs"
+                            >
+                              {val.value}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Sub-variants (e.g. S, M, L) — optional */}
               <div className="space-y-2">
@@ -270,7 +412,8 @@ export function VariationsTab({
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        Add at least one variation (variant name and default stock). Optional
+        Add at least one variation (default stock required). Variant name is
+        optional and can be auto-filled from attribute values. Optional
         sub-variants (e.g. S, M, L) allow stock per size per location. The first
         variation is the default.
       </p>

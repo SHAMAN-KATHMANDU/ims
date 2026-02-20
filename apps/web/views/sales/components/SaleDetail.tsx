@@ -217,8 +217,7 @@ export function SaleDetail({
                               {item.variation.product.name}
                             </div>
                             <div className="text-sm text-muted-foreground">
-                              {item.variation.product.imsCode} -{" "}
-                              {item.variation.color}
+                              {item.variation.imsCode} - {item.variation.color}
                             </div>
                           </div>
                         </TableCell>

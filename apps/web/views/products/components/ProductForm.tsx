@@ -22,6 +22,7 @@ import type {
 } from "../types";
 import type { UseFormReturn } from "@/hooks/useForm";
 import type { Product, Category } from "@/hooks/useProduct";
+import type { AttributeType } from "@/hooks/useAttributeTypes";
 
 interface ProductFormProps {
   open: boolean;
@@ -32,6 +33,9 @@ interface ProductFormProps {
   variations: ProductVariationForm[];
   discounts: ProductDiscountForm[];
   discountTypes: Array<{ id: string; name: string }>;
+  attributeTypes?: AttributeType[];
+  productAttributeTypeIds?: string[];
+  onProductAttributeTypeIdsChange?: (ids: string[]) => void;
   defaultLocationId?: string;
   onDefaultLocationChange?: (locationId: string | undefined) => void;
   onReset: () => void;
@@ -39,8 +43,10 @@ interface ProductFormProps {
   onRemoveVariation: (index: number) => void;
   onUpdateVariation: (
     index: number,
-    field: "color" | "stockQuantity",
-    value: string,
+    field: "color" | "stockQuantity" | "imsCode" | "attributes",
+    value:
+      | string
+      | Array<{ attributeTypeId: string; attributeValueId: string }>,
   ) => void;
   onUpdateSubVariants: (index: number, subVariants: string[]) => void;
   onAddPhoto: (variationIndex: number, photoUrl: string) => void;
@@ -75,6 +81,9 @@ export function ProductForm({
   variations,
   discounts,
   discountTypes,
+  attributeTypes = [],
+  productAttributeTypeIds = [],
+  onProductAttributeTypeIdsChange,
   defaultLocationId,
   onDefaultLocationChange,
   onReset,
@@ -152,7 +161,6 @@ export function ProductForm({
             // Find the first tab with errors
             let errorTab = "general";
             if (
-              validationErrors.imsCode ||
               validationErrors.name ||
               validationErrors.categoryId ||
               validationErrors.costPrice ||
@@ -238,6 +246,9 @@ export function ProductForm({
               onAddPhoto={onAddPhoto}
               onRemovePhoto={onRemovePhoto}
               onSetPrimaryPhoto={onSetPrimaryPhoto}
+              attributeTypes={attributeTypes}
+              productAttributeTypeIds={productAttributeTypeIds}
+              onProductAttributeTypeIdsChange={onProductAttributeTypeIdsChange}
             />
           </TabsContent>
 

@@ -10,10 +10,38 @@ export const calculateDiscountedPrice = (
   return mrp - (mrp * discountPercentage) / 100;
 };
 
+/** Variation with optional EAV attributes (attributeValue.value) for display */
+type VariationWithAttributes = {
+  color?: string | null;
+  imsCode?: string;
+  attributes?: Array<{
+    attributeType?: { name?: string; code?: string };
+    attributeValue?: { value: string };
+  }>;
+};
+
+/**
+ * Get a single variation's attribute values as a display string, e.g. "Red M"
+ */
+export function getVariationAttributeDisplay(
+  variation: VariationWithAttributes,
+): string {
+  const attrs = variation.attributes?.filter(
+    (a) =>
+      a.attributeValue?.value != null && a.attributeValue.value.trim() !== "",
+  );
+  if (attrs?.length) {
+    return attrs
+      .map((a) => (a.attributeValue as { value: string }).value.trim())
+      .join(" ");
+  }
+  return variation.color?.trim() || variation.imsCode || "—";
+}
+
 /**
  * Get total stock for a single variation: sum of locationInventory when present, else stockQuantity
  */
-function getVariationTotal(variation: {
+export function getVariationTotal(variation: {
   stockQuantity?: number;
   locationInventory?: Array<{ quantity: number }>;
 }): number {
@@ -21,6 +49,28 @@ function getVariationTotal(variation: {
     return variation.locationInventory.reduce((s, inv) => s + inv.quantity, 0);
   }
   return variation.stockQuantity ?? 0;
+}
+
+/** Variation with locationInventory items that have location.id */
+type VariationWithLocationInv = {
+  locationInventory?: Array<{
+    quantity: number;
+    location?: { id: string };
+  }>;
+  stockQuantity?: number;
+};
+
+/**
+ * Get stock for a single variation at a specific location (for table row when location filter is set).
+ */
+export function getStockForVariationAtLocation(
+  variation: VariationWithLocationInv,
+  locationId: string,
+): number {
+  const inv = variation.locationInventory;
+  if (!inv?.length) return variation.stockQuantity ?? 0;
+  const atLocation = inv.find((i) => i.location?.id === locationId);
+  return atLocation?.quantity ?? 0;
 }
 
 /**
@@ -32,12 +82,6 @@ export const getTotalStock = (product: Product): number => {
     (sum, variation) => sum + getVariationTotal(variation),
     0,
   );
-};
-
-/** Variation type with optional locationInventory that has location.id */
-type VariationWithLocationInv = {
-  locationInventory?: Array<{ quantity: number; location?: { id: string } }>;
-  stockQuantity?: number;
 };
 
 /**
@@ -115,7 +159,9 @@ export const filterProducts = (
     ).toLowerCase();
 
     return (
-      product.imsCode?.toLowerCase().includes(query) ||
+      (
+        product as { variations?: Array<{ imsCode?: string }> }
+      ).variations?.some((v) => v.imsCode?.toLowerCase().includes(query)) ||
       product.name?.toLowerCase().includes(query) ||
       categoryName.includes(query) ||
       product.description?.toLowerCase().includes(query) ||

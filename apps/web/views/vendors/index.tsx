@@ -350,7 +350,11 @@ export function VendorPage() {
                     vendorProducts.map((product) => (
                       <TableRow key={product.id}>
                         <TableCell className="font-mono">
-                          {product.imsCode}
+                          {(
+                            product as {
+                              variations?: Array<{ imsCode?: string }>;
+                            }
+                          ).variations?.[0]?.imsCode ?? "—"}
                         </TableCell>
                         <TableCell>{product.name}</TableCell>
                         <TableCell className="text-right">

@@ -149,7 +149,6 @@ class CategoryController {
           products: {
             select: {
               id: true,
-              imsCode: true,
               name: true,
               mrp: true,
               costPrice: true,

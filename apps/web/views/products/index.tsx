@@ -20,6 +20,7 @@ import {
   type Product,
   type ProductListParams,
 } from "@/hooks/useProduct";
+import { useAttributeTypes } from "@/hooks/useAttributeTypes";
 import { useVendorsPaginated } from "@/hooks/useVendors";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import {
@@ -72,6 +73,7 @@ import type {
   ProductVariationForm,
   ProductDiscountForm,
 } from "./types";
+import { getVariationAttributeDisplay } from "./utils/helpers";
 
 export function ProductPage() {
   const params = useParams();
@@ -142,6 +144,7 @@ export function ProductPage() {
       setEditingProduct(null);
       setProductVariations([]);
       setProductDiscounts([]);
+      setProductAttributeTypeIds([]);
       productForm.reset();
       setProductDialog(true);
       router.replace(`${basePath}/product`, { scroll: false });
@@ -156,7 +159,6 @@ export function ProductPage() {
     appliedEditFromUrl.current = true;
     const product = productToEditFromUrl;
     setEditingProduct(product);
-    productForm.values.imsCode = product.imsCode;
     productForm.values.name = product.name;
     productForm.values.categoryId = product.categoryId;
     productForm.values.description = product.description || "";
@@ -176,11 +178,36 @@ export function ProductPage() {
             photoUrl: p.photoUrl,
             isPrimary: p.isPrimary || false,
           })),
+          imsCode: (v as { imsCode?: string }).imsCode ?? "",
+          attributes:
+            (
+              v as {
+                attributes?: Array<{
+                  attributeTypeId?: string;
+                  attributeValueId?: string;
+                  attributeType?: { id: string };
+                  attributeValue?: { id: string };
+                }>;
+              }
+            ).attributes
+              ?.map((a) => ({
+                attributeTypeId: a.attributeTypeId ?? a.attributeType?.id ?? "",
+                attributeValueId:
+                  a.attributeValueId ?? a.attributeValue?.id ?? "",
+              }))
+              .filter((a) => a.attributeTypeId && a.attributeValueId) ??
+            undefined,
         })),
       );
     } else {
       setProductVariations([]);
     }
+    const pat = (
+      product as {
+        productAttributeTypes?: Array<{ attributeType: { id: string } }>;
+      }
+    ).productAttributeTypes;
+    setProductAttributeTypeIds(pat?.map((p) => p.attributeType.id) ?? []);
     if (product.discounts?.length) {
       setProductDiscounts(
         product.discounts.map(
@@ -392,16 +419,18 @@ export function ProductPage() {
   const [productDiscounts, setProductDiscounts] = useState<
     ProductDiscountForm[]
   >([]);
+  const [productAttributeTypeIds, setProductAttributeTypeIds] = useState<
+    string[]
+  >([]);
 
   // Fetch discount types using React Query (cached, no duplicate calls)
   const { data: discountTypes = [] } = useDiscountTypes();
+  const { data: attributeTypes = [] } = useAttributeTypes();
 
   // Validation functions
   const validateProduct = (values: ProductFormValues) => {
     const errors: Record<string, string> = {};
 
-    // Required field validations
-    if (!values.imsCode?.trim()) errors.imsCode = "IMS Code is required";
     if (!values.name?.trim()) errors.name = "Product name is required";
     if (!values.categoryId) errors.categoryId = "Category is required";
 
@@ -432,9 +461,10 @@ export function ProductPage() {
       errors._form = "At least one variation is required";
     } else {
       productVariations.forEach((variation, index) => {
-        if (!variation.color?.trim()) {
-          errors[`variation_${index}_color`] = "Color is required";
+        if (!(variation.imsCode ?? "").trim()) {
+          errors[`variation_${index}_imsCode`] = "IMS code is required";
         }
+        // Variant name (color) is optional; can be auto-filled from attributes
         const stockQuantity = Number(variation.stockQuantity);
         if (
           variation.stockQuantity === undefined ||
@@ -450,6 +480,16 @@ export function ProductPage() {
             "Stock quantity cannot be negative";
         }
       });
+      // Duplicate variation: same IMS code as another variation in the list
+      const imsCodes = productVariations
+        .map((v) => (v.imsCode ?? "").trim())
+        .filter(Boolean);
+      const duplicateIms = imsCodes.some(
+        (code, i) => imsCodes.indexOf(code) !== i,
+      );
+      if (duplicateIms) {
+        errors._form = "This product already exists.";
+      }
     }
 
     return Object.keys(errors).length > 0 ? errors : null;
@@ -458,7 +498,6 @@ export function ProductPage() {
   // Product form
   const productForm = useForm<ProductFormValues>({
     initialValues: {
-      imsCode: "",
       name: "",
       categoryId: "",
       description: "",
@@ -473,16 +512,22 @@ export function ProductPage() {
     onSubmit: async (values) => {
       try {
         // Additional validation before submission
-        if (
-          !values.imsCode?.trim() ||
-          !values.name?.trim() ||
-          !values.categoryId
-        ) {
+        if (!values.name?.trim() || !values.categoryId) {
           setErrorDialog({
             open: true,
             title: "Validation Error",
-            message:
-              "Please fill in all required fields (IMS Code, Name, and Category).",
+            message: "Please fill in all required fields (Name and Category).",
+          });
+          return;
+        }
+        const missingImsCode = productVariations.some(
+          (v) => !(v.imsCode ?? "").trim(),
+        );
+        if (missingImsCode) {
+          setErrorDialog({
+            open: true,
+            title: "Validation Error",
+            message: "Each variation must have an IMS code.",
           });
           return;
         }
@@ -530,7 +575,6 @@ export function ProductPage() {
         const isEditing = !!editingProduct;
 
         const data: CreateProductData = {
-          imsCode: values.imsCode,
           name: values.name,
           categoryId: values.categoryId,
           description: values.description,
@@ -542,6 +586,9 @@ export function ProductPage() {
           mrp: mrp,
         };
 
+        if (productAttributeTypeIds.length > 0) {
+          data.attributeTypeIds = productAttributeTypeIds;
+        }
         if (isEditing) {
           data.variations = productVariations.map((v) => ({
             color: v.color,
@@ -556,6 +603,11 @@ export function ProductPage() {
                     photoUrl: p.photoUrl,
                     isPrimary: p.isPrimary,
                   }))
+                : undefined,
+            imsCode: (v.imsCode ?? "").trim(),
+            attributes:
+              v.attributes && v.attributes.length > 0
+                ? v.attributes
                 : undefined,
           }));
 
@@ -585,6 +637,11 @@ export function ProductPage() {
                       photoUrl: p.photoUrl,
                       isPrimary: p.isPrimary,
                     }))
+                  : undefined,
+              imsCode: (v.imsCode ?? "").trim(),
+              attributes:
+                v.attributes && v.attributes.length > 0
+                  ? v.attributes
                   : undefined,
             }));
           }
@@ -627,6 +684,7 @@ export function ProductPage() {
         setDefaultLocationIdForCreate(undefined);
         setProductVariations([]);
         setProductDiscounts([]);
+        setProductAttributeTypeIds([]);
         productForm.reset();
       } catch (error: unknown) {
         const err = error as {
@@ -663,32 +721,66 @@ export function ProductPage() {
     }
 
     setEditingProduct(product);
-    productForm.values.imsCode = product.imsCode;
-    productForm.values.name = product.name;
-    productForm.values.categoryId = product.categoryId;
-    productForm.values.description = product.description || "";
-    productForm.values.length = product.length?.toString() || "";
-    productForm.values.breadth = product.breadth?.toString() || "";
-    productForm.values.height = product.height?.toString() || "";
-    productForm.values.weight = product.weight?.toString() || "";
-    productForm.values.costPrice = product.costPrice.toString();
-    productForm.values.mrp = product.mrp.toString();
+    productForm.setValues({
+      name: product.name,
+      categoryId: product.categoryId,
+      subCategory: product.subCategory || "",
+      description: product.description || "",
+      length: product.length?.toString() || "",
+      breadth: product.breadth?.toString() || "",
+      height: product.height?.toString() || "",
+      weight: product.weight?.toString() || "",
+      costPrice: product.costPrice.toString(),
+      mrp: product.mrp.toString(),
+      vendorId: product.vendorId ?? undefined,
+    });
 
     if (product.variations && product.variations.length > 0) {
       setProductVariations(
-        product.variations.map((v) => ({
-          color: v.color || "",
-          stockQuantity: (v.stockQuantity || 0).toString(),
-          subVariants: (v.subVariations || []).map((s) => s.name),
-          photos: (v.photos || []).map((p) => ({
-            photoUrl: p.photoUrl,
-            isPrimary: p.isPrimary || false,
-          })),
-        })),
+        product.variations.map((v) => {
+          const hasLocationInv =
+            v.locationInventory && v.locationInventory.length > 0;
+          const stock = hasLocationInv
+            ? (v.locationInventory as Array<{ quantity: number }>).reduce(
+                (s, inv) => s + inv.quantity,
+                0,
+              )
+            : (v.stockQuantity ?? 0);
+          const autoName = getVariationAttributeDisplay(v);
+          return {
+            color: v.color?.trim() || (autoName !== "—" ? autoName : "") || "",
+            stockQuantity: stock.toString(),
+            imsCode: (v as { imsCode?: string }).imsCode ?? "",
+            subVariants: (v.subVariations || []).map((s) => s.name),
+            photos: (v.photos || []).map((p) => ({
+              photoUrl: p.photoUrl,
+              isPrimary: p.isPrimary || false,
+            })),
+            attributes:
+              (
+                v as {
+                  attributes?: Array<{
+                    attributeTypeId: string;
+                    attributeValueId: string;
+                  }>;
+                }
+              ).attributes?.map((a) => ({
+                attributeTypeId: a.attributeTypeId,
+                attributeValueId: a.attributeValueId,
+              })) ?? [],
+          };
+        }),
       );
     } else {
       setProductVariations([]);
     }
+
+    const pat = (
+      product as {
+        productAttributeTypes?: Array<{ attributeType: { id: string } }>;
+      }
+    ).productAttributeTypes;
+    setProductAttributeTypeIds(pat?.map((p) => p.attributeType.id) ?? []);
 
     if (product.discounts && product.discounts.length > 0) {
       setProductDiscounts(
@@ -717,6 +809,7 @@ export function ProductPage() {
     setEditingProduct(null);
     setProductVariations([]);
     setProductDiscounts([]);
+    setProductAttributeTypeIds([]);
     productForm.reset();
   };
 
@@ -724,7 +817,14 @@ export function ProductPage() {
   const addVariationToForm = () => {
     setProductVariations([
       ...productVariations,
-      { color: "", stockQuantity: "0", subVariants: [], photos: [] },
+      {
+        color: "",
+        stockQuantity: "0",
+        subVariants: [],
+        photos: [],
+        imsCode: "",
+        attributes: undefined,
+      },
     ]);
   };
 
@@ -734,20 +834,32 @@ export function ProductPage() {
 
   const updateVariationInForm = (
     index: number,
-    field: "color" | "stockQuantity",
-    value: string,
+    field: "color" | "stockQuantity" | "imsCode" | "attributes",
+    value:
+      | string
+      | Array<{ attributeTypeId: string; attributeValueId: string }>,
   ) => {
-    const updated = [...productVariations];
-    updated[index] = {
-      color: field === "color" ? value : updated[index]?.color || "",
-      stockQuantity:
-        field === "stockQuantity"
-          ? value
-          : updated[index]?.stockQuantity || "0",
-      subVariants: updated[index]?.subVariants ?? [],
-      photos: updated[index]?.photos || [],
-    };
-    setProductVariations(updated);
+    setProductVariations((prev) => {
+      const updated = [...prev];
+      const prevVar = updated[index];
+      if (!prevVar) return prev;
+      updated[index] = {
+        ...prevVar,
+        color: field === "color" ? (value as string) : prevVar.color,
+        stockQuantity:
+          field === "stockQuantity" ? (value as string) : prevVar.stockQuantity,
+        imsCode:
+          field === "imsCode" ? (value as string) : (prevVar.imsCode ?? ""),
+        attributes:
+          field === "attributes"
+            ? (value as Array<{
+                attributeTypeId: string;
+                attributeValueId: string;
+              }>)
+            : (prevVar.attributes ?? []),
+      };
+      return updated;
+    });
   };
 
   const updateSubVariantsInForm = (index: number, subVariants: string[]) => {
@@ -765,13 +877,10 @@ export function ProductPage() {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
-
     const photos = variation.photos || [];
     const isPrimary = photos.length === 0;
     updated[variationIndex] = {
-      color: variation.color || "",
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
+      ...variation,
       photos: [...photos, { photoUrl, isPrimary }],
     };
     setProductVariations(updated);
@@ -784,18 +893,12 @@ export function ProductPage() {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
-
     const photos = variation.photos || [];
     const newPhotos = photos.filter((_, i) => i !== photoIndex);
     if (photos[photoIndex]?.isPrimary && newPhotos.length > 0 && newPhotos[0]) {
       newPhotos[0].isPrimary = true;
     }
-    updated[variationIndex] = {
-      color: variation.color || "",
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
-      photos: newPhotos,
-    };
+    updated[variationIndex] = { ...variation, photos: newPhotos };
     setProductVariations(updated);
   };
 
@@ -809,10 +912,8 @@ export function ProductPage() {
       photo.isPrimary = i === photoIndex;
     });
     updated[variationIndex] = {
-      color: variation.color || "",
-      stockQuantity: variation.stockQuantity || "0",
-      subVariants: variation.subVariants ?? [],
-      photos: photos,
+      ...variation,
+      photos,
     };
     setProductVariations(updated);
   };
@@ -983,6 +1084,9 @@ export function ProductPage() {
                     variations={productVariations}
                     discounts={productDiscounts}
                     discountTypes={discountTypes}
+                    attributeTypes={attributeTypes}
+                    productAttributeTypeIds={productAttributeTypeIds}
+                    onProductAttributeTypeIdsChange={setProductAttributeTypeIds}
                     defaultLocationId={defaultLocationIdForCreate}
                     onDefaultLocationChange={setDefaultLocationIdForCreate}
                     onReset={handleResetProduct}

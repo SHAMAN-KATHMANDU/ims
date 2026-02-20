@@ -97,9 +97,12 @@ export function BulkUploadDialog({
           <DialogTitle>Bulk Upload Products</DialogTitle>
           <DialogDescription>
             Upload an Excel or CSV file to create or update products with
-            location-based stock. Include the <strong>Location</strong> column
-            (showroom/warehouse name or ID). The same IMS code can exist in
-            multiple locations. Download the template for required columns.
+            location-based stock. Include <strong>Attributes</strong>{" "}
+            (comma-separated names, e.g. color, size) and{" "}
+            <strong>Values</strong> (comma-separated values, e.g. red, M). Each
+            row is one variant with its own IMS code and stock. Include the{" "}
+            <strong>Location</strong> column (showroom/warehouse name or ID).
+            Download the template for required columns.
           </DialogDescription>
         </DialogHeader>
       )}
@@ -108,8 +111,9 @@ export function BulkUploadDialog({
           <h2 className="text-2xl font-semibold">Bulk Upload Products</h2>
           <p className="text-muted-foreground text-sm">
             Upload an Excel or CSV file to create or update products with
-            location-based stock. Include the Location column
-            (showroom/warehouse name or ID). Download the template for required
+            location-based stock. Use Attributes (e.g. color, size) and Values
+            (e.g. red, M). Each row is one variant with its own IMS code.
+            Include the Location column. Download the template for required
             columns.
           </p>
         </div>
@@ -304,8 +308,12 @@ export function BulkUploadDialog({
                       >
                         <CheckCircle2 className="h-3 w-3" />
                         <span>
-                          {product.imsCode} - {product.name} (
-                          {product.variationsCount} variation
+                          {(
+                            product as {
+                              variations?: Array<{ imsCode?: string }>;
+                            }
+                          ).variations?.[0]?.imsCode ?? product.name}{" "}
+                          - {product.name} ({product.variationsCount} variation
                           {product.variationsCount !== 1 ? "s" : ""})
                         </span>
                       </div>
@@ -330,7 +338,12 @@ export function BulkUploadDialog({
                       >
                         <CheckCircle2 className="h-3 w-3" />
                         <span>
-                          {product.imsCode} - {product.name} at{" "}
+                          {(
+                            product as {
+                              variations?: Array<{ imsCode?: string }>;
+                            }
+                          ).variations?.[0]?.imsCode ?? product.name}{" "}
+                          - {product.name} at{" "}
                           {product.locations?.join(", ") ?? "—"} (
                           {product.inventoryRowsUpdated} row
                           {product.inventoryRowsUpdated !== 1 ? "s" : ""})
@@ -358,7 +371,12 @@ export function BulkUploadDialog({
                         <AlertCircle className="h-3 w-3 mt-0.5" />
                         <span>
                           <span className="font-medium">
-                            {product.imsCode} - {product.name}
+                            {(
+                              product as {
+                                variations?: Array<{ imsCode?: string }>;
+                              }
+                            ).variations?.[0]?.imsCode ?? product.name}{" "}
+                            - {product.name}
                           </span>
                           : {product.reason}
                         </span>

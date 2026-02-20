@@ -34,11 +34,19 @@ export interface ProductSubVariation {
 export interface ProductVariation {
   id: string;
   productId: string;
-  color: string;
+  color?: string | null;
   stockQuantity: number;
+  imsCode: string;
   createdAt?: string;
   /** Sub-variants (e.g. S, M, L); when present, stock is per sub-variant per location */
   subVariations?: ProductSubVariation[];
+  /** EAV: attribute type + value for this variation */
+  attributes?: Array<{
+    attributeTypeId?: string;
+    attributeValueId?: string;
+    attributeType?: { id: string; name: string; code: string };
+    attributeValue?: { id: string; value: string; code?: string | null };
+  }>;
   photos?: Array<{
     id: string;
     photoUrl: string;
@@ -55,7 +63,6 @@ export interface ProductVariation {
 
 export interface Product {
   id: string;
-  imsCode: string;
   name: string;
   categoryId: string;
   subCategory?: string;
@@ -66,6 +73,7 @@ export interface Product {
   weight?: number;
   costPrice: number;
   mrp: number;
+  vendorId?: string | null;
   createdById: string;
   dateCreated: string;
   category?: Category;
@@ -75,6 +83,10 @@ export interface Product {
     role: string;
   };
   variations?: ProductVariation[];
+  /** EAV: which attribute types this product uses */
+  productAttributeTypes?: Array<{
+    attributeType: { id: string; name: string; code: string };
+  }>;
   discounts?: Array<{
     id: string;
     discountTypeId: string;
@@ -119,7 +131,6 @@ export interface PaginatedProductsResponse {
 }
 
 export interface CreateProductData {
-  imsCode: string;
   name: string;
   categoryId?: string;
   categoryName?: string;
@@ -134,9 +145,14 @@ export interface CreateProductData {
   vendorId?: string;
   /** Default location for new product stock (warehouse). If omitted, API uses location marked as default warehouse. */
   defaultLocationId?: string;
+  /** EAV: attribute type IDs to apply to this product (e.g. Color, Size). */
+  attributeTypeIds?: string[];
   variations?: Array<{
-    color: string;
+    imsCode: string;
+    color?: string;
     stockQuantity?: number;
+    attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
+    subVariants?: string[];
     photos?: Array<{
       photoUrl: string;
       isPrimary?: boolean;
@@ -153,7 +169,6 @@ export interface CreateProductData {
 }
 
 export interface UpdateProductData {
-  imsCode?: string;
   name?: string;
   categoryId?: string;
   description?: string;
@@ -165,9 +180,12 @@ export interface UpdateProductData {
   costPrice?: number;
   mrp?: number;
   vendorId?: string;
+  attributeTypeIds?: string[];
   variations?: Array<{
-    color: string;
+    imsCode?: string;
+    color?: string;
     stockQuantity?: number;
+    attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
     subVariants?: string[];
     photos?: Array<{
       photoUrl: string;
@@ -322,11 +340,17 @@ export async function getProductById(id: string): Promise<Product> {
  */
 export async function createProduct(data: CreateProductData): Promise<Product> {
   // Validation
-  if (!data.imsCode?.trim()) {
+  if (!data.name?.trim()) {
     throw new Error("Product IMS code is required");
   }
   if (!data.name?.trim()) {
     throw new Error("Product name is required");
+  }
+  if (
+    !data.variations?.length ||
+    data.variations.some((v) => !(v.imsCode ?? "")?.trim())
+  ) {
+    throw new Error("Each variation must have an IMS code");
   }
   if (typeof data.costPrice !== "number" || data.costPrice < 0) {
     throw new Error("Valid cost price is required");

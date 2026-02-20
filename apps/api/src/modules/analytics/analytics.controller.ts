@@ -27,7 +27,6 @@ class AnalyticsController {
             orderBy: { dateCreated: "desc" },
             select: {
               id: true,
-              imsCode: true,
               name: true,
               mrp: true,
               dateCreated: true,

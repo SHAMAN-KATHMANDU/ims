@@ -109,7 +109,7 @@ class TransferController {
           include: {
             subVariations: { select: { id: true, name: true } },
             product: {
-              select: { id: true, name: true, imsCode: true },
+              select: { id: true, name: true },
             },
           },
         });
@@ -207,7 +207,7 @@ class TransferController {
               variation: {
                 include: {
                   product: {
-                    select: { id: true, name: true, imsCode: true },
+                    select: { id: true, name: true },
                   },
                 },
               },
@@ -385,7 +385,6 @@ class TransferController {
                     select: {
                       id: true,
                       name: true,
-                      imsCode: true,
                       category: true,
                     },
                   },
@@ -505,7 +504,7 @@ class TransferController {
             include: {
               variation: {
                 include: {
-                  product: { select: { id: true, name: true, imsCode: true } },
+                  product: { select: { id: true, name: true } },
                 },
               },
               subVariation: { select: { id: true, name: true } },
@@ -589,7 +588,7 @@ class TransferController {
             include: {
               variation: {
                 include: {
-                  product: { select: { id: true, name: true, imsCode: true } },
+                  product: { select: { id: true, name: true } },
                 },
               },
               subVariation: { select: { id: true, name: true } },
@@ -688,7 +687,7 @@ class TransferController {
             include: {
               variation: {
                 include: {
-                  product: { select: { id: true, name: true, imsCode: true } },
+                  product: { select: { id: true, name: true } },
                 },
               },
               subVariation: { select: { id: true, name: true } },
