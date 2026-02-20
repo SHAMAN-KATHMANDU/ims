@@ -28,6 +28,7 @@ import {
   selectClearSelection,
 } from "@/stores/product-selection-store";
 import { type CreateProductData } from "@/services/productService";
+import { LimitGuard } from "@/components/limit-guard";
 import { ProductForm } from "./components/ProductForm";
 import { ProductTable } from "./components/ProductTable";
 import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
@@ -966,42 +967,44 @@ export function ProductPage() {
                     Bulk Upload
                   </Button>
                 )}
-                {isMobile ? (
-                  <Button asChild>
-                    <Link href={`${basePath}/product/new`} className="gap-2">
-                      <Plus className="h-4 w-4" />
-                      Add Product
-                    </Link>
-                  </Button>
-                ) : (
-                  <ProductForm
-                    open={productDialog}
-                    onOpenChange={setProductDialog}
-                    form={productForm}
-                    editingProduct={editingProduct}
-                    categories={categories}
-                    variations={productVariations}
-                    discounts={productDiscounts}
-                    discountTypes={discountTypes}
-                    defaultLocationId={defaultLocationIdForCreate}
-                    onDefaultLocationChange={setDefaultLocationIdForCreate}
-                    onReset={handleResetProduct}
-                    onAddVariation={addVariationToForm}
-                    onRemoveVariation={removeVariationFromForm}
-                    onUpdateVariation={updateVariationInForm}
-                    onUpdateSubVariants={updateSubVariantsInForm}
-                    onAddPhoto={addPhotoToVariation}
-                    onRemovePhoto={removePhotoFromVariation}
-                    onSetPrimaryPhoto={setPrimaryPhoto}
-                    onAddDiscount={addDiscountToForm}
-                    onRemoveDiscount={removeDiscountFromForm}
-                    onUpdateDiscount={updateDiscountInForm}
-                    onShowError={(title, message) =>
-                      setErrorDialog({ open: true, title, message })
-                    }
-                    validateProduct={validateProduct}
-                  />
-                )}
+                <LimitGuard resource="products">
+                  {isMobile ? (
+                    <Button asChild>
+                      <Link href={`${basePath}/product/new`} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add Product
+                      </Link>
+                    </Button>
+                  ) : (
+                    <ProductForm
+                      open={productDialog}
+                      onOpenChange={setProductDialog}
+                      form={productForm}
+                      editingProduct={editingProduct}
+                      categories={categories}
+                      variations={productVariations}
+                      discounts={productDiscounts}
+                      discountTypes={discountTypes}
+                      defaultLocationId={defaultLocationIdForCreate}
+                      onDefaultLocationChange={setDefaultLocationIdForCreate}
+                      onReset={handleResetProduct}
+                      onAddVariation={addVariationToForm}
+                      onRemoveVariation={removeVariationFromForm}
+                      onUpdateVariation={updateVariationInForm}
+                      onUpdateSubVariants={updateSubVariantsInForm}
+                      onAddPhoto={addPhotoToVariation}
+                      onRemovePhoto={removePhotoFromVariation}
+                      onSetPrimaryPhoto={setPrimaryPhoto}
+                      onAddDiscount={addDiscountToForm}
+                      onRemoveDiscount={removeDiscountFromForm}
+                      onUpdateDiscount={updateDiscountInForm}
+                      onShowError={(title, message) =>
+                        setErrorDialog({ open: true, title, message })
+                      }
+                      validateProduct={validateProduct}
+                    />
+                  )}
+                </LimitGuard>
               </div>
             )}
           </div>

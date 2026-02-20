@@ -11,6 +11,7 @@ import {
   selectClearMemberSelection,
 } from "@/stores/member-selection-store";
 import { downloadMembers } from "@/services/memberService";
+import { LimitGuard } from "@/components/limit-guard";
 import {
   useMembersPaginated,
   useMember,
@@ -365,23 +366,26 @@ export function MembersPage() {
                 Bulk Upload
               </Button>
             ))}
-          {canManageMembers &&
-            (isMobile ? (
-              <Button asChild>
-                <Link href={`${basePath}/members/new`} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Member
-                </Link>
-              </Button>
-            ) : (
-              <MemberForm
-                open={formOpen}
-                onOpenChange={handleFormClose}
-                member={editingMember}
-                onSubmit={handleSubmitMember}
-                isLoading={isFormLoading}
-              />
-            ))}
+          {canManageMembers && (
+            <LimitGuard resource="members">
+              {isMobile ? (
+                <Button asChild>
+                  <Link href={`${basePath}/members/new`} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Member
+                  </Link>
+                </Button>
+              ) : (
+                <MemberForm
+                  open={formOpen}
+                  onOpenChange={handleFormClose}
+                  member={editingMember}
+                  onSubmit={handleSubmitMember}
+                  isLoading={isFormLoading}
+                />
+              )}
+            </LimitGuard>
+          )}
         </div>
       </div>
 

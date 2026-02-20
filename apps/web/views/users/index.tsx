@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Trash2, Edit2, Plus } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
+import { LimitGuard } from "@/components/limit-guard";
 import {
   useUsers,
   useCreateUser,
@@ -154,33 +155,35 @@ export function UsersPage() {
 
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">All Users</h2>
-          {isMobile ? (
-            <Button asChild>
-              <Link href={`${basePath}/users/new`} className="gap-2">
-                <Plus className="h-4 w-4" /> Add User
-              </Link>
-            </Button>
-          ) : (
-            <>
-              <Button
-                onClick={() => {
-                  setEditingUser(null);
-                  setUserDialog(true);
-                }}
-                className="gap-2"
-              >
-                <Plus className="h-4 w-4" /> Add User
+          <LimitGuard resource="users">
+            {isMobile ? (
+              <Button asChild>
+                <Link href={`${basePath}/users/new`} className="gap-2">
+                  <Plus className="h-4 w-4" /> Add User
+                </Link>
               </Button>
-              <UserForm
-                open={userDialog}
-                onOpenChange={handleDialogClose}
-                editingUser={editingUser}
-                onSubmit={onSubmit}
-                onReset={() => setEditingUser(null)}
-                renderTrigger={false}
-              />
-            </>
-          )}
+            ) : (
+              <>
+                <Button
+                  onClick={() => {
+                    setEditingUser(null);
+                    setUserDialog(true);
+                  }}
+                  className="gap-2"
+                >
+                  <Plus className="h-4 w-4" /> Add User
+                </Button>
+                <UserForm
+                  open={userDialog}
+                  onOpenChange={handleDialogClose}
+                  editingUser={editingUser}
+                  onSubmit={onSubmit}
+                  onReset={() => setEditingUser(null)}
+                  renderTrigger={false}
+                />
+              </>
+            )}
+          </LimitGuard>
         </div>
 
         <Card>

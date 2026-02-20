@@ -14,6 +14,7 @@ import {
   type Category,
 } from "@/hooks/useProduct";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { LimitGuard } from "@/components/limit-guard";
 import { CategoryForm } from "./components/CategoryForm";
 import { CategoryTable } from "./components/CategoryTable";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
@@ -205,13 +206,15 @@ export function CategoriesPage() {
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold">All Categories</h2>
         {canManageProducts && (
-          <CategoryForm
-            open={categoryDialog}
-            onOpenChange={setCategoryDialog}
-            form={categoryForm}
-            editingCategory={editingCategory}
-            onReset={handleResetCategory}
-          />
+          <LimitGuard resource="categories">
+            <CategoryForm
+              open={categoryDialog}
+              onOpenChange={setCategoryDialog}
+              form={categoryForm}
+              editingCategory={editingCategory}
+              onReset={handleResetCategory}
+            />
+          </LimitGuard>
         )}
       </div>
 

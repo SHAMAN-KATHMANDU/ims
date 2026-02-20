@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { LimitGuard } from "@/components/limit-guard";
 import {
   useLocationsPaginated,
   useCreateLocation,
@@ -38,6 +39,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import type { SortOrder } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
@@ -53,6 +55,7 @@ export function LocationsPage() {
 
   // Pagination and filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const [typeFilter, setTypeFilter] = useState<LocationType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<LocationStatusFilter>("all");
@@ -73,7 +76,7 @@ export function LocationsPage() {
     refetch: refetchLocations,
   } = useLocationsPaginated({
     page,
-    limit: DEFAULT_LIMIT,
+    limit,
     search,
     type: typeFilter === "all" ? undefined : typeFilter,
     status: statusFilter,
@@ -82,6 +85,12 @@ export function LocationsPage() {
   });
 
   const locations = locationsResponse?.data ?? [];
+  const pagination = locationsResponse?.pagination;
+
+  const handlePageSizeChange = useCallback((newLimit: number) => {
+    setLimit(newLimit);
+    setPage(DEFAULT_PAGE);
+  }, []);
 
   // Mutations
   const createLocationMutation = useCreateLocation();
@@ -248,27 +257,30 @@ export function LocationsPage() {
             </div>
           </div>
 
-          {canManageLocations &&
-            (isMobile ? (
-              <Button asChild>
-                <Link href={`${basePath}/locations/new`} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Location
-                </Link>
-              </Button>
-            ) : (
-              <LocationForm
-                open={formOpen}
-                onOpenChange={setFormOpen}
-                editingLocation={editingLocation}
-                onSubmit={handleSubmit}
-                onReset={handleReset}
-                isLoading={
-                  createLocationMutation.isPending ||
-                  updateLocationMutation.isPending
-                }
-              />
-            ))}
+          {canManageLocations && (
+            <LimitGuard resource="locations">
+              {isMobile ? (
+                <Button asChild>
+                  <Link href={`${basePath}/locations/new`} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Location
+                  </Link>
+                </Button>
+              ) : (
+                <LocationForm
+                  open={formOpen}
+                  onOpenChange={setFormOpen}
+                  editingLocation={editingLocation}
+                  onSubmit={handleSubmit}
+                  onReset={handleReset}
+                  isLoading={
+                    createLocationMutation.isPending ||
+                    updateLocationMutation.isPending
+                  }
+                />
+              )}
+            </LimitGuard>
+          )}
         </div>
       </div>
 
@@ -282,6 +294,22 @@ export function LocationsPage() {
         onEdit={handleEdit}
         onDelete={setLocationToDelete}
       />
+
+      {pagination && (
+        <DataTablePagination
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: pagination.totalPages,
+            totalItems: pagination.totalItems,
+            itemsPerPage: pagination.itemsPerPage,
+            hasNextPage: pagination.hasNextPage,
+            hasPrevPage: pagination.hasPrevPage,
+          }}
+          onPageChange={setPage}
+          onPageSizeChange={handlePageSizeChange}
+          isLoading={isLoading}
+        />
+      )}
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog

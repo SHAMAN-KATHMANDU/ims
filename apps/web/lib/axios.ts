@@ -87,7 +87,18 @@ api.interceptors.response.use(
       const skipToast = (
         error.config as { skipGlobalErrorToast?: boolean } | undefined
       )?.skipGlobalErrorToast;
-      if (typeof window !== "undefined" && skipToast !== true) {
+
+      // Plan limit errors get a dedicated dialog instead of a generic toast
+      const isPlanLimit =
+        status === 403 && error.response?.data?.error === "plan_limit_reached";
+
+      if (isPlanLimit && typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("plan-limit-reached", {
+            detail: error.response!.data,
+          }),
+        );
+      } else if (typeof window !== "undefined" && skipToast !== true) {
         const message = getApiErrorMessage(error);
         toast({ title: message, variant: "destructive" });
       }
