@@ -14,7 +14,15 @@ export const excelProductRowSchema = z.object({
       message: "IMS CODE is required",
     }),
 
-  // Column B: Category
+  // Column B: Location (showroom/warehouse name or ID)
+  location: z
+    .union([z.string(), z.number()])
+    .transform((val) => String(val).trim())
+    .refine((val) => val !== "" && val !== "-", {
+      message: "Location is required (use location name or ID)",
+    }),
+
+  // Column C: Category
   category: z
     .union([z.string(), z.number()])
     .transform((val) => String(val).trim())
@@ -22,7 +30,7 @@ export const excelProductRowSchema = z.object({
       message: "Category is required",
     }),
 
-  // Column C: SUB-CATEGORY (optional)
+  // Column D: SUB-CATEGORY (optional)
   subCategory: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -32,7 +40,7 @@ export const excelProductRowSchema = z.object({
       return str === "" || str === "-" ? null : str;
     }),
 
-  // Column D: Name of Product
+  // Column E: Name of Product
   name: z
     .union([z.string(), z.number()])
     .transform((val) => String(val).trim())
@@ -40,7 +48,7 @@ export const excelProductRowSchema = z.object({
       message: "Name of Product is required",
     }),
 
-  // Column E: Variations (Designs/Colors)
+  // Column F: Variations (Designs/Colors)
   variation: z
     .union([z.string(), z.number()])
     .transform((val) => String(val).trim())
@@ -48,7 +56,7 @@ export const excelProductRowSchema = z.object({
       message: "Variations (Designs/Colors) is required",
     }),
 
-  // Column F: MATERIAL
+  // Column G: MATERIAL
   material: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -58,7 +66,7 @@ export const excelProductRowSchema = z.object({
       return str === "" || str === "-" ? null : str;
     }),
 
-  // Column G: Length
+  // Column H: Length
   length: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -69,7 +77,7 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column H: Breadth
+  // Column I: Breadth
   breadth: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -80,7 +88,7 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column I: Height
+  // Column J: Height
   height: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -91,7 +99,7 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column J: Weight
+  // Column K: Weight
   weight: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -102,7 +110,7 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column K: VENDOR
+  // Column L: VENDOR
   vendor: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -112,7 +120,7 @@ export const excelProductRowSchema = z.object({
       return str === "" || str === "-" ? null : str;
     }),
 
-  // Column L: QTY
+  // Column M: QTY
   quantity: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -123,7 +131,7 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? 0 : Math.floor(num);
     }),
 
-  // Column M: Cost Price
+  // Column N: Cost Price
   costPrice: z
     .union([z.string(), z.number()])
     .transform((val) => {
@@ -135,7 +143,7 @@ export const excelProductRowSchema = z.object({
       message: "Cost Price must be greater than or equal to 0",
     }),
 
-  // Column N: Final SP (Selling Price / MRP)
+  // Column O: Final SP (Selling Price / MRP)
   finalSP: z
     .union([z.string(), z.number()])
     .transform((val) => {
@@ -147,7 +155,7 @@ export const excelProductRowSchema = z.object({
       message: "Final SP must be greater than or equal to 0",
     }),
 
-  // Column O: NON MEMBER DISCOUNT
+  // Column P: NON MEMBER DISCOUNT
   nonMemberDiscount: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -158,7 +166,7 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column P: MEMBER DISCOUNT
+  // Column Q: MEMBER DISCOUNT
   memberDiscount: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -169,7 +177,7 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column Q: WHOLESALE DISCOUNT
+  // Column R: WHOLESALE DISCOUNT
   wholesaleDiscount: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
