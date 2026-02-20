@@ -6,8 +6,8 @@ Single-branch, tag-based CI/CD. `main` for staging; production via semantic vers
 
 - **main** — only permanent branch. All work branches from `main`.
 - **Staging** — auto-deploys when PRs are squash-merged into `main`.
-- **Production** — manual release via GitHub Releases UI. Tags (v1.0.0) control prod, not branches.
-- **Rollback** — publish a release for a previous tag.
+- **Production** — manual release via Actions → Release (Production). Tags (v1.0.0) control prod.
+- **Rollback** — run Release workflow with release type `rollback` and enter existing tag.
 - **Hotfix** — branch from tag, fix, release from that branch, merge to main.
 
 ## Branching Model
@@ -57,13 +57,13 @@ See [COMMIT_CONVENTION.md](COMMIT_CONVENTION.md) for details.
 4. Squash merge to `main`.
 5. Staging auto-deploys.
 
-## Production Release (Releases UI)
+## Production Release (Manual)
 
-1. **Releases** → **Draft a new release**.
-2. **Target:** `main`.
-3. **Tag:** New tag (e.g. `v1.2.0`).
-4. Use **Generate release notes** or edit.
-5. **Publish release** → workflow builds and deploys prod.
+1. **Actions** → **Release (Production)** → **Run workflow**.
+2. **Release type:** `new` or `rollback`.
+3. **Tag strategy:** `auto_patch` / `auto_minor` / `auto_major` or `manual` (enter tag).
+4. **Release notes:** Optional; leave empty to auto-generate.
+5. Run → workflow builds and deploys prod.
 
 See [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for details.
 
@@ -71,20 +71,20 @@ See [RELEASE_PROCESS.md](RELEASE_PROCESS.md) for details.
 
 1. `git checkout v1.2.0 -b patch/v1.2.1-fix`
 2. Fix, push, open PR, merge to `main`.
-3. **Releases** → Target `patch/v1.2.1-fix` (or `main`) → Tag `v1.2.1` → Publish.
+3. **Actions** → Release (Production) → new, manual tag `v1.2.1`, branch `main`.
 4. Merge hotfix branch to `main` if not already merged.
 
 ## Rollback
 
-**Releases** → **Draft new release** → **Choose existing tag** (e.g. `v1.2.0`) → **Publish**. Workflow rebuilds and redeploys that version.
+**Actions** → **Release (Production)** → **Release type:** `rollback` → **Tag:** `v1.2.0` → **Run workflow**.
 
 ## Quick Reference
 
-| Scenario    | Action                                                      |
-| ----------- | ----------------------------------------------------------- |
-| New release | Releases → Target main → Tag vX.Y.Z → Publish               |
-| Rollback    | Releases → Choose existing tag → Publish                    |
-| Hotfix      | Branch from tag → Fix → Release from branch → Merge to main |
+| Scenario    | Action                                                                |
+| ----------- | --------------------------------------------------------------------- |
+| New release | Actions → Release (Production) → new → auto or manual tag → Run       |
+| Rollback    | Actions → Release (Production) → rollback → enter tag (e.g. v1.2.0)   |
+| Hotfix      | Branch from tag → Fix → Release workflow (manual tag) → Merge to main |
 
 ## Issue Templates
 
