@@ -4,10 +4,10 @@ import {
   useUsage,
   useAddOns,
   useAddOnPricing,
+  useTenantPlans,
   useRequestAddOn,
 } from "@/hooks/useUsage";
 import { useAuthStore, selectTenant } from "@/stores/auth-store";
-import { usePlans } from "@/hooks/usePlatformBilling";
 import { useToast } from "@/hooks/useToast";
 import {
   Card,
@@ -97,11 +97,17 @@ export function UsageDashboard() {
   const { data: usageData, isLoading: usageLoading } = useUsage();
   const { data: addOns = [], isLoading: addOnsLoading } = useAddOns();
   const { data: pricing = [] } = useAddOnPricing();
-  const { data: plans = [] } = usePlans();
+  const { data: plans = [] } = useTenantPlans();
   const requestAddOn = useRequestAddOn();
   const { toast } = useToast();
 
   const currentPlan = plans.find((p) => p.tier === tenant?.plan);
+
+  function formatPrice(n: number | null): string {
+    if (n === null || n === undefined) return "Contact us";
+    if (n === 0) return "Custom";
+    return `NPR ${n.toLocaleString()}/mo`;
+  }
 
   const handleRequestAddOn = async (type: AddOnType) => {
     try {
@@ -173,8 +179,13 @@ export function UsageDashboard() {
                 {subscriptionInfo?.status ?? "-"}
               </Badge>
             </div>
+            {currentPlan && (
+              <p className="text-sm font-medium mt-1">
+                {formatPrice(currentPlan.priceMonthly)}
+              </p>
+            )}
             {currentPlan?.description && (
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 {currentPlan.description}
               </p>
             )}
@@ -221,15 +232,16 @@ export function UsageDashboard() {
           <CardContent>
             {currentPlan && plans.length > 0 ? (
               (() => {
-                const nextPlan = plans.find(
-                  (p) => p.rank > currentPlan.rank && p.isActive,
-                );
+                const nextPlan = plans.find((p) => p.rank > currentPlan.rank);
                 return nextPlan ? (
                   <div>
                     <span className="text-sm">Next tier: </span>
                     <Badge variant="outline">{nextPlan.name}</Badge>
+                    <p className="text-sm font-medium mt-1">
+                      {formatPrice(nextPlan.priceMonthly)}
+                    </p>
                     {nextPlan.description && (
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-xs text-muted-foreground mt-0.5">
                         {nextPlan.description}
                       </p>
                     )}
@@ -326,6 +338,54 @@ export function UsageDashboard() {
               );
             })}
       </div>
+
+      {plans.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Plans & Pricing</CardTitle>
+            <CardDescription>
+              Available plans and pricing for your organization
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {plans.map((plan) => {
+                const isCurrent = plan.tier === tenant?.plan;
+                return (
+                  <div
+                    key={plan.id}
+                    className={`rounded-lg border p-4 ${
+                      isCurrent ? "border-primary bg-primary/5" : ""
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium">{plan.name}</span>
+                      {isCurrent && (
+                        <Badge variant="default" className="text-xs">
+                          Current
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-2xl font-bold mt-2">
+                      {formatPrice(plan.priceMonthly)}
+                    </p>
+                    {plan.priceAnnual != null && plan.priceAnnual > 0 && (
+                      <p className="text-xs text-muted-foreground">
+                        Annual: NPR {plan.priceAnnual.toLocaleString()}/yr
+                      </p>
+                    )}
+                    {plan.description && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {plan.description}
+                      </p>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

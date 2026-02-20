@@ -320,6 +320,17 @@ export async function getPricingPlans(): Promise<PricingPlan[]> {
   }
 }
 
+export async function initializeDefaultPricingPlans(): Promise<PricingPlan[]> {
+  try {
+    const response = await api.post<{ pricingPlans: PricingPlan[] }>(
+      "/platform/pricing-plans/initialize-defaults",
+    );
+    return response.data.pricingPlans ?? [];
+  } catch (error) {
+    handleApiError(error, "initialize default pricing plans");
+  }
+}
+
 export async function updatePricingPlan(
   tier: string,
   billingCycle: string,

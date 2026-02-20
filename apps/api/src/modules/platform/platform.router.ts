@@ -65,6 +65,10 @@ router.delete(
 // PRICING PLANS CRUD
 // ============================================
 router.get("/pricing-plans", asyncHandler(platformController.listPricingPlans));
+router.post(
+  "/pricing-plans/initialize-defaults",
+  asyncHandler(platformController.initializeDefaultPricingPlans),
+);
 router.get(
   "/pricing-plans/:tier/:billingCycle",
   asyncHandler(platformController.getPricingPlan),

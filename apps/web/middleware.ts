@@ -55,19 +55,44 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  const slug = getSlugFromPathname(pathname);
-  const loginRoute = slug ? getLoginPath(slug) : null;
+  const urlSlug = getSlugFromPathname(pathname);
+  const loginRoute = urlSlug ? getLoginPath(urlSlug) : null;
   const isLogin = isLoginPath(pathname);
   const isProtected = isProtectedPath(pathname);
 
-  if (isProtected && !hasToken && slug) {
+  if (isProtected && !hasToken && urlSlug) {
     const loginUrl = new URL(loginRoute!, request.url);
     loginUrl.searchParams.set("callbackUrl", pathname);
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isLogin && hasToken && slug) {
-    return NextResponse.redirect(new URL(getWorkspaceRoot(slug), request.url));
+  if (isLogin && hasToken && urlSlug) {
+    return NextResponse.redirect(
+      new URL(getWorkspaceRoot(urlSlug), request.url),
+    );
+  }
+
+  // Enforce tenant slug: if logged-in tenant user is on wrong slug URL, redirect to their tenant
+  if (isProtected && hasToken && urlSlug) {
+    try {
+      const parsed = authStorage?.value ? JSON.parse(authStorage.value) : null;
+      const tenantSlug = parsed?.state?.tenant?.slug;
+      const userRole = parsed?.state?.user?.role;
+      // Platform admins can access any workspace URL
+      if (userRole === "platformAdmin") {
+        return NextResponse.next();
+      }
+      // Tenant users must use their tenant's slug in the URL
+      if (tenantSlug && urlSlug.toLowerCase() !== tenantSlug.toLowerCase()) {
+        const correctPath = pathname.replace(
+          new RegExp(`^/${urlSlug}(/|$)`, "i"),
+          `/${tenantSlug}$1`,
+        );
+        return NextResponse.redirect(new URL(correctPath, request.url));
+      }
+    } catch {
+      // If cookie parse fails, allow through (auth will be revalidated)
+    }
   }
 
   return NextResponse.next();

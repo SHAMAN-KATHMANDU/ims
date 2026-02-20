@@ -6,10 +6,12 @@ import {
   getResourceUsage,
   getAddOns,
   getAddOnPricing,
+  getPlansWithPricing,
   requestAddOn,
   type ResourceUsage,
   type TenantAddOn,
   type AddOnPricing,
+  type PlanWithPricing,
   type LimitedResource,
   type AddOnType,
   type AddOnStatus,
@@ -19,6 +21,7 @@ export type {
   ResourceUsage,
   TenantAddOn,
   AddOnPricing,
+  PlanWithPricing,
   LimitedResource,
   AddOnType,
   AddOnStatus,
@@ -30,6 +33,7 @@ const usageKeys = {
   resource: (r: string) => [...usageKeys.all, "resource", r] as const,
   addOns: () => [...usageKeys.all, "add-ons"] as const,
   pricing: () => [...usageKeys.all, "pricing"] as const,
+  plans: () => [...usageKeys.all, "plans"] as const,
 };
 
 export function useUsage() {
@@ -58,6 +62,13 @@ export function useAddOnPricing() {
   return useQuery({
     queryKey: usageKeys.pricing(),
     queryFn: getAddOnPricing,
+  });
+}
+
+export function useTenantPlans() {
+  return useQuery({
+    queryKey: usageKeys.plans(),
+    queryFn: getPlansWithPricing,
   });
 }
 

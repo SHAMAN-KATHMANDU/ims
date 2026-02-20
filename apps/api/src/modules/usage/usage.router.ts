@@ -15,6 +15,9 @@ const usageRouter = Router();
 usageRouter.use(verifyToken);
 usageRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
+// Plans with pricing (tenant-facing, read-only)
+usageRouter.get("/plans", asyncHandler(usageController.getPlansWithPricing));
+
 // Add-on routes (must be before /:resource to avoid matching "add-ons" as a resource)
 usageRouter.get(
   "/add-ons/pricing",

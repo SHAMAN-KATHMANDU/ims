@@ -1018,13 +1018,93 @@ class PlatformController {
   }
 
   /**
+   * Initialize default pricing plans (upsert). Idempotent.
+   */
+  async initializeDefaultPricingPlans(req: Request, res: Response) {
+    try {
+      const pricingPlansData = [
+        {
+          tier: "STARTER" as const,
+          billingCycle: "MONTHLY" as const,
+          price: 2999,
+        },
+        {
+          tier: "STARTER" as const,
+          billingCycle: "ANNUAL" as const,
+          price: 29990,
+        },
+        {
+          tier: "PROFESSIONAL" as const,
+          billingCycle: "MONTHLY" as const,
+          price: 6999,
+        },
+        {
+          tier: "PROFESSIONAL" as const,
+          billingCycle: "ANNUAL" as const,
+          price: 69990,
+        },
+        {
+          tier: "BUSINESS" as const,
+          billingCycle: "MONTHLY" as const,
+          price: 14999,
+        },
+        {
+          tier: "BUSINESS" as const,
+          billingCycle: "ANNUAL" as const,
+          price: 149990,
+        },
+        {
+          tier: "ENTERPRISE" as const,
+          billingCycle: "MONTHLY" as const,
+          price: 0,
+        },
+        {
+          tier: "ENTERPRISE" as const,
+          billingCycle: "ANNUAL" as const,
+          price: 0,
+        },
+      ];
+
+      for (const pp of pricingPlansData) {
+        await basePrisma.pricingPlan.upsert({
+          where: {
+            tier_billingCycle: { tier: pp.tier, billingCycle: pp.billingCycle },
+          },
+          update: { price: pp.price },
+          create: {
+            tier: pp.tier,
+            billingCycle: pp.billingCycle,
+            price: pp.price,
+            isActive: true,
+          },
+        });
+      }
+
+      const pricingPlans = await basePrisma.pricingPlan.findMany({
+        orderBy: [{ tier: "asc" }, { billingCycle: "asc" }],
+      });
+      res.status(200).json({
+        message: "Default pricing plans initialized",
+        pricingPlans,
+      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Initialize default pricing plans error",
+      );
+    }
+  }
+
+  /**
    * Get a pricing plan by tier and billing cycle.
    */
   async getPricingPlan(req: Request, res: Response) {
     try {
       const { tier, billingCycle } = req.params;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
       const validCycles = ["MONTHLY", "ANNUAL"];
 
       if (!validTiers.includes(tier)) {
@@ -1071,7 +1151,7 @@ class PlatformController {
         });
       }
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
       const validCycles = ["MONTHLY", "ANNUAL"];
 
       if (!validTiers.includes(tier)) {
@@ -1126,7 +1206,7 @@ class PlatformController {
       const { tier, billingCycle } = req.params;
       const { price, originalPrice, isActive } = req.body;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
       const validCycles = ["MONTHLY", "ANNUAL"];
 
       if (!validTiers.includes(tier)) {
@@ -1181,7 +1261,7 @@ class PlatformController {
     try {
       const { tier, billingCycle } = req.params;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
       const validCycles = ["MONTHLY", "ANNUAL"];
 
       if (!validTiers.includes(tier)) {
