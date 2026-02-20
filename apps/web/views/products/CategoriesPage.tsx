@@ -1,10 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
 import { useForm } from "@/hooks/useForm";
 import {
-  useCategories,
+  useCategoriesPaginated,
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
@@ -12,10 +12,14 @@ import {
   useCreateSubcategory,
   useDeleteSubcategory,
   type Category,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
 } from "@/hooks/useProduct";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import { CategoryForm } from "./components/CategoryForm";
 import { CategoryTable } from "./components/CategoryTable";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import type { PaginationState } from "@/components/ui/data-table-pagination";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
 import { SubcategoryDeleteDialog } from "./components/dialogs/SubcategoryDeleteDialog";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
@@ -29,11 +33,25 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import type { CategoryFormValues } from "./types";
 
 export function CategoriesPage() {
-  const { data: categories = [] } = useCategories();
+  const [page, setPage] = useState(DEFAULT_PAGE);
+  const [limit, setLimit] = useState(DEFAULT_LIMIT);
+  const [search, setSearch] = useState("");
+
+  const { data: categoriesResponse, isLoading } = useCategoriesPaginated({
+    page,
+    limit,
+    search,
+    sortBy: "name",
+    sortOrder: "asc",
+  });
+
+  const categories = categoriesResponse?.data ?? [];
+  const pagination = categoriesResponse?.pagination;
+
   const createCategoryMutation = useCreateCategory();
   const updateCategoryMutation = useUpdateCategory();
   const deleteCategoryMutation = useDeleteCategory();
@@ -63,6 +81,19 @@ export function CategoriesPage() {
     open: false,
     message: "",
   });
+
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearch(e.target.value);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+
+  const handlePageSizeChange = useCallback((newLimit: number) => {
+    setLimit(newLimit);
+    setPage(DEFAULT_PAGE);
+  }, []);
 
   // Edit states
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -202,8 +233,19 @@ export function CategoriesPage() {
         </p>
       </div>
 
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">All Categories</h2>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+          <h2 className="text-xl font-semibold">All Categories</h2>
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              placeholder="Search categories..."
+              value={search}
+              onChange={handleSearchChange}
+              className="pl-9"
+            />
+          </div>
+        </div>
         {canManageProducts && (
           <CategoryForm
             open={categoryDialog}
@@ -217,6 +259,7 @@ export function CategoriesPage() {
 
       <CategoryTable
         categories={categories}
+        isLoading={isLoading}
         canManageProducts={canManageProducts}
         onEdit={handleEditCategory}
         onDelete={setCategoryToDelete}
@@ -227,6 +270,20 @@ export function CategoriesPage() {
           ]),
         )}
         onManageSubcategories={handleOpenSubcategoryDialog}
+        pagination={
+          pagination
+            ? {
+                currentPage: pagination.currentPage,
+                totalPages: pagination.totalPages,
+                totalItems: pagination.totalItems,
+                itemsPerPage: pagination.itemsPerPage,
+                hasNextPage: pagination.hasNextPage,
+                hasPrevPage: pagination.hasPrevPage,
+              }
+            : undefined
+        }
+        onPageChange={setPage}
+        onPageSizeChange={handlePageSizeChange}
       />
 
       {/* Subcategory Management Dialog */}
