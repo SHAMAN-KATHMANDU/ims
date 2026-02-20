@@ -197,7 +197,7 @@ docker compose -f docker-compose.prod.yml run --rm prod_api pnpm prisma:seed
 
 **Skips:** test1, test2, Ruby demo tenants with full products/sales data.
 
-## 9. Production Database Backup
+## 10. Production Database Backup
 
 The prod stack includes an automatic backup container (`prod_backup`) that:
 
