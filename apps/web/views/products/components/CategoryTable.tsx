@@ -22,31 +22,86 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Edit2, Trash2, Layers, MoreHorizontal } from "lucide-react";
 import type { Category } from "@/hooks/useProduct";
 
 interface CategoryTableProps {
   categories: Category[];
+  isLoading?: boolean;
   canManageProducts: boolean;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
   subcategoriesByCategory?: Record<string, string[]>;
   onManageSubcategories?: (category: Category) => void;
+  pagination?: {
+    currentPage: number;
+    totalPages: number;
+    totalItems: number;
+    itemsPerPage: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+  };
+  onPageChange?: (page: number) => void;
+  onPageSizeChange?: (pageSize: number) => void;
 }
 
 export function CategoryTable({
   categories,
+  isLoading,
   canManageProducts,
   onEdit,
   onDelete,
   subcategoriesByCategory = {},
   onManageSubcategories,
+  pagination,
+  onPageChange,
+  onPageSizeChange,
 }: CategoryTableProps) {
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>All Categories</CardTitle>
+          <CardDescription>
+            <Skeleton className="h-4 w-24" />
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-12 w-full" />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (categories.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>All Categories</CardTitle>
+          <CardDescription>No categories found</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-muted-foreground text-center py-8">
+            Get started by creating a category.
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card>
       <CardHeader>
         <CardTitle>All Categories</CardTitle>
-        <CardDescription>Total: {categories.length}</CardDescription>
+        <CardDescription>
+          Total: {pagination?.totalItems ?? categories.length} categories
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>
@@ -121,6 +176,14 @@ export function CategoryTable({
             ))}
           </TableBody>
         </Table>
+        {pagination && onPageChange && (
+          <DataTablePagination
+            pagination={pagination}
+            onPageChange={onPageChange}
+            onPageSizeChange={onPageSizeChange}
+            isLoading={isLoading}
+          />
+        )}
       </CardContent>
     </Card>
   );

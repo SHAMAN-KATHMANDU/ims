@@ -7,6 +7,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
+import type { PaginationMeta } from "@/lib/apiTypes";
 
 // ============================================
 // Types
@@ -31,17 +32,23 @@ export interface UpdateCategoryData {
   description?: string;
 }
 
+export interface CategoryListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface PaginatedCategoriesResponse {
+  data: Category[];
+  pagination: PaginationMeta;
+}
+
 interface CategoriesResponse {
   message: string;
   data: Category[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-  };
+  pagination: PaginationMeta;
 }
 
 interface CategoryResponse {
@@ -54,11 +61,47 @@ interface CategoryResponse {
 // ============================================
 
 /**
- * Get all categories
+ * Get categories with pagination (for Categories page)
+ */
+export async function getCategoriesPaginated(
+  params: CategoryListParams = {},
+): Promise<PaginatedCategoriesResponse> {
+  const { page = 1, limit = 10, search = "", sortBy, sortOrder } = params;
+
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (search.trim()) {
+    queryParams.set("search", search.trim());
+  }
+  if (sortBy) {
+    queryParams.set("sortBy", sortBy);
+  }
+  if (sortOrder) {
+    queryParams.set("sortOrder", sortOrder);
+  }
+
+  try {
+    const response = await api.get<CategoriesResponse>(
+      `/categories?${queryParams.toString()}`,
+    );
+    return {
+      data: response.data.data || [],
+      pagination: response.data.pagination,
+    };
+  } catch (error) {
+    handleApiError(error, "fetch categories");
+  }
+}
+
+/**
+ * Get all categories (for dropdowns - fetches up to 500)
  */
 export async function getAllCategories(): Promise<Category[]> {
   try {
-    const response = await api.get<CategoriesResponse>("/categories");
+    const response = await api.get<CategoriesResponse>(
+      "/categories?limit=500&page=1",
+    );
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch categories");

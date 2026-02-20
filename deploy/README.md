@@ -197,6 +197,48 @@ docker compose -f docker-compose.prod.yml run --rm prod_api pnpm prisma:seed
 
 **Skips:** test1, test2, Ruby demo tenants with full products/sales data.
 
+## 10. Production Database Backup
+
+The prod stack includes an automatic backup container (`prod_backup`) that:
+
+- **Runs daily at 2 AM** (server time)
+- **Keeps 7 days** of backups, then deletes older ones
+- **Stores** compressed backups (`.sql.gz`) in the `prod_backups` Docker volume
+
+No manual steps are required. After starting the stack with `docker compose -f docker-compose.prod.yml up -d`, backups begin automatically.
+
+### Backup location
+
+Backups live inside the `prod_backups` volume. To list them from the prod EC2:
+
+```bash
+docker run --rm -v deploy_prod_backups:/backups alpine ls -la /backups/daily/
+```
+
+The volume name may be prefixed with the project directory (e.g. `deploy_prod_backups` if you run from `/home/ubuntu/deploy`). Use `docker volume ls` to see the exact name.
+
+### Restore from a backup
+
+**List available backups:**
+
+```bash
+docker exec prod_backup ls -la /backups/daily/
+```
+
+**Restore from latest backup** (from prod EC2; uses `ims-latest.sql.gz` symlink):
+
+```bash
+docker exec -i prod_backup /bin/sh -c "zcat /backups/daily/ims-latest.sql.gz | psql -h prod_db -U postgres -d ims"
+```
+
+Replace `postgres` and `ims` with your `POSTGRES_USER` and `POSTGRES_DB` if different. You will be prompted for the password (from your `.env`).
+
+**Restore from a specific date** (e.g. `ims-20250220.sql.gz`):
+
+```bash
+docker exec -i prod_backup /bin/sh -c "zcat /backups/daily/ims-20250220.sql.gz | psql -h prod_db -U postgres -d ims"
+```
+
 ## Troubleshooting
 
 - **Containers exit**: Run `docker compose -f docker-compose.dev.yml logs` (or prod) and fix `.env` (e.g. wrong `DATABASE_URL`).

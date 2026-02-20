@@ -1,41 +1,154 @@
-# Production release: builds and pushes Docker images when a release is published.
-# Trigger: GitHub Releases UI → Draft new release → Tag (e.g. v1.2.0) → Publish.
-# Images: :<tag>, :prod, :latest. Rollback: publish a release for an existing tag.
+# Production release: manual trigger. Builds and pushes Docker images to prod.
+# Trigger: Actions → Release (Production) → Run workflow.
+# Images: :<tag>, :prod, :latest.
+# New release: tag from main (or branch) with manual/auto semver.
+# Rollback: enter existing tag to redeploy that version.
 
 name: Release (Production)
 
 on:
-  release:
-    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: "Release type"
+        required: true
+        type: choice
+        options:
+          - new
+          - rollback
+        default: new
+      tag_strategy:
+        description: "For new release: manual tag or auto-bump"
+        required: false
+        type: choice
+        options:
+          - manual
+          - auto_patch
+          - auto_minor
+          - auto_major
+        default: auto_patch
+      tag:
+        description: "Tag (required if manual or rollback). e.g. v1.2.0"
+        required: false
+        type: string
+      branch:
+        description: "Branch to tag from (new release only)"
+        required: false
+        type: string
+        default: main
+      release_notes:
+        description: "Release notes (optional; empty = auto-generate for new)"
+        required: false
+        type: string
+      create_github_release:
+        description: "Create GitHub Release"
+        required: false
+        type: boolean
+        default: true
 
 permissions:
   contents: read
 
 concurrency:
-  group: release-${{ github.event.release.tag_name }}
+  group: release-manual
   cancel-in-progress: false
 
 jobs:
-  validate-tag:
-    name: Validate tag
+  resolve-tag:
+    name: Resolve tag
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     outputs:
-      tag: ${{ steps.validate.outputs.tag }}
+      resolved_tag: ${{ steps.resolve.outputs.tag }}
     steps:
-      - name: Validate semver tag
-        id: validate
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: List recent tags
         run: |
-          TAG="${{ github.event.release.tag_name }}"
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$ ]]; then
-            echo "::error::Tag must match semver: v1.2.3 (got: $TAG)"
-            exit 1
+          echo "::group::Recent tags (for rollback, copy one of these)"
+          git tag -l 'v*' --sort=-v:refname | head -15
+          echo "::endgroup::"
+
+      - name: Resolve and validate tag
+        id: resolve
+        env:
+          RELEASE_TYPE: ${{ github.event.inputs.release_type }}
+          TAG_STRATEGY: ${{ github.event.inputs.tag_strategy }}
+          TAG_INPUT: ${{ github.event.inputs.tag }}
+          BRANCH: ${{ github.event.inputs.branch }}
+        run: |
+          set -e
+          if [ "$RELEASE_TYPE" = "rollback" ]; then
+            if [ -z "$TAG_INPUT" ]; then
+              echo "::error::Tag is required for rollback. Enter an existing tag (e.g. v1.2.0)."
+              exit 1
+            fi
+            if ! git rev-parse "refs/tags/$TAG_INPUT" >/dev/null 2>&1; then
+              echo "::error::Tag $TAG_INPUT does not exist. Check the recent tags list above."
+              exit 1
+            fi
+            echo "tag=$TAG_INPUT" >> "$GITHUB_OUTPUT"
+            echo "Using existing tag for rollback: $TAG_INPUT"
+            exit 0
           fi
-          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+          # New release
+          if [ "$TAG_STRATEGY" = "manual" ]; then
+            if [ -z "$TAG_INPUT" ]; then
+              echo "::error::Tag is required for manual new release."
+              exit 1
+            fi
+            if [[ ! "$TAG_INPUT" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$ ]]; then
+              echo "::error::Tag must match semver: v1.2.3 (got: $TAG_INPUT)"
+              exit 1
+            fi
+            if git rev-parse "refs/tags/$TAG_INPUT" >/dev/null 2>&1; then
+              echo "::error::Tag $TAG_INPUT already exists. Use a different tag or rollback."
+              exit 1
+            fi
+            RESOLVED="$TAG_INPUT"
+          else
+            # Auto bump: get latest semver tag from git
+            LATEST=$(git tag -l 'v*' --sort=-v:refname | head -1 || echo "")
+            if [ -z "$LATEST" ]; then
+              LATEST="v0.0.0"
+            fi
+            LEVEL="${TAG_STRATEGY#auto_}"
+            MAJOR=$(echo "$LATEST" | sed -E 's/^v?([0-9]+)\.[0-9]+\.[0-9]+.*/\1/')
+            MINOR=$(echo "$LATEST" | sed -E 's/^v?[0-9]+\.([0-9]+)\.[0-9]+.*/\1/')
+            PATCH=$(echo "$LATEST" | sed -E 's/^v?[0-9]+\.[0-9]+\.([0-9]+).*/\1/')
+            case "$LEVEL" in
+              major) RESOLVED="v$((MAJOR+1)).0.0" ;;
+              minor) RESOLVED="v${MAJOR}.$((MINOR+1)).0" ;;
+              patch) RESOLVED="v${MAJOR}.${MINOR}.$((PATCH+1))" ;;
+              *) RESOLVED="v${MAJOR}.${MINOR}.$((PATCH+1))" ;;
+            esac
+          fi
+
+          echo "tag=$RESOLVED" >> "$GITHUB_OUTPUT"
+          echo "Resolved tag: $RESOLVED"
+
+      - name: Create and push tag (new release only)
+        if: github.event.inputs.release_type == 'new'
+        env:
+          TAG: ${{ steps.resolve.outputs.tag }}
+          BRANCH: ${{ github.event.inputs.branch }}
+        run: |
+          git fetch origin "$BRANCH"
+          git checkout "$BRANCH"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
 
   build-api:
     name: Build API (prod)
     runs-on: ubuntu-latest
-    needs: [validate-tag]
+    needs: [resolve-tag]
     permissions:
       contents: read
       packages: write
@@ -43,7 +156,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ needs['resolve-tag'].outputs.resolved_tag }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to Docker Hub
@@ -55,7 +168,7 @@ jobs:
         id: tags
         run: |
           IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/dev-api-ims"
-          TAG="${{ needs.validate-tag.outputs.tag }}"
+          TAG="${{ needs['resolve-tag'].outputs.resolved_tag }}"
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
           echo "${IMAGE}:${TAG}" >> "$GITHUB_OUTPUT"
           echo "${IMAGE}:prod" >> "$GITHUB_OUTPUT"
@@ -74,7 +187,7 @@ jobs:
   build-web:
     name: Build Web (prod)
     runs-on: ubuntu-latest
-    needs: [validate-tag]
+    needs: [resolve-tag]
     permissions:
       contents: read
       packages: write
@@ -82,7 +195,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name }}
+          ref: ${{ needs['resolve-tag'].outputs.resolved_tag }}
       - name: Create environment file for Web
         run: |
           mkdir -p apps/web
@@ -98,7 +211,7 @@ jobs:
         id: tags
         run: |
           IMAGE="${{ secrets.DOCKERHUB_USERNAME }}/dev-web-ims"
-          TAG="${{ needs.validate-tag.outputs.tag }}"
+          TAG="${{ needs['resolve-tag'].outputs.resolved_tag }}"
           echo "tags<<EOF" >> "$GITHUB_OUTPUT"
           echo "${IMAGE}:${TAG}" >> "$GITHUB_OUTPUT"
           echo "${IMAGE}:prod" >> "$GITHUB_OUTPUT"
@@ -113,3 +226,26 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  create-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    needs: [resolve-tag, build-api, build-web]
+    if: github.event.inputs.create_github_release == 'true'
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs['resolve-tag'].outputs.resolved_tag }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs['resolve-tag'].outputs.resolved_tag }}
+          name: Release ${{ needs['resolve-tag'].outputs.resolved_tag }}
+          body: ${{ github.event.inputs.release_notes }}
+          generate_release_notes: ${{ github.event.inputs.release_notes == '' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
