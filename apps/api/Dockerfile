@@ -58,9 +58,13 @@ RUN mkdir -p /app/.log && chmod -R 777 /app/.log
 # Create uploads directory for multer and give ownership to nestjs
 RUN mkdir -p /app/uploads && chown -R nestjs:nestjs /app/uploads
 
-USER nestjs
 COPY --from=installer /app .
+# Entrypoint runs migrations on every start (e.g. after Watchtower updates)
+COPY apps/api/docker-entrypoint.sh /app/docker-entrypoint.sh
+RUN chmod +x /app/docker-entrypoint.sh
+
+USER nestjs
 # Tag the final image
 LABEL stage="final"
 RUN docker rmi $(docker images -f "label=stage=intermediate" -q) || true
-CMD node apps/api/dist/index.js
+CMD ["/app/docker-entrypoint.sh"]
