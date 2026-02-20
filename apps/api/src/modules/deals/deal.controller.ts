@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
@@ -83,11 +84,7 @@ class DealController {
 
       res.status(201).json({ message: "Deal created successfully", deal });
     } catch (error: unknown) {
-      console.error("Create deal error:", error);
-      res.status(500).json({
-        message: "Error creating deal",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Create deal error");
     }
   }
 
@@ -180,11 +177,7 @@ class DealController {
       const result = createPaginationResult(deals, totalItems, page, limit);
       res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
-      console.error("Get deals error:", error);
-      res.status(500).json({
-        message: "Error fetching deals",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get deals error");
     }
   }
 
@@ -229,11 +222,12 @@ class DealController {
         deals,
       });
     } catch (error: unknown) {
-      console.error("Get deals by pipeline error:", error);
-      res.status(500).json({
-        message: "Error fetching deals",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get deals by pipeline error",
+      );
     }
   }
 
@@ -265,11 +259,7 @@ class DealController {
 
       res.status(200).json({ message: "OK", deal });
     } catch (error: unknown) {
-      console.error("Get deal by id error:", error);
-      res.status(500).json({
-        message: "Error fetching deal",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get deal by id error");
     }
   }
 
@@ -356,11 +346,7 @@ class DealController {
 
       res.status(200).json({ message: "Deal updated successfully", deal });
     } catch (error: unknown) {
-      console.error("Update deal error:", error);
-      res.status(500).json({
-        message: "Error updating deal",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Update deal error");
     }
   }
 
@@ -409,11 +395,7 @@ class DealController {
 
       res.status(200).json({ message: "Deal stage updated", deal });
     } catch (error: unknown) {
-      console.error("Update deal stage error:", error);
-      res.status(500).json({
-        message: "Error updating deal stage",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Update deal stage error");
     }
   }
 
@@ -426,14 +408,13 @@ class DealController {
         return res.status(404).json({ message: "Deal not found" });
       }
 
-      await prisma.deal.delete({ where: { id } });
+      await prisma.deal.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Deal deleted successfully" });
     } catch (error: unknown) {
-      console.error("Delete deal error:", error);
-      res.status(500).json({
-        message: "Error deleting deal",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete deal error");
     }
   }
 }

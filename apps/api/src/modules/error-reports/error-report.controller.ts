@@ -4,6 +4,7 @@ import {
   getPaginationParams,
   createPaginationResult,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 class ErrorReportController {
   async create(req: Request, res: Response) {
@@ -24,6 +25,7 @@ class ErrorReportController {
 
       const report = await prisma.errorReport.create({
         data: {
+          tenantId: req.user?.tenantId || null,
           userId: req.user.id,
           title: title.trim().slice(0, 255),
           description:
@@ -44,12 +46,8 @@ class ErrorReportController {
         message: "Error report submitted",
         report,
       });
-    } catch (error: any) {
-      console.error("Create error report:", error);
-      res.status(500).json({
-        message: "Error submitting report",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create error report failed");
     }
   }
 
@@ -61,7 +59,9 @@ class ErrorReportController {
       const from = req.query.from as string | undefined;
       const to = req.query.to as string | undefined;
 
+      const tenantId = req.user?.tenantId ?? null;
       const where: any = {};
+      if (tenantId) where.tenantId = tenantId;
       if (status && ["OPEN", "REVIEWED", "RESOLVED"].includes(status)) {
         where.status = status;
       }
@@ -96,12 +96,8 @@ class ErrorReportController {
         message: "Error reports fetched",
         ...result,
       });
-    } catch (error: any) {
-      console.error("List error reports:", error);
-      res.status(500).json({
-        message: "Error fetching reports",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List error reports failed");
     }
   }
 
@@ -130,15 +126,13 @@ class ErrorReportController {
         message: "Status updated",
         report,
       });
-    } catch (error: any) {
-      if (error.code === "P2025") {
-        return res.status(404).json({ message: "Report not found" });
-      }
-      console.error("Update error report status:", error);
-      res.status(500).json({
-        message: "Error updating status",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Update error report status failed",
+      );
     }
   }
 }

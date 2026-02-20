@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 class LocationController {
   // Create location (superAdmin only)
@@ -25,7 +26,7 @@ class LocationController {
       }
 
       // Check if location already exists
-      const existingLocation = await prisma.location.findUnique({
+      const existingLocation = await prisma.location.findFirst({
         where: { name },
       });
 
@@ -45,6 +46,7 @@ class LocationController {
 
       const location = await prisma.location.create({
         data: {
+          tenantId: req.user!.tenantId,
           name,
           type: type || "SHOWROOM",
           address: address || null,
@@ -56,11 +58,8 @@ class LocationController {
         message: "Location created successfully",
         location,
       });
-    } catch (error: any) {
-      console.error("Create location error:", error);
-      res
-        .status(500)
-        .json({ message: "Error creating location", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create location error");
     }
   }
 
@@ -143,11 +142,8 @@ class LocationController {
         message: "Locations fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get all locations error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching locations", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all locations error");
     }
   }
 
@@ -179,11 +175,8 @@ class LocationController {
         message: "Location fetched successfully",
         location,
       });
-    } catch (error: any) {
-      console.error("Get location by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching location", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get location by ID error");
     }
   }
 
@@ -210,7 +203,7 @@ class LocationController {
       if (name !== undefined) {
         // Check if new name is already taken by another location
         if (name !== existingLocation.name) {
-          const nameExists = await prisma.location.findUnique({
+          const nameExists = await prisma.location.findFirst({
             where: { name },
           });
 
@@ -285,11 +278,8 @@ class LocationController {
         message: "Location updated successfully",
         location: updatedLocation,
       });
-    } catch (error: any) {
-      console.error("Update location error:", error);
-      res
-        .status(500)
-        .json({ message: "Error updating location", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Update location error");
     }
   }
 
@@ -342,20 +332,17 @@ class LocationController {
         }
       }
 
-      // Soft delete - set isActive to false
+      // Soft delete - set isActive to false and deletedAt for trash
       await prisma.location.update({
         where: { id },
-        data: { isActive: false },
+        data: { isActive: false, deletedAt: new Date() },
       });
 
       res.status(200).json({
         message: "Location deactivated successfully",
       });
-    } catch (error: any) {
-      console.error("Delete location error:", error);
-      res
-        .status(500)
-        .json({ message: "Error deleting location", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete location error");
     }
   }
 
@@ -439,12 +426,13 @@ class LocationController {
         location,
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get location inventory error:", error);
-      res.status(500).json({
-        message: "Error fetching location inventory",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get location inventory error",
+      );
     }
   }
 }

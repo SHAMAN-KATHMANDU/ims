@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 class CategoryController {
   // Create category (admin and superAdmin only)
@@ -17,8 +18,8 @@ class CategoryController {
         return res.status(400).json({ message: "Category name is required" });
       }
 
-      // Check if category already exists
-      const existingCategory = await prisma.category.findUnique({
+      // Check if category already exists (within this tenant, auto-scoped)
+      const existingCategory = await prisma.category.findFirst({
         where: { name },
       });
 
@@ -35,6 +36,7 @@ class CategoryController {
       // Create category
       const category = await prisma.category.create({
         data: {
+          tenantId: req.user!.tenantId,
           name,
           description: description || null,
         },
@@ -44,18 +46,14 @@ class CategoryController {
         message: "Category created successfully",
         category,
       });
-    } catch (error: any) {
-      console.error("Create category error:", error);
-      // Handle unique constraint violation
-      if (error.code === "P2002") {
-        return res.status(400).json({
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
           message: "Category with this name already exists",
-          error: error.message,
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error creating category", error: error.message });
+      return sendControllerError(req, res, error, "Create category error");
     }
   }
 
@@ -129,11 +127,8 @@ class CategoryController {
         message: "Categories fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get all categories error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching categories", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all categories error");
     }
   }
 
@@ -177,11 +172,8 @@ class CategoryController {
         message: "Category fetched successfully",
         category,
       });
-    } catch (error: any) {
-      console.error("Get category by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching category", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get category by ID error");
     }
   }
 
@@ -216,12 +208,13 @@ class CategoryController {
         categoryId: id,
         subcategories,
       });
-    } catch (error: any) {
-      console.error("Get category subcategories error:", error);
-      res.status(500).json({
-        message: "Error fetching subcategories",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get category subcategories error",
+      );
     }
   }
 
@@ -274,12 +267,8 @@ class CategoryController {
         message: "Subcategory created successfully",
         subCategory,
       });
-    } catch (error: any) {
-      console.error("Create subcategory error:", error);
-      res.status(500).json({
-        message: "Error creating subcategory",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create subcategory error");
     }
   }
 
@@ -325,19 +314,16 @@ class CategoryController {
         });
       }
 
-      await prisma.subCategory.delete({
+      await prisma.subCategory.update({
         where: { id: subCategory.id },
+        data: { deletedAt: new Date() },
       });
 
       return res.status(200).json({
         message: "Subcategory deleted successfully",
       });
-    } catch (error: any) {
-      console.error("Delete subcategory error:", error);
-      res.status(500).json({
-        message: "Error deleting subcategory",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete subcategory error");
     }
   }
 
@@ -364,7 +350,7 @@ class CategoryController {
 
       // If name is being updated, check if new name already exists
       if (name && name !== existingCategory.name) {
-        const nameExists = await prisma.category.findUnique({
+        const nameExists = await prisma.category.findFirst({
           where: { name },
         });
 
@@ -399,18 +385,14 @@ class CategoryController {
         message: "Category updated successfully",
         category: updatedCategory,
       });
-    } catch (error: any) {
-      console.error("Update category error:", error);
-      // Handle unique constraint violation
-      if (error.code === "P2002") {
-        return res.status(400).json({
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
           message: "Category with this name already exists",
-          error: error.message,
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error updating category", error: error.message });
+      return sendControllerError(req, res, error, "Update category error");
     }
   }
 
@@ -455,25 +437,22 @@ class CategoryController {
         });
       }
 
-      await prisma.category.delete({
+      await prisma.category.update({
         where: { id },
+        data: { deletedAt: new Date() },
       });
 
       res.status(200).json({
         message: "Category deleted successfully",
       });
-    } catch (error: any) {
-      console.error("Delete category error:", error);
-      // Handle foreign key constraint violation
-      if (error.code === "P2003") {
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2003") {
         return res.status(400).json({
           message: "Cannot delete category because it has associated products",
-          error: error.message,
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error deleting category", error: error.message });
+      return sendControllerError(req, res, error, "Delete category error");
     }
   }
 }

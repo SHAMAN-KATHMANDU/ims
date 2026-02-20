@@ -9,11 +9,18 @@ import {
   updateDeal,
   updateDealStage,
   deleteDeal,
+  type Deal,
   type DealListParams,
   type CreateDealData,
   type UpdateDealData,
 } from "@/services/dealService";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+
+type DealsKanbanData = {
+  pipeline: unknown;
+  stages: Array<{ stage: string; deals: Deal[] }>;
+  deals: Deal[];
+};
 
 export const dealKeys = {
   all: ["deals"] as const,
@@ -85,12 +92,45 @@ export function useUpdateDeal() {
 export function useUpdateDealStage() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ id, stage }: { id: string; stage: string }) =>
-      updateDealStage(id, stage),
-    onSuccess: (_, { id }) => {
+    mutationFn: ({
+      id,
+      stage,
+      pipelineId: _pipelineId,
+    }: {
+      id: string;
+      stage: string;
+      pipelineId?: string;
+    }) => updateDealStage(id, stage),
+    onMutate: async ({ id, stage, pipelineId }) => {
+      if (!pipelineId) return undefined;
+      const queryKey = dealKeys.kanban(pipelineId);
+      await qc.cancelQueries({ queryKey });
+      const prev = qc.getQueryData<DealsKanbanData>(queryKey);
+      if (!prev?.stages) return { prev, queryKey };
+      const deal = prev.stages.flatMap((c) => c.deals).find((d) => d.id === id);
+      if (!deal || deal.stage === stage) return { prev, queryKey };
+      const nextStages = prev.stages.map((col) => {
+        if (col.stage === deal.stage)
+          return { ...col, deals: col.deals.filter((d) => d.id !== id) };
+        if (col.stage === stage)
+          return { ...col, deals: [...col.deals, { ...deal, stage }] };
+        return col;
+      });
+      qc.setQueryData(queryKey, {
+        ...prev,
+        stages: nextStages,
+        deals: nextStages.flatMap((s) => s.deals),
+      });
+      return { prev, queryKey };
+    },
+    onError: (_err, _vars, ctx) => {
+      if (ctx?.prev) qc.setQueryData(ctx.queryKey, ctx.prev);
+    },
+    onSettled: (_data, _error, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
-      qc.invalidateQueries({ queryKey: dealKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      if (variables?.id)
+        qc.invalidateQueries({ queryKey: dealKeys.detail(variables.id) });
     },
   });
 }
@@ -101,7 +141,7 @@ export function useDeleteDeal() {
     mutationFn: (id: string) => deleteDeal(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
     },
   });
 }

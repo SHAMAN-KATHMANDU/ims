@@ -30,6 +30,8 @@ import {
   getSaleTypeColor,
   formatCurrency,
 } from "@/services/salesService";
+import { productKeys } from "./useProduct";
+import { inventoryKeys } from "./useInventory";
 
 // Re-export types for convenience
 export type {
@@ -155,7 +157,11 @@ export function useCreateSale() {
       queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
       queryClient.refetchQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.analytics() });
-      queryClient.invalidateQueries({ queryKey: ["inventory"] });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.refetchQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.removeQueries({ queryKey: productKeys.all });
+      queryClient.refetchQueries({ queryKey: productKeys.all });
     },
   });
 }

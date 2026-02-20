@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { sendControllerError } from "@/utils/controllerError";
 
 // Generate a unique transfer code
 function generateTransferCode(): string {
@@ -142,13 +143,12 @@ class TransferController {
         }
 
         // Check stock at source location (variation-level or sub-variant level)
-        const sourceInventory = await prisma.locationInventory.findUnique({
+        // findFirst used because compound unique (locationId, variationId, subVariationId) with null subVariationId is not reliably supported by findUnique in Prisma/Postgres
+        const sourceInventory = await prisma.locationInventory.findFirst({
           where: {
-            locationId_variationId_subVariationId: {
-              locationId: fromLocationId,
-              variationId: item.variationId,
-              subVariationId,
-            } as any,
+            locationId: fromLocationId,
+            variationId: item.variationId,
+            subVariationId: subVariationId ?? null,
           },
         });
 
@@ -181,6 +181,7 @@ class TransferController {
       // Create transfer with items
       const transfer = await prisma.transfer.create({
         data: {
+          tenantId: req.user!.tenantId,
           transferCode: generateTransferCode(),
           fromLocationId,
           toLocationId,
@@ -227,6 +228,7 @@ class TransferController {
       try {
         await prisma.auditLog.create({
           data: {
+            tenantId: req.user?.tenantId || null,
             userId: req.user.id,
             action: "CREATE_TRANSFER",
             resource: "transfer",
@@ -251,17 +253,8 @@ class TransferController {
         message: "Transfer request created successfully",
         transfer,
       });
-    } catch (error: any) {
-      console.error("Create transfer error:", error);
-      if (error.code === "P2002") {
-        // Unique constraint violation, regenerate code and try again
-        return res.status(500).json({
-          message: "Error creating transfer. Please try again.",
-        });
-      }
-      res
-        .status(500)
-        .json({ message: "Error creating transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create transfer error");
     }
   }
 
@@ -361,11 +354,8 @@ class TransferController {
         message: "Transfers fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get all transfers error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching transfers", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all transfers error");
     }
   }
 
@@ -426,11 +416,8 @@ class TransferController {
         message: "Transfer fetched successfully",
         transfer,
       });
-    } catch (error: any) {
-      console.error("Get transfer by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get transfer by ID error");
     }
   }
 
@@ -473,13 +460,11 @@ class TransferController {
       // Re-verify stock availability before approval
       const insufficientStock: any[] = [];
       for (const item of transfer.items) {
-        const sourceInventory = await prisma.locationInventory.findUnique({
+        const sourceInventory = await prisma.locationInventory.findFirst({
           where: {
-            locationId_variationId_subVariationId: {
-              locationId: transfer.fromLocationId,
-              variationId: item.variationId,
-              subVariationId: item.subVariationId,
-            } as any,
+            locationId: transfer.fromLocationId,
+            variationId: item.variationId,
+            subVariationId: item.subVariationId ?? null,
           },
         });
 
@@ -536,11 +521,8 @@ class TransferController {
         message: "Transfer approved successfully",
         transfer: updatedTransfer,
       });
-    } catch (error: any) {
-      console.error("Approve transfer error:", error);
-      res
-        .status(500)
-        .json({ message: "Error approving transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Approve transfer error");
     }
   }
 
@@ -580,19 +562,17 @@ class TransferController {
 
       // Deduct stock from source location (variation or sub-variant level)
       for (const item of transfer.items) {
-        await prisma.locationInventory.update({
+        const sourceRow = await prisma.locationInventory.findFirst({
           where: {
-            locationId_variationId_subVariationId: {
-              locationId: transfer.fromLocationId,
-              variationId: item.variationId,
-              subVariationId: item.subVariationId,
-            } as any,
+            locationId: transfer.fromLocationId,
+            variationId: item.variationId,
+            subVariationId: item.subVariationId ?? null,
           },
-          data: {
-            quantity: {
-              decrement: item.quantity,
-            },
-          },
+        });
+        if (!sourceRow) throw new Error("Source inventory row not found");
+        await prisma.locationInventory.update({
+          where: { id: sourceRow.id },
+          data: { quantity: { decrement: item.quantity } },
         });
       }
 
@@ -627,11 +607,8 @@ class TransferController {
         message: "Transfer marked as in transit. Stock deducted from source.",
         transfer: updatedTransfer,
       });
-    } catch (error: any) {
-      console.error("Start transit error:", error);
-      res
-        .status(500)
-        .json({ message: "Error starting transit", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Start transit error");
     }
   }
 
@@ -671,26 +648,28 @@ class TransferController {
 
       // Add stock to destination location (variation or sub-variant level)
       for (const item of transfer.items) {
-        await prisma.locationInventory.upsert({
+        const destRow = await prisma.locationInventory.findFirst({
           where: {
-            locationId_variationId_subVariationId: {
-              locationId: transfer.toLocationId,
-              variationId: item.variationId,
-              subVariationId: item.subVariationId,
-            } as any,
-          },
-          update: {
-            quantity: {
-              increment: item.quantity,
-            },
-          },
-          create: {
             locationId: transfer.toLocationId,
             variationId: item.variationId,
-            subVariationId: item.subVariationId,
-            quantity: item.quantity,
+            subVariationId: item.subVariationId ?? null,
           },
         });
+        if (destRow) {
+          await prisma.locationInventory.update({
+            where: { id: destRow.id },
+            data: { quantity: { increment: item.quantity } },
+          });
+        } else {
+          await prisma.locationInventory.create({
+            data: {
+              locationId: transfer.toLocationId,
+              variationId: item.variationId,
+              subVariationId: item.subVariationId ?? null,
+              quantity: item.quantity,
+            },
+          });
+        }
       }
 
       // Update transfer status
@@ -727,11 +706,8 @@ class TransferController {
         message: "Transfer completed successfully. Stock added to destination.",
         transfer: updatedTransfer,
       });
-    } catch (error: any) {
-      console.error("Complete transfer error:", error);
-      res
-        .status(500)
-        .json({ message: "Error completing transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Complete transfer error");
     }
   }
 
@@ -773,26 +749,28 @@ class TransferController {
       // If transfer was IN_TRANSIT, restore stock to source location
       if (transfer.status === "IN_TRANSIT") {
         for (const item of transfer.items) {
-          await prisma.locationInventory.upsert({
+          const sourceRow = await prisma.locationInventory.findFirst({
             where: {
-              locationId_variationId_subVariationId: {
-                locationId: transfer.fromLocationId,
-                variationId: item.variationId,
-                subVariationId: item.subVariationId,
-              } as any,
-            },
-            update: {
-              quantity: {
-                increment: item.quantity,
-              },
-            },
-            create: {
               locationId: transfer.fromLocationId,
               variationId: item.variationId,
-              subVariationId: item.subVariationId,
-              quantity: item.quantity,
+              subVariationId: item.subVariationId ?? null,
             },
           });
+          if (sourceRow) {
+            await prisma.locationInventory.update({
+              where: { id: sourceRow.id },
+              data: { quantity: { increment: item.quantity } },
+            });
+          } else {
+            await prisma.locationInventory.create({
+              data: {
+                locationId: transfer.fromLocationId,
+                variationId: item.variationId,
+                subVariationId: item.subVariationId ?? null,
+                quantity: item.quantity,
+              },
+            });
+          }
         }
       }
 
@@ -819,11 +797,8 @@ class TransferController {
         message: `Transfer cancelled successfully${transfer.status === "IN_TRANSIT" ? ". Stock restored to source location." : "."}`,
         transfer: updatedTransfer,
       });
-    } catch (error: any) {
-      console.error("Cancel transfer error:", error);
-      res
-        .status(500)
-        .json({ message: "Error cancelling transfer", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Cancel transfer error");
     }
   }
 
@@ -857,12 +832,8 @@ class TransferController {
         transferCode: transfer.transferCode,
         logs,
       });
-    } catch (error: any) {
-      console.error("Get transfer logs error:", error);
-      res.status(500).json({
-        message: "Error fetching transfer logs",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get transfer logs error");
     }
   }
 }

@@ -108,6 +108,12 @@ export function FinancialPage() {
     };
   }, [data]);
 
+  // Filter out zero/negative COGS for PieChart (prevents broken rendering)
+  const cogsByCategoryFiltered = useMemo(() => {
+    if (!data) return [];
+    return data.cogsByCategory.filter((item) => item.cogs > 0);
+  }, [data]);
+
   const kpis = totals
     ? [
         {
@@ -201,49 +207,51 @@ export function FinancialPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <ResponsiveContainer width="100%" height={280}>
-                <AreaChart data={data.grossProfitTimeSeries}>
-                  <defs>
-                    <linearGradient id="gpG" x1="0" y1="0" x2="0" y2="1">
-                      <stop
-                        offset="5%"
-                        stopColor={C.gongabu}
-                        stopOpacity={0.3}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor={C.gongabu}
-                        stopOpacity={0}
-                      />
-                    </linearGradient>
-                    <linearGradient id="gpR" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor={C.red} stopOpacity={0.2} />
-                      <stop offset="95%" stopColor={C.red} stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid {...gridProps} />
-                  <XAxis dataKey="date" tick={axisTick} />
-                  <YAxis tickFormatter={fS} tick={axisTick} />
-                  <Tooltip content={<DarkTooltip />} />
-                  <Legend wrapperStyle={{ fontSize: 11 }} />
-                  <Area
-                    type="monotone"
-                    dataKey="grossProfit"
-                    stroke={C.gongabu}
-                    fill="url(#gpG)"
-                    strokeWidth={2}
-                    name="Gross Profit"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="cogs"
-                    stroke={C.red}
-                    fill="url(#gpR)"
-                    strokeWidth={1.5}
-                    name="COGS"
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div className="min-h-[280px] w-full">
+                <ResponsiveContainer width="100%" height={280}>
+                  <AreaChart data={data.grossProfitTimeSeries}>
+                    <defs>
+                      <linearGradient id="gpG" x1="0" y1="0" x2="0" y2="1">
+                        <stop
+                          offset="5%"
+                          stopColor={C.gongabu}
+                          stopOpacity={0.3}
+                        />
+                        <stop
+                          offset="95%"
+                          stopColor={C.gongabu}
+                          stopOpacity={0}
+                        />
+                      </linearGradient>
+                      <linearGradient id="gpR" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor={C.red} stopOpacity={0.2} />
+                        <stop offset="95%" stopColor={C.red} stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid {...gridProps} />
+                    <XAxis dataKey="date" tick={axisTick} />
+                    <YAxis tickFormatter={fS} tick={axisTick} />
+                    <Tooltip content={<DarkTooltip />} />
+                    <Legend wrapperStyle={{ fontSize: 11 }} />
+                    <Area
+                      type="monotone"
+                      dataKey="grossProfit"
+                      stroke={C.gongabu}
+                      fill="url(#gpG)"
+                      strokeWidth={2}
+                      name="Gross Profit"
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="cogs"
+                      stroke={C.red}
+                      fill="url(#gpR)"
+                      strokeWidth={1.5}
+                      name="COGS"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
             </CardContent>
           </Card>
 
@@ -256,35 +264,44 @@ export function FinancialPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <PieChart>
-                    <Pie
-                      data={data.cogsByCategory}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={48}
-                      outerRadius={82}
-                      paddingAngle={3}
-                      dataKey="cogs"
-                      nameKey="category"
-                      animationDuration={800}
-                    >
-                      {data.cogsByCategory.map((_, i) => (
-                        <Cell
-                          key={i}
-                          fill={getChartColor(i)}
-                          stroke={C.bg}
-                          strokeWidth={2}
+                <div className="min-h-[250px] w-full">
+                  {cogsByCategoryFiltered.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <PieChart>
+                        <Pie
+                          data={cogsByCategoryFiltered}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={48}
+                          outerRadius={82}
+                          paddingAngle={3}
+                          dataKey="cogs"
+                          nameKey="category"
+                          animationDuration={800}
+                          minAngle={2}
+                        >
+                          {cogsByCategoryFiltered.map((_, i) => (
+                            <Cell
+                              key={i}
+                              fill={getChartColor(i)}
+                              stroke={C.bg}
+                              strokeWidth={2}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip
+                          formatter={(v: number) => fN(v)}
+                          contentStyle={tooltipStyle}
                         />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      formatter={(v: number) => fN(v)}
-                      contentStyle={tooltipStyle}
-                    />
-                    <Legend wrapperStyle={{ fontSize: 11 }} />
-                  </PieChart>
-                </ResponsiveContainer>
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-[250px] items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/30 text-sm text-muted-foreground">
+                      No COGS data by category in this period
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
             <Card className="min-w-0">
@@ -293,19 +310,27 @@ export function FinancialPage() {
                 <CardDescription>Cost breakdown by location</CardDescription>
               </CardHeader>
               <CardContent>
-                <ResponsiveContainer width="100%" height={250}>
-                  <BarChart data={data.cogsByLocation}>
-                    <CartesianGrid {...gridProps} />
-                    <XAxis dataKey="locationName" tick={axisTick} />
-                    <YAxis tickFormatter={fS} tick={axisTick} />
-                    <Tooltip content={<DarkTooltip />} />
-                    <Bar dataKey="cogs" radius={[4, 4, 0, 0]} name="COGS">
-                      {data.cogsByLocation.map((_, i) => (
-                        <Cell key={i} fill={getChartColor(i)} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="min-h-[250px] w-full">
+                  {data.cogsByLocation.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={250}>
+                      <BarChart data={data.cogsByLocation}>
+                        <CartesianGrid {...gridProps} />
+                        <XAxis dataKey="locationName" tick={axisTick} />
+                        <YAxis tickFormatter={fS} tick={axisTick} />
+                        <Tooltip content={<DarkTooltip />} />
+                        <Bar dataKey="cogs" radius={[4, 4, 0, 0]} name="COGS">
+                          {data.cogsByLocation.map((_, i) => (
+                            <Cell key={i} fill={getChartColor(i)} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="flex h-[250px] items-center justify-center rounded-lg border border-dashed border-border/50 bg-muted/30 text-sm text-muted-foreground">
+                      No COGS data by location in this period
+                    </div>
+                  )}
+                </div>
               </CardContent>
             </Card>
           </div>

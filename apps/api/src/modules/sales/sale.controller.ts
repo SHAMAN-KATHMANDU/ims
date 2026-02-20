@@ -15,6 +15,7 @@ import {
   type ExcelSaleRow,
   type ValidationError,
 } from "./bulkUpload.validation";
+import { sendControllerError } from "@/utils/controllerError";
 
 // Generate a unique sale code
 function generateSaleCode(): string {
@@ -96,7 +97,7 @@ class SaleController {
         const normalizedPhone = memberPhone.replace(/[\s-]/g, "").trim();
 
         // Find or create member
-        member = await prisma.member.findUnique({
+        member = await prisma.member.findFirst({
           where: { phone: normalizedPhone },
         });
 
@@ -104,6 +105,7 @@ class SaleController {
           // Auto-create member with phone and optional name
           member = await prisma.member.create({
             data: {
+              tenantId: req.user!.tenantId,
               phone: normalizedPhone,
               name: memberName?.trim() || null,
             },
@@ -123,11 +125,14 @@ class SaleController {
         });
       }
 
-      // Get "Member" discount type for member sales
+      // Get "Member" discount type for member sales (tenant-scoped)
       let memberDiscountType = null;
-      if (saleType === "MEMBER") {
-        memberDiscountType = await prisma.discountType.findUnique({
-          where: { name: "Member" },
+      if (saleType === "MEMBER" && req.user?.tenantId) {
+        memberDiscountType = await prisma.discountType.findFirst({
+          where: {
+            tenantId: req.user.tenantId,
+            name: { contains: "Member", mode: "insensitive" },
+          },
         });
       }
 
@@ -318,7 +323,7 @@ class SaleController {
 
         // Apply promo code logic (per product, processed after base discounts)
         if (item.promoCode) {
-          const promo = await prisma.promoCode.findUnique({
+          const promo = await prisma.promoCode.findFirst({
             where: { code: item.promoCode },
             include: {
               products: {
@@ -443,6 +448,7 @@ class SaleController {
         // Create the sale
         const newSale = await tx.sale.create({
           data: {
+            tenantId: req.user!.tenantId,
             saleCode: generateSaleCode(),
             type: saleType,
             isCreditSale: creditSale,
@@ -562,6 +568,7 @@ class SaleController {
       try {
         await prisma.auditLog.create({
           data: {
+            tenantId: req.user?.tenantId || null,
             userId: req.user!.id,
             action: "CREATE_SALE",
             resource: "sale",
@@ -586,16 +593,8 @@ class SaleController {
         message: "Sale created successfully",
         sale,
       });
-    } catch (error: any) {
-      console.error("Create sale error:", error);
-      if (error.code === "P2002") {
-        return res.status(500).json({
-          message: "Error creating sale. Please try again.",
-        });
-      }
-      res
-        .status(500)
-        .json({ message: "Error creating sale", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create sale error");
     }
   }
 
@@ -648,7 +647,7 @@ class SaleController {
         const normalizedPhone = String(memberPhone)
           .replace(/[\s-]/g, "")
           .trim();
-        member = await prisma.member.findUnique({
+        member = await prisma.member.findFirst({
           where: { phone: normalizedPhone },
           select: { id: true, isActive: true },
         });
@@ -792,7 +791,7 @@ class SaleController {
         }
 
         if (item.promoCode) {
-          const promo = await prisma.promoCode.findUnique({
+          const promo = await prisma.promoCode.findFirst({
             where: { code: item.promoCode },
             include: {
               products: { include: { product: true } },
@@ -870,11 +869,7 @@ class SaleController {
         promoDiscount: Math.round(totalPromoDiscount * 100) / 100,
       });
     } catch (error: unknown) {
-      console.error("Preview sale error:", error);
-      res.status(500).json({
-        message: "Error computing preview",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Preview sale error");
     }
   }
 
@@ -1017,11 +1012,8 @@ class SaleController {
         message: "Sales fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get all sales error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching sales", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all sales error");
     }
   }
 
@@ -1078,12 +1070,13 @@ class SaleController {
         message: "Sales since last login",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get sales since last login error:", error);
-      res.status(500).json({
-        message: "Error fetching sales",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get sales since last login error",
+      );
     }
   }
 
@@ -1143,11 +1136,8 @@ class SaleController {
         message: "Sale fetched successfully",
         sale,
       });
-    } catch (error: any) {
-      console.error("Get sale by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching sale", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get sale by ID error");
     }
   }
 
@@ -1249,11 +1239,8 @@ class SaleController {
         sale: updatedSale,
         payment,
       });
-    } catch (error: any) {
-      console.error("Add payment error:", error);
-      res
-        .status(500)
-        .json({ message: "Error adding payment", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Add payment error");
     }
   }
 
@@ -1320,12 +1307,8 @@ class SaleController {
           },
         },
       });
-    } catch (error: any) {
-      console.error("Get sales summary error:", error);
-      res.status(500).json({
-        message: "Error fetching sales summary",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get sales summary error");
     }
   }
 
@@ -1381,12 +1364,13 @@ class SaleController {
         message: "Sales by location fetched successfully",
         data: locationStats,
       });
-    } catch (error: any) {
-      console.error("Get sales by location error:", error);
-      res.status(500).json({
-        message: "Error fetching sales by location",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get sales by location error",
+      );
     }
   }
 
@@ -1467,11 +1451,8 @@ class SaleController {
         message: "Daily sales fetched successfully",
         data: Object.values(dailyData),
       });
-    } catch (error: any) {
-      console.error("Get daily sales error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching daily sales", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get daily sales error");
     }
   }
 
@@ -1951,12 +1932,15 @@ class SaleController {
 
           const phoneVal = firstRow.phone;
           if (phoneVal && phoneVal.length > 0) {
-            let member = await prisma.member.findUnique({
+            let member = await prisma.member.findFirst({
               where: { phone: phoneVal },
             });
             if (!member) {
               member = await prisma.member.create({
-                data: { phone: phoneVal },
+                data: {
+                  tenantId: req.user!.tenantId,
+                  phone: phoneVal,
+                },
               });
             }
             memberId = member.id;
@@ -2067,6 +2051,7 @@ class SaleController {
           // Create sale
           const sale = await prisma.sale.create({
             data: {
+              tenantId: req.user!.tenantId,
               ...(group.saleId && { id: group.saleId }),
               saleCode: generateSaleCode(),
               type: saleType,
@@ -2137,7 +2122,7 @@ class SaleController {
         skipped: skippedSales,
         errors,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       if (req.file?.path) {
         try {
           fs.unlinkSync(req.file.path);
@@ -2145,20 +2130,7 @@ class SaleController {
           console.error("Error cleaning up file:", e);
         }
       }
-      console.error("Bulk upload sales error:", error);
-      res.status(500).json({
-        message: "Error processing bulk upload",
-        error: error.message,
-        summary: {
-          total: 0,
-          created: createdSales.length,
-          skipped: skippedSales.length,
-          errors: errors.length,
-        },
-        created: createdSales,
-        skipped: skippedSales,
-        errors,
-      });
+      return sendControllerError(req, res, error, "Bulk upload sales error");
     }
   }
 
@@ -2228,12 +2200,8 @@ class SaleController {
       );
       const buffer = await workbook.xlsx.writeBuffer();
       res.send(buffer);
-    } catch (error: any) {
-      console.error("Download template error:", error);
-      res.status(500).json({
-        message: "Error generating template",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download template error");
     }
   }
 
@@ -2511,11 +2479,8 @@ class SaleController {
 
         res.send(csvRows.join("\n"));
       }
-    } catch (error: any) {
-      console.error("Download sales error:", error);
-      res
-        .status(500)
-        .json({ message: "Error downloading sales", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download sales error");
     }
   }
 }

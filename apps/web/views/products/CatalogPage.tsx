@@ -894,6 +894,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         canManageProducts={canManageProducts}
         onEdit={handleEditProduct}
         onDelete={setProductToDelete}
+        selectedLocationId={paginationParams.locationId ?? undefined}
         filterBar={
           <>
             <LocationSelector

@@ -3,46 +3,53 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { uploadAttachment, uploadSingle } from "@/config/multer.config";
 import contactController from "./contact.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const contactRouter = Router();
 
 contactRouter.use(verifyToken);
 contactRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
-contactRouter.get("/tags", contactController.getTags);
+contactRouter.get("/tags", asyncHandler(contactController.getTags));
 contactRouter.post(
   "/tags",
   authorizeRoles("admin", "superAdmin"),
-  contactController.createTag,
+  asyncHandler(contactController.createTag),
 );
-contactRouter.post("/", contactController.create);
-contactRouter.get("/", contactController.getAll);
-contactRouter.get("/export", contactController.exportCsv);
+contactRouter.post("/", asyncHandler(contactController.create));
+contactRouter.get("/", asyncHandler(contactController.getAll));
+contactRouter.get("/export", asyncHandler(contactController.exportCsv));
 contactRouter.post(
   "/import",
   authorizeRoles("admin", "superAdmin"),
   uploadSingle,
-  contactController.importCsv,
+  asyncHandler(contactController.importCsv),
 );
-contactRouter.get("/:id", contactController.getById);
-contactRouter.put("/:id", contactController.update);
+contactRouter.get("/:id", asyncHandler(contactController.getById));
+contactRouter.put("/:id", asyncHandler(contactController.update));
 contactRouter.delete(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
-  contactController.delete,
+  asyncHandler(contactController.delete),
 );
 
-contactRouter.post("/:id/notes", contactController.addNote);
-contactRouter.delete("/:id/notes/:noteId", contactController.deleteNote);
+contactRouter.post("/:id/notes", asyncHandler(contactController.addNote));
+contactRouter.delete(
+  "/:id/notes/:noteId",
+  asyncHandler(contactController.deleteNote),
+);
 contactRouter.post(
   "/:id/attachments",
   uploadAttachment,
-  contactController.addAttachment,
+  asyncHandler(contactController.addAttachment),
 );
 contactRouter.delete(
   "/:id/attachments/:attachmentId",
-  contactController.deleteAttachment,
+  asyncHandler(contactController.deleteAttachment),
 );
-contactRouter.post("/:id/communications", contactController.addCommunication);
+contactRouter.post(
+  "/:id/communications",
+  asyncHandler(contactController.addCommunication),
+);
 
 export default contactRouter;

@@ -192,7 +192,7 @@ export function LocationTable({
                           Edit
                         </DropdownMenuItem>
                         <DropdownMenuItem
-                          className="text-destructive"
+                          variant="destructive"
                           onClick={() => onDelete(location)}
                         >
                           <Trash2 className="mr-2 h-4 w-4" />
@@ -208,7 +208,7 @@ export function LocationTable({
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem disabled className="text-destructive">
+                        <DropdownMenuItem disabled variant="destructive">
                           <Trash2 className="mr-2 h-4 w-4" />
                           {location.isActive ? "Deactivate" : "Delete"}
                         </DropdownMenuItem>

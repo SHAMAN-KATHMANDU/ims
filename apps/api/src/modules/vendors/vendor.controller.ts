@@ -5,21 +5,21 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
-import { logger } from "@/config/logger";
-import { env } from "@/config/env";
+import { sendControllerError } from "@/utils/controllerError";
 
 class VendorController {
-  // Create vendor (admin and superAdmin only)
+  // Create vendor (admin and superAdmin only). Tenant from session only — never from body.
   async createVendor(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { name, contact, phone, address } = req.body;
 
       if (!name) {
         return res.status(400).json({ message: "Vendor name is required" });
       }
 
-      const existing = await prisma.vendor.findUnique({
-        where: { name },
+      const existing = await prisma.vendor.findFirst({
+        where: { tenantId, name: (name as string).trim() },
       });
 
       if (existing) {
@@ -34,7 +34,8 @@ class VendorController {
 
       const vendor = await prisma.vendor.create({
         data: {
-          name,
+          tenantId,
+          name: (name as string).trim(),
           contact: contact || null,
           phone: phone || null,
           address: address || null,
@@ -45,24 +46,21 @@ class VendorController {
         message: "Vendor created successfully",
         vendor,
       });
-    } catch (error: any) {
-      logger.error("Create vendor error", req.requestId, error);
-      if (error.code === "P2002") {
-        return res.status(400).json({
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
           message: "Vendor with this name already exists",
-          error: error.message,
         });
       }
-      res.status(500).json({
-        message: "Error creating vendor",
-        ...(env.isDev && { error: error.message }),
-      });
+      return sendControllerError(req, res, error, "Create vendor error");
     }
   }
 
-  // Get all vendors (all authenticated users can view)
+  // Get all vendors (tenant-scoped; all authenticated users can view)
   async getAllVendors(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -82,7 +80,7 @@ class VendorController {
         name: "asc",
       };
 
-      const where: any = {};
+      const where: any = { tenantId };
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" } },
@@ -124,18 +122,15 @@ class VendorController {
         message: "Vendors fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get all vendors error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching vendors",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all vendors error");
     }
   }
 
-  // Get vendor by ID
+  // Get vendor by ID (tenant-scoped; return 404 if not in tenant)
   async getVendorById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
@@ -144,19 +139,16 @@ class VendorController {
         return res.status(400).json({ message: "Vendor ID is required" });
       }
 
-      const vendor = await prisma.vendor.findUnique({
-        where: { id },
-        include: {
-          products: {
-            select: {
-              id: true,
-              imsCode: true,
-              name: true,
-              mrp: true,
-              costPrice: true,
-            },
-            take: 20,
-          },
+      const vendor = await prisma.vendor.findFirst({
+        where: { id, tenantId },
+        select: {
+          id: true,
+          name: true,
+          contact: true,
+          phone: true,
+          address: true,
+          createdAt: true,
+          updatedAt: true,
           _count: {
             select: {
               products: true,
@@ -173,18 +165,84 @@ class VendorController {
         message: "Vendor fetched successfully",
         vendor,
       });
-    } catch (error: any) {
-      logger.error("Get vendor by ID error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching vendor",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get vendor by ID error");
     }
   }
 
-  // Update vendor
+  // Get vendor products (tenant-scoped; 404 if vendor not in tenant)
+  async getVendorProducts(req: Request, res: Response) {
+    try {
+      const tenantId = req.user!.tenantId;
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+
+      if (!id) {
+        return res.status(400).json({ message: "Vendor ID is required" });
+      }
+
+      const vendor = await prisma.vendor.findFirst({
+        where: { id, tenantId },
+        select: { id: true },
+      });
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+
+      const { page, limit, search } = getPaginationParams(req.query);
+      const productLimit = Math.min(50, Math.max(1, limit));
+      const productPage = Math.max(1, page);
+      const skip = (productPage - 1) * productLimit;
+
+      const where: { vendorId: string; tenantId: string; OR?: unknown[] } = {
+        vendorId: id,
+        tenantId,
+      };
+      if (search) {
+        where.OR = [
+          { name: { contains: search, mode: "insensitive" as const } },
+          { imsCode: { contains: search, mode: "insensitive" as const } },
+        ];
+      }
+
+      const [totalItems, products] = await Promise.all([
+        prisma.product.count({ where }),
+        prisma.product.findMany({
+          where,
+          select: {
+            id: true,
+            imsCode: true,
+            name: true,
+            mrp: true,
+            costPrice: true,
+          },
+          orderBy: { name: "asc" },
+          skip,
+          take: productLimit,
+        }),
+      ]);
+
+      const result = createPaginationResult(
+        products,
+        totalItems,
+        productPage,
+        productLimit,
+      );
+
+      res.status(200).json({
+        message: "Vendor products fetched successfully",
+        ...result,
+      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get vendor products error");
+    }
+  }
+
+  // Update vendor (tenant-scoped; 404 if not in tenant)
   async updateVendor(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
@@ -194,8 +252,8 @@ class VendorController {
         return res.status(400).json({ message: "Vendor ID is required" });
       }
 
-      const existingVendor = await prisma.vendor.findUnique({
-        where: { id },
+      const existingVendor = await prisma.vendor.findFirst({
+        where: { id, tenantId },
       });
 
       if (!existingVendor) {
@@ -203,8 +261,8 @@ class VendorController {
       }
 
       if (name && name !== existingVendor.name) {
-        const nameExists = await prisma.vendor.findUnique({
-          where: { name },
+        const nameExists = await prisma.vendor.findFirst({
+          where: { tenantId, name: (name as string).trim() },
         });
 
         if (nameExists) {
@@ -233,24 +291,21 @@ class VendorController {
         message: "Vendor updated successfully",
         vendor: updatedVendor,
       });
-    } catch (error: any) {
-      logger.error("Update vendor error", req.requestId, error);
-      if (error.code === "P2002") {
-        return res.status(400).json({
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
           message: "Vendor with this name already exists",
-          error: error.message,
         });
       }
-      res.status(500).json({
-        message: "Error updating vendor",
-        ...(env.isDev && { error: error.message }),
-      });
+      return sendControllerError(req, res, error, "Update vendor error");
     }
   }
 
-  // Delete vendor
+  // Delete vendor (tenant-scoped; 404 if not in tenant)
   async deleteVendor(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
@@ -259,8 +314,8 @@ class VendorController {
         return res.status(400).json({ message: "Vendor ID is required" });
       }
 
-      const vendor = await prisma.vendor.findUnique({
-        where: { id },
+      const vendor = await prisma.vendor.findFirst({
+        where: { id, tenantId },
         include: {
           _count: {
             select: {
@@ -275,24 +330,23 @@ class VendorController {
       }
 
       if (vendor._count.products > 0) {
+        const count = vendor._count.products;
         return res.status(400).json({
-          message: "Cannot delete vendor with existing products",
+          message: `Cannot delete vendor — ${count} product${count === 1 ? "" : "s"} are associated. Please reassign or remove those products first.`,
+          productCount: count,
         });
       }
 
-      await prisma.vendor.delete({
+      await prisma.vendor.update({
         where: { id },
+        data: { deletedAt: new Date() },
       });
 
       res.status(200).json({
         message: "Vendor deleted successfully",
       });
-    } catch (error: any) {
-      logger.error("Delete vendor error", req.requestId, error);
-      res.status(500).json({
-        message: "Error deleting vendor",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete vendor error");
     }
   }
 }

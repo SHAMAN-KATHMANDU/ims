@@ -7,7 +7,7 @@ import { env } from "@/config/env";
 import { errorHandler } from "@/middlewares/errorHandler";
 import { requestIdMiddleware } from "@/middlewares/requestId";
 import { requestLoggingMiddleware } from "@/middlewares/requestLogging";
-import prisma from "@/config/prisma";
+import { basePrisma as prisma } from "@/config/prisma";
 import { getVersion } from "@/config/version";
 
 const app = express();
@@ -15,7 +15,10 @@ const app = express();
 // Request timeout middleware (30 seconds default)
 app.use((req, res, next) => {
   req.setTimeout(30000, () => {
-    res.status(408).json({ message: "Request timeout", statusCode: 408 });
+    res.status(408).json({
+      message: "The request took too long. Please try again.",
+      statusCode: 408,
+    });
   });
   next();
 });

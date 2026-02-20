@@ -9,6 +9,7 @@ import ExcelJS from "exceljs";
 import csvParser from "csv-parser";
 import fs from "fs";
 import { Readable } from "stream";
+import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
@@ -57,11 +58,7 @@ class ContactController {
         .status(201)
         .json({ message: "Contact created successfully", contact });
     } catch (error: unknown) {
-      console.error("Create contact error:", error);
-      res.status(500).json({
-        message: "Error creating contact",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Create contact error");
     }
   }
 
@@ -132,11 +129,7 @@ class ContactController {
       const result = createPaginationResult(contacts, totalItems, page, limit);
       res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
-      console.error("Get contacts error:", error);
-      res.status(500).json({
-        message: "Error fetching contacts",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get contacts error");
     }
   }
 
@@ -193,11 +186,7 @@ class ContactController {
 
       res.status(200).json({ message: "OK", contact });
     } catch (error: unknown) {
-      console.error("Get contact by id error:", error);
-      res.status(500).json({
-        message: "Error fetching contact",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get contact by id error");
     }
   }
 
@@ -258,11 +247,7 @@ class ContactController {
         .status(200)
         .json({ message: "Contact updated successfully", contact });
     } catch (error: unknown) {
-      console.error("Update contact error:", error);
-      res.status(500).json({
-        message: "Error updating contact",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Update contact error");
     }
   }
 
@@ -275,14 +260,13 @@ class ContactController {
         return res.status(404).json({ message: "Contact not found" });
       }
 
-      await prisma.contact.delete({ where: { id } });
+      await prisma.contact.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Contact deleted successfully" });
     } catch (error: unknown) {
-      console.error("Delete contact error:", error);
-      res.status(500).json({
-        message: "Error deleting contact",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete contact error");
     }
   }
 
@@ -314,11 +298,7 @@ class ContactController {
 
       res.status(201).json({ message: "Note added", note });
     } catch (error: unknown) {
-      console.error("Add note error:", error);
-      res.status(500).json({
-        message: "Error adding note",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Add note error");
     }
   }
 
@@ -334,11 +314,7 @@ class ContactController {
       await prisma.contactNote.delete({ where: { id: noteId } });
       res.status(200).json({ message: "Note deleted" });
     } catch (error: unknown) {
-      console.error("Delete note error:", error);
-      res.status(500).json({
-        message: "Error deleting note",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete note error");
     }
   }
 
@@ -373,11 +349,7 @@ class ContactController {
 
       res.status(201).json({ message: "Attachment added", attachment });
     } catch (error: unknown) {
-      console.error("Add attachment error:", error);
-      res.status(500).json({
-        message: "Error adding attachment",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Add attachment error");
     }
   }
 
@@ -403,11 +375,7 @@ class ContactController {
       await prisma.contactAttachment.delete({ where: { id: attachmentId } });
       res.status(200).json({ message: "Attachment deleted" });
     } catch (error: unknown) {
-      console.error("Delete attachment error:", error);
-      res.status(500).json({
-        message: "Error deleting attachment",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete attachment error");
     }
   }
 
@@ -444,11 +412,7 @@ class ContactController {
 
       res.status(201).json({ message: "Communication logged", communication });
     } catch (error: unknown) {
-      console.error("Add communication error:", error);
-      res.status(500).json({
-        message: "Error logging communication",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Add communication error");
     }
   }
 
@@ -460,11 +424,7 @@ class ContactController {
       });
       res.status(200).json({ message: "OK", tags });
     } catch (error: unknown) {
-      console.error("Get tags error:", error);
-      res.status(500).json({
-        message: "Error fetching tags",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get tags error");
     }
   }
 
@@ -487,11 +447,7 @@ class ContactController {
       });
       res.status(201).json({ message: "Tag created", tag });
     } catch (error: unknown) {
-      console.error("Create tag error:", error);
-      res.status(500).json({
-        message: "Error creating tag",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Create tag error");
     }
   }
 
@@ -584,11 +540,7 @@ class ContactController {
         total: rows.length,
       });
     } catch (error: unknown) {
-      console.error("Import contacts error:", error);
-      res.status(500).json({
-        message: "Error importing contacts",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Import contacts error");
     }
   }
 
@@ -648,11 +600,7 @@ class ContactController {
       );
       res.send(Buffer.from(buffer));
     } catch (error: unknown) {
-      console.error("Export contacts error:", error);
-      res.status(500).json({
-        message: "Error exporting contacts",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Export contacts error");
     }
   }
 }

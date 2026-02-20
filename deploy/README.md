@@ -27,7 +27,7 @@ From your **local machine** (in the repo root):
 
 ```bash
 # Dev
-scp -i ~/.ssh/ims-aws -r deploy/ ubuntu@<DEV_EC2_IP>:/home/ubuntu/deploy
+scp -i ~/.ssh/ims-aws -r deploy/ ubuntu@43.204.67.93:/home/ubuntu/deploy
 
 # Prod
 scp -i ~/.ssh/ims-aws -r deploy/ ubuntu@<PROD_EC2_IP>:/home/ubuntu/deploy
@@ -159,6 +159,43 @@ So if only the frontend changes, CI pushes only the web image; Watchtower restar
 - **Dev**: Visit `https://stage-ims.shamankathmandu.com` and `https://stage-api.shamankathmandu.com`
 
 All should show valid HTTPS certificates (Let's Encrypt) and load your apps.
+
+## 8. Production Database Seed
+
+Run a minimal seed (platform admin + tenants only). The seed uses `SEED_MODE=production` to skip demo data.
+
+**From your local machine** (recommended — requires DB access via tunnel or direct connection):
+
+```bash
+cd apps/api
+
+# Set DATABASE_URL to prod (use SSH tunnel if DB isn't publicly reachable)
+# ssh -L 5433:localhost:5432 ubuntu@<PROD_EC2_IP>
+# DATABASE_URL=postgresql://postgres:PASSWORD@localhost:5433/ims
+
+SEED_MODE=production \
+SEED_PLATFORM_ADMIN_PASSWORD=your-secure-password \
+SEED_TENANTS=acme:Acme Corp,ruby:Ruby Store \
+SEED_TENANT_PASSWORD=ChangeMe123! \
+pnpm prisma:seed
+```
+
+**From prod EC2** (if the API image includes ts-node; otherwise use local):
+
+```bash
+cd /home/ubuntu/deploy
+# Ensure .env has SEED_MODE=production, SEED_TENANTS, etc.
+
+docker compose -f docker-compose.prod.yml run --rm prod_api pnpm prisma:seed
+```
+
+**Production seed creates:**
+
+- System tenant + platform admin
+- Minimal tenants from `SEED_TENANTS` (format: `slug:Name` or `slug:Name:password`)
+- Default CRM pipeline
+
+**Skips:** test1, test2, Ruby demo tenants with full products/sales data.
 
 ## Troubleshooting
 

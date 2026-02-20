@@ -25,6 +25,8 @@ import { SuperAdminRiskIndicators } from "./SuperAdminRiskIndicators";
 import { SuperAdminDataIntegrity } from "./SuperAdminDataIntegrity";
 import { SuperAdminShortcuts } from "./SuperAdminShortcuts";
 import { CrmShortcuts } from "./CrmShortcuts";
+import { PlatformAdminKpiCards } from "./PlatformAdminKpiCards";
+import { PlatformAdminShortcuts } from "./PlatformAdminShortcuts";
 
 export interface DashboardWidgetConfig {
   id: string;
@@ -35,6 +37,21 @@ export interface DashboardWidgetConfig {
 }
 
 const WIDGETS: DashboardWidgetConfig[] = [
+  // Platform Admin only
+  {
+    id: "platformadmin-kpi-cards",
+    requiredRoles: ["platformAdmin"],
+    component: PlatformAdminKpiCards,
+    dataSource: "useDashboardPlatformSummary",
+    refreshBehavior: "staleTime 3min",
+  },
+  {
+    id: "platformadmin-shortcuts",
+    requiredRoles: ["platformAdmin"],
+    component: PlatformAdminShortcuts,
+    dataSource: "none",
+    refreshBehavior: "static",
+  },
   // User role only
   {
     id: "user-kpi-cards",

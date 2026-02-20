@@ -2,7 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
-import type { AuthUser } from "@/utils/auth";
+import type { AuthUser, TenantInfo } from "@/utils/auth";
 
 // ============================================
 // Types
@@ -12,10 +12,12 @@ interface AuthState {
   // State
   user: AuthUser | null;
   token: string | null;
+  tenant: TenantInfo | null;
   isHydrated: boolean;
 
   // Actions
-  setAuth: (user: AuthUser, token: string) => void;
+  setAuth: (user: AuthUser, token: string, tenant?: TenantInfo | null) => void;
+  setTenant: (tenant: TenantInfo) => void;
   clearAuth: () => void;
   setHydrated: (value: boolean) => void;
 }
@@ -52,15 +54,20 @@ export const useAuthStore = create<AuthState>()(
       // Initial state
       user: null,
       token: null,
+      tenant: null,
       isHydrated: false,
 
       // Actions
-      setAuth: (user, token) => {
-        set({ user, token });
+      setAuth: (user, token, tenant = null) => {
+        set({ user, token, tenant });
+      },
+
+      setTenant: (tenant) => {
+        set({ tenant });
       },
 
       clearAuth: () => {
-        set({ user: null, token: null });
+        set({ user: null, token: null, tenant: null });
       },
 
       setHydrated: (value) => {
@@ -70,10 +77,11 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => cookieStorage),
-      // Only persist user and token
+      // Persist user, token, and tenant
       partialize: (state) => ({
         user: state.user,
         token: state.token,
+        tenant: state.tenant,
       }),
       // Handle hydration
       onRehydrateStorage: () => (state) => {
@@ -91,6 +99,7 @@ export const useAuthStore = create<AuthState>()(
 
 export const selectUser = (state: AuthState) => state.user;
 export const selectToken = (state: AuthState) => state.token;
+export const selectTenant = (state: AuthState) => state.tenant;
 export const selectIsAuthenticated = (state: AuthState) => !!state.token;
 export const selectIsHydrated = (state: AuthState) => state.isHydrated;
 
@@ -100,3 +109,8 @@ export const selectIsAdmin = (state: AuthState) =>
   state.user?.role === "admin" || state.user?.role === "superAdmin";
 export const selectIsSuperAdmin = (state: AuthState) =>
   state.user?.role === "superAdmin";
+export const selectTenantSlug = (state: AuthState) =>
+  state.tenant?.slug ?? null;
+export const selectPlanTier = (state: AuthState) => state.tenant?.plan ?? null;
+export const selectSubscriptionStatus = (state: AuthState) =>
+  state.tenant?.subscriptionStatus ?? null;

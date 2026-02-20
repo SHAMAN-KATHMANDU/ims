@@ -8,7 +8,7 @@ import { AnalyticsIndexPage } from "@/views/analytics/AnalyticsIndexPage";
 export default function ReportsAnalyticsIndexPage() {
   return (
     <AuthGuard
-      roles={["user", "admin", "superAdmin"]}
+      roles={["admin", "superAdmin"]}
       unauthorizedPath={WORKSPACE_ROOT}
     >
       <AnalyticsIndexPage />

@@ -7,8 +7,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
-import { logger } from "@/config/logger";
-import { env } from "@/config/env";
+import { sendControllerError } from "@/utils/controllerError";
 
 class UserController {
   // Create user (only superAdmin)
@@ -35,8 +34,8 @@ class UserController {
         });
       }
 
-      // Check if user already exists
-      const existingUser = await User.findUnique({
+      // Check if user already exists (within this tenant, auto-scoped)
+      const existingUser = await User.findFirst({
         where: { username },
       });
 
@@ -52,6 +51,7 @@ class UserController {
 
       const newUser = await User.create({
         data: {
+          tenantId: req.user!.tenantId,
           username,
           password: hashedPassword,
           role: role as Role,
@@ -65,12 +65,8 @@ class UserController {
         message: `User created successfully with username ${username}`,
         user: userWithoutPassword,
       });
-    } catch (error: any) {
-      logger.error("Create user error", req.requestId, error);
-      res.status(500).json({
-        message: "Error creating user",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create user error");
     }
   }
 
@@ -135,12 +131,8 @@ class UserController {
         message: "Users fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get all users error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching users",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all users error");
     }
   }
 
@@ -170,12 +162,8 @@ class UserController {
         message: "User fetched successfully",
         user,
       });
-    } catch (error: any) {
-      logger.error("Get user by ID error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching user",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get user by ID error");
     }
   }
 
@@ -200,8 +188,8 @@ class UserController {
       const updateData: any = {};
 
       if (username) {
-        // Check if new username is already taken by another user
-        const usernameExists = await User.findUnique({
+        // Check if new username is already taken by another user (within this tenant)
+        const usernameExists = await User.findFirst({
           where: { username },
         });
 
@@ -242,12 +230,8 @@ class UserController {
         message: "User updated successfully",
         user: updatedUser,
       });
-    } catch (error: any) {
-      logger.error("Update user error", req.requestId, error);
-      res.status(500).json({
-        message: "Error updating user",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Update user error");
     }
   }
 
@@ -281,12 +265,8 @@ class UserController {
       res.status(200).json({
         message: "User deleted successfully",
       });
-    } catch (error: any) {
-      logger.error("Delete user error", req.requestId, error);
-      res.status(500).json({
-        message: "Error deleting user",
-        ...(env.isDev && { error: error.message }),
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete user error");
     }
   }
 }

@@ -20,8 +20,21 @@ import {
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Search, Edit2, Trash2, Loader2, X } from "lucide-react";
+import {
+  Search,
+  Edit2,
+  Trash2,
+  Loader2,
+  X,
+  MoreHorizontal,
+} from "lucide-react";
 import {
   DataTablePagination,
   type PaginationState,
@@ -29,6 +42,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   getTotalStock,
+  getStockAtLocation,
   getDiscountedPrices,
   getCategoryName,
   calculateDiscountedPrice,
@@ -58,6 +72,8 @@ interface ProductTableProps {
   onSearchChange: (search: string) => void;
   // Optional filter bar rendered inside the table card (Location, Filters popover, etc.)
   filterBar?: React.ReactNode;
+  /** When set, Stock column shows stock at this location only (actual count at location). Otherwise shows total stock. */
+  selectedLocationId?: string;
   // Loading state
   isLoading?: boolean;
   isFetching?: boolean;
@@ -170,6 +186,7 @@ export function ProductTable({
   searchQuery,
   onSearchChange,
   filterBar,
+  selectedLocationId,
   isLoading = false,
   isFetching = false,
   selectedProducts = new Set(),
@@ -260,13 +277,16 @@ export function ProductTable({
                 className="pl-9 pr-9"
               />
               {localSearch && (
-                <button
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
                   onClick={clearSearch}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 h-8 w-8"
                   aria-label="Clear search"
                 >
                   <X className="h-4 w-4" />
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -343,7 +363,9 @@ export function ProductTable({
               </TableRow>
             ) : (
               products.map((product) => {
-                const totalStock = getTotalStock(product);
+                const displayStock = selectedLocationId
+                  ? getStockAtLocation(product, selectedLocationId)
+                  : getTotalStock(product);
                 const discountedPrices = !canSeeCostPrice
                   ? getDiscountedPrices(product)
                   : {};
@@ -462,29 +484,34 @@ export function ProductTable({
                         </>
                       )}
                       <TableCell>
-                        <span className="font-medium">{totalStock}</span>
+                        <span className="font-medium">{displayStock}</span>
                       </TableCell>
                       <TableCell
                         className="text-right"
                         onClick={(e) => e.stopPropagation()}
                       >
                         {canManageProducts ? (
-                          <>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onEdit(product)}
-                            >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => onDelete(product)}
-                            >
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => onEdit(product)}>
+                                <Edit2 className="mr-2 h-4 w-4" />
+                                Edit
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => onDelete(product)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         ) : (
                           <span className="text-muted-foreground text-sm">
                             View only

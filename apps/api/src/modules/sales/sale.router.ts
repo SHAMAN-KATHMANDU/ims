@@ -2,6 +2,7 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import saleController from "@/modules/sales/sale.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const saleRouter = Router();
 
@@ -51,7 +52,7 @@ saleRouter.post(
   "/",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  saleController.createSale,
+  asyncHandler(saleController.createSale),
 );
 
 /**
@@ -88,7 +89,7 @@ saleRouter.post(
   "/preview",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  saleController.previewSale,
+  asyncHandler(saleController.previewSale),
 );
 
 /**
@@ -152,7 +153,7 @@ saleRouter.get(
   "/",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  saleController.getAllSales,
+  asyncHandler(saleController.getAllSales),
 );
 
 /**
@@ -180,7 +181,7 @@ saleRouter.get(
   "/me/since-last-login",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  saleController.getSalesSinceLastLogin,
+  asyncHandler(saleController.getSalesSinceLastLogin),
 );
 
 /**
@@ -215,7 +216,7 @@ saleRouter.get(
   "/analytics/summary",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  saleController.getSalesSummary,
+  asyncHandler(saleController.getSalesSummary),
 );
 
 /**
@@ -245,7 +246,7 @@ saleRouter.get(
   "/analytics/by-location",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  saleController.getSalesByLocation,
+  asyncHandler(saleController.getSalesByLocation),
 );
 
 /**
@@ -275,7 +276,7 @@ saleRouter.get(
   "/analytics/daily",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  saleController.getDailySales,
+  asyncHandler(saleController.getDailySales),
 );
 
 /**
@@ -318,7 +319,7 @@ saleRouter.post(
   "/:id/payments",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  saleController.addPayment,
+  asyncHandler(saleController.addPayment),
 );
 
 /**
@@ -346,7 +347,7 @@ saleRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  saleController.getSaleById,
+  asyncHandler(saleController.getSaleById),
 );
 
 export default saleRouter;

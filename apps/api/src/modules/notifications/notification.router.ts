@@ -2,15 +2,25 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import notificationController from "./notification.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const notificationRouter = Router();
 
 notificationRouter.use(verifyToken);
 notificationRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
-notificationRouter.get("/", notificationController.getAll);
-notificationRouter.get("/unread-count", notificationController.getUnreadCount);
-notificationRouter.post("/:id/read", notificationController.markRead);
-notificationRouter.post("/read-all", notificationController.markAllRead);
+notificationRouter.get("/", asyncHandler(notificationController.getAll));
+notificationRouter.get(
+  "/unread-count",
+  asyncHandler(notificationController.getUnreadCount),
+);
+notificationRouter.post(
+  "/:id/read",
+  asyncHandler(notificationController.markRead),
+);
+notificationRouter.post(
+  "/read-all",
+  asyncHandler(notificationController.markAllRead),
+);
 
 export default notificationRouter;

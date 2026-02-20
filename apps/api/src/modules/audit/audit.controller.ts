@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { sendControllerError } from "@/utils/controllerError";
 import prisma from "@/config/prisma";
 import {
   getPaginationParams,
@@ -14,7 +15,9 @@ class AuditController {
       const from = req.query.from as string | undefined;
       const to = req.query.to as string | undefined;
 
+      const tenantId = req.user?.tenantId ?? null;
       const where: any = {};
+      if (tenantId) where.tenantId = tenantId;
       if (userId) where.userId = userId;
       if (action) where.action = action;
 
@@ -50,12 +53,8 @@ class AuditController {
         message: "Audit logs fetched",
         ...result,
       });
-    } catch (error: any) {
-      console.error("Get audit logs error:", error);
-      res.status(500).json({
-        message: "Error fetching audit logs",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get audit logs error");
     }
   }
 }

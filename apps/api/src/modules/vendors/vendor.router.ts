@@ -2,6 +2,7 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import vendorController from "@/modules/vendors/vendor.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const vendorRouter = Router();
 
@@ -53,7 +54,7 @@ vendorRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  vendorController.createVendor,
+  asyncHandler(vendorController.createVendor),
 );
 
 /**
@@ -85,7 +86,47 @@ vendorRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  vendorController.getAllVendors,
+  asyncHandler(vendorController.getAllVendors),
+);
+
+/**
+ * @swagger
+ * /vendors/{id}/products:
+ *   get:
+ *     summary: Get vendor products (paginated)
+ *     tags: [Vendors]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Vendor products retrieved successfully
+ *       404:
+ *         description: Vendor not found
+ */
+vendorRouter.get(
+  "/:id/products",
+  verifyToken,
+  authorizeRoles("admin", "user", "superAdmin"),
+  asyncHandler(vendorController.getVendorProducts),
 );
 
 /**
@@ -113,7 +154,7 @@ vendorRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
-  vendorController.getVendorById,
+  asyncHandler(vendorController.getVendorById),
 );
 
 /**
@@ -159,7 +200,7 @@ vendorRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  vendorController.updateVendor,
+  asyncHandler(vendorController.updateVendor),
 );
 
 /**
@@ -189,7 +230,7 @@ vendorRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  vendorController.deleteVendor,
+  asyncHandler(vendorController.deleteVendor),
 );
 
 export default vendorRouter;

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
@@ -50,11 +51,7 @@ class ActivityController {
 
       res.status(201).json({ message: "Activity logged", activity });
     } catch (error: unknown) {
-      console.error("Create activity error:", error);
-      res.status(500).json({
-        message: "Error logging activity",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Create activity error");
     }
   }
 
@@ -74,11 +71,12 @@ class ActivityController {
 
       res.status(200).json({ message: "OK", activities });
     } catch (error: unknown) {
-      console.error("Get activities by contact error:", error);
-      res.status(500).json({
-        message: "Error fetching activities",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get activities by contact error",
+      );
     }
   }
 
@@ -98,11 +96,12 @@ class ActivityController {
 
       res.status(200).json({ message: "OK", activities });
     } catch (error: unknown) {
-      console.error("Get activities by deal error:", error);
-      res.status(500).json({
-        message: "Error fetching activities",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get activities by deal error",
+      );
     }
   }
 
@@ -126,11 +125,7 @@ class ActivityController {
 
       res.status(200).json({ message: "OK", activity });
     } catch (error: unknown) {
-      console.error("Get activity by id error:", error);
-      res.status(500).json({
-        message: "Error fetching activity",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get activity by id error");
     }
   }
 
@@ -143,14 +138,13 @@ class ActivityController {
         return res.status(404).json({ message: "Activity not found" });
       }
 
-      await prisma.activity.delete({ where: { id } });
+      await prisma.activity.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Activity deleted" });
     } catch (error: unknown) {
-      console.error("Delete activity error:", error);
-      res.status(500).json({
-        message: "Error deleting activity",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Delete activity error");
     }
   }
 }

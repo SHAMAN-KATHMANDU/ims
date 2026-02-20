@@ -12,6 +12,10 @@ import { DashboardWidgetBoundary } from "@/views/dashboard/widgets/DashboardWidg
 import type { UserRole } from "@/utils/auth";
 
 const TITLES: Record<UserRole, { title: string; subtitle: string }> = {
+  platformAdmin: {
+    title: "Platform Admin Dashboard",
+    subtitle: "Multi-tenant management and oversight",
+  },
   user: {
     title: "Dashboard",
     subtitle: "Your overview and quick links",

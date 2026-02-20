@@ -14,8 +14,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { Moon, Sun, LogOut, Menu, Settings, Bug, Bell } from "lucide-react";
+import {
+  Moon,
+  Sun,
+  LogOut,
+  Menu,
+  Settings,
+  Bug,
+  Building2,
+  Bell,
+} from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/useToast";
 import { ReportErrorDialog } from "./ReportErrorDialog";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
@@ -92,12 +102,21 @@ interface TopBarProps {
 export function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
-  const { user, logout, isLoggingOut } = useAuth();
+  const { user, tenant, logout, isLoggingOut } = useAuth();
+  const { toast } = useToast();
   const isMobile = useIsMobile();
   const [reportErrorOpen, setReportErrorOpen] = useState(false);
 
   const handleLogout = async () => {
-    await logout();
+    try {
+      await logout();
+    } catch (error) {
+      toast({
+        title: "Cannot log out",
+        description: error instanceof Error ? error.message : undefined,
+        variant: "destructive",
+      });
+    }
   };
 
   // Base path: first segment is workspace (e.g. /admin -> /admin)
@@ -128,7 +147,9 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         )}
       </div>
       <div className="flex items-center gap-1 md:gap-2">
-        <NotificationsBell basePath={basePath} />
+        {user?.role !== "platformAdmin" && (
+          <NotificationsBell basePath={basePath} />
+        )}
         <Button
           variant="ghost"
           size="icon"
@@ -154,8 +175,14 @@ export function TopBar({ onMenuClick }: TopBarProps) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuLabel>
-              {username ? `@${username}` : "My Account"}
+            <DropdownMenuLabel className="space-y-1">
+              <p>{username ? `@${username}` : "My Account"}</p>
+              {tenant && (
+                <p className="text-xs font-normal text-muted-foreground flex items-center gap-1">
+                  <Building2 className="h-3 w-3" />
+                  {tenant.name}
+                </p>
+              )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild>
@@ -164,10 +191,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                 Settings
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => setReportErrorOpen(true)}
-              onSelect={(e) => e.preventDefault()}
-            >
+            <DropdownMenuItem onSelect={() => setReportErrorOpen(true)}>
               <Bug className="mr-2 h-4 w-4" />
               Report error
             </DropdownMenuItem>

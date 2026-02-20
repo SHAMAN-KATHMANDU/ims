@@ -356,6 +356,7 @@ export function SalesTable({
                     variant="ghost"
                     size="icon"
                     onClick={() => onView(sale)}
+                    aria-label="View sale"
                   >
                     <Eye className="h-4 w-4" />
                   </Button>

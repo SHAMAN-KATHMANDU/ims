@@ -18,6 +18,7 @@ import {
   useAuthStore,
   selectUser,
   selectToken,
+  selectTenant,
   selectIsAuthenticated,
   selectIsHydrated,
 } from "@/stores/auth-store";
@@ -29,6 +30,7 @@ import {
 interface LoginCredentials {
   username: string;
   password: string;
+  tenantSlug?: string;
 }
 
 // ============================================
@@ -48,7 +50,7 @@ export const authKeys = {
  * Authentication hook
  *
  * Combines:
- * - Zustand store for client-side auth state (token, user cache)
+ * - Zustand store for client-side auth state (token, user cache, tenant)
  * - TanStack Query for server state (getCurrentUser, mutations)
  */
 export function useAuth() {
@@ -58,16 +60,18 @@ export function useAuth() {
   // Zustand state (with selectors for performance)
   const user = useAuthStore(selectUser);
   const token = useAuthStore(selectToken);
+  const tenant = useAuthStore(selectTenant);
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const isHydrated = useAuthStore(selectIsHydrated);
 
   // Zustand actions
   const setAuth = useAuthStore((s) => s.setAuth);
+  const setTenant = useAuthStore((s) => s.setTenant);
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
   // Query: Fetch current user (only when authenticated)
   const {
-    data: currentUser,
+    data: currentUserData,
     isLoading: isLoadingUser,
     refetch: refetchUser,
   } = useQuery({
@@ -81,11 +85,18 @@ export function useAuth() {
   // Mutation: Login
   const loginMutation = useMutation({
     mutationFn: (credentials: LoginCredentials) =>
-      loginApi(credentials.username, credentials.password),
-    onSuccess: ({ token, user }) => {
-      setAuth(user, token);
+      loginApi(
+        credentials.username,
+        credentials.password,
+        credentials.tenantSlug,
+      ),
+    onSuccess: ({ token, user, tenant }) => {
+      setAuth(user, token, tenant);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
-      router.push(getWorkspaceRoot());
+      const root = tenant?.slug
+        ? getWorkspaceRoot(tenant.slug)
+        : getWorkspaceRoot();
+      router.push(root);
       router.refresh();
     },
   });
@@ -94,12 +105,9 @@ export function useAuth() {
   const logoutMutation = useMutation({
     mutationFn: logoutApi,
     onSettled: () => {
-      // Always clear auth, even if API fails
       clearAuth();
-      // Clear all queries
       queryClient.clear();
-      // Redirect
-      router.push("/login");
+      router.push("/");
       router.refresh();
     },
   });
@@ -119,14 +127,18 @@ export function useAuth() {
   const refreshUser = useCallback(async () => {
     const result = await refetchUser();
     if (result.data) {
-      setAuth(result.data, token!);
+      setAuth(result.data.user, token!, result.data.tenant);
+      if (result.data.tenant) {
+        setTenant(result.data.tenant);
+      }
     }
-    return result.data ?? null;
-  }, [refetchUser, setAuth, token]);
+    return result.data?.user ?? null;
+  }, [refetchUser, setAuth, setTenant, token]);
 
   return {
     // State
-    user: currentUser ?? user,
+    user: currentUserData?.user ?? user,
+    tenant: currentUserData?.tenant ?? tenant,
     isAuthenticated,
     isLoading: !isHydrated || isLoadingUser,
     isHydrated,
@@ -162,4 +174,12 @@ export function useIsAuthenticated() {
 export function useCurrentUser() {
   const user = useAuthStore(selectUser);
   return user;
+}
+
+/**
+ * Hook for getting tenant info (optimized)
+ */
+export function useTenant() {
+  const tenant = useAuthStore(selectTenant);
+  return tenant;
 }

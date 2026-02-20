@@ -31,6 +31,7 @@ import {
   DEFAULT_LIMIT,
 } from "@/services/transferService";
 import { inventoryKeys } from "./useInventory";
+import { productKeys } from "./useProduct";
 
 // Re-export types for convenience
 export type {
@@ -174,6 +175,11 @@ export function useStartTransit() {
         queryKey: transferKeys.logs(updatedTransfer.id),
       });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.refetchQueries({ queryKey: inventoryKeys.all });
+      // Invalidate + remove product list cache so Products/Catalog location dropdown shows fresh stock
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.removeQueries({ queryKey: productKeys.all });
+      queryClient.refetchQueries({ queryKey: productKeys.all });
     },
   });
 }
@@ -197,6 +203,10 @@ export function useCompleteTransfer() {
         queryKey: transferKeys.logs(updatedTransfer.id),
       });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.refetchQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.removeQueries({ queryKey: productKeys.all });
+      queryClient.refetchQueries({ queryKey: productKeys.all });
     },
   });
 }
@@ -221,6 +231,10 @@ export function useCancelTransfer() {
         queryKey: transferKeys.logs(updatedTransfer.id),
       });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.refetchQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.removeQueries({ queryKey: productKeys.all });
+      queryClient.refetchQueries({ queryKey: productKeys.all });
     },
   });
 }

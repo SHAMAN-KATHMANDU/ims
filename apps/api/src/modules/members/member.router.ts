@@ -2,6 +2,7 @@ import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import memberController from "@/modules/members/member.controller";
+import { asyncHandler } from "@/middlewares/errorHandler";
 
 const memberRouter = Router();
 
@@ -45,7 +46,7 @@ memberRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  memberController.createMember,
+  asyncHandler(memberController.createMember),
 );
 
 /**
@@ -90,7 +91,7 @@ memberRouter.get(
   "/",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  memberController.getAllMembers,
+  asyncHandler(memberController.getAllMembers),
 );
 
 /**
@@ -115,7 +116,7 @@ memberRouter.get(
   "/check/:phone",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
-  memberController.checkMember,
+  asyncHandler(memberController.checkMember),
 );
 
 /**
@@ -142,7 +143,7 @@ memberRouter.get(
   "/phone/:phone",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  memberController.getMemberByPhone,
+  asyncHandler(memberController.getMemberByPhone),
 );
 
 /**
@@ -170,7 +171,7 @@ memberRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  memberController.getMemberById,
+  asyncHandler(memberController.getMemberById),
 );
 
 /**
@@ -214,7 +215,7 @@ memberRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
-  memberController.updateMember,
+  asyncHandler(memberController.updateMember),
 );
 
 export default memberRouter;

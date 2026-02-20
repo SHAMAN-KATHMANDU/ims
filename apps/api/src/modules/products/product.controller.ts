@@ -18,9 +18,10 @@ import {
 } from "./bulkUpload.validation";
 import { logger } from "@/config/logger";
 import { env } from "@/config/env";
+import { sendControllerError } from "@/utils/controllerError";
 
 class ProductController {
-  // Create product (admin and superAdmin only)
+  // Create product (admin and superAdmin only). Requires a valid warehouse/location before create (see location resolution below).
   async createProduct(req: Request, res: Response) {
     try {
       const {
@@ -67,11 +68,14 @@ class ProductController {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      // Get all categories and discount types for lookup
+      const tenantId = req.user!.tenantId;
+      // Get all categories and discount types for lookup (tenant-scoped)
       const allCategories = await prisma.category.findMany({
+        where: { tenantId },
         select: { id: true, name: true },
       });
       const allDiscountTypes = await prisma.discountType.findMany({
+        where: { tenantId },
         select: { id: true, name: true },
       });
 
@@ -85,7 +89,7 @@ class ProductController {
 
         // If not found by UUID, try by name
         if (!category) {
-          category = await prisma.category.findUnique({
+          category = await prisma.category.findFirst({
             where: { name: categoryIdentifier },
           });
         }
@@ -108,17 +112,17 @@ class ProductController {
         for (const discount of discounts) {
           let discountType = null;
 
-          // Try by ID first
+          // Try by ID first (tenant-scoped)
           if (discount.discountTypeId) {
-            discountType = await prisma.discountType.findUnique({
-              where: { id: discount.discountTypeId },
+            discountType = await prisma.discountType.findFirst({
+              where: { id: discount.discountTypeId, tenantId },
             });
           }
 
           // If not found by ID, try by name
           if (!discountType && discount.discountTypeName) {
-            discountType = await prisma.discountType.findUnique({
-              where: { name: discount.discountTypeName },
+            discountType = await prisma.discountType.findFirst({
+              where: { name: discount.discountTypeName, tenantId },
             });
           }
 
@@ -130,8 +134,8 @@ class ProductController {
               /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
             )
           ) {
-            discountType = await prisma.discountType.findUnique({
-              where: { name: discount.discountTypeId },
+            discountType = await prisma.discountType.findFirst({
+              where: { name: discount.discountTypeId, tenantId },
             });
           }
 
@@ -185,10 +189,68 @@ class ProductController {
         }
       }
 
-      // Create product
+      const trimmedImsCode = (imsCode as string).trim();
+
+      // Explicit duplicate check (tenant-scoped) so we return a clear message and treat trimmed codes as same
+      const existingByImsCode = await prisma.product.findFirst({
+        where: { tenantId, imsCode: trimmedImsCode },
+      });
+      if (existingByImsCode) {
+        return res.status(409).json({
+          message: "Product with this IMS code already exists",
+        });
+      }
+
+      // --- Resolve target warehouse BEFORE creating product (data integrity: every product must be linked to a valid location) ---
+      const defaultLocationId = req.body.defaultLocationId as
+        | string
+        | undefined;
+      let warehouseLocation: { id: string } | null = null;
+
+      if (defaultLocationId) {
+        // Explicit location: must belong to tenant and be active (prefer warehouse)
+        const loc = await prisma.location.findFirst({
+          where: {
+            id: defaultLocationId,
+            tenantId,
+            isActive: true,
+          },
+          select: { id: true, type: true },
+        });
+        if (!loc) {
+          return res.status(400).json({
+            message:
+              "Product creation failed: the selected location is invalid or does not belong to your tenant.",
+          });
+        }
+        warehouseLocation = { id: loc.id };
+      }
+
+      if (!warehouseLocation) {
+        // No explicit location: require tenant's default warehouse (business rule: at least one default warehouse per tenant)
+        const defaultWarehouse = await prisma.location.findFirst({
+          where: {
+            tenantId,
+            type: "WAREHOUSE",
+            isDefaultWarehouse: true,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!defaultWarehouse) {
+          return res.status(400).json({
+            message:
+              "Product creation failed: tenant has no default warehouse configured. Please set a default warehouse in Locations.",
+          });
+        }
+        warehouseLocation = defaultWarehouse;
+      }
+
+      // Create product (we have a valid warehouseLocation; will link variations to it after create)
       const product = await prisma.product.create({
         data: {
-          imsCode: imsCode as string,
+          tenantId,
+          imsCode: trimmedImsCode,
           name: name as string,
           categoryId: category.id,
           description: description || null,
@@ -280,64 +342,41 @@ class ProductController {
         },
       });
 
-      // Add initial stock to default warehouse (or specified location) — only for variations without sub-variants
-      const defaultLocationId = req.body.defaultLocationId as
-        | string
-        | undefined;
-      let warehouseLocation: { id: string } | null = null;
-      if (defaultLocationId) {
-        const loc = await prisma.location.findFirst({
-          where: { id: defaultLocationId, isActive: true },
-          select: { id: true },
-        });
-        warehouseLocation = loc;
-      }
-      if (!warehouseLocation) {
-        warehouseLocation = await prisma.location.findFirst({
-          where: {
-            type: "WAREHOUSE",
-            isDefaultWarehouse: true,
-            isActive: true,
-          },
-          select: { id: true },
-        });
-      }
-      if (!warehouseLocation) {
-        warehouseLocation = await prisma.location.findFirst({
-          where: { type: "WAREHOUSE", isActive: true },
-          select: { id: true },
-        });
-      }
-      if (warehouseLocation && product.variations?.length) {
-        for (const v of product.variations) {
-          const hasSubVariants =
-            Array.isArray((v as any).subVariations) &&
-            (v as any).subVariations.length > 0;
-          if (hasSubVariants) continue; // stock is per location per sub-variant via inventory API
-          const qty = Number(v.stockQuantity) || 0;
-          if (qty > 0) {
-            await prisma.locationInventory.upsert({
+      // Link product to location (warehouseLocation already resolved and validated above)
+      try {
+        if (warehouseLocation && product.variations?.length) {
+          for (const v of product.variations) {
+            const hasSubVariants =
+              Array.isArray((v as any).subVariations) &&
+              (v as any).subVariations.length > 0;
+            if (hasSubVariants) continue; // stock is per location per sub-variant via inventory API
+            const qty = Math.max(0, Number(v.stockQuantity) || 0);
+            // Use findFirst + create/update because Prisma upsert with compound unique + null is unreliable
+            const existing = await prisma.locationInventory.findFirst({
               where: {
-                locationId_variationId_subVariationId: {
-                  locationId: warehouseLocation!.id,
-                  variationId: v.id,
-                  subVariationId: null,
-                } as any,
-              },
-              create: {
                 locationId: warehouseLocation!.id,
                 variationId: v.id,
                 subVariationId: null,
-                quantity: qty,
-              } as any,
-              update: { quantity: { increment: qty } },
+              },
             });
+            if (existing) {
+              await prisma.locationInventory.update({
+                where: { id: existing.id },
+                data: { quantity: { increment: qty } },
+              });
+            } else {
+              await prisma.locationInventory.create({
+                data: {
+                  locationId: warehouseLocation!.id,
+                  variationId: v.id,
+                  subVariationId: null,
+                  quantity: qty,
+                },
+              });
+            }
           }
         }
-      }
 
-      // Audit log: CREATE_PRODUCT
-      try {
         await prisma.auditLog.create({
           data: {
             userId: req.user!.id,
@@ -355,30 +394,35 @@ class ProductController {
             userAgent: req.get("user-agent") ?? undefined,
           },
         });
-      } catch (auditErr) {
+      } catch (postCreateErr) {
         logger.error(
-          "Audit log CREATE_PRODUCT failed",
+          "Post-create step failed (inventory link or audit log)",
           req.requestId,
-          auditErr,
+          postCreateErr,
         );
+        // Still return 201 so the UI shows success; product was created
       }
 
       res.status(201).json({
         message: "Product created successfully",
         product,
       });
-    } catch (error: any) {
-      logger.error("Create product error", req.requestId, error);
-      // Handle unique constraint violation
-      if (error.code === "P2002") {
-        return res.status(400).json({
-          message: "Product with this IMS code already exists",
-          error: error.message,
+    } catch (error: unknown) {
+      const e = error as { code?: string; meta?: { target?: string[] } };
+      if (e.code === "P2002") {
+        const target = e.meta?.target as string[] | undefined;
+        const isImsConflict =
+          !target ||
+          (target.length === 2 &&
+            target.some((f) => f === "imsCode" || f === "ims_code") &&
+            target.some((f) => f === "tenantId" || f === "tenant_id"));
+        return res.status(409).json({
+          message: isImsConflict
+            ? "Product with this IMS code already exists"
+            : "A duplicate value was provided (e.g. duplicate variation color).",
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error creating product", error: error.message });
+      return sendControllerError(req, res, error, "Create product error");
     }
   }
 
@@ -568,11 +612,8 @@ class ProductController {
         locationId: locationId || null,
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get all products error", req.requestId, error);
-      res
-        .status(500)
-        .json({ message: "Error fetching products", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get all products error");
     }
   }
 
@@ -616,11 +657,8 @@ class ProductController {
         message: "Product fetched successfully",
         product,
       });
-    } catch (error: any) {
-      console.error("Get product by ID error:", error);
-      res
-        .status(500)
-        .json({ message: "Error fetching product", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get product by ID error");
     }
   }
 
@@ -683,7 +721,22 @@ class ProductController {
       const updateData: any = {};
 
       if (imsCode !== undefined) {
-        updateData.imsCode = imsCode;
+        const trimmedImsCode = String(imsCode).trim();
+        if (trimmedImsCode !== existingProduct.imsCode) {
+          const otherWithSameImsCode = await prisma.product.findFirst({
+            where: {
+              tenantId: existingProduct.tenantId,
+              imsCode: trimmedImsCode,
+              id: { not: id },
+            },
+          });
+          if (otherWithSameImsCode) {
+            return res.status(409).json({
+              message: "Product with this IMS code already exists",
+            });
+          }
+        }
+        updateData.imsCode = trimmedImsCode;
       }
       if (name !== undefined) {
         updateData.name = name;
@@ -868,8 +921,10 @@ class ProductController {
 
       // Handle discounts update if provided
       if (discounts !== undefined) {
-        // Get all discount types for lookup
+        const tenantId = req.user!.tenantId;
+        // Get all discount types for lookup (tenant-scoped)
         const allDiscountTypes = await prisma.discountType.findMany({
+          where: { tenantId },
           select: { id: true, name: true },
         });
 
@@ -882,12 +937,13 @@ class ProductController {
           const resolvedDiscounts = [];
 
           for (const discount of discounts) {
-            // Try to find discount type by ID or name
+            // Try to find discount type by ID or name (tenant-scoped)
             const identifier =
               discount.discountTypeId || discount.discountTypeName;
 
             const discountType = await prisma.discountType.findFirst({
               where: {
+                tenantId,
                 OR: [{ id: identifier }, { name: identifier }],
               },
             });
@@ -991,18 +1047,22 @@ class ProductController {
         message: "Product updated successfully",
         product: updatedProduct,
       });
-    } catch (error: any) {
-      logger.error("Update product error", req.requestId, error);
-      // Handle unique constraint violation
-      if (error.code === "P2002") {
-        return res.status(400).json({
-          message: "Product with this IMS code already exists",
-          error: error.message,
+    } catch (error: unknown) {
+      const e = error as { code?: string; meta?: { target?: string[] } };
+      if (e.code === "P2002") {
+        const target = e.meta?.target as string[] | undefined;
+        const isImsConflict =
+          !target ||
+          (target.length === 2 &&
+            target.some((f) => f === "imsCode" || f === "ims_code") &&
+            target.some((f) => f === "tenantId" || f === "tenant_id"));
+        return res.status(409).json({
+          message: isImsConflict
+            ? "Product with this IMS code already exists"
+            : "A duplicate value was provided (e.g. duplicate variation color).",
         });
       }
-      res
-        .status(500)
-        .json({ message: "Error updating product", error: error.message });
+      return sendControllerError(req, res, error, "Update product error");
     }
   }
 
@@ -1022,18 +1082,16 @@ class ProductController {
         return res.status(404).json({ message: "Product not found" });
       }
 
-      await prisma.product.delete({
+      await prisma.product.update({
         where: { id },
+        data: { deletedAt: new Date() },
       });
 
       res.status(200).json({
         message: "Product deleted successfully",
       });
-    } catch (error: any) {
-      logger.error("Delete product error", req.requestId, error);
-      res
-        .status(500)
-        .json({ message: "Error deleting product", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete product error");
     }
   }
 
@@ -1083,23 +1141,18 @@ class ProductController {
         message: "Categories fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get categories error", req.requestId, error);
-      res
-        .status(500)
-        .json({ message: "Error fetching categories", error: error.message });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get categories error");
     }
   }
 
-  // Get all discount types (helper endpoint for dropdown/selection)
+  // Get all discount types for current tenant (helper endpoint for dropdown/selection)
   async getAllDiscountTypes(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
 
-      // Allowed fields for sorting
       const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
-
-      // Get orderBy for Prisma
       const orderBy = getPrismaOrderBy(
         sortBy,
         sortOrder,
@@ -1108,13 +1161,13 @@ class ProductController {
         name: "asc",
       };
 
-      // Calculate skip for pagination
       const skip = (page - 1) * limit;
+      const where = { tenantId };
 
-      // Get total count and discount types in parallel
       const [totalItems, discountTypes] = await Promise.all([
-        prisma.discountType.count(),
+        prisma.discountType.count({ where }),
         prisma.discountType.findMany({
+          where,
           select: {
             id: true,
             name: true,
@@ -1137,12 +1190,8 @@ class ProductController {
         message: "Discount types fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get discount types error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching discount types",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get discount types error");
     }
   }
 
@@ -1228,12 +1277,13 @@ class ProductController {
         message: "Product discounts fetched successfully",
         ...result,
       });
-    } catch (error: any) {
-      logger.error("Get all product discounts error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching product discounts",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get all product discounts error",
+      );
     }
   }
 
@@ -1321,12 +1371,13 @@ class ProductController {
         message: "Product discounts fetched successfully",
         discounts: formattedDiscounts,
       });
-    } catch (error: any) {
-      logger.error("Get product discounts error", req.requestId, error);
-      res.status(500).json({
-        message: "Error fetching product discounts",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get product discounts error",
+      );
     }
   }
 
@@ -1334,6 +1385,7 @@ class ProductController {
   async bulkUploadProducts(req: Request, res: Response) {
     const errors: ValidationError[] = [];
     const createdProducts: any[] = [];
+    const updatedProducts: any[] = [];
     const skippedProducts: any[] = [];
 
     try {
@@ -1362,6 +1414,7 @@ class ProductController {
       // Map of expected headers to their normalized forms
       const headerMappings: Record<string, string[]> = {
         imsCode: ["imscode", "ims_code", "ims"],
+        location: ["location", "locationname", "location_id", "locationid"],
         category: ["category"],
         subCategory: ["subcategory", "sub-category", "sub_category"],
         name: ["nameofproduct", "name", "productname", "product_name"],
@@ -1466,6 +1519,7 @@ class ProductController {
         // Validate that required columns are found
         const requiredColumns = [
           "imsCode",
+          "location",
           "category",
           "name",
           "variation",
@@ -1482,7 +1536,7 @@ class ProductController {
             message: "Missing required columns in CSV file",
             missingColumns,
             foundColumns: Object.keys(csvColumnMap),
-            hint: "Please ensure your CSV file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+            hint: "Please ensure your CSV file has headers: IMS Code, Location, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
           });
         }
 
@@ -1498,6 +1552,7 @@ class ProductController {
 
           const rowData = {
             imsCode: getCellValue("imsCode"),
+            location: getCellValue("location"),
             category: getCellValue("category"),
             subCategory: getCellValue("subCategory"),
             name: getCellValue("name"),
@@ -1615,6 +1670,7 @@ class ProductController {
         // Validate that required columns are found
         const requiredColumns = [
           "imsCode",
+          "location",
           "category",
           "name",
           "variation",
@@ -1631,7 +1687,7 @@ class ProductController {
             message: "Missing required columns in Excel file",
             missingColumns,
             foundColumns: Object.keys(excelColumnMap),
-            hint: "Please ensure your Excel file has headers: IMS CODE, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
+            hint: "Please ensure your Excel file has headers: IMS Code, Location, Category, Name of Product, Variations(Designs/Colors), Cost Price, Final SP",
           });
         }
 
@@ -1648,6 +1704,7 @@ class ProductController {
 
           const rowData = {
             imsCode: getCellValue("imsCode"),
+            location: getCellValue("location"),
             category: getCellValue("category"),
             subCategory: getCellValue("subCategory"),
             name: getCellValue("name"),
@@ -1706,13 +1763,24 @@ class ProductController {
         });
       }
 
-      // Get all categories and discount types for lookup
-      const allCategories = await prisma.category.findMany({
-        select: { id: true, name: true },
-      });
-      const allDiscountTypes = await prisma.discountType.findMany({
-        select: { id: true, name: true },
-      });
+      const tenantId = req.user!.tenantId;
+      // Get all categories, discount types, and locations for lookup (tenant-scoped)
+      const [allCategories, allDiscountTypes, allLocations] = await Promise.all(
+        [
+          prisma.category.findMany({
+            where: { tenantId },
+            select: { id: true, name: true },
+          }),
+          prisma.discountType.findMany({
+            where: { tenantId },
+            select: { id: true, name: true },
+          }),
+          prisma.location.findMany({
+            where: { tenantId, isActive: true },
+            select: { id: true, name: true },
+          }),
+        ],
+      );
 
       // Create lookup maps
       const categoryMap = new Map(
@@ -1721,14 +1789,41 @@ class ProductController {
       const discountTypeMap = new Map(
         allDiscountTypes.map((dt) => [dt.name.toLowerCase(), dt.id]),
       );
+      const locationByNameMap = new Map(
+        allLocations.map((loc) => [loc.name.toLowerCase().trim(), loc.id]),
+      );
+      const locationByIdMap = new Map(
+        allLocations.map((loc) => [loc.id, loc.id]),
+      );
 
-      // Group rows by IMS code and name (same product, different variations)
+      // Resolve location for each row; invalid location -> row-level error and exclude from processing
+      type RowWithLocation = ExcelProductRow & { locationId: string };
+      const rowsWithLocation: RowWithLocation[] = [];
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        const locationInput = String(row.location).trim();
+        const locationId =
+          locationByIdMap.get(locationInput) ??
+          locationByNameMap.get(locationInput.toLowerCase());
+        if (!locationId) {
+          errors.push({
+            row: i + 2,
+            field: "location",
+            message: `Location "${locationInput}" not found. Use an existing showroom/warehouse name or ID.`,
+            value: locationInput,
+          });
+          continue;
+        }
+        rowsWithLocation.push({ ...row, locationId });
+      }
+
+      // Group rows by IMS code and name (same product, different variations/locations)
       const productGroups = new Map<
         string,
-        { product: ExcelProductRow; variations: ExcelProductRow[] }
+        { product: RowWithLocation; variations: RowWithLocation[] }
       >();
 
-      rows.forEach((row) => {
+      rowsWithLocation.forEach((row) => {
         const key = `${row.imsCode}-${row.name}`;
         if (!productGroups.has(key)) {
           productGroups.set(key, {
@@ -1753,7 +1848,7 @@ class ProductController {
           // If not found in initial map, check database and create if needed
           if (!categoryId) {
             // First try exact match
-            let existingCategory = await prisma.category.findUnique({
+            let existingCategory = await prisma.category.findFirst({
               where: { name: categoryNameOriginal },
             });
 
@@ -1783,6 +1878,7 @@ class ProductController {
               try {
                 const newCategory = await prisma.category.create({
                   data: {
+                    tenantId: req.user!.tenantId,
                     name: categoryNameOriginal,
                   },
                 });
@@ -1793,7 +1889,7 @@ class ProductController {
                 // If creation fails due to unique constraint (race condition),
                 // try to find it again
                 if (createError.code === "P2002") {
-                  const foundCategory = await prisma.category.findUnique({
+                  const foundCategory = await prisma.category.findFirst({
                     where: { name: categoryNameOriginal },
                   });
                   if (foundCategory) {
@@ -1809,30 +1905,81 @@ class ProductController {
             }
           }
 
-          // Check if product with this IMS code already exists
-          const existingProduct = await prisma.product.findUnique({
-            where: { imsCode: firstRow.imsCode },
+          // Find product by IMS code (scoped to tenant); same IMS code in different locations is one product with multiple LocationInventory rows
+          const existingProduct = await prisma.product.findFirst({
+            where: { tenantId, imsCode: firstRow.imsCode },
+            include: { variations: true },
           });
 
           if (existingProduct) {
-            errors.push({
-              row: rows.indexOf(firstRow) + 2,
-              field: "imsCode",
-              message: `Product with IMS code "${firstRow.imsCode}" already exists`,
-              value: firstRow.imsCode,
-            });
-            skippedProducts.push({
-              imsCode: firstRow.imsCode,
-              name: firstRow.name,
-              reason: `Product with IMS code "${firstRow.imsCode}" already exists`,
+            // Product exists: upsert LocationInventory for each row (location + variation + quantity)
+            const variationByColor = new Map(
+              existingProduct.variations.map((v) => [v.color.toLowerCase(), v]),
+            );
+            let inventoryUpserted = 0;
+            for (const variationRow of variations) {
+              const variation = variationByColor.get(
+                variationRow.variation.toLowerCase(),
+              );
+              if (!variation) {
+                errors.push({
+                  row: rowsWithLocation.indexOf(variationRow) + 2,
+                  field: "variation",
+                  message: `Variation "${variationRow.variation}" does not exist for product ${firstRow.imsCode}. Add a row with this variation first or create the product.`,
+                  value: variationRow.variation,
+                });
+                continue;
+              }
+              const qty = variationRow.quantity ?? 0;
+              const existing = await prisma.locationInventory.findFirst({
+                where: {
+                  locationId: variationRow.locationId,
+                  variationId: variation.id,
+                  subVariationId: null,
+                },
+              });
+              if (existing) {
+                await prisma.locationInventory.update({
+                  where: { id: existing.id },
+                  data: { quantity: qty },
+                });
+              } else {
+                await prisma.locationInventory.create({
+                  data: {
+                    locationId: variationRow.locationId,
+                    variationId: variation.id,
+                    subVariationId: null,
+                    quantity: qty,
+                  },
+                });
+              }
+              inventoryUpserted++;
+            }
+            const locationNames = [
+              ...new Set(
+                variations.map(
+                  (r) =>
+                    allLocations.find((l) => l.id === r.locationId)?.name ??
+                    r.locationId,
+                ),
+              ),
+            ];
+            updatedProducts.push({
+              imsCode: existingProduct.imsCode,
+              name: existingProduct.name,
+              locations: locationNames,
+              inventoryRowsUpdated: inventoryUpserted,
             });
             continue;
           }
 
-          // Prepare variations
-          const productVariations = variations.map((variationRow) => ({
-            color: variationRow.variation,
-            stockQuantity: variationRow.quantity || 0,
+          // New product: create with variations (stock in LocationInventory per row)
+          const uniqueVariationColors = [
+            ...new Set(variations.map((v) => v.variation.trim())),
+          ];
+          const productVariations = uniqueVariationColors.map((color) => ({
+            color,
+            stockQuantity: 0,
           }));
 
           // Prepare discounts
@@ -1902,6 +2049,7 @@ class ProductController {
           // Create product
           const product = await prisma.product.create({
             data: {
+              tenantId: req.user!.tenantId,
               imsCode: firstRow.imsCode,
               name: firstRow.name,
               categoryId,
@@ -1934,6 +2082,39 @@ class ProductController {
             },
           });
 
+          const variationByColor = new Map(
+            product.variations.map((v) => [v.color.toLowerCase(), v]),
+          );
+          for (const variationRow of variations) {
+            const variation = variationByColor.get(
+              variationRow.variation.toLowerCase(),
+            );
+            if (!variation) continue;
+            const qty = variationRow.quantity ?? 0;
+            const existing = await prisma.locationInventory.findFirst({
+              where: {
+                locationId: variationRow.locationId,
+                variationId: variation.id,
+                subVariationId: null,
+              },
+            });
+            if (existing) {
+              await prisma.locationInventory.update({
+                where: { id: existing.id },
+                data: { quantity: qty },
+              });
+            } else {
+              await prisma.locationInventory.create({
+                data: {
+                  locationId: variationRow.locationId,
+                  variationId: variation.id,
+                  subVariationId: null,
+                  quantity: qty,
+                },
+              });
+            }
+          }
+
           createdProducts.push({
             id: product.id,
             imsCode: product.imsCode,
@@ -1941,8 +2122,12 @@ class ProductController {
             variationsCount: product.variations?.length || 0,
           });
         } catch (error: any) {
+          const rowNum =
+            rowsWithLocation.indexOf(firstRow) >= 0
+              ? rowsWithLocation.indexOf(firstRow) + 2
+              : 2;
           errors.push({
-            row: rows.indexOf(firstRow) + 2,
+            row: rowNum,
             message: error.message || "Error creating product",
           });
           skippedProducts.push({
@@ -1966,14 +2151,16 @@ class ProductController {
         summary: {
           total: productGroups.size,
           created: createdProducts.length,
+          updated: updatedProducts.length,
           skipped: skippedProducts.length,
           errors: errors.length,
         },
         created: createdProducts,
+        updated: updatedProducts,
         skipped: skippedProducts,
         errors: errors,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Clean up uploaded file on error
       if (req.file?.path) {
         try {
@@ -1982,13 +2169,7 @@ class ProductController {
           logger.error("Error cleaning up file", req.requestId, cleanupError);
         }
       }
-
-      logger.error("Bulk upload error", req.requestId, error);
-      res.status(500).json({
-        message: "Error processing bulk upload",
-        error: error.message,
-        errors: errors,
-      });
+      return sendControllerError(req, res, error, "Bulk upload error");
     }
   }
 
@@ -2000,6 +2181,7 @@ class ProductController {
 
       const headers = [
         { header: "IMS Code", width: 15 },
+        { header: "Location", width: 22 },
         { header: "Category", width: 18 },
         { header: "Sub-Category", width: 15 },
         { header: "Name of Product", width: 28 },
@@ -2018,6 +2200,7 @@ class ProductController {
         { header: "Wholesale Discount", width: 20 },
       ];
       const requiredOptional = [
+        "Required",
         "Required",
         "Required",
         "Optional",
@@ -2064,12 +2247,8 @@ class ProductController {
       );
       const buffer = await workbook.xlsx.writeBuffer();
       res.send(buffer);
-    } catch (error: any) {
-      logger.error("Download template error", req.requestId, error);
-      res.status(500).json({
-        message: "Error generating template",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download template error");
     }
   }
 
@@ -2294,12 +2473,8 @@ class ProductController {
 
         res.send(csvRows.join("\n"));
       }
-    } catch (error: any) {
-      logger.error("Download products error", req.requestId, error);
-      res.status(500).json({
-        message: "Error downloading products",
-        error: error.message,
-      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Download products error");
     }
   }
 }

@@ -1,19 +1,14 @@
 import type React from "react";
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
 /**
- * Dynamic [workspace] layout (e.g. /admin).
- * No /dashboard in path – dashboard is the root at /[workspace].
+ * Dynamic [workspace] layout. The first path segment is the tenant slug (e.g. /ruby, /system).
+ * - /[slug]/login → login page (no auth required)
+ * - /[slug]/... (rest) → (admin) layout with AuthGuard and DashboardLayout
  */
 export default function WorkspaceLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return (
-    <AuthGuard>
-      <DashboardLayout>{children}</DashboardLayout>
-    </AuthGuard>
-  );
+  return <>{children}</>;
 }
