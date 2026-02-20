@@ -7,6 +7,7 @@ import {
   useRequestAddOn,
 } from "@/hooks/useUsage";
 import { useAuthStore, selectTenant } from "@/stores/auth-store";
+import { usePlans } from "@/hooks/usePlatformBilling";
 import { useToast } from "@/hooks/useToast";
 import {
   Card,
@@ -35,6 +36,9 @@ import {
   UserCheck,
   Tags,
   Contact,
+  ArrowUpCircle,
+  Clock,
+  Shield,
 } from "lucide-react";
 import type { LimitedResource, AddOnType } from "@/hooks/useUsage";
 
@@ -50,7 +54,11 @@ const RESOURCE_META: Record<
   products: { label: "Products", icon: Package, addOnType: "EXTRA_PRODUCT" },
   locations: { label: "Locations", icon: MapPin, addOnType: "EXTRA_LOCATION" },
   members: { label: "Members", icon: UserCheck, addOnType: "EXTRA_MEMBER" },
-  categories: { label: "Categories", icon: Tags, addOnType: "EXTRA_CATEGORY" },
+  categories: {
+    label: "Categories",
+    icon: Tags,
+    addOnType: "EXTRA_CATEGORY",
+  },
   contacts: {
     label: "CRM Contacts",
     icon: Contact,
@@ -89,8 +97,11 @@ export function UsageDashboard() {
   const { data: usageData, isLoading: usageLoading } = useUsage();
   const { data: addOns = [], isLoading: addOnsLoading } = useAddOns();
   const { data: pricing = [] } = useAddOnPricing();
+  const { data: plans = [] } = usePlans();
   const requestAddOn = useRequestAddOn();
   const { toast } = useToast();
+
+  const currentPlan = plans.find((p) => p.tier === tenant?.plan);
 
   const handleRequestAddOn = async (type: AddOnType) => {
     try {
@@ -101,24 +112,139 @@ export function UsageDashboard() {
     }
   };
 
+  const isTrial = tenant?.subscriptionStatus === "TRIAL";
+
+  const subscriptionInfo = tenant
+    ? {
+        status: tenant.subscriptionStatus,
+        isTrial,
+        trialEndsAt: tenant.trialEndsAt,
+        planExpiresAt: tenant.planExpiresAt,
+      }
+    : null;
+
+  const daysRemaining = subscriptionInfo?.planExpiresAt
+    ? Math.max(
+        0,
+        Math.ceil(
+          (new Date(subscriptionInfo.planExpiresAt).getTime() - Date.now()) /
+            86400000,
+        ),
+      )
+    : subscriptionInfo?.trialEndsAt
+      ? Math.max(
+          0,
+          Math.ceil(
+            (new Date(subscriptionInfo.trialEndsAt).getTime() - Date.now()) /
+              86400000,
+          ),
+        )
+      : null;
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Usage & Limits</h1>
-        <div className="flex items-center gap-2 mt-1">
-          <p className="text-muted-foreground">
-            Resource usage for your organization
-          </p>
-          {tenant && (
-            <Badge
-              variant={
-                tenant.subscriptionStatus === "ACTIVE" ? "default" : "secondary"
-              }
-            >
-              {tenant.plan}
-            </Badge>
-          )}
-        </div>
+        <p className="text-muted-foreground mt-1">
+          Resource usage and plan details for your organization
+        </p>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Shield className="h-4 w-4 text-muted-foreground" />
+              Current Plan
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-2">
+              <span className="text-2xl font-bold">
+                {currentPlan?.name ?? tenant?.plan ?? "-"}
+              </span>
+              <Badge
+                variant={
+                  subscriptionInfo?.status === "ACTIVE"
+                    ? "default"
+                    : "secondary"
+                }
+              >
+                {subscriptionInfo?.status ?? "-"}
+              </Badge>
+            </div>
+            {currentPlan?.description && (
+              <p className="text-sm text-muted-foreground mt-1">
+                {currentPlan.description}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              {subscriptionInfo?.isTrial ? "Trial Period" : "Billing Period"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {daysRemaining !== null ? (
+              <>
+                <span className="text-2xl font-bold">{daysRemaining}</span>
+                <span className="text-sm text-muted-foreground ml-1">
+                  days remaining
+                </span>
+                {daysRemaining <= 7 && (
+                  <p className="text-sm text-amber-600 mt-1">
+                    {subscriptionInfo?.isTrial
+                      ? "Your trial is ending soon"
+                      : "Your subscription is expiring soon"}
+                  </p>
+                )}
+              </>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                No expiry set
+              </span>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />
+              Upgrade Path
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {currentPlan && plans.length > 0 ? (
+              (() => {
+                const nextPlan = plans.find(
+                  (p) => p.rank > currentPlan.rank && p.isActive,
+                );
+                return nextPlan ? (
+                  <div>
+                    <span className="text-sm">Next tier: </span>
+                    <Badge variant="outline">{nextPlan.name}</Badge>
+                    {nextPlan.description && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {nextPlan.description}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <span className="text-sm text-muted-foreground">
+                    You&apos;re on the highest plan
+                  </span>
+                );
+              })()
+            ) : (
+              <Skeleton className="h-6 w-32" />
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">

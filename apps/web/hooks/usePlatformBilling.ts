@@ -13,17 +13,31 @@ import {
   cancelTenantAddOn,
   deleteTenantAddOn,
   getSubscriptions,
+  createSubscription,
   updateSubscription,
+  deleteSubscription,
   getPayments,
+  createPayment,
   updatePayment,
+  deletePayment,
   getPricingPlans,
   updatePricingPlan,
   getPlanLimits,
+  upsertPlanLimit,
+  getPlans,
+  createPlan,
+  updatePlan,
+  deletePlan,
+  getAnalytics,
+  getTenantDetail,
+  checkSubscriptionExpiry,
   type PlatformTenantAddOn,
   type Subscription,
   type TenantPayment,
   type PricingPlan,
   type PlanLimit,
+  type Plan,
+  type PlatformAnalytics,
 } from "@/services/platformBillingService";
 import type { AddOnStatus } from "@/services/usageService";
 
@@ -33,6 +47,8 @@ export type {
   TenantPayment,
   PricingPlan,
   PlanLimit,
+  Plan,
+  PlatformAnalytics,
 };
 
 const billingKeys = {
@@ -213,5 +229,112 @@ export function usePlanLimits() {
   return useQuery({
     queryKey: billingKeys.planLimits(),
     queryFn: getPlanLimits,
+  });
+}
+
+export function useUpsertPlanLimit() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: upsertPlanLimit,
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: billingKeys.planLimits() }),
+  });
+}
+
+// Plans Registry
+export function usePlans() {
+  return useQuery({
+    queryKey: [...billingKeys.all, "plans"] as const,
+    queryFn: getPlans,
+  });
+}
+
+export function useCreatePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createPlan,
+    onSuccess: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
+  });
+}
+
+export function useUpdatePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      id,
+      data,
+    }: {
+      id: string;
+      data: Parameters<typeof updatePlan>[1];
+    }) => updatePlan(id, data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
+  });
+}
+
+export function useDeletePlan() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deletePlan,
+    onSuccess: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
+  });
+}
+
+// Analytics
+export function useAnalytics() {
+  return useQuery({
+    queryKey: [...billingKeys.all, "analytics"] as const,
+    queryFn: getAnalytics,
+  });
+}
+
+// Enhanced Tenant Detail
+export function useTenantDetail(id: string | null) {
+  return useQuery({
+    queryKey: [...billingKeys.all, "tenant-detail", id] as const,
+    queryFn: () => getTenantDetail(id!),
+    enabled: !!id,
+  });
+}
+
+// Subscription Lifecycle
+export function useCheckSubscriptionExpiry() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: checkSubscriptionExpiry,
+    onSuccess: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
+  });
+}
+
+// Full Subscription CRUD
+export function useCreateSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createSubscription,
+    onSuccess: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
+  });
+}
+
+export function useDeleteSubscription() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deleteSubscription,
+    onSuccess: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
+  });
+}
+
+// Full Payment CRUD
+export function useCreatePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: createPayment,
+    onSuccess: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
+  });
+}
+
+export function useDeletePayment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: deletePayment,
+    onSuccess: () => qc.invalidateQueries({ queryKey: billingKeys.all }),
   });
 }

@@ -38,6 +38,15 @@ router.delete(
 );
 
 // ============================================
+// PLAN REGISTRY CRUD
+// ============================================
+router.get("/plans", asyncHandler(platformController.listPlans));
+router.get("/plans/:id", asyncHandler(platformController.getPlan));
+router.post("/plans", asyncHandler(platformController.createPlan));
+router.put("/plans/:id", asyncHandler(platformController.updatePlan));
+router.delete("/plans/:id", asyncHandler(platformController.deletePlan));
+
+// ============================================
 // PLAN LIMITS CRUD
 // ============================================
 router.get("/plan-limits", asyncHandler(platformController.listPlanLimits));
@@ -169,8 +178,25 @@ router.delete(
 );
 
 // ============================================
-// PLATFORM STATS
+// PLATFORM STATS & ANALYTICS
 // ============================================
 router.get("/stats", asyncHandler(platformController.getStats));
+router.get("/analytics", asyncHandler(platformController.getAnalytics));
+
+// ============================================
+// TENANT DETAIL (enhanced with usage/add-ons)
+// ============================================
+router.get(
+  "/tenants/:id/detail",
+  asyncHandler(platformController.getTenantDetail),
+);
+
+// ============================================
+// SUBSCRIPTION LIFECYCLE
+// ============================================
+router.post(
+  "/subscriptions/check-expiry",
+  asyncHandler(platformController.checkSubscriptionExpiry),
+);
 
 export default router;

@@ -56,6 +56,21 @@ enum PlanTier {
   ENTERPRISE
 }
 
+model Plan {
+  id          String   @id @default(uuid())
+  name        String   @unique @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  tier        PlanTier @unique
+  rank        Int      @default(0)
+  isDefault   Boolean  @default(false) @map("is_default")
+  isActive    Boolean  @default(true) @map("is_active")
+  description String?  @db.Text
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("plans")
+}
+
 enum SubscriptionStatus {
   TRIAL
   ACTIVE

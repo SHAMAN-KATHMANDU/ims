@@ -471,6 +471,387 @@ class PlatformController {
     }
   }
 
+  /**
+   * Platform analytics with revenue, growth, and distribution data.
+   */
+  async getAnalytics(req: Request, res: Response) {
+    try {
+      const now = new Date();
+      const sixMonthsAgo = new Date(now);
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const [
+        totalRevenue,
+        pendingPayments,
+        completedPayments,
+        failedPayments,
+        activeSubscriptions,
+        trialTenants,
+        suspendedTenants,
+        cancelledTenants,
+        planDistribution,
+        gatewayBreakdown,
+        recentPayments,
+        monthlyRevenue,
+        tenantGrowth,
+        plans,
+      ] = await Promise.all([
+        basePrisma.tenantPayment.aggregate({
+          _sum: { amount: true },
+          where: { status: "COMPLETED" },
+        }),
+        basePrisma.tenantPayment.count({ where: { status: "PENDING" } }),
+        basePrisma.tenantPayment.count({ where: { status: "COMPLETED" } }),
+        basePrisma.tenantPayment.count({ where: { status: "FAILED" } }),
+        basePrisma.subscription.count({ where: { status: "ACTIVE" } }),
+        basePrisma.tenant.count({ where: { subscriptionStatus: "TRIAL" } }),
+        basePrisma.tenant.count({ where: { subscriptionStatus: "SUSPENDED" } }),
+        basePrisma.tenant.count({ where: { subscriptionStatus: "CANCELLED" } }),
+        basePrisma.tenant.groupBy({
+          by: ["plan"],
+          _count: true,
+          where: { isActive: true },
+        }),
+        basePrisma.tenantPayment.groupBy({
+          by: ["gateway"],
+          _count: true,
+          _sum: { amount: true },
+          where: { status: "COMPLETED" },
+        }),
+        basePrisma.tenantPayment.findMany({
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          include: {
+            tenant: { select: { name: true, slug: true } },
+          },
+        }),
+        basePrisma.$queryRaw`
+          SELECT
+            TO_CHAR(created_at, 'YYYY-MM') as month,
+            SUM(amount) as revenue,
+            COUNT(*) as count
+          FROM tenant_payments
+          WHERE status = 'COMPLETED' AND created_at >= ${sixMonthsAgo}
+          GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+          ORDER BY month ASC
+        ` as Promise<Array<{ month: string; revenue: string; count: string }>>,
+        basePrisma.$queryRaw`
+          SELECT
+            TO_CHAR(created_at, 'YYYY-MM') as month,
+            COUNT(*) as count
+          FROM tenants
+          WHERE created_at >= ${sixMonthsAgo}
+          GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+          ORDER BY month ASC
+        ` as Promise<Array<{ month: string; count: string }>>,
+        basePrisma.plan.findMany({ orderBy: { rank: "asc" } }),
+      ]);
+
+      res.status(200).json({
+        revenue: {
+          total: totalRevenue._sum.amount ?? 0,
+          monthly: monthlyRevenue.map((m) => ({
+            month: m.month,
+            revenue: Number(m.revenue),
+            count: Number(m.count),
+          })),
+        },
+        payments: {
+          pending: pendingPayments,
+          completed: completedPayments,
+          failed: failedPayments,
+          byGateway: gatewayBreakdown.map((g) => ({
+            gateway: g.gateway,
+            count: g._count,
+            total: g._sum.amount ?? 0,
+          })),
+          recent: recentPayments,
+        },
+        subscriptions: {
+          active: activeSubscriptions,
+          trial: trialTenants,
+          suspended: suspendedTenants,
+          cancelled: cancelledTenants,
+        },
+        tenants: {
+          growth: tenantGrowth.map((t) => ({
+            month: t.month,
+            count: Number(t.count),
+          })),
+          planDistribution: planDistribution.map((p) => ({
+            plan: p.plan,
+            count: p._count,
+          })),
+        },
+        plans,
+      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Platform analytics error");
+    }
+  }
+
+  /**
+   * Enhanced tenant detail with usage summary and add-ons.
+   */
+  async getTenantDetail(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { id },
+        include: {
+          users: {
+            select: { id: true, username: true, role: true, lastLoginAt: true },
+            orderBy: { createdAt: "asc" },
+          },
+          _count: {
+            select: {
+              users: true,
+              products: true,
+              locations: true,
+              members: true,
+              sales: true,
+              transfers: true,
+              categories: true,
+            },
+          },
+          subscriptions: {
+            orderBy: { createdAt: "desc" },
+            take: 5,
+          },
+          payments: {
+            orderBy: { createdAt: "desc" },
+            take: 10,
+            include: {
+              subscription: {
+                select: { plan: true, billingCycle: true },
+              },
+            },
+          },
+          addOns: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      });
+
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      const contactCount = await basePrisma.contact.count({
+        where: { owner: { tenantId: id }, deletedAt: null },
+      });
+
+      res.status(200).json({
+        tenant: {
+          ...tenant,
+          _count: { ...tenant._count, contacts: contactCount },
+        },
+      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get tenant detail error");
+    }
+  }
+
+  /**
+   * Check and update subscription statuses based on period end dates.
+   */
+  async checkSubscriptionExpiry(req: Request, res: Response) {
+    try {
+      const now = new Date();
+
+      const expiredActive = await basePrisma.subscription.updateMany({
+        where: {
+          status: "ACTIVE",
+          currentPeriodEnd: { lt: now },
+          gracePeriodEnd: { gte: now },
+        },
+        data: { status: "PAST_DUE" },
+      });
+
+      const suspendedPastDue = await basePrisma.subscription.updateMany({
+        where: {
+          status: "PAST_DUE",
+          OR: [
+            { gracePeriodEnd: { lt: now } },
+            {
+              gracePeriodEnd: null,
+              currentPeriodEnd: {
+                lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+              },
+            },
+          ],
+        },
+        data: { status: "SUSPENDED" },
+      });
+
+      const expiredTrials = await basePrisma.subscription.updateMany({
+        where: {
+          status: "TRIAL",
+          trialEndsAt: { lt: now },
+        },
+        data: { status: "SUSPENDED" },
+      });
+
+      for (const sub of await basePrisma.subscription.findMany({
+        where: { status: { in: ["PAST_DUE", "SUSPENDED"] } },
+        select: { tenantId: true, status: true },
+      })) {
+        await basePrisma.tenant.update({
+          where: { id: sub.tenantId },
+          data: { subscriptionStatus: sub.status as any },
+        });
+      }
+
+      res.status(200).json({
+        message: "Subscription expiry check completed",
+        updated: {
+          activeToPastDue: expiredActive.count,
+          pastDueToSuspended: suspendedPastDue.count,
+          trialToSuspended: expiredTrials.count,
+        },
+      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Subscription expiry check error",
+      );
+    }
+  }
+
+  // ============================================
+  // PLAN REGISTRY CRUD
+  // ============================================
+
+  async listPlans(req: Request, res: Response) {
+    try {
+      const plans = await basePrisma.plan.findMany({
+        orderBy: { rank: "asc" },
+      });
+      res.status(200).json({ plans });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List plans error");
+    }
+  }
+
+  async getPlan(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const plan = await basePrisma.plan.findUnique({ where: { id } });
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      res.status(200).json({ plan });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get plan error");
+    }
+  }
+
+  async createPlan(req: Request, res: Response) {
+    try {
+      const { name, slug, tier, rank, isDefault, isActive, description } =
+        req.body;
+
+      if (!name || !slug || !tier) {
+        return res
+          .status(400)
+          .json({ message: "name, slug, and tier are required" });
+      }
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      const plan = await basePrisma.plan.create({
+        data: {
+          name,
+          slug: slug.toLowerCase().trim(),
+          tier: tier as any,
+          rank: rank ?? 0,
+          isDefault: isDefault ?? false,
+          isActive: isActive !== undefined ? isActive : true,
+          description: description ?? null,
+        },
+      });
+
+      res.status(201).json({ message: "Plan created successfully", plan });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
+          message: "A plan with this name, slug, or tier already exists",
+        });
+      }
+      return sendControllerError(req, res, error, "Create plan error");
+    }
+  }
+
+  async updatePlan(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { name, slug, rank, isDefault, isActive, description } = req.body;
+
+      const plan = await basePrisma.plan.update({
+        where: { id },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(slug !== undefined && { slug: slug.toLowerCase().trim() }),
+          ...(rank !== undefined && { rank }),
+          ...(isDefault !== undefined && { isDefault }),
+          ...(isActive !== undefined && { isActive }),
+          ...(description !== undefined && { description }),
+        },
+      });
+
+      res.status(200).json({ message: "Plan updated successfully", plan });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      if (e.code === "P2002") {
+        return res.status(409).json({
+          message: "A plan with this name or slug already exists",
+        });
+      }
+      return sendControllerError(req, res, error, "Update plan error");
+    }
+  }
+
+  async deletePlan(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const plan = await basePrisma.plan.findUnique({ where: { id } });
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+
+      const tenantCount = await basePrisma.tenant.count({
+        where: { plan: plan.tier },
+      });
+      if (tenantCount > 0) {
+        return res.status(400).json({
+          message: `Cannot delete plan "${plan.name}" — ${tenantCount} tenant(s) are currently on this plan. Deactivate it instead.`,
+        });
+      }
+
+      await basePrisma.plan.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      res.status(200).json({ message: "Plan deactivated successfully" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete plan error");
+    }
+  }
+
   // ============================================
   // PLAN LIMITS CRUD (updated to include maxCategories/maxContacts)
   // ============================================

@@ -1463,6 +1463,51 @@ async function main() {
   }
   console.log("✅ Upserted plan limits for all tiers");
 
+  // 5b. Plan registry (metadata for each tier)
+  const plansData = [
+    {
+      name: "Starter",
+      slug: "starter",
+      tier: "STARTER" as const,
+      rank: 0,
+      isDefault: true,
+      description:
+        "For small businesses getting started with inventory management",
+    },
+    {
+      name: "Professional",
+      slug: "professional",
+      tier: "PROFESSIONAL" as const,
+      rank: 1,
+      isDefault: false,
+      description:
+        "For growing businesses with multiple locations and advanced features",
+    },
+    {
+      name: "Enterprise",
+      slug: "enterprise",
+      tier: "ENTERPRISE" as const,
+      rank: 2,
+      isDefault: false,
+      description:
+        "Unlimited resources with full feature access for large organizations",
+    },
+  ];
+
+  for (const plan of plansData) {
+    await prisma.plan.upsert({
+      where: { tier: plan.tier },
+      update: {
+        name: plan.name,
+        slug: plan.slug,
+        rank: plan.rank,
+        description: plan.description,
+      },
+      create: plan,
+    });
+  }
+  console.log("✅ Upserted plan registry");
+
   // 6. Sample add-on pricing
   const addOnPricingData = [
     { type: "EXTRA_USER" as const, unitPrice: 299 },

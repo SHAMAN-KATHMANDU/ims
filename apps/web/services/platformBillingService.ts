@@ -366,3 +366,235 @@ export async function getPlanLimits(): Promise<PlanLimit[]> {
     handleApiError(error, "fetch plan limits");
   }
 }
+
+export async function upsertPlanLimit(
+  data: Partial<PlanLimit> & { tier: string },
+): Promise<PlanLimit> {
+  try {
+    const response = await api.post<{ planLimit: PlanLimit }>(
+      "/platform/plan-limits",
+      data,
+    );
+    return response.data.planLimit;
+  } catch (error) {
+    handleApiError(error, "upsert plan limit");
+  }
+}
+
+// ============================================
+// Plan Registry CRUD
+// ============================================
+
+export interface Plan {
+  id: string;
+  name: string;
+  slug: string;
+  tier: string;
+  rank: number;
+  isDefault: boolean;
+  isActive: boolean;
+  description: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export async function getPlans(): Promise<Plan[]> {
+  try {
+    const response = await api.get<{ plans: Plan[] }>("/platform/plans");
+    return response.data.plans ?? [];
+  } catch (error) {
+    handleApiError(error, "fetch plans");
+  }
+}
+
+export async function createPlan(data: {
+  name: string;
+  slug: string;
+  tier: string;
+  rank?: number;
+  isDefault?: boolean;
+  description?: string;
+}): Promise<Plan> {
+  try {
+    const response = await api.post<{ plan: Plan }>("/platform/plans", data);
+    return response.data.plan;
+  } catch (error) {
+    handleApiError(error, "create plan");
+  }
+}
+
+export async function updatePlan(
+  id: string,
+  data: {
+    name?: string;
+    slug?: string;
+    rank?: number;
+    isDefault?: boolean;
+    isActive?: boolean;
+    description?: string;
+  },
+): Promise<Plan> {
+  try {
+    const response = await api.put<{ plan: Plan }>(
+      `/platform/plans/${id}`,
+      data,
+    );
+    return response.data.plan;
+  } catch (error) {
+    handleApiError(error, "update plan");
+  }
+}
+
+export async function deletePlan(id: string): Promise<void> {
+  try {
+    await api.delete(`/platform/plans/${id}`);
+  } catch (error) {
+    handleApiError(error, "delete plan");
+  }
+}
+
+// ============================================
+// Platform Analytics
+// ============================================
+
+export interface PlatformAnalytics {
+  revenue: {
+    total: number;
+    monthly: Array<{ month: string; revenue: number; count: number }>;
+  };
+  payments: {
+    pending: number;
+    completed: number;
+    failed: number;
+    byGateway: Array<{ gateway: string; count: number; total: number }>;
+    recent: Array<{
+      id: string;
+      amount: string;
+      status: string;
+      gateway: string;
+      createdAt: string;
+      tenant?: { name: string; slug: string };
+    }>;
+  };
+  subscriptions: {
+    active: number;
+    trial: number;
+    suspended: number;
+    cancelled: number;
+  };
+  tenants: {
+    growth: Array<{ month: string; count: number }>;
+    planDistribution: Array<{ plan: string; count: number }>;
+  };
+  plans: Plan[];
+}
+
+export async function getAnalytics(): Promise<PlatformAnalytics> {
+  try {
+    const response = await api.get<PlatformAnalytics>("/platform/analytics");
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "fetch analytics");
+  }
+}
+
+// ============================================
+// Enhanced Tenant Detail
+// ============================================
+
+export async function getTenantDetail(
+  id: string,
+): Promise<Record<string, unknown>> {
+  try {
+    const response = await api.get(`/platform/tenants/${id}/detail`);
+    return response.data.tenant;
+  } catch (error) {
+    handleApiError(error, "fetch tenant detail");
+  }
+}
+
+// ============================================
+// Subscription Lifecycle
+// ============================================
+
+export async function checkSubscriptionExpiry(): Promise<{
+  updated: {
+    activeToPastDue: number;
+    pastDueToSuspended: number;
+    trialToSuspended: number;
+  };
+}> {
+  try {
+    const response = await api.post("/platform/subscriptions/check-expiry");
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "check subscription expiry");
+  }
+}
+
+// ============================================
+// Subscription CRUD (full)
+// ============================================
+
+export async function createSubscription(data: {
+  tenantId: string;
+  plan: string;
+  billingCycle: string;
+  status?: string;
+  currentPeriodStart?: string;
+  currentPeriodEnd?: string;
+  trialEndsAt?: string;
+}): Promise<Subscription> {
+  try {
+    const response = await api.post<{ subscription: Subscription }>(
+      "/platform/subscriptions",
+      data,
+    );
+    return response.data.subscription;
+  } catch (error) {
+    handleApiError(error, "create subscription");
+  }
+}
+
+export async function deleteSubscription(id: string): Promise<void> {
+  try {
+    await api.delete(`/platform/subscriptions/${id}`);
+  } catch (error) {
+    handleApiError(error, "delete subscription");
+  }
+}
+
+// ============================================
+// Payment CRUD (full)
+// ============================================
+
+export async function createPayment(data: {
+  tenantId: string;
+  subscriptionId: string;
+  amount: number;
+  gateway: string;
+  status?: string;
+  paidFor: string;
+  billingCycle: string;
+  periodStart: string;
+  periodEnd: string;
+  notes?: string;
+}): Promise<TenantPayment> {
+  try {
+    const response = await api.post<{ payment: TenantPayment }>(
+      "/platform/payments",
+      data,
+    );
+    return response.data.payment;
+  } catch (error) {
+    handleApiError(error, "create payment");
+  }
+}
+
+export async function deletePayment(id: string): Promise<void> {
+  try {
+    await api.delete(`/platform/payments/${id}`);
+  } catch (error) {
+    handleApiError(error, "delete payment");
+  }
+}
