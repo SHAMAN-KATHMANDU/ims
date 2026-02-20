@@ -8,6 +8,7 @@ import {
   useCancelTenantAddOn,
   useDeleteTenantAddOn,
 } from "@/hooks/usePlatformBilling";
+import { useTenants } from "@/hooks/useTenant";
 import type { AddOnStatus } from "@/services/usageService";
 import { useToast } from "@/hooks/useToast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -108,6 +109,7 @@ export function TenantAddOnsTab() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  const { data: tenants = [] } = useTenants();
   const { data: addOns = [], isLoading } = useTenantAddOns(
     statusFilter !== "all"
       ? { status: statusFilter as AddOnStatus }
@@ -423,15 +425,22 @@ export function TenantAddOnsTab() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="addon-tenant">Tenant ID</Label>
-              <Input
-                id="addon-tenant"
+              <Label htmlFor="addon-tenant">Tenant</Label>
+              <Select
                 value={form.tenantId}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, tenantId: e.target.value }))
-                }
-                placeholder="Enter tenant ID"
-              />
+                onValueChange={(v) => setForm((p) => ({ ...p, tenantId: v }))}
+              >
+                <SelectTrigger id="addon-tenant">
+                  <SelectValue placeholder="Select tenant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.slug})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label>Type</Label>

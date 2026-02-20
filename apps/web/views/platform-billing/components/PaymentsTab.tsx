@@ -6,7 +6,10 @@ import {
   useCreatePayment,
   useUpdatePayment,
   useDeletePayment,
+  usePlans,
+  useSubscriptions,
 } from "@/hooks/usePlatformBilling";
+import { useTenants } from "@/hooks/useTenant";
 import type { TenantPayment } from "@/hooks/usePlatformBilling";
 import { useToast } from "@/hooks/useToast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -92,7 +95,24 @@ function formatCurrency(amount: string | number): string {
 }
 
 export function PaymentsTab() {
+  const [form, setForm] = useState({
+    tenantId: "",
+    subscriptionId: "",
+    amount: "",
+    gateway: "MANUAL",
+    paidFor: "",
+    billingCycle: "MONTHLY",
+    periodStart: "",
+    periodEnd: "",
+    notes: "",
+  });
+
   const { data: payments = [], isLoading } = usePayments();
+  const { data: tenants = [] } = useTenants();
+  const { data: plans = [] } = usePlans();
+  const { data: tenantSubscriptions = [] } = useSubscriptions(
+    form.tenantId || undefined,
+  );
   const createMutation = useCreatePayment();
   const updateMutation = useUpdatePayment();
   const deleteMutation = useDeletePayment();
@@ -106,18 +126,6 @@ export function PaymentsTab() {
 
   const [deleteTarget, setDeleteTarget] = useState<TenantPayment | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
-
-  const [form, setForm] = useState({
-    tenantId: "",
-    subscriptionId: "",
-    amount: "",
-    gateway: "MANUAL",
-    paidFor: "",
-    billingCycle: "MONTHLY",
-    periodStart: "",
-    periodEnd: "",
-    notes: "",
-  });
 
   const filtered = useMemo(() => {
     return payments.filter((p) => {
@@ -167,6 +175,14 @@ export function PaymentsTab() {
       periodEnd: "",
       notes: "",
     });
+  };
+
+  const handleTenantChange = (tenantId: string) => {
+    setForm((f) => ({
+      ...f,
+      tenantId,
+      subscriptionId: "", // Reset subscription when tenant changes
+    }));
   };
 
   const handleCreate = async () => {
@@ -431,26 +447,43 @@ export function PaymentsTab() {
           <div className="grid gap-4 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="pay-tenant">Tenant ID</Label>
-                <Input
-                  id="pay-tenant"
+                <Label htmlFor="pay-tenant">Tenant</Label>
+                <Select
                   value={form.tenantId}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, tenantId: e.target.value }))
-                  }
-                  placeholder="Tenant ID"
-                />
+                  onValueChange={handleTenantChange}
+                >
+                  <SelectTrigger id="pay-tenant">
+                    <SelectValue placeholder="Select tenant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenants.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name} ({t.slug})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="pay-sub">Subscription ID</Label>
-                <Input
-                  id="pay-sub"
+                <Label htmlFor="pay-sub">Subscription</Label>
+                <Select
                   value={form.subscriptionId}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, subscriptionId: e.target.value }))
+                  onValueChange={(v) =>
+                    setForm((f) => ({ ...f, subscriptionId: v }))
                   }
-                  placeholder="Subscription ID"
-                />
+                  disabled={!form.tenantId}
+                >
+                  <SelectTrigger id="pay-sub">
+                    <SelectValue placeholder="Select subscription" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tenantSubscriptions.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.plan} – {s.billingCycle} ({s.status})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
@@ -489,14 +522,21 @@ export function PaymentsTab() {
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
                 <Label htmlFor="pay-paidfor">Paid For</Label>
-                <Input
-                  id="pay-paidfor"
+                <Select
                   value={form.paidFor}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, paidFor: e.target.value }))
-                  }
-                  placeholder="Plan tier"
-                />
+                  onValueChange={(v) => setForm((f) => ({ ...f, paidFor: v }))}
+                >
+                  <SelectTrigger id="pay-paidfor">
+                    <SelectValue placeholder="Select plan" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {plans.map((p) => (
+                      <SelectItem key={p.id} value={p.tier}>
+                        {p.name} ({p.tier})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="pay-cycle">Billing Cycle</Label>

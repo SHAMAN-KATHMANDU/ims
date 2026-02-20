@@ -10,7 +10,7 @@ import { handleApiError } from "@/lib/apiError";
 // Types
 // ============================================
 
-export type PlanTier = "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+export type PlanTier = "STARTER" | "PROFESSIONAL" | "BUSINESS" | "ENTERPRISE";
 
 export type SubscriptionStatus =
   | "TRIAL"

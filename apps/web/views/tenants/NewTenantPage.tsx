@@ -21,7 +21,7 @@ export function NewTenantPage() {
     async (data: {
       name: string;
       slug: string;
-      plan: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
+      plan: "STARTER" | "PROFESSIONAL" | "BUSINESS" | "ENTERPRISE";
       adminUsername: string;
       adminPassword: string;
     }) => {

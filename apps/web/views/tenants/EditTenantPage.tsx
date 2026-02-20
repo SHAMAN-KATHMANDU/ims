@@ -42,7 +42,7 @@ import {
 } from "@/components/ui/dialog";
 import { KeyRound } from "lucide-react";
 
-const PLANS: PlanTier[] = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+const PLANS: PlanTier[] = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
 
 export function EditTenantPage() {
   const router = useRouter();
