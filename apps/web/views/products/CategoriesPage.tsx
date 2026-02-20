@@ -18,8 +18,6 @@ import {
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import { CategoryForm } from "./components/CategoryForm";
 import { CategoryTable } from "./components/CategoryTable";
-import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import type { PaginationState } from "@/components/ui/data-table-pagination";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
 import { SubcategoryDeleteDialog } from "./components/dialogs/SubcategoryDeleteDialog";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
