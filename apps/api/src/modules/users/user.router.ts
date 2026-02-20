@@ -88,12 +88,12 @@ userRouter.post(
  *       401:
  *         description: Unauthorized
  *       403:
- *         description: Forbidden - SuperAdmin role required
+ *         description: Forbidden - Admin or SuperAdmin role required
  */
 userRouter.get(
   "/",
   verifyToken,
-  authorizeRoles("superAdmin"),
+  authorizeRoles("admin", "superAdmin"),
   asyncHandler(userController.getAllUsers),
 );
 

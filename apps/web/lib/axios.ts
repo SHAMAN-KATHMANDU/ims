@@ -61,10 +61,13 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      const requestUrl = error.config?.url || "";
-      const isLoginEndpoint =
-        requestUrl.includes("auth/login") || requestUrl.endsWith("/auth/login");
+    const status = error.response?.status;
+    const requestUrl = error.config?.url || "";
+    const isAuthMe = requestUrl.includes("/auth/me");
+    const isLoginEndpoint =
+      requestUrl.includes("auth/login") || requestUrl.endsWith("/auth/login");
+
+    if (status === 401 || (status === 404 && isAuthMe)) {
       if (isLoginEndpoint) return Promise.reject(error);
 
       const pathname =

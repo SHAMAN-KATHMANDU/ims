@@ -143,13 +143,12 @@ class TransferController {
         }
 
         // Check stock at source location (variation-level or sub-variant level)
-        const sourceInventory = await prisma.locationInventory.findUnique({
+        // findFirst used because compound unique (locationId, variationId, subVariationId) with null subVariationId is not reliably supported by findUnique in Prisma/Postgres
+        const sourceInventory = await prisma.locationInventory.findFirst({
           where: {
-            locationId_variationId_subVariationId: {
-              locationId: fromLocationId,
-              variationId: item.variationId,
-              subVariationId,
-            } as any,
+            locationId: fromLocationId,
+            variationId: item.variationId,
+            subVariationId: subVariationId ?? null,
           },
         });
 
@@ -461,13 +460,11 @@ class TransferController {
       // Re-verify stock availability before approval
       const insufficientStock: any[] = [];
       for (const item of transfer.items) {
-        const sourceInventory = await prisma.locationInventory.findUnique({
+        const sourceInventory = await prisma.locationInventory.findFirst({
           where: {
-            locationId_variationId_subVariationId: {
-              locationId: transfer.fromLocationId,
-              variationId: item.variationId,
-              subVariationId: item.subVariationId,
-            } as any,
+            locationId: transfer.fromLocationId,
+            variationId: item.variationId,
+            subVariationId: item.subVariationId ?? null,
           },
         });
 
@@ -565,19 +562,17 @@ class TransferController {
 
       // Deduct stock from source location (variation or sub-variant level)
       for (const item of transfer.items) {
-        await prisma.locationInventory.update({
+        const sourceRow = await prisma.locationInventory.findFirst({
           where: {
-            locationId_variationId_subVariationId: {
-              locationId: transfer.fromLocationId,
-              variationId: item.variationId,
-              subVariationId: item.subVariationId,
-            } as any,
+            locationId: transfer.fromLocationId,
+            variationId: item.variationId,
+            subVariationId: item.subVariationId ?? null,
           },
-          data: {
-            quantity: {
-              decrement: item.quantity,
-            },
-          },
+        });
+        if (!sourceRow) throw new Error("Source inventory row not found");
+        await prisma.locationInventory.update({
+          where: { id: sourceRow.id },
+          data: { quantity: { decrement: item.quantity } },
         });
       }
 
@@ -653,26 +648,28 @@ class TransferController {
 
       // Add stock to destination location (variation or sub-variant level)
       for (const item of transfer.items) {
-        await prisma.locationInventory.upsert({
+        const destRow = await prisma.locationInventory.findFirst({
           where: {
-            locationId_variationId_subVariationId: {
-              locationId: transfer.toLocationId,
-              variationId: item.variationId,
-              subVariationId: item.subVariationId,
-            } as any,
-          },
-          update: {
-            quantity: {
-              increment: item.quantity,
-            },
-          },
-          create: {
             locationId: transfer.toLocationId,
             variationId: item.variationId,
-            subVariationId: item.subVariationId,
-            quantity: item.quantity,
+            subVariationId: item.subVariationId ?? null,
           },
         });
+        if (destRow) {
+          await prisma.locationInventory.update({
+            where: { id: destRow.id },
+            data: { quantity: { increment: item.quantity } },
+          });
+        } else {
+          await prisma.locationInventory.create({
+            data: {
+              locationId: transfer.toLocationId,
+              variationId: item.variationId,
+              subVariationId: item.subVariationId ?? null,
+              quantity: item.quantity,
+            },
+          });
+        }
       }
 
       // Update transfer status
@@ -752,26 +749,28 @@ class TransferController {
       // If transfer was IN_TRANSIT, restore stock to source location
       if (transfer.status === "IN_TRANSIT") {
         for (const item of transfer.items) {
-          await prisma.locationInventory.upsert({
+          const sourceRow = await prisma.locationInventory.findFirst({
             where: {
-              locationId_variationId_subVariationId: {
-                locationId: transfer.fromLocationId,
-                variationId: item.variationId,
-                subVariationId: item.subVariationId,
-              } as any,
-            },
-            update: {
-              quantity: {
-                increment: item.quantity,
-              },
-            },
-            create: {
               locationId: transfer.fromLocationId,
               variationId: item.variationId,
-              subVariationId: item.subVariationId,
-              quantity: item.quantity,
+              subVariationId: item.subVariationId ?? null,
             },
           });
+          if (sourceRow) {
+            await prisma.locationInventory.update({
+              where: { id: sourceRow.id },
+              data: { quantity: { increment: item.quantity } },
+            });
+          } else {
+            await prisma.locationInventory.create({
+              data: {
+                locationId: transfer.fromLocationId,
+                variationId: item.variationId,
+                subVariationId: item.subVariationId ?? null,
+                quantity: item.quantity,
+              },
+            });
+          }
         }
       }
 

@@ -49,9 +49,34 @@ services:
     networks:
       - prod
 
+  # ============================================
+  # Database Backup – daily at 2 AM, 7-day retention
+  # ============================================
+  prod_backup:
+    image: prodrigestivill/postgres-backup-local
+    container_name: prod_backup
+    restart: always
+    volumes:
+      - prod_backups:/backups
+    depends_on:
+      prod_db:
+        condition: service_healthy
+    networks:
+      - prod
+    environment:
+      POSTGRES_HOST: prod_db
+      POSTGRES_DB: ${POSTGRES_DB:-ims}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: "0 2 * * *"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 0
+      BACKUP_KEEP_MONTHS: 0
+
 networks:
   prod:
     driver: bridge
 
 volumes:
   prod_db_data:
+  prod_backups:

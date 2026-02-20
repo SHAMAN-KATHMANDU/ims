@@ -332,10 +332,10 @@ class LocationController {
         }
       }
 
-      // Soft delete - set isActive to false
+      // Soft delete - set isActive to false and deletedAt for trash
       await prisma.location.update({
         where: { id },
-        data: { isActive: false },
+        data: { isActive: false, deletedAt: new Date() },
       });
 
       res.status(200).json({

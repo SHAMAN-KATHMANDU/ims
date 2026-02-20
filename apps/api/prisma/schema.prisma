@@ -4,8 +4,12 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  // Use a pre-created shadow DB to avoid P3014 / collation errors when your DB user
+  // cannot create DBs or template1 has collation issues. Create a DB (e.g. ims_shadow)
+  // and set SHADOW_DATABASE_URL in .env (see .env.example).
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 // ============================================
@@ -213,12 +217,13 @@ enum Role {
 // ============================================
 
 model Category {
-  id          String   @id @default(uuid()) @map("category_id")
-  tenantId    String   @map("tenant_id")
-  name        String   @map("category_name") @db.VarChar(255)
-  description String?  @db.Text
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id          String    @id @default(uuid()) @map("category_id")
+  tenantId    String    @map("tenant_id")
+  name        String    @map("category_name") @db.VarChar(255)
+  description String?   @db.Text
+  deletedAt   DateTime? @map("deleted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products      Product[]
@@ -229,11 +234,12 @@ model Category {
 }
 
 model SubCategory {
-  id         String   @id @default(uuid()) @map("sub_category_id")
-  name       String   @db.VarChar(255)
-  categoryId String   @map("category_id")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  id         String    @id @default(uuid()) @map("sub_category_id")
+  name       String    @db.VarChar(255)
+  categoryId String    @map("category_id")
+  deletedAt  DateTime? @map("deleted_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
 
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   products Product[]
@@ -265,9 +271,10 @@ model Product {
   finalSp       Decimal  @default(0) @map("final_sp") @db.Decimal(10, 2)
   /// Optional vendor this product is sourced from
   vendorId      String?  @map("vendor_id")
-  createdById   String   @map("created_by_id")
-  dateCreated   DateTime @default(now()) @map("date_created")
-  dateModified  DateTime @updatedAt @map("date_modified")
+  createdById   String    @map("created_by_id")
+  dateCreated   DateTime  @default(now()) @map("date_created")
+  dateModified  DateTime  @updatedAt @map("date_modified")
+  deletedAt     DateTime? @map("deleted_at")
 
   tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   category     Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -379,14 +386,15 @@ model ProductDiscount {
 // ============================================
 
 model Vendor {
-  id        String   @id @default(uuid()) @map("vendor_id")
-  tenantId  String   @map("tenant_id")
-  name      String   @db.VarChar(255)
-  contact   String?  @db.VarChar(255)
-  phone     String?  @db.VarChar(50)
-  address   String?  @db.Text
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        String    @id @default(uuid()) @map("vendor_id")
+  tenantId  String    @map("tenant_id")
+  name      String    @db.VarChar(255)
+  contact   String?   @db.VarChar(255)
+  phone     String?   @db.VarChar(50)
+  address   String?   @db.Text
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products Product[]
@@ -408,6 +416,7 @@ model Location {
   isActive           Boolean      @default(true) @map("is_active")
   /// When true, new product stock is added here by default; only one warehouse should be default
   isDefaultWarehouse Boolean      @default(false) @map("is_default_warehouse")
+  deletedAt          DateTime?    @map("deleted_at")
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
@@ -534,6 +543,7 @@ model Member {
   memberSince   DateTime?    @map("member_since")
   /// First purchase date
   firstPurchase DateTime?    @map("first_purchase")
+  deletedAt     DateTime?    @map("deleted_at")
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
@@ -656,6 +666,7 @@ model PromoCode {
   usageLimit        Int?              @map("usage_limit")
   usageCount        Int               @default(0) @map("usage_count")
   isActive          Boolean           @default(true) @map("is_active")
+  deletedAt         DateTime?         @map("deleted_at")
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
@@ -731,13 +742,14 @@ model ErrorReport {
 // ============================================
 
 model Company {
-  id        String   @id @default(uuid()) @map("company_id")
-  name      String   @map("company_name") @db.VarChar(255)
-  website   String?  @db.VarChar(500)
-  address   String?  @db.Text
-  phone     String?  @db.VarChar(50)
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        String    @id @default(uuid()) @map("company_id")
+  name      String    @map("company_name") @db.VarChar(255)
+  website   String?   @db.VarChar(500)
+  address   String?   @db.Text
+  phone     String?   @db.VarChar(50)
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   contacts Contact[]
   deals    Deal[]
@@ -774,10 +786,11 @@ model Contact {
   phone        String?  @db.VarChar(50)
   companyId    String?  @map("company_id")
   memberId     String?  @unique @map("member_id")
-  ownedById    String   @map("owned_by_id")
-  createdById  String   @map("created_by_id")
-  createdAt    DateTime @default(now()) @map("created_at")
-  updatedAt    DateTime @updatedAt @map("updated_at")
+  ownedById    String    @map("owned_by_id")
+  createdById  String    @map("created_by_id")
+  deletedAt    DateTime? @map("deleted_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   company        Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
   member         Member?                @relation(fields: [memberId], references: [id], onDelete: SetNull)
@@ -864,6 +877,7 @@ model Lead {
   assignedToId String     @map("assigned_to_id")
   createdById  String     @map("created_by_id")
   convertedAt  DateTime?  @map("converted_at")
+  deletedAt    DateTime?  @map("deleted_at")
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
@@ -875,12 +889,13 @@ model Lead {
 }
 
 model Pipeline {
-  id        String   @id @default(uuid()) @map("pipeline_id")
-  name      String   @db.VarChar(255)
-  stages    Json     // Array of { id, name, order, probability }
-  isDefault Boolean  @default(false) @map("is_default")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  id        String    @id @default(uuid()) @map("pipeline_id")
+  name      String    @db.VarChar(255)
+  stages    Json      // Array of { id, name, order, probability }
+  isDefault Boolean   @default(false) @map("is_default")
+  deletedAt DateTime? @map("deleted_at")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
   deals Deal[]
 
@@ -910,6 +925,7 @@ model Deal {
   assignedToId       String    @map("assigned_to_id")
   createdById        String    @map("created_by_id")
   leadId             String?   @unique @map("lead_id")
+  deletedAt          DateTime? @map("deleted_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
@@ -935,6 +951,7 @@ model Task {
   memberId     String?   @map("member_id")
   dealId       String?   @map("deal_id")
   assignedToId String    @map("assigned_to_id")
+  deletedAt    DateTime? @map("deleted_at")
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -961,6 +978,7 @@ model Activity {
   memberId   String?     @map("member_id")
   dealId     String?     @map("deal_id")
   createdById String     @map("created_by_id")
+  deletedAt  DateTime?   @map("deleted_at")
   createdAt  DateTime    @default(now()) @map("created_at")
 
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)

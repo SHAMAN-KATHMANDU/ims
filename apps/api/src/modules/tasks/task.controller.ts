@@ -231,7 +231,10 @@ class TaskController {
         return res.status(404).json({ message: "Task not found" });
       }
 
-      await prisma.task.delete({ where: { id } });
+      await prisma.task.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Task deleted successfully" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Delete task error");

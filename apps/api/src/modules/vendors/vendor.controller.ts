@@ -8,9 +8,10 @@ import {
 import { sendControllerError } from "@/utils/controllerError";
 
 class VendorController {
-  // Create vendor (admin and superAdmin only)
+  // Create vendor (admin and superAdmin only). Tenant from session only — never from body.
   async createVendor(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { name, contact, phone, address } = req.body;
 
       if (!name) {
@@ -18,7 +19,7 @@ class VendorController {
       }
 
       const existing = await prisma.vendor.findFirst({
-        where: { name },
+        where: { tenantId, name: (name as string).trim() },
       });
 
       if (existing) {
@@ -33,8 +34,8 @@ class VendorController {
 
       const vendor = await prisma.vendor.create({
         data: {
-          tenantId: req.user!.tenantId,
-          name,
+          tenantId,
+          name: (name as string).trim(),
           contact: contact || null,
           phone: phone || null,
           address: address || null,
@@ -56,9 +57,10 @@ class VendorController {
     }
   }
 
-  // Get all vendors (all authenticated users can view)
+  // Get all vendors (tenant-scoped; all authenticated users can view)
   async getAllVendors(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -78,7 +80,7 @@ class VendorController {
         name: "asc",
       };
 
-      const where: any = {};
+      const where: any = { tenantId };
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" } },
@@ -125,9 +127,10 @@ class VendorController {
     }
   }
 
-  // Get vendor by ID (no products; use GET /vendors/:id/products for paginated products)
+  // Get vendor by ID (tenant-scoped; return 404 if not in tenant)
   async getVendorById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
@@ -136,8 +139,8 @@ class VendorController {
         return res.status(400).json({ message: "Vendor ID is required" });
       }
 
-      const vendor = await prisma.vendor.findUnique({
-        where: { id },
+      const vendor = await prisma.vendor.findFirst({
+        where: { id, tenantId },
         select: {
           id: true,
           name: true,
@@ -167,9 +170,10 @@ class VendorController {
     }
   }
 
-  // Get vendor products (paginated, optional search)
+  // Get vendor products (tenant-scoped; 404 if vendor not in tenant)
   async getVendorProducts(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
@@ -178,12 +182,23 @@ class VendorController {
         return res.status(400).json({ message: "Vendor ID is required" });
       }
 
+      const vendor = await prisma.vendor.findFirst({
+        where: { id, tenantId },
+        select: { id: true },
+      });
+      if (!vendor) {
+        return res.status(404).json({ message: "Vendor not found" });
+      }
+
       const { page, limit, search } = getPaginationParams(req.query);
       const productLimit = Math.min(50, Math.max(1, limit));
       const productPage = Math.max(1, page);
       const skip = (productPage - 1) * productLimit;
 
-      const where: { vendorId: string; OR?: unknown[] } = { vendorId: id };
+      const where: { vendorId: string; tenantId: string; OR?: unknown[] } = {
+        vendorId: id,
+        tenantId,
+      };
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" as const } },
@@ -224,9 +239,10 @@ class VendorController {
     }
   }
 
-  // Update vendor
+  // Update vendor (tenant-scoped; 404 if not in tenant)
   async updateVendor(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
@@ -236,8 +252,8 @@ class VendorController {
         return res.status(400).json({ message: "Vendor ID is required" });
       }
 
-      const existingVendor = await prisma.vendor.findUnique({
-        where: { id },
+      const existingVendor = await prisma.vendor.findFirst({
+        where: { id, tenantId },
       });
 
       if (!existingVendor) {
@@ -246,7 +262,7 @@ class VendorController {
 
       if (name && name !== existingVendor.name) {
         const nameExists = await prisma.vendor.findFirst({
-          where: { name },
+          where: { tenantId, name: (name as string).trim() },
         });
 
         if (nameExists) {
@@ -286,9 +302,10 @@ class VendorController {
     }
   }
 
-  // Delete vendor
+  // Delete vendor (tenant-scoped; 404 if not in tenant)
   async deleteVendor(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
@@ -297,8 +314,8 @@ class VendorController {
         return res.status(400).json({ message: "Vendor ID is required" });
       }
 
-      const vendor = await prisma.vendor.findUnique({
-        where: { id },
+      const vendor = await prisma.vendor.findFirst({
+        where: { id, tenantId },
         include: {
           _count: {
             select: {
@@ -320,8 +337,9 @@ class VendorController {
         });
       }
 
-      await prisma.vendor.delete({
+      await prisma.vendor.update({
         where: { id },
+        data: { deletedAt: new Date() },
       });
 
       res.status(200).json({

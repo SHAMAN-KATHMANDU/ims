@@ -211,7 +211,10 @@ class LeadController {
         return res.status(404).json({ message: "Lead not found" });
       }
 
-      await prisma.lead.delete({ where: { id } });
+      await prisma.lead.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Lead deleted successfully" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Delete lead error");

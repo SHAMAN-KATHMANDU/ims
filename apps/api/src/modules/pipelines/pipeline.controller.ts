@@ -129,7 +129,10 @@ class PipelineController {
         });
       }
 
-      await prisma.pipeline.delete({ where: { id } });
+      await prisma.pipeline.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Pipeline deleted successfully" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Delete pipeline error");

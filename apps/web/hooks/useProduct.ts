@@ -119,6 +119,7 @@ export function useProductsPaginated(params: ProductListParams = {}) {
     queryKey: productKeys.list(normalizedParams),
     queryFn: () => getProducts(normalizedParams),
     placeholderData: (previousData) => previousData,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -233,10 +234,17 @@ export function useBulkUploadProducts() {
       // Invalidate products query to refresh the list
       queryClient.invalidateQueries({ queryKey: productKeys.all });
 
-      if (data.summary.created > 0) {
+      if (data.summary.created > 0 || (data.summary.updated ?? 0) > 0) {
+        const parts = [];
+        if (data.summary.created > 0)
+          parts.push(`Created ${data.summary.created} product(s)`);
+        if ((data.summary.updated ?? 0) > 0)
+          parts.push(
+            `updated inventory for ${data.summary.updated} product(s)`,
+          );
         toast({
           title: "Bulk upload completed",
-          description: `Successfully created ${data.summary.created} product(s)`,
+          description: parts.join("; "),
         });
       }
     },

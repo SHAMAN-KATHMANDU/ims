@@ -314,8 +314,9 @@ class CategoryController {
         });
       }
 
-      await prisma.subCategory.delete({
+      await prisma.subCategory.update({
         where: { id: subCategory.id },
+        data: { deletedAt: new Date() },
       });
 
       return res.status(200).json({
@@ -436,8 +437,9 @@ class CategoryController {
         });
       }
 
-      await prisma.category.delete({
+      await prisma.category.update({
         where: { id },
+        data: { deletedAt: new Date() },
       });
 
       res.status(200).json({

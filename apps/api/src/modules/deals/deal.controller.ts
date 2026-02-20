@@ -408,7 +408,10 @@ class DealController {
         return res.status(404).json({ message: "Deal not found" });
       }
 
-      await prisma.deal.delete({ where: { id } });
+      await prisma.deal.update({
+        where: { id },
+        data: { deletedAt: new Date() },
+      });
       res.status(200).json({ message: "Deal deleted successfully" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Delete deal error");
