@@ -60,16 +60,6 @@ class AuthController {
         },
       });
 
-      // If not found, try original username (in case it's stored with different case)
-      if (!user && username !== normalizedUsername) {
-        user = await basePrisma.user.findFirst({
-          where: {
-            tenantId: tenant.id,
-            username: username.toString().trim(),
-          },
-        });
-      }
-
       if (!user) {
         return res
           .status(401)
