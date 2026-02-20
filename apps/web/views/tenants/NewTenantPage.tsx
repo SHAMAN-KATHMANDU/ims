@@ -1,56 +1,26 @@
 "use client";
 
-import { useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
-import { useToast } from "@/hooks/useToast";
-import { useCreateTenant } from "@/hooks/useTenant";
-import { TenantForm } from "./components/TenantForm";
+import { CreateTenantDialog } from "./components/CreateTenantDialog";
 
+/**
+ * Standalone page for creating a tenant. Uses the shared CreateTenantDialog.
+ * Redirects to tenants list when the dialog is closed.
+ */
 export function NewTenantPage() {
   const router = useRouter();
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
-  const { toast } = useToast();
-  const createMutation = useCreateTenant();
 
-  const handleSubmit = useCallback(
-    async (data: {
-      name: string;
-      slug: string;
-      plan: "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
-      adminUsername: string;
-      adminPassword: string;
-    }) => {
-      try {
-        await createMutation.mutateAsync({
-          name: data.name,
-          slug: data.slug,
-          plan: data.plan,
-          adminUsername: data.adminUsername,
-          adminPassword: data.adminPassword,
-        });
-        toast({ title: "Tenant created successfully" });
-        router.push(`${basePath}/platform/tenants`);
-      } catch (error: unknown) {
-        const message =
-          error instanceof Error ? error.message : "Failed to create tenant";
-        toast({
-          title: "Error",
-          description: message,
-          variant: "destructive",
-        });
-      }
-    },
-    [createMutation, toast, router, basePath],
-  );
-
-  const handleCancel = useCallback(() => {
-    router.push(`${basePath}/platform/tenants`);
-  }, [router, basePath]);
+  const handleOpenChange = (open: boolean) => {
+    if (!open) {
+      router.push(`${basePath}/platform/tenants`);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -71,12 +41,7 @@ export function NewTenantPage() {
         </p>
       </div>
 
-      <TenantForm
-        mode="create"
-        onSubmit={handleSubmit}
-        onCancel={handleCancel}
-        isLoading={createMutation.isPending}
-      />
+      <CreateTenantDialog open={true} onOpenChange={handleOpenChange} />
     </div>
   );
 }

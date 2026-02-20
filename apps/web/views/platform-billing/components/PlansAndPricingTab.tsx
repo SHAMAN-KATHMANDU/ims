@@ -9,6 +9,7 @@ import {
   usePlanLimits,
   useUpsertPlanLimit,
   usePricingPlans,
+  useInitializeDefaultPricingPlans,
   useUpdatePricingPlan,
   useAddOnPricingList,
   useCreateAddOnPricing,
@@ -19,6 +20,7 @@ import {
   type PricingPlan,
 } from "@/hooks/usePlatformBilling";
 import type { AddOnPricing, AddOnType } from "@/services/usageService";
+import { DEFAULT_PLAN_LIMITS, PlanTier } from "@repo/shared";
 import { useToast } from "@/hooks/useToast";
 import {
   Card,
@@ -58,7 +60,12 @@ import {
 } from "@/components/ui/table";
 import { Plus, Edit2, Trash2, Save, X, Check } from "lucide-react";
 
-const TIERS = ["FREE", "BASIC", "PRO", "ENTERPRISE"] as const;
+const TIERS: PlanTier[] = [
+  PlanTier.STARTER,
+  PlanTier.PROFESSIONAL,
+  PlanTier.BUSINESS,
+  PlanTier.ENTERPRISE,
+];
 
 const ADD_ON_TYPES: AddOnType[] = [
   "EXTRA_USER",
@@ -120,7 +127,7 @@ function PlansSection() {
   const [form, setForm] = useState({
     name: "",
     slug: "",
-    tier: "FREE" as string,
+    tier: PlanTier.STARTER as string,
     rank: 0,
     description: "",
   });
@@ -135,7 +142,13 @@ function PlansSection() {
   });
 
   const resetCreateForm = () => {
-    setForm({ name: "", slug: "", tier: "FREE", rank: 0, description: "" });
+    setForm({
+      name: "",
+      slug: "",
+      tier: PlanTier.STARTER,
+      rank: 0,
+      description: "",
+    });
   };
 
   const handleNameChange = (name: string) => {
@@ -521,8 +534,12 @@ function PlanLimitsSection() {
 
   const getDraft = useCallback(
     (tier: string, original: PlanLimit | undefined) => {
-      if (drafts[tier]) return { ...original, ...drafts[tier] };
-      return original;
+      const defaults =
+        DEFAULT_PLAN_LIMITS[tier as PlanTier] ??
+        DEFAULT_PLAN_LIMITS[PlanTier.STARTER];
+      const base = original ?? (defaults as unknown as PlanLimit);
+      if (drafts[tier]) return { ...base, ...drafts[tier] };
+      return base;
     },
     [drafts],
   );
@@ -541,10 +558,12 @@ function PlanLimitsSection() {
   const handleSave = async (tier: string) => {
     const existing = limits.find((l) => l.tier === tier);
     const draft = drafts[tier];
-    if (!draft) return;
+    const defaults = DEFAULT_PLAN_LIMITS[tier as PlanTier];
+    if (!draft && !defaults) return;
 
     const payload: Partial<PlanLimit> & { tier: string } = {
       tier,
+      ...(defaults as unknown as Partial<PlanLimit>),
       ...existing,
       ...draft,
     };
@@ -584,7 +603,8 @@ function PlanLimitsSection() {
       {TIERS.map((tier) => {
         const original = limits.find((l) => l.tier === tier);
         const current = getDraft(tier, original);
-        const isDirty = !!drafts[tier];
+        const hasDefaults = !!DEFAULT_PLAN_LIMITS[tier as PlanTier];
+        const isDirty = !!drafts[tier] || (!original && hasDefaults);
 
         return (
           <Card key={tier}>
@@ -616,8 +636,13 @@ function PlanLimitsSection() {
                     </label>
                     <Input
                       type="number"
-                      min={0}
-                      value={Number(current?.[key as keyof PlanLimit] ?? 0)}
+                      min={-1}
+                      placeholder="-1 = unlimited"
+                      value={
+                        current?.[key as keyof PlanLimit] != null
+                          ? Number(current[key as keyof PlanLimit])
+                          : ""
+                      }
                       onChange={(e) =>
                         updateDraft(tier, key, parseInt(e.target.value) || 0)
                       }
@@ -653,6 +678,7 @@ function PlanLimitsSection() {
 
 function PricingSection() {
   const { data: plans = [], isLoading } = usePricingPlans();
+  const initializeMutation = useInitializeDefaultPricingPlans();
   const updateMutation = useUpdatePricingPlan();
   const { toast } = useToast();
 
@@ -711,14 +737,41 @@ function PricingSection() {
     );
   }
 
+  const handleInitializeDefaults = async () => {
+    try {
+      await initializeMutation.mutateAsync();
+      toast({ title: "Default pricing plans initialized" });
+    } catch {
+      toast({
+        title: "Failed to initialize pricing plans",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
-        <div>
-          <CardTitle>Pricing Plans</CardTitle>
-          <CardDescription>
-            Configure pricing per tier and billing cycle
-          </CardDescription>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <CardTitle>Pricing Plans</CardTitle>
+            <CardDescription>
+              Configure pricing per tier and billing cycle
+            </CardDescription>
+          </div>
+          {plans.length === 0 && (
+            <Button
+              size="sm"
+              onClick={handleInitializeDefaults}
+              disabled={initializeMutation.isPending}
+              className="gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              {initializeMutation.isPending
+                ? "Initializing..."
+                : "Initialize defaults"}
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent>
@@ -1139,7 +1192,7 @@ function AddOnPricingSection() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="MONTHLY">Monthly</SelectItem>
-                  <SelectItem value="YEARLY">Yearly</SelectItem>
+                  <SelectItem value="ANNUAL">Annual</SelectItem>
                 </SelectContent>
               </Select>
             </div>

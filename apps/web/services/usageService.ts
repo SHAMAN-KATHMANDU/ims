@@ -67,9 +67,31 @@ export interface AddOnPricing {
   updatedAt: string;
 }
 
+export interface PlanWithPricing {
+  id: string;
+  name: string;
+  slug: string;
+  tier: string;
+  rank: number;
+  description: string | null;
+  priceMonthly: number | null;
+  priceAnnual: number | null;
+}
+
 // ============================================
 // API
 // ============================================
+
+export async function getPlansWithPricing(): Promise<PlanWithPricing[]> {
+  try {
+    const response = await api.get<{ plans: PlanWithPricing[] }>(
+      "/usage/plans",
+    );
+    return response.data.plans ?? [];
+  } catch (error) {
+    handleApiError(error, "fetch plans with pricing");
+  }
+}
 
 export async function getUsage(): Promise<{
   usage: ResourceUsage[];

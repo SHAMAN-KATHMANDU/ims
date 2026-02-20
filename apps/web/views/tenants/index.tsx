@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -10,6 +9,7 @@ import {
   type Tenant,
 } from "@/hooks/useTenant";
 import { TenantTable } from "./components/TenantTable";
+import { CreateTenantDialog } from "./components/CreateTenantDialog";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import {
@@ -34,6 +34,7 @@ export function TenantsPage() {
   const [tenantToDeactivate, setTenantToDeactivate] = useState<Tenant | null>(
     null,
   );
+  const [createOpen, setCreateOpen] = useState(false);
 
   const handleDeactivate = (tenant: Tenant) => {
     setTenantToDeactivate(tenant);
@@ -60,14 +61,12 @@ export function TenantsPage() {
             Manage organizations and their subscriptions
           </p>
         </div>
-        <Button asChild>
-          <Link
-            href={`${basePath}/platform/tenants/new`}
-            className="inline-flex items-center gap-2"
-          >
-            <Plus className="h-4 w-4" />
-            New tenant
-          </Link>
+        <Button
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          New tenant
         </Button>
       </div>
 
@@ -77,6 +76,8 @@ export function TenantsPage() {
         basePath={basePath}
         onDeactivate={handleDeactivate}
       />
+
+      <CreateTenantDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <AlertDialog
         open={!!tenantToDeactivate}

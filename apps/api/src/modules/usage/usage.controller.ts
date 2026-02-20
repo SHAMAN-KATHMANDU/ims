@@ -147,6 +147,50 @@ class UsageController {
   }
 
   /**
+   * GET /plans — plans with pricing for tenant-facing upgrade display (read-only).
+   */
+  async getPlansWithPricing(req: Request, res: Response) {
+    try {
+      const plans = await basePrisma.plan.findMany({
+        where: { isActive: true },
+        orderBy: { rank: "asc" },
+      });
+
+      const pricingPlans = await basePrisma.pricingPlan.findMany({
+        where: { isActive: true },
+      });
+
+      const plansWithPricing = plans.map((plan) => {
+        const monthly = pricingPlans.find(
+          (p) => p.tier === plan.tier && p.billingCycle === "MONTHLY",
+        );
+        const annual = pricingPlans.find(
+          (p) => p.tier === plan.tier && p.billingCycle === "ANNUAL",
+        );
+        return {
+          id: plan.id,
+          name: plan.name,
+          slug: plan.slug,
+          tier: plan.tier,
+          rank: plan.rank,
+          description: plan.description,
+          priceMonthly: monthly ? Number(monthly.price) : null,
+          priceAnnual: annual ? Number(annual.price) : null,
+        };
+      });
+
+      res.status(200).json({ plans: plansWithPricing });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get plans with pricing error",
+      );
+    }
+  }
+
+  /**
    * GET /add-ons/pricing — available add-on pricing for the tenant's plan tier.
    */
   async getAddOnPricing(req: Request, res: Response) {

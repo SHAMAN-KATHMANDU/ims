@@ -9,6 +9,7 @@ import {
   useCheckSubscriptionExpiry,
   usePlans,
 } from "@/hooks/usePlatformBilling";
+import { useTenants } from "@/hooks/useTenant";
 import type { Subscription, Plan } from "@/hooks/usePlatformBilling";
 import { useToast } from "@/hooks/useToast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,6 +87,7 @@ function formatDate(value: string | null | undefined): string {
 export function SubscriptionsTab() {
   const { data: subscriptions = [], isLoading } = useSubscriptions();
   const { data: plans = [] } = usePlans();
+  const { data: tenants = [] } = useTenants();
   const createMutation = useCreateSubscription();
   const updateMutation = useUpdateSubscription();
   const deleteMutation = useDeleteSubscription();
@@ -435,15 +437,22 @@ export function SubscriptionsTab() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="sub-tenant">Tenant ID</Label>
-              <Input
-                id="sub-tenant"
+              <Label htmlFor="sub-tenant">Tenant</Label>
+              <Select
                 value={form.tenantId}
-                onChange={(e) =>
-                  setForm((f) => ({ ...f, tenantId: e.target.value }))
-                }
-                placeholder="Enter tenant ID"
-              />
+                onValueChange={(v) => setForm((f) => ({ ...f, tenantId: v }))}
+              >
+                <SelectTrigger id="sub-tenant">
+                  <SelectValue placeholder="Select tenant" />
+                </SelectTrigger>
+                <SelectContent>
+                  {tenants.map((t) => (
+                    <SelectItem key={t.id} value={t.id}>
+                      {t.name} ({t.slug})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="sub-plan">Plan</Label>

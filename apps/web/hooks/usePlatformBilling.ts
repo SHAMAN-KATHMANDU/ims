@@ -21,6 +21,7 @@ import {
   updatePayment,
   deletePayment,
   getPricingPlans,
+  initializeDefaultPricingPlans,
   updatePricingPlan,
   getPlanLimits,
   upsertPlanLimit,
@@ -204,6 +205,15 @@ export function usePricingPlans() {
   return useQuery({
     queryKey: billingKeys.pricingPlans(),
     queryFn: getPricingPlans,
+  });
+}
+
+export function useInitializeDefaultPricingPlans() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: initializeDefaultPricingPlans,
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: billingKeys.pricingPlans() }),
   });
 }
 

@@ -2,10 +2,11 @@
 
 import type React from "react";
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingPage } from "../layout/loading-page";
 import type { UserRole } from "@/utils/auth";
+import { getWorkspaceRoot } from "@/config/routes";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -59,7 +60,9 @@ export function AuthGuard({
   unauthorizedPath = "/401",
 }: AuthGuardProps) {
   const router = useRouter();
-  const { user, isAuthenticated, isLoading, isHydrated } = useAuth();
+  const params = useParams();
+  const { user, tenant, isAuthenticated, isLoading, isHydrated } = useAuth();
+  const urlSlug = (params?.workspace as string)?.trim();
 
   useEffect(() => {
     // Wait for hydration
@@ -71,6 +74,18 @@ export function AuthGuard({
       return;
     }
 
+    // Tenant slug enforcement: tenant users must use their tenant's URL
+    // Platform admins can access any workspace
+    if (
+      user?.role !== "platformAdmin" &&
+      tenant?.slug &&
+      urlSlug &&
+      urlSlug.toLowerCase() !== tenant.slug.toLowerCase()
+    ) {
+      router.replace(getWorkspaceRoot(tenant.slug));
+      return;
+    }
+
     // Role check (if roles are specified)
     if (roles && user && !roles.includes(user.role)) {
       router.push(unauthorizedPath);
@@ -79,6 +94,8 @@ export function AuthGuard({
     isAuthenticated,
     isHydrated,
     user,
+    tenant,
+    urlSlug,
     roles,
     unauthorizedPath,
     loginPath,

@@ -1342,6 +1342,8 @@ async function main() {
       },
     });
     console.log("✅ Created system tenant (for platform admin)");
+  } else {
+    console.log("⏭️  System tenant already exists");
   }
 
   // 2. Platform admin user
@@ -1364,7 +1366,7 @@ async function main() {
     console.log(`✅ Created platform admin: ${platformAdmin.username}`);
   } else {
     console.log(
-      `⚠️  Platform admin "${PLATFORM_ADMIN_USERNAME}" already exists.`,
+      `⏭️  Platform admin "${PLATFORM_ADMIN_USERNAME}" already exists`,
     );
   }
 
@@ -1427,6 +1429,20 @@ async function main() {
       apiAccess: false,
     },
     {
+      tier: "BUSINESS" as const,
+      maxUsers: 25,
+      maxProducts: 5000,
+      maxLocations: 25,
+      maxMembers: 25000,
+      maxCategories: 500,
+      maxContacts: 5000,
+      bulkUpload: true,
+      analytics: true,
+      promoManagement: true,
+      auditLogs: true,
+      apiAccess: true,
+    },
+    {
       tier: "ENTERPRISE" as const,
       maxUsers: -1,
       maxProducts: -1,
@@ -1484,13 +1500,22 @@ async function main() {
         "For growing businesses with multiple locations and advanced features",
     },
     {
-      name: "Enterprise",
-      slug: "enterprise",
-      tier: "ENTERPRISE" as const,
+      name: "Business",
+      slug: "business",
+      tier: "BUSINESS" as const,
       rank: 2,
       isDefault: false,
       description:
-        "Unlimited resources with full feature access for large organizations",
+        "For established businesses with advanced compliance and API needs",
+    },
+    {
+      name: "Enterprise",
+      slug: "enterprise",
+      tier: "ENTERPRISE" as const,
+      rank: 3,
+      isDefault: false,
+      description:
+        "Unlimited resources. Contact us for custom pricing and SLA.",
     },
   ];
 
@@ -1508,7 +1533,50 @@ async function main() {
   }
   console.log("✅ Upserted plan registry");
 
-  // 6. Sample add-on pricing
+  // 5c. Default pricing plans (NPR)
+  const pricingPlansData = [
+    { tier: "STARTER" as const, billingCycle: "MONTHLY" as const, price: 2999 },
+    { tier: "STARTER" as const, billingCycle: "ANNUAL" as const, price: 29990 },
+    {
+      tier: "PROFESSIONAL" as const,
+      billingCycle: "MONTHLY" as const,
+      price: 6999,
+    },
+    {
+      tier: "PROFESSIONAL" as const,
+      billingCycle: "ANNUAL" as const,
+      price: 69990,
+    },
+    {
+      tier: "BUSINESS" as const,
+      billingCycle: "MONTHLY" as const,
+      price: 14999,
+    },
+    {
+      tier: "BUSINESS" as const,
+      billingCycle: "ANNUAL" as const,
+      price: 149990,
+    },
+    { tier: "ENTERPRISE" as const, billingCycle: "MONTHLY" as const, price: 0 },
+    { tier: "ENTERPRISE" as const, billingCycle: "ANNUAL" as const, price: 0 },
+  ];
+  for (const pp of pricingPlansData) {
+    await prisma.pricingPlan.upsert({
+      where: {
+        tier_billingCycle: { tier: pp.tier, billingCycle: pp.billingCycle },
+      },
+      update: { price: pp.price },
+      create: {
+        tier: pp.tier,
+        billingCycle: pp.billingCycle,
+        price: pp.price,
+        isActive: true,
+      },
+    });
+  }
+  console.log("✅ Upserted default pricing plans");
+
+  // 6. Default add-on pricing
   const addOnPricingData = [
     { type: "EXTRA_USER" as const, unitPrice: 299 },
     { type: "EXTRA_PRODUCT" as const, unitPrice: 99 },
@@ -1540,7 +1608,7 @@ async function main() {
       });
     }
   }
-  console.log("✅ Upserted sample add-on pricing");
+  console.log("✅ Upserted default add-on pricing");
 
   // 7. Default CRM pipeline (required for Deals / Pipeline view)
   const existingPipeline = await prisma.pipeline.findFirst({
@@ -1561,6 +1629,8 @@ async function main() {
       },
     });
     console.log("✅ Created default Sales Pipeline (for CRM Deals)");
+  } else {
+    console.log("⏭️  Default pipeline already exists");
   }
 
   console.log("\n✅ Seed complete.");

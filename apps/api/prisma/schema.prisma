@@ -53,6 +53,7 @@ model Tenant {
 enum PlanTier {
   STARTER
   PROFESSIONAL
+  BUSINESS
   ENTERPRISE
 }
 
