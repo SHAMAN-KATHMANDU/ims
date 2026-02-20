@@ -45,6 +45,7 @@ model Tenant {
   errorReports   ErrorReport[]
   subscriptions  Subscription[]
   payments       TenantPayment[]
+  addOns         TenantAddOn[]
 
   @@map("tenants")
 }
@@ -71,6 +72,8 @@ model PlanLimit {
   maxProducts     Int      @map("max_products")
   maxLocations    Int      @map("max_locations")
   maxMembers      Int      @map("max_members")
+  maxCategories   Int      @default(20) @map("max_categories")
+  maxContacts     Int      @default(100) @map("max_contacts")
   bulkUpload      Boolean  @default(false) @map("bulk_upload")
   analytics       Boolean  @default(false)
   promoManagement Boolean  @default(false) @map("promo_management")
@@ -161,6 +164,63 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   REFUNDED
+}
+
+// ============================================
+// ADD-ON MODELS
+// ============================================
+
+enum AddOnType {
+  EXTRA_USER
+  EXTRA_PRODUCT
+  EXTRA_LOCATION
+  EXTRA_MEMBER
+  EXTRA_CATEGORY
+  EXTRA_CONTACT
+}
+
+enum AddOnStatus {
+  PENDING
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
+model AddOnPricing {
+  id           String       @id @default(uuid())
+  type         AddOnType
+  tier         PlanTier?
+  billingCycle BillingCycle  @default(MONTHLY) @map("billing_cycle")
+  unitPrice    Decimal       @map("unit_price") @db.Decimal(12, 2)
+  minQuantity  Int           @default(1) @map("min_quantity")
+  maxQuantity  Int?          @map("max_quantity")
+  isActive     Boolean       @default(true) @map("is_active")
+  createdAt    DateTime      @default(now()) @map("created_at")
+  updatedAt    DateTime      @updatedAt @map("updated_at")
+
+  @@unique([type, tier, billingCycle])
+  @@map("add_on_pricing")
+}
+
+model TenantAddOn {
+  id          String      @id @default(uuid())
+  tenantId    String      @map("tenant_id")
+  type        AddOnType
+  quantity    Int         @default(1)
+  status      AddOnStatus @default(PENDING)
+  periodStart DateTime?   @map("period_start")
+  periodEnd   DateTime?   @map("period_end")
+  paymentId   String?     @map("payment_id")
+  notes       String?     @db.Text
+  requestedAt DateTime    @default(now()) @map("requested_at")
+  approvedAt  DateTime?   @map("approved_at")
+  approvedBy  String?     @map("approved_by")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_add_ons")
 }
 
 // ============================================

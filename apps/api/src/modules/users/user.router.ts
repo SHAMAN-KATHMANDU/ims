@@ -1,6 +1,7 @@
 import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import userController from "@/modules/users/user.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -60,6 +61,7 @@ userRouter.post(
   "/",
   verifyToken,
   authorizeRoles("superAdmin"),
+  enforcePlanLimits("users"),
   asyncHandler(userController.createUser),
 );
 

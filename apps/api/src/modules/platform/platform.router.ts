@@ -113,6 +113,62 @@ router.delete(
 );
 
 // ============================================
+// ADD-ON PRICING CRUD
+// ============================================
+router.get(
+  "/add-on-pricing",
+  asyncHandler(platformController.listAddOnPricing),
+);
+router.get(
+  "/add-on-pricing/:id",
+  asyncHandler(platformController.getAddOnPricing),
+);
+router.post(
+  "/add-on-pricing",
+  asyncHandler(platformController.createAddOnPricing),
+);
+router.put(
+  "/add-on-pricing/:id",
+  asyncHandler(platformController.updateAddOnPricing),
+);
+router.delete(
+  "/add-on-pricing/:id",
+  asyncHandler(platformController.deleteAddOnPricing),
+);
+
+// ============================================
+// TENANT ADD-ONS MANAGEMENT
+// ============================================
+router.get(
+  "/tenant-add-ons",
+  asyncHandler(platformController.listTenantAddOns),
+);
+router.get(
+  "/tenant-add-ons/:id",
+  asyncHandler(platformController.getTenantAddOn),
+);
+router.post(
+  "/tenant-add-ons",
+  asyncHandler(platformController.createTenantAddOn),
+);
+router.put(
+  "/tenant-add-ons/:id",
+  asyncHandler(platformController.updateTenantAddOn),
+);
+router.patch(
+  "/tenant-add-ons/:id/approve",
+  asyncHandler(platformController.approveTenantAddOn),
+);
+router.patch(
+  "/tenant-add-ons/:id/cancel",
+  asyncHandler(platformController.cancelTenantAddOn),
+);
+router.delete(
+  "/tenant-add-ons/:id",
+  asyncHandler(platformController.deleteTenantAddOn),
+);
+
+// ============================================
 // PLATFORM STATS
 // ============================================
 router.get("/stats", asyncHandler(platformController.getStats));
