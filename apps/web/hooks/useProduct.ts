@@ -33,6 +33,7 @@ import {
 } from "@/services/productService";
 import {
   getAllCategories,
+  getCategoriesPaginated,
   getCategoryById,
   getCategorySubcategories,
   createCategory,
@@ -43,6 +44,7 @@ import {
   type Category,
   type CreateCategoryData,
   type UpdateCategoryData,
+  type CategoryListParams,
 } from "@/services/categoryService";
 
 // Re-export types for convenience
@@ -77,7 +79,8 @@ export const productKeys = {
 export const categoryKeys = {
   all: ["categories"] as const,
   lists: () => [...categoryKeys.all, "list"] as const,
-  list: (filters: string) => [...categoryKeys.lists(), { filters }] as const,
+  list: (params: CategoryListParams) =>
+    [...categoryKeys.lists(), params] as const,
   details: () => [...categoryKeys.all, "detail"] as const,
   detail: (id: string) => [...categoryKeys.details(), id] as const,
 };
@@ -283,6 +286,28 @@ export function useBulkUploadProducts() {
 // Category Hooks
 // ============================================
 
+/**
+ * Hook for fetching paginated categories (Categories page)
+ */
+export function useCategoriesPaginated(params: CategoryListParams = {}) {
+  const normalizedParams: CategoryListParams = {
+    page: params.page ?? 1,
+    limit: params.limit ?? 10,
+    search: params.search?.trim() || "",
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
+  };
+
+  return useQuery({
+    queryKey: categoryKeys.list(normalizedParams),
+    queryFn: () => getCategoriesPaginated(normalizedParams),
+    placeholderData: (previousData) => previousData,
+  });
+}
+
+/**
+ * Hook for fetching all categories (dropdowns - up to 500)
+ */
 export function useCategories() {
   return useQuery({
     queryKey: categoryKeys.lists(),
