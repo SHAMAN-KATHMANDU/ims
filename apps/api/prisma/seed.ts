@@ -20,6 +20,30 @@ const TEST_TENANT_PASSWORD = "test123";
 
 // Ruby tenant: blank slate — X-Tenant-Slug: ruby, username "admin", password "admin123"
 const RUBY_TENANT_PASSWORD = "admin123";
+const DEMO_TENANT_SLUG = "demo";
+const DEMO_TENANT_NAME = "Demo Tenant";
+const DEMO_TENANT_USERNAME = "demo";
+const DEMO_TENANT_PASSWORD = "demo";
+
+const DEMO_BUSINESS_LIMITS = {
+  maxUsers: 25,
+  maxProducts: 5000,
+  maxLocations: 25,
+  maxMembers: 25000,
+  maxCategories: 500,
+  maxContacts: 5000,
+} as const;
+
+async function createManyInChunks<T>(
+  items: T[],
+  chunkSize: number,
+  createChunk: (chunk: T[]) => Promise<unknown>,
+) {
+  for (let index = 0; index < items.length; index += chunkSize) {
+    const chunk = items.slice(index, index + chunkSize);
+    await createChunk(chunk);
+  }
+}
 
 function requireEnv(name: string, value: string | undefined): string {
   if (!value || !value.trim()) {
@@ -1079,10 +1103,203 @@ async function seedTestTenant(
   );
 }
 
+async function seedDemoTenantNearLimit() {
+  await deleteTenantBySlug(DEMO_TENANT_SLUG);
+  console.log(`🗑️  Deleted existing tenant "${DEMO_TENANT_SLUG}" for reseed.`);
+
+  const hashedPassword = await bcrypt.hash(DEMO_TENANT_PASSWORD, 10);
+  const now = new Date();
+  const periodStart = new Date(now);
+  const periodEnd = new Date(now);
+  periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+  const tenant = await prisma.tenant.create({
+    data: {
+      name: DEMO_TENANT_NAME,
+      slug: DEMO_TENANT_SLUG,
+      plan: "BUSINESS",
+      isActive: true,
+      isTrial: false,
+      subscriptionStatus: "ACTIVE",
+      planExpiresAt: periodEnd,
+      trialEndsAt: null,
+      settings: { timezone: "Asia/Kathmandu", currency: "NPR" },
+    },
+  });
+
+  await prisma.subscription.create({
+    data: {
+      tenantId: tenant.id,
+      plan: "BUSINESS",
+      billingCycle: "MONTHLY",
+      status: "ACTIVE",
+      currentPeriodStart: periodStart,
+      currentPeriodEnd: periodEnd,
+      trialEndsAt: null,
+    },
+  });
+
+  const demoUser = await prisma.user.create({
+    data: {
+      tenantId: tenant.id,
+      username: DEMO_TENANT_USERNAME,
+      password: hashedPassword,
+      role: "admin",
+    },
+  });
+
+  const targets = {
+    users: DEMO_BUSINESS_LIMITS.maxUsers - 1,
+    products: DEMO_BUSINESS_LIMITS.maxProducts - 1,
+    locations: DEMO_BUSINESS_LIMITS.maxLocations - 1,
+    members: DEMO_BUSINESS_LIMITS.maxMembers - 1,
+    categories: DEMO_BUSINESS_LIMITS.maxCategories - 1,
+    contacts: DEMO_BUSINESS_LIMITS.maxContacts - 1,
+  } as const;
+
+  // Seed baseline location/category first because products depend on category.
+  await prisma.location.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Demo Main Warehouse",
+      type: "WAREHOUSE",
+      isActive: true,
+      isDefaultWarehouse: true,
+    },
+  });
+
+  const primaryCategory = await prisma.category.create({
+    data: {
+      tenantId: tenant.id,
+      name: "Demo Category 001",
+      description: "Primary demo category",
+    },
+  });
+
+  const extraUsers = Math.max(0, targets.users - 1);
+  if (extraUsers > 0) {
+    const usersData = Array.from({ length: extraUsers }, (_, index) => ({
+      tenantId: tenant.id,
+      username: `demo_user_${String(index + 1).padStart(3, "0")}`,
+      password: hashedPassword,
+      role: "user" as const,
+    }));
+    await createManyInChunks(usersData, 500, (chunk) =>
+      prisma.user.createMany({ data: chunk }),
+    );
+  }
+
+  const extraCategories = Math.max(0, targets.categories - 1);
+  if (extraCategories > 0) {
+    const categoriesData = Array.from(
+      { length: extraCategories },
+      (_, index) => ({
+        tenantId: tenant.id,
+        name: `Demo Category ${String(index + 2).padStart(3, "0")}`,
+        description: "Auto-seeded demo category",
+      }),
+    );
+    await createManyInChunks(categoriesData, 500, (chunk) =>
+      prisma.category.createMany({ data: chunk }),
+    );
+  }
+
+  const extraLocations = Math.max(0, targets.locations - 1);
+  if (extraLocations > 0) {
+    const locationsData = Array.from(
+      { length: extraLocations },
+      (_, index) => ({
+        tenantId: tenant.id,
+        name: `Demo Location ${String(index + 1).padStart(2, "0")}`,
+        type: "SHOWROOM" as const,
+        isActive: true,
+        isDefaultWarehouse: false,
+      }),
+    );
+    await createManyInChunks(locationsData, 200, (chunk) =>
+      prisma.location.createMany({ data: chunk }),
+    );
+  }
+
+  if (targets.members > 0) {
+    const membersData = Array.from({ length: targets.members }, (_, index) => ({
+      tenantId: tenant.id,
+      phone: `98${String(index + 1).padStart(8, "0")}`,
+      name: `Demo Member ${String(index + 1).padStart(5, "0")}`,
+      isActive: true,
+      memberStatus: "ACTIVE" as const,
+      totalSales: 0,
+    }));
+    await createManyInChunks(membersData, 1000, (chunk) =>
+      prisma.member.createMany({ data: chunk }),
+    );
+  }
+
+  if (targets.products > 0) {
+    const productsData = Array.from(
+      { length: targets.products },
+      (_, index) => ({
+        tenantId: tenant.id,
+        imsCode: `DEMO-P${String(index + 1).padStart(5, "0")}`,
+        name: `Demo Product ${String(index + 1).padStart(5, "0")}`,
+        categoryId: primaryCategory.id,
+        costPrice: 100 + (index % 20),
+        mrp: 200 + (index % 20),
+        finalSp: 180 + (index % 20),
+        createdById: demoUser.id,
+      }),
+    );
+    await createManyInChunks(productsData, 500, (chunk) =>
+      prisma.product.createMany({ data: chunk }),
+    );
+  }
+
+  if (targets.contacts > 0) {
+    const contactsData = Array.from(
+      { length: targets.contacts },
+      (_, index) => ({
+        firstName: `DemoContact${String(index + 1).padStart(4, "0")}`,
+        email: `demo.contact.${index + 1}@example.com`,
+        phone: `97${String(index + 1).padStart(8, "0")}`,
+        ownedById: demoUser.id,
+        createdById: demoUser.id,
+      }),
+    );
+    await createManyInChunks(contactsData, 1000, (chunk) =>
+      prisma.contact.createMany({ data: chunk }),
+    );
+  }
+
+  const [
+    usersCount,
+    productsCount,
+    locationsCount,
+    membersCount,
+    categoriesCount,
+    contactsCount,
+  ] = await Promise.all([
+    prisma.user.count({ where: { tenantId: tenant.id } }),
+    prisma.product.count({ where: { tenantId: tenant.id, deletedAt: null } }),
+    prisma.location.count({ where: { tenantId: tenant.id, deletedAt: null } }),
+    prisma.member.count({ where: { tenantId: tenant.id, deletedAt: null } }),
+    prisma.category.count({ where: { tenantId: tenant.id, deletedAt: null } }),
+    prisma.contact.count({
+      where: { owner: { tenantId: tenant.id }, deletedAt: null },
+    }),
+  ]);
+
+  console.log(
+    `✅ Created demo tenant "${DEMO_TENANT_SLUG}" (BUSINESS) near limits: users ${usersCount}/${DEMO_BUSINESS_LIMITS.maxUsers}, products ${productsCount}/${DEMO_BUSINESS_LIMITS.maxProducts}, locations ${locationsCount}/${DEMO_BUSINESS_LIMITS.maxLocations}, members ${membersCount}/${DEMO_BUSINESS_LIMITS.maxMembers}, categories ${categoriesCount}/${DEMO_BUSINESS_LIMITS.maxCategories}, contacts ${contactsCount}/${DEMO_BUSINESS_LIMITS.maxContacts}. Login -> X-Tenant-Slug: ${DEMO_TENANT_SLUG}, username: ${DEMO_TENANT_USERNAME}, password: ${DEMO_TENANT_PASSWORD}`,
+  );
+}
+
 async function deleteTenantBySlug(slug: string) {
   const existing = await prisma.tenant.findUnique({ where: { slug } });
   if (!existing) return;
   const tid = existing.id;
+  const tenantUserIds = await prisma.user
+    .findMany({ where: { tenantId: tid }, select: { id: true } })
+    .then((rows) => rows.map((row) => row.id));
   await prisma.transferLog.deleteMany({
     where: { transfer: { tenantId: tid } },
   });
@@ -1151,6 +1368,36 @@ async function deleteTenantBySlug(slug: string) {
   await prisma.promoCode.deleteMany({ where: { tenantId: tid } });
   await prisma.tenantPayment.deleteMany({ where: { tenantId: tid } });
   await prisma.subscription.deleteMany({ where: { tenantId: tid } });
+  if (tenantUserIds.length) {
+    const byUserIds = { in: tenantUserIds };
+    await prisma.contactNote.deleteMany({
+      where: { createdById: byUserIds },
+    });
+    await prisma.contactAttachment.deleteMany({
+      where: { uploadedById: byUserIds },
+    });
+    await prisma.contactCommunication.deleteMany({
+      where: { createdById: byUserIds },
+    });
+    await prisma.task.deleteMany({ where: { assignedToId: byUserIds } });
+    await prisma.activity.deleteMany({ where: { createdById: byUserIds } });
+    await prisma.deal.deleteMany({
+      where: { OR: [{ assignedToId: byUserIds }, { createdById: byUserIds }] },
+    });
+    await prisma.lead.deleteMany({
+      where: { OR: [{ assignedToId: byUserIds }, { createdById: byUserIds }] },
+    });
+    await prisma.contactTagLink.deleteMany({
+      where: {
+        contact: {
+          OR: [{ ownedById: byUserIds }, { createdById: byUserIds }],
+        },
+      },
+    });
+    await prisma.contact.deleteMany({
+      where: { OR: [{ ownedById: byUserIds }, { createdById: byUserIds }] },
+    });
+  }
   await prisma.user.deleteMany({ where: { tenantId: tid } });
   await prisma.tenant.delete({ where: { id: tid } });
 }
@@ -1396,6 +1643,7 @@ async function main() {
     await seedTestTenant("test1", "Test Tenant 1", TEST_TENANT_PASSWORD);
     await seedTestTenant("test2", "Test Tenant 2", TEST_TENANT_PASSWORD);
     await seedRubyTenant();
+    await seedDemoTenantNearLimit();
   }
 
   // 5. Plan Limits (upsert so re-running seed updates existing rows)
