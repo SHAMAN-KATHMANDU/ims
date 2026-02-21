@@ -39,6 +39,7 @@ import activityRouter from "@/modules/activities/activity.router";
 import notificationRouter from "@/modules/notifications/notification.router";
 import crmRouter from "@/modules/crm/crm.router";
 import trashRouter from "@/modules/trash/trash.router";
+import usageRouter from "@/modules/usage/usage.router";
 
 const router = Router();
 
@@ -90,5 +91,6 @@ router.use("/activities", activityRouter);
 router.use("/notifications", notificationRouter);
 router.use("/crm", crmRouter);
 router.use("/trash", trashRouter);
+router.use("/usage", usageRouter);
 
 export default router;

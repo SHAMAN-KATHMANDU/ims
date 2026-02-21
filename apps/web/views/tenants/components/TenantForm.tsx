@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import type { Tenant, PlanTier, SubscriptionStatus } from "@/hooks/useTenant";
 
-const PLANS: PlanTier[] = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+const PLANS: PlanTier[] = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
 const STATUSES: SubscriptionStatus[] = [
   "TRIAL",
   "ACTIVE",

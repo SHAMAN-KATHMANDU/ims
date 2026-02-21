@@ -38,6 +38,15 @@ router.delete(
 );
 
 // ============================================
+// PLAN REGISTRY CRUD
+// ============================================
+router.get("/plans", asyncHandler(platformController.listPlans));
+router.get("/plans/:id", asyncHandler(platformController.getPlan));
+router.post("/plans", asyncHandler(platformController.createPlan));
+router.put("/plans/:id", asyncHandler(platformController.updatePlan));
+router.delete("/plans/:id", asyncHandler(platformController.deletePlan));
+
+// ============================================
 // PLAN LIMITS CRUD
 // ============================================
 router.get("/plan-limits", asyncHandler(platformController.listPlanLimits));
@@ -56,6 +65,10 @@ router.delete(
 // PRICING PLANS CRUD
 // ============================================
 router.get("/pricing-plans", asyncHandler(platformController.listPricingPlans));
+router.post(
+  "/pricing-plans/initialize-defaults",
+  asyncHandler(platformController.initializeDefaultPricingPlans),
+);
 router.get(
   "/pricing-plans/:tier/:billingCycle",
   asyncHandler(platformController.getPricingPlan),
@@ -113,8 +126,81 @@ router.delete(
 );
 
 // ============================================
-// PLATFORM STATS
+// ADD-ON PRICING CRUD
+// ============================================
+router.get(
+  "/add-on-pricing",
+  asyncHandler(platformController.listAddOnPricing),
+);
+router.get(
+  "/add-on-pricing/:id",
+  asyncHandler(platformController.getAddOnPricing),
+);
+router.post(
+  "/add-on-pricing",
+  asyncHandler(platformController.createAddOnPricing),
+);
+router.put(
+  "/add-on-pricing/:id",
+  asyncHandler(platformController.updateAddOnPricing),
+);
+router.delete(
+  "/add-on-pricing/:id",
+  asyncHandler(platformController.deleteAddOnPricing),
+);
+
+// ============================================
+// TENANT ADD-ONS MANAGEMENT
+// ============================================
+router.get(
+  "/tenant-add-ons",
+  asyncHandler(platformController.listTenantAddOns),
+);
+router.get(
+  "/tenant-add-ons/:id",
+  asyncHandler(platformController.getTenantAddOn),
+);
+router.post(
+  "/tenant-add-ons",
+  asyncHandler(platformController.createTenantAddOn),
+);
+router.put(
+  "/tenant-add-ons/:id",
+  asyncHandler(platformController.updateTenantAddOn),
+);
+router.patch(
+  "/tenant-add-ons/:id/approve",
+  asyncHandler(platformController.approveTenantAddOn),
+);
+router.patch(
+  "/tenant-add-ons/:id/cancel",
+  asyncHandler(platformController.cancelTenantAddOn),
+);
+router.delete(
+  "/tenant-add-ons/:id",
+  asyncHandler(platformController.deleteTenantAddOn),
+);
+
+// ============================================
+// PLATFORM STATS & ANALYTICS
 // ============================================
 router.get("/stats", asyncHandler(platformController.getStats));
+router.get("/analytics", asyncHandler(platformController.getAnalytics));
+
+// ============================================
+// TENANT DETAIL (enhanced with usage/add-ons)
+// ============================================
+router.get(
+  "/tenants/:id/detail",
+  asyncHandler(platformController.getTenantDetail),
+);
+
+// ============================================
+// SUBSCRIPTION LIFECYCLE
+// ============================================
+router.post(
+  "/subscriptions/check-expiry",
+  asyncHandler(platformController.checkSubscriptionExpiry),
+);
 
 export default router;

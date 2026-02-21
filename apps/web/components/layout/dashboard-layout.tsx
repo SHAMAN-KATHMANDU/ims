@@ -5,6 +5,7 @@ import type React from "react";
 import { useEffect } from "react";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
+import { PlanLimitDialog } from "@/components/plan-limit-dialog";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useSidebarStore } from "@/stores/sidebar-store";
 
@@ -36,6 +37,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+      <PlanLimitDialog />
     </div>
   );
 }

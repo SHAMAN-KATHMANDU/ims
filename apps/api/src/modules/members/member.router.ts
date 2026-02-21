@@ -1,6 +1,7 @@
 import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import memberController from "@/modules/members/member.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -46,6 +47,7 @@ memberRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanLimits("members"),
   asyncHandler(memberController.createMember),
 );
 

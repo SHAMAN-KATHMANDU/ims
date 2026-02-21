@@ -1,6 +1,7 @@
 import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import categoryController from "@/modules/categories/category.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -54,6 +55,7 @@ categoryRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanLimits("categories"),
   asyncHandler(categoryController.createCategory),
 );
 

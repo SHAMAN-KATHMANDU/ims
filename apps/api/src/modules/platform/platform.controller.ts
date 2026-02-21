@@ -471,8 +471,389 @@ class PlatformController {
     }
   }
 
+  /**
+   * Platform analytics with revenue, growth, and distribution data.
+   */
+  async getAnalytics(req: Request, res: Response) {
+    try {
+      const now = new Date();
+      const sixMonthsAgo = new Date(now);
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+
+      const [
+        totalRevenue,
+        pendingPayments,
+        completedPayments,
+        failedPayments,
+        activeSubscriptions,
+        trialTenants,
+        suspendedTenants,
+        cancelledTenants,
+        planDistribution,
+        gatewayBreakdown,
+        recentPayments,
+        monthlyRevenue,
+        tenantGrowth,
+        plans,
+      ] = await Promise.all([
+        basePrisma.tenantPayment.aggregate({
+          _sum: { amount: true },
+          where: { status: "COMPLETED" },
+        }),
+        basePrisma.tenantPayment.count({ where: { status: "PENDING" } }),
+        basePrisma.tenantPayment.count({ where: { status: "COMPLETED" } }),
+        basePrisma.tenantPayment.count({ where: { status: "FAILED" } }),
+        basePrisma.subscription.count({ where: { status: "ACTIVE" } }),
+        basePrisma.tenant.count({ where: { subscriptionStatus: "TRIAL" } }),
+        basePrisma.tenant.count({ where: { subscriptionStatus: "SUSPENDED" } }),
+        basePrisma.tenant.count({ where: { subscriptionStatus: "CANCELLED" } }),
+        basePrisma.tenant.groupBy({
+          by: ["plan"],
+          _count: true,
+          where: { isActive: true },
+        }),
+        basePrisma.tenantPayment.groupBy({
+          by: ["gateway"],
+          _count: true,
+          _sum: { amount: true },
+          where: { status: "COMPLETED" },
+        }),
+        basePrisma.tenantPayment.findMany({
+          take: 10,
+          orderBy: { createdAt: "desc" },
+          include: {
+            tenant: { select: { name: true, slug: true } },
+          },
+        }),
+        basePrisma.$queryRaw`
+          SELECT
+            TO_CHAR(created_at, 'YYYY-MM') as month,
+            SUM(amount) as revenue,
+            COUNT(*) as count
+          FROM tenant_payments
+          WHERE status = 'COMPLETED' AND created_at >= ${sixMonthsAgo}
+          GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+          ORDER BY month ASC
+        ` as Promise<Array<{ month: string; revenue: string; count: string }>>,
+        basePrisma.$queryRaw`
+          SELECT
+            TO_CHAR(created_at, 'YYYY-MM') as month,
+            COUNT(*) as count
+          FROM tenants
+          WHERE created_at >= ${sixMonthsAgo}
+          GROUP BY TO_CHAR(created_at, 'YYYY-MM')
+          ORDER BY month ASC
+        ` as Promise<Array<{ month: string; count: string }>>,
+        basePrisma.plan.findMany({ orderBy: { rank: "asc" } }),
+      ]);
+
+      res.status(200).json({
+        revenue: {
+          total: totalRevenue._sum.amount ?? 0,
+          monthly: monthlyRevenue.map((m) => ({
+            month: m.month,
+            revenue: Number(m.revenue),
+            count: Number(m.count),
+          })),
+        },
+        payments: {
+          pending: pendingPayments,
+          completed: completedPayments,
+          failed: failedPayments,
+          byGateway: gatewayBreakdown.map((g) => ({
+            gateway: g.gateway,
+            count: g._count,
+            total: g._sum.amount ?? 0,
+          })),
+          recent: recentPayments,
+        },
+        subscriptions: {
+          active: activeSubscriptions,
+          trial: trialTenants,
+          suspended: suspendedTenants,
+          cancelled: cancelledTenants,
+        },
+        tenants: {
+          growth: tenantGrowth.map((t) => ({
+            month: t.month,
+            count: Number(t.count),
+          })),
+          planDistribution: planDistribution.map((p) => ({
+            plan: p.plan,
+            count: p._count,
+          })),
+        },
+        plans,
+      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Platform analytics error");
+    }
+  }
+
+  /**
+   * Enhanced tenant detail with usage summary and add-ons.
+   */
+  async getTenantDetail(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { id },
+        include: {
+          users: {
+            select: { id: true, username: true, role: true, lastLoginAt: true },
+            orderBy: { createdAt: "asc" },
+          },
+          _count: {
+            select: {
+              users: true,
+              products: true,
+              locations: true,
+              members: true,
+              sales: true,
+              transfers: true,
+              categories: true,
+            },
+          },
+          subscriptions: {
+            orderBy: { createdAt: "desc" },
+            take: 5,
+          },
+          payments: {
+            orderBy: { createdAt: "desc" },
+            take: 10,
+            include: {
+              subscription: {
+                select: { plan: true, billingCycle: true },
+              },
+            },
+          },
+          addOns: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      });
+
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      const contactCount = await basePrisma.contact.count({
+        where: { owner: { tenantId: id }, deletedAt: null },
+      });
+
+      res.status(200).json({
+        tenant: {
+          ...tenant,
+          _count: { ...tenant._count, contacts: contactCount },
+        },
+      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get tenant detail error");
+    }
+  }
+
+  /**
+   * Check and update subscription statuses based on period end dates.
+   */
+  async checkSubscriptionExpiry(req: Request, res: Response) {
+    try {
+      const now = new Date();
+
+      const expiredActive = await basePrisma.subscription.updateMany({
+        where: {
+          status: "ACTIVE",
+          currentPeriodEnd: { lt: now },
+          gracePeriodEnd: { gte: now },
+        },
+        data: { status: "PAST_DUE" },
+      });
+
+      const suspendedPastDue = await basePrisma.subscription.updateMany({
+        where: {
+          status: "PAST_DUE",
+          OR: [
+            { gracePeriodEnd: { lt: now } },
+            {
+              gracePeriodEnd: null,
+              currentPeriodEnd: {
+                lt: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000),
+              },
+            },
+          ],
+        },
+        data: { status: "SUSPENDED" },
+      });
+
+      const expiredTrials = await basePrisma.subscription.updateMany({
+        where: {
+          status: "TRIAL",
+          trialEndsAt: { lt: now },
+        },
+        data: { status: "SUSPENDED" },
+      });
+
+      for (const sub of await basePrisma.subscription.findMany({
+        where: { status: { in: ["PAST_DUE", "SUSPENDED"] } },
+        select: { tenantId: true, status: true },
+      })) {
+        await basePrisma.tenant.update({
+          where: { id: sub.tenantId },
+          data: { subscriptionStatus: sub.status as any },
+        });
+      }
+
+      res.status(200).json({
+        message: "Subscription expiry check completed",
+        updated: {
+          activeToPastDue: expiredActive.count,
+          pastDueToSuspended: suspendedPastDue.count,
+          trialToSuspended: expiredTrials.count,
+        },
+      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Subscription expiry check error",
+      );
+    }
+  }
+
   // ============================================
-  // PLAN LIMITS CRUD
+  // PLAN REGISTRY CRUD
+  // ============================================
+
+  async listPlans(req: Request, res: Response) {
+    try {
+      const plans = await basePrisma.plan.findMany({
+        orderBy: { rank: "asc" },
+      });
+      res.status(200).json({ plans });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List plans error");
+    }
+  }
+
+  async getPlan(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const plan = await basePrisma.plan.findUnique({ where: { id } });
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      res.status(200).json({ plan });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get plan error");
+    }
+  }
+
+  async createPlan(req: Request, res: Response) {
+    try {
+      const { name, slug, tier, rank, isDefault, isActive, description } =
+        req.body;
+
+      if (!name || !slug || !tier) {
+        return res
+          .status(400)
+          .json({ message: "name, slug, and tier are required" });
+      }
+
+      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      if (!validTiers.includes(tier)) {
+        return res.status(400).json({
+          message: `tier must be one of: ${validTiers.join(", ")}`,
+        });
+      }
+
+      const plan = await basePrisma.plan.create({
+        data: {
+          name,
+          slug: slug.toLowerCase().trim(),
+          tier: tier as any,
+          rank: rank ?? 0,
+          isDefault: isDefault ?? false,
+          isActive: isActive !== undefined ? isActive : true,
+          description: description ?? null,
+        },
+      });
+
+      res.status(201).json({ message: "Plan created successfully", plan });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
+          message: "A plan with this name, slug, or tier already exists",
+        });
+      }
+      return sendControllerError(req, res, error, "Create plan error");
+    }
+  }
+
+  async updatePlan(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { name, slug, rank, isDefault, isActive, description } = req.body;
+
+      const plan = await basePrisma.plan.update({
+        where: { id },
+        data: {
+          ...(name !== undefined && { name }),
+          ...(slug !== undefined && { slug: slug.toLowerCase().trim() }),
+          ...(rank !== undefined && { rank }),
+          ...(isDefault !== undefined && { isDefault }),
+          ...(isActive !== undefined && { isActive }),
+          ...(description !== undefined && { description }),
+        },
+      });
+
+      res.status(200).json({ message: "Plan updated successfully", plan });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+      if (e.code === "P2002") {
+        return res.status(409).json({
+          message: "A plan with this name or slug already exists",
+        });
+      }
+      return sendControllerError(req, res, error, "Update plan error");
+    }
+  }
+
+  async deletePlan(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const plan = await basePrisma.plan.findUnique({ where: { id } });
+      if (!plan) {
+        return res.status(404).json({ message: "Plan not found" });
+      }
+
+      const tenantCount = await basePrisma.tenant.count({
+        where: { plan: plan.tier },
+      });
+      if (tenantCount > 0) {
+        return res.status(400).json({
+          message: `Cannot delete plan "${plan.name}" — ${tenantCount} tenant(s) are currently on this plan. Deactivate it instead.`,
+        });
+      }
+
+      await basePrisma.plan.update({
+        where: { id },
+        data: { isActive: false },
+      });
+
+      res.status(200).json({ message: "Plan deactivated successfully" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete plan error");
+    }
+  }
+
+  // ============================================
+  // PLAN LIMITS CRUD (updated to include maxCategories/maxContacts)
   // ============================================
 
   /**
@@ -529,6 +910,8 @@ class PlatformController {
         maxProducts,
         maxLocations,
         maxMembers,
+        maxCategories,
+        maxContacts,
         bulkUpload,
         analytics,
         promoManagement,
@@ -554,6 +937,8 @@ class PlatformController {
           ...(maxProducts !== undefined && { maxProducts }),
           ...(maxLocations !== undefined && { maxLocations }),
           ...(maxMembers !== undefined && { maxMembers }),
+          ...(maxCategories !== undefined && { maxCategories }),
+          ...(maxContacts !== undefined && { maxContacts }),
           ...(bulkUpload !== undefined && { bulkUpload }),
           ...(analytics !== undefined && { analytics }),
           ...(promoManagement !== undefined && { promoManagement }),
@@ -566,6 +951,8 @@ class PlatformController {
           maxProducts: maxProducts ?? 100,
           maxLocations: maxLocations ?? 2,
           maxMembers: maxMembers ?? 50,
+          maxCategories: maxCategories ?? 20,
+          maxContacts: maxContacts ?? 100,
           bulkUpload: bulkUpload ?? false,
           analytics: analytics ?? false,
           promoManagement: promoManagement ?? false,
@@ -631,13 +1018,93 @@ class PlatformController {
   }
 
   /**
+   * Initialize default pricing plans (upsert). Idempotent.
+   */
+  async initializeDefaultPricingPlans(req: Request, res: Response) {
+    try {
+      const pricingPlansData = [
+        {
+          tier: "STARTER" as const,
+          billingCycle: "MONTHLY" as const,
+          price: 2999,
+        },
+        {
+          tier: "STARTER" as const,
+          billingCycle: "ANNUAL" as const,
+          price: 29990,
+        },
+        {
+          tier: "PROFESSIONAL" as const,
+          billingCycle: "MONTHLY" as const,
+          price: 6999,
+        },
+        {
+          tier: "PROFESSIONAL" as const,
+          billingCycle: "ANNUAL" as const,
+          price: 69990,
+        },
+        {
+          tier: "BUSINESS" as const,
+          billingCycle: "MONTHLY" as const,
+          price: 14999,
+        },
+        {
+          tier: "BUSINESS" as const,
+          billingCycle: "ANNUAL" as const,
+          price: 149990,
+        },
+        {
+          tier: "ENTERPRISE" as const,
+          billingCycle: "MONTHLY" as const,
+          price: 0,
+        },
+        {
+          tier: "ENTERPRISE" as const,
+          billingCycle: "ANNUAL" as const,
+          price: 0,
+        },
+      ];
+
+      for (const pp of pricingPlansData) {
+        await basePrisma.pricingPlan.upsert({
+          where: {
+            tier_billingCycle: { tier: pp.tier, billingCycle: pp.billingCycle },
+          },
+          update: { price: pp.price },
+          create: {
+            tier: pp.tier,
+            billingCycle: pp.billingCycle,
+            price: pp.price,
+            isActive: true,
+          },
+        });
+      }
+
+      const pricingPlans = await basePrisma.pricingPlan.findMany({
+        orderBy: [{ tier: "asc" }, { billingCycle: "asc" }],
+      });
+      res.status(200).json({
+        message: "Default pricing plans initialized",
+        pricingPlans,
+      });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Initialize default pricing plans error",
+      );
+    }
+  }
+
+  /**
    * Get a pricing plan by tier and billing cycle.
    */
   async getPricingPlan(req: Request, res: Response) {
     try {
       const { tier, billingCycle } = req.params;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
       const validCycles = ["MONTHLY", "ANNUAL"];
 
       if (!validTiers.includes(tier)) {
@@ -684,7 +1151,7 @@ class PlatformController {
         });
       }
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
       const validCycles = ["MONTHLY", "ANNUAL"];
 
       if (!validTiers.includes(tier)) {
@@ -739,7 +1206,7 @@ class PlatformController {
       const { tier, billingCycle } = req.params;
       const { price, originalPrice, isActive } = req.body;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
       const validCycles = ["MONTHLY", "ANNUAL"];
 
       if (!validTiers.includes(tier)) {
@@ -794,7 +1261,7 @@ class PlatformController {
     try {
       const { tier, billingCycle } = req.params;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
+      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
       const validCycles = ["MONTHLY", "ANNUAL"];
 
       if (!validTiers.includes(tier)) {
@@ -1390,6 +1857,359 @@ class PlatformController {
         error,
         "Delete tenant payment error",
       );
+    }
+  }
+  // ============================================
+  // ADD-ON PRICING CRUD
+  // ============================================
+
+  async listAddOnPricing(req: Request, res: Response) {
+    try {
+      const pricing = await basePrisma.addOnPricing.findMany({
+        orderBy: [{ type: "asc" }, { tier: "asc" }, { billingCycle: "asc" }],
+      });
+      res.status(200).json({ pricing });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List add-on pricing error");
+    }
+  }
+
+  async getAddOnPricing(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const pricing = await basePrisma.addOnPricing.findUnique({
+        where: { id },
+      });
+      if (!pricing) {
+        return res.status(404).json({ message: "Add-on pricing not found" });
+      }
+      res.status(200).json({ pricing });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get add-on pricing error");
+    }
+  }
+
+  async createAddOnPricing(req: Request, res: Response) {
+    try {
+      const {
+        type,
+        tier,
+        billingCycle,
+        unitPrice,
+        minQuantity,
+        maxQuantity,
+        isActive,
+      } = req.body;
+
+      if (!type || unitPrice === undefined) {
+        return res
+          .status(400)
+          .json({ message: "type and unitPrice are required" });
+      }
+
+      const validTypes = [
+        "EXTRA_USER",
+        "EXTRA_PRODUCT",
+        "EXTRA_LOCATION",
+        "EXTRA_MEMBER",
+        "EXTRA_CATEGORY",
+        "EXTRA_CONTACT",
+      ];
+      if (!validTypes.includes(type)) {
+        return res.status(400).json({
+          message: `type must be one of: ${validTypes.join(", ")}`,
+        });
+      }
+
+      const pricing = await basePrisma.addOnPricing.create({
+        data: {
+          type: type as any,
+          tier: tier ? (tier as any) : null,
+          billingCycle: billingCycle ? (billingCycle as any) : "MONTHLY",
+          unitPrice,
+          minQuantity: minQuantity ?? 1,
+          maxQuantity: maxQuantity ?? null,
+          isActive: isActive !== undefined ? isActive : true,
+        },
+      });
+
+      res
+        .status(201)
+        .json({ message: "Add-on pricing created successfully", pricing });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2002") {
+        return res.status(409).json({
+          message:
+            "Add-on pricing with this type, tier, and billing cycle already exists",
+        });
+      }
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Create add-on pricing error",
+      );
+    }
+  }
+
+  async updateAddOnPricing(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const { unitPrice, minQuantity, maxQuantity, isActive } = req.body;
+
+      const pricing = await basePrisma.addOnPricing.update({
+        where: { id },
+        data: {
+          ...(unitPrice !== undefined && { unitPrice }),
+          ...(minQuantity !== undefined && { minQuantity }),
+          ...(maxQuantity !== undefined && { maxQuantity }),
+          ...(isActive !== undefined && { isActive }),
+        },
+      });
+
+      res
+        .status(200)
+        .json({ message: "Add-on pricing updated successfully", pricing });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
+        return res.status(404).json({ message: "Add-on pricing not found" });
+      }
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Update add-on pricing error",
+      );
+    }
+  }
+
+  async deleteAddOnPricing(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      await basePrisma.addOnPricing.delete({ where: { id } });
+      res.status(200).json({ message: "Add-on pricing deleted successfully" });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
+        return res.status(404).json({ message: "Add-on pricing not found" });
+      }
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Delete add-on pricing error",
+      );
+    }
+  }
+
+  // ============================================
+  // TENANT ADD-ONS MANAGEMENT
+  // ============================================
+
+  async listTenantAddOns(req: Request, res: Response) {
+    try {
+      const { tenantId, status } = req.query;
+
+      const addOns = await basePrisma.tenantAddOn.findMany({
+        where: {
+          ...(tenantId && { tenantId: tenantId as string }),
+          ...(status && { status: status as any }),
+        },
+        include: {
+          tenant: { select: { id: true, name: true, slug: true } },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      res.status(200).json({ addOns });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List tenant add-ons error");
+    }
+  }
+
+  async getTenantAddOn(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const addOn = await basePrisma.tenantAddOn.findUnique({
+        where: { id },
+        include: {
+          tenant: { select: { id: true, name: true, slug: true } },
+        },
+      });
+
+      if (!addOn) {
+        return res.status(404).json({ message: "Tenant add-on not found" });
+      }
+
+      res.status(200).json({ addOn });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get tenant add-on error");
+    }
+  }
+
+  async createTenantAddOn(req: Request, res: Response) {
+    try {
+      const {
+        tenantId,
+        type,
+        quantity,
+        status: addOnStatus,
+        periodStart,
+        periodEnd,
+        paymentId,
+        notes,
+      } = req.body;
+
+      if (!tenantId || !type) {
+        return res
+          .status(400)
+          .json({ message: "tenantId and type are required" });
+      }
+
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { id: tenantId },
+      });
+      if (!tenant) {
+        return res.status(404).json({ message: "Tenant not found" });
+      }
+
+      const addOn = await basePrisma.tenantAddOn.create({
+        data: {
+          tenantId,
+          type: type as any,
+          quantity: quantity ?? 1,
+          status: addOnStatus ? (addOnStatus as any) : "ACTIVE",
+          periodStart: periodStart ? new Date(periodStart) : new Date(),
+          periodEnd: periodEnd ? new Date(periodEnd) : null,
+          paymentId: paymentId ?? null,
+          notes: notes ?? null,
+          approvedAt: new Date(),
+          approvedBy: req.user?.id ?? null,
+        },
+      });
+
+      res
+        .status(201)
+        .json({ message: "Tenant add-on created successfully", addOn });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Create tenant add-on error");
+    }
+  }
+
+  async updateTenantAddOn(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      const {
+        quantity,
+        status: addOnStatus,
+        periodStart,
+        periodEnd,
+        paymentId,
+        notes,
+      } = req.body;
+
+      const addOn = await basePrisma.tenantAddOn.update({
+        where: { id },
+        data: {
+          ...(quantity !== undefined && { quantity }),
+          ...(addOnStatus !== undefined && { status: addOnStatus as any }),
+          ...(periodStart !== undefined && {
+            periodStart: periodStart ? new Date(periodStart) : null,
+          }),
+          ...(periodEnd !== undefined && {
+            periodEnd: periodEnd ? new Date(periodEnd) : null,
+          }),
+          ...(paymentId !== undefined && { paymentId }),
+          ...(notes !== undefined && { notes }),
+        },
+      });
+
+      res
+        .status(200)
+        .json({ message: "Tenant add-on updated successfully", addOn });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
+        return res.status(404).json({ message: "Tenant add-on not found" });
+      }
+      return sendControllerError(req, res, error, "Update tenant add-on error");
+    }
+  }
+
+  async approveTenantAddOn(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const existing = await basePrisma.tenantAddOn.findUnique({
+        where: { id },
+      });
+      if (!existing) {
+        return res.status(404).json({ message: "Tenant add-on not found" });
+      }
+      if (existing.status !== "PENDING") {
+        return res.status(400).json({
+          message: `Cannot approve add-on with status "${existing.status}". Only PENDING add-ons can be approved.`,
+        });
+      }
+
+      const addOn = await basePrisma.tenantAddOn.update({
+        where: { id },
+        data: {
+          status: "ACTIVE",
+          approvedAt: new Date(),
+          approvedBy: req.user?.id ?? null,
+          periodStart: existing.periodStart ?? new Date(),
+        },
+      });
+
+      res
+        .status(200)
+        .json({ message: "Tenant add-on approved successfully", addOn });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Approve tenant add-on error",
+      );
+    }
+  }
+
+  async cancelTenantAddOn(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+
+      const addOn = await basePrisma.tenantAddOn.update({
+        where: { id },
+        data: { status: "CANCELLED" },
+      });
+
+      res
+        .status(200)
+        .json({ message: "Tenant add-on cancelled successfully", addOn });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
+        return res.status(404).json({ message: "Tenant add-on not found" });
+      }
+      return sendControllerError(req, res, error, "Cancel tenant add-on error");
+    }
+  }
+
+  async deleteTenantAddOn(req: Request, res: Response) {
+    try {
+      const { id } = req.params;
+      await basePrisma.tenantAddOn.delete({ where: { id } });
+      res.status(200).json({ message: "Tenant add-on deleted successfully" });
+    } catch (error: unknown) {
+      const e = error as { code?: string };
+      if (e.code === "P2025") {
+        return res.status(404).json({ message: "Tenant add-on not found" });
+      }
+      return sendControllerError(req, res, error, "Delete tenant add-on error");
     }
   }
 }

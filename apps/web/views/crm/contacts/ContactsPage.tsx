@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { LimitGuard } from "@/components/limit-guard";
 import {
   useContactsPaginated,
   useContact,
@@ -126,12 +127,14 @@ export function ContactsPage() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Link href={`${basePath}/crm/contacts/new`}>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Contact
-            </Button>
-          </Link>
+          <LimitGuard resource="contacts">
+            <Link href={`${basePath}/crm/contacts/new`}>
+              <Button>
+                <Plus className="h-4 w-4 mr-2" />
+                Add Contact
+              </Button>
+            </Link>
+          </LimitGuard>
         </div>
       </div>
 

@@ -1342,6 +1342,8 @@ async function main() {
       },
     });
     console.log("✅ Created system tenant (for platform admin)");
+  } else {
+    console.log("⏭️  System tenant already exists");
   }
 
   // 2. Platform admin user
@@ -1364,7 +1366,7 @@ async function main() {
     console.log(`✅ Created platform admin: ${platformAdmin.username}`);
   } else {
     console.log(
-      `⚠️  Platform admin "${PLATFORM_ADMIN_USERNAME}" already exists.`,
+      `⏭️  Platform admin "${PLATFORM_ADMIN_USERNAME}" already exists`,
     );
   }
 
@@ -1396,7 +1398,219 @@ async function main() {
     await seedRubyTenant();
   }
 
-  // 5. Default CRM pipeline (required for Deals / Pipeline view)
+  // 5. Plan Limits (upsert so re-running seed updates existing rows)
+  const planLimitsData = [
+    {
+      tier: "STARTER" as const,
+      maxUsers: 3,
+      maxProducts: 100,
+      maxLocations: 2,
+      maxMembers: 500,
+      maxCategories: 20,
+      maxContacts: 100,
+      bulkUpload: false,
+      analytics: false,
+      promoManagement: false,
+      auditLogs: false,
+      apiAccess: false,
+    },
+    {
+      tier: "PROFESSIONAL" as const,
+      maxUsers: 10,
+      maxProducts: 1000,
+      maxLocations: 10,
+      maxMembers: 5000,
+      maxCategories: 100,
+      maxContacts: 1000,
+      bulkUpload: true,
+      analytics: true,
+      promoManagement: true,
+      auditLogs: false,
+      apiAccess: false,
+    },
+    {
+      tier: "BUSINESS" as const,
+      maxUsers: 25,
+      maxProducts: 5000,
+      maxLocations: 25,
+      maxMembers: 25000,
+      maxCategories: 500,
+      maxContacts: 5000,
+      bulkUpload: true,
+      analytics: true,
+      promoManagement: true,
+      auditLogs: true,
+      apiAccess: true,
+    },
+    {
+      tier: "ENTERPRISE" as const,
+      maxUsers: -1,
+      maxProducts: -1,
+      maxLocations: -1,
+      maxMembers: -1,
+      maxCategories: -1,
+      maxContacts: -1,
+      bulkUpload: true,
+      analytics: true,
+      promoManagement: true,
+      auditLogs: true,
+      apiAccess: true,
+    },
+  ];
+
+  for (const pl of planLimitsData) {
+    await prisma.planLimit.upsert({
+      where: { tier: pl.tier },
+      update: {
+        maxUsers: pl.maxUsers,
+        maxProducts: pl.maxProducts,
+        maxLocations: pl.maxLocations,
+        maxMembers: pl.maxMembers,
+        maxCategories: pl.maxCategories,
+        maxContacts: pl.maxContacts,
+        bulkUpload: pl.bulkUpload,
+        analytics: pl.analytics,
+        promoManagement: pl.promoManagement,
+        auditLogs: pl.auditLogs,
+        apiAccess: pl.apiAccess,
+      },
+      create: pl,
+    });
+  }
+  console.log("✅ Upserted plan limits for all tiers");
+
+  // 5b. Plan registry (metadata for each tier)
+  const plansData = [
+    {
+      name: "Starter",
+      slug: "starter",
+      tier: "STARTER" as const,
+      rank: 0,
+      isDefault: true,
+      description:
+        "For small businesses getting started with inventory management",
+    },
+    {
+      name: "Professional",
+      slug: "professional",
+      tier: "PROFESSIONAL" as const,
+      rank: 1,
+      isDefault: false,
+      description:
+        "For growing businesses with multiple locations and advanced features",
+    },
+    {
+      name: "Business",
+      slug: "business",
+      tier: "BUSINESS" as const,
+      rank: 2,
+      isDefault: false,
+      description:
+        "For established businesses with advanced compliance and API needs",
+    },
+    {
+      name: "Enterprise",
+      slug: "enterprise",
+      tier: "ENTERPRISE" as const,
+      rank: 3,
+      isDefault: false,
+      description:
+        "Unlimited resources. Contact us for custom pricing and SLA.",
+    },
+  ];
+
+  for (const plan of plansData) {
+    await prisma.plan.upsert({
+      where: { tier: plan.tier },
+      update: {
+        name: plan.name,
+        slug: plan.slug,
+        rank: plan.rank,
+        description: plan.description,
+      },
+      create: plan,
+    });
+  }
+  console.log("✅ Upserted plan registry");
+
+  // 5c. Default pricing plans (NPR)
+  const pricingPlansData = [
+    { tier: "STARTER" as const, billingCycle: "MONTHLY" as const, price: 2999 },
+    { tier: "STARTER" as const, billingCycle: "ANNUAL" as const, price: 29990 },
+    {
+      tier: "PROFESSIONAL" as const,
+      billingCycle: "MONTHLY" as const,
+      price: 6999,
+    },
+    {
+      tier: "PROFESSIONAL" as const,
+      billingCycle: "ANNUAL" as const,
+      price: 69990,
+    },
+    {
+      tier: "BUSINESS" as const,
+      billingCycle: "MONTHLY" as const,
+      price: 14999,
+    },
+    {
+      tier: "BUSINESS" as const,
+      billingCycle: "ANNUAL" as const,
+      price: 149990,
+    },
+    { tier: "ENTERPRISE" as const, billingCycle: "MONTHLY" as const, price: 0 },
+    { tier: "ENTERPRISE" as const, billingCycle: "ANNUAL" as const, price: 0 },
+  ];
+  for (const pp of pricingPlansData) {
+    await prisma.pricingPlan.upsert({
+      where: {
+        tier_billingCycle: { tier: pp.tier, billingCycle: pp.billingCycle },
+      },
+      update: { price: pp.price },
+      create: {
+        tier: pp.tier,
+        billingCycle: pp.billingCycle,
+        price: pp.price,
+        isActive: true,
+      },
+    });
+  }
+  console.log("✅ Upserted default pricing plans");
+
+  // 6. Default add-on pricing
+  const addOnPricingData = [
+    { type: "EXTRA_USER" as const, unitPrice: 299 },
+    { type: "EXTRA_PRODUCT" as const, unitPrice: 99 },
+    { type: "EXTRA_LOCATION" as const, unitPrice: 499 },
+    { type: "EXTRA_MEMBER" as const, unitPrice: 49 },
+    { type: "EXTRA_CATEGORY" as const, unitPrice: 99 },
+    { type: "EXTRA_CONTACT" as const, unitPrice: 49 },
+  ];
+
+  for (const ap of addOnPricingData) {
+    const existing = await prisma.addOnPricing.findFirst({
+      where: { type: ap.type, tier: null, billingCycle: "MONTHLY" },
+    });
+    if (existing) {
+      await prisma.addOnPricing.update({
+        where: { id: existing.id },
+        data: { unitPrice: ap.unitPrice },
+      });
+    } else {
+      await prisma.addOnPricing.create({
+        data: {
+          type: ap.type,
+          tier: null,
+          billingCycle: "MONTHLY",
+          unitPrice: ap.unitPrice,
+          minQuantity: 1,
+          isActive: true,
+        },
+      });
+    }
+  }
+  console.log("✅ Upserted default add-on pricing");
+
+  // 7. Default CRM pipeline (required for Deals / Pipeline view)
   const existingPipeline = await prisma.pipeline.findFirst({
     where: { isDefault: true },
   });
@@ -1415,6 +1629,8 @@ async function main() {
       },
     });
     console.log("✅ Created default Sales Pipeline (for CRM Deals)");
+  } else {
+    console.log("⏭️  Default pipeline already exists");
   }
 
   console.log("\n✅ Seed complete.");

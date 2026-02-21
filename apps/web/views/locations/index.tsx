@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { LimitGuard } from "@/components/limit-guard";
 import {
   useLocationsPaginated,
   useCreateLocation,
@@ -256,27 +257,30 @@ export function LocationsPage() {
             </div>
           </div>
 
-          {canManageLocations &&
-            (isMobile ? (
-              <Button asChild>
-                <Link href={`${basePath}/locations/new`} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Location
-                </Link>
-              </Button>
-            ) : (
-              <LocationForm
-                open={formOpen}
-                onOpenChange={setFormOpen}
-                editingLocation={editingLocation}
-                onSubmit={handleSubmit}
-                onReset={handleReset}
-                isLoading={
-                  createLocationMutation.isPending ||
-                  updateLocationMutation.isPending
-                }
-              />
-            ))}
+          {canManageLocations && (
+            <LimitGuard resource="locations">
+              {isMobile ? (
+                <Button asChild>
+                  <Link href={`${basePath}/locations/new`} className="gap-2">
+                    <Plus className="h-4 w-4" />
+                    Add Location
+                  </Link>
+                </Button>
+              ) : (
+                <LocationForm
+                  open={formOpen}
+                  onOpenChange={setFormOpen}
+                  editingLocation={editingLocation}
+                  onSubmit={handleSubmit}
+                  onReset={handleReset}
+                  isLoading={
+                    createLocationMutation.isPending ||
+                    updateLocationMutation.isPending
+                  }
+                />
+              )}
+            </LimitGuard>
+          )}
         </div>
       </div>
 

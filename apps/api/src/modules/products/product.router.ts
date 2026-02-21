@@ -1,6 +1,7 @@
 import { Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import productController from "@/modules/products/product.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -97,6 +98,7 @@ productRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanLimits("products"),
   asyncHandler(productController.createProduct),
 );
 

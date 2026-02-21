@@ -13,6 +13,7 @@
 export enum PlanTier {
   STARTER = "STARTER",
   PROFESSIONAL = "PROFESSIONAL",
+  BUSINESS = "BUSINESS",
   ENTERPRISE = "ENTERPRISE",
 }
 
@@ -86,14 +87,14 @@ export const FEATURE_REGISTRY: Record<Feature, FeatureDefinition> = {
   [Feature.AUDIT_LOGS]: {
     label: "Audit Logs",
     description: "View detailed activity logs for compliance and security",
-    minimumPlan: PlanTier.ENTERPRISE,
-    upgradeMessage: "Upgrade to Enterprise for full audit log access.",
+    minimumPlan: PlanTier.BUSINESS,
+    upgradeMessage: "Upgrade to Business for full audit log access.",
   },
   [Feature.API_ACCESS]: {
     label: "API Access",
     description: "Programmatic access to your data via REST API",
-    minimumPlan: PlanTier.ENTERPRISE,
-    upgradeMessage: "Upgrade to Enterprise for API access.",
+    minimumPlan: PlanTier.BUSINESS,
+    upgradeMessage: "Upgrade to Business for API access.",
   },
   [Feature.MULTIPLE_LOCATIONS]: {
     label: "Multiple Locations",
@@ -109,7 +110,8 @@ export const FEATURE_REGISTRY: Record<Feature, FeatureDefinition> = {
 const PLAN_HIERARCHY: Record<PlanTier, number> = {
   [PlanTier.STARTER]: 0,
   [PlanTier.PROFESSIONAL]: 1,
-  [PlanTier.ENTERPRISE]: 2,
+  [PlanTier.BUSINESS]: 2,
+  [PlanTier.ENTERPRISE]: 3,
 };
 
 /**
@@ -151,6 +153,8 @@ export interface PlanLimits {
   maxProducts: number;
   maxLocations: number;
   maxMembers: number;
+  maxCategories: number;
+  maxContacts: number;
   bulkUpload: boolean;
   analytics: boolean;
   promoManagement: boolean;
@@ -168,6 +172,8 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxProducts: 100,
     maxLocations: 2,
     maxMembers: 500,
+    maxCategories: 20,
+    maxContacts: 100,
     bulkUpload: false,
     analytics: false,
     promoManagement: false,
@@ -179,17 +185,34 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxProducts: 1000,
     maxLocations: 10,
     maxMembers: 5000,
+    maxCategories: 100,
+    maxContacts: 1000,
     bulkUpload: true,
     analytics: true,
     promoManagement: true,
     auditLogs: false,
     apiAccess: false,
   },
+  [PlanTier.BUSINESS]: {
+    maxUsers: 25,
+    maxProducts: 5000,
+    maxLocations: 25,
+    maxMembers: 25000,
+    maxCategories: 500,
+    maxContacts: 5000,
+    bulkUpload: true,
+    analytics: true,
+    promoManagement: true,
+    auditLogs: true,
+    apiAccess: true,
+  },
   [PlanTier.ENTERPRISE]: {
     maxUsers: -1,
     maxProducts: -1,
     maxLocations: -1,
     maxMembers: -1,
+    maxCategories: -1,
+    maxContacts: -1,
     bulkUpload: true,
     analytics: true,
     promoManagement: true,
@@ -197,3 +220,18 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     apiAccess: true,
   },
 };
+
+/**
+ * Maps resource names to their PlanLimit field and AddOnType.
+ * Used by the enforcePlanLimits middleware and usage endpoints.
+ */
+export const RESOURCE_LIMIT_MAP = {
+  users: { limitField: "maxUsers", addOnType: "EXTRA_USER" },
+  products: { limitField: "maxProducts", addOnType: "EXTRA_PRODUCT" },
+  locations: { limitField: "maxLocations", addOnType: "EXTRA_LOCATION" },
+  members: { limitField: "maxMembers", addOnType: "EXTRA_MEMBER" },
+  categories: { limitField: "maxCategories", addOnType: "EXTRA_CATEGORY" },
+  contacts: { limitField: "maxContacts", addOnType: "EXTRA_CONTACT" },
+} as const;
+
+export type LimitedResource = keyof typeof RESOURCE_LIMIT_MAP;

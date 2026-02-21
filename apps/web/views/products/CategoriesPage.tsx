@@ -16,6 +16,7 @@ import {
   DEFAULT_LIMIT,
 } from "@/hooks/useProduct";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { LimitGuard } from "@/components/limit-guard";
 import { CategoryForm } from "./components/CategoryForm";
 import { CategoryTable } from "./components/CategoryTable";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
@@ -245,13 +246,15 @@ export function CategoriesPage() {
           </div>
         </div>
         {canManageProducts && (
-          <CategoryForm
-            open={categoryDialog}
-            onOpenChange={setCategoryDialog}
-            form={categoryForm}
-            editingCategory={editingCategory}
-            onReset={handleResetCategory}
-          />
+          <LimitGuard resource="categories">
+            <CategoryForm
+              open={categoryDialog}
+              onOpenChange={setCategoryDialog}
+              form={categoryForm}
+              editingCategory={editingCategory}
+              onReset={handleResetCategory}
+            />
+          </LimitGuard>
         )}
       </div>
 

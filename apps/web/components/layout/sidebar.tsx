@@ -30,6 +30,8 @@ import {
   CheckSquare,
   Bell,
   Trash2,
+  CreditCard,
+  Gauge,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -82,6 +84,12 @@ const navSections: NavSection[] = [
         path: "platform/tenants",
         label: "Tenants",
         icon: ShieldCheck,
+        roles: ["platformAdmin"],
+      },
+      {
+        path: "platform/billing",
+        label: "Billing",
+        icon: CreditCard,
         roles: ["platformAdmin"],
       },
     ],
@@ -303,6 +311,12 @@ const navSections: NavSection[] = [
         path: "settings",
         label: "Settings",
         icon: UserCog,
+        roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "settings/usage",
+        label: "Usage & Limits",
+        icon: Gauge,
         roles: ["admin", "superAdmin"],
       },
       {
