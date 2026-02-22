@@ -4,7 +4,13 @@ import authController from "@/modules/auth/auth.controller";
 import verifyToken from "@/middlewares/authMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import { validateBody } from "@/middlewares/validateRequest";
-import { loginSchema } from "@/modules/auth/auth.schema";
+import {
+  consentSchema,
+  deletionRequestSchema,
+  loginSchema,
+  logoutSchema,
+  refreshTokenSchema,
+} from "@/modules/auth/auth.schema";
 
 const authRouter = Router();
 const loginLimiter = rateLimit({
@@ -85,6 +91,12 @@ authRouter.post(
  */
 authRouter.get("/me", verifyToken, asyncHandler(authController.getCurrentUser));
 
+authRouter.post(
+  "/refresh",
+  validateBody(refreshTokenSchema),
+  asyncHandler(authController.refreshToken),
+);
+
 /**
  * @swagger
  * /auth/logout:
@@ -97,6 +109,37 @@ authRouter.get("/me", verifyToken, asyncHandler(authController.getCurrentUser));
  *       200:
  *         description: Logout successful
  */
-authRouter.post("/logout", verifyToken, asyncHandler(authController.logOut));
+authRouter.post(
+  "/logout",
+  verifyToken,
+  validateBody(logoutSchema),
+  asyncHandler(authController.logOut),
+);
+
+authRouter.post(
+  "/logout-all",
+  verifyToken,
+  asyncHandler(authController.logOutAll),
+);
+
+authRouter.get(
+  "/data-export",
+  verifyToken,
+  asyncHandler(authController.exportMyData),
+);
+
+authRouter.post(
+  "/consent",
+  verifyToken,
+  validateBody(consentSchema),
+  asyncHandler(authController.updateConsent),
+);
+
+authRouter.post(
+  "/account-deletion-request",
+  verifyToken,
+  validateBody(deletionRequestSchema),
+  asyncHandler(authController.requestAccountDeletion),
+);
 
 export default authRouter;

@@ -13,6 +13,14 @@ export default defineConfig({
     environment: "node",
     globals: true,
     include: ["src/**/*.test.ts"],
+    coverage: {
+      provider: "v8",
+      reporter: ["text", "html"],
+      lines: 35,
+      statements: 35,
+      branches: 25,
+      functions: 35,
+    },
   },
   resolve: {
     alias: {

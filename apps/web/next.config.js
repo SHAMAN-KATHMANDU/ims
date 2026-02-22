@@ -1,5 +1,6 @@
 import path from "path";
 import { fileURLToPath } from "url";
+import { withSentryConfig } from "@sentry/nextjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -30,4 +31,10 @@ const nextConfig = {
   // Note: We're using direct API calls - no rewrites needed
 };
 
-export default nextConfig;
+export default withSentryConfig(nextConfig, {
+  org: globalThis.process?.env?.SENTRY_ORG,
+  project: globalThis.process?.env?.SENTRY_PROJECT,
+  silent: true,
+  widenClientFileUpload: true,
+  disableLogger: true,
+});
