@@ -41,7 +41,9 @@ type TrashItem = {
 async function listTrash(req: Request, res: Response) {
   try {
     const { page, limit } = getPaginationParams(req.query);
-    const entityTypeFilter = (req.query.entityType as string)?.toLowerCase();
+    const { entityType: entityTypeFilter } = req.query as {
+      entityType?: string;
+    };
 
     const entitiesToQuery = entityTypeFilter
       ? TRASH_ENTITIES.filter((e) => e.type.toLowerCase() === entityTypeFilter)
@@ -124,14 +126,7 @@ async function listTrash(req: Request, res: Response) {
  */
 async function restoreItem(req: Request, res: Response) {
   try {
-    const entityType = (req.params.entityType as string)?.toLowerCase();
-    const id = req.params.id;
-
-    if (!entityType || !id) {
-      return res.status(400).json({
-        message: "entityType and id are required",
-      });
-    }
+    const { entityType, id } = req.params as { entityType: string; id: string };
 
     const config = TRASH_ENTITIES.find(
       (e) => e.type.toLowerCase() === entityType,
@@ -176,14 +171,7 @@ async function restoreItem(req: Request, res: Response) {
  */
 async function permanentlyDeleteItem(req: Request, res: Response) {
   try {
-    const entityType = (req.params.entityType as string)?.toLowerCase();
-    const id = req.params.id;
-
-    if (!entityType || !id) {
-      return res.status(400).json({
-        message: "entityType and id are required",
-      });
-    }
+    const { entityType, id } = req.params as { entityType: string; id: string };
 
     const config = TRASH_ENTITIES.find(
       (e) => e.type.toLowerCase() === entityType,

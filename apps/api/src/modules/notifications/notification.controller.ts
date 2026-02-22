@@ -13,11 +13,10 @@ class NotificationController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const limit = Math.min(
-        100,
-        Math.max(1, parseInt(req.query.limit as string) || 20),
-      );
-      const unreadOnly = req.query.unreadOnly === "true";
+      const { limit = 20, unreadOnly = false } = req.query as {
+        limit?: number;
+        unreadOnly?: boolean;
+      };
 
       const where: { userId: string; readAt?: null } = { userId };
       if (unreadOnly) {

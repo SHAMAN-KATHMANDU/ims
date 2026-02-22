@@ -3,6 +3,17 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import promoController from "@/modules/promos/promo.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  createPromoSchema,
+  promoIdParamsSchema,
+  promoListQuerySchema,
+  updatePromoSchema,
+} from "./promo.schema";
 
 const promoRouter = Router();
 
@@ -75,6 +86,7 @@ promoRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateBody(createPromoSchema),
   asyncHandler(promoController.createPromo),
 );
 
@@ -111,6 +123,7 @@ promoRouter.get(
   "/",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(promoListQuerySchema),
   asyncHandler(promoController.getAllPromos),
 );
 
@@ -139,6 +152,7 @@ promoRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateParams(promoIdParamsSchema),
   asyncHandler(promoController.getPromoById),
 );
 
@@ -205,6 +219,8 @@ promoRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(promoIdParamsSchema),
+  validateBody(updatePromoSchema),
   asyncHandler(promoController.updatePromo),
 );
 
@@ -233,6 +249,7 @@ promoRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(promoIdParamsSchema),
   asyncHandler(promoController.deletePromo),
 );
 

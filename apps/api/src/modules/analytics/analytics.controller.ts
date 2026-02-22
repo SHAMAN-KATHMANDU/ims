@@ -104,12 +104,11 @@ class AnalyticsController {
         currentUserId,
       );
 
-      const dateFrom =
-        typeof req.query.dateFrom === "string"
-          ? new Date(req.query.dateFrom)
-          : undefined;
-      const dateTo =
-        typeof req.query.dateTo === "string" ? req.query.dateTo : undefined;
+      const { dateFrom: dateFromRaw, dateTo } = req.query as {
+        dateFrom?: string;
+        dateTo?: string;
+      };
+      const dateFrom = dateFromRaw ? new Date(dateFromRaw) : undefined;
       let rangeEnd = dateTo ? new Date(dateTo) : new Date();
       rangeEnd.setHours(23, 59, 59, 999);
       let rangeStart = dateFrom || new Date(rangeEnd);
@@ -1937,8 +1936,16 @@ class AnalyticsController {
   async exportAnalytics(req: Request, res: Response) {
     try {
       const ExcelJS = (await import("exceljs")).default;
-      const exportType = req.query.type as string;
-      const format = (req.query.format as string) || "csv";
+      const { type: exportType, format = "csv" } = req.query as {
+        type:
+          | "sales-revenue"
+          | "sales-extended"
+          | "inventory-ops"
+          | "customers-promos"
+          | "trends"
+          | "financial";
+        format?: "csv" | "excel";
+      };
       const role = (req as any).user?.role as string | undefined;
       const currentUserId = (req as any).user?.id as string | undefined;
       const { where } = getSalesWhereForAnalytics(

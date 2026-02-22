@@ -4,6 +4,17 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import userController from "@/modules/users/user.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  createUserSchema,
+  updateUserSchema,
+  userIdParamsSchema,
+  userListQuerySchema,
+} from "./user.schema";
 
 const userRouter = Router();
 
@@ -62,6 +73,7 @@ userRouter.post(
   verifyToken,
   authorizeRoles("superAdmin"),
   enforcePlanLimits("users"),
+  validateBody(createUserSchema),
   asyncHandler(userController.createUser),
 );
 
@@ -96,6 +108,7 @@ userRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(userListQuerySchema),
   asyncHandler(userController.getAllUsers),
 );
 
@@ -138,6 +151,7 @@ userRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("superAdmin"),
+  validateParams(userIdParamsSchema),
   asyncHandler(userController.getUserById),
 );
 
@@ -197,6 +211,8 @@ userRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("superAdmin"),
+  validateParams(userIdParamsSchema),
+  validateBody(updateUserSchema),
   asyncHandler(userController.updateUser),
 );
 
@@ -237,6 +253,7 @@ userRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("superAdmin"),
+  validateParams(userIdParamsSchema),
   asyncHandler(userController.deleteUser),
 );
 

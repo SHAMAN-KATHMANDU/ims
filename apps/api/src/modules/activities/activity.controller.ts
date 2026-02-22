@@ -6,35 +6,31 @@ function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
 }
 
+function getTenantId(req: Request): string | null {
+  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
+}
+
 const ACTIVITY_TYPES = ["CALL", "MEETING"] as const;
 
 class ActivityController {
   async create(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { type, subject, notes, activityAt, contactId, memberId, dealId } =
         req.body;
 
-      if (!type || !ACTIVITY_TYPES.includes(type)) {
-        return res
-          .status(400)
-          .json({ message: "Valid type (CALL, MEETING) is required" });
-      }
-
-      if (!contactId && !memberId && !dealId) {
-        return res.status(400).json({
-          message: "Either contactId, memberId, or dealId is required",
-        });
-      }
-
       const activity = await prisma.activity.create({
         data: {
-          type,
-          subject: subject?.trim() || null,
-          notes: notes?.trim() || null,
+          tenantId,
+          type: type as (typeof ACTIVITY_TYPES)[number],
+          subject: subject || null,
+          notes: notes || null,
           activityAt: activityAt ? new Date(activityAt) : new Date(),
           contactId: contactId || null,
           memberId: memberId || null,

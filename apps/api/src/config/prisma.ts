@@ -36,6 +36,14 @@ const TENANT_SCOPED_MODELS = new Set([
   "Member",
   "Sale",
   "PromoCode",
+  "Company",
+  "ContactTag",
+  "Contact",
+  "Lead",
+  "Pipeline",
+  "Deal",
+  "Task",
+  "Activity",
   "AuditLog",
   "ErrorReport",
 ]);
@@ -118,9 +126,10 @@ const prisma = basePrisma.$extends({
         return query(args);
       },
       async findUnique({ model, args, query }) {
-        // findUnique uses unique fields, so we don't inject tenantId into where
-        // (it would break compound unique lookups). Instead, we rely on the
-        // unique constraint including tenantId in the schema.
+        const tenantId = getTenantId();
+        if (tenantId && isTenantScoped(model)) {
+          args.where = { ...args.where, tenantId } as any;
+        }
         args.where = (maybeInjectDeletedAt(model, args.where) ??
           args.where) as any;
         return query(args);

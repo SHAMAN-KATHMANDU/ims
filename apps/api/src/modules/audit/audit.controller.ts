@@ -10,10 +10,12 @@ class AuditController {
   async getAuditLogs(req: Request, res: Response) {
     try {
       const { page, limit } = getPaginationParams(req.query);
-      const userId = req.query.userId as string | undefined;
-      const action = req.query.action as string | undefined;
-      const from = req.query.from as string | undefined;
-      const to = req.query.to as string | undefined;
+      const { userId, action, from, to } = req.query as {
+        userId?: string;
+        action?: string;
+        from?: string;
+        to?: string;
+      };
 
       const tenantId = req.user?.tenantId ?? null;
       const where: any = {};
@@ -21,11 +23,11 @@ class AuditController {
       if (userId) where.userId = userId;
       if (action) where.action = action;
 
-      if (from && /^\d{4}-\d{2}-\d{2}$/.test(from)) {
+      if (from) {
         const fromDate = new Date(from + "T00:00:00.000Z");
         where.createdAt = { ...where.createdAt, gte: fromDate };
       }
-      if (to && /^\d{4}-\d{2}-\d{2}$/.test(to)) {
+      if (to) {
         const toDate = new Date(to + "T23:59:59.999Z");
         where.createdAt = { ...where.createdAt, lte: toDate };
       }

@@ -3,6 +3,18 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import inventoryController from "@/modules/inventory/inventory.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  adjustInventorySchema,
+  inventoryLocationParamsSchema,
+  inventoryProductParamsSchema,
+  locationInventoryQuerySchema,
+  setInventorySchema,
+} from "./inventory.schema";
 
 const inventoryRouter = Router();
 
@@ -67,6 +79,8 @@ inventoryRouter.get(
   "/location/:locationId",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(inventoryLocationParamsSchema),
+  validateQuery(locationInventoryQuerySchema),
   asyncHandler(inventoryController.getLocationInventory),
 );
 
@@ -95,6 +109,7 @@ inventoryRouter.get(
   "/product/:productId",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(inventoryProductParamsSchema),
   asyncHandler(inventoryController.getProductStock),
 );
 
@@ -141,6 +156,7 @@ inventoryRouter.put(
   "/adjust",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateBody(adjustInventorySchema),
   asyncHandler(inventoryController.adjustInventory),
 );
 
@@ -184,6 +200,7 @@ inventoryRouter.put(
   "/set",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateBody(setInventorySchema),
   asyncHandler(inventoryController.setInventory),
 );
 

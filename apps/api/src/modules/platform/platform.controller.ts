@@ -24,21 +24,6 @@ class PlatformController {
         adminPassword,
       } = req.body;
 
-      if (!name || !slug || !adminUsername || !adminPassword) {
-        return res.status(400).json({
-          message:
-            "name, slug, adminUsername, and adminPassword are all required",
-        });
-      }
-
-      // Validate slug format (lowercase, alphanumeric, hyphens only)
-      if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(slug)) {
-        return res.status(400).json({
-          message:
-            "Slug must be lowercase alphanumeric with optional hyphens, 1-63 characters",
-        });
-      }
-
       // Check slug uniqueness
       const existingTenant = await basePrisma.tenant.findUnique({
         where: { slug },
@@ -191,18 +176,6 @@ class PlatformController {
       const { tenantId, userId } = req.params;
       const { newPassword } = req.body;
 
-      if (!newPassword || typeof newPassword !== "string") {
-        return res.status(400).json({
-          message: "newPassword is required",
-        });
-      }
-
-      if (newPassword.length < 6) {
-        return res.status(400).json({
-          message: "Password must be at least 6 characters",
-        });
-      }
-
       const user = await basePrisma.user.findUnique({
         where: { id: userId },
       });
@@ -265,13 +238,6 @@ class PlatformController {
 
       // If slug is being updated, validate it and check uniqueness
       if (slug !== undefined && slug !== existingTenant.slug) {
-        if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(slug)) {
-          return res.status(400).json({
-            message:
-              "Slug must be lowercase alphanumeric with optional hyphens, 1-63 characters",
-          });
-        }
-
         const slugExists = await basePrisma.tenant.findUnique({
           where: { slug },
         });
@@ -279,23 +245,6 @@ class PlatformController {
           return res
             .status(409)
             .json({ message: `Tenant with slug "${slug}" already exists` });
-        }
-      }
-
-      // Validate subscriptionStatus if provided
-      if (subscriptionStatus !== undefined) {
-        const validStatuses = [
-          "TRIAL",
-          "ACTIVE",
-          "PAST_DUE",
-          "SUSPENDED",
-          "LOCKED",
-          "CANCELLED",
-        ];
-        if (!validStatuses.includes(subscriptionStatus)) {
-          return res.status(400).json({
-            message: `subscriptionStatus must be one of: ${validStatuses.join(", ")}`,
-          });
         }
       }
 
@@ -308,10 +257,10 @@ class PlatformController {
           ...(subscriptionStatus !== undefined && { subscriptionStatus }),
           ...(isTrial !== undefined && { isTrial }),
           ...(trialEndsAt !== undefined && {
-            trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : null,
+            trialEndsAt: trialEndsAt || null,
           }),
           ...(planExpiresAt !== undefined && {
-            planExpiresAt: planExpiresAt ? new Date(planExpiresAt) : null,
+            planExpiresAt: planExpiresAt || null,
           }),
           ...(settings !== undefined && { settings }),
         },
@@ -331,24 +280,13 @@ class PlatformController {
       const { id } = req.params;
       const { plan, expiresAt } = req.body;
 
-      if (!plan) {
-        return res.status(400).json({ message: "plan is required" });
-      }
-
-      const validPlans = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
-      if (!validPlans.includes(plan)) {
-        return res.status(400).json({
-          message: `plan must be one of: ${validPlans.join(", ")}`,
-        });
-      }
-
       const tenant = await basePrisma.tenant.update({
         where: { id },
         data: {
           plan: plan as any,
           isTrial: false,
           subscriptionStatus: "ACTIVE",
-          planExpiresAt: expiresAt ? new Date(expiresAt) : undefined,
+          planExpiresAt: expiresAt || undefined,
         },
       });
 
@@ -754,23 +692,10 @@ class PlatformController {
       const { name, slug, tier, rank, isDefault, isActive, description } =
         req.body;
 
-      if (!name || !slug || !tier) {
-        return res
-          .status(400)
-          .json({ message: "name, slug, and tier are required" });
-      }
-
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
-      if (!validTiers.includes(tier)) {
-        return res.status(400).json({
-          message: `tier must be one of: ${validTiers.join(", ")}`,
-        });
-      }
-
       const plan = await basePrisma.plan.create({
         data: {
           name,
-          slug: slug.toLowerCase().trim(),
+          slug,
           tier: tier as any,
           rank: rank ?? 0,
           isDefault: isDefault ?? false,
@@ -800,7 +725,7 @@ class PlatformController {
         where: { id },
         data: {
           ...(name !== undefined && { name }),
-          ...(slug !== undefined && { slug: slug.toLowerCase().trim() }),
+          ...(slug !== undefined && { slug }),
           ...(rank !== undefined && { rank }),
           ...(isDefault !== undefined && { isDefault }),
           ...(isActive !== undefined && { isActive }),
@@ -878,13 +803,6 @@ class PlatformController {
     try {
       const { tier } = req.params;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
-      if (!validTiers.includes(tier)) {
-        return res.status(400).json({
-          message: `tier must be one of: ${validTiers.join(", ")}`,
-        });
-      }
-
       const planLimit = await basePrisma.planLimit.findUnique({
         where: { tier: tier as any },
       });
@@ -905,7 +823,7 @@ class PlatformController {
   async upsertPlanLimit(req: Request, res: Response) {
     try {
       const {
-        tier,
+        tier: bodyTier,
         maxUsers,
         maxProducts,
         maxLocations,
@@ -918,17 +836,8 @@ class PlatformController {
         auditLogs,
         apiAccess,
       } = req.body;
-
-      if (!tier) {
-        return res.status(400).json({ message: "tier is required" });
-      }
-
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
-      if (!validTiers.includes(tier)) {
-        return res.status(400).json({
-          message: `tier must be one of: ${validTiers.join(", ")}`,
-        });
-      }
+      const tier = bodyTier ?? req.params.tier;
+      if (!tier) return res.status(400).json({ message: "tier is required" });
 
       const planLimit = await basePrisma.planLimit.upsert({
         where: { tier: tier as any },
@@ -976,13 +885,6 @@ class PlatformController {
   async deletePlanLimit(req: Request, res: Response) {
     try {
       const { tier } = req.params;
-
-      const validTiers = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
-      if (!validTiers.includes(tier)) {
-        return res.status(400).json({
-          message: `tier must be one of: ${validTiers.join(", ")}`,
-        });
-      }
 
       await basePrisma.planLimit.delete({
         where: { tier: tier as any },
@@ -1104,21 +1006,6 @@ class PlatformController {
     try {
       const { tier, billingCycle } = req.params;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
-      const validCycles = ["MONTHLY", "ANNUAL"];
-
-      if (!validTiers.includes(tier)) {
-        return res.status(400).json({
-          message: `tier must be one of: ${validTiers.join(", ")}`,
-        });
-      }
-
-      if (!validCycles.includes(billingCycle)) {
-        return res.status(400).json({
-          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
-        });
-      }
-
       const pricingPlan = await basePrisma.pricingPlan.findUnique({
         where: {
           tier_billingCycle: {
@@ -1144,33 +1031,6 @@ class PlatformController {
   async createPricingPlan(req: Request, res: Response) {
     try {
       const { tier, billingCycle, price, originalPrice, isActive } = req.body;
-
-      if (!tier || !billingCycle || price === undefined) {
-        return res.status(400).json({
-          message: "tier, billingCycle, and price are required",
-        });
-      }
-
-      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
-      const validCycles = ["MONTHLY", "ANNUAL"];
-
-      if (!validTiers.includes(tier)) {
-        return res.status(400).json({
-          message: `tier must be one of: ${validTiers.join(", ")}`,
-        });
-      }
-
-      if (!validCycles.includes(billingCycle)) {
-        return res.status(400).json({
-          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
-        });
-      }
-
-      if (typeof price !== "number" || price < 0) {
-        return res.status(400).json({
-          message: "price must be a non-negative number",
-        });
-      }
 
       const pricingPlan = await basePrisma.pricingPlan.create({
         data: {
@@ -1206,27 +1066,6 @@ class PlatformController {
       const { tier, billingCycle } = req.params;
       const { price, originalPrice, isActive } = req.body;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
-      const validCycles = ["MONTHLY", "ANNUAL"];
-
-      if (!validTiers.includes(tier)) {
-        return res.status(400).json({
-          message: `tier must be one of: ${validTiers.join(", ")}`,
-        });
-      }
-
-      if (!validCycles.includes(billingCycle)) {
-        return res.status(400).json({
-          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
-        });
-      }
-
-      if (price !== undefined && (typeof price !== "number" || price < 0)) {
-        return res.status(400).json({
-          message: "price must be a non-negative number",
-        });
-      }
-
       const pricingPlan = await basePrisma.pricingPlan.update({
         where: {
           tier_billingCycle: {
@@ -1261,21 +1100,6 @@ class PlatformController {
     try {
       const { tier, billingCycle } = req.params;
 
-      const validTiers = ["STARTER", "PROFESSIONAL", "BUSINESS", "ENTERPRISE"];
-      const validCycles = ["MONTHLY", "ANNUAL"];
-
-      if (!validTiers.includes(tier)) {
-        return res.status(400).json({
-          message: `tier must be one of: ${validTiers.join(", ")}`,
-        });
-      }
-
-      if (!validCycles.includes(billingCycle)) {
-        return res.status(400).json({
-          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
-        });
-      }
-
       await basePrisma.pricingPlan.delete({
         where: {
           tier_billingCycle: {
@@ -1304,10 +1128,10 @@ class PlatformController {
    */
   async listSubscriptions(req: Request, res: Response) {
     try {
-      const { tenantId } = req.query;
+      const { tenantId } = req.query as { tenantId?: string };
 
       const subscriptions = await basePrisma.subscription.findMany({
-        where: tenantId ? { tenantId: tenantId as string } : undefined,
+        where: tenantId ? { tenantId } : undefined,
         include: {
           tenant: {
             select: {
@@ -1381,41 +1205,6 @@ class PlatformController {
         gracePeriodEnd,
       } = req.body;
 
-      if (!tenantId || !plan || !billingCycle) {
-        return res.status(400).json({
-          message: "tenantId, plan, and billingCycle are required",
-        });
-      }
-
-      const validPlans = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
-      const validCycles = ["MONTHLY", "ANNUAL"];
-      const validStatuses = [
-        "TRIAL",
-        "ACTIVE",
-        "PAST_DUE",
-        "SUSPENDED",
-        "LOCKED",
-        "CANCELLED",
-      ];
-
-      if (!validPlans.includes(plan)) {
-        return res.status(400).json({
-          message: `plan must be one of: ${validPlans.join(", ")}`,
-        });
-      }
-
-      if (!validCycles.includes(billingCycle)) {
-        return res.status(400).json({
-          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
-        });
-      }
-
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({
-          message: `status must be one of: ${validStatuses.join(", ")}`,
-        });
-      }
-
       // Check if tenant exists
       const tenant = await basePrisma.tenant.findUnique({
         where: { id: tenantId },
@@ -1432,13 +1221,11 @@ class PlatformController {
           billingCycle: billingCycle as any,
           status: status as any,
           currentPeriodStart: currentPeriodStart
-            ? new Date(currentPeriodStart)
+            ? currentPeriodStart
             : new Date(),
-          currentPeriodEnd: currentPeriodEnd
-            ? new Date(currentPeriodEnd)
-            : new Date(),
-          trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : undefined,
-          gracePeriodEnd: gracePeriodEnd ? new Date(gracePeriodEnd) : undefined,
+          currentPeriodEnd: currentPeriodEnd ? currentPeriodEnd : new Date(),
+          trialEndsAt: trialEndsAt || undefined,
+          gracePeriodEnd: gracePeriodEnd || undefined,
         },
       });
 
@@ -1468,35 +1255,6 @@ class PlatformController {
         cancelledAt,
       } = req.body;
 
-      const validPlans = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
-      const validCycles = ["MONTHLY", "ANNUAL"];
-      const validStatuses = [
-        "TRIAL",
-        "ACTIVE",
-        "PAST_DUE",
-        "SUSPENDED",
-        "LOCKED",
-        "CANCELLED",
-      ];
-
-      if (plan !== undefined && !validPlans.includes(plan)) {
-        return res.status(400).json({
-          message: `plan must be one of: ${validPlans.join(", ")}`,
-        });
-      }
-
-      if (billingCycle !== undefined && !validCycles.includes(billingCycle)) {
-        return res.status(400).json({
-          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
-        });
-      }
-
-      if (status !== undefined && !validStatuses.includes(status)) {
-        return res.status(400).json({
-          message: `status must be one of: ${validStatuses.join(", ")}`,
-        });
-      }
-
       const subscription = await basePrisma.subscription.update({
         where: { id },
         data: {
@@ -1506,19 +1264,19 @@ class PlatformController {
           }),
           ...(status !== undefined && { status: status as any }),
           ...(currentPeriodStart !== undefined && {
-            currentPeriodStart: new Date(currentPeriodStart),
+            currentPeriodStart,
           }),
           ...(currentPeriodEnd !== undefined && {
-            currentPeriodEnd: new Date(currentPeriodEnd),
+            currentPeriodEnd,
           }),
           ...(trialEndsAt !== undefined && {
-            trialEndsAt: trialEndsAt ? new Date(trialEndsAt) : null,
+            trialEndsAt: trialEndsAt || null,
           }),
           ...(gracePeriodEnd !== undefined && {
-            gracePeriodEnd: gracePeriodEnd ? new Date(gracePeriodEnd) : null,
+            gracePeriodEnd: gracePeriodEnd || null,
           }),
           ...(cancelledAt !== undefined && {
-            cancelledAt: cancelledAt ? new Date(cancelledAt) : null,
+            cancelledAt: cancelledAt || null,
           }),
         },
       });
@@ -1566,12 +1324,15 @@ class PlatformController {
    */
   async listTenantPayments(req: Request, res: Response) {
     try {
-      const { tenantId, subscriptionId } = req.query;
+      const { tenantId, subscriptionId } = req.query as {
+        tenantId?: string;
+        subscriptionId?: string;
+      };
 
       const payments = await basePrisma.tenantPayment.findMany({
         where: {
-          ...(tenantId && { tenantId: tenantId as string }),
-          ...(subscriptionId && { subscriptionId: subscriptionId as string }),
+          ...(tenantId && { tenantId }),
+          ...(subscriptionId && { subscriptionId }),
         },
         include: {
           tenant: {
@@ -1659,58 +1420,6 @@ class PlatformController {
         notes,
       } = req.body;
 
-      if (
-        !tenantId ||
-        !subscriptionId ||
-        amount === undefined ||
-        !gateway ||
-        !paidFor ||
-        !billingCycle ||
-        !periodStart ||
-        !periodEnd
-      ) {
-        return res.status(400).json({
-          message:
-            "tenantId, subscriptionId, amount, gateway, paidFor, billingCycle, periodStart, and periodEnd are required",
-        });
-      }
-
-      const validGateways = [
-        "ESEWA",
-        "KHALTI",
-        "FONEPAY",
-        "CONNECTIPS",
-        "BANK_TRANSFER",
-        "MANUAL",
-      ];
-      const validStatuses = ["PENDING", "COMPLETED", "FAILED", "REFUNDED"];
-      const validPlans = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
-      const validCycles = ["MONTHLY", "ANNUAL"];
-
-      if (!validGateways.includes(gateway)) {
-        return res.status(400).json({
-          message: `gateway must be one of: ${validGateways.join(", ")}`,
-        });
-      }
-
-      if (!validStatuses.includes(status)) {
-        return res.status(400).json({
-          message: `status must be one of: ${validStatuses.join(", ")}`,
-        });
-      }
-
-      if (!validPlans.includes(paidFor)) {
-        return res.status(400).json({
-          message: `paidFor must be one of: ${validPlans.join(", ")}`,
-        });
-      }
-
-      if (!validCycles.includes(billingCycle)) {
-        return res.status(400).json({
-          message: `billingCycle must be one of: ${validCycles.join(", ")}`,
-        });
-      }
-
       // Check if tenant and subscription exist
       const [tenant, subscription] = await Promise.all([
         basePrisma.tenant.findUnique({ where: { id: tenantId } }),
@@ -1737,9 +1446,9 @@ class PlatformController {
           status: status as any,
           paidFor: paidFor as any,
           billingCycle: billingCycle as any,
-          periodStart: new Date(periodStart),
-          periodEnd: new Date(periodEnd),
-          verifiedAt: verifiedAt ? new Date(verifiedAt) : undefined,
+          periodStart,
+          periodEnd,
+          verifiedAt: verifiedAt || undefined,
           verifiedBy,
           notes,
         },
@@ -1777,28 +1486,6 @@ class PlatformController {
         notes,
       } = req.body;
 
-      const validGateways = [
-        "ESEWA",
-        "KHALTI",
-        "FONEPAY",
-        "CONNECTIPS",
-        "BANK_TRANSFER",
-        "MANUAL",
-      ];
-      const validStatuses = ["PENDING", "COMPLETED", "FAILED", "REFUNDED"];
-
-      if (gateway !== undefined && !validGateways.includes(gateway)) {
-        return res.status(400).json({
-          message: `gateway must be one of: ${validGateways.join(", ")}`,
-        });
-      }
-
-      if (status !== undefined && !validStatuses.includes(status)) {
-        return res.status(400).json({
-          message: `status must be one of: ${validStatuses.join(", ")}`,
-        });
-      }
-
       const payment = await basePrisma.tenantPayment.update({
         where: { id },
         data: {
@@ -1809,7 +1496,7 @@ class PlatformController {
           ...(gatewayResponse !== undefined && { gatewayResponse }),
           ...(status !== undefined && { status: status as any }),
           ...(verifiedAt !== undefined && {
-            verifiedAt: verifiedAt ? new Date(verifiedAt) : null,
+            verifiedAt: verifiedAt || null,
           }),
           ...(verifiedBy !== undefined && { verifiedBy }),
           ...(notes !== undefined && { notes }),
@@ -1901,26 +1588,6 @@ class PlatformController {
         isActive,
       } = req.body;
 
-      if (!type || unitPrice === undefined) {
-        return res
-          .status(400)
-          .json({ message: "type and unitPrice are required" });
-      }
-
-      const validTypes = [
-        "EXTRA_USER",
-        "EXTRA_PRODUCT",
-        "EXTRA_LOCATION",
-        "EXTRA_MEMBER",
-        "EXTRA_CATEGORY",
-        "EXTRA_CONTACT",
-      ];
-      if (!validTypes.includes(type)) {
-        return res.status(400).json({
-          message: `type must be one of: ${validTypes.join(", ")}`,
-        });
-      }
-
       const pricing = await basePrisma.addOnPricing.create({
         data: {
           type: type as any,
@@ -2010,12 +1677,15 @@ class PlatformController {
 
   async listTenantAddOns(req: Request, res: Response) {
     try {
-      const { tenantId, status } = req.query;
+      const { tenantId, status } = req.query as {
+        tenantId?: string;
+        status?: "PENDING" | "ACTIVE" | "CANCELLED";
+      };
 
       const addOns = await basePrisma.tenantAddOn.findMany({
         where: {
-          ...(tenantId && { tenantId: tenantId as string }),
-          ...(status && { status: status as any }),
+          ...(tenantId && { tenantId }),
+          ...(status && { status }),
         },
         include: {
           tenant: { select: { id: true, name: true, slug: true } },
@@ -2063,12 +1733,6 @@ class PlatformController {
         notes,
       } = req.body;
 
-      if (!tenantId || !type) {
-        return res
-          .status(400)
-          .json({ message: "tenantId and type are required" });
-      }
-
       const tenant = await basePrisma.tenant.findUnique({
         where: { id: tenantId },
       });
@@ -2082,8 +1746,8 @@ class PlatformController {
           type: type as any,
           quantity: quantity ?? 1,
           status: addOnStatus ? (addOnStatus as any) : "ACTIVE",
-          periodStart: periodStart ? new Date(periodStart) : new Date(),
-          periodEnd: periodEnd ? new Date(periodEnd) : null,
+          periodStart: periodStart || new Date(),
+          periodEnd: periodEnd || null,
           paymentId: paymentId ?? null,
           notes: notes ?? null,
           approvedAt: new Date(),
@@ -2117,10 +1781,10 @@ class PlatformController {
           ...(quantity !== undefined && { quantity }),
           ...(addOnStatus !== undefined && { status: addOnStatus as any }),
           ...(periodStart !== undefined && {
-            periodStart: periodStart ? new Date(periodStart) : null,
+            periodStart: periodStart || null,
           }),
           ...(periodEnd !== undefined && {
-            periodEnd: periodEnd ? new Date(periodEnd) : null,
+            periodEnd: periodEnd || null,
           }),
           ...(paymentId !== undefined && { paymentId }),
           ...(notes !== undefined && { notes }),

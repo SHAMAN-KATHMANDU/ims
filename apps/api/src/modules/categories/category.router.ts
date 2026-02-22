@@ -4,6 +4,18 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import categoryController from "@/modules/categories/category.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  categoryIdParamsSchema,
+  categoryListQuerySchema,
+  categorySubcategorySchema,
+  createCategorySchema,
+  updateCategorySchema,
+} from "./category.schema";
 
 const categoryRouter = Router();
 
@@ -56,6 +68,7 @@ categoryRouter.post(
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
   enforcePlanLimits("categories"),
+  validateBody(createCategorySchema),
   asyncHandler(categoryController.createCategory),
 );
 
@@ -88,6 +101,7 @@ categoryRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateQuery(categoryListQuerySchema),
   asyncHandler(categoryController.getAllCategories),
 );
 
@@ -117,6 +131,7 @@ categoryRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(categoryIdParamsSchema),
   asyncHandler(categoryController.getCategoryById),
 );
 
@@ -125,6 +140,7 @@ categoryRouter.get(
   "/:id/subcategories",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(categoryIdParamsSchema),
   asyncHandler(categoryController.getCategorySubcategories),
 );
 
@@ -133,6 +149,8 @@ categoryRouter.post(
   "/:id/subcategories",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(categoryIdParamsSchema),
+  validateBody(categorySubcategorySchema),
   asyncHandler(categoryController.createSubcategory),
 );
 
@@ -141,6 +159,8 @@ categoryRouter.delete(
   "/:id/subcategories",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(categoryIdParamsSchema),
+  validateBody(categorySubcategorySchema),
   asyncHandler(categoryController.deleteSubcategory),
 );
 
@@ -183,6 +203,8 @@ categoryRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(categoryIdParamsSchema),
+  validateBody(updateCategorySchema),
   asyncHandler(categoryController.updateCategory),
 );
 
@@ -213,6 +235,7 @@ categoryRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(categoryIdParamsSchema),
   asyncHandler(categoryController.deleteCategory),
 );
 

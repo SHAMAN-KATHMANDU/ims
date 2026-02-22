@@ -15,25 +15,30 @@ function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
 }
 
+function getTenantId(req: Request): string | null {
+  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
+}
+
 class ContactController {
   async create(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { firstName, lastName, email, phone, companyId, memberId, tagIds } =
         req.body;
-      if (!firstName || typeof firstName !== "string" || !firstName.trim()) {
-        return res.status(400).json({ message: "First name is required" });
-      }
 
       const contact = await prisma.contact.create({
         data: {
-          firstName: firstName.trim(),
-          lastName: lastName?.trim() || null,
-          email: email?.trim() || null,
-          phone: phone?.trim() || null,
+          tenantId,
+          firstName: firstName,
+          lastName: lastName || null,
+          email: email || null,
+          phone: phone || null,
           companyId: companyId || null,
           memberId: memberId || null,
           ownedById: userId,
@@ -71,9 +76,11 @@ class ContactController {
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
-      const companyId = req.query.companyId as string | undefined;
-      const tagId = req.query.tagId as string | undefined;
-      const ownerId = req.query.ownerId as string | undefined;
+      const { companyId, tagId, ownerId } = req.query as {
+        companyId?: string;
+        tagId?: string;
+        ownerId?: string;
+      };
 
       const allowedSortFields = [
         "createdAt",
@@ -279,10 +286,6 @@ class ContactController {
       const { id } = req.params;
       const { content } = req.body;
 
-      if (!content || typeof content !== "string" || !content.trim()) {
-        return res.status(400).json({ message: "Note content is required" });
-      }
-
       const contact = await prisma.contact.findUnique({ where: { id } });
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
@@ -290,7 +293,7 @@ class ContactController {
       const note = await prisma.contactNote.create({
         data: {
           contactId: id,
-          content: content.trim(),
+          content,
           createdById: userId,
         },
         include: { creator: { select: { id: true, username: true } } },
@@ -388,13 +391,6 @@ class ContactController {
       const { id } = req.params;
       const { type, subject, notes } = req.body;
 
-      const validTypes = ["CALL", "EMAIL", "MEETING"];
-      if (!type || !validTypes.includes(type)) {
-        return res
-          .status(400)
-          .json({ message: "Valid type (CALL, EMAIL, MEETING) is required" });
-      }
-
       const contact = await prisma.contact.findUnique({ where: { id } });
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
@@ -403,8 +399,8 @@ class ContactController {
         data: {
           contactId: id,
           type,
-          subject: subject?.trim() || null,
-          notes: notes?.trim() || null,
+          subject: subject || null,
+          notes: notes || null,
           createdById: userId,
         },
         include: { creator: { select: { id: true, username: true } } },
@@ -430,20 +426,21 @@ class ContactController {
 
   async createTag(req: Request, res: Response) {
     try {
-      const { name } = req.body;
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ message: "Tag name is required" });
-      }
+      const tenantId = getTenantId(req);
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
-      const existing = await prisma.contactTag.findUnique({
-        where: { name: name.trim() },
+      const { name } = req.body;
+
+      const existing = await prisma.contactTag.findFirst({
+        where: { tenantId, name },
       });
       if (existing) {
         return res.status(200).json({ message: "OK", tag: existing });
       }
 
       const tag = await prisma.contactTag.create({
-        data: { name: name.trim() },
+        data: { tenantId, name },
       });
       res.status(201).json({ message: "Tag created", tag });
     } catch (error: unknown) {
@@ -454,8 +451,11 @@ class ContactController {
   async importCsv(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const file = (req as any).file;
       if (!file) return res.status(400).json({ message: "No file uploaded" });
@@ -506,12 +506,12 @@ class ContactController {
         let companyId: string | null = null;
         if (row.companyName) {
           let company = await prisma.company.findFirst({
-            where: { name: row.companyName },
+            where: { tenantId, name: row.companyName },
             select: { id: true },
           });
           if (!company) {
             company = await prisma.company.create({
-              data: { name: row.companyName },
+              data: { tenantId, name: row.companyName },
               select: { id: true },
             });
           }
@@ -520,6 +520,7 @@ class ContactController {
 
         await prisma.contact.create({
           data: {
+            tenantId,
             firstName: row.firstName,
             lastName: row.lastName || null,
             email: row.email || null,
@@ -550,7 +551,7 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const ids = req.query.ids as string | undefined;
+      const { ids } = req.query as { ids?: string };
       const contactIds = ids ? ids.split(",").filter(Boolean) : undefined;
 
       const where: Record<string, unknown> = {};

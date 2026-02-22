@@ -38,30 +38,39 @@ class ProductController {
         mrp,
         variations, //Array of color variations
         discounts, //Array of discounts
-      } = req.body;
-
-      // Validate required fields
-      if (!imsCode) {
-        return res.status(400).json({ message: "IMS code is required" });
-      }
-      if (!name) {
-        return res.status(400).json({ message: "Product name is required" });
-      }
-      if (!categoryId && !req.body.categoryName) {
-        return res.status(400).json({
-          message: "Category ID or Category Name is required",
-          hint: "You can use either 'categoryId' (UUID) or 'categoryName' (string)",
-        });
-      }
+      } = req.body as {
+        imsCode: string;
+        name: string;
+        categoryId?: string;
+        categoryName?: string;
+        description?: string;
+        subCategory?: string;
+        length?: number;
+        breadth?: number;
+        height?: number;
+        weight?: number;
+        costPrice: number;
+        mrp: number;
+        vendorId?: string;
+        defaultLocationId?: string;
+        variations?: Array<{
+          color: string;
+          stockQuantity?: number;
+          photos?: Array<{ photoUrl: string; isPrimary?: boolean }>;
+          subVariants?: Array<string | { name: string }>;
+        }>;
+        discounts?: Array<{
+          discountTypeId?: string;
+          discountTypeName?: string;
+          discountPercentage: number;
+          startDate?: string | Date;
+          endDate?: string | Date;
+          isActive?: boolean;
+        }>;
+      };
 
       // Support both categoryId and categoryName
       const categoryIdentifier = categoryId || req.body.categoryName;
-      if (costPrice === undefined || costPrice === null) {
-        return res.status(400).json({ message: "Cost price is required" });
-      }
-      if (mrp === undefined || mrp === null) {
-        return res.status(400).json({ message: "MRP is required" });
-      }
 
       // Validate that user is authenticated
       if (!req.user || !req.user.id) {
@@ -156,10 +165,14 @@ class ProductController {
 
           // parseDate utility
           const startDate = discount.startDate
-            ? parseDate(discount.startDate)?.toJSDate() || null
+            ? discount.startDate instanceof Date
+              ? discount.startDate
+              : parseDate(discount.startDate)?.toJSDate() || null
             : null;
           const endDate = discount.endDate
-            ? parseDate(discount.endDate)?.toJSDate() || null
+            ? discount.endDate instanceof Date
+              ? discount.endDate
+              : parseDate(discount.endDate)?.toJSDate() || null
             : null;
 
           resolvedDiscounts.push({
@@ -255,12 +268,12 @@ class ProductController {
           categoryId: category.id,
           description: description || null,
           subCategory: subCategory?.trim() || null,
-          length: length ? parseFloat(length.toString()) : null,
-          breadth: breadth ? parseFloat(breadth.toString()) : null,
-          height: height ? parseFloat(height.toString()) : null,
-          weight: weight ? parseFloat(weight.toString()) : null,
-          costPrice: parseFloat(costPrice.toString()),
-          mrp: parseFloat(mrp.toString()),
+          length: length ?? null,
+          breadth: breadth ?? null,
+          height: height ?? null,
+          weight: weight ?? null,
+          costPrice,
+          mrp,
           vendorId: vendorId || null,
           createdById: req.user!.id,
           // Add variations (colors with photos)
@@ -434,15 +447,25 @@ class ProductController {
       );
 
       // Parse optional filters
-      const locationId = req.query.locationId as string | undefined;
-      const categoryId = req.query.categoryId as string | undefined;
-      const subCategoryId = req.query.subCategoryId as string | undefined;
-      const subCategory = req.query.subCategory as string | undefined;
-      const vendorId = req.query.vendorId as string | undefined;
-      const dateFrom = req.query.dateFrom as string | undefined;
-      const dateTo = req.query.dateTo as string | undefined;
-      const lowStock =
-        req.query.lowStock === "1" || req.query.lowStock === "true";
+      const {
+        locationId,
+        categoryId,
+        subCategoryId,
+        subCategory,
+        vendorId,
+        dateFrom,
+        dateTo,
+        lowStock,
+      } = req.query as {
+        locationId?: string;
+        categoryId?: string;
+        subCategoryId?: string;
+        subCategory?: string;
+        vendorId?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        lowStock?: boolean;
+      };
 
       // Allowed fields for sorting (date added = dateCreated); sorting at DB level
       const allowedSortFields = [
@@ -620,9 +643,7 @@ class ProductController {
   // Get product by ID (all authenticated users can view)
   async getProductById(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const product = await prisma.product.findUnique({
         where: { id },
@@ -665,9 +686,7 @@ class ProductController {
   // Update product (admin and superAdmin only)
   async updateProduct(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
       const {
         imsCode,
         name,
@@ -1069,9 +1088,7 @@ class ProductController {
   // Delete product (admin and superAdmin only)
   async deleteProduct(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       // Check if product exists
       const existingProduct = await prisma.product.findUnique({
@@ -1201,10 +1218,13 @@ class ProductController {
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
-      const productId = req.query.productId as string | undefined;
-      const categoryId = req.query.categoryId as string | undefined;
-      const subCategoryId = req.query.subCategoryId as string | undefined;
-      const discountTypeId = req.query.discountTypeId as string | undefined;
+      const { productId, categoryId, subCategoryId, discountTypeId } =
+        req.query as {
+          productId?: string;
+          categoryId?: string;
+          subCategoryId?: string;
+          discountTypeId?: string;
+        };
 
       const where: any = {};
       if (productId) where.productId = productId;
@@ -1290,12 +1310,7 @@ class ProductController {
   // Get active discounts for a product
   async getProductDiscounts(req: Request, res: Response) {
     try {
-      const rawId = req.params.id;
-      const id = Array.isArray(rawId) ? rawId[0] : rawId;
-
-      if (!id) {
-        return res.status(400).json({ message: "Product ID is required" });
-      }
+      const { id } = req.params as { id: string };
 
       // Check if product exists
       const product = await prisma.product.findUnique({
@@ -2255,8 +2270,10 @@ class ProductController {
   // Download products as Excel or CSV
   async downloadProducts(req: Request, res: Response) {
     try {
-      const format = (req.query.format as string)?.toLowerCase() || "excel";
-      const idsParam = req.query.ids as string | undefined;
+      const { format = "excel", ids: idsParam } = req.query as {
+        format?: "excel" | "csv";
+        ids?: string;
+      };
 
       // Validate format
       if (format !== "excel" && format !== "csv") {

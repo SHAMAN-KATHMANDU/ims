@@ -3,6 +3,22 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import saleController from "@/modules/sales/sale.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  addSalePaymentSchema,
+  createSaleSchema,
+  previewSaleSchema,
+  saleIdParamsSchema,
+  salesByLocationQuerySchema,
+  salesDailyQuerySchema,
+  salesListQuerySchema,
+  salesSinceLoginQuerySchema,
+  salesSummaryQuerySchema,
+} from "./sale.schema";
 
 const saleRouter = Router();
 
@@ -52,6 +68,7 @@ saleRouter.post(
   "/",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateBody(createSaleSchema),
   asyncHandler(saleController.createSale),
 );
 
@@ -89,6 +106,7 @@ saleRouter.post(
   "/preview",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateBody(previewSaleSchema),
   asyncHandler(saleController.previewSale),
 );
 
@@ -153,6 +171,7 @@ saleRouter.get(
   "/",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(salesListQuerySchema),
   asyncHandler(saleController.getAllSales),
 );
 
@@ -181,6 +200,7 @@ saleRouter.get(
   "/me/since-last-login",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(salesSinceLoginQuerySchema),
   asyncHandler(saleController.getSalesSinceLastLogin),
 );
 
@@ -216,6 +236,7 @@ saleRouter.get(
   "/analytics/summary",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(salesSummaryQuerySchema),
   asyncHandler(saleController.getSalesSummary),
 );
 
@@ -246,6 +267,7 @@ saleRouter.get(
   "/analytics/by-location",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(salesByLocationQuerySchema),
   asyncHandler(saleController.getSalesByLocation),
 );
 
@@ -276,6 +298,7 @@ saleRouter.get(
   "/analytics/daily",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(salesDailyQuerySchema),
   asyncHandler(saleController.getDailySales),
 );
 
@@ -319,6 +342,8 @@ saleRouter.post(
   "/:id/payments",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateParams(saleIdParamsSchema),
+  validateBody(addSalePaymentSchema),
   asyncHandler(saleController.addPayment),
 );
 
@@ -347,6 +372,7 @@ saleRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateParams(saleIdParamsSchema),
   asyncHandler(saleController.getSaleById),
 );
 
