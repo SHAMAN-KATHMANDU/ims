@@ -10,11 +10,11 @@ import {
  * requests the same endpoint with the same query within TTL; otherwise run
  * the route and cache successful 200 JSON responses.
  */
-export function analyticsCacheMiddleware(
+export async function analyticsCacheMiddleware(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   const userId = (req as any).user?.id as string | undefined;
   const key = buildAnalyticsCacheKey(
     req.path,
@@ -22,7 +22,7 @@ export function analyticsCacheMiddleware(
     req.query as Record<string, unknown>,
   );
 
-  const cached = getCachedAnalytics(key);
+  const cached = await getCachedAnalytics(key);
   if (cached !== undefined) {
     res.status(200).json(cached);
     return;
@@ -31,7 +31,7 @@ export function analyticsCacheMiddleware(
   const originalJson = res.json.bind(res);
   res.json = function (body: unknown): Response {
     if (res.statusCode === 200) {
-      setCachedAnalytics(key, body);
+      void setCachedAnalytics(key, body);
     }
     return originalJson(body);
   };

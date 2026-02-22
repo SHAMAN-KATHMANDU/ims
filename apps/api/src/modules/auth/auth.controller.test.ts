@@ -7,6 +7,11 @@ const mockFindFirstUser = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockCreateAuditLog = vi.fn();
 const mockFindUniqueUser = vi.fn();
+const mockCreateRefreshToken = vi.fn();
+const mockFindFirstRefreshToken = vi.fn();
+const mockUpdateRefreshToken = vi.fn();
+const mockUpdateManyRefreshToken = vi.fn();
+const mockTransaction = vi.fn();
 
 vi.mock("@/config/prisma", () => ({
   basePrisma: {
@@ -19,6 +24,13 @@ vi.mock("@/config/prisma", () => ({
       update: (...args: unknown[]) => mockUpdateUser(...args),
     },
     auditLog: { create: (...args: unknown[]) => mockCreateAuditLog(...args) },
+    refreshToken: {
+      create: (...args: unknown[]) => mockCreateRefreshToken(...args),
+      findFirst: (...args: unknown[]) => mockFindFirstRefreshToken(...args),
+      update: (...args: unknown[]) => mockUpdateRefreshToken(...args),
+      updateMany: (...args: unknown[]) => mockUpdateManyRefreshToken(...args),
+    },
+    $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
 }));
 
@@ -55,6 +67,21 @@ function mockRes(): Partial<Response> {
 describe("AuthController", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTransaction.mockImplementation(async (arg: unknown) => {
+      if (typeof arg === "function") {
+        return (arg as (tx: any) => Promise<unknown>)({
+          user: { update: (...txArgs: unknown[]) => mockUpdateUser(...txArgs) },
+          auditLog: {
+            create: (...txArgs: unknown[]) => mockCreateAuditLog(...txArgs),
+          },
+          refreshToken: {
+            create: (...txArgs: unknown[]) => mockCreateRefreshToken(...txArgs),
+            update: (...txArgs: unknown[]) => mockUpdateRefreshToken(...txArgs),
+          },
+        });
+      }
+      return null;
+    });
   });
 
   describe("logIn", () => {
@@ -246,6 +273,7 @@ describe("AuthController", () => {
       mockCompare.mockResolvedValue(true);
       mockUpdateUser.mockResolvedValue(user);
       mockCreateAuditLog.mockResolvedValue({});
+      mockCreateRefreshToken.mockResolvedValue({ id: "session-1" });
       mockSign.mockReturnValue("jwt-token-here");
 
       const req = {
@@ -281,13 +309,16 @@ describe("AuthController", () => {
           role: "admin",
           tenantId: "tenant-1",
           tenantSlug: "acme",
+          sessionId: "session-1",
         }),
         "test-secret",
-        { expiresIn: "4h" },
+        { expiresIn: "15m" },
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
+        accessToken: "jwt-token-here",
         token: "jwt-token-here",
+        refreshToken: expect.any(String),
         user: expect.not.objectContaining({ password: expect.anything() }),
         tenant: expect.objectContaining({
           id: "tenant-1",
@@ -376,7 +407,11 @@ describe("AuthController", () => {
 
   describe("logOut", () => {
     it("returns 200 with success message", async () => {
-      const req = {} as Request;
+      mockUpdateManyRefreshToken.mockResolvedValue({ count: 1 });
+      const req = {
+        user: { id: "user-1", role: "admin", tenantId: "tenant-1" },
+        body: {},
+      } as unknown as Request;
       const res = mockRes() as Response;
 
       await authController.logOut(req, res);
@@ -384,6 +419,7 @@ describe("AuthController", () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         message: "Logout successful",
+        revokedSessions: 1,
       });
     });
   });

@@ -49,6 +49,7 @@ model Tenant {
   deals          Deal[]
   tasks          Task[]
   activities     Activity[]
+  refreshTokens  RefreshToken[]
   auditLogs      AuditLog[]
   errorReports   ErrorReport[]
   subscriptions  Subscription[]
@@ -279,6 +280,7 @@ model User {
   contactCommunications ContactCommunication[]
   contactAttachments    ContactAttachment[]
   notifications         Notification[]
+  refreshTokens         RefreshToken[]
   ownedContacts         Contact[]         @relation("ContactOwner")
   createdContacts       Contact[]         @relation("ContactCreator")
   activitiesCreated     Activity[]
@@ -294,6 +296,30 @@ enum Role {
   superAdmin
   admin
   user
+}
+
+model RefreshToken {
+  id          String    @id @default(uuid()) @map("refresh_token_id")
+  userId      String    @map("user_id")
+  tenantId    String    @map("tenant_id")
+  tokenHash   String    @unique @map("token_hash") @db.VarChar(128)
+  expiresAt   DateTime  @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  replacedById String?  @map("replaced_by_id")
+  createdByIp String?   @map("created_by_ip") @db.VarChar(64)
+  userAgent   String?   @map("user_agent") @db.VarChar(512)
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  replacedBy RefreshToken? @relation("RefreshTokenRotation", fields: [replacedById], references: [id], onDelete: SetNull)
+  rotatedFrom RefreshToken[] @relation("RefreshTokenRotation")
+
+  @@index([userId, revokedAt])
+  @@index([tenantId, revokedAt])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
 }
 
 // ============================================
@@ -603,6 +629,8 @@ model TransferLog {
   transfer Transfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Restrict)
 
+  @@index([transferId])
+  @@index([userId, createdAt])
   @@map("transfer_logs")
 }
 
@@ -678,6 +706,7 @@ model Sale {
   @@unique([tenantId, saleCode])
   @@index([tenantId, createdAt])
   @@index([tenantId, locationId])
+  @@index([tenantId, memberId])
   @@map("sales")
 }
 
@@ -707,6 +736,8 @@ model SaleItem {
   variation    ProductVariation      @relation(fields: [variationId], references: [id], onDelete: Restrict)
   subVariation ProductSubVariation?  @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
 
+  @@index([saleId])
+  @@index([variationId])
   @@map("sale_items")
 }
 
@@ -731,6 +762,7 @@ model SalePayment {
 
   sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
+  @@index([saleId])
   @@map("sale_payments")
 }
 
@@ -835,7 +867,7 @@ model ErrorReport {
 
 model Company {
   id        String    @id @default(uuid()) @map("company_id")
-  tenantId  String?   @map("tenant_id")
+  tenantId  String    @map("tenant_id")
   name      String    @map("company_name") @db.VarChar(255)
   website   String?   @db.VarChar(500)
   address   String?   @db.Text
@@ -844,7 +876,7 @@ model Company {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts Contact[]
   deals    Deal[]
 
@@ -854,11 +886,11 @@ model Company {
 
 model ContactTag {
   id        String   @id @default(uuid()) @map("tag_id")
-  tenantId  String?  @map("tenant_id")
+  tenantId  String   @map("tenant_id")
   name      String   @db.VarChar(100)
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant   Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts ContactTagLink[]
 
   @@index([tenantId])
@@ -879,7 +911,7 @@ model ContactTagLink {
 
 model Contact {
   id           String   @id @default(uuid()) @map("contact_id")
-  tenantId     String?  @map("tenant_id")
+  tenantId     String   @map("tenant_id")
   firstName    String   @map("first_name") @db.VarChar(255)
   lastName     String?  @map("last_name") @db.VarChar(255)
   email        String?  @db.VarChar(255)
@@ -892,7 +924,7 @@ model Contact {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  tenant         Tenant?                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   company        Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
   member         Member?                @relation(fields: [memberId], references: [id], onDelete: SetNull)
   owner          User                   @relation("ContactOwner", fields: [ownedById], references: [id], onDelete: Restrict)
@@ -919,6 +951,7 @@ model ContactNote {
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   creator User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
+  @@index([contactId])
   @@map("contact_notes")
 }
 
@@ -935,6 +968,7 @@ model ContactAttachment {
   contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   uploader  User    @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
 
+  @@index([contactId])
   @@map("contact_attachments")
 }
 
@@ -956,6 +990,7 @@ model ContactCommunication {
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   creator User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
+  @@index([contactId])
   @@map("contact_communications")
 }
 
@@ -969,7 +1004,7 @@ enum LeadStatus {
 
 model Lead {
   id           String     @id @default(uuid()) @map("lead_id")
-  tenantId     String?    @map("tenant_id")
+  tenantId     String    @map("tenant_id")
   name         String     @map("lead_name") @db.VarChar(255)
   email        String?    @db.VarChar(255)
   phone        String?    @db.VarChar(50)
@@ -984,7 +1019,7 @@ model Lead {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  tenant      Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   assignedTo  User   @relation("LeadAssignedTo", fields: [assignedToId], references: [id], onDelete: Restrict)
   creator     User   @relation("LeadCreator", fields: [createdById], references: [id], onDelete: Restrict)
   convertedDeal Deal?
@@ -995,7 +1030,7 @@ model Lead {
 
 model Pipeline {
   id        String    @id @default(uuid()) @map("pipeline_id")
-  tenantId  String?   @map("tenant_id")
+  tenantId  String   @map("tenant_id")
   name      String    @db.VarChar(255)
   stages    Json      // Array of { id, name, order, probability }
   isDefault Boolean   @default(false) @map("is_default")
@@ -1003,7 +1038,7 @@ model Pipeline {
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")
 
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   deals  Deal[]
 
   @@index([tenantId])
@@ -1018,7 +1053,7 @@ enum DealStatus {
 
 model Deal {
   id                 String    @id @default(uuid()) @map("deal_id")
-  tenantId           String?   @map("tenant_id")
+  tenantId           String   @map("tenant_id")
   name               String    @map("deal_name") @db.VarChar(255)
   value              Decimal   @db.Decimal(12, 2)
   stage              String    @db.VarChar(100)
@@ -1038,7 +1073,7 @@ model Deal {
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
-  tenant     Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact    Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
   member     Member?   @relation("DealMember", fields: [memberId], references: [id], onDelete: SetNull)
   company    Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
@@ -1050,12 +1085,14 @@ model Deal {
   activities Activity[]
 
   @@index([tenantId])
+  @@index([assignedToId, status])
+  @@index([tenantId, status, updatedAt])
   @@map("deals")
 }
 
 model Task {
   id           String    @id @default(uuid()) @map("task_id")
-  tenantId     String?   @map("tenant_id")
+  tenantId     String   @map("tenant_id")
   title        String    @db.VarChar(500)
   dueDate      DateTime? @map("due_date")
   completed    Boolean   @default(false)
@@ -1067,13 +1104,14 @@ model Task {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact    Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   member     Member?  @relation("TaskMember", fields: [memberId], references: [id], onDelete: SetNull)
   deal       Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
   assignedTo User     @relation(fields: [assignedToId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
+  @@index([tenantId, completed, dueDate])
   @@map("tasks")
 }
 
@@ -1084,7 +1122,7 @@ enum ActivityType {
 
 model Activity {
   id         String       @id @default(uuid()) @map("activity_id")
-  tenantId   String?      @map("tenant_id")
+  tenantId   String      @map("tenant_id")
   type       ActivityType
   subject    String?      @db.VarChar(500)
   notes      String?      @db.Text
@@ -1096,13 +1134,14 @@ model Activity {
   deletedAt  DateTime?   @map("deleted_at")
   createdAt  DateTime    @default(now()) @map("created_at")
 
-  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   member    Member?  @relation("ActivityMember", fields: [memberId], references: [id], onDelete: SetNull)
   deal      Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
   creator   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
+  @@index([tenantId, activityAt])
   @@map("activities")
 }
 

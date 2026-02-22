@@ -3,8 +3,13 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import companyController from "./company.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
-import { validateBody, validateQuery } from "@/middlewares/validateRequest";
 import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  companyIdParamsSchema,
   companyListQuerySchema,
   createCompanySchema,
   updateCompanySchema,
@@ -27,16 +32,22 @@ companyRouter.get(
   validateQuery(companyListQuerySchema),
   asyncHandler(companyController.getAll),
 );
-companyRouter.get("/:id", asyncHandler(companyController.getById));
+companyRouter.get(
+  "/:id",
+  validateParams(companyIdParamsSchema),
+  asyncHandler(companyController.getById),
+);
 companyRouter.put(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
+  validateParams(companyIdParamsSchema),
   validateBody(updateCompanySchema),
   asyncHandler(companyController.update),
 );
 companyRouter.delete(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
+  validateParams(companyIdParamsSchema),
   asyncHandler(companyController.delete),
 );
 

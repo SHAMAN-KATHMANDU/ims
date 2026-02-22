@@ -23,3 +23,7 @@ export const companyListQuerySchema = z.object({
   sortBy: z.enum(["createdAt", "updatedAt", "name", "id"]).optional(),
   sortOrder: z.enum(["asc", "desc"]).optional(),
 });
+
+export const companyIdParamsSchema = z.object({
+  id: z.string().uuid("Invalid company id"),
+});

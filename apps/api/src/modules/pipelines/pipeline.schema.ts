@@ -18,3 +18,7 @@ export const updatePipelineSchema = z.object({
   stages: z.array(stageSchema).optional(),
   isDefault: z.boolean().optional(),
 });
+
+export const pipelineIdParamsSchema = z.object({
+  id: z.string().uuid("Invalid pipeline id"),
+});

@@ -72,6 +72,18 @@ if (!isDev && !apiPublicUrlEnv) {
   process.exit(1);
 }
 const publicApiUrl = apiPublicUrlEnv ?? "http://localhost:4000/api/v1";
+const sentryDsn = process.env.SENTRY_DSN?.trim() || "";
+const sentryTracesSampleRate = Number.parseFloat(
+  process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0.1",
+);
+const redisUrl = process.env.REDIS_URL?.trim() || "";
+const storageEndpoint = process.env.STORAGE_ENDPOINT?.trim() || "";
+const storageAccessKey = process.env.STORAGE_ACCESS_KEY?.trim() || "";
+const storageSecretKey = process.env.STORAGE_SECRET_KEY?.trim() || "";
+const storageBucket = process.env.STORAGE_BUCKET?.trim() || "projectx-files";
+const storageRegion = process.env.STORAGE_REGION?.trim() || "us-east-1";
+const storageForcePathStyle =
+  (process.env.STORAGE_FORCE_PATH_STYLE ?? "1").trim() === "1";
 
 // Feature availability is resolved here; do NOT add feature checks in controllers beyond reading env.features.
 // New features must be explicitly enabled per environment; default is OFF for staging and production.
@@ -90,5 +102,16 @@ export const env = Object.freeze({
   databaseUrl,
   corsOrigin,
   publicApiUrl,
+  sentryDsn,
+  sentryTracesSampleRate: Number.isFinite(sentryTracesSampleRate)
+    ? sentryTracesSampleRate
+    : 0.1,
+  redisUrl,
+  storageEndpoint,
+  storageAccessKey,
+  storageSecretKey,
+  storageBucket,
+  storageRegion,
+  storageForcePathStyle,
   features,
 });

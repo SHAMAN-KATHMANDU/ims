@@ -23,8 +23,10 @@ export const requestLoggingMiddleware = (
   const method = req.method;
   const path = req.path;
   const start = Date.now();
+  const tenantId = req.user?.tenantId;
+  const userId = req.user?.id;
 
-  logger.request("API request", requestId, { method, path });
+  logger.request("API request", requestId, { method, path, tenantId, userId });
 
   res.on("finish", () => {
     const durationMs = Date.now() - start;
@@ -32,8 +34,10 @@ export const requestLoggingMiddleware = (
     logger.request("API response", requestId, {
       method,
       path,
+      tenantId,
+      userId,
       statusCode,
-      durationMs,
+      latencyMs: durationMs,
     });
   });
 

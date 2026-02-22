@@ -11,6 +11,7 @@ import { requestIdMiddleware } from "@/middlewares/requestId";
 import { requestLoggingMiddleware } from "@/middlewares/requestLogging";
 import { basePrisma as prisma } from "@/config/prisma";
 import { getVersion } from "@/config/version";
+import { getRedisClient } from "@/config/redis";
 
 const app = express();
 
@@ -58,11 +59,19 @@ app.get("/health", async (req, res) => {
     // Check database connectivity
     await prisma.$queryRaw`SELECT 1`;
     const dbStatus = "connected";
+    let redisStatus: "connected" | "disconnected" | "not_configured" =
+      "not_configured";
+    const redis = getRedisClient();
+    if (redis) {
+      await redis.ping();
+      redisStatus = "connected";
+    }
 
     res.status(200).json({
       status: "healthy",
       timestamp: new Date().toISOString(),
       database: dbStatus,
+      redis: redisStatus,
       version: getVersion(),
     });
   } catch (error) {

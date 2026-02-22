@@ -32,7 +32,7 @@ function getCutoffDate(): Date {
   return d;
 }
 
-async function runTrashCleanup(): Promise<void> {
+export async function runTrashCleanup(): Promise<void> {
   const cutoff = getCutoffDate();
   logger.log(
     `[TrashCleanup] Running cleanup for items deleted before ${cutoff.toISOString()}`,
