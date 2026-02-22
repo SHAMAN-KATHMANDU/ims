@@ -54,7 +54,9 @@ services:
     volumes:
       - prod_minio_data:/data
     networks:
-      - prod
+      prod:
+        aliases:
+          - prod-minio
 
   prod_api:
     image: rpandox/dev-api-ims:prod

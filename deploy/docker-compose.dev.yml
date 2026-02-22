@@ -54,7 +54,9 @@ services:
     volumes:
       - dev_minio_data:/data
     networks:
-      - dev
+      dev:
+        aliases:
+          - dev-minio
 
   dev_api:
     image: rpandox/dev-api-ims:dev

@@ -78,7 +78,7 @@ export function startTrashCleanupCron(): void {
     try {
       await runTrashCleanup();
     } catch (error) {
-      logger.error("[TrashCleanup] Fatal error in cron job", undefined, error);
+      logger.error("[TrashCleanup] Fatal error in cron job", error);
     }
   });
 

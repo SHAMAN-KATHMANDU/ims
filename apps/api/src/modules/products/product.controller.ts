@@ -134,7 +134,7 @@ class ProductController {
       try {
         product = await createProductWithInventory(
           {
-            imsCode: imsCode as string,
+            imsCode: String(imsCode).trim(),
             name: name as string,
             categoryId: category.id,
             description,
