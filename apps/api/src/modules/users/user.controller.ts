@@ -14,6 +14,7 @@ class UserController {
   async createUser(req: Request, res: Response) {
     try {
       const { username, password, role } = req.body;
+
       const normalizedUsername = username.toLowerCase().trim();
       // Check if user already exists (within this tenant, auto-scoped)
       const existingUser = await User.findFirst({
