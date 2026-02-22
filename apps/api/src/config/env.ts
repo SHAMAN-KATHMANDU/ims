@@ -40,6 +40,10 @@ const host = process.env.HOST?.trim() ?? "0.0.0.0";
 
 const jwtSecret = process.env.JWT_SECRET ?? "";
 const databaseUrl = process.env.DATABASE_URL ?? "";
+if (!isDev && jwtSecret.length < 32) {
+  console.error("FATAL: JWT_SECRET must be at least 32 chars in production.");
+  process.exit(1);
+}
 
 // CORS: must be set explicitly in staging/production. In dev, default to * for convenience.
 // CORS_ORIGIN can be a single origin or comma-separated list.

@@ -4,6 +4,17 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import locationController from "@/modules/locations/location.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  createLocationSchema,
+  locationIdParamsSchema,
+  locationListQuerySchema,
+  updateLocationSchema,
+} from "./location.schema";
 
 const locationRouter = Router();
 
@@ -47,6 +58,7 @@ locationRouter.post(
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
   enforcePlanLimits("locations"),
+  validateBody(createLocationSchema),
   asyncHandler(locationController.createLocation),
 );
 
@@ -88,6 +100,7 @@ locationRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateQuery(locationListQuerySchema),
   asyncHandler(locationController.getAllLocations),
 );
 
@@ -116,6 +129,7 @@ locationRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(locationIdParamsSchema),
   asyncHandler(locationController.getLocationById),
 );
 
@@ -156,6 +170,7 @@ locationRouter.get(
   "/:id/inventory",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(locationIdParamsSchema),
   asyncHandler(locationController.getLocationInventory),
 );
 
@@ -199,6 +214,8 @@ locationRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(locationIdParamsSchema),
+  validateBody(updateLocationSchema),
   asyncHandler(locationController.updateLocation),
 );
 
@@ -229,6 +246,7 @@ locationRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(locationIdParamsSchema),
   asyncHandler(locationController.deleteLocation),
 );
 

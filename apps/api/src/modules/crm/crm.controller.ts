@@ -142,10 +142,10 @@ class CrmController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const year =
-        parseInt(req.query.year as string) || new Date().getFullYear();
-      const startOfYear = new Date(year, 0, 1);
-      const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+      const { year } = req.query as { year?: number };
+      const reportYear = year ?? new Date().getFullYear();
+      const startOfYear = new Date(reportYear, 0, 1);
+      const endOfYear = new Date(reportYear, 11, 31, 23, 59, 59);
 
       const [dealsWon, dealsLost, leadsBySource, salesPerUser, monthlyRevenue] =
         await Promise.all([
@@ -214,7 +214,7 @@ class CrmController {
 
       const revenueByMonth: Record<string, number> = {};
       for (let m = 1; m <= 12; m++) {
-        revenueByMonth[`${year}-${String(m).padStart(2, "0")}`] = 0;
+        revenueByMonth[`${reportYear}-${String(m).padStart(2, "0")}`] = 0;
       }
       monthlyRevenue.forEach((d) => {
         if (d.closedAt) {
@@ -228,7 +228,7 @@ class CrmController {
       res.status(200).json({
         message: "OK",
         data: {
-          year,
+          year: reportYear,
           dealsWon,
           dealsLost,
           totalRevenue: totalWonValue,
@@ -251,10 +251,10 @@ class CrmController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const year =
-        parseInt(req.query.year as string) || new Date().getFullYear();
-      const startOfYear = new Date(year, 0, 1);
-      const endOfYear = new Date(year, 11, 31, 23, 59, 59);
+      const { year } = req.query as { year?: number };
+      const reportYear = year ?? new Date().getFullYear();
+      const startOfYear = new Date(reportYear, 0, 1);
+      const endOfYear = new Date(reportYear, 11, 31, 23, 59, 59);
 
       const [dealsWon, dealsLost, salesPerUser, leadsBySource] =
         await Promise.all([
@@ -300,7 +300,7 @@ class CrmController {
         { header: "Value", key: "value", width: 20 },
       ];
       summarySheet.addRows([
-        { metric: "Year", value: year },
+        { metric: "Year", value: reportYear },
         { metric: "Deals Won", value: dealsWon },
         { metric: "Deals Lost", value: dealsLost },
         {
@@ -335,7 +335,7 @@ class CrmController {
       const buffer = await workbook.xlsx.writeBuffer();
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="crm-reports-${year}-${Date.now()}.xlsx"`,
+        `attachment; filename="crm-reports-${reportYear}-${Date.now()}.xlsx"`,
       );
       res.setHeader(
         "Content-Type",

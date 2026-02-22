@@ -60,16 +60,6 @@ class SaleController {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      // Validate required fields
-      if (!locationId) {
-        return res.status(400).json({ message: "Location ID is required" });
-      }
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return res
-          .status(400)
-          .json({ message: "At least one item is required" });
-      }
-
       // Validate location exists and is a showroom
       const location = await prisma.location.findUnique({
         where: { id: locationId },
@@ -152,12 +142,6 @@ class SaleController {
       let totalDiscount = 0;
 
       for (const item of items) {
-        if (!item.variationId || !item.quantity || item.quantity <= 0) {
-          return res.status(400).json({
-            message: "Each item must have a variationId and positive quantity",
-          });
-        }
-
         // Get variation with product info, sub-variants, and active discounts
         const variation = await prisma.productVariation.findUnique({
           where: { id: item.variationId },
@@ -621,17 +605,6 @@ class SaleController {
         }>;
       } = req.body;
 
-      if (
-        !locationId ||
-        !items ||
-        !Array.isArray(items) ||
-        items.length === 0
-      ) {
-        return res.status(400).json({
-          message: "locationId and items (non-empty array) are required",
-        });
-      }
-
       const location = await prisma.location.findUnique({
         where: { id: locationId },
       });
@@ -659,12 +632,6 @@ class SaleController {
       let totalPromoDiscount = 0;
 
       for (const item of items) {
-        if (!item.variationId || !item.quantity || item.quantity <= 0) {
-          return res.status(400).json({
-            message: "Each item must have variationId and positive quantity",
-          });
-        }
-
         const variation = await prisma.productVariation.findUnique({
           where: { id: item.variationId },
           include: {
@@ -881,12 +848,23 @@ class SaleController {
       );
 
       // Parse filters (createdById used for analytics drill-down; user role ignores it and sees only own)
-      const locationId = req.query.locationId as string | undefined;
-      const createdByIdParam = req.query.createdById as string | undefined;
-      const type = req.query.type as "GENERAL" | "MEMBER" | undefined;
-      const isCreditSaleParam = req.query.isCreditSale as string | undefined;
-      let startDate = req.query.startDate as string | undefined;
-      let endDate = req.query.endDate as string | undefined;
+      const {
+        locationId,
+        createdById: createdByIdParam,
+        type,
+        isCreditSale,
+        startDate: parsedStartDate,
+        endDate: parsedEndDate,
+      } = req.query as {
+        locationId?: string;
+        createdById?: string;
+        type?: "GENERAL" | "MEMBER";
+        isCreditSale?: boolean;
+        startDate?: string;
+        endDate?: string;
+      };
+      let startDate = parsedStartDate;
+      let endDate = parsedEndDate;
 
       // For role "user", restrict date range to today and yesterday only
       const userRole = (req as any).user?.role as string | undefined;
@@ -942,10 +920,8 @@ class SaleController {
         where.type = type;
       }
 
-      if (isCreditSaleParam === "true") {
-        where.isCreditSale = true;
-      } else if (isCreditSaleParam === "false") {
-        where.isCreditSale = false;
+      if (isCreditSale !== undefined) {
+        where.isCreditSale = isCreditSale;
       }
 
       if (startDate || endDate) {
@@ -1083,9 +1059,7 @@ class SaleController {
   // Get sale by ID with full details
   async getSaleById(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const sale = await prisma.sale.findUnique({
         where: { id },
@@ -1144,29 +1118,9 @@ class SaleController {
   // Add payment to a credit sale
   async addPayment(req: Request, res: Response) {
     try {
-      const saleId = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id: saleId } = req.params as { id: string };
       const { method, amount }: { method: string; amount: number } = req.body;
-
-      if (!saleId) {
-        return res.status(400).json({ message: "Sale ID is required" });
-      }
-      if (
-        !method ||
-        !["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"].includes(method)
-      ) {
-        return res.status(400).json({
-          message:
-            "Valid payment method is required (CASH, CARD, CHEQUE, FONEPAY, QR)",
-        });
-      }
       const amountNum = Number(amount);
-      if (isNaN(amountNum) || amountNum <= 0) {
-        return res.status(400).json({
-          message: "Amount must be a positive number",
-        });
-      }
 
       const sale = await prisma.sale.findUnique({
         where: { id: saleId },
@@ -1247,9 +1201,11 @@ class SaleController {
   // Get sales summary for analytics
   async getSalesSummary(req: Request, res: Response) {
     try {
-      const locationId = req.query.locationId as string | undefined;
-      const startDate = req.query.startDate as string | undefined;
-      const endDate = req.query.endDate as string | undefined;
+      const { locationId, startDate, endDate } = req.query as {
+        locationId?: string;
+        startDate?: string;
+        endDate?: string;
+      };
 
       // Build date filter
       const dateFilter: any = {};
@@ -1315,8 +1271,10 @@ class SaleController {
   // Get sales by location (for analytics)
   async getSalesByLocation(req: Request, res: Response) {
     try {
-      const startDate = req.query.startDate as string | undefined;
-      const endDate = req.query.endDate as string | undefined;
+      const { startDate, endDate } = req.query as {
+        startDate?: string;
+        endDate?: string;
+      };
 
       // Build date filter
       const dateFilter: any = {};
@@ -1377,8 +1335,10 @@ class SaleController {
   // Get daily sales (for analytics chart)
   async getDailySales(req: Request, res: Response) {
     try {
-      const locationId = req.query.locationId as string | undefined;
-      const days = parseInt(req.query.days as string) || 30;
+      const { locationId, days = 30 } = req.query as {
+        locationId?: string;
+        days?: number;
+      };
 
       // Calculate date range
       const endDate = new Date();
@@ -2208,8 +2168,10 @@ class SaleController {
   // Download sales as Excel or CSV
   async downloadSales(req: Request, res: Response) {
     try {
-      const format = (req.query.format as string)?.toLowerCase() || "excel";
-      const idsParam = req.query.ids as string | undefined;
+      const { format = "excel", ids: idsParam } = req.query as {
+        format?: "excel" | "csv";
+        ids?: string;
+      };
 
       // Validate format
       if (format !== "excel" && format !== "csv") {

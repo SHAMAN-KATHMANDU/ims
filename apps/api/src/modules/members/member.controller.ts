@@ -23,11 +23,6 @@ class MemberController {
     try {
       const { phone, name, email, notes } = req.body;
 
-      // Validate required fields
-      if (!phone) {
-        return res.status(400).json({ message: "Phone number is required" });
-      }
-
       // Normalize phone number (remove spaces, dashes)
       const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
 
@@ -65,9 +60,15 @@ class MemberController {
   // Get all members with pagination and search
   async getAllMembers(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
+      const query = req.query as {
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: "createdAt" | "updatedAt" | "name" | "id";
+        sortOrder?: "asc" | "desc";
+      };
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
 
       // Allowed fields for sorting (date added = createdAt); sorting at DB level
       const allowedSortFields = [
@@ -129,9 +130,7 @@ class MemberController {
   // Get member by phone number
   async getMemberByPhone(req: Request, res: Response) {
     try {
-      const phone = Array.isArray(req.params.phone)
-        ? req.params.phone[0]
-        : req.params.phone;
+      const { phone } = req.params as { phone: string };
 
       // Normalize phone number
       const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
@@ -161,9 +160,7 @@ class MemberController {
   // Get member by ID
   async getMemberById(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const member = await prisma.member.findUnique({
         where: { id },
@@ -213,9 +210,7 @@ class MemberController {
   // Update member
   async updateMember(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
       const { phone, name, email, notes, isActive } = req.body;
 
       // Check if member exists
@@ -285,9 +280,7 @@ class MemberController {
   // Check if phone number is a member (quick lookup for sales)
   async checkMember(req: Request, res: Response) {
     try {
-      const phone = Array.isArray(req.params.phone)
-        ? req.params.phone[0]
-        : req.params.phone;
+      const { phone } = req.params as { phone: string };
 
       // Normalize phone number
       const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
@@ -736,8 +729,10 @@ class MemberController {
   // Download members as Excel or CSV
   async downloadMembers(req: Request, res: Response) {
     try {
-      const format = (req.query.format as string)?.toLowerCase() || "excel";
-      const idsParam = req.query.ids as string | undefined;
+      const { format = "excel", ids: idsParam } = req.query as {
+        format?: "excel" | "csv";
+        ids?: string;
+      };
 
       // Validate format
       if (format !== "excel" && format !== "csv") {

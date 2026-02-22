@@ -42,26 +42,6 @@ class TransferController {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      // Validate required fields
-      if (!fromLocationId) {
-        return res.status(400).json({ message: "Source location is required" });
-      }
-      if (!toLocationId) {
-        return res
-          .status(400)
-          .json({ message: "Destination location is required" });
-      }
-      if (!items || !Array.isArray(items) || items.length === 0) {
-        return res
-          .status(400)
-          .json({ message: "At least one item is required for transfer" });
-      }
-      if (fromLocationId === toLocationId) {
-        return res
-          .status(400)
-          .json({ message: "Source and destination cannot be the same" });
-      }
-
       // Validate locations exist and are active
       const [fromLocation, toLocation] = await Promise.all([
         prisma.location.findUnique({ where: { id: fromLocationId } }),
@@ -94,12 +74,6 @@ class TransferController {
       const insufficientStock: any[] = [];
 
       for (const item of items) {
-        if (!item.variationId || !item.quantity || item.quantity <= 0) {
-          return res.status(400).json({
-            message: "Each item must have a variationId and positive quantity",
-          });
-        }
-
         const subVariationId =
           (item as { subVariationId?: string | null }).subVariationId ?? null;
 
@@ -178,63 +152,68 @@ class TransferController {
         });
       }
 
-      // Create transfer with items
-      const transfer = await prisma.transfer.create({
-        data: {
-          tenantId: req.user!.tenantId,
-          transferCode: generateTransferCode(),
-          fromLocationId,
-          toLocationId,
-          status: "PENDING",
-          notes: notes || null,
-          createdById: req.user.id,
-          items: {
-            create: validatedItems.map((item) => ({
-              variationId: item.variationId,
-              subVariationId: item.subVariationId,
-              quantity: item.quantity,
-            })),
-          },
-        },
-        include: {
-          fromLocation: true,
-          toLocation: true,
-          createdBy: {
-            select: { id: true, username: true, role: true },
-          },
-          items: {
-            include: {
-              variation: {
-                include: {
-                  product: {
-                    select: { id: true, name: true, imsCode: true },
-                  },
-                },
-              },
-              subVariation: { select: { id: true, name: true } },
+      // Create transfer and audit records atomically.
+      const transfer = await prisma.$transaction(async (tx) => {
+        const createdTransfer = await tx.transfer.create({
+          data: {
+            tenantId: req.user!.tenantId,
+            transferCode: generateTransferCode(),
+            fromLocationId,
+            toLocationId,
+            status: "PENDING",
+            notes: notes || null,
+            createdById: req.user.id,
+            items: {
+              create: validatedItems.map((item) => ({
+                variationId: item.variationId,
+                subVariationId: item.subVariationId,
+                quantity: item.quantity,
+              })),
             },
           },
-        },
-      });
+          include: {
+            fromLocation: true,
+            toLocation: true,
+            createdBy: {
+              select: { id: true, username: true, role: true },
+            },
+            items: {
+              include: {
+                variation: {
+                  include: {
+                    product: {
+                      select: { id: true, name: true, imsCode: true },
+                    },
+                  },
+                },
+                subVariation: { select: { id: true, name: true } },
+              },
+            },
+          },
+        });
 
-      // Create log entry
-      await createTransferLog(transfer.id, "CREATED", req.user.id, {
-        fromLocation: fromLocation.name,
-        toLocation: toLocation.name,
-        itemCount: validatedItems.length,
-      });
+        await tx.transferLog.create({
+          data: {
+            transferId: createdTransfer.id,
+            action: "CREATED",
+            userId: req.user.id,
+            details: {
+              fromLocation: fromLocation.name,
+              toLocation: toLocation.name,
+              itemCount: validatedItems.length,
+            },
+          },
+        });
 
-      // Audit log: CREATE_TRANSFER
-      try {
-        await prisma.auditLog.create({
+        await tx.auditLog.create({
           data: {
             tenantId: req.user?.tenantId || null,
             userId: req.user.id,
             action: "CREATE_TRANSFER",
             resource: "transfer",
-            resourceId: transfer.id,
+            resourceId: createdTransfer.id,
             details: {
-              transferCode: transfer.transferCode,
+              transferCode: createdTransfer.transferCode,
               fromLocationId: fromLocationId,
               toLocationId: toLocationId,
             },
@@ -245,9 +224,9 @@ class TransferController {
             userAgent: req.get("user-agent") ?? undefined,
           },
         });
-      } catch (auditErr) {
-        console.error("Audit log CREATE_TRANSFER failed:", auditErr);
-      }
+
+        return createdTransfer;
+      });
 
       res.status(201).json({
         message: "Transfer request created successfully",
@@ -266,10 +245,18 @@ class TransferController {
       );
 
       // Parse filters
-      const status = req.query.status as string | undefined;
-      const fromLocationId = req.query.fromLocationId as string | undefined;
-      const toLocationId = req.query.toLocationId as string | undefined;
-      const locationId = req.query.locationId as string | undefined; // Either from or to
+      const { status, fromLocationId, toLocationId, locationId } =
+        req.query as {
+          status?:
+            | "PENDING"
+            | "APPROVED"
+            | "IN_TRANSIT"
+            | "COMPLETED"
+            | "CANCELLED";
+          fromLocationId?: string;
+          toLocationId?: string;
+          locationId?: string;
+        };
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -362,9 +349,7 @@ class TransferController {
   // Get transfer by ID with full details
   async getTransferById(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const transfer = await prisma.transfer.findUnique({
         where: { id },
@@ -424,9 +409,7 @@ class TransferController {
   // Approve transfer
   async approveTransfer(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       if (!req.user || !req.user.id) {
         return res.status(401).json({ message: "User not authenticated" });
@@ -529,9 +512,7 @@ class TransferController {
   // Start transit - moves status from APPROVED to IN_TRANSIT
   async startTransit(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       if (!req.user || !req.user.id) {
         return res.status(401).json({ message: "User not authenticated" });
@@ -615,9 +596,7 @@ class TransferController {
   // Complete transfer - adds stock to destination
   async completeTransfer(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       if (!req.user || !req.user.id) {
         return res.status(401).json({ message: "User not authenticated" });
@@ -714,9 +693,7 @@ class TransferController {
   // Cancel transfer
   async cancelTransfer(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
       const { reason } = req.body;
 
       if (!req.user || !req.user.id) {
@@ -805,9 +782,7 @@ class TransferController {
   // Get transfer logs for a specific transfer
   async getTransferLogs(req: Request, res: Response) {
     try {
-      const transferId = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id: transferId } = req.params as { id: string };
 
       const transfer = await prisma.transfer.findUnique({
         where: { id: transferId },

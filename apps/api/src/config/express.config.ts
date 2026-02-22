@@ -1,5 +1,7 @@
 import express from "express";
 import cors from "cors";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import router from "@/config/router.config";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "@/config/swagger.config";
@@ -11,6 +13,13 @@ import { basePrisma as prisma } from "@/config/prisma";
 import { getVersion } from "@/config/version";
 
 const app = express();
+
+const generalApiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 // Request timeout middleware (30 seconds default)
 app.use((req, res, next) => {
@@ -31,6 +40,7 @@ app.use(requestLoggingMiddleware);
 
 // CORS middleware - uses CORS_ORIGIN from environment
 // In production, this must be set to specific frontend origin(s)
+app.use(helmet());
 app.use(
   cors({
     origin: env.corsOrigin,
@@ -39,8 +49,8 @@ app.use(
 );
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true, limit: "1mb" }));
 
 // Health check endpoint for container orchestration
 app.get("/health", async (req, res) => {
@@ -67,17 +77,19 @@ app.get("/health", async (req, res) => {
 });
 
 // Swagger Documentation
-app.use(
-  "/api-docs",
-  swaggerUi.serve,
-  swaggerUi.setup(swaggerSpec, {
-    customCss: ".swagger-ui .topbar { display: none }",
-    customSiteTitle: "IMS API Documentation",
-  }),
-);
+if (!env.isProd) {
+  app.use(
+    "/api-docs",
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, {
+      customCss: ".swagger-ui .topbar { display: none }",
+      customSiteTitle: "IMS API Documentation",
+    }),
+  );
+}
 
 // API Routes
-app.use("/api/v1", router);
+app.use("/api/v1", generalApiLimiter, router);
 
 // Global error handler - must be last middleware
 app.use(errorHandler);

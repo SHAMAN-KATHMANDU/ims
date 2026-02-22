@@ -3,6 +3,18 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import vendorController from "@/modules/vendors/vendor.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  createVendorSchema,
+  updateVendorSchema,
+  vendorIdParamsSchema,
+  vendorListQuerySchema,
+  vendorProductsQuerySchema,
+} from "./vendor.schema";
 
 const vendorRouter = Router();
 
@@ -54,6 +66,7 @@ vendorRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateBody(createVendorSchema),
   asyncHandler(vendorController.createVendor),
 );
 
@@ -86,6 +99,7 @@ vendorRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateQuery(vendorListQuerySchema),
   asyncHandler(vendorController.getAllVendors),
 );
 
@@ -126,6 +140,8 @@ vendorRouter.get(
   "/:id/products",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(vendorIdParamsSchema),
+  validateQuery(vendorProductsQuerySchema),
   asyncHandler(vendorController.getVendorProducts),
 );
 
@@ -154,6 +170,7 @@ vendorRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(vendorIdParamsSchema),
   asyncHandler(vendorController.getVendorById),
 );
 
@@ -200,6 +217,8 @@ vendorRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(vendorIdParamsSchema),
+  validateBody(updateVendorSchema),
   asyncHandler(vendorController.updateVendor),
 );
 
@@ -230,6 +249,7 @@ vendorRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(vendorIdParamsSchema),
   asyncHandler(vendorController.deleteVendor),
 );
 

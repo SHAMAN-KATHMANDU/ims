@@ -11,23 +11,27 @@ function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
 }
 
+function getTenantId(req: Request): string | null {
+  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
+}
+
 class TaskController {
   async create(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { title, dueDate, contactId, memberId, dealId, assignedToId } =
         req.body;
 
-      if (!title || typeof title !== "string" || !title.trim()) {
-        return res.status(400).json({ message: "Task title is required" });
-      }
-
       const task = await prisma.task.create({
         data: {
-          title: title.trim(),
+          tenantId,
+          title,
           dueDate: dueDate ? new Date(dueDate) : null,
           contactId: contactId || null,
           memberId: memberId || null,
@@ -70,9 +74,11 @@ class TaskController {
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
-      const completed = req.query.completed as string | undefined;
-      const assignedToId = req.query.assignedToId as string | undefined;
-      const dueToday = req.query.dueToday === "true";
+      const { completed, assignedToId, dueToday } = req.query as {
+        completed?: boolean;
+        assignedToId?: string;
+        dueToday?: boolean;
+      };
 
       const allowedSortFields = [
         "createdAt",
@@ -93,8 +99,7 @@ class TaskController {
       if (search) {
         where.title = { contains: search, mode: "insensitive" as const };
       }
-      if (completed === "true") where.completed = true;
-      else if (completed === "false") where.completed = false;
+      if (completed !== undefined) where.completed = completed;
       if (assignedToId) where.assignedToId = assignedToId;
 
       if (dueToday) {
@@ -173,7 +178,7 @@ class TaskController {
       }
 
       const updateData: Record<string, unknown> = {
-        ...(title !== undefined && { title: title?.trim() || existing.title }),
+        ...(title !== undefined && { title: title || existing.title }),
         ...(dueDate !== undefined && {
           dueDate: dueDate ? new Date(dueDate) : null,
         }),

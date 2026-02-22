@@ -2,14 +2,18 @@ import { Request, Response } from "express";
 import prisma from "@/config/prisma";
 import { sendControllerError } from "@/utils/controllerError";
 
+function getTenantId(req: Request): string | null {
+  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
+}
+
 class PipelineController {
   async create(req: Request, res: Response) {
     try {
-      const { name, stages, isDefault } = req.body;
+      const tenantId = getTenantId(req);
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ message: "Pipeline name is required" });
-      }
+      const { name, stages, isDefault } = req.body;
 
       const defaultStages = [
         { id: "1", name: "Qualification", order: 1, probability: 10 },
@@ -23,12 +27,16 @@ class PipelineController {
         Array.isArray(stages) && stages.length > 0 ? stages : defaultStages;
 
       if (isDefault) {
-        await prisma.pipeline.updateMany({ data: { isDefault: false } });
+        await prisma.pipeline.updateMany({
+          where: { tenantId },
+          data: { isDefault: false },
+        });
       }
 
       const pipeline = await prisma.pipeline.create({
         data: {
-          name: name.trim(),
+          tenantId,
+          name,
           stages: pipelineStages,
           isDefault: !!isDefault,
         },
@@ -59,6 +67,10 @@ class PipelineController {
 
   async getById(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
 
       const pipeline = await prisma.pipeline.findUnique({
@@ -78,6 +90,10 @@ class PipelineController {
 
   async update(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
       const { name, stages, isDefault } = req.body;
 
@@ -88,13 +104,13 @@ class PipelineController {
 
       if (isDefault) {
         await prisma.pipeline.updateMany({
-          where: { id: { not: id } },
+          where: { tenantId, id: { not: id } },
           data: { isDefault: false },
         });
       }
 
       const updateData: Record<string, unknown> = {};
-      if (name !== undefined) updateData.name = name?.trim() || existing.name;
+      if (name !== undefined) updateData.name = name || existing.name;
       if (stages !== undefined && Array.isArray(stages))
         updateData.stages = stages;
       if (isDefault !== undefined) updateData.isDefault = !!isDefault;

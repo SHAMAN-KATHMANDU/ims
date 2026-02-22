@@ -9,7 +9,10 @@ import { sendControllerError } from "@/utils/controllerError";
 class AuthController {
   async logIn(req: Request, res: Response) {
     try {
-      const { username, password } = req.body;
+      const { username, password } = req.body as {
+        username: string;
+        password: string;
+      };
 
       // Debug logs only in development
       if (env.isDev) {
@@ -19,14 +22,20 @@ class AuthController {
         });
       }
 
-      // Normalize username - trim and handle case
-      const normalizedUsername = username?.toString().toLowerCase().trim();
-
-      if (!normalizedUsername || !password) {
+      // Keep a controller-level safety guard because tests call controller directly.
+      if (
+        typeof username !== "string" ||
+        typeof password !== "string" ||
+        !username.trim() ||
+        !password
+      ) {
         return res
           .status(400)
           .json({ message: "Username and password are required" });
       }
+
+      // Normalize username - trim and handle case
+      const normalizedUsername = username.toLowerCase().trim();
 
       // ----- Tenant resolution for login -----
       // Resolve tenant from X-Tenant-Slug header
@@ -104,7 +113,7 @@ class AuthController {
       };
 
       const token = jwt.sign(tokenPayload, env.jwtSecret, {
-        expiresIn: "24h",
+        expiresIn: "4h",
       });
 
       // Return token, user info (without password), and tenant info

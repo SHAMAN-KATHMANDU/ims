@@ -29,18 +29,6 @@ class PromoController {
         subCategories,
       } = req.body;
 
-      if (!code?.trim()) {
-        return res.status(400).json({ message: "Promo code is required" });
-      }
-      if (!valueType || !["PERCENTAGE", "FLAT"].includes(valueType)) {
-        return res.status(400).json({
-          message: "Invalid valueType. Must be PERCENTAGE or FLAT",
-        });
-      }
-      if (value === undefined || value === null || isNaN(Number(value))) {
-        return res.status(400).json({ message: "Valid value is required" });
-      }
-
       const existing = await prisma.promoCode.findFirst({
         where: { code },
       });
@@ -60,16 +48,16 @@ class PromoController {
       const promo = await prisma.promoCode.create({
         data: {
           tenantId: req.user!.tenantId,
-          code: code.trim(),
+          code,
           description: description || null,
           valueType,
-          value: Number(value),
+          value,
           overrideDiscounts: !!overrideDiscounts,
           allowStacking: !!allowStacking,
           eligibility: eligibility || "ALL",
-          validFrom: validFrom ? new Date(validFrom) : null,
-          validTo: validTo ? new Date(validTo) : null,
-          usageLimit: usageLimit !== undefined ? Number(usageLimit) : null,
+          validFrom: validFrom || null,
+          validTo: validTo || null,
+          usageLimit: usageLimit !== undefined ? usageLimit : null,
           isActive: isActive !== undefined ? !!isActive : true,
           products:
             resolvedProductIds.length > 0
@@ -106,11 +94,7 @@ class PromoController {
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
-
-      const isActive =
-        typeof req.query.isActive === "string"
-          ? req.query.isActive === "true"
-          : undefined;
+      const { isActive } = req.query as { isActive?: boolean };
 
       const allowedSortFields = [
         "code",
@@ -174,9 +158,7 @@ class PromoController {
   // Get promo by ID
   async getPromoById(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const promo = await prisma.promoCode.findUnique({
         where: { id },
@@ -207,9 +189,7 @@ class PromoController {
   // Update promo code
   async updatePromo(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const existing = await prisma.promoCode.findUnique({ where: { id } });
       if (!existing) {
@@ -237,29 +217,16 @@ class PromoController {
       const data: any = {};
 
       if (code !== undefined) {
-        if (!code.trim()) {
-          return res
-            .status(400)
-            .json({ message: "Promo code cannot be empty" });
-        }
-        data.code = code.trim();
+        data.code = code;
       }
       if (description !== undefined) {
         data.description = description || null;
       }
       if (valueType !== undefined) {
-        if (!["PERCENTAGE", "FLAT"].includes(valueType)) {
-          return res.status(400).json({
-            message: "Invalid valueType. Must be PERCENTAGE or FLAT",
-          });
-        }
         data.valueType = valueType;
       }
       if (value !== undefined) {
-        if (value === null || isNaN(Number(value))) {
-          return res.status(400).json({ message: "Valid value is required" });
-        }
-        data.value = Number(value);
+        data.value = value;
       }
       if (overrideDiscounts !== undefined) {
         data.overrideDiscounts = !!overrideDiscounts;
@@ -271,13 +238,13 @@ class PromoController {
         data.eligibility = eligibility;
       }
       if (validFrom !== undefined) {
-        data.validFrom = validFrom ? new Date(validFrom) : null;
+        data.validFrom = validFrom || null;
       }
       if (validTo !== undefined) {
-        data.validTo = validTo ? new Date(validTo) : null;
+        data.validTo = validTo || null;
       }
       if (usageLimit !== undefined) {
-        data.usageLimit = usageLimit !== null ? Number(usageLimit) : null;
+        data.usageLimit = usageLimit;
       }
       if (isActive !== undefined) {
         data.isActive = !!isActive;
@@ -386,9 +353,7 @@ class PromoController {
   // Soft delete / deactivate promo code
   async deletePromo(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const existing = await prisma.promoCode.findUnique({ where: { id } });
       if (!existing) {

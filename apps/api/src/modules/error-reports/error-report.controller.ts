@@ -14,28 +14,18 @@ class ErrorReportController {
       }
 
       const { title, description, pageUrl } = req.body as {
-        title?: string;
+        title: string;
         description?: string;
         pageUrl?: string;
       };
-
-      if (!title || typeof title !== "string" || !title.trim()) {
-        return res.status(400).json({ message: "Title is required" });
-      }
 
       const report = await prisma.errorReport.create({
         data: {
           tenantId: req.user?.tenantId || null,
           userId: req.user.id,
-          title: title.trim().slice(0, 255),
-          description:
-            description && typeof description === "string"
-              ? description.trim().slice(0, 5000)
-              : null,
-          pageUrl:
-            pageUrl && typeof pageUrl === "string"
-              ? pageUrl.trim().slice(0, 500)
-              : null,
+          title: title.slice(0, 255),
+          description: description ? description.slice(0, 5000) : null,
+          pageUrl: pageUrl ? pageUrl.slice(0, 500) : null,
         },
         include: {
           user: { select: { id: true, username: true } },
@@ -54,15 +44,17 @@ class ErrorReportController {
   async list(req: Request, res: Response) {
     try {
       const { page, limit } = getPaginationParams(req.query);
-      const status = req.query.status as string | undefined;
-      const userId = req.query.userId as string | undefined;
-      const from = req.query.from as string | undefined;
-      const to = req.query.to as string | undefined;
+      const { status, userId, from, to } = req.query as {
+        status?: "OPEN" | "REVIEWED" | "RESOLVED";
+        userId?: string;
+        from?: string;
+        to?: string;
+      };
 
       const tenantId = req.user?.tenantId ?? null;
       const where: any = {};
       if (tenantId) where.tenantId = tenantId;
-      if (status && ["OPEN", "REVIEWED", "RESOLVED"].includes(status)) {
+      if (status) {
         where.status = status;
       }
       if (userId) where.userId = userId;
@@ -103,20 +95,14 @@ class ErrorReportController {
 
   async updateStatus(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-      const { status } = req.body as { status?: string };
-
-      if (!status || !["OPEN", "REVIEWED", "RESOLVED"].includes(status)) {
-        return res.status(400).json({
-          message: "status must be OPEN, REVIEWED, or RESOLVED",
-        });
-      }
+      const { id } = req.params as { id: string };
+      const { status } = req.body as {
+        status: "OPEN" | "REVIEWED" | "RESOLVED";
+      };
 
       const report = await prisma.errorReport.update({
         where: { id },
-        data: { status: status as "OPEN" | "REVIEWED" | "RESOLVED" },
+        data: { status },
         include: {
           user: { select: { id: true, username: true } },
         },

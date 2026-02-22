@@ -13,11 +13,6 @@ class CategoryController {
     try {
       const { name, description } = req.body;
 
-      // Validate required fields
-      if (!name) {
-        return res.status(400).json({ message: "Category name is required" });
-      }
-
       // Check if category already exists (within this tenant, auto-scoped)
       const existingCategory = await prisma.category.findFirst({
         where: { name },
@@ -60,9 +55,15 @@ class CategoryController {
   // Get all categories (all authenticated users can view)
   async getAllCategories(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
+      const query = req.query as {
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: "id" | "name" | "createdAt" | "updatedAt";
+        sortOrder?: "asc" | "desc";
+      };
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
 
       // Allowed fields for sorting
       const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
@@ -135,13 +136,7 @@ class CategoryController {
   // Get category by ID (all authenticated users can view)
   async getCategoryById(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-
-      if (!id) {
-        return res.status(400).json({ message: "Category ID is required" });
-      }
+      const { id } = req.params as { id: string };
 
       const category = await prisma.category.findUnique({
         where: { id },
@@ -180,13 +175,7 @@ class CategoryController {
   // Get distinct subcategories for a category
   async getCategorySubcategories(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-
-      if (!id) {
-        return res.status(400).json({ message: "Category ID is required" });
-      }
+      const { id } = req.params as { id: string };
 
       // Fetch from SubCategory table instead of inferring from products
       const subcategoryRows = await prisma.subCategory.findMany({
@@ -221,19 +210,8 @@ class CategoryController {
   // Create a new subcategory for a category
   async createSubcategory(req: Request, res: Response) {
     try {
-      const categoryId = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-      const { name } = req.body as { name?: string };
-
-      if (!categoryId) {
-        return res.status(400).json({ message: "Category ID is required" });
-      }
-      if (!name || !name.trim()) {
-        return res
-          .status(400)
-          .json({ message: "Subcategory name is required" });
-      }
+      const { id: categoryId } = req.params as { id: string };
+      const { name } = req.body as { name: string };
 
       const category = await prisma.category.findUnique({
         where: { id: categoryId },
@@ -245,7 +223,7 @@ class CategoryController {
       const existing = await prisma.subCategory.findFirst({
         where: {
           categoryId,
-          name: name.trim(),
+          name,
         },
       });
       if (existing) {
@@ -258,7 +236,7 @@ class CategoryController {
 
       const subCategory = await prisma.subCategory.create({
         data: {
-          name: name.trim(),
+          name,
           categoryId,
         },
       });
@@ -275,24 +253,13 @@ class CategoryController {
   // Delete a subcategory from a category
   async deleteSubcategory(req: Request, res: Response) {
     try {
-      const categoryId = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-      const { name } = req.body as { name?: string };
-
-      if (!categoryId) {
-        return res.status(400).json({ message: "Category ID is required" });
-      }
-      if (!name || !name.trim()) {
-        return res
-          .status(400)
-          .json({ message: "Subcategory name is required" });
-      }
+      const { id: categoryId } = req.params as { id: string };
+      const { name } = req.body as { name: string };
 
       const subCategory = await prisma.subCategory.findFirst({
         where: {
           categoryId,
-          name: name.trim(),
+          name,
         },
       });
 
@@ -330,14 +297,8 @@ class CategoryController {
   // Update category (admin and superAdmin only)
   async updateCategory(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
       const { name, description } = req.body;
-
-      if (!id) {
-        return res.status(400).json({ message: "Category ID is required" });
-      }
 
       // Check if category exists
       const existingCategory = await prisma.category.findUnique({
@@ -399,13 +360,7 @@ class CategoryController {
   // Delete category (admin and superAdmin only)
   async deleteCategory(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-
-      if (!id) {
-        return res.status(400).json({ message: "Category ID is required" });
-      }
+      const { id } = req.params as { id: string };
 
       // Check if category exists and get product count
       const existingCategory = await prisma.category.findUnique({

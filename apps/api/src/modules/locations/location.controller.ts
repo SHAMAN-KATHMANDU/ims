@@ -13,18 +13,6 @@ class LocationController {
     try {
       const { name, type, address, isDefaultWarehouse } = req.body;
 
-      // Validate required fields
-      if (!name) {
-        return res.status(400).json({ message: "Location name is required" });
-      }
-
-      // Validate type if provided
-      if (type && !["WAREHOUSE", "SHOWROOM"].includes(type)) {
-        return res.status(400).json({
-          message: "Invalid location type. Must be WAREHOUSE or SHOWROOM",
-        });
-      }
-
       // Check if location already exists
       const existingLocation = await prisma.location.findFirst({
         where: { name },
@@ -71,9 +59,15 @@ class LocationController {
       );
 
       // Parse type and status filters from query
-      const typeFilter = req.query.type as string | undefined;
-      const activeOnly = req.query.activeOnly === "true";
-      const statusFilter = req.query.status as string | undefined;
+      const {
+        type: typeFilter,
+        activeOnly,
+        status: statusFilter,
+      } = req.query as {
+        type?: "WAREHOUSE" | "SHOWROOM";
+        activeOnly?: boolean;
+        status?: "active" | "inactive";
+      };
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -103,7 +97,7 @@ class LocationController {
         ];
       }
 
-      if (typeFilter && ["WAREHOUSE", "SHOWROOM"].includes(typeFilter)) {
+      if (typeFilter) {
         where.type = typeFilter;
       }
 
@@ -150,9 +144,7 @@ class LocationController {
   // Get location by ID (all authenticated users)
   async getLocationById(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const location = await prisma.location.findUnique({
         where: { id },
@@ -183,9 +175,7 @@ class LocationController {
   // Update location (superAdmin only)
   async updateLocation(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
       const { name, type, address, isActive, isDefaultWarehouse } = req.body;
 
       // Check if location exists
@@ -217,11 +207,6 @@ class LocationController {
       }
 
       if (type !== undefined) {
-        if (!["WAREHOUSE", "SHOWROOM"].includes(type)) {
-          return res.status(400).json({
-            message: "Invalid location type. Must be WAREHOUSE or SHOWROOM",
-          });
-        }
         updateData.type = type;
       }
 
@@ -286,9 +271,7 @@ class LocationController {
   // Delete location (superAdmin only) - soft delete by setting isActive to false
   async deleteLocation(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       // Check if location exists
       const existingLocation = await prisma.location.findUnique({
@@ -349,9 +332,7 @@ class LocationController {
   // Get location with inventory summary
   async getLocationInventory(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const { page, limit, search } = getPaginationParams(req.query);
 

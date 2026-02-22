@@ -10,12 +10,10 @@ class InventoryController {
   // Get inventory for a specific location
   async getLocationInventory(req: Request, res: Response) {
     try {
-      const locationId = Array.isArray(req.params.locationId)
-        ? req.params.locationId[0]
-        : req.params.locationId;
+      const { locationId } = req.params as { locationId: string };
 
       const { page, limit, search } = getPaginationParams(req.query);
-      const categoryId = req.query.categoryId as string | undefined;
+      const { categoryId } = req.query as { categoryId?: string };
 
       // Check if location exists
       const location = await prisma.location.findUnique({
@@ -126,9 +124,7 @@ class InventoryController {
   // Get stock for a specific product across all locations
   async getProductStock(req: Request, res: Response) {
     try {
-      const productId = Array.isArray(req.params.productId)
-        ? req.params.productId[0]
-        : req.params.productId;
+      const { productId } = req.params as { productId: string };
 
       // Check if product exists
       const product = await prisma.product.findUnique({
@@ -231,23 +227,15 @@ class InventoryController {
   async adjustInventory(req: Request, res: Response) {
     try {
       const { locationId, variationId, subVariationId, quantity, reason } =
-        req.body;
+        req.body as {
+          locationId: string;
+          variationId: string;
+          subVariationId?: string | null;
+          quantity: number;
+          reason?: string;
+        };
 
-      // Validate required fields
-      if (!locationId) {
-        return res.status(400).json({ message: "Location ID is required" });
-      }
-      if (!variationId) {
-        return res.status(400).json({ message: "Variation ID is required" });
-      }
-      if (quantity === undefined || quantity === null) {
-        return res.status(400).json({ message: "Quantity is required" });
-      }
-
-      const adjustedQuantity = parseInt(quantity);
-      if (isNaN(adjustedQuantity)) {
-        return res.status(400).json({ message: "Quantity must be a number" });
-      }
+      const adjustedQuantity = quantity;
 
       // Check if location exists
       const location = await prisma.location.findUnique({
@@ -361,25 +349,17 @@ class InventoryController {
   // Set inventory quantity (admin/superAdmin) - absolute value
   async setInventory(req: Request, res: Response) {
     try {
-      const { locationId, variationId, subVariationId, quantity } = req.body;
-
-      // Validate required fields
-      if (!locationId) {
-        return res.status(400).json({ message: "Location ID is required" });
-      }
-      if (!variationId) {
-        return res.status(400).json({ message: "Variation ID is required" });
-      }
-      if (quantity === undefined || quantity === null) {
-        return res.status(400).json({ message: "Quantity is required" });
-      }
-
-      const newQuantity = parseInt(quantity);
-      if (isNaN(newQuantity) || newQuantity < 0) {
-        return res
-          .status(400)
-          .json({ message: "Quantity must be a non-negative number" });
-      }
+      const {
+        locationId,
+        variationId,
+        subVariationId,
+        quantity: newQuantity,
+      } = req.body as {
+        locationId: string;
+        variationId: string;
+        subVariationId?: string | null;
+        quantity: number;
+      };
 
       // Check if location exists
       const location = await prisma.location.findUnique({

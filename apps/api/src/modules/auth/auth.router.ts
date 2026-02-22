@@ -1,9 +1,18 @@
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import authController from "@/modules/auth/auth.controller";
 import verifyToken from "@/middlewares/authMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { validateBody } from "@/middlewares/validateRequest";
+import { loginSchema } from "@/modules/auth/auth.schema";
 
 const authRouter = Router();
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 /**
  * @swagger
@@ -46,7 +55,12 @@ const authRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-authRouter.post("/login", asyncHandler(authController.logIn));
+authRouter.post(
+  "/login",
+  loginLimiter,
+  validateBody(loginSchema),
+  asyncHandler(authController.logIn),
+);
 
 /**
  * @swagger

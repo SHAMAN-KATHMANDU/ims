@@ -3,6 +3,17 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import transferController from "@/modules/transfers/transfer.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  cancelTransferSchema,
+  createTransferSchema,
+  transferIdParamsSchema,
+  transferListQuerySchema,
+} from "./transfer.schema";
 
 const transferRouter = Router();
 
@@ -56,6 +67,7 @@ transferRouter.post(
   "/",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateBody(createTransferSchema),
   asyncHandler(transferController.createTransfer),
 );
 
@@ -105,6 +117,7 @@ transferRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateQuery(transferListQuerySchema),
   asyncHandler(transferController.getAllTransfers),
 );
 
@@ -133,6 +146,7 @@ transferRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(transferIdParamsSchema),
   asyncHandler(transferController.getTransferById),
 );
 
@@ -161,6 +175,7 @@ transferRouter.get(
   "/:id/logs",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(transferIdParamsSchema),
   asyncHandler(transferController.getTransferLogs),
 );
 
@@ -191,6 +206,7 @@ transferRouter.put(
   "/:id/approve",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(transferIdParamsSchema),
   asyncHandler(transferController.approveTransfer),
 );
 
@@ -221,6 +237,7 @@ transferRouter.put(
   "/:id/transit",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(transferIdParamsSchema),
   asyncHandler(transferController.startTransit),
 );
 
@@ -251,6 +268,7 @@ transferRouter.put(
   "/:id/complete",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(transferIdParamsSchema),
   asyncHandler(transferController.completeTransfer),
 );
 
@@ -289,6 +307,8 @@ transferRouter.put(
   "/:id/cancel",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(transferIdParamsSchema),
+  validateBody(cancelTransferSchema),
   asyncHandler(transferController.cancelTransfer),
 );
 

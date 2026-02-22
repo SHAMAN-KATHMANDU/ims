@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import type { Prisma } from "@prisma/client";
 import prisma from "@/config/prisma";
 import {
   getPaginationParams,
@@ -6,25 +7,25 @@ import {
   getPrismaOrderBy,
 } from "@/utils/pagination";
 import { sendControllerError } from "@/utils/controllerError";
+import type { LeadStatus } from "./lead.schema";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
 }
 
-const LEAD_STATUSES = [
-  "NEW",
-  "CONTACTED",
-  "QUALIFIED",
-  "LOST",
-  "CONVERTED",
-] as const;
+function getTenantId(req: Request): string | null {
+  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
+}
 
 class LeadController {
   async create(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const {
         name,
@@ -36,24 +37,21 @@ class LeadController {
         notes,
         assignedToId,
       } = req.body;
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ message: "Lead name is required" });
-      }
-
       const assigneeId = assignedToId || userId;
 
       const lead = await prisma.lead.create({
         data: {
-          name: name.trim(),
-          email: email?.trim() || null,
-          phone: phone?.trim() || null,
-          companyName: companyName?.trim() || null,
-          status: status && LEAD_STATUSES.includes(status) ? status : "NEW",
-          source: source?.trim() || null,
-          notes: notes?.trim() || null,
-          assignedToId: assigneeId,
-          createdById: userId,
-        },
+          tenant: { connect: { id: tenantId } },
+          name,
+          email: email || null,
+          phone: phone || null,
+          companyName: companyName || null,
+          status: (status as LeadStatus) ?? "NEW",
+          source: source || null,
+          notes: notes || null,
+          assignedTo: { connect: { id: assigneeId } },
+          creator: { connect: { id: userId } },
+        } as Prisma.LeadCreateInput,
         include: {
           assignedTo: { select: { id: true, username: true } },
           creator: { select: { id: true, username: true } },
@@ -69,15 +67,20 @@ class LeadController {
   async getAll(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
-      const status = req.query.status as string | undefined;
-      const source = req.query.source as string | undefined;
-      const assignedToId = req.query.assignedToId as string | undefined;
+      const { status, source, assignedToId } = req.query as {
+        status?: LeadStatus;
+        source?: string;
+        assignedToId?: string;
+      };
 
       const allowedSortFields = [
         "createdAt",
@@ -103,8 +106,7 @@ class LeadController {
           { companyName: { contains: search, mode: "insensitive" as const } },
         ];
       }
-      if (status && LEAD_STATUSES.includes(status as any))
-        where.status = status;
+      if (status) where.status = status;
       if (source) where.source = source;
       if (assignedToId) where.assignedToId = assignedToId;
 
@@ -174,16 +176,13 @@ class LeadController {
       }
 
       const updateData: Record<string, unknown> = {
-        ...(name !== undefined && { name: name?.trim() || existing.name }),
-        ...(email !== undefined && { email: email?.trim() || null }),
-        ...(phone !== undefined && { phone: phone?.trim() || null }),
-        ...(companyName !== undefined && {
-          companyName: companyName?.trim() || null,
-        }),
-        ...(status !== undefined &&
-          LEAD_STATUSES.includes(status as any) && { status }),
-        ...(source !== undefined && { source: source?.trim() || null }),
-        ...(notes !== undefined && { notes: notes?.trim() || null }),
+        ...(name !== undefined && { name: name || existing.name }),
+        ...(email !== undefined && { email: email || null }),
+        ...(phone !== undefined && { phone: phone || null }),
+        ...(companyName !== undefined && { companyName: companyName || null }),
+        ...(status !== undefined && { status }),
+        ...(source !== undefined && { source: source || null }),
+        ...(notes !== undefined && { notes: notes || null }),
         ...(assignedToId !== undefined && { assignedToId }),
       };
 
@@ -224,8 +223,11 @@ class LeadController {
   async convert(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { id } = req.params;
       const { contactId, dealName, dealValue, pipelineId } = req.body;
@@ -263,14 +265,9 @@ class LeadController {
           select: { id: true },
         });
         if (!member) {
-          const tenantId = (req as any).user?.tenantId;
-          if (!tenantId)
-            return res
-              .status(400)
-              .json({ message: "Tenant context required to create member" });
           member = await prisma.member.create({
             data: {
-              tenantId,
+              tenant: { connect: { id: tenantId } },
               phone: lead.phone.trim(),
               name: lead.name?.trim() || null,
               email: lead.email?.trim() || null,
@@ -290,12 +287,18 @@ class LeadController {
         let companyId: string | null = null;
         if (lead.companyName) {
           let company = await prisma.company.findFirst({
-            where: { name: lead.companyName },
+            where: {
+              tenant: { id: tenantId },
+              name: lead.companyName,
+            } as Prisma.CompanyWhereInput,
             select: { id: true },
           });
           if (!company) {
             company = await prisma.company.create({
-              data: { name: lead.companyName },
+              data: {
+                tenant: { connect: { id: tenantId } },
+                name: lead.companyName,
+              } as Prisma.CompanyCreateInput,
               select: { id: true },
             });
           }
@@ -304,33 +307,37 @@ class LeadController {
 
         contact = await prisma.contact.create({
           data: {
+            tenant: { connect: { id: tenantId } },
             firstName: lead.name.split(" ")[0] || lead.name,
             lastName: lead.name.split(" ").slice(1).join(" ") || null,
             email: lead.email,
             phone: lead.phone,
-            companyId,
-            memberId,
-            ownedById: lead.assignedToId,
-            createdById: userId,
-          },
+            company: companyId ? { connect: { id: companyId } } : undefined,
+            member: memberId ? { connect: { id: memberId } } : undefined,
+            owner: { connect: { id: lead.assignedToId } },
+            creator: { connect: { id: userId } },
+          } as Prisma.ContactCreateInput,
         });
       }
 
       const deal = await prisma.deal.create({
         data: {
+          tenant: { connect: { id: tenantId } },
           name: dealName || `${lead.name} - Deal`,
           value: Number(dealValue) || 0,
           stage: firstStage,
           probability: 10,
           status: "OPEN",
-          contactId: contact.id,
-          memberId: memberId || undefined,
-          companyId: contact.companyId,
-          pipelineId: pipeline.id,
-          assignedToId: lead.assignedToId,
-          createdById: userId,
-          leadId: lead.id,
-        },
+          contact: { connect: { id: contact.id } },
+          member: memberId ? { connect: { id: memberId } } : undefined,
+          company: contact.companyId
+            ? { connect: { id: contact.companyId } }
+            : undefined,
+          pipeline: { connect: { id: pipeline.id } },
+          assignedTo: { connect: { id: lead.assignedToId } },
+          creator: { connect: { id: userId } },
+          lead: { connect: { id: lead.id } },
+        } as Prisma.DealCreateInput,
         include: {
           contact: true,
           member: true,
@@ -368,10 +375,6 @@ class LeadController {
     try {
       const { id } = req.params;
       const { assignedToId } = req.body;
-
-      if (!assignedToId) {
-        return res.status(400).json({ message: "assignedToId is required" });
-      }
 
       const lead = await prisma.lead.update({
         where: { id },

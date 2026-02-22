@@ -9,6 +9,8 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import usageController from "./usage.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { validateBody, validateParams } from "@/middlewares/validateRequest";
+import { requestAddOnSchema, usageResourceParamsSchema } from "./usage.schema";
 
 const usageRouter = Router();
 
@@ -27,11 +29,16 @@ usageRouter.get("/add-ons", asyncHandler(usageController.getAddOns));
 usageRouter.post(
   "/add-ons/request",
   authorizeRoles("admin", "superAdmin"),
+  validateBody(requestAddOnSchema),
   asyncHandler(usageController.requestAddOn),
 );
 
 // Usage routes
 usageRouter.get("/", asyncHandler(usageController.getUsage));
-usageRouter.get("/:resource", asyncHandler(usageController.getResourceUsage));
+usageRouter.get(
+  "/:resource",
+  validateParams(usageResourceParamsSchema),
+  asyncHandler(usageController.getResourceUsage),
+);
 
 export default usageRouter;

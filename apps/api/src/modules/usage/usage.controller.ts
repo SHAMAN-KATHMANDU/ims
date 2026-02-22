@@ -10,9 +10,7 @@ import {
   getResourceCount,
   getEffectiveLimit,
 } from "@/services/planLimitService";
-import { RESOURCE_LIMIT_MAP, type LimitedResource } from "@repo/shared";
-
-const validResources = Object.keys(RESOURCE_LIMIT_MAP);
+import { type LimitedResource } from "@repo/shared";
 
 class UsageController {
   /**
@@ -42,14 +40,8 @@ class UsageController {
         return res.status(403).json({ message: "Tenant context required" });
       }
 
-      const { resource } = req.params;
-      if (!validResources.includes(resource)) {
-        return res.status(400).json({
-          message: `resource must be one of: ${validResources.join(", ")}`,
-        });
-      }
-
-      const r = resource as LimitedResource;
+      const { resource } = req.params as { resource: LimitedResource };
+      const r = resource;
       const [current, limits] = await Promise.all([
         getResourceCount(tenant.id, r),
         getEffectiveLimit(tenant.id, tenant.plan, r),
@@ -86,24 +78,6 @@ class UsageController {
       }
 
       const { type, quantity, notes } = req.body;
-
-      if (!type) {
-        return res.status(400).json({ message: "type is required" });
-      }
-
-      const validTypes = [
-        "EXTRA_USER",
-        "EXTRA_PRODUCT",
-        "EXTRA_LOCATION",
-        "EXTRA_MEMBER",
-        "EXTRA_CATEGORY",
-        "EXTRA_CONTACT",
-      ];
-      if (!validTypes.includes(type)) {
-        return res.status(400).json({
-          message: `type must be one of: ${validTypes.join(", ")}`,
-        });
-      }
 
       const addOn = await basePrisma.tenantAddOn.create({
         data: {

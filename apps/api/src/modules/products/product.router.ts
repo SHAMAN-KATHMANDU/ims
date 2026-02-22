@@ -4,6 +4,18 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import productController from "@/modules/products/product.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  createProductSchema,
+  productDiscountsListQuerySchema,
+  productIdParamsSchema,
+  productsListQuerySchema,
+  updateProductSchema,
+} from "./product.schema";
 
 const productRouter = Router();
 
@@ -99,6 +111,7 @@ productRouter.post(
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
   enforcePlanLimits("products"),
+  validateBody(createProductSchema),
   asyncHandler(productController.createProduct),
 );
 
@@ -156,6 +169,7 @@ productRouter.get(
   "/",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateQuery(productsListQuerySchema),
   asyncHandler(productController.getAllProducts),
 );
 
@@ -258,6 +272,7 @@ productRouter.get(
   "/discounts/list",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateQuery(productDiscountsListQuerySchema),
   asyncHandler(productController.getAllProductDiscounts),
 );
 
@@ -318,6 +333,7 @@ productRouter.get(
   "/:id/discounts",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(productIdParamsSchema),
   asyncHandler(productController.getProductDiscounts),
 );
 
@@ -346,6 +362,7 @@ productRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
+  validateParams(productIdParamsSchema),
   asyncHandler(productController.getProductById),
 );
 
@@ -388,6 +405,8 @@ productRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(productIdParamsSchema),
+  validateBody(updateProductSchema),
   asyncHandler(productController.updateProduct),
 );
 
@@ -416,6 +435,7 @@ productRouter.delete(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(productIdParamsSchema),
   asyncHandler(productController.deleteProduct),
 );
 

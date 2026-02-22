@@ -283,7 +283,7 @@ describe("AuthController", () => {
           tenantSlug: "acme",
         }),
         "test-secret",
-        { expiresIn: "24h" },
+        { expiresIn: "4h" },
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({

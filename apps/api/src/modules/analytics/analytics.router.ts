@@ -4,6 +4,11 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import analyticsController from "@/modules/analytics/analytics.controller";
 import { analyticsCacheMiddleware } from "@/modules/analytics/analyticsCacheMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { validateQuery } from "@/middlewares/validateRequest";
+import {
+  analyticsExportQuerySchema,
+  analyticsQuerySchema,
+} from "./analytics.schema";
 
 const analyticsRouter = Router();
 
@@ -20,6 +25,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/sales-revenue",
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getSalesRevenue.bind(analyticsController)),
 );
@@ -28,6 +34,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/inventory-ops",
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getInventoryOps.bind(analyticsController)),
 );
@@ -36,6 +43,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/customers-promos",
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(
     analyticsController.getCustomersPromos.bind(analyticsController),
@@ -46,6 +54,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/discount",
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(
     analyticsController.getDiscountAnalytics.bind(analyticsController),
@@ -56,6 +65,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/payment-trends",
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getPaymentTrends.bind(analyticsController)),
 );
@@ -64,6 +74,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/location-comparison",
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(
     analyticsController.getLocationComparison.bind(analyticsController),
@@ -74,6 +85,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/member-cohort",
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getMemberCohort.bind(analyticsController)),
 );
@@ -82,6 +94,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/sales-extended",
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getSalesExtended.bind(analyticsController)),
 );
@@ -90,6 +103,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/product-insights",
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(
     analyticsController.getProductInsights.bind(analyticsController),
@@ -100,6 +114,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/inventory-extended",
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(
     analyticsController.getInventoryExtended.bind(analyticsController),
@@ -110,6 +125,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/customer-insights",
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(
     analyticsController.getCustomerInsights.bind(analyticsController),
@@ -120,6 +136,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/trends",
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getTrends.bind(analyticsController)),
 );
@@ -128,6 +145,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/financial",
   authorizeRoles("admin", "superAdmin"),
+  validateQuery(analyticsQuerySchema),
   analyticsCacheMiddleware,
   asyncHandler(analyticsController.getFinancial.bind(analyticsController)),
 );
@@ -136,6 +154,7 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/export",
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(analyticsExportQuerySchema),
   asyncHandler(analyticsController.exportAnalytics.bind(analyticsController)),
 );
 

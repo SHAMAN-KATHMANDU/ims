@@ -11,12 +11,19 @@ function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
 }
 
+function getTenantId(req: Request): string | null {
+  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
+}
+
 class DealController {
   async create(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const {
         name,
@@ -31,10 +38,6 @@ class DealController {
         pipelineId,
         assignedToId,
       } = req.body;
-
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ message: "Deal name is required" });
-      }
 
       const pipeline = pipelineId
         ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })
@@ -54,7 +57,8 @@ class DealController {
 
       const deal = await prisma.deal.create({
         data: {
-          name: name.trim(),
+          tenantId,
+          name,
           value: Number(value) || 0,
           stage: stage || firstStage,
           probability: Math.min(100, Math.max(0, Number(probability) || 0)),
@@ -97,10 +101,12 @@ class DealController {
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
-      const pipelineId = req.query.pipelineId as string | undefined;
-      const stage = req.query.stage as string | undefined;
-      const status = req.query.status as string | undefined;
-      const assignedToId = req.query.assignedToId as string | undefined;
+      const { pipelineId, stage, status, assignedToId } = req.query as {
+        pipelineId?: string;
+        stage?: string;
+        status?: "OPEN" | "WON" | "LOST";
+        assignedToId?: string;
+      };
 
       const allowedSortFields = [
         "createdAt",
@@ -183,7 +189,7 @@ class DealController {
 
   async getByPipeline(req: Request, res: Response) {
     try {
-      const pipelineId = req.query.pipelineId as string | undefined;
+      const { pipelineId } = req.query as { pipelineId?: string };
 
       const pipeline = pipelineId
         ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })
@@ -291,7 +297,7 @@ class DealController {
       }
 
       const updateData: Record<string, unknown> = {
-        ...(name !== undefined && { name: name?.trim() || existing.name }),
+        ...(name !== undefined && { name: name || existing.name }),
         ...(value !== undefined && { value: Number(value) ?? existing.value }),
         ...(stage !== undefined && { stage }),
         ...(probability !== undefined && {
@@ -307,7 +313,7 @@ class DealController {
           closedAt: closedAt ? new Date(closedAt) : null,
         }),
         ...(lostReason !== undefined && {
-          lostReason: lostReason?.trim() || null,
+          lostReason: lostReason || null,
         }),
         ...(contactId !== undefined && { contactId: contactId || null }),
         ...(memberId !== undefined && { memberId: memberId || null }),
@@ -358,10 +364,6 @@ class DealController {
 
       const { id } = req.params;
       const { stage } = req.body;
-
-      if (!stage || typeof stage !== "string") {
-        return res.status(400).json({ message: "Stage is required" });
-      }
 
       const existing = await prisma.deal.findUnique({ where: { id } });
       if (!existing) {

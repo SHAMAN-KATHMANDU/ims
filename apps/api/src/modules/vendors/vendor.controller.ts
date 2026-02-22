@@ -14,12 +14,8 @@ class VendorController {
       const tenantId = req.user!.tenantId;
       const { name, contact, phone, address } = req.body;
 
-      if (!name) {
-        return res.status(400).json({ message: "Vendor name is required" });
-      }
-
       const existing = await prisma.vendor.findFirst({
-        where: { tenantId, name: (name as string).trim() },
+        where: { tenantId, name },
       });
 
       if (existing) {
@@ -35,7 +31,7 @@ class VendorController {
       const vendor = await prisma.vendor.create({
         data: {
           tenantId,
-          name: (name as string).trim(),
+          name,
           contact: contact || null,
           phone: phone || null,
           address: address || null,
@@ -61,9 +57,15 @@ class VendorController {
   async getAllVendors(req: Request, res: Response) {
     try {
       const tenantId = req.user!.tenantId;
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
+      const query = req.query as {
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: "id" | "name" | "createdAt" | "updatedAt";
+        sortOrder?: "asc" | "desc";
+      };
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
 
       const allowedSortFields: string[] = [
         "id",
@@ -131,13 +133,7 @@ class VendorController {
   async getVendorById(req: Request, res: Response) {
     try {
       const tenantId = req.user!.tenantId;
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-
-      if (!id) {
-        return res.status(400).json({ message: "Vendor ID is required" });
-      }
+      const { id } = req.params as { id: string };
 
       const vendor = await prisma.vendor.findFirst({
         where: { id, tenantId },
@@ -174,13 +170,7 @@ class VendorController {
   async getVendorProducts(req: Request, res: Response) {
     try {
       const tenantId = req.user!.tenantId;
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-
-      if (!id) {
-        return res.status(400).json({ message: "Vendor ID is required" });
-      }
+      const { id } = req.params as { id: string };
 
       const vendor = await prisma.vendor.findFirst({
         where: { id, tenantId },
@@ -190,7 +180,12 @@ class VendorController {
         return res.status(404).json({ message: "Vendor not found" });
       }
 
-      const { page, limit, search } = getPaginationParams(req.query);
+      const query = req.query as {
+        page?: number;
+        limit?: number;
+        search?: string;
+      };
+      const { page, limit, search } = getPaginationParams(query);
       const productLimit = Math.min(50, Math.max(1, limit));
       const productPage = Math.max(1, page);
       const skip = (productPage - 1) * productLimit;
@@ -243,14 +238,8 @@ class VendorController {
   async updateVendor(req: Request, res: Response) {
     try {
       const tenantId = req.user!.tenantId;
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
       const { name, contact, phone, address } = req.body;
-
-      if (!id) {
-        return res.status(400).json({ message: "Vendor ID is required" });
-      }
 
       const existingVendor = await prisma.vendor.findFirst({
         where: { id, tenantId },
@@ -262,7 +251,7 @@ class VendorController {
 
       if (name && name !== existingVendor.name) {
         const nameExists = await prisma.vendor.findFirst({
-          where: { tenantId, name: (name as string).trim() },
+          where: { tenantId, name },
         });
 
         if (nameExists) {
@@ -306,13 +295,7 @@ class VendorController {
   async deleteVendor(req: Request, res: Response) {
     try {
       const tenantId = req.user!.tenantId;
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
-
-      if (!id) {
-        return res.status(400).json({ message: "Vendor ID is required" });
-      }
+      const { id } = req.params as { id: string };
 
       const vendor = await prisma.vendor.findFirst({
         where: { id, tenantId },

@@ -7,20 +7,26 @@ import {
 } from "@/utils/pagination";
 import { sendControllerError } from "@/utils/controllerError";
 
+function getTenantId(req: Request): string | null {
+  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
+}
+
 class CompanyController {
   async create(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { name, website, address, phone } = req.body;
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ message: "Company name is required" });
-      }
 
       const company = await prisma.company.create({
         data: {
-          name: name.trim(),
-          website: website?.trim() || null,
-          address: address?.trim() || null,
-          phone: phone?.trim() || null,
+          tenantId,
+          name,
+          website: website || null,
+          address: address || null,
+          phone: phone || null,
         },
       });
 
@@ -34,9 +40,15 @@ class CompanyController {
 
   async getAll(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
+      const query = req.query as {
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: "createdAt" | "updatedAt" | "name" | "id";
+        sortOrder?: "asc" | "desc";
+      };
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
 
       const allowedSortFields = ["createdAt", "updatedAt", "name", "id"];
       const orderBy = getPrismaOrderBy(
@@ -119,10 +131,10 @@ class CompanyController {
       const company = await prisma.company.update({
         where: { id },
         data: {
-          ...(name !== undefined && { name: name?.trim() || existing.name }),
-          ...(website !== undefined && { website: website?.trim() || null }),
-          ...(address !== undefined && { address: address?.trim() || null }),
-          ...(phone !== undefined && { phone: phone?.trim() || null }),
+          ...(name !== undefined && { name: name || existing.name }),
+          ...(website !== undefined && { website: website || null }),
+          ...(address !== undefined && { address: address || null }),
+          ...(phone !== undefined && { phone: phone || null }),
         },
       });
 

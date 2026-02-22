@@ -4,6 +4,18 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanLimits } from "@/middlewares/planLimitMiddleware";
 import memberController from "@/modules/members/member.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import {
+  validateBody,
+  validateParams,
+  validateQuery,
+} from "@/middlewares/validateRequest";
+import {
+  createMemberSchema,
+  memberIdParamsSchema,
+  memberListQuerySchema,
+  memberPhoneParamsSchema,
+  updateMemberSchema,
+} from "./member.schema";
 
 const memberRouter = Router();
 
@@ -48,6 +60,7 @@ memberRouter.post(
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
   enforcePlanLimits("members"),
+  validateBody(createMemberSchema),
   asyncHandler(memberController.createMember),
 );
 
@@ -93,6 +106,7 @@ memberRouter.get(
   "/",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateQuery(memberListQuerySchema),
   asyncHandler(memberController.getAllMembers),
 );
 
@@ -118,6 +132,7 @@ memberRouter.get(
   "/check/:phone",
   verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
+  validateParams(memberPhoneParamsSchema),
   asyncHandler(memberController.checkMember),
 );
 
@@ -145,6 +160,7 @@ memberRouter.get(
   "/phone/:phone",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(memberPhoneParamsSchema),
   asyncHandler(memberController.getMemberByPhone),
 );
 
@@ -173,6 +189,7 @@ memberRouter.get(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(memberIdParamsSchema),
   asyncHandler(memberController.getMemberById),
 );
 
@@ -217,6 +234,8 @@ memberRouter.put(
   "/:id",
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validateParams(memberIdParamsSchema),
+  validateBody(updateMemberSchema),
   asyncHandler(memberController.updateMember),
 );
 

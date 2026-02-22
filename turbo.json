@@ -41,6 +41,10 @@
       "inputs": ["$TURBO_DEFAULT$"],
       "outputs": []
     },
+    "test": {
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": []
+    },
     "dev": {
       "cache": false,
       "persistent": true,

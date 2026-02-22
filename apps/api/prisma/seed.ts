@@ -1258,6 +1258,7 @@ async function seedDemoTenantNearLimit() {
     const contactsData = Array.from(
       { length: targets.contacts },
       (_, index) => ({
+        tenantId: tenant.id,
         firstName: `DemoContact${String(index + 1).padStart(4, "0")}`,
         email: `demo.contact.${index + 1}@example.com`,
         phone: `97${String(index + 1).padStart(8, "0")}`,
@@ -1859,26 +1860,33 @@ async function main() {
   console.log("✅ Upserted default add-on pricing");
 
   // 7. Default CRM pipeline (required for Deals / Pipeline view)
-  const existingPipeline = await prisma.pipeline.findFirst({
-    where: { isDefault: true },
+  const firstTenant = await prisma.tenant.findFirst({
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
   });
-  if (!existingPipeline) {
-    await prisma.pipeline.create({
-      data: {
-        name: "Sales Pipeline",
-        isDefault: true,
-        stages: [
-          { id: "1", name: "Qualification", order: 1, probability: 10 },
-          { id: "2", name: "Proposal", order: 2, probability: 30 },
-          { id: "3", name: "Negotiation", order: 3, probability: 60 },
-          { id: "4", name: "Closed Won", order: 4, probability: 100 },
-          { id: "5", name: "Closed Lost", order: 5, probability: 0 },
-        ],
-      },
+  if (firstTenant) {
+    const existingPipeline = await prisma.pipeline.findFirst({
+      where: { tenantId: firstTenant.id, isDefault: true },
     });
-    console.log("✅ Created default Sales Pipeline (for CRM Deals)");
-  } else {
-    console.log("⏭️  Default pipeline already exists");
+    if (!existingPipeline) {
+      await prisma.pipeline.create({
+        data: {
+          tenantId: firstTenant.id,
+          name: "Sales Pipeline",
+          isDefault: true,
+          stages: [
+            { id: "1", name: "Qualification", order: 1, probability: 10 },
+            { id: "2", name: "Proposal", order: 2, probability: 30 },
+            { id: "3", name: "Negotiation", order: 3, probability: 60 },
+            { id: "4", name: "Closed Won", order: 4, probability: 100 },
+            { id: "5", name: "Closed Lost", order: 5, probability: 0 },
+          ],
+        },
+      });
+      console.log("✅ Created default Sales Pipeline (for CRM Deals)");
+    } else {
+      console.log("⏭️  Default pipeline already exists");
+    }
   }
 
   console.log("\n✅ Seed complete.");

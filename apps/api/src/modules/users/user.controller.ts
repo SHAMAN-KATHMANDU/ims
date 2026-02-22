@@ -14,28 +14,7 @@ class UserController {
   async createUser(req: Request, res: Response) {
     try {
       const { username, password, role } = req.body;
-
       const normalizedUsername = username.toLowerCase().trim();
-
-      // Validate required fields
-      if (!normalizedUsername || !password || !role) {
-        return res.status(400).json({
-          message: "Username, password, and role are required",
-          received: {
-            username: !!normalizedUsername,
-            password: !!password,
-            role: !!role,
-          },
-        });
-      }
-
-      // Validate role
-      if (!["superAdmin", "admin", "user"].includes(role)) {
-        return res.status(400).json({
-          message: "Invalid role. Must be superAdmin, admin, or user",
-        });
-      }
-
       // Check if user already exists (within this tenant, auto-scoped)
       const existingUser = await User.findFirst({
         where: { username: normalizedUsername },
@@ -75,9 +54,15 @@ class UserController {
   // Get all users (only superAdmin)
   async getAllUsers(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
+      const query = req.query as {
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: "id" | "username" | "role" | "createdAt" | "updatedAt";
+        sortOrder?: "asc" | "desc";
+      };
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
 
       // Allowed fields for sorting
       const allowedSortFields = [
@@ -141,9 +126,7 @@ class UserController {
   // Get user by ID (only superAdmin)
   async getUserById(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       const user = await User.findUnique({
         where: { id },
@@ -172,9 +155,7 @@ class UserController {
   // Update user (only superAdmin)
   async updateUser(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
       const { username, password, role } = req.body;
 
       // Check if user exists
@@ -209,11 +190,6 @@ class UserController {
       }
 
       if (role) {
-        if (!["superAdmin", "admin", "user"].includes(role)) {
-          return res.status(400).json({
-            message: "Invalid role. Must be superAdmin, admin, or user",
-          });
-        }
         updateData.role = role as Role;
       }
 
@@ -241,9 +217,7 @@ class UserController {
   // Delete user (only superAdmin)
   async deleteUser(req: Request, res: Response) {
     try {
-      const id = Array.isArray(req.params.id)
-        ? req.params.id[0]
-        : req.params.id;
+      const { id } = req.params as { id: string };
 
       // Check if user exists
       const existingUser = await User.findUnique({
