@@ -9,7 +9,8 @@ const TEST_SLUG = "inttest-product";
 const TEST_USERNAME = "produser";
 const TEST_PASSWORD = "prodpass123";
 
-describe("Product CRUD integration", () => {
+// Skip when DATABASE_URL is not set (e.g. CI without a test DB) to avoid Prisma init error
+describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
   let tenantId: string;
   let userId: string;
   let categoryId: string;

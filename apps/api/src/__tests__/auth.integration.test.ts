@@ -9,7 +9,8 @@ const TEST_SLUG = "inttest-auth";
 const TEST_USERNAME = "intuser";
 const TEST_PASSWORD = "intpass123";
 
-describe("Auth flow integration", () => {
+// Skip when DATABASE_URL is not set (e.g. CI without a test DB) to avoid Prisma init error
+describe.skipIf(!process.env.DATABASE_URL)("Auth flow integration", () => {
   let tenantId: string;
   let userId: string;
 
