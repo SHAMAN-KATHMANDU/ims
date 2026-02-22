@@ -53,10 +53,17 @@ class ActivityController {
 
   async getByContact(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { contactId } = req.params;
 
       const activities = await prisma.activity.findMany({
-        where: { contactId },
+        where: { tenantId, contactId },
         orderBy: { activityAt: "desc" },
         include: {
           creator: { select: { id: true, username: true } },
@@ -78,10 +85,17 @@ class ActivityController {
 
   async getByDeal(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { dealId } = req.params;
 
       const activities = await prisma.activity.findMany({
-        where: { dealId },
+        where: { tenantId, dealId },
         orderBy: { activityAt: "desc" },
         include: {
           creator: { select: { id: true, username: true } },
@@ -103,10 +117,17 @@ class ActivityController {
 
   async getById(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
 
-      const activity = await prisma.activity.findUnique({
-        where: { id },
+      const activity = await prisma.activity.findFirst({
+        where: { id, tenantId },
         include: {
           contact: true,
           member: true,
@@ -127,9 +148,18 @@ class ActivityController {
 
   async delete(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
 
-      const existing = await prisma.activity.findUnique({ where: { id } });
+      const existing = await prisma.activity.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Activity not found" });
       }

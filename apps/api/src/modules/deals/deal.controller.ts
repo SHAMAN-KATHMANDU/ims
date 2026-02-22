@@ -41,12 +41,12 @@ class DealController {
       } = req.body;
 
       const pipeline = pipelineId
-        ? await prisma.pipeline.findUnique({
-            where: { id: pipelineId },
+        ? await prisma.pipeline.findFirst({
+            where: { id: pipelineId, tenantId },
             include: { pipelineStages: { orderBy: { order: "asc" } } },
           })
         : await prisma.pipeline.findFirst({
-            where: { isDefault: true },
+            where: { tenantId, isDefault: true },
             include: { pipelineStages: { orderBy: { order: "asc" } } },
           });
 
@@ -100,8 +100,11 @@ class DealController {
   async getAll(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const query = getValidatedQuery<{
         page?: number;
@@ -135,6 +138,7 @@ class DealController {
       };
 
       const where: Record<string, unknown> = {};
+      where.tenantId = tenantId;
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" as const } },
@@ -199,18 +203,25 @@ class DealController {
 
   async getByPipeline(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { pipelineId } = getValidatedQuery<{ pipelineId?: string }>(
         req,
         res,
       );
 
       const pipeline = pipelineId
-        ? await prisma.pipeline.findUnique({
-            where: { id: pipelineId },
+        ? await prisma.pipeline.findFirst({
+            where: { id: pipelineId, tenantId },
             include: { pipelineStages: { orderBy: { order: "asc" } } },
           })
         : await prisma.pipeline.findFirst({
-            where: { isDefault: true },
+            where: { tenantId, isDefault: true },
             include: { pipelineStages: { orderBy: { order: "asc" } } },
           });
 
@@ -222,6 +233,7 @@ class DealController {
 
       const deals = await prisma.deal.findMany({
         where: {
+          tenantId,
           pipelineId: pipeline.id,
           status: "OPEN",
         },
@@ -256,10 +268,17 @@ class DealController {
 
   async getById(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
 
-      const deal = await prisma.deal.findUnique({
-        where: { id },
+      const deal = await prisma.deal.findFirst({
+        where: { id, tenantId },
         include: {
           contact: true,
           member: true,
@@ -289,8 +308,11 @@ class DealController {
   async update(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { id } = req.params;
       const {
@@ -308,7 +330,7 @@ class DealController {
         assignedToId,
       } = req.body;
 
-      const existing = await prisma.deal.findUnique({ where: { id } });
+      const existing = await prisma.deal.findFirst({ where: { id, tenantId } });
       if (!existing) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -376,13 +398,16 @@ class DealController {
   async updateStage(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { id } = req.params;
       const { stage } = req.body;
 
-      const existing = await prisma.deal.findUnique({ where: { id } });
+      const existing = await prisma.deal.findFirst({ where: { id, tenantId } });
       if (!existing) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -420,9 +445,16 @@ class DealController {
 
   async delete(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
 
-      const existing = await prisma.deal.findUnique({ where: { id } });
+      const existing = await prisma.deal.findFirst({ where: { id, tenantId } });
       if (!existing) {
         return res.status(404).json({ message: "Deal not found" });
       }

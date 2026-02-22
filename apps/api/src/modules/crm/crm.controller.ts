@@ -8,6 +8,10 @@ function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
 }
 
+function getTenantId(req: Request): string | null {
+  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
+}
+
 function startOfMonth(d: Date): Date {
   const out = new Date(d);
   out.setDate(1);
@@ -39,8 +43,11 @@ class CrmController {
   async getDashboard(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const now = new Date();
       const thisMonthStart = startOfMonth(now);
@@ -57,11 +64,12 @@ class CrmController {
         recentActivities,
       ] = await Promise.all([
         prisma.deal.aggregate({
-          where: { status: "OPEN" },
+          where: { tenantId, status: "OPEN" },
           _sum: { value: true },
         }),
         prisma.deal.count({
           where: {
+            tenantId,
             status: "OPEN",
             expectedCloseDate: {
               gte: thisMonthStart,
@@ -71,19 +79,22 @@ class CrmController {
         }),
         prisma.task.count({
           where: {
+            tenantId,
             completed: false,
             dueDate: { gte: todayStart, lte: todayEnd },
           },
         }),
         prisma.lead.groupBy({
           by: ["status"],
+          where: { tenantId },
           _count: true,
         }),
         prisma.deal.findMany({
-          where: { status: "WON" },
+          where: { tenantId, status: "WON" },
           select: { value: true, closedAt: true },
         }),
         prisma.activity.findMany({
+          where: { tenantId },
           orderBy: { activityAt: "desc" },
           take: 10,
           include: {
@@ -140,8 +151,11 @@ class CrmController {
   async getReports(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { year } = getValidatedQuery<{ year?: number }>(req, res);
       const reportYear = year ?? new Date().getFullYear();
@@ -152,12 +166,14 @@ class CrmController {
         await Promise.all([
           prisma.deal.count({
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
           }),
           prisma.deal.count({
             where: {
+              tenantId,
               status: "LOST",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -165,11 +181,12 @@ class CrmController {
           prisma.lead.groupBy({
             by: ["source"],
             _count: true,
-            where: { source: { not: null } },
+            where: { tenantId, source: { not: null } },
           }),
           prisma.deal.groupBy({
             by: ["assignedToId"],
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -178,6 +195,7 @@ class CrmController {
           }),
           prisma.deal.findMany({
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -196,7 +214,7 @@ class CrmController {
 
       const userIds = [...new Set(salesPerUser.map((s) => s.assignedToId))];
       const users = await prisma.user.findMany({
-        where: { id: { in: userIds } },
+        where: { id: { in: userIds }, tenantId },
         select: { id: true, username: true },
       });
       const userMap = Object.fromEntries(users.map((u) => [u.id, u.username]));
@@ -249,8 +267,11 @@ class CrmController {
   async exportReportsCsv(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { year } = getValidatedQuery<{ year?: number }>(req, res);
       const reportYear = year ?? new Date().getFullYear();
@@ -261,12 +282,14 @@ class CrmController {
         await Promise.all([
           prisma.deal.count({
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
           }),
           prisma.deal.count({
             where: {
+              tenantId,
               status: "LOST",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -274,6 +297,7 @@ class CrmController {
           prisma.deal.groupBy({
             by: ["assignedToId"],
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -283,13 +307,13 @@ class CrmController {
           prisma.lead.groupBy({
             by: ["source"],
             _count: true,
-            where: { source: { not: null } },
+            where: { tenantId, source: { not: null } },
           }),
         ]);
 
       const userIds = [...new Set(salesPerUser.map((s) => s.assignedToId))];
       const users = await prisma.user.findMany({
-        where: { id: { in: userIds } },
+        where: { id: { in: userIds }, tenantId },
         select: { id: true, username: true },
       });
       const userMap = Object.fromEntries(users.map((u) => [u.id, u.username]));

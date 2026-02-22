@@ -76,8 +76,11 @@ class ContactController {
   async getAll(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const query = getValidatedQuery<{
         page?: number;
@@ -110,6 +113,7 @@ class ContactController {
       };
 
       const where: Record<string, unknown> = {};
+      where.tenantId = tenantId;
       if (search) {
         where.OR = [
           { firstName: { contains: search, mode: "insensitive" as const } },
@@ -153,10 +157,17 @@ class ContactController {
 
   async getById(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
 
-      const contact = await prisma.contact.findUnique({
-        where: { id },
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
         include: {
           company: true,
           member: {
@@ -211,14 +222,19 @@ class ContactController {
   async update(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { id } = req.params;
       const { firstName, lastName, email, phone, companyId, memberId, tagIds } =
         req.body;
 
-      const existing = await prisma.contact.findUnique({ where: { id } });
+      const existing = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Contact not found" });
       }
@@ -252,8 +268,8 @@ class ContactController {
         });
       });
 
-      const contact = await prisma.contact.findUnique({
-        where: { id },
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
         include: {
           company: { select: { id: true, name: true } },
           owner: { select: { id: true, username: true } },
@@ -271,9 +287,18 @@ class ContactController {
 
   async delete(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
 
-      const existing = await prisma.contact.findUnique({ where: { id } });
+      const existing = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Contact not found" });
       }
@@ -291,13 +316,18 @@ class ContactController {
   async addNote(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { id } = req.params;
       const { content } = req.body;
 
-      const contact = await prisma.contact.findUnique({ where: { id } });
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
 
@@ -318,7 +348,19 @@ class ContactController {
 
   async deleteNote(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id, noteId } = req.params;
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
+      if (!contact)
+        return res.status(404).json({ message: "Contact not found" });
 
       const note = await prisma.contactNote.findFirst({
         where: { id: noteId, contactId: id },
@@ -335,14 +377,19 @@ class ContactController {
   async addAttachment(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { id } = req.params;
       const file = (req as any).file;
       if (!file) return res.status(400).json({ message: "No file uploaded" });
 
-      const contact = await prisma.contact.findUnique({ where: { id } });
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
 
@@ -379,7 +426,19 @@ class ContactController {
 
   async deleteAttachment(req: Request, res: Response) {
     try {
+      const userId = getUserId(req);
+      const tenantId = getTenantId(req);
+      if (!userId)
+        return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id, attachmentId } = req.params;
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
+      if (!contact)
+        return res.status(404).json({ message: "Contact not found" });
 
       const attachment = await prisma.contactAttachment.findFirst({
         where: { id: attachmentId, contactId: id },
@@ -410,13 +469,18 @@ class ContactController {
   async addCommunication(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { id } = req.params;
       const { type, subject, notes } = req.body;
 
-      const contact = await prisma.contact.findUnique({ where: { id } });
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
 
@@ -439,7 +503,12 @@ class ContactController {
 
   async getTags(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const tags = await prisma.contactTag.findMany({
+        where: { tenantId },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       });
@@ -573,13 +642,17 @@ class ContactController {
   async exportCsv(req: Request, res: Response) {
     try {
       const userId = getUserId(req);
+      const tenantId = getTenantId(req);
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
 
       const { ids } = getValidatedQuery<{ ids?: string }>(req, res);
       const contactIds = ids ? ids.split(",").filter(Boolean) : undefined;
 
       const where: Record<string, unknown> = {};
+      where.tenantId = tenantId;
       if (contactIds && contactIds.length > 0) {
         where.id = { in: contactIds };
       }
