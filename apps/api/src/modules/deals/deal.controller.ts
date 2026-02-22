@@ -41,8 +41,14 @@ class DealController {
       } = req.body;
 
       const pipeline = pipelineId
-        ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })
-        : await prisma.pipeline.findFirst({ where: { isDefault: true } });
+        ? await prisma.pipeline.findUnique({
+            where: { id: pipelineId },
+            include: { pipelineStages: { orderBy: { order: "asc" } } },
+          })
+        : await prisma.pipeline.findFirst({
+            where: { isDefault: true },
+            include: { pipelineStages: { orderBy: { order: "asc" } } },
+          });
 
       if (!pipeline) {
         return res.status(400).json({
@@ -50,11 +56,9 @@ class DealController {
         });
       }
 
-      const stages = pipeline.stages as Array<{ id: string; name: string }>;
+      const stageNames = pipeline.pipelineStages.map((s) => s.name);
       const firstStage =
-        Array.isArray(stages) && stages.length > 0
-          ? stages[0].name
-          : "Qualification";
+        stageNames.length > 0 ? stageNames[0] : "Qualification";
 
       const deal = await prisma.deal.create({
         data: {
@@ -201,16 +205,20 @@ class DealController {
       );
 
       const pipeline = pipelineId
-        ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })
-        : await prisma.pipeline.findFirst({ where: { isDefault: true } });
+        ? await prisma.pipeline.findUnique({
+            where: { id: pipelineId },
+            include: { pipelineStages: { orderBy: { order: "asc" } } },
+          })
+        : await prisma.pipeline.findFirst({
+            where: { isDefault: true },
+            include: { pipelineStages: { orderBy: { order: "asc" } } },
+          });
 
       if (!pipeline) {
         return res.status(404).json({ message: "No pipeline found" });
       }
 
-      const stages =
-        (pipeline.stages as Array<{ id: string; name: string }>) || [];
-      const stageNames = stages.map((s) => s.name);
+      const stageNames = pipeline.pipelineStages.map((s) => s.name);
 
       const deals = await prisma.deal.findMany({
         where: {

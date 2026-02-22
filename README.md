@@ -166,6 +166,8 @@ See [.github/WORKFLOW_GUIDE.md](.github/WORKFLOW_GUIDE.md), [.github/COMMIT_CONV
 - **Build and Push (Staging)** — on merge to `main` → pushes `:dev` images
 - **Release (Production)** — on publish of a release → pushes `:<tag>`, `:prod`, `:latest`
 
+**Security:** After removing `.env` from git history or a leak, rotate secrets (JWT_SECRET, POSTGRES_PASSWORD, SEED_PLATFORM_ADMIN_PASSWORD) — see [docs/runbook.md](docs/runbook.md).
+
 ## Project Structure
 
 ```

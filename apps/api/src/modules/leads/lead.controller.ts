@@ -247,9 +247,13 @@ class LeadController {
       const defaultPipeline = await prisma.pipeline.findFirst({
         where: { isDefault: true },
         orderBy: { createdAt: "asc" },
+        include: { pipelineStages: { orderBy: { order: "asc" } } },
       });
       const pipeline = pipelineId
-        ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })
+        ? await prisma.pipeline.findUnique({
+            where: { id: pipelineId },
+            include: { pipelineStages: { orderBy: { order: "asc" } } },
+          })
         : defaultPipeline;
 
       if (!pipeline) {
@@ -258,10 +262,9 @@ class LeadController {
         });
       }
 
-      const stages = pipeline.stages as Array<{ id: string; name: string }>;
       const firstStage =
-        Array.isArray(stages) && stages.length > 0
-          ? stages[0].name
+        pipeline.pipelineStages.length > 0
+          ? pipeline.pipelineStages[0].name
           : "Qualification";
 
       let memberId: string | null = null;

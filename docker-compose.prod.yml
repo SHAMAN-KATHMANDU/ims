@@ -1,6 +1,9 @@
 # Production Docker Compose - Uses images from Docker Hub
 # Watchtower auto-updates containers when new images are pushed
 
+# For production deployments with >10 concurrent API connections, consider adding
+# PgBouncer between the API and Postgres to pool connections and avoid exhaustion.
+
 services:
   # ============================================
   # PostgreSQL Database
@@ -53,6 +56,32 @@ services:
     networks:
       - ims-network
 
+  # ============================================
+  # Database backup (pg_dump daily, 7-day retention)
+  # ============================================
+  backup:
+    image: postgres:16-alpine
+    container_name: ims-backup
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-ims}
+    volumes:
+      - backup_data:/backups
+    entrypoint: /bin/sh
+    command: >
+      -c "while true; do
+        pg_dump -Fc > /backups/ims_$$(date +%Y%m%d_%H%M%S).dump;
+        find /backups -name '*.dump' -mtime +7 -delete;
+        sleep 86400;
+      done"
+    networks:
+      - ims-network
   # ============================================
   # API Server
   # ============================================
@@ -138,6 +167,8 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  backup_data:
     driver: local
   minio_data:
     driver: local
