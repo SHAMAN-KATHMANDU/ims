@@ -21,23 +21,19 @@ import { toast } from "@/hooks/useToast";
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
 
-// Create axios instance
+// Create axios instance (withCredentials so cookies are sent)
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: {
     "Content-Type": "application/json",
   },
 });
 
-// Request interceptor: Attach JWT token and tenant slug; allow multipart when body is FormData
+// Request interceptor: Attach tenant slug; allow multipart when body is FormData (auth via HttpOnly cookie)
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    // Access Zustand store directly (not a hook - this is outside React)
     const state = useAuthStore.getState();
-
-    if (state.token && config.headers) {
-      config.headers.Authorization = `Bearer ${state.token}`;
-    }
 
     // Attach tenant slug to every request (if available and not already set)
     if (

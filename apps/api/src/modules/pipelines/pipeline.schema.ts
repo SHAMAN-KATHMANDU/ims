@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 const stageSchema = z.object({
-  id: z.string().trim().min(1),
+  id: z.string().trim().min(1).optional(),
   name: z.string().trim().min(1),
   order: z.coerce.number().int().nonnegative(),
   probability: z.coerce.number().min(0).max(100),

@@ -17,7 +17,6 @@ import {
 import {
   useAuthStore,
   selectUser,
-  selectToken,
   selectTenant,
   selectIsAuthenticated,
   selectIsHydrated,
@@ -59,7 +58,6 @@ export function useAuth() {
 
   // Zustand state (with selectors for performance)
   const user = useAuthStore(selectUser);
-  const token = useAuthStore(selectToken);
   const tenant = useAuthStore(selectTenant);
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const isHydrated = useAuthStore(selectIsHydrated);
@@ -90,8 +88,8 @@ export function useAuth() {
         credentials.password,
         credentials.tenantSlug,
       ),
-    onSuccess: ({ token, user, tenant }) => {
-      setAuth(user, token, tenant);
+    onSuccess: ({ user, tenant }) => {
+      setAuth(user, tenant);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
       const root = tenant?.slug
         ? getWorkspaceRoot(tenant.slug)
@@ -127,13 +125,13 @@ export function useAuth() {
   const refreshUser = useCallback(async () => {
     const result = await refetchUser();
     if (result.data) {
-      setAuth(result.data.user, token!, result.data.tenant);
+      setAuth(result.data.user, result.data.tenant);
       if (result.data.tenant) {
         setTenant(result.data.tenant);
       }
     }
     return result.data?.user ?? null;
-  }, [refetchUser, setAuth, setTenant, token]);
+  }, [refetchUser, setAuth, setTenant]);
 
   return {
     // State

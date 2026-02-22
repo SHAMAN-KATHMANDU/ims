@@ -11,12 +11,11 @@ import type { AuthUser, TenantInfo } from "@/utils/auth";
 interface AuthState {
   // State
   user: AuthUser | null;
-  token: string | null;
   tenant: TenantInfo | null;
   isHydrated: boolean;
 
   // Actions
-  setAuth: (user: AuthUser, token: string, tenant?: TenantInfo | null) => void;
+  setAuth: (user: AuthUser, tenant?: TenantInfo | null) => void;
   setTenant: (tenant: TenantInfo) => void;
   clearAuth: () => void;
   setHydrated: (value: boolean) => void;
@@ -53,13 +52,12 @@ export const useAuthStore = create<AuthState>()(
     (set) => ({
       // Initial state
       user: null,
-      token: null,
       tenant: null,
       isHydrated: false,
 
       // Actions
-      setAuth: (user, token, tenant = null) => {
-        set({ user, token, tenant });
+      setAuth: (user, tenant = null) => {
+        set({ user, tenant });
       },
 
       setTenant: (tenant) => {
@@ -67,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
       },
 
       clearAuth: () => {
-        set({ user: null, token: null, tenant: null });
+        set({ user: null, tenant: null });
       },
 
       setHydrated: (value) => {
@@ -77,10 +75,9 @@ export const useAuthStore = create<AuthState>()(
     {
       name: "auth-storage",
       storage: createJSONStorage(() => cookieStorage),
-      // Persist user, token, and tenant
+      // Persist user and tenant only (tokens are HttpOnly cookies)
       partialize: (state) => ({
         user: state.user,
-        token: state.token,
         tenant: state.tenant,
       }),
       // Handle hydration
@@ -98,9 +95,8 @@ export const useAuthStore = create<AuthState>()(
 // ============================================
 
 export const selectUser = (state: AuthState) => state.user;
-export const selectToken = (state: AuthState) => state.token;
 export const selectTenant = (state: AuthState) => state.tenant;
-export const selectIsAuthenticated = (state: AuthState) => !!state.token;
+export const selectIsAuthenticated = (state: AuthState) => !!state.user;
 export const selectIsHydrated = (state: AuthState) => state.isHydrated;
 
 // Derived selectors

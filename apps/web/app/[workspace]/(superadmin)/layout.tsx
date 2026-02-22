@@ -16,7 +16,10 @@ export default async function SuperadminLayout({ children, params }: Props) {
   const { workspace } = await params;
   const slug = workspace?.trim() || "admin";
   return (
-    <AuthGuard loginPath={`/${slug}/login`}>
+    <AuthGuard
+      loginPath={`/${slug}/login`}
+      roles={["superAdmin", "platformAdmin"]}
+    >
       <DashboardLayout>{children}</DashboardLayout>
     </AuthGuard>
   );

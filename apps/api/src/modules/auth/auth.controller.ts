@@ -93,16 +93,35 @@ class AuthController {
           .json({ message: "Invalid username or password" });
       }
 
+      // Account lockout: reject if currently locked
+      if (user.lockedUntil && user.lockedUntil > new Date()) {
+        return res.status(429).json({
+          message:
+            "Account temporarily locked due to too many failed attempts. Try again later.",
+        });
+      }
+
       // Verify the password
       const isMatch = await bcrypt.compare(password.toString(), user.password);
 
       if (!isMatch) {
+        const attempts = user.failedLoginAttempts + 1;
+        const lockData: { failedLoginAttempts: number; lockedUntil?: Date } = {
+          failedLoginAttempts: attempts,
+        };
+        if (attempts >= 5) {
+          lockData.lockedUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+        await basePrisma.user.update({
+          where: { id: user.id },
+          data: lockData,
+        });
         return res
           .status(401)
           .json({ message: "Invalid username or password" });
       }
 
-      // Update lastLoginAt and record audit log (LOGIN)
+      // Update lastLoginAt, reset lock, and record audit log (LOGIN)
       const now = new Date();
       const refreshToken = this.createRawRefreshToken();
       const refreshTokenHash = this.hashRefreshToken(refreshToken);
@@ -111,7 +130,11 @@ class AuthController {
       const refreshSession = await basePrisma.$transaction(async (tx) => {
         await tx.user.update({
           where: { id: user.id },
-          data: { lastLoginAt: now },
+          data: {
+            lastLoginAt: now,
+            failedLoginAttempts: 0,
+            lockedUntil: null,
+          },
         });
         await tx.auditLog.create({
           data: {
@@ -150,13 +173,27 @@ class AuthController {
 
       const token = this.createAccessToken(tokenPayload);
 
-      // Return token, user info (without password), and tenant info
+      // Return user and tenant only; set HttpOnly cookies for tokens
       const { password: _, ...userWithoutPassword } = user;
 
+      const isSecure = !env.isDev;
+      const cookieOpts = (maxAgeMs: number, path = "/"): string => {
+        const parts = [
+          `Path=${path}`,
+          `Max-Age=${Math.floor(maxAgeMs / 1000)}`,
+          "HttpOnly",
+          "SameSite=Strict",
+        ];
+        if (isSecure) parts.push("Secure");
+        return parts.join("; ");
+      };
+
+      res.setHeader("Set-Cookie", [
+        `access_token=${token}; ${cookieOpts(15 * 60 * 1000)}`,
+        `refresh_token=${refreshToken}; ${cookieOpts(REFRESH_TOKEN_TTL_MS, "/api/v1/auth")}`,
+      ]);
+
       res.status(200).json({
-        accessToken: token,
-        token,
-        refreshToken,
         user: userWithoutPassword,
         tenant: {
           id: tenant.id,
@@ -175,11 +212,18 @@ class AuthController {
 
   async refreshToken(req: Request, res: Response) {
     try {
-      const { refreshToken } = req.body as {
-        refreshToken: string;
-      };
+      const refreshTokenValue =
+        (req.body as { refreshToken?: string })?.refreshToken ||
+        req.headers.cookie
+          ?.split("; ")
+          .find((c) => c.startsWith("refresh_token="))
+          ?.split("=")[1];
 
-      const tokenHash = this.hashRefreshToken(refreshToken);
+      if (!refreshTokenValue) {
+        return res.status(401).json({ message: "Refresh token required" });
+      }
+
+      const tokenHash = this.hashRefreshToken(refreshTokenValue);
       const now = new Date();
 
       const currentSession = await basePrisma.refreshToken.findFirst({
@@ -253,10 +297,24 @@ class AuthController {
         sessionId: nextSession.id,
       });
 
+      const isSecure = !env.isDev;
+      const cookieOpts = (maxAgeMs: number, path = "/"): string => {
+        const parts = [
+          `Path=${path}`,
+          `Max-Age=${Math.floor(maxAgeMs / 1000)}`,
+          "HttpOnly",
+          "SameSite=Strict",
+        ];
+        if (isSecure) parts.push("Secure");
+        return parts.join("; ");
+      };
+
+      res.setHeader("Set-Cookie", [
+        `access_token=${accessToken}; ${cookieOpts(15 * 60 * 1000)}`,
+        `refresh_token=${nextRefreshToken}; ${cookieOpts(REFRESH_TOKEN_TTL_MS, "/api/v1/auth")}`,
+      ]);
+
       return res.status(200).json({
-        accessToken,
-        token: accessToken,
-        refreshToken: nextRefreshToken,
         tenant: {
           id: currentSession.tenant.id,
           slug: currentSession.tenant.slug,
@@ -344,6 +402,10 @@ class AuthController {
           },
         });
 
+        res.setHeader("Set-Cookie", [
+          "access_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
+          "refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict",
+        ]);
         return res.status(200).json({
           message: "Logout successful",
           revokedSessions: result.count,
@@ -360,6 +422,10 @@ class AuthController {
         },
       });
 
+      res.setHeader("Set-Cookie", [
+        "access_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
+        "refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict",
+      ]);
       return res.status(200).json({
         message: "Logout successful",
         revokedSessions: result.count,
@@ -385,6 +451,10 @@ class AuthController {
         },
       });
 
+      res.setHeader("Set-Cookie", [
+        "access_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
+        "refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict",
+      ]);
       return res.status(200).json({
         message: "All sessions revoked",
         revokedSessions: result.count,
