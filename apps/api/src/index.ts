@@ -56,7 +56,7 @@ const startServer = async () => {
       await prisma.$queryRaw`SELECT 1`;
       logger.log("Database health check passed");
     } catch (dbError) {
-      logger.error("Database health check failed", undefined, dbError);
+      logger.error("Database health check failed", dbError);
       throw dbError;
     }
 
@@ -72,7 +72,7 @@ const startServer = async () => {
       logger.log("Server startup complete");
     });
   } catch (error) {
-    logger.error("Failed to start server", undefined, error);
+    logger.error("Failed to start server", error);
     process.exit(1);
   }
 };
