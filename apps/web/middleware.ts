@@ -20,14 +20,16 @@ import {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Prefer HttpOnly access_token (same-origin); fallback to persisted user for cross-origin dev
+  const accessTokenCookie = request.cookies.get("access_token");
   const authStorage = request.cookies.get("auth-storage");
-  let hasToken = false;
-  if (authStorage?.value) {
+  let hasToken = !!accessTokenCookie?.value;
+  if (!hasToken && authStorage?.value) {
     try {
       const parsed = JSON.parse(authStorage.value);
-      hasToken = !!parsed?.state?.token;
+      hasToken = !!parsed?.state?.user;
     } catch {
-      hasToken = false;
+      // ignore
     }
   }
 

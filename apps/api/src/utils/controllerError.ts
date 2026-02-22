@@ -65,7 +65,11 @@ export function sendControllerError(
   logger.error(contextMessage, requestId, {
     error: error instanceof Error ? error.message : String(error),
   });
-  res.status(500).json({
+  const body: { message: string; internalError?: string } = {
     message: "Something went wrong. Please try again.",
-  });
+  };
+  if (process.env.VITEST) {
+    body.internalError = error instanceof Error ? error.message : String(error);
+  }
+  res.status(500).json(body);
 }

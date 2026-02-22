@@ -12,6 +12,7 @@ import { requestLoggingMiddleware } from "@/middlewares/requestLogging";
 import { basePrisma as prisma } from "@/config/prisma";
 import { getVersion } from "@/config/version";
 import { getRedisClient } from "@/config/redis";
+import { register } from "@/config/metrics";
 
 const app = express();
 
@@ -41,7 +42,27 @@ app.use(requestLoggingMiddleware);
 
 // CORS middleware - uses CORS_ORIGIN from environment
 // In production, this must be set to specific frontend origin(s)
-app.use(helmet());
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "blob:"],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        frameAncestors: ["'none'"],
+      },
+    },
+    hsts: {
+      maxAge: 31536000,
+      includeSubDomains: true,
+      preload: true,
+    },
+  }),
+);
 app.use(
   cors({
     origin: env.corsOrigin,
@@ -52,6 +73,12 @@ app.use(
 // Middleware
 app.use(express.json({ limit: "1mb" }));
 app.use(express.urlencoded({ extended: true, limit: "1mb" }));
+
+// Prometheus metrics endpoint
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
 
 // Health check endpoint for container orchestration
 app.get("/health", async (req, res) => {

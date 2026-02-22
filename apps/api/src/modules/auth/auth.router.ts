@@ -65,7 +65,7 @@ authRouter.post(
   "/login",
   loginLimiter,
   validateBody(loginSchema),
-  asyncHandler(authController.logIn),
+  asyncHandler(authController.logIn.bind(authController)),
 );
 
 /**
@@ -89,12 +89,16 @@ authRouter.post(
  *       401:
  *         description: Unauthorized
  */
-authRouter.get("/me", verifyToken, asyncHandler(authController.getCurrentUser));
+authRouter.get(
+  "/me",
+  verifyToken,
+  asyncHandler(authController.getCurrentUser.bind(authController)),
+);
 
 authRouter.post(
   "/refresh",
   validateBody(refreshTokenSchema),
-  asyncHandler(authController.refreshToken),
+  asyncHandler(authController.refreshToken.bind(authController)),
 );
 
 /**
@@ -113,33 +117,33 @@ authRouter.post(
   "/logout",
   verifyToken,
   validateBody(logoutSchema),
-  asyncHandler(authController.logOut),
+  asyncHandler(authController.logOut.bind(authController)),
 );
 
 authRouter.post(
   "/logout-all",
   verifyToken,
-  asyncHandler(authController.logOutAll),
+  asyncHandler(authController.logOutAll.bind(authController)),
 );
 
 authRouter.get(
   "/data-export",
   verifyToken,
-  asyncHandler(authController.exportMyData),
+  asyncHandler(authController.exportMyData.bind(authController)),
 );
 
 authRouter.post(
   "/consent",
   verifyToken,
   validateBody(consentSchema),
-  asyncHandler(authController.updateConsent),
+  asyncHandler(authController.updateConsent.bind(authController)),
 );
 
 authRouter.post(
   "/account-deletion-request",
   verifyToken,
   validateBody(deletionRequestSchema),
-  asyncHandler(authController.requestAccountDeletion),
+  asyncHandler(authController.requestAccountDeletion.bind(authController)),
 );
 
 export default authRouter;

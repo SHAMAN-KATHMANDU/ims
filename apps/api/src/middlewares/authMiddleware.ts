@@ -13,6 +13,18 @@ const verifyToken = (req: Request, res: Response, next: NextFunction) => {
   }
 
   if (!token) {
+    const cookieHeader = req.headers.cookie;
+    if (cookieHeader) {
+      const match = cookieHeader
+        .split("; ")
+        .find((c) => c.startsWith("access_token="));
+      if (match) {
+        token = match.split("=")[1];
+      }
+    }
+  }
+
+  if (!token) {
     return res.status(401).json({ message: "No token, authorization denied" });
   }
 
@@ -31,7 +43,7 @@ const verifyToken = (req: Request, res: Response, next: NextFunction) => {
       role: decoded.role,
       tenantId: decoded.tenantId,
       tenantSlug: decoded.tenantSlug,
-      ...decoded,
+      sessionId: decoded.sessionId,
     };
 
     next();

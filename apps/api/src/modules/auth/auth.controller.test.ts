@@ -226,6 +226,8 @@ describe("AuthController", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         lastLoginAt: null,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
       };
       mockFindUniqueTenant.mockResolvedValue(tenant);
       mockFindFirstUser.mockResolvedValue(user);
@@ -244,7 +246,13 @@ describe("AuthController", () => {
       expect(res.json).toHaveBeenCalledWith({
         message: "Invalid username or password",
       });
-      expect(mockUpdateUser).not.toHaveBeenCalled();
+      // Lockout: basePrisma.user.update is called to increment failedLoginAttempts
+      expect(mockUpdateUser).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: expect.objectContaining({
+          failedLoginAttempts: 1,
+        }),
+      });
     });
 
     it("returns 200 with token and user on successful login", async () => {
@@ -267,6 +275,8 @@ describe("AuthController", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         lastLoginAt: null,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
       };
       mockFindUniqueTenant.mockResolvedValue(tenant);
       mockFindFirstUser.mockResolvedValue(user);
@@ -284,13 +294,18 @@ describe("AuthController", () => {
         get: vi.fn().mockReturnValue("Mozilla/5.0"),
       } as unknown as Request;
       const res = mockRes() as Response;
+      (res.setHeader as ReturnType<typeof vi.fn>) = vi.fn().mockReturnThis();
 
       await authController.logIn(req, res);
 
       expect(mockCompare).toHaveBeenCalledWith("correct", "hashed");
       expect(mockUpdateUser).toHaveBeenCalledWith({
         where: { id: "user-1" },
-        data: expect.any(Object),
+        data: expect.objectContaining({
+          lastLoginAt: expect.any(Date),
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        }),
       });
       expect(mockCreateAuditLog).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -314,11 +329,12 @@ describe("AuthController", () => {
         "test-secret",
         { expiresIn: "15m" },
       );
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Set-Cookie",
+        expect.any(Array),
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        accessToken: "jwt-token-here",
-        token: "jwt-token-here",
-        refreshToken: expect.any(String),
         user: expect.not.objectContaining({ password: expect.anything() }),
         tenant: expect.objectContaining({
           id: "tenant-1",
@@ -413,9 +429,14 @@ describe("AuthController", () => {
         body: {},
       } as unknown as Request;
       const res = mockRes() as Response;
+      (res.setHeader as ReturnType<typeof vi.fn>) = vi.fn().mockReturnThis();
 
       await authController.logOut(req, res);
 
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Set-Cookie",
+        expect.any(Array),
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         message: "Logout successful",

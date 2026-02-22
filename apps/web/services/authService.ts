@@ -10,7 +10,6 @@ import { handleApiError } from "@/lib/apiError";
 import type { AuthUser, TenantInfo } from "@/utils/auth";
 
 export interface LoginResponse {
-  token: string;
   user: AuthUser;
   tenant: TenantInfo;
 }
@@ -44,7 +43,7 @@ export async function login(
       { headers },
     );
 
-    if (!response.data.token || !response.data.user) {
+    if (!response.data.user) {
       throw new Error("Invalid response from server");
     }
 

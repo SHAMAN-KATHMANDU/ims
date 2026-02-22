@@ -1885,13 +1885,15 @@ async function main() {
           tenantId: firstTenant.id,
           name: "Sales Pipeline",
           isDefault: true,
-          stages: [
-            { id: "1", name: "Qualification", order: 1, probability: 10 },
-            { id: "2", name: "Proposal", order: 2, probability: 30 },
-            { id: "3", name: "Negotiation", order: 3, probability: 60 },
-            { id: "4", name: "Closed Won", order: 4, probability: 100 },
-            { id: "5", name: "Closed Lost", order: 5, probability: 0 },
-          ],
+          pipelineStages: {
+            create: [
+              { name: "Qualification", order: 1, probability: 10 },
+              { name: "Proposal", order: 2, probability: 30 },
+              { name: "Negotiation", order: 3, probability: 60 },
+              { name: "Closed Won", order: 4, probability: 100 },
+              { name: "Closed Lost", order: 5, probability: 0 },
+            ],
+          },
         },
       });
       console.log("✅ Created default Sales Pipeline (for CRM Deals)");
