@@ -16,6 +16,7 @@ import {
   type ExcelProductRow,
   type ValidationError,
 } from "./bulkUpload.validation";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { logger } from "@/config/logger";
 import { env } from "@/config/env";
 import { sendControllerError } from "@/utils/controllerError";
@@ -442,9 +443,23 @@ class ProductController {
   // Get all products (all authenticated users can view)
   async getAllProducts(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
+        locationId?: string;
+        categoryId?: string;
+        subCategoryId?: string;
+        subCategory?: string;
+        vendorId?: string;
+        dateFrom?: string;
+        dateTo?: string;
+        lowStock?: boolean;
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
 
       // Parse optional filters
       const {
@@ -456,16 +471,7 @@ class ProductController {
         dateFrom,
         dateTo,
         lowStock,
-      } = req.query as {
-        locationId?: string;
-        categoryId?: string;
-        subCategoryId?: string;
-        subCategory?: string;
-        vendorId?: string;
-        dateFrom?: string;
-        dateTo?: string;
-        lowStock?: boolean;
-      };
+      } = query;
 
       // Allowed fields for sorting (date added = dateCreated); sorting at DB level
       const allowedSortFields = [
@@ -1115,7 +1121,13 @@ class ProductController {
   // Get all categories (helper endpoint for dropdown/selection)
   async getAllCategories(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder } = getPaginationParams(query);
 
       // Allowed fields for sorting
       const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
@@ -1167,7 +1179,13 @@ class ProductController {
   async getAllDiscountTypes(req: Request, res: Response) {
     try {
       const tenantId = req.user!.tenantId;
-      const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder } = getPaginationParams(query);
 
       const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
       const orderBy = getPrismaOrderBy(
@@ -1215,16 +1233,20 @@ class ProductController {
   // Get all product discounts with filters, sort, search (for discounts page)
   async getAllProductDiscounts(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-      const { productId, categoryId, subCategoryId, discountTypeId } =
-        req.query as {
-          productId?: string;
-          categoryId?: string;
-          subCategoryId?: string;
-          discountTypeId?: string;
-        };
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
+        search?: string;
+        productId?: string;
+        categoryId?: string;
+        subCategoryId?: string;
+        discountTypeId?: string;
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
+      const { productId, categoryId, subCategoryId, discountTypeId } = query;
 
       const where: any = {};
       if (productId) where.productId = productId;
@@ -2270,10 +2292,10 @@ class ProductController {
   // Download products as Excel or CSV
   async downloadProducts(req: Request, res: Response) {
     try {
-      const { format = "excel", ids: idsParam } = req.query as {
+      const { format = "excel", ids: idsParam } = getValidatedQuery<{
         format?: "excel" | "csv";
         ids?: string;
-      };
+      }>(req, res);
 
       // Validate format
       if (format !== "excel" && format !== "csv") {

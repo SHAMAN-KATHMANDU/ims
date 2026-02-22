@@ -47,6 +47,12 @@ export const validateQuery =
       });
     }
 
-    req.query = parsed.data as Request["query"];
+    res.locals.validated = {
+      ...res.locals.validated,
+      query: parsed.data,
+    };
     return next();
   };
+
+export const getValidatedQuery = <T>(req: Request, res: Response): T =>
+  (res.locals.validated?.query ?? req.query) as T;

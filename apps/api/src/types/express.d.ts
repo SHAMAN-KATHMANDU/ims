@@ -10,6 +10,12 @@ interface UserPayload extends JwtPayload {
 
 declare global {
   namespace Express {
+    interface Locals {
+      validated?: {
+        query?: unknown;
+      };
+    }
+
     interface Request {
       user?: UserPayload;
       /** Resolved tenant object (set by tenant middleware) */

@@ -4,6 +4,7 @@ import {
   parseAnalyticsFilters,
   getSalesWhereForAnalytics,
 } from "./analytics.filters";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 /** Calculate month difference between two "YYYY-MM" strings. */
@@ -96,15 +97,12 @@ class AnalyticsController {
    */
   async getSalesRevenue(req: Request, res: Response) {
     try {
+      const query = getValidatedQuery<Record<string, unknown>>(req, res);
       const role = (req as any).user?.role as string | undefined;
       const currentUserId = (req as any).user?.id as string | undefined;
-      const { where } = getSalesWhereForAnalytics(
-        req.query,
-        role,
-        currentUserId,
-      );
+      const { where } = getSalesWhereForAnalytics(query, role, currentUserId);
 
-      const { dateFrom: dateFromRaw, dateTo } = req.query as {
+      const { dateFrom: dateFromRaw, dateTo } = query as {
         dateFrom?: string;
         dateTo?: string;
       };
@@ -346,9 +344,8 @@ class AnalyticsController {
    */
   async getInventoryOps(req: Request, res: Response) {
     try {
-      const filters = parseAnalyticsFilters(
-        req.query as Record<string, unknown>,
-      );
+      const query = getValidatedQuery<Record<string, unknown>>(req, res);
+      const filters = parseAnalyticsFilters(query);
 
       const invWhere: Record<string, unknown> = {};
       if (filters.locationIds?.length) {
@@ -517,13 +514,12 @@ class AnalyticsController {
    */
   async getCustomersPromos(req: Request, res: Response) {
     try {
-      const filters = parseAnalyticsFilters(
-        req.query as Record<string, unknown>,
-      );
+      const query = getValidatedQuery<Record<string, unknown>>(req, res);
+      const filters = parseAnalyticsFilters(query);
       const role = (req as any).user?.role as string | undefined;
       const currentUserId = (req as any).user?.id as string | undefined;
       const { where: salesWhere } = getSalesWhereForAnalytics(
-        req.query as Record<string, unknown>,
+        query,
         role,
         currentUserId,
       );
@@ -1935,8 +1931,9 @@ class AnalyticsController {
    */
   async exportAnalytics(req: Request, res: Response) {
     try {
+      const query = getValidatedQuery<Record<string, unknown>>(req, res);
       const ExcelJS = (await import("exceljs")).default;
-      const { type: exportType, format = "csv" } = req.query as {
+      const { type: exportType, format = "csv" } = query as {
         type:
           | "sales-revenue"
           | "sales-extended"
@@ -1948,11 +1945,7 @@ class AnalyticsController {
       };
       const role = (req as any).user?.role as string | undefined;
       const currentUserId = (req as any).user?.id as string | undefined;
-      const { where } = getSalesWhereForAnalytics(
-        req.query,
-        role,
-        currentUserId,
-      );
+      const { where } = getSalesWhereForAnalytics(query, role, currentUserId);
 
       const workbook = new ExcelJS.Workbook();
       const timestamp = new Date().toISOString().split("T")[0];
@@ -2046,9 +2039,7 @@ class AnalyticsController {
           });
         }
       } else if (exportType === "customers-promos") {
-        const filters = parseAnalyticsFilters(
-          req.query as Record<string, unknown>,
-        );
+        const filters = parseAnalyticsFilters(query);
         const dateFrom = filters.dateFrom ? new Date(filters.dateFrom) : null;
         const dateTo = filters.dateTo
           ? (() => {

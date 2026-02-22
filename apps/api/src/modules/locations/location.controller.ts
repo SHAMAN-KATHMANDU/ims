@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 class LocationController {
@@ -54,20 +55,21 @@ class LocationController {
   // Get all locations (all authenticated users)
   async getAllLocations(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-
-      // Parse type and status filters from query
-      const {
-        type: typeFilter,
-        activeOnly,
-        status: statusFilter,
-      } = req.query as {
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
         type?: "WAREHOUSE" | "SHOWROOM";
         activeOnly?: boolean;
         status?: "active" | "inactive";
-      };
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
+
+      // Parse type and status filters from query
+      const { type: typeFilter, activeOnly, status: statusFilter } = query;
 
       // Allowed fields for sorting
       const allowedSortFields = [

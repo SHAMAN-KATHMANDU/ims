@@ -8,6 +8,7 @@
 import { Request, Response } from "express";
 import { basePrisma } from "@/config/prisma";
 import bcrypt from "bcryptjs";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 class PlatformController {
@@ -1128,7 +1129,7 @@ class PlatformController {
    */
   async listSubscriptions(req: Request, res: Response) {
     try {
-      const { tenantId } = req.query as { tenantId?: string };
+      const { tenantId } = getValidatedQuery<{ tenantId?: string }>(req, res);
 
       const subscriptions = await basePrisma.subscription.findMany({
         where: tenantId ? { tenantId } : undefined,
@@ -1324,10 +1325,10 @@ class PlatformController {
    */
   async listTenantPayments(req: Request, res: Response) {
     try {
-      const { tenantId, subscriptionId } = req.query as {
+      const { tenantId, subscriptionId } = getValidatedQuery<{
         tenantId?: string;
         subscriptionId?: string;
-      };
+      }>(req, res);
 
       const payments = await basePrisma.tenantPayment.findMany({
         where: {
@@ -1677,10 +1678,10 @@ class PlatformController {
 
   async listTenantAddOns(req: Request, res: Response) {
     try {
-      const { tenantId, status } = req.query as {
+      const { tenantId, status } = getValidatedQuery<{
         tenantId?: string;
         status?: "PENDING" | "ACTIVE" | "CANCELLED";
-      };
+      }>(req, res);
 
       const addOns = await basePrisma.tenantAddOn.findMany({
         where: {

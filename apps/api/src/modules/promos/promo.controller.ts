@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 class PromoController {
@@ -91,10 +92,17 @@ class PromoController {
   // Get all promo codes
   async getAllPromos(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-      const { isActive } = req.query as { isActive?: boolean };
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
+        isActive?: boolean;
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
+      const { isActive } = query;
 
       const allowedSortFields = [
         "code",

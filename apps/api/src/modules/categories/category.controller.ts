@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 class CategoryController {
@@ -55,13 +56,13 @@ class CategoryController {
   // Get all categories (all authenticated users can view)
   async getAllCategories(req: Request, res: Response) {
     try {
-      const query = req.query as {
+      const query = getValidatedQuery<{
         page?: number;
         limit?: number;
         search?: string;
         sortBy?: "id" | "name" | "createdAt" | "updatedAt";
         sortOrder?: "asc" | "desc";
-      };
+      }>(req, res);
       const { page, limit, sortBy, sortOrder, search } =
         getPaginationParams(query);
 

@@ -4,6 +4,7 @@ import {
   getPaginationParams,
   createPaginationResult,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 class InventoryController {
@@ -11,9 +12,15 @@ class InventoryController {
   async getLocationInventory(req: Request, res: Response) {
     try {
       const { locationId } = req.params as { locationId: string };
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        categoryId?: string;
+      }>(req, res);
 
-      const { page, limit, search } = getPaginationParams(req.query);
-      const { categoryId } = req.query as { categoryId?: string };
+      const { page, limit, search } = getPaginationParams(query);
+      const { categoryId } = query;
 
       // Check if location exists
       const location = await prisma.location.findUnique({

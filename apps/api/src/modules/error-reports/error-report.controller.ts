@@ -4,6 +4,7 @@ import {
   getPaginationParams,
   createPaginationResult,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 class ErrorReportController {
@@ -43,13 +44,16 @@ class ErrorReportController {
 
   async list(req: Request, res: Response) {
     try {
-      const { page, limit } = getPaginationParams(req.query);
-      const { status, userId, from, to } = req.query as {
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
         status?: "OPEN" | "REVIEWED" | "RESOLVED";
         userId?: string;
         from?: string;
         to?: string;
-      };
+      }>(req, res);
+      const { page, limit } = getPaginationParams(query);
+      const { status, userId, from, to } = query;
 
       const tenantId = req.user?.tenantId ?? null;
       const where: any = {};

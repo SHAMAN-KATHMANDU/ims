@@ -15,6 +15,7 @@ import {
   type ExcelMemberRow,
   type ValidationError,
 } from "./bulkUpload.validation";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 class MemberController {
@@ -60,13 +61,13 @@ class MemberController {
   // Get all members with pagination and search
   async getAllMembers(req: Request, res: Response) {
     try {
-      const query = req.query as {
+      const query = getValidatedQuery<{
         page?: number;
         limit?: number;
         search?: string;
         sortBy?: "createdAt" | "updatedAt" | "name" | "id";
         sortOrder?: "asc" | "desc";
-      };
+      }>(req, res);
       const { page, limit, sortBy, sortOrder, search } =
         getPaginationParams(query);
 
@@ -729,10 +730,10 @@ class MemberController {
   // Download members as Excel or CSV
   async downloadMembers(req: Request, res: Response) {
     try {
-      const { format = "excel", ids: idsParam } = req.query as {
+      const { format = "excel", ids: idsParam } = getValidatedQuery<{
         format?: "excel" | "csv";
         ids?: string;
-      };
+      }>(req, res);
 
       // Validate format
       if (format !== "excel" && format !== "csv") {

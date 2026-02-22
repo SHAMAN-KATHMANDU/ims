@@ -9,6 +9,7 @@ import ExcelJS from "exceljs";
 import csvParser from "csv-parser";
 import fs from "fs";
 import { Readable } from "stream";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
@@ -73,14 +74,19 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-      const { companyId, tagId, ownerId } = req.query as {
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
         companyId?: string;
         tagId?: string;
         ownerId?: string;
-      };
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
+      const { companyId, tagId, ownerId } = query;
 
       const allowedSortFields = [
         "createdAt",
@@ -551,7 +557,7 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const { ids } = req.query as { ids?: string };
+      const { ids } = getValidatedQuery<{ ids?: string }>(req, res);
       const contactIds = ids ? ids.split(",").filter(Boolean) : undefined;
 
       const where: Record<string, unknown> = {};

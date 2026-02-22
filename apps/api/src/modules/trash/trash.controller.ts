@@ -4,6 +4,7 @@ import {
   getPaginationParams,
   createPaginationResult,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 /** Entity types that support trash, mapped to Prisma model names and display name fields */
@@ -40,10 +41,13 @@ type TrashItem = {
  */
 async function listTrash(req: Request, res: Response) {
   try {
-    const { page, limit } = getPaginationParams(req.query);
-    const { entityType: entityTypeFilter } = req.query as {
+    const query = getValidatedQuery<{
+      page?: number;
+      limit?: number;
       entityType?: string;
-    };
+    }>(req, res);
+    const { page, limit } = getPaginationParams(query);
+    const { entityType: entityTypeFilter } = query;
 
     const entitiesToQuery = entityTypeFilter
       ? TRASH_ENTITIES.filter((e) => e.type.toLowerCase() === entityTypeFilter)

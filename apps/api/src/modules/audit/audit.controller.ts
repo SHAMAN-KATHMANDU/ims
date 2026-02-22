@@ -5,17 +5,21 @@ import {
   getPaginationParams,
   createPaginationResult,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 
 class AuditController {
   async getAuditLogs(req: Request, res: Response) {
     try {
-      const { page, limit } = getPaginationParams(req.query);
-      const { userId, action, from, to } = req.query as {
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
         userId?: string;
         action?: string;
         from?: string;
         to?: string;
-      };
+      }>(req, res);
+      const { page, limit } = getPaginationParams(query);
+      const { userId, action, from, to } = query;
 
       const tenantId = req.user?.tenantId ?? null;
       const where: any = {};
