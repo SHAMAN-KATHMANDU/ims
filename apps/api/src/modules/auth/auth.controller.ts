@@ -29,7 +29,7 @@ class AuthController {
       }
 
       // ----- Tenant resolution for login -----
-      // Resolve tenant from X-Tenant-Slug header, or fall back to default tenant
+      // Resolve tenant from X-Tenant-Slug header
       const tenantSlug =
         (req.headers["x-tenant-slug"] as string)?.trim() || null;
 
@@ -47,23 +47,9 @@ class AuthController {
             .json({ message: "This organization has been deactivated" });
         }
       } else {
-        // In development or when no tenant header is provided, use the default tenant
-        tenant = await basePrisma.tenant.findFirst({
-          where: { slug: "default" },
+        return res.status(500).json({
+          message: "No tenant configured. Please contact support.",
         });
-        if (!tenant) {
-          // Fallback: use the first active tenant
-          tenant = await basePrisma.tenant.findFirst({
-            where: { isActive: true },
-            orderBy: { createdAt: "asc" },
-          });
-        }
-        if (!tenant) {
-          return res.status(500).json({
-            message:
-              "No tenant configured. Please run the seed to set up the system.",
-          });
-        }
       }
 
       // Find user within this tenant (username is unique per tenant)
@@ -73,26 +59,6 @@ class AuthController {
           username: normalizedUsername,
         },
       });
-
-      // If not found, try original username (in case it's stored with different case)
-      if (!user && username !== normalizedUsername) {
-        user = await basePrisma.user.findFirst({
-          where: {
-            tenantId: tenant.id,
-            username: username.toString().trim(),
-          },
-        });
-      }
-
-      // Also check platform admins (they have no tenant scope)
-      if (!user) {
-        user = await basePrisma.user.findFirst({
-          where: {
-            username: normalizedUsername,
-            role: "platformAdmin",
-          },
-        });
-      }
 
       if (!user) {
         return res
@@ -117,7 +83,7 @@ class AuthController {
       });
       await basePrisma.auditLog.create({
         data: {
-          tenantId: user.role === "platformAdmin" ? null : user.tenantId,
+          tenantId: user.tenantId,
           userId: user.id,
           action: "LOGIN",
           resource: "auth",
