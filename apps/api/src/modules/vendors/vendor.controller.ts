@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 class VendorController {
@@ -57,13 +58,13 @@ class VendorController {
   async getAllVendors(req: Request, res: Response) {
     try {
       const tenantId = req.user!.tenantId;
-      const query = req.query as {
+      const query = getValidatedQuery<{
         page?: number;
         limit?: number;
         search?: string;
         sortBy?: "id" | "name" | "createdAt" | "updatedAt";
         sortOrder?: "asc" | "desc";
-      };
+      }>(req, res);
       const { page, limit, sortBy, sortOrder, search } =
         getPaginationParams(query);
 
@@ -180,11 +181,11 @@ class VendorController {
         return res.status(404).json({ message: "Vendor not found" });
       }
 
-      const query = req.query as {
+      const query = getValidatedQuery<{
         page?: number;
         limit?: number;
         search?: string;
-      };
+      }>(req, res);
       const { page, limit, search } = getPaginationParams(query);
       const productLimit = Math.min(50, Math.max(1, limit));
       const productPage = Math.max(1, page);

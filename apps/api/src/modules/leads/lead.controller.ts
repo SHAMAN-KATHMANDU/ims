@@ -6,6 +6,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 import type { LeadStatus } from "./lead.schema";
 
@@ -73,14 +74,19 @@ class LeadController {
       if (!tenantId)
         return res.status(401).json({ message: "Tenant context is required" });
 
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-      const { status, source, assignedToId } = req.query as {
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
         status?: LeadStatus;
         source?: string;
         assignedToId?: string;
-      };
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
+      const { status, source, assignedToId } = query;
 
       const allowedSortFields = [
         "createdAt",

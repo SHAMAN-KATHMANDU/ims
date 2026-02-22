@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
@@ -13,10 +14,10 @@ class NotificationController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const { limit = 20, unreadOnly = false } = req.query as {
+      const { limit = 20, unreadOnly = false } = getValidatedQuery<{
         limit?: number;
         unreadOnly?: boolean;
-      };
+      }>(req, res);
 
       const where: { userId: string; readAt?: null } = { userId };
       if (unreadOnly) {

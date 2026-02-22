@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
@@ -71,14 +72,19 @@ class TaskController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-      const { completed, assignedToId, dueToday } = req.query as {
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
         completed?: boolean;
         assignedToId?: string;
         dueToday?: boolean;
-      };
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
+      const { completed, assignedToId, dueToday } = query;
 
       const allowedSortFields = [
         "createdAt",

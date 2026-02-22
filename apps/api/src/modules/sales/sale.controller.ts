@@ -15,6 +15,7 @@ import {
   type ExcelSaleRow,
   type ValidationError,
 } from "./bulkUpload.validation";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 // Generate a unique sale code
@@ -843,9 +844,21 @@ class SaleController {
   // Get all sales with filtering
   async getAllSales(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
+        locationId?: string;
+        createdById?: string;
+        type?: "GENERAL" | "MEMBER";
+        isCreditSale?: boolean;
+        startDate?: string;
+        endDate?: string;
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
 
       // Parse filters (createdById used for analytics drill-down; user role ignores it and sees only own)
       const {
@@ -855,14 +868,7 @@ class SaleController {
         isCreditSale,
         startDate: parsedStartDate,
         endDate: parsedEndDate,
-      } = req.query as {
-        locationId?: string;
-        createdById?: string;
-        type?: "GENERAL" | "MEMBER";
-        isCreditSale?: boolean;
-        startDate?: string;
-        endDate?: string;
-      };
+      } = query;
       let startDate = parsedStartDate;
       let endDate = parsedEndDate;
 
@@ -1000,7 +1006,11 @@ class SaleController {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      const { page, limit } = getPaginationParams(req.query);
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+      }>(req, res);
+      const { page, limit } = getPaginationParams(query);
 
       const user = await prisma.user.findUnique({
         where: { id: req.user.id },
@@ -1201,11 +1211,11 @@ class SaleController {
   // Get sales summary for analytics
   async getSalesSummary(req: Request, res: Response) {
     try {
-      const { locationId, startDate, endDate } = req.query as {
+      const { locationId, startDate, endDate } = getValidatedQuery<{
         locationId?: string;
         startDate?: string;
         endDate?: string;
-      };
+      }>(req, res);
 
       // Build date filter
       const dateFilter: any = {};
@@ -1271,10 +1281,10 @@ class SaleController {
   // Get sales by location (for analytics)
   async getSalesByLocation(req: Request, res: Response) {
     try {
-      const { startDate, endDate } = req.query as {
+      const { startDate, endDate } = getValidatedQuery<{
         startDate?: string;
         endDate?: string;
-      };
+      }>(req, res);
 
       // Build date filter
       const dateFilter: any = {};
@@ -1335,10 +1345,10 @@ class SaleController {
   // Get daily sales (for analytics chart)
   async getDailySales(req: Request, res: Response) {
     try {
-      const { locationId, days = 30 } = req.query as {
+      const { locationId, days = 30 } = getValidatedQuery<{
         locationId?: string;
         days?: number;
-      };
+      }>(req, res);
 
       // Calculate date range
       const endDate = new Date();
@@ -2168,10 +2178,10 @@ class SaleController {
   // Download sales as Excel or CSV
   async downloadSales(req: Request, res: Response) {
     try {
-      const { format = "excel", ids: idsParam } = req.query as {
+      const { format = "excel", ids: idsParam } = getValidatedQuery<{
         format?: "excel" | "csv";
         ids?: string;
-      };
+      }>(req, res);
 
       // Validate format
       if (format !== "excel" && format !== "csv") {

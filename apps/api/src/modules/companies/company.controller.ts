@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 function getTenantId(req: Request): string | null {
@@ -40,13 +41,13 @@ class CompanyController {
 
   async getAll(req: Request, res: Response) {
     try {
-      const query = req.query as {
+      const query = getValidatedQuery<{
         page?: number;
         limit?: number;
         search?: string;
         sortBy?: "createdAt" | "updatedAt" | "name" | "id";
         sortOrder?: "asc" | "desc";
-      };
+      }>(req, res);
       const { page, limit, sortBy, sortOrder, search } =
         getPaginationParams(query);
 

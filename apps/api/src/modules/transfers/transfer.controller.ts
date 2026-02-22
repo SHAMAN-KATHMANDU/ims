@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 // Generate a unique transfer code
@@ -240,23 +241,27 @@ class TransferController {
   // Get all transfers with filtering
   async getAllTransfers(req: Request, res: Response) {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
+        status?:
+          | "PENDING"
+          | "APPROVED"
+          | "IN_TRANSIT"
+          | "COMPLETED"
+          | "CANCELLED";
+        fromLocationId?: string;
+        toLocationId?: string;
+        locationId?: string;
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
 
       // Parse filters
-      const { status, fromLocationId, toLocationId, locationId } =
-        req.query as {
-          status?:
-            | "PENDING"
-            | "APPROVED"
-            | "IN_TRANSIT"
-            | "COMPLETED"
-            | "CANCELLED";
-          fromLocationId?: string;
-          toLocationId?: string;
-          locationId?: string;
-        };
+      const { status, fromLocationId, toLocationId, locationId } = query;
 
       // Allowed fields for sorting
       const allowedSortFields = [

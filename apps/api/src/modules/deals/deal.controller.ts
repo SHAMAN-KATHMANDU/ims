@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
@@ -98,15 +99,20 @@ class DealController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-      const { pipelineId, stage, status, assignedToId } = req.query as {
+      const query = getValidatedQuery<{
+        page?: number;
+        limit?: number;
+        search?: string;
+        sortBy?: string;
+        sortOrder?: "asc" | "desc";
         pipelineId?: string;
         stage?: string;
         status?: "OPEN" | "WON" | "LOST";
         assignedToId?: string;
-      };
+      }>(req, res);
+      const { page, limit, sortBy, sortOrder, search } =
+        getPaginationParams(query);
+      const { pipelineId, stage, status, assignedToId } = query;
 
       const allowedSortFields = [
         "createdAt",
@@ -189,7 +195,10 @@ class DealController {
 
   async getByPipeline(req: Request, res: Response) {
     try {
-      const { pipelineId } = req.query as { pipelineId?: string };
+      const { pipelineId } = getValidatedQuery<{ pipelineId?: string }>(
+        req,
+        res,
+      );
 
       const pipeline = pipelineId
         ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })

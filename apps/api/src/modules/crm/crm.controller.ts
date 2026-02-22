@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
 import ExcelJS from "exceljs";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
@@ -142,7 +143,7 @@ class CrmController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const { year } = req.query as { year?: number };
+      const { year } = getValidatedQuery<{ year?: number }>(req, res);
       const reportYear = year ?? new Date().getFullYear();
       const startOfYear = new Date(reportYear, 0, 1);
       const endOfYear = new Date(reportYear, 11, 31, 23, 59, 59);
@@ -251,7 +252,7 @@ class CrmController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
-      const { year } = req.query as { year?: number };
+      const { year } = getValidatedQuery<{ year?: number }>(req, res);
       const reportYear = year ?? new Date().getFullYear();
       const startOfYear = new Date(reportYear, 0, 1);
       const endOfYear = new Date(reportYear, 11, 31, 23, 59, 59);

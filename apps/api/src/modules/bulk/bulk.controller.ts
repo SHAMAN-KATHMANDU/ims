@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import productController from "@/modules/products/product.controller";
 import memberController from "@/modules/members/member.controller";
 import saleController from "@/modules/sales/sale.controller";
+import { getValidatedQuery } from "@/middlewares/validateRequest";
 
 const BULK_TYPES = ["products", "members", "sales"] as const;
 export type BulkType = (typeof BULK_TYPES)[number];
@@ -39,7 +40,7 @@ export async function downloadTemplate(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const { type } = req.query as { type: BulkType };
+  const { type } = getValidatedQuery<{ type: BulkType }>(req, res);
 
   switch (type) {
     case "products":
@@ -60,7 +61,7 @@ export async function downloadTemplate(
  * Common data download (Excel/CSV): delegates by type. Query: type, format, ids.
  */
 export async function download(req: Request, res: Response): Promise<void> {
-  const { type } = req.query as { type: BulkType };
+  const { type } = getValidatedQuery<{ type: BulkType }>(req, res);
 
   switch (type) {
     case "products":
