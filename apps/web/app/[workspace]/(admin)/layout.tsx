@@ -1,4 +1,5 @@
 import type React from "react";
+import type { Metadata } from "next";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
 
@@ -6,6 +7,14 @@ type Props = {
   children: React.ReactNode;
   params: Promise<{ workspace: string }>;
 };
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { workspace } = await params;
+  return {
+    title: `${workspace} | Admin`,
+    description: `Admin workspace for ${workspace}`,
+  };
+}
 
 /**
  * Admin app layout: requires auth. Dashboard and all tenant-scoped UI live under this.

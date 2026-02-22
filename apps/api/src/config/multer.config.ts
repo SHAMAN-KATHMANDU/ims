@@ -71,20 +71,6 @@ if (!fs.existsSync(attachmentsDir)) {
   fs.mkdirSync(attachmentsDir, { recursive: true });
 }
 
-const attachmentStorage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, attachmentsDir);
-  },
-  filename: (_req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const ext = path.extname(file.originalname) || "";
-    const safeName = (file.originalname || "file")
-      .replace(/[^a-zA-Z0-9.-]/g, "_")
-      .slice(0, 50);
-    cb(null, `contact-${uniqueSuffix}-${safeName}${ext}`);
-  },
-});
-
 // Attachment file filter - allow common document and image types
 const attachmentFileFilter = (
   _req: Express.Request,
@@ -121,7 +107,7 @@ const attachmentFileFilter = (
 };
 
 export const uploadAttachment = multer({
-  storage: attachmentStorage,
+  storage: multer.memoryStorage(),
   fileFilter: attachmentFileFilter,
   limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
 }).single("file");

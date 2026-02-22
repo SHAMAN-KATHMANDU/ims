@@ -6,6 +6,7 @@ interface UserPayload extends JwtPayload {
   role: string;
   tenantId: string;
   tenantSlug: string;
+  sessionId?: string;
 }
 
 declare global {

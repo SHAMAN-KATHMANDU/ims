@@ -8,7 +8,7 @@ const dbConnect = async () => {
     await prisma.$connect();
     logger.log("Connected to PostgreSQL");
   } catch (error) {
-    logger.error("Error connecting to PostgreSQL", undefined, error);
+    logger.error("Error connecting to PostgreSQL", error);
     process.exit(1);
   }
 };

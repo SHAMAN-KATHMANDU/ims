@@ -1,0 +1,2 @@
+# Transitive via eslint v9; remove once upstream plugin stack supports eslint v10+ safely.
+CVE-2026-26996

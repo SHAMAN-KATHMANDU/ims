@@ -5,6 +5,10 @@ import dbConnect from "@/config/dbConnect";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
+import { initSentry } from "@/config/sentry";
+import { connectRedis, disconnectRedis } from "@/config/redis";
+import { startMaintenanceWorker } from "@/queues/trashCleanup.queue";
+import { ensureStorageBucket } from "@/services/objectStorage";
 
 // Note: dotenv.config() is called in env.ts - do not call it here
 const PORT = env.port;
@@ -15,6 +19,8 @@ let httpServer: http.Server | null = null;
 
 const startServer = async () => {
   try {
+    initSentry();
+
     // Startup validation checks
     logger.log("Starting server...");
     logger.log(`Environment: ${env.nodeEnv}`);
@@ -42,13 +48,15 @@ const startServer = async () => {
     logger.log("Connecting to database...");
     await dbConnect();
     logger.log("Database connection established");
+    await connectRedis();
+    await ensureStorageBucket();
 
     // Verify database connectivity with a simple query
     try {
       await prisma.$queryRaw`SELECT 1`;
       logger.log("Database health check passed");
     } catch (dbError) {
-      logger.error("Database health check failed", undefined, dbError);
+      logger.error("Database health check failed", dbError);
       throw dbError;
     }
 
@@ -60,10 +68,11 @@ const startServer = async () => {
         `CORS origins: ${Array.isArray(env.corsOrigin) ? env.corsOrigin.join(", ") : env.corsOrigin}`,
       );
       startTrashCleanupCron();
+      startMaintenanceWorker();
       logger.log("Server startup complete");
     });
   } catch (error) {
-    logger.error("Failed to start server", undefined, error);
+    logger.error("Failed to start server", error);
     process.exit(1);
   }
 };
@@ -72,6 +81,7 @@ startServer();
 
 process.on("SIGINT", async () => {
   logger.log("Shutting down gracefully...");
+  await disconnectRedis();
   await prisma.$disconnect();
   if (httpServer) {
     httpServer.close(() => {
@@ -85,6 +95,7 @@ process.on("SIGINT", async () => {
 
 process.on("SIGTERM", async () => {
   logger.log("Shutting down gracefully...");
+  await disconnectRedis();
   await prisma.$disconnect();
   if (httpServer) {
     httpServer.close(() => {

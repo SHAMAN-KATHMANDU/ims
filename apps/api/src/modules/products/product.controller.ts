@@ -20,9 +20,16 @@ import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { logger } from "@/config/logger";
 import { env } from "@/config/env";
 import { sendControllerError } from "@/utils/controllerError";
+import {
+  resolveCategory,
+  resolveDiscounts,
+  createProductWithInventory,
+  upsertVariations,
+  ProductServiceError,
+} from "@/services/productService";
 
 class ProductController {
-  // Create product (admin and superAdmin only). Requires a valid warehouse/location before create (see location resolution below).
+  // Create product (admin and superAdmin only). Requires a valid tenant location.
   async createProduct(req: Request, res: Response) {
     try {
       const {
@@ -37,8 +44,9 @@ class ProductController {
         weight,
         costPrice,
         mrp,
-        variations, //Array of color variations
-        discounts, //Array of discounts
+        locationId,
+        variations,
+        discounts,
       } = req.body as {
         imsCode: string;
         name: string;
@@ -52,8 +60,8 @@ class ProductController {
         weight?: number;
         costPrice: number;
         mrp: number;
+        locationId: string;
         vendorId?: string;
-        defaultLocationId?: string;
         variations?: Array<{
           color: string;
           stockQuantity?: number;
@@ -70,126 +78,45 @@ class ProductController {
         }>;
       };
 
-      // Support both categoryId and categoryName
-      const categoryIdentifier = categoryId || req.body.categoryName;
-
-      // Validate that user is authenticated
-      if (!req.user || !req.user.id) {
+      if (!req.user?.id) {
         return res.status(401).json({ message: "User not authenticated" });
       }
+      const tenantId = req.user.tenantId!;
+      const categoryIdentifier = categoryId ?? req.body.categoryName;
 
-      const tenantId = req.user!.tenantId;
-      // Get all categories and discount types for lookup (tenant-scoped)
-      const allCategories = await prisma.category.findMany({
-        where: { tenantId },
-        select: { id: true, name: true },
-      });
-      const allDiscountTypes = await prisma.discountType.findMany({
-        where: { tenantId },
-        select: { id: true, name: true },
-      });
-
-      // Support both categoryId (UUID) and categoryName (string) lookup
       let category;
-      if (categoryIdentifier) {
-        // Try UUID first
-        category = await prisma.category.findUnique({
-          where: { id: categoryIdentifier },
-        });
-
-        // If not found by UUID, try by name
-        if (!category) {
-          category = await prisma.category.findFirst({
-            where: { name: categoryIdentifier },
+      try {
+        category = await resolveCategory(tenantId, categoryIdentifier);
+      } catch (err) {
+        if (err instanceof ProductServiceError) {
+          return res.status(err.statusCode).json({
+            message: err.message,
+            ...err.body,
           });
         }
+        throw err;
       }
-
       if (!category) {
         return res.status(404).json({
           message: "Category not found",
           providedCategoryId: categoryIdentifier,
           hint: "You can use either category UUID or category name",
-          availableCategories: allCategories.map(
-            (c: { id: string; name: string }) => ({ id: c.id, name: c.name }),
-          ),
         });
       }
 
-      // Validate and resolve discount types if discounts are provided
-      const resolvedDiscounts = [];
-      if (discounts && Array.isArray(discounts)) {
-        for (const discount of discounts) {
-          let discountType = null;
-
-          // Try by ID first (tenant-scoped)
-          if (discount.discountTypeId) {
-            discountType = await prisma.discountType.findFirst({
-              where: { id: discount.discountTypeId, tenantId },
-            });
-          }
-
-          // If not found by ID, try by name
-          if (!discountType && discount.discountTypeName) {
-            discountType = await prisma.discountType.findFirst({
-              where: { name: discount.discountTypeName, tenantId },
-            });
-          }
-
-          // If still not found, try using discountTypeId as name (for convenience)
-          if (
-            !discountType &&
-            discount.discountTypeId &&
-            !discount.discountTypeId.match(
-              /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-            )
-          ) {
-            discountType = await prisma.discountType.findFirst({
-              where: { name: discount.discountTypeId, tenantId },
-            });
-          }
-
-          if (!discountType) {
-            return res.status(404).json({
-              message: "Discount type not found",
-              providedDiscountTypeId: discount.discountTypeId,
-              providedDiscountTypeName: discount.discountTypeName,
-              hint: "You can use either discountTypeId (UUID) or discountTypeName (string like 'Normal', 'Member', etc.)",
-              availableDiscountTypes: allDiscountTypes.map(
-                (dt: { id: string; name: string }) => ({
-                  id: dt.id,
-                  name: dt.name,
-                }),
-              ),
-            });
-          }
-
-          // parseDate utility
-          const startDate = discount.startDate
-            ? discount.startDate instanceof Date
-              ? discount.startDate
-              : parseDate(discount.startDate)?.toJSDate() || null
-            : null;
-          const endDate = discount.endDate
-            ? discount.endDate instanceof Date
-              ? discount.endDate
-              : parseDate(discount.endDate)?.toJSDate() || null
-            : null;
-
-          resolvedDiscounts.push({
-            discountTypeId: discountType.id,
-            discountPercentage: parseFloat(
-              discount.discountPercentage.toString(),
-            ),
-            startDate: startDate,
-            endDate: endDate,
-            isActive:
-              discount.isActive !== undefined ? discount.isActive : true,
+      let resolvedDiscounts;
+      try {
+        resolvedDiscounts = await resolveDiscounts(tenantId, discounts);
+      } catch (err) {
+        if (err instanceof ProductServiceError) {
+          return res.status(err.statusCode).json({
+            message: err.message,
+            ...err.body,
           });
         }
+        throw err;
       }
 
-      // Handle vendorId if provided
       const vendorId = req.body.vendorId as string | undefined;
       if (vendorId) {
         const vendor = await prisma.vendor.findUnique({
@@ -203,218 +130,41 @@ class ProductController {
         }
       }
 
-      const trimmedImsCode = (imsCode as string).trim();
-
-      // Explicit duplicate check (tenant-scoped) so we return a clear message and treat trimmed codes as same
-      const existingByImsCode = await prisma.product.findFirst({
-        where: { tenantId, imsCode: trimmedImsCode },
-      });
-      if (existingByImsCode) {
-        return res.status(409).json({
-          message: "Product with this IMS code already exists",
-        });
-      }
-
-      // --- Resolve target warehouse BEFORE creating product (data integrity: every product must be linked to a valid location) ---
-      const defaultLocationId = req.body.defaultLocationId as
-        | string
-        | undefined;
-      let warehouseLocation: { id: string } | null = null;
-
-      if (defaultLocationId) {
-        // Explicit location: must belong to tenant and be active (prefer warehouse)
-        const loc = await prisma.location.findFirst({
-          where: {
-            id: defaultLocationId,
-            tenantId,
-            isActive: true,
-          },
-          select: { id: true, type: true },
-        });
-        if (!loc) {
-          return res.status(400).json({
-            message:
-              "Product creation failed: the selected location is invalid or does not belong to your tenant.",
-          });
-        }
-        warehouseLocation = { id: loc.id };
-      }
-
-      if (!warehouseLocation) {
-        // No explicit location: require tenant's default warehouse (business rule: at least one default warehouse per tenant)
-        const defaultWarehouse = await prisma.location.findFirst({
-          where: {
-            tenantId,
-            type: "WAREHOUSE",
-            isDefaultWarehouse: true,
-            isActive: true,
-          },
-          select: { id: true },
-        });
-        if (!defaultWarehouse) {
-          return res.status(400).json({
-            message:
-              "Product creation failed: tenant has no default warehouse configured. Please set a default warehouse in Locations.",
-          });
-        }
-        warehouseLocation = defaultWarehouse;
-      }
-
-      // Create product (we have a valid warehouseLocation; will link variations to it after create)
-      const product = await prisma.product.create({
-        data: {
-          tenantId,
-          imsCode: trimmedImsCode,
-          name: name as string,
-          categoryId: category.id,
-          description: description || null,
-          subCategory: subCategory?.trim() || null,
-          length: length ?? null,
-          breadth: breadth ?? null,
-          height: height ?? null,
-          weight: weight ?? null,
-          costPrice,
-          mrp,
-          vendorId: vendorId || null,
-          createdById: req.user!.id,
-          // Add variations (colors with photos)
-          variations:
-            variations && Array.isArray(variations)
-              ? {
-                  create: variations.map((variation: any) => ({
-                    color: variation.color,
-                    stockQuantity: variation.stockQuantity || 0,
-                    photos:
-                      variation.photos && Array.isArray(variation.photos)
-                        ? {
-                            create: variation.photos.map((photo: any) => ({
-                              photoUrl: photo.photoUrl,
-                              isPrimary: photo.isPrimary || false,
-                            })),
-                          }
-                        : undefined,
-                    subVariations:
-                      variation.subVariants &&
-                      Array.isArray(variation.subVariants)
-                        ? {
-                            create: variation.subVariants
-                              .map((n: string) =>
-                                typeof n === "string"
-                                  ? n.trim()
-                                  : ((n as any)?.name?.trim() ?? ""),
-                              )
-                              .filter(Boolean)
-                              .map((name: string) => ({ name })),
-                          }
-                        : undefined,
-                  })),
-                }
-              : undefined,
-          // Add discounts (use resolved discounts with actual UUIDs)
-          discounts:
-            resolvedDiscounts.length > 0
-              ? {
-                  create: resolvedDiscounts.map((discount: any) => ({
-                    discountTypeId: discount.discountTypeId,
-                    discountPercentage: parseFloat(
-                      discount.discountPercentage.toString(),
-                    ),
-                    startDate: discount.startDate
-                      ? parseDate(discount.startDate)?.toJSDate() || null
-                      : null,
-                    endDate: discount.endDate
-                      ? parseDate(discount.endDate)?.toJSDate() || null
-                      : null,
-                    isActive:
-                      discount.isActive !== undefined
-                        ? discount.isActive
-                        : true,
-                  })),
-                }
-              : undefined,
-        },
-        include: {
-          category: true,
-          createdBy: {
-            select: {
-              id: true,
-              username: true,
-              role: true,
-            },
-          },
-          variations: {
-            include: {
-              photos: true,
-              subVariations: true,
-            },
-          },
-          discounts: {
-            include: {
-              discountType: true,
-            },
-          },
-        },
-      });
-
-      // Link product to location (warehouseLocation already resolved and validated above)
+      let product;
       try {
-        if (warehouseLocation && product.variations?.length) {
-          for (const v of product.variations) {
-            const hasSubVariants =
-              Array.isArray((v as any).subVariations) &&
-              (v as any).subVariations.length > 0;
-            if (hasSubVariants) continue; // stock is per location per sub-variant via inventory API
-            const qty = Math.max(0, Number(v.stockQuantity) || 0);
-            // Use findFirst + create/update because Prisma upsert with compound unique + null is unreliable
-            const existing = await prisma.locationInventory.findFirst({
-              where: {
-                locationId: warehouseLocation!.id,
-                variationId: v.id,
-                subVariationId: null,
-              },
-            });
-            if (existing) {
-              await prisma.locationInventory.update({
-                where: { id: existing.id },
-                data: { quantity: { increment: qty } },
-              });
-            } else {
-              await prisma.locationInventory.create({
-                data: {
-                  locationId: warehouseLocation!.id,
-                  variationId: v.id,
-                  subVariationId: null,
-                  quantity: qty,
-                },
-              });
-            }
-          }
-        }
-
-        await prisma.auditLog.create({
-          data: {
-            userId: req.user!.id,
-            action: "CREATE_PRODUCT",
-            resource: "product",
-            resourceId: product.id,
-            details: {
-              imsCode: product.imsCode,
-              name: product.name,
-            },
-            ip:
-              (req as any).ip ??
-              (req.socket as any)?.remoteAddress ??
-              undefined,
+        product = await createProductWithInventory(
+          {
+            imsCode: String(imsCode).trim(),
+            name: name as string,
+            categoryId: category.id,
+            description,
+            subCategory,
+            length,
+            breadth,
+            height,
+            weight,
+            costPrice,
+            mrp,
+            locationId,
+            vendorId,
+            variations,
+            resolvedDiscounts,
+          },
+          req.user.id,
+          tenantId,
+          {
+            ip: (req as any).ip ?? (req.socket as any)?.remoteAddress,
             userAgent: req.get("user-agent") ?? undefined,
           },
-        });
-      } catch (postCreateErr) {
-        logger.error(
-          "Post-create step failed (inventory link or audit log)",
-          req.requestId,
-          postCreateErr,
         );
-        // Still return 201 so the UI shows success; product was created
+      } catch (err) {
+        if (err instanceof ProductServiceError) {
+          return res.status(err.statusCode).json({
+            message: err.message,
+            ...err.body,
+          });
+        }
+        throw err;
       }
 
       res.status(201).json({
@@ -609,6 +359,9 @@ class ProductController {
           where,
           include: {
             category: true,
+            location: {
+              select: { id: true, name: true, type: true },
+            },
             vendor: {
               select: { id: true, name: true },
             },
@@ -655,6 +408,9 @@ class ProductController {
         where: { id },
         include: {
           category: true,
+          location: {
+            select: { id: true, name: true, type: true },
+          },
           createdBy: {
             select: {
               id: true,
@@ -706,6 +462,7 @@ class ProductController {
         costPrice,
         mrp,
         vendorId,
+        locationId,
         variations,
         discounts,
       } = req.body;
@@ -810,139 +567,27 @@ class ProductController {
         }
         updateData.vendorId = vendorId || null;
       }
-
-      // Handle variations update if provided (upsert by color; do not delete variations referenced by sales/transfers)
-      if (variations !== undefined) {
-        const existingVariations = await prisma.productVariation.findMany({
-          where: { productId: id },
-          include: {
-            subVariations: true,
-            _count: {
-              select: { saleItems: true, transferItems: true },
-            },
+      if (locationId !== undefined) {
+        const nextLocationId = String(locationId).trim();
+        const location = await prisma.location.findFirst({
+          where: {
+            id: nextLocationId,
+            tenantId: existingProduct.tenantId,
+            isActive: true,
           },
+          select: { id: true },
         });
-        const incomingColors = new Set(
-          Array.isArray(variations)
-            ? variations.map((v: any) => (v.color || "").trim()).filter(Boolean)
-            : [],
-        );
-
-        for (const existing of existingVariations) {
-          const hasDependents =
-            (existing._count?.saleItems ?? 0) > 0 ||
-            (existing._count?.transferItems ?? 0) > 0;
-          if (incomingColors.has(existing.color)) {
-            const payload = variations.find(
-              (v: any) => (v.color || "").trim() === existing.color,
-            );
-            if (payload) {
-              const newPhotos =
-                payload.photos && Array.isArray(payload.photos)
-                  ? payload.photos.map((photo: any) => ({
-                      photoUrl: photo.photoUrl,
-                      isPrimary: photo.isPrimary || false,
-                    }))
-                  : [];
-              if (newPhotos.length > 0) {
-                await prisma.variationPhoto.deleteMany({
-                  where: { variationId: existing.id },
-                });
-              }
-              const incomingSubArr =
-                payload.subVariants && Array.isArray(payload.subVariants)
-                  ? payload.subVariants
-                      .map((s: string | { name: string }) =>
-                        typeof s === "string"
-                          ? s.trim()
-                          : (s?.name ?? "").trim(),
-                      )
-                      .filter((x: unknown): x is string => Boolean(x))
-                  : [];
-              const incomingSubNames = new Set<string>(incomingSubArr);
-              const existingSubs = existing.subVariations ?? [];
-              for (const sub of existingSubs) {
-                if (!incomingSubNames.has(sub.name)) {
-                  const subDependents =
-                    (await prisma.locationInventory.count({
-                      where: { subVariationId: sub.id },
-                    })) +
-                    (await prisma.saleItem.count({
-                      where: { subVariationId: sub.id },
-                    })) +
-                    (await prisma.transferItem.count({
-                      where: { subVariationId: sub.id },
-                    }));
-                  if (subDependents === 0) {
-                    await prisma.productSubVariation.delete({
-                      where: { id: sub.id },
-                    });
-                  }
-                }
-              }
-              for (const name of incomingSubNames) {
-                const exists = existingSubs.some((s) => s.name === name);
-                if (!exists) {
-                  await prisma.productSubVariation.create({
-                    data: { variationId: existing.id, name },
-                  });
-                }
-              }
-              await prisma.productVariation.update({
-                where: { id: existing.id },
-                data: {
-                  stockQuantity:
-                    payload.stockQuantity ?? existing.stockQuantity,
-                  ...(newPhotos.length > 0
-                    ? {
-                        photos: { create: newPhotos },
-                      }
-                    : {}),
-                },
-              });
-            }
-          } else if (!hasDependents) {
-            await prisma.productVariation.delete({
-              where: { id: existing.id },
-            });
-          }
-        }
-
-        for (const variation of Array.isArray(variations) ? variations : []) {
-          const color = (variation.color || "").trim();
-          if (!color || existingVariations.some((e) => e.color === color))
-            continue;
-          await prisma.productVariation.create({
-            data: {
-              productId: id,
-              color,
-              stockQuantity: variation.stockQuantity || 0,
-              photos:
-                variation.photos && Array.isArray(variation.photos)
-                  ? {
-                      create: variation.photos.map((photo: any) => ({
-                        photoUrl: photo.photoUrl,
-                        isPrimary: photo.isPrimary || false,
-                      })),
-                    }
-                  : undefined,
-              subVariations:
-                variation.subVariants && Array.isArray(variation.subVariants)
-                  ? {
-                      create: variation.subVariants
-                        .map((n: string | { name: string }) =>
-                          typeof n === "string"
-                            ? n.trim()
-                            : (n?.name ?? "").trim(),
-                        )
-                        .filter(Boolean)
-                        .map((name: string) => ({ name })),
-                    }
-                  : undefined,
-            },
+        if (!location) {
+          return res.status(400).json({
+            message:
+              "Product update failed: the selected location is invalid, inactive, or does not belong to your tenant.",
           });
         }
+        updateData.locationId = location.id;
       }
+
+      // Handle variations update if provided (delegated to service)
+      await upsertVariations(id, variations);
 
       // Handle discounts update if provided
       if (discounts !== undefined) {
@@ -1021,6 +666,9 @@ class ProductController {
         data: updateData,
         include: {
           category: true,
+          location: {
+            select: { id: true, name: true, type: true },
+          },
           createdBy: {
             select: {
               id: true,
@@ -2090,6 +1738,7 @@ class ProductController {
               imsCode: firstRow.imsCode,
               name: firstRow.name,
               categoryId,
+              locationId: firstRow.locationId,
               description: firstRow.material || null,
               length: firstRow.length,
               breadth: firstRow.breadth,
@@ -2156,6 +1805,7 @@ class ProductController {
             id: product.id,
             imsCode: product.imsCode,
             name: product.name,
+            locationId: product.locationId,
             variationsCount: product.variations?.length || 0,
           });
         } catch (error: any) {

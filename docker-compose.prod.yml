@@ -1,6 +1,9 @@
 # Production Docker Compose - Uses images from Docker Hub
 # Watchtower auto-updates containers when new images are pushed
 
+# For production deployments with >10 concurrent API connections, consider adding
+# PgBouncer between the API and Postgres to pool connections and avoid exhaustion.
+
 services:
   # ============================================
   # PostgreSQL Database
@@ -28,6 +31,57 @@ services:
     networks:
       - ims-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: ims-redis
+    restart: always
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - ims-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: ims-minio
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    networks:
+      - ims-network
+
+  # ============================================
+  # Database backup (pg_dump daily, 7-day retention)
+  # ============================================
+  backup:
+    image: postgres:16-alpine
+    container_name: ims-backup
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGHOST: postgres
+      PGUSER: ${POSTGRES_USER:-postgres}
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: ${POSTGRES_DB:-ims}
+    volumes:
+      - backup_data:/backups
+    entrypoint: /bin/sh
+    command: >
+      -c "while true; do
+        pg_dump -Fc > /backups/ims_$$(date +%Y%m%d_%H%M%S).dump;
+        find /backups -name '*.dump' -mtime +7 -delete;
+        sleep 86400;
+      done"
+    networks:
+      - ims-network
   # ============================================
   # API Server
   # ============================================
@@ -38,6 +92,10 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_started
     ports:
       - "${API_PORT:-4000}:4000"
     environment:
@@ -48,6 +106,13 @@ services:
       JWT_SECRET: ${JWT_SECRET}
       SUPERADMIN_USERNAME: ${SUPERADMIN_USERNAME:-admin}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
+      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
+      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
+      STORAGE_BUCKET: ${STORAGE_BUCKET:-projectx-files}
+      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
+      STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-1}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
       interval: 30s
@@ -102,4 +167,8 @@ networks:
 
 volumes:
   postgres_data:
+    driver: local
+  backup_data:
+    driver: local
+  minio_data:
     driver: local

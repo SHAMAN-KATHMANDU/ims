@@ -8,9 +8,14 @@ import {
 import ExcelJS from "exceljs";
 import csvParser from "csv-parser";
 import fs from "fs";
-import { Readable } from "stream";
+import path from "path";
 import { getValidatedQuery } from "@/middlewares/validateRequest";
 import { sendControllerError } from "@/utils/controllerError";
+import {
+  deleteObject,
+  objectStorageEnabled,
+  uploadBufferObject,
+} from "@/services/objectStorage";
 
 function getUserId(req: Request): string | null {
   return (req as any).user?.id ?? null;
@@ -341,8 +346,18 @@ class ContactController {
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
 
-      const filePath =
-        "attachments/" + (file.filename || file.originalname || "file");
+      const safeName = (file.originalname || "file")
+        .replace(/[^a-zA-Z0-9.-]/g, "_")
+        .slice(0, 80);
+      const filePath = `attachments/${Date.now()}-${Math.round(Math.random() * 1e9)}-${safeName}`;
+
+      if (objectStorageEnabled() && file.buffer) {
+        await uploadBufferObject(filePath, file.buffer, file.mimetype);
+      } else if (file.path) {
+        const fallbackPath = path.join(process.cwd(), "uploads", filePath);
+        fs.mkdirSync(path.dirname(fallbackPath), { recursive: true });
+        fs.copyFileSync(file.path, fallbackPath);
+      }
 
       const attachment = await prisma.contactAttachment.create({
         data: {
@@ -372,13 +387,17 @@ class ContactController {
       if (!attachment)
         return res.status(404).json({ message: "Attachment not found" });
 
-      const fullPath = require("path").join(
-        process.cwd(),
-        "uploads",
-        attachment.filePath,
-      );
-      if (fs.existsSync(fullPath)) {
-        fs.unlinkSync(fullPath);
+      if (objectStorageEnabled()) {
+        await deleteObject(attachment.filePath);
+      } else {
+        const fullPath = path.join(
+          process.cwd(),
+          "uploads",
+          attachment.filePath,
+        );
+        if (fs.existsSync(fullPath)) {
+          fs.unlinkSync(fullPath);
+        }
       }
 
       await prisma.contactAttachment.delete({ where: { id: attachmentId } });

@@ -263,6 +263,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P001`,
       name: "Wooden Sofa",
       categoryId: cat1.id,
+      locationId: warehouse.id,
       subCategory: "Sofas",
       subCategoryId: subCatSofas?.id ?? null,
       description: "Classic wooden sofa",
@@ -279,6 +280,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P002`,
       name: "Dining Table",
       categoryId: cat1.id,
+      locationId: warehouse.id,
       subCategory: "Tables",
       subCategoryId: subCatTables?.id ?? null,
       costPrice: 18000,
@@ -294,6 +296,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P003`,
       name: "LED Lamp",
       categoryId: cat2.id,
+      locationId: warehouse.id,
       subCategory: "Accessories",
       costPrice: 500,
       mrp: 800,
@@ -308,6 +311,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P004`,
       name: "Bookshelf",
       categoryId: cat1.id,
+      locationId: warehouse.id,
       subCategory: "Tables",
       costPrice: 4500,
       mrp: 6500,
@@ -322,6 +326,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P005`,
       name: "Wireless Earbuds",
       categoryId: cat2.id,
+      locationId: warehouse.id,
       subCategory: "Accessories",
       costPrice: 1200,
       mrp: 1999,
@@ -336,6 +341,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P006`,
       name: "Cotton T-Shirt",
       categoryId: cat3.id,
+      locationId: warehouse.id,
       subCategory: "Men",
       costPrice: 400,
       mrp: 899,
@@ -350,6 +356,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P007`,
       name: "Non-Stick Pan",
       categoryId: cat4.id,
+      locationId: warehouse.id,
       subCategory: "Cookware",
       costPrice: 800,
       mrp: 1499,
@@ -364,6 +371,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P008`,
       name: "Wall Clock",
       categoryId: cat4.id,
+      locationId: warehouse.id,
       subCategory: "Decor",
       costPrice: 350,
       mrp: 699,
@@ -378,6 +386,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P009`,
       name: "Desk Chair",
       categoryId: cat1.id,
+      locationId: warehouse.id,
       subCategory: "Sofas",
       costPrice: 3200,
       mrp: 4999,
@@ -392,6 +401,7 @@ async function seedTestTenant(
       imsCode: `${slug.toUpperCase()}-P010`,
       name: "Power Bank",
       categoryId: cat2.id,
+      locationId: warehouse.id,
       subCategory: "Accessories",
       costPrice: 900,
       mrp: 1599,
@@ -1158,7 +1168,7 @@ async function seedDemoTenantNearLimit() {
   } as const;
 
   // Seed baseline location/category first because products depend on category.
-  await prisma.location.create({
+  const demoWarehouse = await prisma.location.create({
     data: {
       tenantId: tenant.id,
       name: "Demo Main Warehouse",
@@ -1243,6 +1253,7 @@ async function seedDemoTenantNearLimit() {
         imsCode: `DEMO-P${String(index + 1).padStart(5, "0")}`,
         name: `Demo Product ${String(index + 1).padStart(5, "0")}`,
         categoryId: primaryCategory.id,
+        locationId: demoWarehouse.id,
         costPrice: 100 + (index % 20),
         mrp: 200 + (index % 20),
         finalSp: 180 + (index % 20),
@@ -1874,13 +1885,15 @@ async function main() {
           tenantId: firstTenant.id,
           name: "Sales Pipeline",
           isDefault: true,
-          stages: [
-            { id: "1", name: "Qualification", order: 1, probability: 10 },
-            { id: "2", name: "Proposal", order: 2, probability: 30 },
-            { id: "3", name: "Negotiation", order: 3, probability: 60 },
-            { id: "4", name: "Closed Won", order: 4, probability: 100 },
-            { id: "5", name: "Closed Lost", order: 5, probability: 0 },
-          ],
+          pipelineStages: {
+            create: [
+              { name: "Qualification", order: 1, probability: 10 },
+              { name: "Proposal", order: 2, probability: 30 },
+              { name: "Negotiation", order: 3, probability: 60 },
+              { name: "Closed Won", order: 4, probability: 100 },
+              { name: "Closed Lost", order: 5, probability: 0 },
+            ],
+          },
         },
       });
       console.log("✅ Created default Sales Pipeline (for CRM Deals)");

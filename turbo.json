@@ -6,11 +6,30 @@
       "dependsOn": ["^build", "^prisma:generate"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["NODE_ENV", "DOCKER_ENV"]
+      "env": [
+        "NODE_ENV",
+        "DOCKER_ENV",
+        "SENTRY_ORG",
+        "SENTRY_PROJECT",
+        "SENTRY_DSN",
+        "SENTRY_TRACES_SAMPLE_RATE",
+        "NEXT_PUBLIC_SENTRY_DSN",
+        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE"
+      ]
     },
     "lint": {
       "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": []
+      "outputs": [],
+      "env": [
+        "CI",
+        "PLAYWRIGHT_BASE_URL",
+        "SENTRY_ORG",
+        "SENTRY_PROJECT",
+        "SENTRY_DSN",
+        "SENTRY_TRACES_SAMPLE_RATE",
+        "NEXT_PUBLIC_SENTRY_DSN",
+        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE"
+      ]
     },
     "prisma:generate": {
       "inputs": ["$TURBO_DEFAULT$"],
@@ -43,7 +62,8 @@
     },
     "test": {
       "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": []
+      "outputs": [],
+      "env": ["CI", "PLAYWRIGHT_BASE_URL"]
     },
     "dev": {
       "cache": false,

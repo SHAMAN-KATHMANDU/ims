@@ -7,6 +7,11 @@ const mockFindFirstUser = vi.fn();
 const mockUpdateUser = vi.fn();
 const mockCreateAuditLog = vi.fn();
 const mockFindUniqueUser = vi.fn();
+const mockCreateRefreshToken = vi.fn();
+const mockFindFirstRefreshToken = vi.fn();
+const mockUpdateRefreshToken = vi.fn();
+const mockUpdateManyRefreshToken = vi.fn();
+const mockTransaction = vi.fn();
 
 vi.mock("@/config/prisma", () => ({
   basePrisma: {
@@ -19,6 +24,13 @@ vi.mock("@/config/prisma", () => ({
       update: (...args: unknown[]) => mockUpdateUser(...args),
     },
     auditLog: { create: (...args: unknown[]) => mockCreateAuditLog(...args) },
+    refreshToken: {
+      create: (...args: unknown[]) => mockCreateRefreshToken(...args),
+      findFirst: (...args: unknown[]) => mockFindFirstRefreshToken(...args),
+      update: (...args: unknown[]) => mockUpdateRefreshToken(...args),
+      updateMany: (...args: unknown[]) => mockUpdateManyRefreshToken(...args),
+    },
+    $transaction: (...args: unknown[]) => mockTransaction(...args),
   },
 }));
 
@@ -55,6 +67,21 @@ function mockRes(): Partial<Response> {
 describe("AuthController", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockTransaction.mockImplementation(async (arg: unknown) => {
+      if (typeof arg === "function") {
+        return (arg as (tx: any) => Promise<unknown>)({
+          user: { update: (...txArgs: unknown[]) => mockUpdateUser(...txArgs) },
+          auditLog: {
+            create: (...txArgs: unknown[]) => mockCreateAuditLog(...txArgs),
+          },
+          refreshToken: {
+            create: (...txArgs: unknown[]) => mockCreateRefreshToken(...txArgs),
+            update: (...txArgs: unknown[]) => mockUpdateRefreshToken(...txArgs),
+          },
+        });
+      }
+      return null;
+    });
   });
 
   describe("logIn", () => {
@@ -199,6 +226,8 @@ describe("AuthController", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         lastLoginAt: null,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
       };
       mockFindUniqueTenant.mockResolvedValue(tenant);
       mockFindFirstUser.mockResolvedValue(user);
@@ -217,7 +246,13 @@ describe("AuthController", () => {
       expect(res.json).toHaveBeenCalledWith({
         message: "Invalid username or password",
       });
-      expect(mockUpdateUser).not.toHaveBeenCalled();
+      // Lockout: basePrisma.user.update is called to increment failedLoginAttempts
+      expect(mockUpdateUser).toHaveBeenCalledWith({
+        where: { id: "user-1" },
+        data: expect.objectContaining({
+          failedLoginAttempts: 1,
+        }),
+      });
     });
 
     it("returns 200 with token and user on successful login", async () => {
@@ -240,12 +275,15 @@ describe("AuthController", () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         lastLoginAt: null,
+        failedLoginAttempts: 0,
+        lockedUntil: null,
       };
       mockFindUniqueTenant.mockResolvedValue(tenant);
       mockFindFirstUser.mockResolvedValue(user);
       mockCompare.mockResolvedValue(true);
       mockUpdateUser.mockResolvedValue(user);
       mockCreateAuditLog.mockResolvedValue({});
+      mockCreateRefreshToken.mockResolvedValue({ id: "session-1" });
       mockSign.mockReturnValue("jwt-token-here");
 
       const req = {
@@ -256,13 +294,18 @@ describe("AuthController", () => {
         get: vi.fn().mockReturnValue("Mozilla/5.0"),
       } as unknown as Request;
       const res = mockRes() as Response;
+      (res.setHeader as ReturnType<typeof vi.fn>) = vi.fn().mockReturnThis();
 
       await authController.logIn(req, res);
 
       expect(mockCompare).toHaveBeenCalledWith("correct", "hashed");
       expect(mockUpdateUser).toHaveBeenCalledWith({
         where: { id: "user-1" },
-        data: expect.any(Object),
+        data: expect.objectContaining({
+          lastLoginAt: expect.any(Date),
+          failedLoginAttempts: 0,
+          lockedUntil: null,
+        }),
       });
       expect(mockCreateAuditLog).toHaveBeenCalledWith({
         data: expect.objectContaining({
@@ -281,13 +324,17 @@ describe("AuthController", () => {
           role: "admin",
           tenantId: "tenant-1",
           tenantSlug: "acme",
+          sessionId: "session-1",
         }),
         "test-secret",
-        { expiresIn: "4h" },
+        { expiresIn: "15m" },
+      );
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Set-Cookie",
+        expect.any(Array),
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        token: "jwt-token-here",
         user: expect.not.objectContaining({ password: expect.anything() }),
         tenant: expect.objectContaining({
           id: "tenant-1",
@@ -376,14 +423,24 @@ describe("AuthController", () => {
 
   describe("logOut", () => {
     it("returns 200 with success message", async () => {
-      const req = {} as Request;
+      mockUpdateManyRefreshToken.mockResolvedValue({ count: 1 });
+      const req = {
+        user: { id: "user-1", role: "admin", tenantId: "tenant-1" },
+        body: {},
+      } as unknown as Request;
       const res = mockRes() as Response;
+      (res.setHeader as ReturnType<typeof vi.fn>) = vi.fn().mockReturnThis();
 
       await authController.logOut(req, res);
 
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Set-Cookie",
+        expect.any(Array),
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         message: "Logout successful",
+        revokedSessions: 1,
       });
     });
   });

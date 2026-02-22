@@ -3,8 +3,13 @@ import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import activityController from "./activity.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
-import { validateBody } from "@/middlewares/validateRequest";
-import { createActivitySchema } from "./activity.schema";
+import { validateBody, validateParams } from "@/middlewares/validateRequest";
+import {
+  activityIdParamsSchema,
+  contactIdParamsSchema,
+  createActivitySchema,
+  dealIdParamsSchema,
+} from "./activity.schema";
 
 const activityRouter = Router();
 
@@ -18,10 +23,23 @@ activityRouter.post(
 );
 activityRouter.get(
   "/contact/:contactId",
+  validateParams(contactIdParamsSchema),
   asyncHandler(activityController.getByContact),
 );
-activityRouter.get("/deal/:dealId", asyncHandler(activityController.getByDeal));
-activityRouter.get("/:id", asyncHandler(activityController.getById));
-activityRouter.delete("/:id", asyncHandler(activityController.delete));
+activityRouter.get(
+  "/deal/:dealId",
+  validateParams(dealIdParamsSchema),
+  asyncHandler(activityController.getByDeal),
+);
+activityRouter.get(
+  "/:id",
+  validateParams(activityIdParamsSchema),
+  asyncHandler(activityController.getById),
+);
+activityRouter.delete(
+  "/:id",
+  validateParams(activityIdParamsSchema),
+  asyncHandler(activityController.delete),
+);
 
 export default activityRouter;

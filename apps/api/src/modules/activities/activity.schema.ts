@@ -21,3 +21,15 @@ export const createActivitySchema = z
     (v) => Boolean(v.contactId || v.memberId || v.dealId),
     "Either contactId, memberId, or dealId is required",
   );
+
+export const activityIdParamsSchema = z.object({
+  id: z.string().uuid("Invalid activity id"),
+});
+
+export const contactIdParamsSchema = z.object({
+  contactId: z.string().uuid("Invalid contact id"),
+});
+
+export const dealIdParamsSchema = z.object({
+  dealId: z.string().uuid("Invalid deal id"),
+});

@@ -1,8 +1,4 @@
-/**
- * In-memory cache for analytics API responses.
- * Reduces repeated DB load when the same user requests the same filters within TTL.
- * Cache key = endpoint + userId + normalized query so role-scoped data is never shared.
- */
+import { getRedisClient } from "@/config/redis";
 
 const TTL_MS = 90 * 1000; // 90 seconds
 
@@ -32,11 +28,15 @@ export function buildAnalyticsCacheKey(
   return `analytics:${path}:${userId ?? "anon"}:${q}`;
 }
 
-/**
- * Return cached response body if present and not expired; otherwise undefined.
- * Expired entries are removed.
- */
-export function getCachedAnalytics(key: string): unknown | undefined {
+export async function getCachedAnalytics(
+  key: string,
+): Promise<unknown | undefined> {
+  const redis = getRedisClient();
+  if (redis) {
+    const raw = await redis.get(key);
+    return raw ? (JSON.parse(raw) as unknown) : undefined;
+  }
+
   const entry = store.get(key);
   if (!entry) return undefined;
   if (Date.now() > entry.expiresAt) {
@@ -46,10 +46,16 @@ export function getCachedAnalytics(key: string): unknown | undefined {
   return entry.body;
 }
 
-/**
- * Store response body for the given key. Overwrites any existing entry.
- */
-export function setCachedAnalytics(key: string, body: unknown): void {
+export async function setCachedAnalytics(
+  key: string,
+  body: unknown,
+): Promise<void> {
+  const redis = getRedisClient();
+  if (redis) {
+    await redis.set(key, JSON.stringify(body), "PX", TTL_MS);
+    return;
+  }
+
   store.set(key, {
     body,
     expiresAt: Date.now() + TTL_MS,

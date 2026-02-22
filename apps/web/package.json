@@ -8,7 +8,8 @@
     "dev:webpack": "next dev --port 3000 --no-turbopack",
     "build": "next build",
     "start": "next start",
-    "test": "echo \"No web tests configured\"",
+    "test": "playwright test",
+    "test:smoke": "playwright test tests/smoke.spec.ts --project=chromium",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit"
   },
@@ -46,6 +47,7 @@
     "@radix-ui/react-toggle-group": "1.1.1",
     "@radix-ui/react-tooltip": "1.1.6",
     "@repo/shared": "workspace:*",
+    "@sentry/nextjs": "^10.39.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@tanstack/react-query": "^5.90.16",
     "@vercel/analytics": "1.3.1",
@@ -80,6 +82,7 @@
     "zustand": "^5.0.10"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@tanstack/react-query-devtools": "^5.91.2",

@@ -6,6 +6,7 @@
 import { Request, Response, NextFunction } from "express";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
+import { Sentry } from "@/config/sentry";
 
 export interface AppError extends Error {
   statusCode?: number;
@@ -48,6 +49,20 @@ export const errorHandler = (
     method: req.method,
     stack: env.isDev ? err.stack : undefined,
   });
+
+  if (env.sentryDsn) {
+    Sentry.captureException(err, {
+      tags: {
+        requestId,
+        path: req.path,
+        method: req.method,
+      },
+      user: req.user ? { id: req.user.id } : undefined,
+      extra: {
+        statusCode,
+      },
+    });
+  }
 
   // Build error response
   const errorResponse: ErrorResponse = {

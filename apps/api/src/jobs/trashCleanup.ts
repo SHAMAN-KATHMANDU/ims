@@ -32,7 +32,7 @@ function getCutoffDate(): Date {
   return d;
 }
 
-async function runTrashCleanup(): Promise<void> {
+export async function runTrashCleanup(): Promise<void> {
   const cutoff = getCutoffDate();
   logger.log(
     `[TrashCleanup] Running cleanup for items deleted before ${cutoff.toISOString()}`,
@@ -78,7 +78,7 @@ export function startTrashCleanupCron(): void {
     try {
       await runTrashCleanup();
     } catch (error) {
-      logger.error("[TrashCleanup] Fatal error in cron job", undefined, error);
+      logger.error("[TrashCleanup] Fatal error in cron job", error);
     }
   });
 

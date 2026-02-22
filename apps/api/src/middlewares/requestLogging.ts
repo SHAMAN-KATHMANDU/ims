@@ -1,11 +1,13 @@
 /**
  * Request logging middleware for all API calls.
  * Logs method, path, and request ID on request; logs status code and duration on response.
+ * Records Prometheus metrics (duration, count) for /api/v1 requests.
  * Does not log request body or headers to avoid leaking secrets.
  */
 
 import { Request, Response, NextFunction } from "express";
 import { logger } from "@/config/logger";
+import { httpRequestDuration, httpRequestTotal } from "@/config/metrics";
 
 const API_BASE_PATH = "/api/v1";
 
@@ -14,7 +16,7 @@ export const requestLoggingMiddleware = (
   res: Response,
   next: NextFunction,
 ) => {
-  // Only log requests to the API (exclude /health, /api-docs, etc.)
+  // Only log and record metrics for API requests
   if (!req.path.startsWith(API_BASE_PATH)) {
     return next();
   }
@@ -23,18 +25,31 @@ export const requestLoggingMiddleware = (
   const method = req.method;
   const path = req.path;
   const start = Date.now();
+  const tenantId = req.user?.tenantId;
+  const userId = req.user?.id;
 
-  logger.request("API request", requestId, { method, path });
+  logger.request("API request", requestId, { method, path, tenantId, userId });
 
   res.on("finish", () => {
     const durationMs = Date.now() - start;
-    const statusCode = res.statusCode;
+    const durationSec = durationMs / 1000;
+    const statusCode = String(res.statusCode);
+    const route = path.split("?")[0];
+
     logger.request("API response", requestId, {
       method,
       path,
-      statusCode,
-      durationMs,
+      tenantId,
+      userId,
+      statusCode: res.statusCode,
+      latencyMs: durationMs,
     });
+
+    httpRequestDuration.observe(
+      { method, route, status: statusCode },
+      durationSec,
+    );
+    httpRequestTotal.inc({ method, route, status: statusCode });
   });
 
   next();
