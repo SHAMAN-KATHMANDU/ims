@@ -6,7 +6,11 @@ export const loginSchema = z.object({
 });
 
 export const refreshTokenSchema = z.object({
-  refreshToken: z.string().trim().min(1, "Refresh token is required"),
+  refreshToken: z
+    .string()
+    .trim()
+    .min(1, "Refresh token is required")
+    .optional(),
 });
 
 export const logoutSchema = z.object({

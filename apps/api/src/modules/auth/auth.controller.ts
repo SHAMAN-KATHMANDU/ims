@@ -7,8 +7,8 @@ import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { sendControllerError } from "@/utils/controllerError";
 
-const ACCESS_TOKEN_TTL = "15m";
-const REFRESH_TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
+const ACCESS_TOKEN_TTL = env.jwtAccessExpiresIn;
+const REFRESH_TOKEN_TTL_MS = env.jwtRefreshTtlDays * 24 * 60 * 60 * 1000;
 
 class AuthController {
   private hashRefreshToken(rawToken: string): string {
@@ -21,8 +21,36 @@ class AuthController {
 
   private createAccessToken(payload: Record<string, unknown>): string {
     return jwt.sign(payload, env.jwtSecret, {
-      expiresIn: ACCESS_TOKEN_TTL,
+      expiresIn: ACCESS_TOKEN_TTL as jwt.SignOptions["expiresIn"],
     });
+  }
+
+  private getCookieValue(req: Request, name: string): string | null {
+    const cookieHeader = req.headers.cookie;
+    if (!cookieHeader) return null;
+    const entry = cookieHeader
+      .split("; ")
+      .find((cookie) => cookie.startsWith(`${name}=`));
+    if (!entry) return null;
+    return decodeURIComponent(entry.slice(name.length + 1));
+  }
+
+  private cookieOptions(maxAgeMs: number, path = "/"): string {
+    const parts = [
+      `Path=${path}`,
+      `Max-Age=${Math.floor(maxAgeMs / 1000)}`,
+      "HttpOnly",
+      "SameSite=Strict",
+    ];
+    if (!env.isDev) parts.push("Secure");
+    return parts.join("; ");
+  }
+
+  private getClearCookieHeaders(): string[] {
+    return [
+      `access_token=; ${this.cookieOptions(0)}`,
+      `refresh_token=; ${this.cookieOptions(0, "/api/v1/auth")}`,
+    ];
   }
 
   async logIn(req: Request, res: Response) {
@@ -170,30 +198,18 @@ class AuthController {
         tenantSlug: tenant.slug,
         sessionId: refreshSession.id,
       };
-
       const token = this.createAccessToken(tokenPayload);
 
       // Return user and tenant only; set HttpOnly cookies for tokens
       const { password: _, ...userWithoutPassword } = user;
 
-      const isSecure = !env.isDev;
-      const cookieOpts = (maxAgeMs: number, path = "/"): string => {
-        const parts = [
-          `Path=${path}`,
-          `Max-Age=${Math.floor(maxAgeMs / 1000)}`,
-          "HttpOnly",
-          "SameSite=Strict",
-        ];
-        if (isSecure) parts.push("Secure");
-        return parts.join("; ");
-      };
-
       res.setHeader("Set-Cookie", [
-        `access_token=${token}; ${cookieOpts(15 * 60 * 1000)}`,
-        `refresh_token=${refreshToken}; ${cookieOpts(REFRESH_TOKEN_TTL_MS, "/api/v1/auth")}`,
+        `access_token=${encodeURIComponent(token)}; ${this.cookieOptions(4 * 60 * 60 * 1000)}`,
+        `refresh_token=${encodeURIComponent(refreshToken)}; ${this.cookieOptions(REFRESH_TOKEN_TTL_MS, "/api/v1/auth")}`,
       ]);
 
       res.status(200).json({
+        token,
         user: userWithoutPassword,
         tenant: {
           id: tenant.id,
@@ -213,11 +229,8 @@ class AuthController {
   async refreshToken(req: Request, res: Response) {
     try {
       const refreshTokenValue =
-        (req.body as { refreshToken?: string })?.refreshToken ||
-        req.headers.cookie
-          ?.split("; ")
-          .find((c) => c.startsWith("refresh_token="))
-          ?.split("=")[1];
+        (req.body as { refreshToken?: string })?.refreshToken ??
+        this.getCookieValue(req, "refresh_token");
 
       if (!refreshTokenValue) {
         return res.status(401).json({ message: "Refresh token required" });
@@ -297,24 +310,13 @@ class AuthController {
         sessionId: nextSession.id,
       });
 
-      const isSecure = !env.isDev;
-      const cookieOpts = (maxAgeMs: number, path = "/"): string => {
-        const parts = [
-          `Path=${path}`,
-          `Max-Age=${Math.floor(maxAgeMs / 1000)}`,
-          "HttpOnly",
-          "SameSite=Strict",
-        ];
-        if (isSecure) parts.push("Secure");
-        return parts.join("; ");
-      };
-
       res.setHeader("Set-Cookie", [
-        `access_token=${accessToken}; ${cookieOpts(15 * 60 * 1000)}`,
-        `refresh_token=${nextRefreshToken}; ${cookieOpts(REFRESH_TOKEN_TTL_MS, "/api/v1/auth")}`,
+        `access_token=${encodeURIComponent(accessToken)}; ${this.cookieOptions(4 * 60 * 60 * 1000)}`,
+        `refresh_token=${encodeURIComponent(nextRefreshToken)}; ${this.cookieOptions(REFRESH_TOKEN_TTL_MS, "/api/v1/auth")}`,
       ]);
 
       return res.status(200).json({
+        token: accessToken,
         tenant: {
           id: currentSession.tenant.id,
           slug: currentSession.tenant.slug,
@@ -385,8 +387,9 @@ class AuthController {
         return res.status(401).json({ message: "User not authenticated" });
       }
 
-      const refreshToken = (req.body as { refreshToken?: string })
-        ?.refreshToken;
+      const refreshToken =
+        (req.body as { refreshToken?: string })?.refreshToken ??
+        this.getCookieValue(req, "refresh_token");
       const now = new Date();
 
       if (refreshToken) {
@@ -402,33 +405,16 @@ class AuthController {
           },
         });
 
-        res.setHeader("Set-Cookie", [
-          "access_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
-          "refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict",
-        ]);
+        res.setHeader("Set-Cookie", this.getClearCookieHeaders());
         return res.status(200).json({
           message: "Logout successful",
           revokedSessions: result.count,
         });
       }
-
-      const result = await basePrisma.refreshToken.updateMany({
-        where: {
-          userId: req.user.id,
-          revokedAt: null,
-        },
-        data: {
-          revokedAt: now,
-        },
-      });
-
-      res.setHeader("Set-Cookie", [
-        "access_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
-        "refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict",
-      ]);
+      res.setHeader("Set-Cookie", this.getClearCookieHeaders());
       return res.status(200).json({
         message: "Logout successful",
-        revokedSessions: result.count,
+        revokedSessions: 0,
       });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Logout error");
@@ -451,10 +437,7 @@ class AuthController {
         },
       });
 
-      res.setHeader("Set-Cookie", [
-        "access_token=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict",
-        "refresh_token=; Path=/api/v1/auth; Max-Age=0; HttpOnly; SameSite=Strict",
-      ]);
+      res.setHeader("Set-Cookie", this.getClearCookieHeaders());
       return res.status(200).json({
         message: "All sessions revoked",
         revokedSessions: result.count,

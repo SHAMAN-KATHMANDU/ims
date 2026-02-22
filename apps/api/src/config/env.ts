@@ -44,6 +44,13 @@ if (!isDev && jwtSecret.length < 32) {
   console.error("FATAL: JWT_SECRET must be at least 32 chars in production.");
   process.exit(1);
 }
+const jwtAccessExpiresIn = process.env.JWT_ACCESS_EXPIRES_IN?.trim() || "4h";
+const jwtRefreshTtlDaysRaw = process.env.JWT_REFRESH_TTL_DAYS?.trim() || "7";
+const jwtRefreshTtlDays = Number.parseInt(jwtRefreshTtlDaysRaw, 10);
+if (!Number.isFinite(jwtRefreshTtlDays) || jwtRefreshTtlDays < 1) {
+  console.error("FATAL: JWT_REFRESH_TTL_DAYS must be a positive integer.");
+  process.exit(1);
+}
 
 // CORS: must be set explicitly in staging/production. In dev, default to * for convenience.
 // CORS_ORIGIN can be a single origin or comma-separated list.
@@ -99,6 +106,8 @@ export const env = Object.freeze({
   port,
   host,
   jwtSecret,
+  jwtAccessExpiresIn,
+  jwtRefreshTtlDays,
   databaseUrl,
   corsOrigin,
   publicApiUrl,

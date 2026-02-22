@@ -49,7 +49,7 @@ export const authKeys = {
  * Authentication hook
  *
  * Combines:
- * - Zustand store for client-side auth state (token, user cache, tenant)
+ * - Zustand store for client-side auth state (user cache, tenant)
  * - TanStack Query for server state (getCurrentUser, mutations)
  */
 export function useAuth() {

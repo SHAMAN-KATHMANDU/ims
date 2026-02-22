@@ -45,7 +45,12 @@ vi.mock("jsonwebtoken", () => ({
 }));
 
 vi.mock("@/config/env", () => ({
-  env: { isDev: false, jwtSecret: "test-secret" },
+  env: {
+    isDev: false,
+    jwtSecret: "test-secret",
+    jwtAccessExpiresIn: "4h",
+    jwtRefreshTtlDays: 7,
+  },
 }));
 
 vi.mock("@/config/logger", () => ({
@@ -327,7 +332,7 @@ describe("AuthController", () => {
           sessionId: "session-1",
         }),
         "test-secret",
-        { expiresIn: "15m" },
+        { expiresIn: "4h" },
       );
       expect(res.setHeader).toHaveBeenCalledWith(
         "Set-Cookie",
@@ -335,7 +340,117 @@ describe("AuthController", () => {
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
+        token: "jwt-token-here",
         user: expect.not.objectContaining({ password: expect.anything() }),
+        tenant: expect.objectContaining({
+          id: "tenant-1",
+          slug: "acme",
+          name: "Acme",
+        }),
+      });
+    });
+  });
+
+  describe("refreshToken", () => {
+    it("returns 401 when refresh token is missing", async () => {
+      const req = { body: {}, headers: {} } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.refreshToken(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Refresh token required",
+      });
+    });
+
+    it("returns 401 when refresh token is invalid", async () => {
+      mockFindFirstRefreshToken.mockResolvedValue(null);
+      const req = {
+        body: { refreshToken: "invalid-token" },
+        headers: {},
+      } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.refreshToken(req, res);
+
+      expect(mockFindFirstRefreshToken).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(401);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Invalid refresh token",
+      });
+    });
+
+    it("returns 200 and rotates refresh token on success", async () => {
+      const now = new Date();
+      const currentSession = {
+        id: "session-1",
+        user: {
+          id: "user-1",
+          tenantId: "tenant-1",
+          username: "user",
+          role: "admin",
+        },
+        tenant: {
+          id: "tenant-1",
+          slug: "acme",
+          name: "Acme",
+          plan: "free",
+          subscriptionStatus: "active",
+          planExpiresAt: null,
+          trialEndsAt: null,
+          isActive: true,
+        },
+      };
+
+      mockFindFirstRefreshToken.mockResolvedValue(currentSession);
+      mockCreateRefreshToken.mockResolvedValue({ id: "session-2" });
+      mockUpdateRefreshToken.mockResolvedValue({
+        id: "session-1",
+        revokedAt: now,
+        replacedById: "session-2",
+      });
+      mockSign.mockReturnValue("new-access-token");
+
+      const req = {
+        body: { refreshToken: "valid-refresh-token" },
+        headers: {},
+        ip: "127.0.0.1",
+        socket: { remoteAddress: "127.0.0.1" },
+        get: vi.fn().mockReturnValue("Mozilla/5.0"),
+      } as unknown as Request;
+      const res = mockRes() as Response;
+      (res.setHeader as ReturnType<typeof vi.fn>) = vi.fn().mockReturnThis();
+
+      await authController.refreshToken(req, res);
+
+      expect(mockCreateRefreshToken).toHaveBeenCalled();
+      expect(mockUpdateRefreshToken).toHaveBeenCalledWith({
+        where: { id: "session-1" },
+        data: expect.objectContaining({
+          replacedById: "session-2",
+          revokedAt: expect.any(Date),
+        }),
+      });
+      expect(mockSign).toHaveBeenCalledWith(
+        expect.objectContaining({
+          id: "user-1",
+          username: "user",
+          role: "admin",
+          tenantId: "tenant-1",
+          tenantSlug: "acme",
+          sessionId: "session-2",
+        }),
+        "test-secret",
+        { expiresIn: "4h" },
+      );
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Set-Cookie",
+        expect.any(Array),
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        token: "new-access-token",
         tenant: expect.objectContaining({
           id: "tenant-1",
           slug: "acme",
@@ -426,7 +541,7 @@ describe("AuthController", () => {
       mockUpdateManyRefreshToken.mockResolvedValue({ count: 1 });
       const req = {
         user: { id: "user-1", role: "admin", tenantId: "tenant-1" },
-        body: {},
+        body: { refreshToken: "refresh-token-1" },
       } as unknown as Request;
       const res = mockRes() as Response;
       (res.setHeader as ReturnType<typeof vi.fn>) = vi.fn().mockReturnThis();

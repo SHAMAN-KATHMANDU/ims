@@ -8,6 +8,7 @@
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
 import type { AuthUser, TenantInfo } from "@/utils/auth";
+import type { InternalAxiosRequestConfig } from "axios";
 
 export interface LoginResponse {
   user: AuthUser;
@@ -16,6 +17,11 @@ export interface LoginResponse {
 
 interface CurrentUserResponse {
   user: AuthUser;
+  tenant: TenantInfo;
+}
+
+interface RefreshResponse {
+  token?: string;
   tenant: TenantInfo;
 }
 
@@ -74,4 +80,18 @@ export async function logout(): Promise<void> {
   } catch {
     // Ignore errors on logout - we'll clear local state anyway
   }
+}
+
+export async function refreshSession(): Promise<RefreshResponse> {
+  const requestConfig: Partial<InternalAxiosRequestConfig> & {
+    skipGlobalErrorToast?: boolean;
+  } = {
+    skipGlobalErrorToast: true,
+  };
+  const response = await api.post<RefreshResponse>(
+    "/auth/refresh",
+    {},
+    requestConfig as InternalAxiosRequestConfig,
+  );
+  return response.data as RefreshResponse;
 }

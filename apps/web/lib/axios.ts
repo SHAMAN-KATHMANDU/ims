@@ -16,6 +16,7 @@ import axios, { type InternalAxiosRequestConfig } from "axios";
 import { useAuthStore } from "@/stores/auth-store";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { toast } from "@/hooks/useToast";
+import { refreshSession } from "@/services/authService";
 
 // API base URL from environment variable with fallback
 const API_BASE_URL =
@@ -29,6 +30,24 @@ const api = axios.create({
     "Content-Type": "application/json",
   },
 });
+
+type RetriableRequestConfig = InternalAxiosRequestConfig & {
+  _retry?: boolean;
+  skipAuthRefresh?: boolean;
+  skipGlobalErrorToast?: boolean;
+};
+
+let isRefreshing = false;
+let refreshSubscribers: Array<(error?: unknown) => void> = [];
+
+const subscribeToRefresh = (callback: (error?: unknown) => void) => {
+  refreshSubscribers.push(callback);
+};
+
+const notifyRefreshSubscribers = (error?: unknown) => {
+  refreshSubscribers.forEach((callback) => callback(error));
+  refreshSubscribers = [];
+};
 
 // Request interceptor: Attach tenant slug; allow multipart when body is FormData (auth via HttpOnly cookie)
 api.interceptors.request.use(
@@ -58,13 +77,56 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     const status = error.response?.status;
-    const requestUrl = error.config?.url || "";
+    const originalRequest = (error.config || {}) as RetriableRequestConfig;
+    const requestUrl = originalRequest.url || "";
     const isAuthMe = requestUrl.includes("/auth/me");
     const isLoginEndpoint =
       requestUrl.includes("auth/login") || requestUrl.endsWith("/auth/login");
+    const isRefreshEndpoint =
+      requestUrl.includes("auth/refresh") ||
+      requestUrl.endsWith("/auth/refresh");
+    const shouldAttemptRefresh =
+      status === 401 &&
+      !isLoginEndpoint &&
+      !isRefreshEndpoint &&
+      !originalRequest.skipAuthRefresh &&
+      !originalRequest._retry;
+
+    if (shouldAttemptRefresh) {
+      originalRequest._retry = true;
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          subscribeToRefresh((refreshError) => {
+            if (refreshError) {
+              reject(error);
+              return;
+            }
+            resolve(api(originalRequest));
+          });
+        });
+      }
+
+      isRefreshing = true;
+      return refreshSession()
+        .then((refreshData) => {
+          if (refreshData?.tenant) {
+            useAuthStore.getState().setTenant(refreshData.tenant);
+          }
+          notifyRefreshSubscribers();
+          return api(originalRequest);
+        })
+        .catch((refreshError) => {
+          notifyRefreshSubscribers(refreshError);
+          throw error;
+        })
+        .finally(() => {
+          isRefreshing = false;
+        });
+    }
 
     if (status === 401 || (status === 404 && isAuthMe)) {
-      if (isLoginEndpoint) return Promise.reject(error);
+      if (isLoginEndpoint || isRefreshEndpoint) return Promise.reject(error);
 
       const pathname =
         typeof window !== "undefined" ? window.location.pathname : "";
@@ -80,9 +142,7 @@ api.interceptors.response.use(
         }
       }
     } else {
-      const skipToast = (
-        error.config as { skipGlobalErrorToast?: boolean } | undefined
-      )?.skipGlobalErrorToast;
+      const skipToast = originalRequest.skipGlobalErrorToast;
 
       // Plan limit errors get a dedicated dialog instead of a generic toast
       const isPlanLimit =

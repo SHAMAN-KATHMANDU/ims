@@ -8,6 +8,7 @@ import { runMigrations, disconnectDb } from "@/__tests__/setup";
 const TEST_SLUG = "inttest-product";
 const TEST_USERNAME = "produser";
 const TEST_PASSWORD = "prodpass123";
+const TEST_IMS_CODE = `INT-PROD-${Date.now()}`;
 
 // Skip when DATABASE_URL is not set (e.g. CI without a test DB) to avoid Prisma init error
 describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
@@ -80,7 +81,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
     expect(loginRes.status).toBe(200);
     const setCookie = loginRes.headers["set-cookie"];
     authCookie = Array.isArray(setCookie) ? setCookie.join("; ") : setCookie;
-  });
+  }, 30000);
 
   afterAll(async () => {
     await disconnectDb();
@@ -92,7 +93,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
       .set("Cookie", authCookie)
       .set("X-Tenant-Slug", TEST_SLUG)
       .send({
-        imsCode: "INT-PROD-001",
+        imsCode: TEST_IMS_CODE,
         name: "Integration Test Product",
         categoryId,
         locationId,
@@ -102,7 +103,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
 
     expect(res.status).toBe(201);
     expect(res.body.product).toBeDefined();
-    expect(res.body.product.imsCode).toBe("INT-PROD-001");
+    expect(res.body.product.imsCode).toBe(TEST_IMS_CODE);
     expect(res.body.product.name).toBe("Integration Test Product");
     productId = res.body.product.id;
   });
@@ -113,7 +114,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
       .set("Cookie", authCookie)
       .set("X-Tenant-Slug", TEST_SLUG)
       .send({
-        imsCode: "INT-PROD-001",
+        imsCode: TEST_IMS_CODE,
         name: "Another Product",
         categoryId,
         locationId,
@@ -134,7 +135,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
     expect(res.status).toBe(200);
     expect(res.body.product).toBeDefined();
     expect(res.body.product.id).toBe(productId);
-    expect(res.body.product.imsCode).toBe("INT-PROD-001");
+    expect(res.body.product.imsCode).toBe(TEST_IMS_CODE);
   });
 
   it("PUT /api/v1/products/:id updates product fields", async () => {
