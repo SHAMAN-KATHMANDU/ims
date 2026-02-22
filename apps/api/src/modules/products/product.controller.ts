@@ -22,7 +22,7 @@ import { env } from "@/config/env";
 import { sendControllerError } from "@/utils/controllerError";
 
 class ProductController {
-  // Create product (admin and superAdmin only). Requires a valid warehouse/location before create (see location resolution below).
+  // Create product (admin and superAdmin only). Requires a valid tenant location.
   async createProduct(req: Request, res: Response) {
     try {
       const {
@@ -37,6 +37,7 @@ class ProductController {
         weight,
         costPrice,
         mrp,
+        locationId,
         variations, //Array of color variations
         discounts, //Array of discounts
       } = req.body as {
@@ -52,8 +53,8 @@ class ProductController {
         weight?: number;
         costPrice: number;
         mrp: number;
+        locationId: string;
         vendorId?: string;
-        defaultLocationId?: string;
         variations?: Array<{
           color: string;
           stockQuantity?: number;
@@ -215,58 +216,30 @@ class ProductController {
         });
       }
 
-      // --- Resolve target warehouse BEFORE creating product (data integrity: every product must be linked to a valid location) ---
-      const defaultLocationId = req.body.defaultLocationId as
-        | string
-        | undefined;
-      let warehouseLocation: { id: string } | null = null;
-
-      if (defaultLocationId) {
-        // Explicit location: must belong to tenant and be active (prefer warehouse)
-        const loc = await prisma.location.findFirst({
-          where: {
-            id: defaultLocationId,
-            tenantId,
-            isActive: true,
-          },
-          select: { id: true, type: true },
+      // Canonical product location must be tenant-scoped and active.
+      const resolvedLocation = await prisma.location.findFirst({
+        where: {
+          id: locationId,
+          tenantId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      if (!resolvedLocation) {
+        return res.status(400).json({
+          message:
+            "Product creation failed: the selected location is invalid, inactive, or does not belong to your tenant.",
         });
-        if (!loc) {
-          return res.status(400).json({
-            message:
-              "Product creation failed: the selected location is invalid or does not belong to your tenant.",
-          });
-        }
-        warehouseLocation = { id: loc.id };
       }
 
-      if (!warehouseLocation) {
-        // No explicit location: require tenant's default warehouse (business rule: at least one default warehouse per tenant)
-        const defaultWarehouse = await prisma.location.findFirst({
-          where: {
-            tenantId,
-            type: "WAREHOUSE",
-            isDefaultWarehouse: true,
-            isActive: true,
-          },
-          select: { id: true },
-        });
-        if (!defaultWarehouse) {
-          return res.status(400).json({
-            message:
-              "Product creation failed: tenant has no default warehouse configured. Please set a default warehouse in Locations.",
-          });
-        }
-        warehouseLocation = defaultWarehouse;
-      }
-
-      // Create product (we have a valid warehouseLocation; will link variations to it after create)
+      // Create product and persist canonical location mapping.
       const product = await prisma.product.create({
         data: {
           tenantId,
           imsCode: trimmedImsCode,
           name: name as string,
           categoryId: category.id,
+          locationId: resolvedLocation.id,
           description: description || null,
           subCategory: subCategory?.trim() || null,
           length: length ?? null,
@@ -335,6 +308,9 @@ class ProductController {
         },
         include: {
           category: true,
+          location: {
+            select: { id: true, name: true, type: true },
+          },
           createdBy: {
             select: {
               id: true,
@@ -356,9 +332,9 @@ class ProductController {
         },
       });
 
-      // Link product to location (warehouseLocation already resolved and validated above)
+      // Link product variations to canonical location inventory for non-sub-variant stock.
       try {
-        if (warehouseLocation && product.variations?.length) {
+        if (product.variations?.length) {
           for (const v of product.variations) {
             const hasSubVariants =
               Array.isArray((v as any).subVariations) &&
@@ -368,7 +344,7 @@ class ProductController {
             // Use findFirst + create/update because Prisma upsert with compound unique + null is unreliable
             const existing = await prisma.locationInventory.findFirst({
               where: {
-                locationId: warehouseLocation!.id,
+                locationId: product.locationId,
                 variationId: v.id,
                 subVariationId: null,
               },
@@ -381,7 +357,7 @@ class ProductController {
             } else {
               await prisma.locationInventory.create({
                 data: {
-                  locationId: warehouseLocation!.id,
+                  locationId: product.locationId,
                   variationId: v.id,
                   subVariationId: null,
                   quantity: qty,
@@ -609,6 +585,9 @@ class ProductController {
           where,
           include: {
             category: true,
+            location: {
+              select: { id: true, name: true, type: true },
+            },
             vendor: {
               select: { id: true, name: true },
             },
@@ -655,6 +634,9 @@ class ProductController {
         where: { id },
         include: {
           category: true,
+          location: {
+            select: { id: true, name: true, type: true },
+          },
           createdBy: {
             select: {
               id: true,
@@ -706,6 +688,7 @@ class ProductController {
         costPrice,
         mrp,
         vendorId,
+        locationId,
         variations,
         discounts,
       } = req.body;
@@ -809,6 +792,24 @@ class ProductController {
           }
         }
         updateData.vendorId = vendorId || null;
+      }
+      if (locationId !== undefined) {
+        const nextLocationId = String(locationId).trim();
+        const location = await prisma.location.findFirst({
+          where: {
+            id: nextLocationId,
+            tenantId: existingProduct.tenantId,
+            isActive: true,
+          },
+          select: { id: true },
+        });
+        if (!location) {
+          return res.status(400).json({
+            message:
+              "Product update failed: the selected location is invalid, inactive, or does not belong to your tenant.",
+          });
+        }
+        updateData.locationId = location.id;
       }
 
       // Handle variations update if provided (upsert by color; do not delete variations referenced by sales/transfers)
@@ -1021,6 +1022,9 @@ class ProductController {
         data: updateData,
         include: {
           category: true,
+          location: {
+            select: { id: true, name: true, type: true },
+          },
           createdBy: {
             select: {
               id: true,
@@ -2090,6 +2094,7 @@ class ProductController {
               imsCode: firstRow.imsCode,
               name: firstRow.name,
               categoryId,
+              locationId: firstRow.locationId,
               description: firstRow.material || null,
               length: firstRow.length,
               breadth: firstRow.breadth,
@@ -2156,6 +2161,7 @@ class ProductController {
             id: product.id,
             imsCode: product.imsCode,
             name: product.name,
+            locationId: product.locationId,
             variationsCount: product.variations?.length || 0,
           });
         } catch (error: any) {

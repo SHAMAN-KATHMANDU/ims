@@ -20,7 +20,7 @@ export default defineConfig({
   ],
   webServer: globalThis.process?.env?.CI
     ? {
-        command: "pnpm --filter web dev -- --hostname 127.0.0.1 --port 3000",
+        command: "pnpm --filter web dev",
         port: 3000,
         reuseExistingServer: false,
         timeout: 120_000,

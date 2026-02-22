@@ -65,7 +65,7 @@ export const createProductSchema = z
     costPrice: requiredNumber("Cost price is required"),
     mrp: requiredNumber("MRP is required"),
     vendorId: optionalTrimmedString,
-    defaultLocationId: optionalTrimmedString,
+    locationId: z.string().trim().min(1, "Location ID is required"),
     variations: z.array(variationSchema).optional(),
     discounts: z.array(discountSchema).optional(),
   })
@@ -86,6 +86,7 @@ export const updateProductSchema = z.object({
   costPrice: optionalNumber,
   mrp: optionalNumber,
   vendorId: z.string().trim().optional().nullable(),
+  locationId: z.string().trim().min(1).optional(),
   variations: z.array(variationSchema).optional(),
   discounts: z.array(discountSchema).optional(),
 });
