@@ -13,6 +13,9 @@ const nextConfig = {
     root: monorepoRoot,
   },
 
+  // Disable source maps in production to avoid 404s (standalone output excludes .map files)
+  productionBrowserSourceMaps: false,
+
   // Standalone output for optimized Docker builds
   // This creates a minimal production bundle with only necessary files
   output: "standalone",
@@ -60,4 +63,6 @@ export default withSentryConfig(nextConfig, {
   silent: true,
   widenClientFileUpload: true,
   disableLogger: true,
+  // Disable source maps to avoid 404s (standalone output + Sentry deletes them after upload)
+  sourcemaps: { disable: true },
 });
