@@ -7,7 +7,7 @@ import AdminLoading from "./loading";
 
 type Props = {
   children: React.ReactNode;
-  modal?: React.ReactNode;
+  modal: React.ReactNode;
   params: Promise<{ workspace: string }>;
 };
 
@@ -23,11 +23,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
  * Admin app layout: requires auth. Dashboard and all tenant-scoped UI live under this.
  * Path: /[slug]/... (e.g. /ruby, /ruby/crm) — [slug] is the tenant slug from the URL.
  */
-export default async function AdminLayout({
-  children,
-  modal = null,
-  params,
-}: Props) {
+export default async function AdminLayout({ children, modal, params }: Props) {
   const { workspace } = await params;
   const slug = workspace?.trim() || "admin";
   return (

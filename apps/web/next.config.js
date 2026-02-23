@@ -42,6 +42,14 @@ const nextConfig = {
     ],
   },
 
+  // Explicitly disable source maps in webpack (belt-and-suspenders with productionBrowserSourceMaps)
+  webpack: (config, { dev, isServer }) => {
+    if (!dev && !isServer) {
+      config.devtool = false;
+    }
+    return config;
+  },
+
   // Proxy /api/v1 to API server for same-origin cookies (access_token HttpOnly).
   // Set API_SERVER_URL for Docker (e.g. http://api:4000); default localhost:4000.
   // When using proxy, set NEXT_PUBLIC_API_URL=/api/v1 so client uses same origin.
