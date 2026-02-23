@@ -25,7 +25,7 @@ export default defineConfig({
     ? {
         command: "pnpm --filter web dev",
         port: 3000,
-        reuseExistingServer: false,
+        reuseExistingServer: true, // Reuse if dev server already running (e.g. parallel runs)
         timeout: 120_000,
       }
     : undefined,
