@@ -16,6 +16,9 @@ import { register } from "@/config/metrics";
 
 const app = express();
 
+// Trust proxy (nginx, Docker, load balancer) so X-Forwarded-* headers work for rate limiting
+app.set("trust proxy", 1);
+
 const generalApiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 100,
