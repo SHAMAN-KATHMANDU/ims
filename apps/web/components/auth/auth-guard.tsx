@@ -67,8 +67,10 @@ export function AuthGuard({
     loginPath ?? (urlSlug ? getLoginPath(urlSlug) : getLoginPath("system"));
 
   useEffect(() => {
-    // Wait for hydration
-    if (!isHydrated) return;
+    // Wait for hydration and user fetch (getCurrentUser) before redirecting.
+    // On full-page reload after login, cookie exists but Zustand is empty until
+    // getCurrentUser returns - redirecting too early would bounce back to login.
+    if (!isHydrated || isLoading) return;
 
     // Not authenticated - redirect to login (slug-based path when in tenant URL)
     if (!isAuthenticated) {
@@ -95,6 +97,7 @@ export function AuthGuard({
   }, [
     isAuthenticated,
     isHydrated,
+    isLoading,
     user,
     tenant,
     urlSlug,
