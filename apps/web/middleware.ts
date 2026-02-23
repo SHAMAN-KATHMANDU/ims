@@ -22,7 +22,7 @@ import {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Prefer persisted auth-store user for route decisions; access_token alone may be stale.
+  // Use access_token (HttpOnly) as source of truth for auth. auth-storage can be stale.
   const accessTokenCookie = request.cookies.get("access_token");
   const authStorage = request.cookies.get("auth-storage");
   let storedUser: { role?: string } | null = null;
@@ -37,8 +37,8 @@ export function middleware(request: NextRequest) {
       storedTenantSlug = null;
     }
   }
-  const hasStoredUser = !!storedUser;
-  const hasToken = hasStoredUser || !!accessTokenCookie?.value;
+  // Require actual access_token for protected routes; authStorage alone may be stale (expired session)
+  const hasToken = !!accessTokenCookie?.value;
 
   // Legacy /login (no slug): redirect to root
   if (pathname === "/login") {
@@ -68,8 +68,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Only redirect away from login if we have a hydrated client user for this session.
-  if (isLogin && hasStoredUser && urlSlug) {
+  // Only redirect away from login if we have a valid access token.
+  if (isLogin && hasToken && urlSlug) {
     return NextResponse.redirect(
       new URL(getWorkspaceRoot(urlSlug), request.url),
     );
