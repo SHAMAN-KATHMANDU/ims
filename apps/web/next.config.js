@@ -39,7 +39,19 @@ const nextConfig = {
     ],
   },
 
-  // Note: We're using direct API calls - no rewrites needed
+  // Proxy /api/v1 to API server for same-origin cookies (access_token HttpOnly).
+  // Set API_SERVER_URL for Docker (e.g. http://api:4000); default localhost:4000.
+  // When using proxy, set NEXT_PUBLIC_API_URL=/api/v1 so client uses same origin.
+  async rewrites() {
+    const apiServer =
+      globalThis.process?.env?.API_SERVER_URL || "http://localhost:4000";
+    return [
+      {
+        source: "/api/v1/:path*",
+        destination: `${apiServer}/api/v1/:path*`,
+      },
+    ];
+  },
 };
 
 export default withSentryConfig(nextConfig, {

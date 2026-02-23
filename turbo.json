@@ -14,7 +14,9 @@
         "SENTRY_DSN",
         "SENTRY_TRACES_SAMPLE_RATE",
         "NEXT_PUBLIC_SENTRY_DSN",
-        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE"
+        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE",
+        "API_SERVER_URL",
+        "NEXT_PUBLIC_API_URL"
       ]
     },
     "lint": {
@@ -28,7 +30,9 @@
         "SENTRY_DSN",
         "SENTRY_TRACES_SAMPLE_RATE",
         "NEXT_PUBLIC_SENTRY_DSN",
-        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE"
+        "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE",
+        "PORT",
+        "API_SERVER_URL"
       ]
     },
     "prisma:generate": {

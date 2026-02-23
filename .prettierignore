@@ -1,0 +1,14 @@
+# Dependencies and build outputs
+node_modules
+.next
+dist
+.turbo
+
+# Playwright
+test-results
+playwright-report
+playwright/.cache
+
+# Misc
+*.min.js
+pnpm-lock.yaml
