@@ -82,6 +82,10 @@ services:
     restart: unless-stopped
     ports:
       - "3000:3000"
+    environment:
+      PORT: "3000" # override .env PORT=4000 (API only); Next.js must listen on 3000
+    env_file:
+      - .env
     depends_on:
       - dev_api
     networks:

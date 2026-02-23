@@ -44,8 +44,16 @@
  * Example: product edit. See app/[workspace]/(admin)/@modal/(.)product/[id]/edit/.
  */
 
-const getBaseUrl = () =>
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+function getBaseUrl(): string {
+  const publicUrl =
+    process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  // Relative URL = using proxy; server must call self so cookies (same origin) work.
+  if (publicUrl.startsWith("/")) {
+    const port = process.env.PORT || "3000";
+    return `http://127.0.0.1:${port}${publicUrl}`;
+  }
+  return publicUrl;
+}
 
 export interface FetchServerInit extends Omit<RequestInit, "headers"> {
   headers?: HeadersInit;
