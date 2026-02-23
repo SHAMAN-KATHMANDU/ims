@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,14 @@ import { useToast } from "@/hooks/useToast";
 import { useActiveLocations } from "@/hooks/useLocation";
 import { useCreateSale } from "@/hooks/useSales";
 import { NewSaleForm } from "./components/NewSaleForm";
+import { useIsMobile } from "@/hooks/useMobile";
 
 export function NewSalePage() {
   const router = useRouter();
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const { data: locations = [] } = useActiveLocations();
   const createSaleMutation = useCreateSale();
@@ -41,6 +43,16 @@ export function NewSalePage() {
   const handleCancel = useCallback(() => {
     router.push(`${basePath}/sales`);
   }, [router, basePath]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      router.replace(`${basePath}/sales?add=1`);
+    }
+  }, [isMobile, router, basePath]);
+
+  if (!isMobile) {
+    return <div className="p-6 text-muted-foreground">Redirecting...</div>;
+  }
 
   return (
     <div className="space-y-6">

@@ -6,7 +6,7 @@ import { useRouter, useParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { LoadingPage } from "../layout/loading-page";
 import type { UserRole } from "@/utils/auth";
-import { getWorkspaceRoot } from "@/config/routes";
+import { getLoginPath, getWorkspaceRoot } from "@/config/routes";
 
 interface AuthGuardProps {
   children: React.ReactNode;
@@ -55,7 +55,7 @@ interface AuthGuardProps {
  */
 export function AuthGuard({
   children,
-  loginPath = "/login",
+  loginPath,
   roles,
   unauthorizedPath = "/401",
 }: AuthGuardProps) {
@@ -63,6 +63,8 @@ export function AuthGuard({
   const params = useParams();
   const { user, tenant, isAuthenticated, isLoading, isHydrated } = useAuth();
   const urlSlug = (params?.workspace as string)?.trim();
+  const resolvedLoginPath =
+    loginPath ?? (urlSlug ? getLoginPath(urlSlug) : getLoginPath("system"));
 
   useEffect(() => {
     // Wait for hydration
@@ -70,7 +72,7 @@ export function AuthGuard({
 
     // Not authenticated - redirect to login (slug-based path when in tenant URL)
     if (!isAuthenticated) {
-      router.push(loginPath);
+      router.push(resolvedLoginPath);
       return;
     }
 
@@ -98,7 +100,7 @@ export function AuthGuard({
     urlSlug,
     roles,
     unauthorizedPath,
-    loginPath,
+    resolvedLoginPath,
     router,
   ]);
 

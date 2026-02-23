@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import { LimitGuard } from "@/components/limit-guard";
@@ -14,10 +14,11 @@ import {
   type Location,
   type LocationType,
   type LocationStatusFilter,
+  type LocationListParams,
+  type PaginatedLocationsResponse,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/useLocation";
-import { useIsMobile } from "@/hooks/useMobile";
 import { LocationForm } from "./components/LocationForm";
 import { LocationTable } from "./components/LocationTable";
 import {
@@ -44,23 +45,37 @@ import type { SortOrder } from "@/components/ui/table";
 import { Plus, Search } from "lucide-react";
 import { Label } from "@/components/ui/label";
 
-export function LocationsPage() {
+export interface LocationsPageClientProps {
+  initialData?: PaginatedLocationsResponse;
+  initialParams?: LocationListParams;
+}
+
+export function LocationsPageClient({
+  initialData,
+  initialParams,
+}: LocationsPageClientProps = {}) {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
   const canManageLocations = useAuthStore(selectIsAdmin);
-  const isMobile = useIsMobile();
 
   // Pagination and filter state
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [limit, setLimit] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<LocationType | "all">("all");
-  const [statusFilter, setStatusFilter] = useState<LocationStatusFilter>("all");
-  const [sortBy, setSortBy] = useState<string>("name");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [limit, setLimit] = useState(initialParams?.limit ?? DEFAULT_LIMIT);
+  const [search, setSearch] = useState(initialParams?.search ?? "");
+  const [typeFilter, setTypeFilter] = useState<LocationType | "all">(
+    (initialParams?.type as LocationType) ?? "all",
+  );
+  const [statusFilter, setStatusFilter] = useState<LocationStatusFilter>(
+    (initialParams?.status as LocationStatusFilter) ?? "all",
+  );
+  const [sortBy, setSortBy] = useState<string>(initialParams?.sortBy ?? "name");
+  const [sortOrder, setSortOrder] = useState<SortOrder>(
+    (initialParams?.sortOrder as SortOrder) ?? "asc",
+  );
 
   // Dialog states
   const [formOpen, setFormOpen] = useState(false);
@@ -74,17 +89,23 @@ export function LocationsPage() {
     data: locationsResponse,
     isLoading,
     refetch: refetchLocations,
-  } = useLocationsPaginated({
-    page,
-    limit,
-    search,
-    type: typeFilter === "all" ? undefined : typeFilter,
-    status: statusFilter,
-    sortBy,
-    sortOrder,
-  });
+  } = useLocationsPaginated(
+    {
+      page,
+      limit,
+      search,
+      type: typeFilter === "all" ? undefined : typeFilter,
+      status: statusFilter,
+      sortBy,
+      sortOrder,
+    },
+    { initialData },
+  );
 
-  const locations = locationsResponse?.data ?? [];
+  const locations = useMemo(
+    () => locationsResponse?.data ?? [],
+    [locationsResponse],
+  );
   const pagination = locationsResponse?.pagination;
 
   const handlePageSizeChange = useCallback((newLimit: number) => {
@@ -126,7 +147,10 @@ export function LocationsPage() {
   );
 
   const handleEdit = (location: Location) => {
-    if (isMobile) {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) {
       router.push(`${basePath}/locations/${location.id}/edit`);
       return;
     }
@@ -204,6 +228,27 @@ export function LocationsPage() {
     }
   };
 
+  useEffect(() => {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) return;
+    const add = searchParams.get("add");
+    const edit = searchParams.get("edit");
+    if (add === "1") {
+      setEditingLocation(null);
+      setFormOpen(true);
+      return;
+    }
+    if (edit) {
+      const location = locations.find((l) => l.id === edit);
+      if (location) {
+        setEditingLocation(location);
+        setFormOpen(true);
+      }
+    }
+  }, [searchParams, locations]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -259,14 +304,13 @@ export function LocationsPage() {
 
           {canManageLocations && (
             <LimitGuard resource="locations">
-              {isMobile ? (
-                <Button asChild>
-                  <Link href={`${basePath}/locations/new`} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Location
-                  </Link>
-                </Button>
-              ) : (
+              <Button asChild className="md:hidden">
+                <Link href={`${basePath}/locations/new`} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Location
+                </Link>
+              </Button>
+              <div className="hidden md:block">
                 <LocationForm
                   open={formOpen}
                   onOpenChange={setFormOpen}
@@ -278,7 +322,7 @@ export function LocationsPage() {
                     updateLocationMutation.isPending
                   }
                 />
-              )}
+              </div>
             </LimitGuard>
           )}
         </div>
@@ -347,4 +391,9 @@ export function LocationsPage() {
       </AlertDialog>
     </div>
   );
+}
+
+/** Re-export for backward compatibility. */
+export function LocationsPage(props: LocationsPageClientProps) {
+  return <LocationsPageClient {...props} />;
 }

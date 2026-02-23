@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -44,13 +44,13 @@ import {
 } from "@/hooks/useUser";
 import { useAuthStore, selectUser } from "@/stores/auth-store";
 import { RoleGuard } from "@/components/auth/role-guard";
-import { useIsMobile } from "@/hooks/useMobile";
 import { UserForm, type UserFormValues } from "./components/UserForm";
 import { type UserRoleType } from "@repo/shared";
 
 export function UsersPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspace = (params?.workspace as string) ?? "superadmin";
   const basePath = `/${workspace}`;
   const [userDialog, setUserDialog] = useState(false);
@@ -73,7 +73,6 @@ export function UsersPage() {
   const deleteUserMutation = useDeleteUser();
   const { toast } = useToast();
   const currentUser = useAuthStore(selectUser);
-  const isMobile = useIsMobile();
 
   const onSubmit = async (data: UserFormValues) => {
     try {
@@ -112,7 +111,10 @@ export function UsersPage() {
   };
 
   const handleEditUser = (user: User) => {
-    if (isMobile) {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) {
       router.push(`${basePath}/users/${user.id}/edit`);
       return;
     }
@@ -140,6 +142,27 @@ export function UsersPage() {
     }
   };
 
+  useEffect(() => {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) return;
+    const add = searchParams.get("add");
+    const edit = searchParams.get("edit");
+    if (add === "1") {
+      setEditingUser(null);
+      setUserDialog(true);
+      return;
+    }
+    if (edit) {
+      const user = users.find((u) => u.id === edit);
+      if (user) {
+        setEditingUser(user);
+        setUserDialog(true);
+      }
+    }
+  }, [searchParams, users]);
+
   return (
     <RoleGuard
       allowedRoles={["superAdmin"]}
@@ -156,33 +179,30 @@ export function UsersPage() {
         <div className="flex justify-between items-center">
           <h2 className="text-xl font-semibold">All Users</h2>
           <LimitGuard resource="users">
-            {isMobile ? (
-              <Button asChild>
-                <Link href={`${basePath}/users/new`} className="gap-2">
-                  <Plus className="h-4 w-4" /> Add User
-                </Link>
+            <Button asChild className="md:hidden">
+              <Link href={`${basePath}/users/new`} className="gap-2">
+                <Plus className="h-4 w-4" /> Add User
+              </Link>
+            </Button>
+            <div className="hidden md:block">
+              <Button
+                onClick={() => {
+                  setEditingUser(null);
+                  setUserDialog(true);
+                }}
+                className="gap-2"
+              >
+                <Plus className="h-4 w-4" /> Add User
               </Button>
-            ) : (
-              <>
-                <Button
-                  onClick={() => {
-                    setEditingUser(null);
-                    setUserDialog(true);
-                  }}
-                  className="gap-2"
-                >
-                  <Plus className="h-4 w-4" /> Add User
-                </Button>
-                <UserForm
-                  open={userDialog}
-                  onOpenChange={handleDialogClose}
-                  editingUser={editingUser}
-                  onSubmit={onSubmit}
-                  onReset={() => setEditingUser(null)}
-                  renderTrigger={false}
-                />
-              </>
-            )}
+              <UserForm
+                open={userDialog}
+                onOpenChange={handleDialogClose}
+                editingUser={editingUser}
+                onSubmit={onSubmit}
+                onReset={() => setEditingUser(null)}
+                renderTrigger={false}
+              />
+            </div>
           </LimitGuard>
         </div>
 

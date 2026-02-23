@@ -76,7 +76,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Deal } from "@/services/dealService";
 import type { Pipeline, PipelineStage } from "@/services/pipelineService";
 
-export function DealsKanbanPage() {
+export interface DealsKanbanPageClientProps {
+  initialData?: {
+    pipeline: unknown;
+    stages: Array<{ stage: string; deals: Deal[] }>;
+    deals: Deal[];
+  };
+}
+
+export function DealsKanbanPageClient({
+  initialData,
+}: DealsKanbanPageClientProps = {}) {
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
@@ -85,7 +95,9 @@ export function DealsKanbanPage() {
   const [addPipelineOpen, setAddPipelineOpen] = useState(false);
   const [editPipelineOpen, setEditPipelineOpen] = useState(false);
   const [editStagesOpen, setEditStagesOpen] = useState(false);
-  const { data, isLoading } = useDealsKanban(pipelineId || undefined);
+  const { data, isLoading } = useDealsKanban(pipelineId || undefined, {
+    initialData,
+  });
   const { data: pipelinesData } = usePipelines();
   const updateStageMutation = useUpdateDealStage();
   const deleteDealMutation = useDeleteDeal();
@@ -902,4 +914,8 @@ function EditPipelineStagesDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+export function DealsKanbanPage(props: DealsKanbanPageClientProps) {
+  return <DealsKanbanPageClient {...props} />;
 }

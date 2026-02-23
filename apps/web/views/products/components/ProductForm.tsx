@@ -1,13 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
@@ -22,6 +15,7 @@ import type {
 } from "../types";
 import type { UseFormReturn } from "@/hooks/useForm";
 import type { Product, Category } from "@/hooks/useProduct";
+import { FormSurface } from "@/components/ui/form-surface";
 
 interface ProductFormProps {
   open: boolean;
@@ -296,27 +290,24 @@ export function ProductForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {renderTrigger && (
-        <DialogTrigger asChild>
-          <Button
-            onClick={() => {
-              onReset();
-            }}
-            className="gap-2"
-          >
-            <Plus className="h-4 w-4" /> Add Product
-          </Button>
-        </DialogTrigger>
-      )}
-      <DialogContent className="max-h-[90vh] max-w-4xl">
-        <DialogHeader>
-          <DialogTitle>
-            {editingProduct ? "Edit Product" : "Add Product"}
-          </DialogTitle>
-        </DialogHeader>
-        {formContent}
-      </DialogContent>
-    </Dialog>
+    <FormSurface
+      open={open}
+      onOpenChange={onOpenChange}
+      title={editingProduct ? "Edit Product" : "Add Product"}
+      renderTrigger={renderTrigger}
+      trigger={
+        <Button
+          onClick={() => {
+            onReset();
+          }}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" /> Add Product
+        </Button>
+      }
+      drawerClassName="sm:max-w-5xl"
+    >
+      {formContent}
+    </FormSurface>
   );
 }

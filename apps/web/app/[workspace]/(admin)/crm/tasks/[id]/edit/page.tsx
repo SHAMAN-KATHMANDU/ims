@@ -23,6 +23,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Check } from "lucide-react";
+import { dateInputToUtcMidnightIso } from "@/lib/datetime";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -108,7 +109,7 @@ export default function EditTaskPage() {
             id,
             data: {
               title: values.title,
-              dueDate: values.dueDate || null,
+              dueDate: dateInputToUtcMidnightIso(values.dueDate) ?? null,
               contactId: values.contactId || null,
               memberId: values.memberId || null,
               dealId: values.dealId || null,

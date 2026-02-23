@@ -3,13 +3,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,6 +32,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Location } from "@/hooks/useLocation";
 import type { CreateTransferData } from "@/hooks/useTransfer";
+import { FormSurface } from "@/components/ui/form-surface";
 
 interface TransferItem {
   variationId: string;
@@ -257,7 +255,7 @@ export function TransferForm({
 
       <div className="grid gap-4 py-4">
         {/* Location Selection */}
-        <div className="grid grid-cols-[1fr,auto,1fr] items-end gap-4">
+        <div className="grid grid-cols-1 items-end gap-4 md:grid-cols-[1fr,auto,1fr]">
           <div className="grid gap-2">
             <Label htmlFor="from">From Location *</Label>
             <Select value={fromLocationId} onValueChange={setFromLocationId}>
@@ -276,7 +274,7 @@ export function TransferForm({
             </Select>
           </div>
 
-          <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
+          <ArrowRight className="mb-2 h-5 w-5 text-muted-foreground md:block hidden" />
 
           <div className="grid gap-2">
             <Label htmlFor="to">To Location *</Label>
@@ -301,7 +299,7 @@ export function TransferForm({
         {fromLocationId && (
           <div className="grid gap-2">
             <Label>Add Items</Label>
-            <div className="flex gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row">
               <Select
                 value={selectedInventoryId || "__none__"}
                 onValueChange={(v) =>
@@ -343,7 +341,7 @@ export function TransferForm({
                 max={maxQuantity}
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
-                className="w-24"
+                className="w-full sm:w-24"
                 placeholder="Qty"
               />
               <Button
@@ -460,14 +458,21 @@ export function TransferForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
+    <FormSurface
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Create Transfer"
+      description="Transfer products between locations. Select source and destination, then add items to transfer."
+      renderTrigger
+      trigger={
         <Button>
           <Plus className="mr-2 h-4 w-4" />
           New Transfer
         </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">{formContent}</DialogContent>
-    </Dialog>
+      }
+      drawerClassName="sm:max-w-3xl"
+    >
+      {formContent}
+    </FormSurface>
   );
 }

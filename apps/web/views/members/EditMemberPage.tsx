@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/useToast";
 import type { UpdateMemberData } from "@/hooks/useMember";
 import { useMember, useUpdateMember } from "@/hooks/useMember";
 import { MemberForm } from "./components/MemberForm";
+import { useIsMobile } from "@/hooks/useMobile";
 
 export function EditMemberPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export function EditMemberPage() {
   const id = params?.id as string;
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const { data: member, isLoading: loadingMember } = useMember(id);
   const updateMutation = useUpdateMember();
@@ -43,6 +45,16 @@ export function EditMemberPage() {
   const handleCancel = useCallback(() => {
     router.push(`${basePath}/members`);
   }, [router, basePath]);
+
+  useEffect(() => {
+    if (!isMobile && id) {
+      router.replace(`${basePath}/members?edit=${id}`);
+    }
+  }, [isMobile, id, router, basePath]);
+
+  if (!isMobile) {
+    return <div className="p-6 text-muted-foreground">Redirecting...</div>;
+  }
 
   if (loadingMember || !member) {
     return (

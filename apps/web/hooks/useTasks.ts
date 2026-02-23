@@ -11,8 +11,11 @@ import {
   type TaskListParams,
   type CreateTaskData,
   type UpdateTaskData,
+  type PaginatedTasksResponse,
 } from "@/services/taskService";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+
+export type { TaskListParams, PaginatedTasksResponse };
 
 export const taskKeys = {
   all: ["tasks"] as const,
@@ -22,20 +25,29 @@ export const taskKeys = {
   detail: (id: string) => [...taskKeys.details(), id] as const,
 };
 
-export function useTasksPaginated(params: TaskListParams = {}) {
+export interface UseTasksPaginatedOptions {
+  initialData?: PaginatedTasksResponse;
+}
+
+export function useTasksPaginated(
+  params: TaskListParams = {},
+  options: UseTasksPaginatedOptions = {},
+) {
+  const normalizedParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    search: params.search ?? "",
+    sortBy: params.sortBy ?? "dueDate",
+    sortOrder: params.sortOrder ?? "asc",
+    completed: params.completed,
+    assignedToId: params.assignedToId,
+    dueToday: params.dueToday,
+  };
   return useQuery({
-    queryKey: taskKeys.list({
-      page: params.page ?? DEFAULT_PAGE,
-      limit: params.limit ?? DEFAULT_LIMIT,
-      search: params.search ?? "",
-      sortBy: params.sortBy ?? "dueDate",
-      sortOrder: params.sortOrder ?? "asc",
-      completed: params.completed,
-      assignedToId: params.assignedToId,
-      dueToday: params.dueToday,
-    }),
-    queryFn: () => getTasks(params),
+    queryKey: taskKeys.list(normalizedParams),
+    queryFn: () => getTasks(normalizedParams),
     placeholderData: (prev) => prev,
+    initialData: options.initialData,
   });
 }
 

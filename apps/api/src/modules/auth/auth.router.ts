@@ -68,6 +68,11 @@ authRouter.post(
   asyncHandler(authController.logIn.bind(authController)),
 );
 
+authRouter.get(
+  "/workspace/:slug",
+  asyncHandler(authController.getWorkspaceInfo.bind(authController)),
+);
+
 /**
  * @swagger
  * /auth/me:

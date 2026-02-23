@@ -8,13 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -24,6 +17,7 @@ import {
 import { Plus } from "lucide-react";
 import type { User } from "@/hooks/useUser";
 import { UserRole } from "@repo/shared";
+import { FormSurface } from "@/components/ui/form-surface";
 
 /** Tenant-level roles (excludes platformAdmin which is system-level) */
 const TENANT_ROLES = ["user", "admin", "superAdmin"] as const;
@@ -180,27 +174,28 @@ export function UserForm({
   }
 
   return (
-    <Dialog
+    <FormSurface
       open={open}
       onOpenChange={(o) => {
         if (!o) onReset();
         onOpenChange(o);
       }}
+      title={editingUser ? "Edit User" : "Add User"}
+      description={
+        editingUser
+          ? "Update user username and role."
+          : "Create a new user account."
+      }
+      renderTrigger={renderTrigger}
+      trigger={
+        <Button className="gap-2" onClick={() => onReset()}>
+          <Plus className="h-4 w-4" /> Add User
+        </Button>
+      }
+      drawerClassName="sm:max-w-lg"
     >
-      {renderTrigger && (
-        <DialogTrigger asChild>
-          <Button className="gap-2" onClick={() => onReset()}>
-            <Plus className="h-4 w-4" /> Add User
-          </Button>
-        </DialogTrigger>
-      )}
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
-        </DialogHeader>
-        {formContent}
-      </DialogContent>
-    </Dialog>
+      {formContent}
+    </FormSurface>
   );
 }
 

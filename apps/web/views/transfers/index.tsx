@@ -1,25 +1,29 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import {
   useTransfersPaginated,
   useTransfer,
+  useCreateTransfer,
   useApproveTransfer,
   useStartTransit,
   useCompleteTransfer,
   useCancelTransfer,
   type Transfer,
   type TransferStatus,
+  type TransferListParams,
+  type PaginatedTransfersResponse,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/useTransfer";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { TransferTable } from "./components/TransferTable";
 import { TransferDetail } from "./components/TransferDetail";
+import { TransferForm } from "./components/TransferForm";
 import {
   Select,
   SelectContent,
@@ -40,6 +44,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Search, Plus, X } from "lucide-react";
+import { useActiveLocations } from "@/hooks/useLocation";
+import { getLocationInventory } from "@/services/inventoryService";
 
 const STATUS_OPTIONS: { value: TransferStatus | "ALL"; label: string }[] = [
   { value: "ALL", label: "All Statuses" },
@@ -50,42 +56,59 @@ const STATUS_OPTIONS: { value: TransferStatus | "ALL"; label: string }[] = [
   { value: "CANCELLED", label: "Cancelled" },
 ];
 
-export function TransfersPage() {
+export interface TransfersPageClientProps {
+  initialData?: PaginatedTransfersResponse;
+  initialParams?: TransferListParams;
+}
+
+export function TransfersPageClient({
+  initialData,
+  initialParams,
+}: TransfersPageClientProps = {}) {
   const params = useParams();
+  const searchParams = useSearchParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
 
   // Filter state
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [limit, setLimit] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [limit, setLimit] = useState(initialParams?.limit ?? DEFAULT_LIMIT);
+  const [search, setSearch] = useState(initialParams?.search ?? "");
   const [statusFilter, setStatusFilter] = useState<TransferStatus | "ALL">(
-    "ALL",
+    (initialParams?.status as TransferStatus) ?? "ALL",
   );
-  const [sortBy, setSortBy] = useState<string>("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState<string>(
+    initialParams?.sortBy ?? "createdAt",
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+    initialParams?.sortOrder ?? "desc",
+  );
 
   // Dialog state
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(
     null,
   );
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
+  const [createFormOpen, setCreateFormOpen] = useState(false);
   const [transferToCancel, setTransferToCancel] = useState<Transfer | null>(
     null,
   );
 
   // Data fetching
   const { data: transfersResponse, isLoading: transfersLoading } =
-    useTransfersPaginated({
-      page,
-      limit,
-      search,
-      status: statusFilter === "ALL" ? undefined : statusFilter,
-      sortBy,
-      sortOrder,
-    });
+    useTransfersPaginated(
+      {
+        page,
+        limit,
+        search,
+        status: statusFilter === "ALL" ? undefined : statusFilter,
+        sortBy,
+        sortOrder,
+      },
+      { initialData },
+    );
 
   const transfers = transfersResponse?.data ?? [];
   const pagination = transfersResponse?.pagination;
@@ -98,8 +121,10 @@ export function TransfersPage() {
   const { data: selectedTransfer, isLoading: transferLoading } = useTransfer(
     selectedTransferId || "",
   );
+  const { data: locations = [] } = useActiveLocations();
 
   // Mutations
+  const createTransferMutation = useCreateTransfer();
   const approveTransferMutation = useApproveTransfer();
   const startTransitMutation = useStartTransit();
   const completeTransferMutation = useCompleteTransfer();
@@ -125,6 +150,16 @@ export function TransfersPage() {
     setPage(DEFAULT_PAGE);
   }, []);
   const hasActiveFilters = search !== "" || statusFilter !== "ALL";
+
+  useEffect(() => {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) return;
+    if (searchParams.get("add") === "1") {
+      setCreateFormOpen(true);
+    }
+  }, [searchParams]);
 
   const handleColumnSort = useCallback(
     (newSortBy: string, newSortOrder: "asc" | "desc") => {
@@ -188,6 +223,50 @@ export function TransfersPage() {
     setTransferToCancel(transfer);
     setCancelDialogOpen(true);
   };
+
+  const fetchLocationInventory = useCallback(async (locationId: string) => {
+    const response = await getLocationInventory(locationId, { limit: 1000 });
+    return response.data;
+  }, []);
+
+  const handleCreateTransfer = useCallback(
+    async (
+      data: Parameters<typeof createTransferMutation.mutateAsync>[0],
+      completeNow?: boolean,
+    ) => {
+      try {
+        const transfer = await createTransferMutation.mutateAsync(data);
+        if (completeNow !== false) {
+          await approveTransferMutation.mutateAsync(transfer.id);
+          await startTransitMutation.mutateAsync(transfer.id);
+          await completeTransferMutation.mutateAsync(transfer.id);
+          toast({
+            title: "Transfer completed",
+            description:
+              "Stock has been moved from source to destination location.",
+          });
+        } else {
+          toast({ title: "Transfer created successfully" });
+        }
+        setCreateFormOpen(false);
+      } catch (error: unknown) {
+        const message =
+          error instanceof Error ? error.message : "Failed to create transfer";
+        toast({
+          title: "Error",
+          description: message,
+          variant: "destructive",
+        });
+      }
+    },
+    [
+      createTransferMutation,
+      approveTransferMutation,
+      startTransitMutation,
+      completeTransferMutation,
+      toast,
+    ],
+  );
 
   const handleCancelConfirm = async () => {
     if (!transferToCancel) return;
@@ -282,7 +361,12 @@ export function TransfersPage() {
               Clear filters
             </Button>
           )}
-          <Button asChild variant="default" size="sm" className="sm:ml-auto">
+          <Button
+            asChild
+            variant="default"
+            size="sm"
+            className="sm:ml-auto md:hidden"
+          >
             <Link
               href={`${basePath}/transfers/new`}
               className="inline-flex items-center gap-2"
@@ -291,7 +375,32 @@ export function TransfersPage() {
               Create transfer request
             </Link>
           </Button>
+          <Button
+            variant="default"
+            size="sm"
+            className="sm:ml-auto hidden md:inline-flex"
+            onClick={() => setCreateFormOpen(true)}
+          >
+            <Plus className="h-4 w-4" />
+            Create transfer request
+          </Button>
         </div>
+      </div>
+
+      <div className="hidden md:block">
+        <TransferForm
+          open={createFormOpen}
+          onOpenChange={setCreateFormOpen}
+          locations={locations}
+          onSubmit={handleCreateTransfer}
+          isLoading={
+            createTransferMutation.isPending ||
+            approveTransferMutation.isPending ||
+            startTransitMutation.isPending ||
+            completeTransferMutation.isPending
+          }
+          getLocationInventory={fetchLocationInventory}
+        />
       </div>
 
       <TransferTable
@@ -365,4 +474,9 @@ export function TransfersPage() {
       </AlertDialog>
     </div>
   );
+}
+
+/** Re-export for backward compatibility. */
+export function TransfersPage(props: TransfersPageClientProps) {
+  return <TransfersPageClient {...props} />;
 }

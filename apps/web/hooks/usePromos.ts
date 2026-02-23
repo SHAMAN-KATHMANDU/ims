@@ -36,7 +36,14 @@ export const promoKeys = {
   detail: (id: string) => [...promoKeys.details(), id] as const,
 };
 
-export function usePromosPaginated(params: PromoListParams = {}) {
+export interface UsePromosPaginatedOptions {
+  initialData?: PaginatedPromosResponse;
+}
+
+export function usePromosPaginated(
+  params: PromoListParams = {},
+  options: UsePromosPaginatedOptions = {},
+) {
   const normalizedParams: PromoListParams = {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
@@ -50,6 +57,7 @@ export function usePromosPaginated(params: PromoListParams = {}) {
     queryKey: promoKeys.list(normalizedParams),
     queryFn: () => getPromos(normalizedParams),
     placeholderData: (previousData) => previousData,
+    initialData: options.initialData,
   });
 }
 

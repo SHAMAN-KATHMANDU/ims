@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -8,12 +8,14 @@ import { ArrowLeft } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useCreatePromo } from "@/hooks/usePromos";
 import { PromoForm } from "./components/PromoForm";
+import { useIsMobile } from "@/hooks/useMobile";
 
 export function NewPromoPage() {
   const router = useRouter();
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const createMutation = useCreatePromo();
 
@@ -40,6 +42,16 @@ export function NewPromoPage() {
   const handleCancel = useCallback(() => {
     router.push(`${basePath}/promos`);
   }, [router, basePath]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      router.replace(`${basePath}/promos?add=1`);
+    }
+  }, [isMobile, router, basePath]);
+
+  if (!isMobile) {
+    return <div className="p-6 text-muted-foreground">Redirecting...</div>;
+  }
 
   return (
     <div className="space-y-6">

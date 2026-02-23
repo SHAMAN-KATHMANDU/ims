@@ -58,7 +58,14 @@ export const locationKeys = {
 /**
  * Hook for fetching paginated locations with filtering
  */
-export function useLocationsPaginated(params: LocationListParams = {}) {
+export interface UseLocationsPaginatedOptions {
+  initialData?: PaginatedLocationsResponse;
+}
+
+export function useLocationsPaginated(
+  params: LocationListParams = {},
+  options: UseLocationsPaginatedOptions = {},
+) {
   const normalizedParams: LocationListParams = {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
@@ -74,6 +81,7 @@ export function useLocationsPaginated(params: LocationListParams = {}) {
     queryKey: locationKeys.list(normalizedParams),
     queryFn: () => getLocations(normalizedParams),
     placeholderData: (previousData) => previousData,
+    initialData: options.initialData,
   });
 }
 

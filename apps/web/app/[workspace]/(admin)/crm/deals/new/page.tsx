@@ -22,6 +22,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { dateInputToUtcMidnightIso } from "@/lib/datetime";
 
 const schema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -81,7 +82,9 @@ export default function NewDealPage() {
             value: values.value,
             stage: values.stage,
             probability: values.probability ?? 0,
-            expectedCloseDate: values.expectedCloseDate,
+            expectedCloseDate: dateInputToUtcMidnightIso(
+              values.expectedCloseDate,
+            ),
             contactId: values.contactId,
             memberId: values.memberId,
             companyId: values.companyId,

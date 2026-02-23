@@ -77,7 +77,14 @@ export const transferKeys = {
 /**
  * Hook for fetching paginated transfers with filtering
  */
-export function useTransfersPaginated(params: TransferListParams = {}) {
+export interface UseTransfersPaginatedOptions {
+  initialData?: PaginatedTransfersResponse;
+}
+
+export function useTransfersPaginated(
+  params: TransferListParams = {},
+  options: UseTransfersPaginatedOptions = {},
+) {
   const normalizedParams: TransferListParams = {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
@@ -94,6 +101,7 @@ export function useTransfersPaginated(params: TransferListParams = {}) {
     queryKey: transferKeys.list(normalizedParams),
     queryFn: () => getTransfers(normalizedParams),
     placeholderData: (previousData) => previousData,
+    initialData: options.initialData,
   });
 }
 

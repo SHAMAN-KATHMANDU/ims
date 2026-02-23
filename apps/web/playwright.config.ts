@@ -9,7 +9,10 @@ export default defineConfig({
   reporter: globalThis.process?.env?.CI ? "github" : "list",
   use: {
     baseURL:
-      globalThis.process?.env?.PLAYWRIGHT_BASE_URL ?? "http://127.0.0.1:3000",
+      globalThis.process?.env?.PLAYWRIGHT_BASE_URL ??
+      (globalThis.process?.env?.CI
+        ? "http://127.0.0.1:3000"
+        : "http://127.0.0.1:5000"),
     trace: "retain-on-failure",
   },
   projects: [

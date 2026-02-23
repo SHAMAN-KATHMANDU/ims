@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,12 +9,14 @@ import { useToast } from "@/hooks/useToast";
 import type { CreateMemberData, UpdateMemberData } from "@/hooks/useMember";
 import { useCreateMember } from "@/hooks/useMember";
 import { MemberForm } from "./components/MemberForm";
+import { useIsMobile } from "@/hooks/useMobile";
 
 export function NewMemberPage() {
   const router = useRouter();
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const createMutation = useCreateMember();
 
@@ -40,6 +42,16 @@ export function NewMemberPage() {
   const handleCancel = useCallback(() => {
     router.push(`${basePath}/members`);
   }, [router, basePath]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      router.replace(`${basePath}/members?add=1`);
+    }
+  }, [isMobile, router, basePath]);
+
+  if (!isMobile) {
+    return <div className="p-6 text-muted-foreground">Redirecting...</div>;
+  }
 
   return (
     <div className="space-y-6">

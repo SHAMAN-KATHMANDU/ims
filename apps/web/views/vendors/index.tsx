@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import {
   useVendorsPaginated,
@@ -13,6 +13,8 @@ import {
   useVendorProducts,
   type Vendor,
   type CreateOrUpdateVendorData,
+  type VendorListParams,
+  type PaginatedVendorsResponse,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/useVendors";
@@ -55,22 +57,33 @@ import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
-import { useIsMobile } from "@/hooks/useMobile";
 import { VendorForm } from "./components/VendorForm";
 
-export function VendorPage() {
+export interface VendorsPageClientProps {
+  initialData?: PaginatedVendorsResponse;
+  initialParams?: VendorListParams;
+}
+
+export function VendorsPageClient({
+  initialData,
+  initialParams,
+}: VendorsPageClientProps = {}) {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
-  const isMobile = useIsMobile();
 
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
-  const [sortBy, setSortBy] = useState<string>("name");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(
+    initialParams?.limit ?? DEFAULT_LIMIT,
+  );
+  const [search, setSearch] = useState(initialParams?.search ?? "");
+  const [sortBy, setSortBy] = useState<string>(initialParams?.sortBy ?? "name");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+    initialParams?.sortOrder ?? "asc",
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingVendor, setEditingVendor] = useState<Vendor | null>(null);
@@ -83,15 +96,18 @@ export function VendorPage() {
     null,
   );
 
-  const { data: vendorsResponse, isLoading } = useVendorsPaginated({
-    page,
-    limit: pageSize,
-    search,
-    sortBy,
-    sortOrder,
-  });
+  const { data: vendorsResponse, isLoading } = useVendorsPaginated(
+    {
+      page,
+      limit: pageSize,
+      search,
+      sortBy,
+      sortOrder,
+    },
+    { initialData },
+  );
 
-  const vendors = vendorsResponse?.data ?? [];
+  const vendors = useMemo(() => vendorsResponse?.data ?? [], [vendorsResponse]);
   const pagination = vendorsResponse?.pagination;
 
   const { data: activeVendor } = useVendor(activeVendorId || "");
@@ -126,7 +142,10 @@ export function VendorPage() {
   };
 
   const handleOpenEdit = (vendor: Vendor) => {
-    if (isMobile) {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) {
       router.push(`${basePath}/vendors/${vendor.id}/edit`);
       return;
     }
@@ -203,6 +222,27 @@ export function VendorPage() {
   }, []);
   const hasActiveFilters = search !== "";
 
+  useEffect(() => {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) return;
+    const add = searchParams.get("add");
+    const edit = searchParams.get("edit");
+    if (add === "1") {
+      resetForm();
+      setDialogOpen(true);
+      return;
+    }
+    if (edit) {
+      const vendor = vendors.find((v) => v.id === edit);
+      if (vendor) {
+        setEditingVendor(vendor);
+        setDialogOpen(true);
+      }
+    }
+  }, [searchParams, vendors]);
+
   const vendorPagination: PaginationState | null = pagination
     ? {
         currentPage: pagination.currentPage,
@@ -257,33 +297,30 @@ export function VendorPage() {
           </p>
         </div>
 
-        {isMobile ? (
-          <Button asChild>
-            <Link href={`${basePath}/vendors/new`} className="gap-2">
-              <Plus className="h-4 w-4" />
-              New Vendor
-            </Link>
+        <Button asChild className="md:hidden">
+          <Link href={`${basePath}/vendors/new`} className="gap-2">
+            <Plus className="h-4 w-4" />
+            New Vendor
+          </Link>
+        </Button>
+        <div className="hidden md:block">
+          <Button onClick={handleOpenCreate}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Vendor
           </Button>
-        ) : (
-          <>
-            <Button onClick={handleOpenCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Vendor
-            </Button>
-            <VendorForm
-              open={dialogOpen}
-              onOpenChange={(o) => {
-                setDialogOpen(o);
-                if (!o) resetForm();
-              }}
-              editingVendor={editingVendor}
-              onSubmit={handleSubmit}
-              onReset={resetForm}
-              isLoading={createMutation.isPending || updateMutation.isPending}
-              renderTrigger={false}
-            />
-          </>
-        )}
+          <VendorForm
+            open={dialogOpen}
+            onOpenChange={(o) => {
+              setDialogOpen(o);
+              if (!o) resetForm();
+            }}
+            editingVendor={editingVendor}
+            onSubmit={handleSubmit}
+            onReset={resetForm}
+            isLoading={createMutation.isPending || updateMutation.isPending}
+            renderTrigger={false}
+          />
+        </div>
       </div>
 
       {/* Vendor Products Dialog */}
@@ -305,7 +342,7 @@ export function VendorPage() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search products by name or IMS code..."
@@ -397,7 +434,7 @@ export function VendorPage() {
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 placeholder="Search vendors..."
-                className="pl-8 w-[220px]"
+                className="w-full pl-8 sm:w-[220px]"
                 value={search}
                 onChange={handleSearchChange}
               />
@@ -540,4 +577,9 @@ export function VendorPage() {
       </Card>
     </div>
   );
+}
+
+/** Re-export for backward compatibility. */
+export function VendorPage(props: VendorsPageClientProps) {
+  return <VendorsPageClient {...props} />;
 }

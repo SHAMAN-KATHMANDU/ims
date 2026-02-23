@@ -11,13 +11,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import {
@@ -26,6 +19,7 @@ import {
   useCategories,
 } from "@/hooks/useProduct";
 import type { PromoCode, CreateOrUpdatePromoData } from "@/hooks/usePromos";
+import { FormSurface } from "@/components/ui/form-surface";
 
 interface PromoFormProps {
   open: boolean;
@@ -136,7 +130,7 @@ export function PromoForm({
 
   const formContent = (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-medium">Code *</label>
           <Input
@@ -188,7 +182,7 @@ export function PromoForm({
         />
       </div>
 
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="space-y-1">
           <label className="text-xs font-medium">Discount Type</label>
           <Select
@@ -242,7 +236,7 @@ export function PromoForm({
         </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-medium">Valid From (optional)</label>
           <Input
@@ -519,35 +513,34 @@ export function PromoForm({
   }
 
   return (
-    <Dialog
+    <FormSurface
       open={open}
       onOpenChange={(o) => {
         if (!o) onReset();
         onOpenChange(o);
       }}
+      title={editingPromo ? "Edit Promo Code" : "Create Promo Code"}
+      description={
+        editingPromo
+          ? "Update the promo code details below."
+          : "Create a new promo code for products."
+      }
+      renderTrigger={renderTrigger}
+      trigger={
+        <Button
+          className="gap-2"
+          onClick={() => {
+            setFormData(initialFormData);
+            onReset();
+          }}
+        >
+          <Plus className="h-4 w-4" />
+          New Promo
+        </Button>
+      }
+      drawerClassName="sm:max-w-2xl"
     >
-      {renderTrigger && (
-        <DialogTrigger asChild>
-          <Button
-            className="gap-2"
-            onClick={() => {
-              setFormData(initialFormData);
-              onReset();
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            New Promo
-          </Button>
-        </DialogTrigger>
-      )}
-      <DialogContent className="max-w-xl">
-        <DialogHeader>
-          <DialogTitle>
-            {editingPromo ? "Edit Promo Code" : "Create Promo Code"}
-          </DialogTitle>
-        </DialogHeader>
-        {formContent}
-      </DialogContent>
-    </Dialog>
+      {formContent}
+    </FormSurface>
   );
 }

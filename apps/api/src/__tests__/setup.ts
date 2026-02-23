@@ -10,19 +10,30 @@ import { execSync } from "child_process";
 import path from "path";
 import { basePrisma } from "@/config/prisma";
 
-const isDbTest =
-  process.env.DATABASE_URL?.includes("_test") ||
-  process.env.TEST_DATABASE_URL !== undefined;
+const dbUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
+const isExplicitTestDb =
+  dbUrl.includes("_test") || process.env.TEST_DATABASE_URL !== undefined;
+const isLocalDb =
+  dbUrl.includes("localhost") ||
+  dbUrl.includes("127.0.0.1") ||
+  dbUrl.includes("@dev_db:");
+const isVitestRun = process.env.VITEST === "true";
+const isDbTest = isExplicitTestDb || (isVitestRun && isLocalDb);
+let migrationPromise: Promise<void> | null = null;
 
 export async function runMigrations(): Promise<void> {
   if (!isDbTest) return;
-  const dbUrl = process.env.TEST_DATABASE_URL ?? process.env.DATABASE_URL;
   if (!dbUrl) return;
-  execSync("npx prisma migrate deploy", {
-    env: { ...process.env, DATABASE_URL: dbUrl },
-    cwd: path.resolve(__dirname, "../.."), // apps/api
-    stdio: "inherit",
-  });
+  if (!migrationPromise) {
+    migrationPromise = Promise.resolve().then(() => {
+      execSync("npx prisma migrate deploy", {
+        env: { ...process.env, DATABASE_URL: dbUrl },
+        cwd: path.resolve(__dirname, "../.."), // apps/api
+        stdio: "inherit",
+      });
+    });
+  }
+  await migrationPromise;
 }
 
 export async function disconnectDb(): Promise<void> {

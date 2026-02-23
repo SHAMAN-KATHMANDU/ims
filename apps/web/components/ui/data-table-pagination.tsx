@@ -65,7 +65,7 @@ export function DataTablePagination({
       {/* Items info */}
       <div className="text-sm text-muted-foreground order-2 sm:order-1">
         {totalItems === 0 ? (
-          "No items"
+          "0 items"
         ) : (
           <>
             Showing{" "}

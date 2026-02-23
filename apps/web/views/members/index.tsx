@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import {
@@ -20,10 +20,11 @@ import {
   type Member,
   type CreateMemberData,
   type UpdateMemberData,
+  type MemberListParams,
+  type PaginatedMembersResponse,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/useMember";
-import { useIsMobile } from "@/hooks/useMobile";
 import { MemberTable } from "./components/MemberTable";
 import { MemberForm } from "./components/MemberForm";
 import { MemberDetail } from "./components/MemberDetail";
@@ -58,15 +59,23 @@ import {
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
 
-export function MembersPage() {
+export interface MembersPageClientProps {
+  initialData?: PaginatedMembersResponse;
+  initialParams?: MemberListParams;
+}
+
+export function MembersPageClient({
+  initialData,
+  initialParams,
+}: MembersPageClientProps = {}) {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
   const canManageMembers = isAdmin;
-  const isMobile = useIsMobile();
 
   // Zustand store for member selection
   const selectedMemberIds = useMemberSelectionStore(selectSelectedMemberIds);
@@ -75,14 +84,21 @@ export function MembersPage() {
     (state) => state.setMembers,
   );
 
-  // Filter state
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
+  // Filter state (initialize from server params when provided)
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(
+    initialParams?.limit ?? DEFAULT_LIMIT,
+  );
+  const [search, setSearch] = useState(initialParams?.search ?? "");
   const [sortBy, setSortBy] = useState<
     "createdAt" | "updatedAt" | "name" | "id"
-  >("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  >(
+    (initialParams?.sortBy as "createdAt" | "updatedAt" | "name" | "id") ??
+      "createdAt",
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+    initialParams?.sortOrder ?? "desc",
+  );
 
   // Dialog state
   const [formOpen, setFormOpen] = useState(false);
@@ -102,15 +118,18 @@ export function MembersPage() {
 
   // Data fetching with backend sorting
   const { data: membersResponse, isLoading: membersLoading } =
-    useMembersPaginated({
-      page,
-      limit: pageSize,
-      search,
-      sortBy,
-      sortOrder,
-    });
+    useMembersPaginated(
+      {
+        page,
+        limit: pageSize,
+        search,
+        sortBy,
+        sortOrder,
+      },
+      { initialData },
+    );
 
-  const members = membersResponse?.data ?? [];
+  const members = useMemo(() => membersResponse?.data ?? [], [membersResponse]);
 
   const membersPagination: PaginationState | null = membersResponse?.pagination
     ? {
@@ -145,7 +164,10 @@ export function MembersPage() {
   };
 
   const handleEdit = (member: Member) => {
-    if (isMobile) {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) {
       router.push(`${basePath}/members/${member.id}/edit`);
       return;
     }
@@ -193,6 +215,27 @@ export function MembersPage() {
 
   const isFormLoading =
     createMemberMutation.isPending || updateMemberMutation.isPending;
+
+  useEffect(() => {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) return;
+    const add = searchParams.get("add");
+    const edit = searchParams.get("edit");
+    if (add === "1") {
+      setEditingMember(null);
+      setFormOpen(true);
+      return;
+    }
+    if (edit) {
+      const member = members.find((m) => m.id === edit);
+      if (member) {
+        setEditingMember(member);
+        setFormOpen(true);
+      }
+    }
+  }, [searchParams, members]);
 
   const handleSortChange = useCallback((value: string) => {
     const [field, order] = value.split("_") as [
@@ -272,20 +315,20 @@ export function MembersPage() {
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
-          <div className="relative">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               placeholder="Search by phone, name, or email..."
               value={search}
               onChange={handleSearchChange}
-              className="pl-9 w-full sm:w-[300px]"
+              className="w-full pl-9 sm:w-[300px]"
             />
           </div>
           <Select
             value={`${sortBy}_${sortOrder}`}
             onValueChange={handleSortChange}
           >
-            <SelectTrigger className="h-9 w-[200px] shrink-0 gap-2 text-sm">
+            <SelectTrigger className="h-9 w-full gap-2 text-sm sm:w-[200px]">
               <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
@@ -349,33 +392,33 @@ export function MembersPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {canManageMembers &&
-            (isMobile ? (
-              <Button variant="outline" asChild>
+          {canManageMembers && (
+            <>
+              <Button variant="outline" asChild className="md:hidden">
                 <Link href={`${basePath}/members/bulk-upload`}>
                   <Upload className="h-4 w-4 mr-2" />
                   Bulk Upload
                 </Link>
               </Button>
-            ) : (
               <Button
                 variant="outline"
                 onClick={() => setBulkUploadDialog(true)}
+                className="hidden md:inline-flex"
               >
                 <Upload className="h-4 w-4 mr-2" />
                 Bulk Upload
               </Button>
-            ))}
+            </>
+          )}
           {canManageMembers && (
             <LimitGuard resource="members">
-              {isMobile ? (
-                <Button asChild>
-                  <Link href={`${basePath}/members/new`} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Member
-                  </Link>
-                </Button>
-              ) : (
+              <Button asChild className="md:hidden">
+                <Link href={`${basePath}/members/new`} className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Member
+                </Link>
+              </Button>
+              <div className="hidden md:block">
                 <MemberForm
                   open={formOpen}
                   onOpenChange={handleFormClose}
@@ -383,7 +426,7 @@ export function MembersPage() {
                   onSubmit={handleSubmitMember}
                   isLoading={isFormLoading}
                 />
-              )}
+              </div>
             </LimitGuard>
           )}
         </div>
@@ -426,4 +469,9 @@ export function MembersPage() {
       />
     </div>
   );
+}
+
+/** Re-export for backward compatibility. Will pass initialData when page becomes server component. */
+export function MembersPage(props: MembersPageClientProps) {
+  return <MembersPageClient {...props} />;
 }

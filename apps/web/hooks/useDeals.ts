@@ -50,10 +50,18 @@ export function useDealsPaginated(params: DealListParams = {}) {
   });
 }
 
-export function useDealsKanban(pipelineId?: string) {
+export interface UseDealsKanbanOptions {
+  initialData?: DealsKanbanData;
+}
+
+export function useDealsKanban(
+  pipelineId?: string,
+  options: UseDealsKanbanOptions = {},
+) {
   return useQuery({
     queryKey: dealKeys.kanban(pipelineId),
     queryFn: () => getDealsKanban(pipelineId),
+    initialData: !pipelineId ? options.initialData : undefined,
   });
 }
 

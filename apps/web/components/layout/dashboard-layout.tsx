@@ -11,18 +11,20 @@ import { useSidebarStore } from "@/stores/sidebar-store";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();
-  const { isOpen, setIsOpen, toggle, desktopSidebarOpen } = useSidebarStore();
+  const { isOpen, setIsOpen, toggle, desktopSidebarOpen, resetSidebarWidth } =
+    useSidebarStore();
 
   // Update sidebar state when mobile state changes
   useEffect(() => {
     if (isMobile) {
       // On mobile, always start closed
       setIsOpen(false, true);
+      resetSidebarWidth();
     } else {
       // On desktop, restore persisted state
       setIsOpen(desktopSidebarOpen, false);
     }
-  }, [isMobile, setIsOpen, desktopSidebarOpen]);
+  }, [isMobile, setIsOpen, desktopSidebarOpen, resetSidebarWidth]);
 
   const handleMenuClick = () => {
     toggle(isMobile);
@@ -33,7 +35,7 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={isOpen} onToggle={() => toggle(isMobile)} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar onMenuClick={handleMenuClick} />
-        <main className="min-w-0 flex-1 overflow-auto p-4 md:p-6">
+        <main className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6">
           {children}
         </main>
       </div>

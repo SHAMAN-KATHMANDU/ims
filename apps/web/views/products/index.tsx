@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import { useIsMobile } from "@/hooks/useMobile";
 import { useForm } from "@/hooks/useForm";
 import {
   useProductsPaginated,
@@ -19,6 +18,7 @@ import {
   DEFAULT_LIMIT,
   type Product,
   type ProductListParams,
+  type PaginatedProductsResponse,
 } from "@/hooks/useProduct";
 import { useVendorsPaginated } from "@/hooks/useVendors";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
@@ -74,32 +74,40 @@ import type {
   ProductDiscountForm,
 } from "./types";
 
-export function ProductPage() {
+export interface ProductPageClientProps {
+  initialData?: PaginatedProductsResponse;
+  initialParams?: ProductListParams;
+}
+
+export function ProductPageClient({
+  initialData,
+  initialParams,
+}: ProductPageClientProps = {}) {
   const params = useParams();
   const router = useRouter();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const searchParams = useSearchParams();
   const hasAppliedUrlParams = useRef(false);
-  const isMobile = useIsMobile();
-
   // ============================================
   // Pagination State
   // ============================================
-  const [paginationParams, setPaginationParams] = useState<ProductListParams>({
-    page: DEFAULT_PAGE,
-    limit: DEFAULT_LIMIT,
-    search: "",
-    locationId: undefined,
-    categoryId: undefined,
-    subCategory: undefined,
-    vendorId: undefined,
-    dateFrom: undefined,
-    dateTo: undefined,
-    sortBy: "dateCreated",
-    sortOrder: "desc",
-    lowStock: undefined,
-  });
+  const [paginationParams, setPaginationParams] = useState<ProductListParams>(
+    initialParams ?? {
+      page: DEFAULT_PAGE,
+      limit: DEFAULT_LIMIT,
+      search: "",
+      locationId: undefined,
+      categoryId: undefined,
+      subCategory: undefined,
+      vendorId: undefined,
+      dateFrom: undefined,
+      dateTo: undefined,
+      sortBy: "dateCreated",
+      sortOrder: "desc",
+      lowStock: undefined,
+    },
+  );
 
   // Apply URL search params once on mount (e.g. from dashboard/analytics links)
   useEffect(() => {
@@ -139,14 +147,20 @@ export function ProductPage() {
   const { data: productToEditFromUrl } = useProduct(editIdFromUrl || "");
 
   useEffect(() => {
-    if (addParam === "1") {
-      setEditingProduct(null);
-      setProductVariations([]);
-      setProductDiscounts([]);
-      productForm.reset();
-      setProductDialog(true);
-      router.replace(`${basePath}/product`, { scroll: false });
+    if (addParam !== "1") return;
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) {
+      router.replace(`${basePath}/product/new`, { scroll: false });
+      return;
     }
+    setEditingProduct(null);
+    setProductVariations([]);
+    setProductDiscounts([]);
+    productForm.reset();
+    setProductDialog(true);
+    router.replace(`${basePath}/product`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addParam, basePath, router]);
 
@@ -154,6 +168,15 @@ export function ProductPage() {
   useEffect(() => {
     if (!editIdFromUrl || !productToEditFromUrl || appliedEditFromUrl.current)
       return;
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) {
+      router.replace(`${basePath}/product/${editIdFromUrl}/edit`, {
+        scroll: false,
+      });
+      return;
+    }
     appliedEditFromUrl.current = true;
     const product = productToEditFromUrl;
     setEditingProduct(product);
@@ -211,7 +234,7 @@ export function ProductPage() {
     data: productsResponse,
     isLoading: isProductsLoading,
     isFetching: isProductsFetching,
-  } = useProductsPaginated(paginationParams);
+  } = useProductsPaginated(paginationParams, { initialData });
 
   // Extract products and pagination info from response
   const products = productsResponse?.data ?? [];
@@ -649,10 +672,6 @@ export function ProductPage() {
 
   // Handlers
   const handleEditProduct = (product: Product) => {
-    if (isMobile) {
-      router.push(`${basePath}/product/${product.id}/edit`);
-      return;
-    }
     if (!product || !product.id) {
       toast({
         title: "Error",
@@ -662,56 +681,9 @@ export function ProductPage() {
       });
       return;
     }
-
-    setEditingProduct(product);
-    productForm.values.imsCode = product.imsCode;
-    productForm.values.name = product.name;
-    productForm.values.categoryId = product.categoryId;
-    productForm.values.description = product.description || "";
-    productForm.values.length = product.length?.toString() || "";
-    productForm.values.breadth = product.breadth?.toString() || "";
-    productForm.values.height = product.height?.toString() || "";
-    productForm.values.weight = product.weight?.toString() || "";
-    productForm.values.costPrice = product.costPrice.toString();
-    productForm.values.mrp = product.mrp.toString();
-
-    if (product.variations && product.variations.length > 0) {
-      setProductVariations(
-        product.variations.map((v) => ({
-          color: v.color || "",
-          stockQuantity: (v.stockQuantity || 0).toString(),
-          subVariants: (v.subVariations || []).map((s) => s.name),
-          photos: (v.photos || []).map((p) => ({
-            photoUrl: p.photoUrl,
-            isPrimary: p.isPrimary || false,
-          })),
-        })),
-      );
-    } else {
-      setProductVariations([]);
-    }
-
-    if (product.discounts && product.discounts.length > 0) {
-      setProductDiscounts(
-        product.discounts.map(
-          (d): ProductDiscountForm => ({
-            discountTypeName: d.discountType?.name || "",
-            discountPercentage: (d.discountPercentage || 0).toString(),
-            startDate: d.startDate
-              ? new Date(d.startDate).toISOString().split("T")[0] || ""
-              : "",
-            endDate: d.endDate
-              ? new Date(d.endDate).toISOString().split("T")[0] || ""
-              : "",
-            isActive: d.isActive !== undefined ? d.isActive : true,
-          }),
-        ),
-      );
-    } else {
-      setProductDiscounts([]);
-    }
-
-    setProductDialog(true);
+    // Navigate to edit route: intercepting route shows modal on soft nav,
+    // full page on direct URL / refresh.
+    router.push(`${basePath}/product/${product.id}/edit`);
   };
 
   const handleResetProduct = () => {
@@ -951,31 +923,28 @@ export function ProductPage() {
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-                {isMobile ? (
-                  <Button variant="outline" asChild>
-                    <Link href={`${basePath}/product/bulk-upload`}>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Bulk Upload
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => setBulkUploadDialog(true)}
-                  >
+                <Button variant="outline" asChild className="md:hidden">
+                  <Link href={`${basePath}/product/bulk-upload`}>
                     <Upload className="h-4 w-4 mr-2" />
                     Bulk Upload
-                  </Button>
-                )}
+                  </Link>
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setBulkUploadDialog(true)}
+                  className="hidden md:inline-flex"
+                >
+                  <Upload className="h-4 w-4 mr-2" />
+                  Bulk Upload
+                </Button>
                 <LimitGuard resource="products">
-                  {isMobile ? (
-                    <Button asChild>
-                      <Link href={`${basePath}/product/new`} className="gap-2">
-                        <Plus className="h-4 w-4" />
-                        Add Product
-                      </Link>
-                    </Button>
-                  ) : (
+                  <Button asChild className="md:hidden">
+                    <Link href={`${basePath}/product/new`} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Product
+                    </Link>
+                  </Button>
+                  <div className="hidden md:block">
                     <ProductForm
                       open={productDialog}
                       onOpenChange={setProductDialog}
@@ -1003,7 +972,7 @@ export function ProductPage() {
                       }
                       validateProduct={validateProduct}
                     />
-                  )}
+                  </div>
                 </LimitGuard>
               </div>
             )}
@@ -1245,4 +1214,9 @@ export function ProductPage() {
       />
     </div>
   );
+}
+
+/** Re-export for backward compatibility. */
+export function ProductPage(props: ProductPageClientProps) {
+  return <ProductPageClient {...props} />;
 }

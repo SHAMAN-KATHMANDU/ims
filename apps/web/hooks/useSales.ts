@@ -84,32 +84,40 @@ export const salesKeys = {
 // Sales Hooks
 // ============================================
 
+export interface UseSalesPaginatedOptions {
+  initialData?: PaginatedSalesResponse;
+  enabled?: boolean;
+}
+
 /**
  * Hook for fetching paginated sales with filtering.
  * Pass enabled: false to skip fetch (e.g. drill-down closed).
+ * Pass initialData when server has pre-fetched (e.g. RSC).
  */
 export function useSalesPaginated(
-  params: SalesListParams & { enabled?: boolean } = {},
+  params: SalesListParams = {},
+  options: UseSalesPaginatedOptions = {},
 ) {
-  const { enabled = true, ...rest } = params;
+  const { initialData, enabled = true } = options;
   const normalizedParams: SalesListParams = {
-    page: rest.page ?? DEFAULT_PAGE,
-    limit: rest.limit ?? DEFAULT_LIMIT,
-    locationId: rest.locationId,
-    createdById: rest.createdById,
-    type: rest.type,
-    isCreditSale: rest.isCreditSale,
-    startDate: rest.startDate,
-    endDate: rest.endDate,
-    search: rest.search?.trim() || "",
-    sortBy: rest.sortBy ?? "createdAt",
-    sortOrder: rest.sortOrder ?? "desc",
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    locationId: params.locationId,
+    createdById: params.createdById,
+    type: params.type,
+    isCreditSale: params.isCreditSale,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    search: params.search?.trim() || "",
+    sortBy: params.sortBy ?? "createdAt",
+    sortOrder: params.sortOrder ?? "desc",
   };
 
   return useQuery({
     queryKey: salesKeys.list(normalizedParams),
     queryFn: () => getSales(normalizedParams),
     placeholderData: (previousData) => previousData,
+    initialData,
     enabled,
   });
 }

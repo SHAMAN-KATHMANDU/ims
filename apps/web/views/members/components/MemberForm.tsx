@@ -2,13 +2,10 @@
 
 import { useState, useEffect } from "react";
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -21,6 +18,7 @@ import {
   type UpdateMemberData,
 } from "@/hooks/useMember";
 import { Plus, Loader2 } from "lucide-react";
+import { FormSurface } from "@/components/ui/form-surface";
 
 interface MemberFormProps {
   open: boolean;
@@ -189,7 +187,7 @@ export function MemberForm({
         </div>
 
         {/* Gender & Age */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="gender">Gender</Label>
             <Input
@@ -304,16 +302,25 @@ export function MemberForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      {!isEdit && (
-        <DialogTrigger asChild>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Add Member
-          </Button>
-        </DialogTrigger>
-      )}
-      <DialogContent className="sm:max-w-[425px]">{formContent}</DialogContent>
-    </Dialog>
+    <FormSurface
+      open={open}
+      onOpenChange={onOpenChange}
+      title={isEdit ? "Edit Member" : "Add New Member"}
+      description={
+        isEdit
+          ? "Update member information."
+          : "Register a new member with their phone number."
+      }
+      renderTrigger={!isEdit}
+      trigger={
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Member
+        </Button>
+      }
+      drawerClassName="sm:max-w-lg"
+    >
+      {formContent}
+    </FormSurface>
   );
 }

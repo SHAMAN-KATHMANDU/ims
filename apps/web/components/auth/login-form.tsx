@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useAuth } from "@/hooks/useAuth";
+import { getWorkspaceInfo } from "@/services/authService";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,10 +30,34 @@ type LoginFormValues = z.infer<typeof loginSchema>;
  * Login form: username and password. Tenant slug comes from the URL (e.g. /ruby/login)
  * and is passed as a prop; it is sent as X-Tenant-Slug on login.
  */
-export default function LoginForm({ tenantSlug }: { tenantSlug: string }) {
+export default function LoginForm({
+  tenantSlug,
+  tenantDisplayName,
+}: {
+  tenantSlug: string;
+  tenantDisplayName?: string;
+}) {
   const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const [resolvedTenantName, setResolvedTenantName] = useState(
+    tenantDisplayName || tenantSlug,
+  );
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    if (!tenantSlug) return;
+    const timeout = setTimeout(async () => {
+      const workspace = await getWorkspaceInfo(tenantSlug);
+      if (!mounted) return;
+      setResolvedTenantName(workspace?.workspace?.name || tenantSlug);
+    }, 0);
+    return () => {
+      mounted = false;
+      clearTimeout(timeout);
+    };
+  }, [tenantSlug]);
 
   const {
     register,
@@ -53,10 +79,12 @@ export default function LoginForm({ tenantSlug }: { tenantSlug: string }) {
       return;
     }
     try {
+      const callbackUrl = searchParams.get("callbackUrl") ?? undefined;
       await login({
         username: data.username,
         password: data.password,
         tenantSlug: slug,
+        callbackUrl,
       });
     } catch (error) {
       setSubmitError(error instanceof Error ? error.message : "Login failed");
@@ -66,12 +94,10 @@ export default function LoginForm({ tenantSlug }: { tenantSlug: string }) {
   return (
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader className="space-y-1">
-        <CardTitle className="text-2xl font-bold text-center">
-          Welcome Back
+        <CardTitle className="text-center text-xl font-bold leading-tight sm:text-2xl">
+          Welcome to Shaman Yaantra {resolvedTenantName}
         </CardTitle>
-        <CardDescription className="text-center">
-          Enter your credentials to access your dashboard
-        </CardDescription>
+        <CardDescription className="text-center">Login</CardDescription>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">

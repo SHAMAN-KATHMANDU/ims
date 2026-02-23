@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { useCreateActivity } from "@/hooks/useActivities";
 import { useToast } from "@/hooks/useToast";
+import { datetimeLocalInputToIso } from "@/lib/datetime";
 
 interface LogActivityFormProps {
   contactId?: string;
@@ -55,7 +56,7 @@ export function LogActivityForm({
         type,
         subject: subject.trim() || undefined,
         notes: notes.trim() || undefined,
-        activityAt,
+        activityAt: datetimeLocalInputToIso(activityAt),
         contactId,
         memberId,
         dealId,

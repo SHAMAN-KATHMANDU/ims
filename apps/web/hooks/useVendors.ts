@@ -45,7 +45,14 @@ export const vendorKeys = {
     [...vendorKeys.detail(vendorId), "products", params] as const,
 };
 
-export function useVendorsPaginated(params: VendorListParams = {}) {
+export interface UseVendorsPaginatedOptions {
+  initialData?: PaginatedVendorsResponse;
+}
+
+export function useVendorsPaginated(
+  params: VendorListParams = {},
+  options: UseVendorsPaginatedOptions = {},
+) {
   const normalizedParams: VendorListParams = {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
@@ -58,6 +65,7 @@ export function useVendorsPaginated(params: VendorListParams = {}) {
     queryKey: vendorKeys.list(normalizedParams),
     queryFn: () => getVendors(normalizedParams),
     placeholderData: (previousData) => previousData,
+    initialData: options.initialData,
   });
 }
 

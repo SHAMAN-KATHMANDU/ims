@@ -84,7 +84,12 @@ class PipelineController {
 
   async getAll(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const pipelines = await prisma.pipeline.findMany({
+        where: { tenantId },
         orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
         include: {
           pipelineStages: { orderBy: { order: "asc" } },
@@ -116,8 +121,8 @@ class PipelineController {
 
       const { id } = req.params;
 
-      const pipeline = await prisma.pipeline.findUnique({
-        where: { id },
+      const pipeline = await prisma.pipeline.findFirst({
+        where: { id, tenantId },
         include: {
           pipelineStages: { orderBy: { order: "asc" } },
           _count: { select: { deals: true } },
@@ -153,8 +158,8 @@ class PipelineController {
       const { id } = req.params;
       const { name, stages, isDefault } = req.body;
 
-      const existing = await prisma.pipeline.findUnique({
-        where: { id },
+      const existing = await prisma.pipeline.findFirst({
+        where: { id, tenantId },
         include: { pipelineStages: true },
       });
       if (!existing) {
@@ -219,14 +224,22 @@ class PipelineController {
 
   async delete(req: Request, res: Response) {
     try {
+      const tenantId = getTenantId(req);
+      if (!tenantId)
+        return res.status(401).json({ message: "Tenant context is required" });
+
       const { id } = req.params;
 
-      const existing = await prisma.pipeline.findUnique({ where: { id } });
+      const existing = await prisma.pipeline.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Pipeline not found" });
       }
 
-      const dealCount = await prisma.deal.count({ where: { pipelineId: id } });
+      const dealCount = await prisma.deal.count({
+        where: { tenantId, pipelineId: id },
+      });
       if (dealCount > 0) {
         return res.status(400).json({
           message:

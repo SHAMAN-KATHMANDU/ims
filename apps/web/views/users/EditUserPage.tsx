@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import type { UpdateUserData } from "@/hooks/useUser";
 import { useUser, useUpdateUser } from "@/hooks/useUser";
 import { UserForm, type UserFormValues } from "./components/UserForm";
 import { type UserRoleType } from "@repo/shared";
+import { useIsMobile } from "@/hooks/useMobile";
 
 export function EditUserPage() {
   const router = useRouter();
@@ -17,6 +18,7 @@ export function EditUserPage() {
   const id = params?.id as string;
   const workspace = (params?.workspace as string) ?? "superadmin";
   const basePath = `/${workspace}`;
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const { data: user, isLoading: loadingUser } = useUser(id);
   const updateMutation = useUpdateUser();
@@ -50,6 +52,16 @@ export function EditUserPage() {
   const handleCancel = useCallback(() => {
     router.push(`${basePath}/users`);
   }, [router, basePath]);
+
+  useEffect(() => {
+    if (!isMobile && id) {
+      router.replace(`${basePath}/users?edit=${id}`);
+    }
+  }, [isMobile, id, router, basePath]);
+
+  if (!isMobile) {
+    return <div className="p-6 text-muted-foreground">Redirecting...</div>;
+  }
 
   if (loadingUser || !user) {
     return (

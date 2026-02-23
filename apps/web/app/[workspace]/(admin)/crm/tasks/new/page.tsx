@@ -21,6 +21,7 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { dateInputToUtcMidnightIso } from "@/lib/datetime";
 
 const schema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -69,7 +70,7 @@ export default function NewTaskPage() {
         onSubmit={form.handleSubmit(async (values) => {
           await createMutation.mutateAsync({
             title: values.title,
-            dueDate: values.dueDate || undefined,
+            dueDate: dateInputToUtcMidnightIso(values.dueDate),
             contactId: values.contactId || undefined,
             memberId: values.memberId || undefined,
             dealId: values.dealId || undefined,

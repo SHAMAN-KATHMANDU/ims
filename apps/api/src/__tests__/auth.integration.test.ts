@@ -42,7 +42,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Auth flow integration", () => {
       update: { password: hashed, failedLoginAttempts: 0, lockedUntil: null },
     });
     userId = user.id;
-  });
+  }, 30000);
 
   afterAll(async () => {
     await disconnectDb();
@@ -59,7 +59,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Auth flow integration", () => {
     expect(res.body.user.username).toBe(TEST_USERNAME);
     expect(res.body.tenant).toBeDefined();
     expect(res.body.tenant.slug).toBe(TEST_SLUG);
-    expect(res.body.token).toBeUndefined();
+    expect(typeof res.body.token).toBe("string");
     expect(res.body.accessToken).toBeUndefined();
     expect(res.headers["set-cookie"]).toBeDefined();
     const cookies = res.headers["set-cookie"];

@@ -19,12 +19,9 @@ import {
   previewSale,
 } from "@/services/salesService";
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import {
   Select,
@@ -49,6 +46,7 @@ import {
   ShoppingCart,
   Loader2,
 } from "lucide-react";
+import { FormSurface } from "@/components/ui/form-surface";
 
 // Zod schema for phone validation
 const phoneSchema = z
@@ -1366,16 +1364,22 @@ export function NewSaleForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+    <FormSurface
+      open={open}
+      onOpenChange={handleOpenChange}
+      title="NEW SALE"
+      description="Record a sale from a showroom. Inventory will be deducted automatically."
+      renderTrigger
+      trigger={
         <Button>
           <Plus className="mr-2 h-4 w-4" />
           New Sale
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
-        {formContent}
-      </DialogContent>
-    </Dialog>
+      }
+      drawerClassName="sm:max-w-[1000px]"
+      contentClassName="p-0"
+    >
+      {formContent}
+    </FormSurface>
   );
 }
