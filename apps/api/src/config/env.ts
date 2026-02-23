@@ -13,6 +13,7 @@ const NODE_ENV = process.env.NODE_ENV ?? "development";
 const isDev = NODE_ENV === "development";
 const isStaging = NODE_ENV === "staging";
 const isProd = NODE_ENV === "production";
+const isTest = process.env.VITEST === "true";
 
 // In non-dev, required vars must be set; no silent fallbacks.
 if (!isDev) {
@@ -103,6 +104,7 @@ export const env = Object.freeze({
   isDev,
   isStaging,
   isProd,
+  isTest,
   port,
   host,
   jwtSecret,
