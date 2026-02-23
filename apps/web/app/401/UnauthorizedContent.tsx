@@ -23,7 +23,7 @@ export default function UnauthorizedContent() {
   return (
     <ErrorScreen
       title="Unauthorized Access"
-      description="You don't have permission to access this page. Please log in to continue."
+      description="You don't have permission to access this page with the current account."
       actions={
         <Button asChild className="w-full">
           <Link href={loginHref}>Go to Login</Link>

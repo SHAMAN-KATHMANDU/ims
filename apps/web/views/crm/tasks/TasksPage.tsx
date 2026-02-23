@@ -7,6 +7,8 @@ import {
   useTasksPaginated,
   useCompleteTask,
   useDeleteTask,
+  type TaskListParams,
+  type PaginatedTasksResponse,
 } from "@/hooks/useTasks";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
@@ -30,17 +32,33 @@ import { useToast } from "@/hooks/useToast";
 
 type TaskFilterTab = "all" | "incomplete" | "complete";
 
-export function TasksPage() {
+export interface TasksPageClientProps {
+  initialData?: PaginatedTasksResponse;
+  initialParams?: TaskListParams;
+}
+
+export function TasksPageClient({
+  initialData,
+  initialParams,
+}: TasksPageClientProps = {}) {
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
 
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
-  const [taskTab, setTaskTab] = useState<TaskFilterTab>("all");
-  const [dueToday, setDueToday] = useState(false);
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(
+    initialParams?.limit ?? DEFAULT_LIMIT,
+  );
+  const [search, setSearch] = useState(initialParams?.search ?? "");
+  const [taskTab, setTaskTab] = useState<TaskFilterTab>(
+    initialParams?.completed === false
+      ? "incomplete"
+      : initialParams?.completed === true
+        ? "complete"
+        : "all",
+  );
+  const [dueToday, setDueToday] = useState(initialParams?.dueToday ?? false);
 
   const completedFilter =
     taskTab === "incomplete"
@@ -49,13 +67,16 @@ export function TasksPage() {
         ? true
         : undefined;
 
-  const { data, isLoading } = useTasksPaginated({
-    page,
-    limit: pageSize,
-    search,
-    completed: completedFilter,
-    dueToday,
-  });
+  const { data, isLoading } = useTasksPaginated(
+    {
+      page,
+      limit: pageSize,
+      search,
+      completed: completedFilter,
+      dueToday,
+    },
+    { initialData },
+  );
 
   const completeMutation = useCompleteTask();
   const deleteMutation = useDeleteTask();
@@ -274,4 +295,8 @@ export function TasksPage() {
       )}
     </div>
   );
+}
+
+export function TasksPage(props: TasksPageClientProps) {
+  return <TasksPageClient {...props} />;
 }

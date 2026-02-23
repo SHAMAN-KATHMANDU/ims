@@ -16,9 +16,9 @@ import {
 } from "@/services/authService";
 import {
   useAuthStore,
+  selectIsAuthenticated,
   selectUser,
   selectTenant,
-  selectIsAuthenticated,
   selectIsHydrated,
 } from "@/stores/auth-store";
 
@@ -30,6 +30,7 @@ interface LoginCredentials {
   username: string;
   password: string;
   tenantSlug?: string;
+  callbackUrl?: string;
 }
 
 // ============================================
@@ -59,7 +60,6 @@ export function useAuth() {
   // Zustand state (with selectors for performance)
   const user = useAuthStore(selectUser);
   const tenant = useAuthStore(selectTenant);
-  const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const isHydrated = useAuthStore(selectIsHydrated);
 
   // Zustand actions
@@ -67,7 +67,7 @@ export function useAuth() {
   const setTenant = useAuthStore((s) => s.setTenant);
   const clearAuth = useAuthStore((s) => s.clearAuth);
 
-  // Query: Fetch current user (only when authenticated)
+  // Query: fetch current user after hydration to recover token-backed sessions.
   const {
     data: currentUserData,
     isLoading: isLoadingUser,
@@ -75,10 +75,14 @@ export function useAuth() {
   } = useQuery({
     queryKey: authKeys.user(),
     queryFn: getCurrentUser,
-    enabled: isAuthenticated && isHydrated,
+    enabled: isHydrated,
     staleTime: 5 * 60 * 1000, // 5 minutes
     retry: false,
   });
+
+  const resolvedUser = currentUserData?.user ?? user;
+  const resolvedTenant = currentUserData?.tenant ?? tenant;
+  const resolvedAuthenticated = !!resolvedUser;
 
   // Mutation: Login
   const loginMutation = useMutation({
@@ -88,13 +92,16 @@ export function useAuth() {
         credentials.password,
         credentials.tenantSlug,
       ),
-    onSuccess: ({ user, tenant }) => {
+    onSuccess: ({ user, tenant }, variables) => {
       setAuth(user, tenant);
       queryClient.invalidateQueries({ queryKey: authKeys.user() });
       const root = tenant?.slug
         ? getWorkspaceRoot(tenant.slug)
         : getWorkspaceRoot();
-      router.push(root);
+      const callbackPath = variables.callbackUrl?.trim();
+      const safeCallback =
+        callbackPath && callbackPath.startsWith("/") ? callbackPath : null;
+      router.push(safeCallback ?? root);
       router.refresh();
     },
   });
@@ -135,9 +142,9 @@ export function useAuth() {
 
   return {
     // State
-    user: currentUserData?.user ?? user,
-    tenant: currentUserData?.tenant ?? tenant,
-    isAuthenticated,
+    user: resolvedUser,
+    tenant: resolvedTenant,
+    isAuthenticated: resolvedAuthenticated,
     isLoading: !isHydrated || isLoadingUser,
     isHydrated,
 

@@ -115,18 +115,18 @@ export function SalesFilterBar({
     : undefined;
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      <div className="relative">
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <div className="relative w-full sm:w-auto">
         <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
         <Input
           placeholder="Search sales..."
           value={search}
           onChange={onSearchChange}
-          className="pl-8 h-9 text-sm w-full min-w-[180px] max-w-[240px]"
+          className="h-9 w-full pl-8 text-sm sm:w-[240px]"
         />
       </div>
       <Select value={sortValue} onValueChange={onSortChange}>
-        <SelectTrigger className="h-9 w-[200px] shrink-0 gap-2 text-sm">
+        <SelectTrigger className="h-9 w-full gap-2 text-sm sm:w-[200px]">
           <ArrowUpDown className="h-3.5 w-3.5 text-muted-foreground" />
           <SelectValue placeholder="Sort by" />
         </SelectTrigger>

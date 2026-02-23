@@ -3,15 +3,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import type { Vendor, CreateOrUpdateVendorData } from "@/hooks/useVendors";
+import { FormSurface } from "@/components/ui/form-surface";
 
 interface VendorFormProps {
   open: boolean;
@@ -145,29 +139,28 @@ export function VendorForm({
   }
 
   return (
-    <Dialog
+    <FormSurface
       open={open}
       onOpenChange={(o) => {
         if (!o) onReset();
         onOpenChange(o);
       }}
+      title={editingVendor ? "Edit Vendor" : "New Vendor"}
+      description={
+        editingVendor
+          ? "Update vendor contact information."
+          : "Add a new product vendor."
+      }
+      renderTrigger={renderTrigger}
+      trigger={
+        <Button onClick={() => onReset()}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Vendor
+        </Button>
+      }
+      drawerClassName="sm:max-w-lg"
     >
-      {renderTrigger && (
-        <DialogTrigger asChild>
-          <Button onClick={() => onReset()}>
-            <Plus className="mr-2 h-4 w-4" />
-            New Vendor
-          </Button>
-        </DialogTrigger>
-      )}
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>
-            {editingVendor ? "Edit Vendor" : "New Vendor"}
-          </DialogTitle>
-        </DialogHeader>
-        {formContent}
-      </DialogContent>
-    </Dialog>
+      {formContent}
+    </FormSurface>
   );
 }

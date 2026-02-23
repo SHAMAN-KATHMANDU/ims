@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import {
   usePromosPaginated,
@@ -11,6 +11,8 @@ import {
   useDeletePromo,
   type PromoCode,
   type CreateOrUpdatePromoData,
+  type PromoListParams,
+  type PaginatedPromosResponse,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/usePromos";
@@ -40,7 +42,6 @@ import {
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
 import { useAuthStore, selectUserRole } from "@/stores/auth-store";
-import { useIsMobile } from "@/hooks/useMobile";
 import { PromoForm } from "./components/PromoForm";
 
 interface PromoPageProps {
@@ -48,36 +49,56 @@ interface PromoPageProps {
   readOnly?: boolean;
 }
 
-export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
+export interface PromoPageClientProps extends PromoPageProps {
+  initialData?: PaginatedPromosResponse;
+  initialParams?: PromoListParams;
+}
+
+export function PromoPageClient({
+  readOnly: readOnlyProp,
+  initialData,
+  initialParams,
+}: PromoPageClientProps = {}) {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
   const userRole = useAuthStore(selectUserRole);
   const readOnly = readOnlyProp === true ? true : userRole === "user";
-  const isMobile = useIsMobile();
 
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
-  const [showActiveOnly, setShowActiveOnly] = useState(true);
-  const [sortBy, setSortBy] = useState<string>("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(
+    initialParams?.limit ?? DEFAULT_LIMIT,
+  );
+  const [search, setSearch] = useState(initialParams?.search ?? "");
+  const [showActiveOnly, setShowActiveOnly] = useState(
+    initialParams?.isActive !== false,
+  );
+  const [sortBy, setSortBy] = useState<string>(
+    initialParams?.sortBy ?? "createdAt",
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+    initialParams?.sortOrder ?? "desc",
+  );
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingPromo, setEditingPromo] = useState<PromoCode | null>(null);
 
-  const { data: promosResponse, isLoading } = usePromosPaginated({
-    page,
-    limit: pageSize,
-    search,
-    isActive: showActiveOnly ? true : undefined,
-    sortBy,
-    sortOrder,
-  });
+  const { data: promosResponse, isLoading } = usePromosPaginated(
+    {
+      page,
+      limit: pageSize,
+      search,
+      isActive: showActiveOnly ? true : undefined,
+      sortBy,
+      sortOrder,
+    },
+    { initialData },
+  );
 
-  const promos = promosResponse?.data ?? [];
+  const promos = useMemo(() => promosResponse?.data ?? [], [promosResponse]);
   const pagination = promosResponse?.pagination;
 
   const createMutation = useCreatePromo();
@@ -97,7 +118,10 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
   );
 
   const handleEdit = (promo: PromoCode) => {
-    if (isMobile) {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) {
       router.push(`${basePath}/promos/${promo.id}/edit`);
       return;
     }
@@ -147,6 +171,27 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
 
   const isSaving = createMutation.isPending || updateMutation.isPending;
 
+  useEffect(() => {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) return;
+    const add = searchParams.get("add");
+    const edit = searchParams.get("edit");
+    if (add === "1") {
+      resetForm();
+      setDialogOpen(true);
+      return;
+    }
+    if (edit) {
+      const promo = promos.find((p) => p.id === edit);
+      if (promo) {
+        setEditingPromo(promo);
+        setDialogOpen(true);
+      }
+    }
+  }, [searchParams, promos]);
+
   const promoPagination: PaginationState | null = pagination
     ? {
         currentPage: pagination.currentPage,
@@ -176,13 +221,13 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-3 items-center">
-            <div className="relative">
+            <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 placeholder="Search by code or description..."
                 value={search}
                 onChange={handleSearchChange}
-                className="pl-9 w-[220px]"
+                className="w-full pl-9 sm:w-[220px]"
               />
             </div>
             <div className="flex items-center gap-2">
@@ -201,16 +246,15 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                 Show active only
               </label>
             </div>
-            {!readOnly &&
-              (isMobile ? (
-                <Button asChild>
+            {!readOnly && (
+              <>
+                <Button asChild className="md:hidden">
                   <Link href={`${basePath}/promos/new`} className="gap-2">
                     <Plus className="h-4 w-4" />
                     New Promo
                   </Link>
                 </Button>
-              ) : (
-                <>
+                <div className="hidden md:flex md:items-center">
                   <Button
                     className="gap-2"
                     onClick={() => {
@@ -233,8 +277,9 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                     isLoading={isSaving}
                     renderTrigger={false}
                   />
-                </>
-              ))}
+                </div>
+              </>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -384,4 +429,9 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
       )}
     </div>
   );
+}
+
+/** Re-export for backward compatibility. */
+export function PromoPage(props: PromoPageClientProps) {
+  return <PromoPageClient {...props} />;
 }

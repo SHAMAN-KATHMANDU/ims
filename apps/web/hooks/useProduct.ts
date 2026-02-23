@@ -101,7 +101,14 @@ export const productDiscountKeys = {
  * @param params - Pagination, search, and filter parameters
  * @returns Query result with products data and pagination info
  */
-export function useProductsPaginated(params: ProductListParams = {}) {
+export interface UseProductsPaginatedOptions {
+  initialData?: PaginatedProductsResponse;
+}
+
+export function useProductsPaginated(
+  params: ProductListParams = {},
+  options: UseProductsPaginatedOptions = {},
+) {
   const normalizedParams: ProductListParams = {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
@@ -123,6 +130,7 @@ export function useProductsPaginated(params: ProductListParams = {}) {
     queryFn: () => getProducts(normalizedParams),
     placeholderData: (previousData) => previousData,
     refetchOnWindowFocus: true,
+    initialData: options.initialData,
   });
 }
 

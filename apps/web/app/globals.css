@@ -183,6 +183,7 @@
       "Helvetica Neue",
       Arial,
       sans-serif;
+    overflow-x: hidden;
   }
 
   /* Form section titles */
@@ -266,4 +267,17 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+@layer utilities {
+  .safe-bottom {
+    padding-bottom: max(0.75rem, env(safe-area-inset-bottom));
+  }
+
+  .app-page {
+    width: 100%;
+    min-width: 0;
+    max-width: 1600px;
+    margin-inline: auto;
+  }
 }

@@ -573,6 +573,33 @@ class AuthController {
       return sendControllerError(req, res, error, "Deletion request error");
     }
   }
+
+  async getWorkspaceInfo(req: Request, res: Response) {
+    try {
+      const slug = req.params.slug?.trim().toLowerCase();
+      if (!slug) {
+        return res.status(400).json({ message: "Workspace slug is required" });
+      }
+
+      const tenant = await basePrisma.tenant.findUnique({
+        where: { slug },
+        select: { slug: true, name: true, isActive: true },
+      });
+
+      if (!tenant || !tenant.isActive) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+
+      return res.status(200).json({
+        workspace: {
+          slug: tenant.slug,
+          name: tenant.name,
+        },
+      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Workspace info error");
+    }
+  }
 }
 
 export default new AuthController();

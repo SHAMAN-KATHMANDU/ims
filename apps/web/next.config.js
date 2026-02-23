@@ -17,12 +17,23 @@ const nextConfig = {
   // This creates a minimal production bundle with only necessary files
   output: "standalone",
 
-  // Allow next/image for variation photos (e.g. seed data from picsum.photos)
+  // Allow next/image for variation photos and production CDN assets.
+  // Add production hostnames (e.g. S3, CloudFront) as needed. Use NEXT_PUBLIC_CDN_HOST if set.
   images: {
     remotePatterns: [
       {
         protocol: "https",
         hostname: "picsum.photos",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.amazonaws.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "**.cloudfront.net",
         pathname: "/**",
       },
     ],

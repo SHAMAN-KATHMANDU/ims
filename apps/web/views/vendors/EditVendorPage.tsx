@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/useToast";
 import type { CreateOrUpdateVendorData } from "@/hooks/useVendors";
 import { useVendor, useUpdateVendor } from "@/hooks/useVendors";
 import { VendorForm } from "./components/VendorForm";
+import { useIsMobile } from "@/hooks/useMobile";
 
 export function EditVendorPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export function EditVendorPage() {
   const id = params?.id as string;
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const { data: vendor, isLoading: loadingVendor } = useVendor(id);
   const updateMutation = useUpdateVendor();
@@ -45,6 +47,16 @@ export function EditVendorPage() {
   const handleCancel = useCallback(() => {
     router.push(`${basePath}/vendors`);
   }, [router, basePath]);
+
+  useEffect(() => {
+    if (!isMobile && id) {
+      router.replace(`${basePath}/vendors?edit=${id}`);
+    }
+  }, [isMobile, id, router, basePath]);
+
+  if (!isMobile) {
+    return <div className="p-6 text-muted-foreground">Redirecting...</div>;
+  }
 
   if (loadingVendor || !vendor) {
     return (

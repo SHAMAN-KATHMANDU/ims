@@ -55,10 +55,18 @@ export const memberKeys = {
 // Member Hooks
 // ============================================
 
+export interface UseMembersPaginatedOptions {
+  initialData?: PaginatedMembersResponse;
+}
+
 /**
- * Hook for fetching paginated members with search and sort
+ * Hook for fetching paginated members with search and sort.
+ * Pass initialData when server has pre-fetched (e.g. RSC).
  */
-export function useMembersPaginated(params: MemberListParams = {}) {
+export function useMembersPaginated(
+  params: MemberListParams = {},
+  options: UseMembersPaginatedOptions = {},
+) {
   const normalizedParams: MemberListParams = {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
@@ -71,6 +79,7 @@ export function useMembersPaginated(params: MemberListParams = {}) {
     queryKey: memberKeys.list(normalizedParams),
     queryFn: () => getMembers(normalizedParams),
     placeholderData: (previousData) => previousData,
+    initialData: options.initialData,
   });
 }
 

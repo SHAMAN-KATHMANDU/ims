@@ -12,8 +12,11 @@ import {
   type LeadListParams,
   type CreateLeadData,
   type UpdateLeadData,
+  type PaginatedLeadsResponse,
 } from "@/services/leadService";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+
+export type { LeadListParams, PaginatedLeadsResponse };
 
 export const leadKeys = {
   all: ["leads"] as const,
@@ -23,20 +26,29 @@ export const leadKeys = {
   detail: (id: string) => [...leadKeys.details(), id] as const,
 };
 
-export function useLeadsPaginated(params: LeadListParams = {}) {
+export interface UseLeadsPaginatedOptions {
+  initialData?: PaginatedLeadsResponse;
+}
+
+export function useLeadsPaginated(
+  params: LeadListParams = {},
+  options: UseLeadsPaginatedOptions = {},
+) {
+  const normalizedParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    search: params.search ?? "",
+    sortBy: params.sortBy ?? "createdAt",
+    sortOrder: params.sortOrder ?? "desc",
+    status: params.status,
+    source: params.source,
+    assignedToId: params.assignedToId,
+  };
   return useQuery({
-    queryKey: leadKeys.list({
-      page: params.page ?? DEFAULT_PAGE,
-      limit: params.limit ?? DEFAULT_LIMIT,
-      search: params.search ?? "",
-      sortBy: params.sortBy ?? "createdAt",
-      sortOrder: params.sortOrder ?? "desc",
-      status: params.status,
-      source: params.source,
-      assignedToId: params.assignedToId,
-    }),
-    queryFn: () => getLeads(params),
+    queryKey: leadKeys.list(normalizedParams),
+    queryFn: () => getLeads(normalizedParams),
     placeholderData: (prev) => prev,
+    initialData: options.initialData,
   });
 }
 

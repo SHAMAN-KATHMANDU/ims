@@ -10,6 +10,8 @@ import {
   useUpdateLead,
   useDeleteLead,
   useConvertLead,
+  type LeadListParams,
+  type PaginatedLeadsResponse,
 } from "@/hooks/useLeads";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
@@ -57,27 +59,42 @@ const STATUS_OPTIONS: LeadStatus[] = [
   "CONVERTED",
 ];
 
-export function LeadsPage() {
+export interface LeadsPageClientProps {
+  initialData?: PaginatedLeadsResponse;
+  initialParams?: LeadListParams;
+}
+
+export function LeadsPageClient({
+  initialData,
+  initialParams,
+}: LeadsPageClientProps = {}) {
   const params = useParams();
   const _router = useRouter();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
 
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
-  const [status, setStatus] = useState<string>("__all__");
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(
+    initialParams?.limit ?? DEFAULT_LIMIT,
+  );
+  const [search, setSearch] = useState(initialParams?.search ?? "");
+  const [status, setStatus] = useState<string>(
+    initialParams?.status ?? "__all__",
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [convertLeadId, setConvertLeadId] = useState<string | null>(null);
 
-  const { data, isLoading } = useLeadsPaginated({
-    page,
-    limit: pageSize,
-    search,
-    status: status === "__all__" ? undefined : (status as LeadStatus),
-  });
+  const { data, isLoading } = useLeadsPaginated(
+    {
+      page,
+      limit: pageSize,
+      search,
+      status: status === "__all__" ? undefined : (status as LeadStatus),
+    },
+    { initialData },
+  );
 
   const { data: leadData } = useLead(selectedId || "");
   const _updateMutation = useUpdateLead();
@@ -349,4 +366,8 @@ export function LeadsPage() {
       </Dialog>
     </div>
   );
+}
+
+export function LeadsPage(props: LeadsPageClientProps) {
+  return <LeadsPageClient {...props} />;
 }

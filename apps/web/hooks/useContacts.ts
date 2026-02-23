@@ -19,8 +19,11 @@ import {
   type ContactListParams,
   type CreateContactData,
   type UpdateContactData,
+  type PaginatedContactsResponse,
 } from "@/services/contactService";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+
+export type { ContactListParams, PaginatedContactsResponse };
 
 export const contactKeys = {
   all: ["contacts"] as const,
@@ -32,20 +35,29 @@ export const contactKeys = {
   tags: () => [...contactKeys.all, "tags"] as const,
 };
 
-export function useContactsPaginated(params: ContactListParams = {}) {
+export interface UseContactsPaginatedOptions {
+  initialData?: PaginatedContactsResponse;
+}
+
+export function useContactsPaginated(
+  params: ContactListParams = {},
+  options: UseContactsPaginatedOptions = {},
+) {
+  const normalizedParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    search: params.search ?? "",
+    sortBy: params.sortBy ?? "createdAt",
+    sortOrder: params.sortOrder ?? "desc",
+    companyId: params.companyId,
+    tagId: params.tagId,
+    ownerId: params.ownerId,
+  };
   return useQuery({
-    queryKey: contactKeys.list({
-      page: params.page ?? DEFAULT_PAGE,
-      limit: params.limit ?? DEFAULT_LIMIT,
-      search: params.search ?? "",
-      sortBy: params.sortBy ?? "createdAt",
-      sortOrder: params.sortOrder ?? "desc",
-      companyId: params.companyId,
-      tagId: params.tagId,
-      ownerId: params.ownerId,
-    }),
-    queryFn: () => getContacts(params),
+    queryKey: contactKeys.list(normalizedParams),
+    queryFn: () => getContacts(normalizedParams),
     placeholderData: (prev) => prev,
+    initialData: options.initialData,
   });
 }
 

@@ -11,6 +11,8 @@ import {
 /**
  * Next.js Middleware for Route Protection
  *
+ * Runs on Edge Runtime by default. No Node APIs (e.g. fs, path) are available.
+ *
  * Tenant is identified by the first path segment (e.g. /ruby/login, /ruby).
  * - / → show landing (no redirect to login; user must use org URL)
  * - /:slug/login → auth route (allow without token)
@@ -20,38 +22,36 @@ import {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Prefer HttpOnly access_token (same-origin); fallback to persisted user for cross-origin dev
+  // Prefer persisted auth-store user for route decisions; access_token alone may be stale.
   const accessTokenCookie = request.cookies.get("access_token");
   const authStorage = request.cookies.get("auth-storage");
-  let hasToken = !!accessTokenCookie?.value;
-  if (!hasToken && authStorage?.value) {
+  let storedUser: { role?: string } | null = null;
+  let storedTenantSlug: string | null = null;
+  if (authStorage?.value) {
     try {
       const parsed = JSON.parse(authStorage.value);
-      hasToken = !!parsed?.state?.user;
+      storedUser = parsed?.state?.user ?? null;
+      storedTenantSlug = parsed?.state?.tenant?.slug ?? null;
     } catch {
-      // ignore
+      storedUser = null;
+      storedTenantSlug = null;
     }
   }
+  const hasStoredUser = !!storedUser;
+  const hasToken = hasStoredUser || !!accessTokenCookie?.value;
 
   // Legacy /login (no slug): redirect to root
   if (pathname === "/login") {
-    return NextResponse.redirect(new URL("/", request.url));
+    return NextResponse.redirect(new URL("/system/login", request.url));
   }
 
   // Root: if logged in, redirect to tenant root (we use default slug; they may have tenant in store)
   if (pathname === "/") {
     if (hasToken) {
-      // Prefer tenant from cookie if available
-      try {
-        const parsed = authStorage?.value
-          ? JSON.parse(authStorage.value)
-          : null;
-        const slug = parsed?.state?.tenant?.slug;
-        const root = slug ? getWorkspaceRoot(slug) : getWorkspaceRoot();
-        return NextResponse.redirect(new URL(root, request.url));
-      } catch {
-        return NextResponse.redirect(new URL(getWorkspaceRoot(), request.url));
-      }
+      const root = storedTenantSlug
+        ? getWorkspaceRoot(storedTenantSlug)
+        : getWorkspaceRoot();
+      return NextResponse.redirect(new URL(root, request.url));
     }
     // Not logged in: allow / (landing page)
     return NextResponse.next();
@@ -68,7 +68,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isLogin && hasToken && urlSlug) {
+  // Only redirect away from login if we have a hydrated client user for this session.
+  if (isLogin && hasStoredUser && urlSlug) {
     return NextResponse.redirect(
       new URL(getWorkspaceRoot(urlSlug), request.url),
     );
@@ -77,12 +78,16 @@ export function middleware(request: NextRequest) {
   // Enforce tenant slug: if logged-in tenant user is on wrong slug URL, redirect to their tenant
   if (isProtected && hasToken && urlSlug) {
     try {
-      const parsed = authStorage?.value ? JSON.parse(authStorage.value) : null;
-      const tenantSlug = parsed?.state?.tenant?.slug;
-      const userRole = parsed?.state?.user?.role;
+      const tenantSlug = storedTenantSlug;
+      const userRole = storedUser?.role;
+      const isPlatformRoute = pathname.startsWith(`/${urlSlug}/platform`);
       // Platform admins can access any workspace URL
       if (userRole === "platformAdmin") {
         return NextResponse.next();
+      }
+      // Tenant users should get an explicit unauthorized route for platform screens.
+      if (isPlatformRoute) {
+        return NextResponse.redirect(new URL("/401", request.url));
       }
       // Tenant users must use their tenant's slug in the URL
       if (tenantSlug && urlSlug.toLowerCase() !== tenantSlug.toLowerCase()) {

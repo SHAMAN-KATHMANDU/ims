@@ -21,6 +21,7 @@ interface SidebarState {
   setIsOpen: (isOpen: boolean, isMobile?: boolean) => void;
   toggle: (isMobile?: boolean) => void;
   setSidebarWidth: (width: number) => void;
+  resetSidebarWidth: () => void;
 }
 
 // ============================================
@@ -59,6 +60,9 @@ export const useSidebarStore = create<SidebarState>()(
         );
         set({ sidebarWidth: w });
       },
+      resetSidebarWidth: () => {
+        set({ sidebarWidth: DEFAULT_SIDEBAR_WIDTH });
+      },
     }),
     {
       name: "sidebar-state",
@@ -92,5 +96,7 @@ export const selectDesktopSidebarOpen = (state: SidebarState) =>
 export const selectSidebarWidth = (state: SidebarState) => state.sidebarWidth;
 export const selectSetSidebarWidth = (state: SidebarState) =>
   state.setSidebarWidth;
+export const selectResetSidebarWidth = (state: SidebarState) =>
+  state.resetSidebarWidth;
 export const selectToggle = (state: SidebarState) => state.toggle;
 export const selectSetIsOpen = (state: SidebarState) => state.setIsOpen;

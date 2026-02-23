@@ -10,6 +10,8 @@
     "start": "next start",
     "test": "playwright test",
     "test:smoke": "playwright test tests/smoke.spec.ts --project=chromium",
+    "test:overflow": "playwright test tests/overflow.spec.ts --project=chromium",
+    "test:mobile": "playwright test tests/mobile.spec.ts --project=chromium",
     "lint": "eslint --max-warnings 0",
     "check-types": "next typegen && tsc --noEmit"
   },

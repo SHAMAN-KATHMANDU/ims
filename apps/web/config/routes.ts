@@ -39,6 +39,9 @@ export function isLoginPath(pathname: string): boolean {
 export function isProtectedPath(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length < 1 || !segments[0]) return false;
+  // Global non-workspace routes should remain publicly accessible.
+  const globalPublic = new Set(["401", "loading", "login"]);
+  if (globalPublic.has(segments[0])) return false;
   if (segments.length >= 2 && segments[1] === "login") return false;
   return true;
 }

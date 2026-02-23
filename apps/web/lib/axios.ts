@@ -35,6 +35,7 @@ type RetriableRequestConfig = InternalAxiosRequestConfig & {
   _retry?: boolean;
   skipAuthRefresh?: boolean;
   skipGlobalErrorToast?: boolean;
+  skipAuthRedirect?: boolean;
 };
 
 let isRefreshing = false;
@@ -126,6 +127,9 @@ api.interceptors.response.use(
     }
 
     if (status === 401 || (status === 404 && isAuthMe)) {
+      if (originalRequest.skipAuthRedirect) {
+        return Promise.reject(error);
+      }
       if (isLoginEndpoint || isRefreshEndpoint) return Promise.reject(error);
 
       const pathname =

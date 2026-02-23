@@ -11,6 +11,8 @@ import {
   useDeleteContact,
   useImportContacts,
   exportContactsCsv,
+  type ContactListParams,
+  type PaginatedContactsResponse,
 } from "@/hooks/useContacts";
 import { useCompaniesForSelect } from "@/hooks/useCompanies";
 import { useContactTags } from "@/hooks/useContacts";
@@ -40,32 +42,49 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 
-export function ContactsPage() {
+export interface ContactsPageClientProps {
+  initialData?: PaginatedContactsResponse;
+  initialParams?: ContactListParams;
+}
+
+export function ContactsPageClient({
+  initialData,
+  initialParams,
+}: ContactsPageClientProps = {}) {
   const params = useParams();
   const router = useRouter();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
 
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
-  const [sortBy] = useState("createdAt");
-  const [sortOrder] = useState<"asc" | "desc">("desc");
-  const [companyId, setCompanyId] = useState<string>("");
-  const [tagId, setTagId] = useState<string>("");
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(
+    initialParams?.limit ?? DEFAULT_LIMIT,
+  );
+  const [search, setSearch] = useState(initialParams?.search ?? "");
+  const [sortBy] = useState(initialParams?.sortBy ?? "createdAt");
+  const [sortOrder] = useState<"asc" | "desc">(
+    initialParams?.sortOrder ?? "desc",
+  );
+  const [companyId, setCompanyId] = useState<string>(
+    initialParams?.companyId ?? "",
+  );
+  const [tagId, setTagId] = useState<string>(initialParams?.tagId ?? "");
   const [importOpen, setImportOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  const { data, isLoading } = useContactsPaginated({
-    page,
-    limit: pageSize,
-    search,
-    sortBy,
-    sortOrder,
-    companyId: companyId || undefined,
-    tagId: tagId || undefined,
-  });
+  const { data, isLoading } = useContactsPaginated(
+    {
+      page,
+      limit: pageSize,
+      search,
+      sortBy,
+      sortOrder,
+      companyId: companyId || undefined,
+      tagId: tagId || undefined,
+    },
+    { initialData },
+  );
 
   const { data: contactData } = useContact(selectedId || "");
   const { data: companiesData } = useCompaniesForSelect();
@@ -246,4 +265,8 @@ export function ContactsPage() {
       />
     </div>
   );
+}
+
+export function ContactsPage(props: ContactsPageClientProps) {
+  return <ContactsPageClient {...props} />;
 }

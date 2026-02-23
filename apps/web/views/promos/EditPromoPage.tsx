@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { useToast } from "@/hooks/useToast";
 import type { CreateOrUpdatePromoData } from "@/hooks/usePromos";
 import { usePromo, useUpdatePromo } from "@/hooks/usePromos";
 import { PromoForm } from "./components/PromoForm";
+import { useIsMobile } from "@/hooks/useMobile";
 
 export function EditPromoPage() {
   const router = useRouter();
@@ -16,6 +17,7 @@ export function EditPromoPage() {
   const id = params?.id as string;
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
+  const isMobile = useIsMobile();
   const { toast } = useToast();
   const { data: promo, isLoading: loadingPromo } = usePromo(id);
   const updateMutation = useUpdatePromo();
@@ -44,6 +46,16 @@ export function EditPromoPage() {
   const handleCancel = useCallback(() => {
     router.push(`${basePath}/promos`);
   }, [router, basePath]);
+
+  useEffect(() => {
+    if (!isMobile && id) {
+      router.replace(`${basePath}/promos?edit=${id}`);
+    }
+  }, [isMobile, id, router, basePath]);
+
+  if (!isMobile) {
+    return <div className="p-6 text-muted-foreground">Redirecting...</div>;
+  }
 
   if (loadingPromo || !promo) {
     return (

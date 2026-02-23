@@ -3,13 +3,10 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,6 +21,7 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import type { Location, LocationType } from "@/hooks/useLocation";
+import { FormSurface } from "@/components/ui/form-surface";
 
 interface LocationFormProps {
   open: boolean;
@@ -192,14 +190,25 @@ export function LocationForm({
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
+    <FormSurface
+      open={open}
+      onOpenChange={handleOpenChange}
+      title={editingLocation ? "Edit Location" : "Add New Location"}
+      description={
+        editingLocation
+          ? "Update the location details below."
+          : "Create a new warehouse or showroom location."
+      }
+      renderTrigger
+      trigger={
         <Button>
           <Plus className="mr-2 h-4 w-4" />
           Add Location
         </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">{formContent}</DialogContent>
-    </Dialog>
+      }
+      drawerClassName="sm:max-w-lg"
+    >
+      {formContent}
+    </FormSurface>
   );
 }

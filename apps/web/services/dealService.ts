@@ -1,4 +1,6 @@
 import api from "@/lib/axios";
+import type { InternalAxiosRequestConfig } from "axios";
+import { isAxiosError } from "axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
 
 export type DealStatus = "OPEN" | "WON" | "LOST";
@@ -110,10 +112,18 @@ export async function getDealsKanban(pipelineId?: string): Promise<{
   stages: Array<{ stage: string; deals: Deal[] }>;
   deals: Deal[];
 }> {
-  const res = await api.get("/deals/kanban", {
-    params: pipelineId ? { pipelineId } : {},
-  });
-  return res.data;
+  try {
+    const res = await api.get("/deals/kanban", {
+      params: pipelineId ? { pipelineId } : {},
+      skipGlobalErrorToast: true,
+    } as unknown as InternalAxiosRequestConfig);
+    return res.data;
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return { pipeline: null, stages: [], deals: [] };
+    }
+    throw error;
+  }
 }
 
 export async function getDealById(id: string): Promise<{ deal: Deal }> {

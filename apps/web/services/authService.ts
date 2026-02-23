@@ -25,6 +25,13 @@ interface RefreshResponse {
   tenant: TenantInfo;
 }
 
+interface WorkspaceInfoResponse {
+  workspace: {
+    slug: string;
+    name: string;
+  };
+}
+
 /**
  * Login with username and password.
  * Optionally pass a tenant slug for multi-tenant login.
@@ -64,7 +71,11 @@ export async function login(
  */
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   try {
-    const response = await api.get<CurrentUserResponse>("/auth/me");
+    const response = await api.get<CurrentUserResponse>("/auth/me", {
+      skipGlobalErrorToast: true,
+      skipAuthRefresh: true,
+      skipAuthRedirect: true,
+    } as unknown as InternalAxiosRequestConfig);
     return response.data;
   } catch {
     return null;
@@ -94,4 +105,27 @@ export async function refreshSession(): Promise<RefreshResponse> {
     requestConfig as InternalAxiosRequestConfig,
   );
   return response.data as RefreshResponse;
+}
+
+export async function getWorkspaceInfo(
+  tenantSlug: string,
+): Promise<WorkspaceInfoResponse | null> {
+  if (!tenantSlug?.trim()) return null;
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 1500);
+  try {
+    const response = await api.get<WorkspaceInfoResponse>(
+      `/auth/workspace/${encodeURIComponent(tenantSlug.trim().toLowerCase())}`,
+      {
+        skipGlobalErrorToast: true,
+        skipAuthRefresh: true,
+        signal: controller.signal,
+      } as unknown as InternalAxiosRequestConfig,
+    );
+    return response.data;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }

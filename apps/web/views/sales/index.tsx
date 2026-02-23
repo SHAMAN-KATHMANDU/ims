@@ -9,7 +9,6 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import { useIsMobile } from "@/hooks/useMobile";
 import { useActiveLocations } from "@/hooks/useLocation";
 import {
   useAuthStore,
@@ -28,6 +27,8 @@ import {
   useCreateSale,
   type Sale,
   type SaleType,
+  type SalesListParams,
+  type PaginatedSalesResponse,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/hooks/useSales";
@@ -65,7 +66,15 @@ import {
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
 
-export function SalesPage() {
+export interface SalesPageClientProps {
+  initialData?: PaginatedSalesResponse;
+  initialParams?: SalesListParams;
+}
+
+export function SalesPageClient({
+  initialData,
+  initialParams,
+}: SalesPageClientProps = {}) {
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
@@ -76,29 +85,54 @@ export function SalesPage() {
   const isAdmin = useAuthStore(selectIsAdmin);
   const isUserRole = userRole === "user";
   const canManageSales = isAdmin;
-  const isMobile = useIsMobile();
 
   // Zustand store for sale selection
   const selectedSaleIds = useSaleSelectionStore(selectSelectedSaleIds);
   const clearSelection = useSaleSelectionStore(selectClearSaleSelection);
   const setSelectedSaleIds = useSaleSelectionStore((state) => state.setSales);
 
-  // Filter state
-  const [page, setPage] = useState(DEFAULT_PAGE);
-  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<SaleType | "ALL">("ALL");
+  // Filter state (initialize from server params when provided)
+  const [page, setPage] = useState(initialParams?.page ?? DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(
+    initialParams?.limit ?? DEFAULT_LIMIT,
+  );
+  const [search, setSearch] = useState(initialParams?.search ?? "");
+  const [typeFilter, setTypeFilter] = useState<SaleType | "ALL">(
+    (initialParams?.type as SaleType) ?? "ALL",
+  );
   const [creditFilter, setCreditFilter] = useState<
     "ALL" | "credit" | "non-credit"
-  >("ALL");
-  const [locationFilter, setLocationFilter] = useState<string>("ALL");
-  const [userFilter, setUserFilter] = useState<string | undefined>(undefined);
-  const [startDate, setStartDate] = useState<Date | undefined>();
-  const [endDate, setEndDate] = useState<Date | undefined>();
+  >(
+    initialParams?.isCreditSale === true
+      ? "credit"
+      : initialParams?.isCreditSale === false
+        ? "non-credit"
+        : "ALL",
+  );
+  const [locationFilter, setLocationFilter] = useState<string>(
+    initialParams?.locationId ?? "ALL",
+  );
+  const [userFilter, setUserFilter] = useState<string | undefined>(
+    initialParams?.createdById,
+  );
+  const [startDate, setStartDate] = useState<Date | undefined>(
+    initialParams?.startDate ? new Date(initialParams.startDate) : undefined,
+  );
+  const [endDate, setEndDate] = useState<Date | undefined>(
+    initialParams?.endDate ? new Date(initialParams.endDate) : undefined,
+  );
   const [sortBy, setSortBy] = useState<
     "createdAt" | "total" | "subtotal" | "saleCode"
-  >("createdAt");
-  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+  >(
+    (initialParams?.sortBy as
+      | "createdAt"
+      | "total"
+      | "subtotal"
+      | "saleCode") ?? "createdAt",
+  );
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">(
+    initialParams?.sortOrder ?? "desc",
+  );
 
   // Apply URL search params once on mount (e.g. from dashboard/analytics links)
   useEffect(() => {
@@ -126,6 +160,16 @@ export function SalesPage() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    const isNarrowScreen =
+      typeof window !== "undefined" &&
+      window.matchMedia("(max-width: 767px)").matches;
+    if (isNarrowScreen) return;
+    if (searchParams.get("add") === "1") {
+      setFormOpen(true);
+    }
+  }, [searchParams]);
+
   // For role "user", default date range to today (only when no URL params applied)
   useEffect(() => {
     if (
@@ -146,24 +190,27 @@ export function SalesPage() {
   const [selectedSaleId, setSelectedSaleId] = useState<string | null>(null);
 
   // Data fetching with backend sorting
-  const { data: salesResponse, isLoading: salesLoading } = useSalesPaginated({
-    page,
-    limit: pageSize,
-    search,
-    type: typeFilter === "ALL" ? undefined : typeFilter,
-    isCreditSale:
-      creditFilter === "credit"
-        ? true
-        : creditFilter === "non-credit"
-          ? false
-          : undefined,
-    locationId: locationFilter === "ALL" ? undefined : locationFilter,
-    createdById: userFilter,
-    startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
-    endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
-    sortBy,
-    sortOrder,
-  });
+  const { data: salesResponse, isLoading: salesLoading } = useSalesPaginated(
+    {
+      page,
+      limit: pageSize,
+      search,
+      type: typeFilter === "ALL" ? undefined : typeFilter,
+      isCreditSale:
+        creditFilter === "credit"
+          ? true
+          : creditFilter === "non-credit"
+            ? false
+            : undefined,
+      locationId: locationFilter === "ALL" ? undefined : locationFilter,
+      createdById: userFilter,
+      startDate: startDate ? format(startDate, "yyyy-MM-dd") : undefined,
+      endDate: endDate ? format(endDate, "yyyy-MM-dd") : undefined,
+      sortBy,
+      sortOrder,
+    },
+    { initialData },
+  );
 
   const sales = salesResponse?.data ?? [];
 
@@ -436,41 +483,41 @@ export function SalesPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {isMobile ? (
-                <Button variant="outline" asChild>
-                  <Link href={`${basePath}/sales/bulk-upload`}>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Bulk Upload
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setBulkUploadDialog(true)}
-                >
+              <Button variant="outline" asChild className="md:hidden">
+                <Link href={`${basePath}/sales/bulk-upload`}>
                   <Upload className="h-4 w-4 mr-2" />
                   Bulk Upload
-                </Button>
-              )}
+                </Link>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setBulkUploadDialog(true)}
+                className="hidden md:inline-flex"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                Bulk Upload
+              </Button>
             </>
           )}
-          {canManageSales &&
-            (isMobile ? (
-              <Button asChild>
+          {canManageSales && (
+            <>
+              <Button asChild className="md:hidden">
                 <Link href={`${basePath}/sales/new`} className="gap-2">
                   <Plus className="h-4 w-4" />
                   New Sale
                 </Link>
               </Button>
-            ) : (
-              <NewSaleForm
-                open={formOpen}
-                onOpenChange={setFormOpen}
-                locations={locations}
-                onSubmit={handleCreateSale}
-                isLoading={createSaleMutation.isPending}
-              />
-            ))}
+              <div className="hidden md:block">
+                <NewSaleForm
+                  open={formOpen}
+                  onOpenChange={setFormOpen}
+                  locations={locations}
+                  onSubmit={handleCreateSale}
+                  isLoading={createSaleMutation.isPending}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -511,4 +558,9 @@ export function SalesPage() {
       />
     </div>
   );
+}
+
+/** Re-export for backward compatibility. */
+export function SalesPage(props: SalesPageClientProps) {
+  return <SalesPageClient {...props} />;
 }
