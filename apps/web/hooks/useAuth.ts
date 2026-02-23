@@ -101,8 +101,14 @@ export function useAuth() {
       const callbackPath = variables.callbackUrl?.trim();
       const safeCallback =
         callbackPath && callbackPath.startsWith("/") ? callbackPath : null;
-      router.push(safeCallback ?? root);
-      router.refresh();
+      const target = safeCallback ?? root;
+      // Full page redirect ensures cookies are sent and state is fresh
+      if (typeof window !== "undefined") {
+        window.location.href = target;
+      } else {
+        router.push(target);
+        router.refresh();
+      }
     },
   });
 
