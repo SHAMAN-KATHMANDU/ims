@@ -80,6 +80,12 @@ class InventoryController {
                     },
                   },
                 },
+                attributes: {
+                  include: {
+                    attributeType: { select: { name: true } },
+                    attributeValue: { select: { value: true } },
+                  },
+                },
                 photos: {
                   where: { isPrimary: true },
                   take: 1,

@@ -34,8 +34,8 @@ function parseDateValue(
  * Zod schema for Excel row data validation.
  * Column headers are matched case-insensitively.
  *
- * Required: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount
- * Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method
+ * Required: Showroom, Sold by, Product IMS code, Product Name, Quantity, MRP, Final amount
+ * Optional: SN, sale_id, Date of sale, Phone number, Attributes/Variation, Discount, Payment method
  */
 export const excelSaleRowSchema = z.object({
   sn: z
@@ -111,10 +111,12 @@ export const excelSaleRowSchema = z.object({
     }),
 
   variation: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val).trim())
-    .refine((val) => val !== "" && val !== "-", {
-      message: "Variation is required",
+    .union([z.string(), z.number(), z.null(), z.undefined()])
+    .optional()
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      const str = String(val).trim();
+      return str === "" || str === "-" ? null : str;
     }),
 
   quantity: z

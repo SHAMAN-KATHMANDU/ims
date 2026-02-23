@@ -119,6 +119,7 @@ interface SaleItem {
   subVariationName?: string;
   productName: string;
   imsCode: string;
+  attributeLabel?: string;
   unitPrice: number;
   quantity: number;
   maxQuantity: number;
@@ -265,7 +266,7 @@ export function NewSaleForm({
   const [discountMode, setDiscountMode] = useState<"individual" | "aggregate">(
     "individual",
   );
-  const [aggregateDiscountId, setAggregateDiscountId] =
+  const [_aggregateDiscountId, setAggregateDiscountId] =
     useState<string>("none");
   const [aggregateDiscountAmount, setAggregateDiscountAmount] =
     useState<number>(0);
@@ -342,6 +343,7 @@ export function NewSaleForm({
         variationId: i.variationId,
         subVariationId: i.subVariationId ?? undefined,
         quantity: i.quantity,
+        discountId: i.selectedDiscountId ?? undefined,
         promoCode: i.promoCode?.trim() || undefined,
       })),
     })
@@ -378,12 +380,14 @@ export function NewSaleForm({
       const subVariationName = item.subVariation?.name?.toLowerCase() || "";
       const categoryName =
         item.variation.product.category?.name?.toLowerCase() || "";
+      const attrValues = (item.variation.attributes ?? []).map((a) =>
+        a.attributeValue.value.toLowerCase(),
+      );
 
-      // Collect all searchable text fields
       const productFields = [productName, imsCode, categoryName].filter(
         Boolean,
       );
-      const variationFields = [subVariationName].filter(Boolean);
+      const variationFields = [subVariationName, ...attrValues].filter(Boolean);
       const allFields = [...productFields, ...variationFields];
 
       // For multi-word search: each word must match at least one field
@@ -460,6 +464,10 @@ export function NewSaleForm({
     );
     const defaultDiscountId =
       memberCheck?.isMember && memberDiscount ? memberDiscount.id : "none";
+    const attrLabel =
+      inventoryItem.variation.attributes
+        ?.map((a) => a.attributeValue.value)
+        .join(" / ") || "";
     setItems([
       ...items,
       {
@@ -468,6 +476,7 @@ export function NewSaleForm({
         subVariationName: inventoryItem.subVariation?.name,
         productName: inventoryItem.variation.product.name,
         imsCode: inventoryItem.variation.imsCode ?? "",
+        attributeLabel: attrLabel,
         unitPrice: Number(inventoryItem.variation.product.mrp),
         quantity: 1,
         maxQuantity: inventoryItem.quantity,
@@ -495,56 +504,39 @@ export function NewSaleForm({
     setItems(items.filter((_, i) => i !== index));
   };
 
-  // Calculate item-level discounts (for individual mode)
-  const calculateItemDiscount = (item: SaleItem): number => {
-    if (discountMode === "aggregate") return 0;
-
-    const itemSubtotal = item.unitPrice * item.quantity;
-
-    if (item.selectedDiscountId && item.availableDiscounts) {
-      const selectedDiscount = item.availableDiscounts.find(
-        (d) => d.id === item.selectedDiscountId,
-      );
-      if (selectedDiscount) {
-        if (selectedDiscount.valueType === "FLAT") {
-          return Math.min(selectedDiscount.value, itemSubtotal);
-        } else {
-          return itemSubtotal * (selectedDiscount.value / 100);
-        }
-      }
-    }
-
-    return 0;
-  };
-
-  // Calculate totals (all rounded to 2 decimal places)
+  // All totals come from the backend preview for consistency
   const subtotal =
+    previewResult?.subtotal ??
     Math.round(
       items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0) *
         100,
     ) / 100;
+  const totalDiscount = previewResult?.discount ?? 0;
+  const promoDiscount = previewResult?.promoDiscount ?? 0;
+  const expectedTotal =
+    previewResult?.total ??
+    Math.max(
+      0,
+      Math.round((subtotal - totalDiscount - promoDiscount) * 100) / 100,
+    );
 
-  // Calculate total discount
-  let totalDiscount = 0;
-  if (discountMode === "aggregate") {
-    if (aggregateDiscountAmount > 0) {
-      // Ensure discount doesn't exceed subtotal
-      totalDiscount =
-        Math.round(Math.min(aggregateDiscountAmount, subtotal) * 100) / 100;
-    } else if (aggregateDiscountId && aggregateDiscountId !== "none") {
-      // This would be used if we have aggregate discount options from API
-      // For now, we use the flat amount input
-    }
-  } else {
-    totalDiscount =
-      Math.round(
-        items.reduce((sum, item) => sum + calculateItemDiscount(item), 0) * 100,
-      ) / 100;
-  }
+  const getItemDiscountDisplay = (item: SaleItem): number => {
+    if (
+      discountMode !== "individual" ||
+      !item.selectedDiscountId ||
+      item.selectedDiscountId === "none"
+    )
+      return 0;
+    const disc = item.availableDiscounts?.find(
+      (d) => d.id === item.selectedDiscountId,
+    );
+    if (!disc) return 0;
+    const itemSub = item.unitPrice * item.quantity;
+    return disc.valueType === "FLAT"
+      ? Math.min(disc.value, itemSub)
+      : itemSub * (disc.value / 100);
+  };
 
-  const finalTotal = Math.round((subtotal - totalDiscount) * 100) / 100;
-  // Use backend preview total so payment always matches (includes promo + exact rounding)
-  const expectedTotal = previewResult?.total ?? finalTotal;
   const totalPayment =
     Math.round(
       payments.reduce((sum, payment) => sum + payment.amount, 0) * 100,
@@ -630,6 +622,7 @@ export function NewSaleForm({
         variationId: item.variationId,
         subVariationId: item.subVariationId ?? undefined,
         quantity: item.quantity,
+        discountId: item.selectedDiscountId ?? undefined,
         promoCode: item.promoCode?.trim() || undefined,
       })),
       notes: notes.trim() || undefined,
@@ -854,8 +847,12 @@ export function NewSaleForm({
                         ) : (
                           <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
                             {filteredInventory.map((inv) => {
+                              const attrLabel =
+                                inv.variation.attributes
+                                  ?.map((a) => a.attributeValue.value)
+                                  .join(" / ") || "";
                               const variantLabel = [
-                                inv.variation.imsCode,
+                                attrLabel,
                                 inv.subVariation?.name,
                               ]
                                 .filter(Boolean)
@@ -872,10 +869,14 @@ export function NewSaleForm({
                                   <div className="flex-1 min-w-0">
                                     <div className="font-medium text-sm">
                                       {inv.variation.product.name}
+                                      {variantLabel && (
+                                        <span className="text-muted-foreground font-normal ml-1.5">
+                                          — {variantLabel}
+                                        </span>
+                                      )}
                                     </div>
                                     <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                                      {inv.variation.imsCode} •{" "}
-                                      {variantLabel || "Default"}
+                                      {inv.variation.imsCode}
                                       {inv.variation.product.category?.name && (
                                         <span className="ml-2">
                                           •{" "}
@@ -1013,6 +1014,11 @@ export function NewSaleForm({
                               <div className="flex-1 min-w-0">
                                 <div className="font-semibold text-sm">
                                   {item.productName}
+                                  {item.attributeLabel && (
+                                    <span className="text-muted-foreground font-normal ml-1.5">
+                                      — {item.attributeLabel}
+                                    </span>
+                                  )}
                                 </div>
                                 <div className="text-xs text-muted-foreground font-mono mt-1">
                                   {item.imsCode}
@@ -1097,11 +1103,11 @@ export function NewSaleForm({
                                   )}
                                 </div>
                                 {discountMode === "individual" &&
-                                  calculateItemDiscount(item) > 0 && (
+                                  getItemDiscountDisplay(item) > 0 && (
                                     <div className="text-xs text-green-600 font-mono">
                                       -
                                       {formatCurrency(
-                                        calculateItemDiscount(item),
+                                        getItemDiscountDisplay(item),
                                       )}
                                     </div>
                                   )}

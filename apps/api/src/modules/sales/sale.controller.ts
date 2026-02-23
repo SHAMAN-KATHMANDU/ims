@@ -46,6 +46,7 @@ class SaleController {
           variationId: string;
           subVariationId?: string | null;
           quantity: number;
+          discountId?: string | null;
           promoCode?: string;
         }>;
         notes?: string;
@@ -249,75 +250,69 @@ class SaleController {
           });
         }
 
-        // Base price is current MRP / final selling price
         const unitPrice = Number(variation.product.mrp);
         const itemSubtotal = unitPrice * item.quantity;
         let discountPercent = 0;
         let discountAmount = 0;
 
-        // Determine base product discount based on sale type (member / non-member / wholesale)
-        const activeDiscounts = variation.product.discounts;
-        let baseDiscount:
-          | ((typeof activeDiscounts)[number] & {
-              discountType: { name: string };
-            })
-          | null = null;
+        // Use frontend-selected discount if provided, otherwise auto-select
+        const activeDiscounts = variation.product.discounts as Array<
+          (typeof variation.product.discounts)[number] & {
+            discountType: { name: string };
+          }
+        >;
 
-        // Helper to choose the highest-priority discount
-        if (activeDiscounts && activeDiscounts.length > 0) {
-          // Prioritise "Special", then by highest effective value
-          const withTypes = activeDiscounts as Array<
-            (typeof activeDiscounts)[number] & {
-              discountType: { name: string };
-            }
-          >;
+        let baseDiscount: (typeof activeDiscounts)[number] | null = null;
 
-          const eligible = withTypes.filter((d) => {
-            const typeName = d.discountType.name.toLowerCase();
-            if (saleType === "MEMBER") {
-              return (
-                typeName.includes("member") || typeName.includes("non-member")
-              );
-            }
-            // Non-member sale
-            return (
-              typeName.includes("non-member") || typeName.includes("wholesale")
-            );
-          });
-
-          if (eligible.length > 0) {
-            eligible.sort((a, b) => {
-              const aIsSpecial =
-                a.discountType.name.toLowerCase() === "special" ? 1 : 0;
-              const bIsSpecial =
-                b.discountType.name.toLowerCase() === "special" ? 1 : 0;
-
-              if (aIsSpecial !== bIsSpecial) {
-                return bIsSpecial - aIsSpecial;
+        if (item.discountId && item.discountId !== "none") {
+          baseDiscount =
+            activeDiscounts?.find((d) => d.id === item.discountId) ?? null;
+        } else if (!item.discountId) {
+          // Auto-select fallback (no discountId sent at all -- e.g. bulk upload)
+          if (activeDiscounts && activeDiscounts.length > 0) {
+            const eligible = activeDiscounts.filter((d) => {
+              const typeName = d.discountType.name.toLowerCase();
+              if (saleType === "MEMBER") {
+                return (
+                  typeName.includes("member") || typeName.includes("non-member")
+                );
               }
-
-              // Compare effective discount value (percentage vs flat)
-              const aValue =
-                a.valueType === "FLAT"
-                  ? Number(a.value)
-                  : (Number(a.value) / 100) * itemSubtotal;
-              const bValue =
-                b.valueType === "FLAT"
-                  ? Number(b.value)
-                  : (Number(b.value) / 100) * itemSubtotal;
-
-              return bValue - aValue;
+              return (
+                typeName.includes("non-member") ||
+                typeName.includes("wholesale")
+              );
             });
-
-            baseDiscount = eligible[0];
+            if (eligible.length > 0) {
+              eligible.sort((a, b) => {
+                const aIsSpecial =
+                  a.discountType.name.toLowerCase() === "special" ? 1 : 0;
+                const bIsSpecial =
+                  b.discountType.name.toLowerCase() === "special" ? 1 : 0;
+                if (aIsSpecial !== bIsSpecial) return bIsSpecial - aIsSpecial;
+                const aValue =
+                  a.valueType === "FLAT"
+                    ? Number(a.value)
+                    : (Number(a.value) / 100) * itemSubtotal;
+                const bValue =
+                  b.valueType === "FLAT"
+                    ? Number(b.value)
+                    : (Number(b.value) / 100) * itemSubtotal;
+                return bValue - aValue;
+              });
+              baseDiscount = eligible[0];
+            }
           }
         }
+        // discountId === "none" means user explicitly chose no discount
 
         if (baseDiscount) {
+          const val =
+            Number(baseDiscount.value) ||
+            Number(baseDiscount.discountPercentage);
           if (baseDiscount.valueType === "FLAT") {
-            discountAmount += Number(baseDiscount.value);
+            discountAmount += val;
           } else {
-            discountPercent += Number(baseDiscount.value);
+            discountPercent += val;
           }
         }
 
@@ -497,6 +492,12 @@ class SaleController {
                     product: {
                       select: { id: true, name: true },
                     },
+                    attributes: {
+                      include: {
+                        attributeType: { select: { name: true } },
+                        attributeValue: { select: { value: true } },
+                      },
+                    },
                   },
                 },
                 subVariation: { select: { id: true, name: true } },
@@ -616,6 +617,7 @@ class SaleController {
           variationId: string;
           subVariationId?: string | null;
           quantity: number;
+          discountId?: string | null;
           promoCode?: string;
         }>;
       } = req.body;
@@ -747,45 +749,53 @@ class SaleController {
         >;
         let baseDiscount: (typeof activeDiscounts)[number] | null = null;
 
-        if (activeDiscounts?.length > 0) {
-          const eligible = activeDiscounts.filter((d) => {
-            const typeName = d.discountType.name.toLowerCase();
-            if (saleType === "MEMBER") {
+        if (item.discountId && item.discountId !== "none") {
+          baseDiscount =
+            activeDiscounts?.find((d) => d.id === item.discountId) ?? null;
+        } else if (!item.discountId) {
+          if (activeDiscounts?.length > 0) {
+            const eligible = activeDiscounts.filter((d) => {
+              const typeName = d.discountType.name.toLowerCase();
+              if (saleType === "MEMBER") {
+                return (
+                  typeName.includes("member") || typeName.includes("non-member")
+                );
+              }
               return (
-                typeName.includes("member") || typeName.includes("non-member")
+                typeName.includes("non-member") ||
+                typeName.includes("wholesale")
               );
-            }
-            return (
-              typeName.includes("non-member") || typeName.includes("wholesale")
-            );
-          });
-
-          if (eligible.length > 0) {
-            eligible.sort((a, b) => {
-              const aIsSpecial =
-                a.discountType.name.toLowerCase() === "special" ? 1 : 0;
-              const bIsSpecial =
-                b.discountType.name.toLowerCase() === "special" ? 1 : 0;
-              if (aIsSpecial !== bIsSpecial) return bIsSpecial - aIsSpecial;
-              const aValue =
-                a.valueType === "FLAT"
-                  ? Number(a.value)
-                  : (Number(a.value) / 100) * itemSubtotal;
-              const bValue =
-                b.valueType === "FLAT"
-                  ? Number(b.value)
-                  : (Number(b.value) / 100) * itemSubtotal;
-              return bValue - aValue;
             });
-            baseDiscount = eligible[0];
+            if (eligible.length > 0) {
+              eligible.sort((a, b) => {
+                const aIsSpecial =
+                  a.discountType.name.toLowerCase() === "special" ? 1 : 0;
+                const bIsSpecial =
+                  b.discountType.name.toLowerCase() === "special" ? 1 : 0;
+                if (aIsSpecial !== bIsSpecial) return bIsSpecial - aIsSpecial;
+                const aValue =
+                  a.valueType === "FLAT"
+                    ? Number(a.value)
+                    : (Number(a.value) / 100) * itemSubtotal;
+                const bValue =
+                  b.valueType === "FLAT"
+                    ? Number(b.value)
+                    : (Number(b.value) / 100) * itemSubtotal;
+                return bValue - aValue;
+              });
+              baseDiscount = eligible[0];
+            }
           }
         }
 
         if (baseDiscount) {
+          const val =
+            Number(baseDiscount.value) ||
+            Number(baseDiscount.discountPercentage);
           if (baseDiscount.valueType === "FLAT") {
-            discountAmount += Number(baseDiscount.value);
+            discountAmount += val;
           } else {
-            discountPercent += Number(baseDiscount.value);
+            discountPercent += val;
           }
         }
 
@@ -1116,6 +1126,12 @@ class SaleController {
                       category: true,
                     },
                   },
+                  attributes: {
+                    include: {
+                      attributeType: { select: { name: true } },
+                      attributeValue: { select: { value: true } },
+                    },
+                  },
                   photos: {
                     where: { isPrimary: true },
                     take: 1,
@@ -1223,6 +1239,12 @@ class SaleController {
                       id: true,
                       name: true,
                       category: true,
+                    },
+                  },
+                  attributes: {
+                    include: {
+                      attributeType: { select: { name: true } },
+                      attributeValue: { select: { value: true } },
                     },
                   },
                   photos: { where: { isPrimary: true }, take: 1 },
@@ -1527,7 +1549,14 @@ class SaleController {
           "product",
           "productnamr",
         ],
-        variation: ["variation", "design", "variations", "variant"],
+        variation: [
+          "variation",
+          "design",
+          "variations",
+          "variant",
+          "attributes",
+          "attribute",
+        ],
         quantity: ["quantity", "qty", "qty"],
         mrp: ["mrp", "price", "unitprice", "unit_price"],
         discount: ["discount", "discountpercent", "discount_percent"],
@@ -1546,7 +1575,6 @@ class SaleController {
         "soldBy",
         "productImsCode",
         "productName",
-        "variation",
         "quantity",
         "mrp",
         "finalAmount",
@@ -1609,7 +1637,7 @@ class SaleController {
             message: "Missing required columns in CSV file",
             missingColumns,
             foundColumns: Object.keys(csvColumnMap),
-            hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
+            hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
             summary: { total: 0, created: 0, skipped: 0, errors: 0 },
             created: [],
             skipped: [],
@@ -1724,7 +1752,7 @@ class SaleController {
             message: "Missing required columns in Excel file",
             missingColumns,
             foundColumns: Object.keys(columnMap),
-            hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Variation, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
+            hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
             summary: { total: 0, created: 0, skipped: 0, errors: 0 },
             created: [],
             skipped: [],
@@ -1989,9 +2017,9 @@ class SaleController {
             if (!variation) {
               errors.push({
                 row: rows.indexOf(itemRow) + 2,
-                field: "variation",
-                message: `Variation "${itemRow.variation}" not found for product "${itemRow.productName}"`,
-                value: itemRow.variation,
+                field: "productImsCode",
+                message: `Variation with IMS code "${itemRow.productImsCode}" not found for product "${itemRow.productName}"`,
+                value: itemRow.productImsCode,
               });
               continue;
             }
@@ -2145,7 +2173,7 @@ class SaleController {
         { header: "Sold By", width: 14 },
         { header: "Product IMS Code", width: 18 },
         { header: "Product Name", width: 22 },
-        { header: "Variation", width: 14 },
+        { header: "Attributes", width: 22 },
         { header: "Quantity", width: 10 },
         { header: "MRP", width: 10 },
         { header: "Discount", width: 10 },
@@ -2161,7 +2189,7 @@ class SaleController {
         "Required",
         "Required",
         "Required",
-        "Required",
+        "Optional (e.g. Red / M)",
         "Required",
         "Required",
         "Optional",
@@ -2251,6 +2279,12 @@ class SaleController {
                       category: true,
                     },
                   },
+                  attributes: {
+                    include: {
+                      attributeType: { select: { name: true } },
+                      attributeValue: { select: { value: true } },
+                    },
+                  },
                 },
               },
               subVariation: { select: { id: true, name: true } },
@@ -2334,12 +2368,22 @@ class SaleController {
           } else {
             for (const item of sale.items) {
               const product = item.variation.product;
+              const attrLabel =
+                (item.variation as any).attributes
+                  ?.map(
+                    (a: any) =>
+                      `${a.attributeType.name}: ${a.attributeValue.value}`,
+                  )
+                  .join(", ") || "";
+              const variationDisplay = attrLabel
+                ? `${item.variation.imsCode} (${attrLabel})`
+                : item.variation.imsCode;
               rows.push({
                 ...saleContext,
                 productImsCode: item.variation.imsCode,
                 productName: product.name,
                 category: product.category?.name ?? "",
-                variation: item.variation.imsCode,
+                variation: variationDisplay,
                 quantity: item.quantity,
                 unitPrice: Number(item.unitPrice),
                 totalMrp: Number(item.totalMrp),
@@ -2372,7 +2416,7 @@ class SaleController {
         { header: "Product IMS Code", key: "productImsCode", width: 18 },
         { header: "Product Name", key: "productName", width: 30 },
         { header: "Category", key: "category", width: 18 },
-        { header: "Variation", key: "variation", width: 15 },
+        { header: "Attributes", key: "variation", width: 30 },
         { header: "Quantity", key: "quantity", width: 10 },
         { header: "Unit Price", key: "unitPrice", width: 12 },
         { header: "Total MRP", key: "totalMrp", width: 12 },

@@ -34,6 +34,10 @@ export interface LocationInventoryItem {
         name: string;
       };
     };
+    attributes?: Array<{
+      attributeType: { name: string };
+      attributeValue: { value: string };
+    }>;
     photos?: Array<{
       id: string;
       photoUrl: string;

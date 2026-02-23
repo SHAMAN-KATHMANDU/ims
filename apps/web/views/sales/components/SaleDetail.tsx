@@ -216,7 +216,15 @@ export function SaleDetail({
                             <div className="font-medium">
                               {item.variation.product.name}
                             </div>
-                            <div className="text-sm text-muted-foreground">
+                            {item.variation.attributes &&
+                              item.variation.attributes.length > 0 && (
+                                <div className="text-xs text-muted-foreground mt-0.5">
+                                  {item.variation.attributes
+                                    .map((a) => a.attributeValue.value)
+                                    .join(" / ")}
+                                </div>
+                              )}
+                            <div className="text-xs text-muted-foreground font-mono mt-0.5">
                               {item.variation.imsCode}
                             </div>
                           </div>

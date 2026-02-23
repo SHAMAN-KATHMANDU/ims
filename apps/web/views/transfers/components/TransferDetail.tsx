@@ -146,24 +146,35 @@ export function TransferDetail({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {transfer.items?.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell>
-                            <div>
-                              <p className="font-medium">
-                                {item.variation.product.name}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {item.variation.imsCode}
-                              </p>
-                            </div>
-                          </TableCell>
-                          <TableCell>{item.variation.imsCode}</TableCell>
-                          <TableCell className="text-right font-medium">
-                            {item.quantity}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {transfer.items?.map((item) => {
+                        const attrLabel =
+                          item.variation.attributes
+                            ?.map((a) => a.attributeValue.value)
+                            .join(" / ") || "";
+                        return (
+                          <TableRow key={item.id}>
+                            <TableCell>
+                              <div>
+                                <p className="font-medium">
+                                  {item.variation.product.name}
+                                  {attrLabel && (
+                                    <span className="text-muted-foreground font-normal ml-1.5">
+                                      — {attrLabel}
+                                    </span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-muted-foreground font-mono">
+                                  {item.variation.imsCode}
+                                </p>
+                              </div>
+                            </TableCell>
+                            <TableCell>{item.variation.imsCode}</TableCell>
+                            <TableCell className="text-right font-medium">
+                              {item.quantity}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>

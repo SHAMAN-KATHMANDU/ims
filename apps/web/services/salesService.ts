@@ -47,6 +47,10 @@ export interface SaleItem {
         name: string;
       };
     };
+    attributes?: Array<{
+      attributeType: { name: string };
+      attributeValue: { value: string };
+    }>;
     photos?: {
       id: string;
       photoUrl: string;
@@ -121,6 +125,7 @@ export interface CreateSaleItem {
   variationId: string;
   subVariationId?: string | null;
   quantity: number;
+  discountId?: string | null;
   promoCode?: string;
 }
 
@@ -369,6 +374,7 @@ export async function previewSale(
     items: data.items.map((i) => ({
       variationId: i.variationId,
       quantity: i.quantity,
+      discountId: i.discountId ?? undefined,
       promoCode: i.promoCode,
     })),
   });

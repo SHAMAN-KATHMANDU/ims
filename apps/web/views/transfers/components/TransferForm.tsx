@@ -42,6 +42,7 @@ interface TransferItem {
   subVariationName?: string;
   productName: string;
   imsCode: string;
+  attributeLabel?: string;
   quantity: number;
   availableQuantity: number;
 }
@@ -59,6 +60,10 @@ interface InventoryItem {
       id: string;
       name: string;
     };
+    attributes?: Array<{
+      attributeType: { name: string };
+      attributeValue: { value: string };
+    }>;
   };
 }
 
@@ -151,6 +156,10 @@ export function TransferForm({
         setItems(newItems);
       }
     } else {
+      const attrLabel =
+        inventoryItem.variation.attributes
+          ?.map((a) => a.attributeValue.value)
+          .join(" / ") || "";
       setItems([
         ...items,
         {
@@ -159,6 +168,7 @@ export function TransferForm({
           subVariationName: inventoryItem.subVariation?.name,
           productName: inventoryItem.variation.product.name,
           imsCode: inventoryItem.variation.imsCode,
+          attributeLabel: attrLabel,
           quantity: parsedQuantity,
           availableQuantity: inventoryItem.quantity,
         },
@@ -327,7 +337,11 @@ export function TransferForm({
                     .filter((inv) => inv.quantity > 0)
                     .map((inv) => (
                       <SelectItem key={inv.id} value={inv.id}>
-                        {inv.variation.product.name} - {inv.variation.imsCode}
+                        {inv.variation.product.name}
+                        {inv.variation.attributes?.length
+                          ? ` — ${inv.variation.attributes.map((a) => a.attributeValue.value).join(" / ")}`
+                          : ""}{" "}
+                        [{inv.variation.imsCode}]
                         {inv.subVariation?.name
                           ? ` / ${inv.subVariation.name}`
                           : ""}{" "}
@@ -378,6 +392,11 @@ export function TransferForm({
                     >
                       <TableCell className="font-medium">
                         {item.productName}
+                        {item.attributeLabel && (
+                          <span className="text-muted-foreground font-normal ml-1.5">
+                            — {item.attributeLabel}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell>
                         {item.imsCode}

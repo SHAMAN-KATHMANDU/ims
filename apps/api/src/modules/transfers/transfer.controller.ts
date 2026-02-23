@@ -209,6 +209,12 @@ class TransferController {
                   product: {
                     select: { id: true, name: true },
                   },
+                  attributes: {
+                    include: {
+                      attributeType: { select: { name: true } },
+                      attributeValue: { select: { value: true } },
+                    },
+                  },
                 },
               },
               subVariation: { select: { id: true, name: true } },
@@ -388,6 +394,12 @@ class TransferController {
                       category: true,
                     },
                   },
+                  attributes: {
+                    include: {
+                      attributeType: { select: { name: true } },
+                      attributeValue: { select: { value: true } },
+                    },
+                  },
                   photos: {
                     where: { isPrimary: true },
                     take: 1,
@@ -505,6 +517,12 @@ class TransferController {
               variation: {
                 include: {
                   product: { select: { id: true, name: true } },
+                  attributes: {
+                    include: {
+                      attributeType: { select: { name: true } },
+                      attributeValue: { select: { value: true } },
+                    },
+                  },
                 },
               },
               subVariation: { select: { id: true, name: true } },
@@ -589,6 +607,12 @@ class TransferController {
               variation: {
                 include: {
                   product: { select: { id: true, name: true } },
+                  attributes: {
+                    include: {
+                      attributeType: { select: { name: true } },
+                      attributeValue: { select: { value: true } },
+                    },
+                  },
                 },
               },
               subVariation: { select: { id: true, name: true } },
@@ -688,6 +712,12 @@ class TransferController {
               variation: {
                 include: {
                   product: { select: { id: true, name: true } },
+                  attributes: {
+                    include: {
+                      attributeType: { select: { name: true } },
+                      attributeValue: { select: { value: true } },
+                    },
+                  },
                 },
               },
               subVariation: { select: { id: true, name: true } },

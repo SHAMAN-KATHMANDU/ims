@@ -177,11 +177,15 @@ class ProductController {
             ? parseDate(discount.endDate)?.toJSDate() || null
             : null;
 
+          const pct = parseFloat(discount.discountPercentage.toString());
           resolvedDiscounts.push({
             discountTypeId: discountType.id,
-            discountPercentage: parseFloat(
-              discount.discountPercentage.toString(),
-            ),
+            discountPercentage: pct,
+            valueType: discount.valueType || "PERCENTAGE",
+            value:
+              discount.value != null
+                ? parseFloat(discount.value.toString())
+                : pct,
             startDate: startDate,
             endDate: endDate,
             isActive:
@@ -356,9 +360,9 @@ class ProductController {
               ? {
                   create: resolvedDiscounts.map((discount: any) => ({
                     discountTypeId: discount.discountTypeId,
-                    discountPercentage: parseFloat(
-                      discount.discountPercentage.toString(),
-                    ),
+                    discountPercentage: discount.discountPercentage,
+                    valueType: discount.valueType || "PERCENTAGE",
+                    value: discount.value ?? discount.discountPercentage,
                     startDate: discount.startDate
                       ? parseDate(discount.startDate)?.toJSDate() || null
                       : null,
@@ -1108,11 +1112,15 @@ class ProductController {
               ? parseDate(discount.endDate)?.toJSDate() || null
               : null;
 
+            const pct = parseFloat(discount.discountPercentage.toString());
             resolvedDiscounts.push({
               discountTypeId: discountType.id,
-              discountPercentage: parseFloat(
-                discount.discountPercentage.toString(),
-              ),
+              discountPercentage: pct,
+              valueType: discount.valueType || "PERCENTAGE",
+              value:
+                discount.value != null
+                  ? parseFloat(discount.value.toString())
+                  : pct,
               startDate: startDate,
               endDate: endDate,
               isActive:
@@ -1573,32 +1581,26 @@ class ProductController {
         ],
       });
 
-      // Format the response (discount includes discountType from Prisma include)
       type DiscountWithType = (typeof discounts)[number];
-      const formattedDiscounts = discounts.map(
-        (discount: DiscountWithType) => ({
+      const formattedDiscounts = discounts.map((discount: DiscountWithType) => {
+        const dt = (
+          discount as DiscountWithType & {
+            discountType: { id: string; name: string };
+          }
+        ).discountType;
+        const effectiveValue =
+          Number(discount.value) || Number(discount.discountPercentage);
+        return {
           id: discount.id,
-          name: (
-            discount as DiscountWithType & {
-              discountType: { id: string; name: string };
-            }
-          ).discountType.name,
-          value: Number(discount.value),
+          name: dt.name,
+          value: effectiveValue,
           valueType: discount.valueType,
-          discountType: (
-            discount as DiscountWithType & {
-              discountType: { id: string; name: string };
-            }
-          ).discountType.name,
-          discountTypeId: (
-            discount as DiscountWithType & {
-              discountType: { id: string; name: string };
-            }
-          ).discountType.id,
+          discountType: dt.name,
+          discountTypeId: dt.id,
           startDate: discount.startDate,
           endDate: discount.endDate,
-        }),
-      );
+        };
+      });
 
       res.status(200).json({
         message: "Product discounts fetched successfully",
@@ -2372,6 +2374,8 @@ class ProductController {
               discounts.push({
                 discountTypeId,
                 discountPercentage: firstRow.nonMemberDiscount,
+                valueType: "PERCENTAGE" as const,
+                value: firstRow.nonMemberDiscount,
                 isActive: true,
               });
             }
@@ -2390,6 +2394,8 @@ class ProductController {
               discounts.push({
                 discountTypeId,
                 discountPercentage: firstRow.memberDiscount,
+                valueType: "PERCENTAGE" as const,
+                value: firstRow.memberDiscount,
                 isActive: true,
               });
             }
@@ -2408,6 +2414,8 @@ class ProductController {
               discounts.push({
                 discountTypeId,
                 discountPercentage: firstRow.wholesaleDiscount,
+                valueType: "PERCENTAGE" as const,
+                value: firstRow.wholesaleDiscount,
                 isActive: true,
               });
             }
