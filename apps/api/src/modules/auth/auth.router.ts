@@ -16,7 +16,7 @@ import {
 const authRouter = Router();
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: env.isDev ? 30 : 5,
+  max: env.isTest ? 5 : env.isDev ? 30 : 15,
   standardHeaders: true,
   legacyHeaders: false,
 });
