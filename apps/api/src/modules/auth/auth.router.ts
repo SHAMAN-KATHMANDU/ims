@@ -1,5 +1,6 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
+import { env } from "@/config/env";
 import authController from "@/modules/auth/auth.controller";
 import verifyToken from "@/middlewares/authMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -15,7 +16,7 @@ import {
 const authRouter = Router();
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
+  max: env.isDev ? 30 : 5,
   standardHeaders: true,
   legacyHeaders: false,
 });
