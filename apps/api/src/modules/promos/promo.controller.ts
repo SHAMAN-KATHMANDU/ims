@@ -41,8 +41,10 @@ class PromoController {
         return res.status(400).json({ message: "Valid value is required" });
       }
 
+      const tenantId = req.user!.tenantId;
+
       const existing = await prisma.promoCode.findFirst({
-        where: { code },
+        where: { tenantId, code },
       });
       if (existing) {
         return res
@@ -51,6 +53,7 @@ class PromoController {
       }
 
       const resolvedProductIds = await PromoController.resolveTargetProductIds({
+        tenantId,
         applyToAll,
         categoryIds,
         subCategories,
@@ -103,6 +106,7 @@ class PromoController {
   // Get all promo codes
   async getAllPromos(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -128,7 +132,7 @@ class PromoController {
         createdAt: "desc",
       };
 
-      const where: any = {};
+      const where: any = { tenantId, deletedAt: null };
       if (search) {
         where.OR = [
           { code: { contains: search, mode: "insensitive" } },
@@ -174,12 +178,13 @@ class PromoController {
   // Get promo by ID
   async getPromoById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
 
-      const promo = await prisma.promoCode.findUnique({
-        where: { id },
+      const promo = await prisma.promoCode.findFirst({
+        where: { id, tenantId },
         include: {
           products: {
             include: {
@@ -207,11 +212,14 @@ class PromoController {
   // Update promo code
   async updatePromo(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
 
-      const existing = await prisma.promoCode.findUnique({ where: { id } });
+      const existing = await prisma.promoCode.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Promo code not found" });
       }
@@ -298,6 +306,7 @@ class PromoController {
         ) {
           const resolvedProductIds =
             await PromoController.resolveTargetProductIds({
+              tenantId,
               applyToAll,
               categoryIds,
               subCategories,
@@ -342,12 +351,14 @@ class PromoController {
   }
 
   private static async resolveTargetProductIds(params: {
+    tenantId: string;
     applyToAll?: boolean;
     categoryIds?: string[];
     subCategories?: string[];
     explicitProductIds?: string[];
   }): Promise<string[]> {
     const {
+      tenantId,
       applyToAll,
       categoryIds,
       subCategories,
@@ -358,6 +369,7 @@ class PromoController {
 
     if (applyToAll) {
       const allProducts = await prisma.product.findMany({
+        where: { tenantId },
         select: { id: true },
       });
       allProducts.forEach((p) => ids.add(p.id));
@@ -374,7 +386,7 @@ class PromoController {
 
     if (orConditions.length > 0) {
       const filteredProducts = await prisma.product.findMany({
-        where: { OR: orConditions },
+        where: { tenantId, OR: orConditions },
         select: { id: true },
       });
       filteredProducts.forEach((p) => ids.add(p.id));
@@ -386,11 +398,14 @@ class PromoController {
   // Soft delete / deactivate promo code
   async deletePromo(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
 
-      const existing = await prisma.promoCode.findUnique({ where: { id } });
+      const existing = await prisma.promoCode.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Promo code not found" });
       }

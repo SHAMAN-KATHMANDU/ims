@@ -324,7 +324,7 @@ class SaleController {
         // Apply promo code logic (per product, processed after base discounts)
         if (item.promoCode) {
           const promo = await prisma.promoCode.findFirst({
-            where: { code: item.promoCode },
+            where: { tenantId: req.user!.tenantId, code: item.promoCode },
             include: {
               products: {
                 include: { product: true },
@@ -339,9 +339,12 @@ class SaleController {
               (!promo.validTo || promo.validTo >= now) &&
               (!promo.usageLimit || promo.usageCount < promo.usageLimit)
             ) {
-              const isProductEligible = promo.products.some(
-                (pp) => pp.productId === variation.productId,
-              );
+              // Empty products list = applies to all products
+              const isProductEligible =
+                promo.products.length === 0 ||
+                promo.products.some(
+                  (pp) => pp.productId === variation.productId,
+                );
 
               let isCustomerEligible = false;
               if (promo.eligibility === "ALL") {
@@ -351,7 +354,6 @@ class SaleController {
               } else if (promo.eligibility === "NON_MEMBER") {
                 isCustomerEligible = saleType === "GENERAL";
               } else if (promo.eligibility === "WHOLESALE") {
-                // Placeholder for future wholesale logic
                 isCustomerEligible = false;
               }
 
@@ -369,14 +371,11 @@ class SaleController {
                 }
 
                 if (promo.overrideDiscounts) {
-                  // Promo overrides existing discounts
                   discountAmount = promoDiscountAmount;
                   discountPercent = 0;
                 } else if (promo.allowStacking) {
-                  // Promo stacks on top of existing discounts
                   discountAmount += promoDiscountAmount;
                 } else {
-                  // Default behaviour: choose the better of base vs promo
                   const baseTotalDiscount =
                     discountAmount + itemSubtotal * (discountPercent / 100);
                   if (promoDiscountAmount > baseTotalDiscount) {
@@ -792,7 +791,7 @@ class SaleController {
 
         if (item.promoCode) {
           const promo = await prisma.promoCode.findFirst({
-            where: { code: item.promoCode },
+            where: { tenantId: req.user!.tenantId, code: item.promoCode },
             include: {
               products: { include: { product: true } },
             },
@@ -805,10 +804,12 @@ class SaleController {
               (!promo.validTo || promo.validTo >= now) &&
               (!promo.usageLimit || promo.usageCount < promo.usageLimit)
             ) {
-              const isProductEligible = promo.products.some(
-                (pp: { productId: string }) =>
-                  pp.productId === variation.productId,
-              );
+              const isProductEligible =
+                promo.products.length === 0 ||
+                promo.products.some(
+                  (pp: { productId: string }) =>
+                    pp.productId === variation.productId,
+                );
               let isCustomerEligible = false;
               if (promo.eligibility === "ALL") isCustomerEligible = true;
               else if (promo.eligibility === "MEMBER")

@@ -66,8 +66,8 @@ export const excelProductRowSchema = z
         message: "Values is required (comma-separated values, e.g. red, M)",
       }),
 
-    // Column H: MATERIAL
-    material: z
+    // Column H: Description
+    description: z
       .union([z.string(), z.number(), z.null(), z.undefined()])
       .optional()
       .transform((val) => {

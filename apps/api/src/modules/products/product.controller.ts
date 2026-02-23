@@ -1424,6 +1424,7 @@ class ProductController {
   // Get all product discounts with filters, sort, search (for discounts page)
   async getAllProductDiscounts(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -1432,7 +1433,7 @@ class ProductController {
       const subCategoryId = req.query.subCategoryId as string | undefined;
       const discountTypeId = req.query.discountTypeId as string | undefined;
 
-      const where: any = {};
+      const where: any = { product: { tenantId } };
       if (productId) where.productId = productId;
       if (categoryId || subCategoryId) {
         where.product = {};
@@ -1521,6 +1522,7 @@ class ProductController {
   // Get active discounts for a product
   async getProductDiscounts(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const rawId = req.params.id;
       const id = Array.isArray(rawId) ? rawId[0] : rawId;
 
@@ -1528,9 +1530,9 @@ class ProductController {
         return res.status(400).json({ message: "Product ID is required" });
       }
 
-      // Check if product exists
-      const product = await prisma.product.findUnique({
-        where: { id },
+      // Check if product exists (tenant-scoped)
+      const product = await prisma.product.findFirst({
+        where: { id, tenantId },
         select: { id: true, name: true },
       });
 
@@ -1651,7 +1653,7 @@ class ProductController {
         name: ["nameofproduct", "name", "productname", "product_name"],
         attributes: ["attributes", "attribute"],
         values: ["values", "value"],
-        material: ["material"],
+        description: ["description", "material", "desc"],
         length: ["length"],
         breadth: ["breadth", "bredth", "width"],
         height: ["height"],
@@ -1785,7 +1787,7 @@ class ProductController {
             name: getCellValue("name"),
             attributes: getCellValue("attributes"),
             values: getCellValue("values"),
-            material: getCellValue("material"),
+            description: getCellValue("description"),
             length: getCellValue("length"),
             breadth: getCellValue("breadth"),
             height: getCellValue("height"),
@@ -1938,7 +1940,7 @@ class ProductController {
             name: getCellValue("name"),
             attributes: getCellValue("attributes"),
             values: getCellValue("values"),
-            material: getCellValue("material"),
+            description: getCellValue("description"),
             length: getCellValue("length"),
             breadth: getCellValue("breadth"),
             height: getCellValue("height"),
@@ -2417,7 +2419,7 @@ class ProductController {
               tenantId: req.user!.tenantId,
               name: firstRow.name,
               categoryId,
-              description: firstRow.material || null,
+              description: firstRow.description || null,
               length: firstRow.length,
               breadth: firstRow.breadth,
               height: firstRow.height,
@@ -2587,7 +2589,7 @@ class ProductController {
         { header: "Name of Product", width: 28 },
         { header: "Attributes", width: 22 },
         { header: "Values", width: 22 },
-        { header: "Material", width: 15 },
+        { header: "Description", width: 25 },
         { header: "Length", width: 10 },
         { header: "Breadth", width: 10 },
         { header: "Height", width: 10 },
@@ -2649,7 +2651,7 @@ class ProductController {
           "Cotton T-Shirt",
           "color",
           "red",
-          "Cotton",
+          "Lightweight cotton t-shirt",
           null,
           null,
           null,
@@ -2671,7 +2673,7 @@ class ProductController {
           "Cotton T-Shirt",
           "color",
           "blue",
-          "Cotton",
+          "Lightweight cotton t-shirt",
           null,
           null,
           null,
@@ -2693,7 +2695,7 @@ class ProductController {
           "Formal Shirt",
           "color, size",
           "red, M",
-          "Cotton",
+          "Slim fit formal shirt",
           72,
           56,
           2,
@@ -2715,7 +2717,7 @@ class ProductController {
           "Formal Shirt",
           "color, size",
           "blue, L",
-          "Cotton",
+          "Slim fit formal shirt",
           null,
           null,
           null,
@@ -2737,7 +2739,7 @@ class ProductController {
           "Hoodie",
           "color, material, size",
           "red, cotton, 32-33-34-35",
-          "Polyester",
+          "Pullover hoodie with kangaroo pocket",
           70,
           60,
           1.5,
@@ -2759,7 +2761,7 @@ class ProductController {
           "Hoodie",
           "color, material, size",
           "blue, pasmina, 32-33-34-35",
-          "Polyester",
+          "Pullover hoodie with kangaroo pocket",
           null,
           null,
           null,
