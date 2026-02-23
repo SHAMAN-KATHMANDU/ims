@@ -41,7 +41,7 @@ interface TransferItem {
   subVariationId?: string | null;
   subVariationName?: string;
   productName: string;
-  color: string;
+  imsCode: string;
   quantity: number;
   availableQuantity: number;
 }
@@ -55,7 +55,6 @@ interface InventoryItem {
   variation: {
     id: string;
     imsCode: string;
-    color: string;
     product: {
       id: string;
       name: string;
@@ -159,7 +158,7 @@ export function TransferForm({
           subVariationId: inventoryItem.subVariationId ?? undefined,
           subVariationName: inventoryItem.subVariation?.name,
           productName: inventoryItem.variation.product.name,
-          color: inventoryItem.variation.color,
+          imsCode: inventoryItem.variation.imsCode,
           quantity: parsedQuantity,
           availableQuantity: inventoryItem.quantity,
         },
@@ -328,7 +327,7 @@ export function TransferForm({
                     .filter((inv) => inv.quantity > 0)
                     .map((inv) => (
                       <SelectItem key={inv.id} value={inv.id}>
-                        {inv.variation.product.name} - {inv.variation.color}
+                        {inv.variation.product.name} - {inv.variation.imsCode}
                         {inv.subVariation?.name
                           ? ` / ${inv.subVariation.name}`
                           : ""}{" "}
@@ -367,7 +366,7 @@ export function TransferForm({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
-                    <TableHead>Color</TableHead>
+                    <TableHead>IMS Code</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
@@ -381,7 +380,7 @@ export function TransferForm({
                         {item.productName}
                       </TableCell>
                       <TableCell>
-                        {item.color}
+                        {item.imsCode}
                         {item.subVariationName
                           ? ` / ${item.subVariationName}`
                           : ""}

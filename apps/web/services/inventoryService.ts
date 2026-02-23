@@ -25,7 +25,6 @@ export interface LocationInventoryItem {
   variation: {
     id: string;
     imsCode: string;
-    color: string;
     product: {
       id: string;
       name: string;
@@ -69,7 +68,7 @@ export interface ProductStockByLocation {
   };
   variations: Array<{
     variationId: string;
-    color: string;
+    imsCode: string;
     subVariationId?: string;
     subVariation?: { id: string; name: string };
     quantity: number;
@@ -259,7 +258,7 @@ export async function adjustInventory(data: AdjustInventoryData): Promise<{
   locationId: string;
   locationName: string;
   product: { id: string; imsCode: string; name: string };
-  color: string;
+  imsCode: string;
   previousQuantity: number;
   adjustmentAmount: number;
   newQuantity: number;
@@ -282,7 +281,7 @@ export async function adjustInventory(data: AdjustInventoryData): Promise<{
         locationId: string;
         locationName: string;
         product: { id: string; imsCode: string; name: string };
-        color: string;
+        imsCode: string;
         previousQuantity: number;
         adjustmentAmount: number;
         newQuantity: number;
@@ -303,7 +302,7 @@ export async function setInventory(data: SetInventoryData): Promise<{
   locationId: string;
   locationName: string;
   product: { id: string; imsCode: string; name: string };
-  color: string;
+  imsCode: string;
   quantity: number;
 }> {
   if (!data.locationId?.trim()) {
@@ -324,7 +323,7 @@ export async function setInventory(data: SetInventoryData): Promise<{
         locationId: string;
         locationName: string;
         product: { id: string; imsCode: string; name: string };
-        color: string;
+        imsCode: string;
         quantity: number;
       };
     }>("/inventory/set", data);

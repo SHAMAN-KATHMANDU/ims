@@ -70,6 +70,7 @@ interface ProductTableProps {
   onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
+  onDeleteVariation?: (product: Product, variationId: string) => void;
   // Pagination props (required for server-side pagination)
   pagination: PaginationState;
   onPageChange: (page: number) => void;
@@ -187,6 +188,7 @@ export function ProductTable({
   onSort,
   onEdit,
   onDelete,
+  onDeleteVariation,
   pagination,
   onPageChange,
   onPageSizeChange,
@@ -544,14 +546,30 @@ export function ProductTable({
                                   onClick={() => onEdit(product)}
                                 >
                                   <Edit2 className="mr-2 h-4 w-4" />
-                                  Edit
+                                  Edit Product
                                 </DropdownMenuItem>
+                                {variation &&
+                                  (product.variations?.length ?? 0) > 1 &&
+                                  onDeleteVariation && (
+                                    <DropdownMenuItem
+                                      variant="destructive"
+                                      onClick={() =>
+                                        onDeleteVariation(
+                                          product,
+                                          (variation as { id: string }).id,
+                                        )
+                                      }
+                                    >
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Delete Variation
+                                    </DropdownMenuItem>
+                                  )}
                                 <DropdownMenuItem
                                   variant="destructive"
                                   onClick={() => onDelete(product)}
                                 >
                                   <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete
+                                  Delete Product
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
@@ -636,7 +654,9 @@ export function ProductTable({
                                         <div className="flex items-center justify-between">
                                           <div className="space-y-2">
                                             <div className="font-medium text-sm">
-                                              {variation.color}
+                                              {getVariationAttributeDisplay(
+                                                variation,
+                                              )}
                                             </div>
                                             <div className="text-xs font-medium text-muted-foreground">
                                               Total: {totalStock}
@@ -729,7 +749,7 @@ export function ProductTable({
                                           <div className="relative">
                                             <Image
                                               src={primaryPhoto.photoUrl}
-                                              alt={`${variation.color} variation`}
+                                              alt={`${getVariationAttributeDisplay(variation)} variation`}
                                               width={200}
                                               height={128}
                                               className="w-full h-32 object-cover rounded border"

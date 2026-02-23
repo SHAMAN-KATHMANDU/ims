@@ -60,8 +60,6 @@ const productRouter = Router();
  *                 items:
  *                   type: object
  *                   properties:
- *                     color:
- *                       type: string
  *                     stockQuantity:
  *                       type: number
  *                     photos:
@@ -415,6 +413,42 @@ productRouter.delete(
   verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(productController.deleteProduct),
+);
+
+/**
+ * @swagger
+ * /products/{productId}/variations/{variationId}:
+ *   delete:
+ *     summary: Delete a single variation from a product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: variationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Variation deleted successfully
+ *       400:
+ *         description: Cannot delete the last variation
+ *       404:
+ *         description: Variation not found
+ *       409:
+ *         description: Variation has dependent sales or transfers
+ */
+productRouter.delete(
+  "/:productId/variations/:variationId",
+  verifyToken,
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(productController.deleteVariation),
 );
 
 export default productRouter;

@@ -26,6 +26,7 @@ class LeadController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const {
         name,
         email,
@@ -44,6 +45,7 @@ class LeadController {
 
       const lead = await prisma.lead.create({
         data: {
+          tenantId,
           name: name.trim(),
           email: email?.trim() || null,
           phone: phone?.trim() || null,
@@ -72,6 +74,7 @@ class LeadController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -94,7 +97,7 @@ class LeadController {
         createdAt: "desc",
       };
 
-      const where: Record<string, unknown> = {};
+      const where: Record<string, unknown> = { tenantId };
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" as const } },
@@ -133,10 +136,11 @@ class LeadController {
 
   async getById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const lead = await prisma.lead.findUnique({
-        where: { id },
+      const lead = await prisma.lead.findFirst({
+        where: { id, tenantId },
         include: {
           assignedTo: { select: { id: true, username: true } },
           creator: { select: { id: true, username: true } },
@@ -156,6 +160,7 @@ class LeadController {
 
   async update(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const {
         name,
@@ -168,7 +173,9 @@ class LeadController {
         assignedToId,
       } = req.body;
 
-      const existing = await prisma.lead.findUnique({ where: { id } });
+      const existing = await prisma.lead.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Lead not found" });
       }
@@ -204,9 +211,12 @@ class LeadController {
 
   async delete(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const existing = await prisma.lead.findUnique({ where: { id } });
+      const existing = await prisma.lead.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Lead not found" });
       }
@@ -227,21 +237,26 @@ class LeadController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const { contactId, dealName, dealValue, pipelineId } = req.body;
 
-      const lead = await prisma.lead.findUnique({ where: { id } });
+      const lead = await prisma.lead.findFirst({
+        where: { id, tenantId },
+      });
       if (!lead) return res.status(404).json({ message: "Lead not found" });
       if (lead.status === "CONVERTED") {
         return res.status(400).json({ message: "Lead already converted" });
       }
 
       const defaultPipeline = await prisma.pipeline.findFirst({
-        where: { isDefault: true },
+        where: { tenantId, isDefault: true },
         orderBy: { createdAt: "asc" },
       });
       const pipeline = pipelineId
-        ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })
+        ? await prisma.pipeline.findFirst({
+            where: { id: pipelineId, tenantId },
+          })
         : defaultPipeline;
 
       if (!pipeline) {
@@ -259,15 +274,10 @@ class LeadController {
       let memberId: string | null = null;
       if (lead.phone && lead.phone.trim()) {
         let member = await prisma.member.findFirst({
-          where: { phone: lead.phone.trim() },
+          where: { tenantId, phone: lead.phone.trim() },
           select: { id: true },
         });
         if (!member) {
-          const tenantId = (req as any).user?.tenantId;
-          if (!tenantId)
-            return res
-              .status(400)
-              .json({ message: "Tenant context required to create member" });
           member = await prisma.member.create({
             data: {
               tenantId,
@@ -283,19 +293,21 @@ class LeadController {
 
       let contact;
       if (contactId) {
-        contact = await prisma.contact.findUnique({ where: { id: contactId } });
+        contact = await prisma.contact.findFirst({
+          where: { id: contactId, tenantId },
+        });
         if (!contact)
           return res.status(404).json({ message: "Contact not found" });
       } else {
         let companyId: string | null = null;
         if (lead.companyName) {
           let company = await prisma.company.findFirst({
-            where: { name: lead.companyName },
+            where: { tenantId, name: lead.companyName },
             select: { id: true },
           });
           if (!company) {
             company = await prisma.company.create({
-              data: { name: lead.companyName },
+              data: { tenantId, name: lead.companyName },
               select: { id: true },
             });
           }
@@ -304,6 +316,7 @@ class LeadController {
 
         contact = await prisma.contact.create({
           data: {
+            tenantId,
             firstName: lead.name.split(" ")[0] || lead.name,
             lastName: lead.name.split(" ").slice(1).join(" ") || null,
             email: lead.email,
@@ -318,6 +331,7 @@ class LeadController {
 
       const deal = await prisma.deal.create({
         data: {
+          tenantId,
           name: dealName || `${lead.name} - Deal`,
           value: Number(dealValue) || 0,
           stage: firstStage,
@@ -366,11 +380,19 @@ class LeadController {
 
   async assign(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const { assignedToId } = req.body;
 
       if (!assignedToId) {
         return res.status(400).json({ message: "assignedToId is required" });
+      }
+
+      const existing = await prisma.lead.findFirst({
+        where: { id, tenantId },
+      });
+      if (!existing) {
+        return res.status(404).json({ message: "Lead not found" });
       }
 
       const lead = await prisma.lead.update({

@@ -14,6 +14,7 @@ import {
   useCreateProduct,
   useUpdateProduct,
   useDeleteProduct,
+  useDeleteVariation,
   useCategorySubcategories,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
@@ -32,6 +33,7 @@ import { type CreateProductData } from "@/services/productService";
 import { ProductForm } from "./components/ProductForm";
 import { ProductTable } from "./components/ProductTable";
 import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
+import { VariationDeleteDialog } from "./components/dialogs/VariationDeleteDialog";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./components/BulkUploadDialog";
 import { LocationSelector } from "@/components/ui/location-selector";
@@ -73,7 +75,6 @@ import type {
   ProductVariationForm,
   ProductDiscountForm,
 } from "./types";
-import { getVariationAttributeDisplay } from "./utils/helpers";
 
 export function ProductPage() {
   const params = useParams();
@@ -171,7 +172,7 @@ export function ProductPage() {
     if (product.variations?.length) {
       setProductVariations(
         product.variations.map((v) => ({
-          color: v.color || "",
+          id: v.id,
           stockQuantity: (v.stockQuantity || 0).toString(),
           subVariants: (v.subVariations || []).map((s) => s.name),
           photos: (v.photos || []).map((p) => ({
@@ -380,6 +381,7 @@ export function ProductPage() {
   const createProductMutation = useCreateProduct();
   const updateProductMutation = useUpdateProduct();
   const deleteProductMutation = useDeleteProduct();
+  const deleteVariationMutation = useDeleteVariation();
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
   const canManageProducts = isAdmin;
@@ -396,6 +398,10 @@ export function ProductPage() {
   const [productDialog, setProductDialog] = useState(false);
   const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+  const [variationToDelete, setVariationToDelete] = useState<{
+    product: Product;
+    variationId: string;
+  } | null>(null);
   const [errorDialog, setErrorDialog] = useState<{
     open: boolean;
     title?: string;
@@ -464,7 +470,7 @@ export function ProductPage() {
         if (!(variation.imsCode ?? "").trim()) {
           errors[`variation_${index}_imsCode`] = "IMS code is required";
         }
-        // Variant name (color) is optional; can be auto-filled from attributes
+        // Variant name is auto-derived from EAV attributes
         const stockQuantity = Number(variation.stockQuantity);
         if (
           variation.stockQuantity === undefined ||
@@ -591,7 +597,7 @@ export function ProductPage() {
         }
         if (isEditing) {
           data.variations = productVariations.map((v) => ({
-            color: v.color,
+            id: v.id,
             stockQuantity: Number(v.stockQuantity) || 0,
             subVariants:
               v.subVariants && v.subVariants.length > 0
@@ -625,7 +631,6 @@ export function ProductPage() {
         } else {
           if (productVariations.length > 0) {
             data.variations = productVariations.map((v) => ({
-              color: v.color,
               stockQuantity: Number(v.stockQuantity) || 0,
               subVariants:
                 v.subVariants && v.subVariants.length > 0
@@ -746,9 +751,8 @@ export function ProductPage() {
                 0,
               )
             : (v.stockQuantity ?? 0);
-          const autoName = getVariationAttributeDisplay(v);
           return {
-            color: v.color?.trim() || (autoName !== "—" ? autoName : "") || "",
+            id: v.id,
             stockQuantity: stock.toString(),
             imsCode: (v as { imsCode?: string }).imsCode ?? "",
             subVariants: (v.subVariations || []).map((s) => s.name),
@@ -818,7 +822,6 @@ export function ProductPage() {
     setProductVariations([
       ...productVariations,
       {
-        color: "",
         stockQuantity: "0",
         subVariants: [],
         photos: [],
@@ -834,7 +837,7 @@ export function ProductPage() {
 
   const updateVariationInForm = (
     index: number,
-    field: "color" | "stockQuantity" | "imsCode" | "attributes",
+    field: "stockQuantity" | "imsCode" | "attributes",
     value:
       | string
       | Array<{ attributeTypeId: string; attributeValueId: string }>,
@@ -845,7 +848,6 @@ export function ProductPage() {
       if (!prevVar) return prev;
       updated[index] = {
         ...prevVar,
-        color: field === "color" ? (value as string) : prevVar.color,
         stockQuantity:
           field === "stockQuantity" ? (value as string) : prevVar.stockQuantity,
         imsCode:
@@ -1121,6 +1123,9 @@ export function ProductPage() {
           onSort={handleSortChange}
           onEdit={handleEditProduct}
           onDelete={setProductToDelete}
+          onDeleteVariation={(product, variationId) =>
+            setVariationToDelete({ product, variationId })
+          }
           selectedLocationId={paginationParams.locationId ?? undefined}
           filterBar={
             <>
@@ -1328,6 +1333,25 @@ export function ProductPage() {
         product={productToDelete}
         onClose={() => setProductToDelete(null)}
         onDelete={deleteProductMutation.mutateAsync}
+      />
+
+      <VariationDeleteDialog
+        productName={variationToDelete?.product.name ?? null}
+        variationImsCode={
+          variationToDelete
+            ? (variationToDelete.product.variations?.find(
+                (v) => v.id === variationToDelete.variationId,
+              )?.imsCode ?? variationToDelete.variationId)
+            : null
+        }
+        onClose={() => setVariationToDelete(null)}
+        onDelete={async () => {
+          if (!variationToDelete) return;
+          await deleteVariationMutation.mutateAsync({
+            productId: variationToDelete.product.id,
+            variationId: variationToDelete.variationId,
+          });
+        }}
       />
 
       <ErrorDialog

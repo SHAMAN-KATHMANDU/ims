@@ -14,6 +14,7 @@ import {
   createProduct,
   updateProduct,
   deleteProduct,
+  deleteVariation,
   getAllDiscountTypes,
   getProductDiscountsList,
   bulkUploadProducts,
@@ -32,6 +33,7 @@ import {
   DEFAULT_LIMIT,
 } from "@/services/productService";
 import {
+  getCategories,
   getAllCategories,
   getCategoryById,
   getCategorySubcategories,
@@ -41,6 +43,8 @@ import {
   createSubcategory,
   deleteSubcategory,
   type Category,
+  type CategoryListParams,
+  type PaginatedCategoriesResponse,
   type CreateCategoryData,
   type UpdateCategoryData,
 } from "@/services/categoryService";
@@ -49,6 +53,8 @@ import {
 export type {
   Product,
   Category,
+  CategoryListParams,
+  PaginatedCategoriesResponse,
   ProductVariation,
   ProductListParams,
   PaginatedProductsResponse,
@@ -207,6 +213,24 @@ export function useDeleteProduct() {
   });
 }
 
+export function useDeleteVariation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      productId,
+      variationId,
+    }: {
+      productId: string;
+      variationId: string;
+    }) => deleteVariation(productId, variationId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+      queryClient.refetchQueries({ queryKey: productKeys.all });
+    },
+  });
+}
+
 /**
  * Hook for bulk uploading products from Excel/CSV file
  * Manages upload progress, success/error handling, and query invalidation
@@ -283,6 +307,15 @@ export function useBulkUploadProducts() {
 // Category Hooks
 // ============================================
 
+export function useCategoriesPaginated(params: CategoryListParams = {}) {
+  return useQuery({
+    queryKey: categoryKeys.list(JSON.stringify(params)),
+    queryFn: () => getCategories(params),
+    placeholderData: (prev) => prev,
+  });
+}
+
+/** Unpaginated -- for dropdowns / selects */
 export function useCategories() {
   return useQuery({
     queryKey: categoryKeys.lists(),

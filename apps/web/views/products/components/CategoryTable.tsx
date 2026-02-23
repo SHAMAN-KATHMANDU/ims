@@ -32,6 +32,7 @@ interface CategoryTableProps {
   onDelete: (category: Category) => void;
   subcategoriesByCategory?: Record<string, string[]>;
   onManageSubcategories?: (category: Category) => void;
+  totalItems?: number;
 }
 
 export function CategoryTable({
@@ -41,12 +42,15 @@ export function CategoryTable({
   onDelete,
   subcategoriesByCategory = {},
   onManageSubcategories,
+  totalItems,
 }: CategoryTableProps) {
   return (
     <Card>
       <CardHeader>
         <CardTitle>All Categories</CardTitle>
-        <CardDescription>Total: {categories.length}</CardDescription>
+        <CardDescription>
+          Total: {totalItems ?? categories.length}
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Table>

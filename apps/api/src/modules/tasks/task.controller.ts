@@ -18,6 +18,7 @@ class TaskController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { title, dueDate, contactId, memberId, dealId, assignedToId } =
         req.body;
 
@@ -27,6 +28,7 @@ class TaskController {
 
       const task = await prisma.task.create({
         data: {
+          tenantId,
           title: title.trim(),
           dueDate: dueDate ? new Date(dueDate) : null,
           contactId: contactId || null,
@@ -67,6 +69,7 @@ class TaskController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -89,7 +92,7 @@ class TaskController {
         dueDate: "asc",
       };
 
-      const where: Record<string, unknown> = {};
+      const where: Record<string, unknown> = { tenantId };
       if (search) {
         where.title = { contains: search, mode: "insensitive" as const };
       }
@@ -132,10 +135,11 @@ class TaskController {
 
   async getById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const task = await prisma.task.findUnique({
-        where: { id },
+      const task = await prisma.task.findFirst({
+        where: { id, tenantId },
         include: {
           contact: true,
           member: true,
@@ -156,6 +160,7 @@ class TaskController {
 
   async update(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const {
         title,
@@ -167,7 +172,9 @@ class TaskController {
         assignedToId,
       } = req.body;
 
-      const existing = await prisma.task.findUnique({ where: { id } });
+      const existing = await prisma.task.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Task not found" });
       }
@@ -203,7 +210,15 @@ class TaskController {
 
   async complete(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
+
+      const existing = await prisma.task.findFirst({
+        where: { id, tenantId },
+      });
+      if (!existing) {
+        return res.status(404).json({ message: "Task not found" });
+      }
 
       const task = await prisma.task.update({
         where: { id },
@@ -224,9 +239,12 @@ class TaskController {
 
   async delete(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const existing = await prisma.task.findUnique({ where: { id } });
+      const existing = await prisma.task.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Task not found" });
       }

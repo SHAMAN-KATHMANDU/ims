@@ -369,19 +369,10 @@ class LocationController {
       if (search) {
         where.variation = {
           OR: [
-            { color: { contains: search, mode: "insensitive" } },
+            { imsCode: { contains: search, mode: "insensitive" } },
             {
               product: {
-                OR: [
-                  { name: { contains: search, mode: "insensitive" } },
-                  {
-                    variations: {
-                      some: {
-                        imsCode: { contains: search, mode: "insensitive" },
-                      },
-                    },
-                  },
-                ],
+                name: { contains: search, mode: "insensitive" },
               },
             },
           ],

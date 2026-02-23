@@ -43,7 +43,7 @@ interface ProductFormProps {
   onRemoveVariation: (index: number) => void;
   onUpdateVariation: (
     index: number,
-    field: "color" | "stockQuantity" | "imsCode" | "attributes",
+    field: "stockQuantity" | "imsCode" | "attributes",
     value:
       | string
       | Array<{ attributeTypeId: string; attributeValueId: string }>,

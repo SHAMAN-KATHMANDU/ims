@@ -18,7 +18,8 @@ export type CategoryFormValues = {
 };
 
 export type ProductVariationForm = {
-  color: string;
+  /** Existing variation ID (set when editing, undefined for new variations). */
+  id?: string;
   stockQuantity: string;
   /** Sub-variant names (e.g. S, M, L). When set, stock is managed per location per sub-variant. */
   subVariants: string[];

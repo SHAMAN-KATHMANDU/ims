@@ -12,7 +12,6 @@ export const calculateDiscountedPrice = (
 
 /** Variation with optional EAV attributes (attributeValue.value) for display */
 type VariationWithAttributes = {
-  color?: string | null;
   imsCode?: string;
   attributes?: Array<{
     attributeType?: { name?: string; code?: string };
@@ -35,7 +34,7 @@ export function getVariationAttributeDisplay(
       .map((a) => (a.attributeValue as { value: string }).value.trim())
       .join(" ");
   }
-  return variation.color?.trim() || variation.imsCode || "—";
+  return variation.imsCode || "—";
 }
 
 /**

@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
 import { useForm } from "@/hooks/useForm";
 import {
-  useCategories,
+  useCategoriesPaginated,
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
   useCategorySubcategories,
   useCreateSubcategory,
   useDeleteSubcategory,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
   type Category,
+  type CategoryListParams,
 } from "@/hooks/useProduct";
 import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
 import { CategoryForm } from "./components/CategoryForm";
@@ -19,6 +22,7 @@ import { CategoryTable } from "./components/CategoryTable";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
 import { SubcategoryDeleteDialog } from "./components/dialogs/SubcategoryDeleteDialog";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Dialog,
   DialogContent,
@@ -29,17 +33,52 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Plus } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 import type { CategoryFormValues } from "./types";
 
 export function CategoriesPage() {
-  const { data: categories = [] } = useCategories();
+  const [listParams, setListParams] = useState<CategoryListParams>({
+    page: DEFAULT_PAGE,
+    limit: DEFAULT_LIMIT,
+    search: "",
+  });
+
+  const { data: categoriesResponse, isFetching } =
+    useCategoriesPaginated(listParams);
+  const categories = categoriesResponse?.data ?? [];
+  const pagination = categoriesResponse?.pagination ?? {
+    currentPage: 1,
+    totalPages: 1,
+    totalItems: 0,
+    itemsPerPage: DEFAULT_LIMIT,
+    hasNextPage: false,
+    hasPrevPage: false,
+  };
+
   const createCategoryMutation = useCreateCategory();
   const updateCategoryMutation = useUpdateCategory();
   const deleteCategoryMutation = useDeleteCategory();
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
   const canManageProducts = isAdmin;
+
+  const [searchInput, setSearchInput] = useState("");
+
+  const handleSearchSubmit = useCallback(() => {
+    setListParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      search: searchInput.trim(),
+    }));
+  }, [searchInput]);
+
+  const handlePageChange = useCallback((page: number) => {
+    setListParams((prev) => ({ ...prev, page }));
+  }, []);
+
+  const handlePageSizeChange = useCallback((limit: number) => {
+    setListParams((prev) => ({ ...prev, page: DEFAULT_PAGE, limit }));
+  }, []);
 
   // Dialog states
   const [categoryDialog, setCategoryDialog] = useState(false);
@@ -215,6 +254,37 @@ export function CategoriesPage() {
         )}
       </div>
 
+      <div className="flex items-center gap-2 max-w-sm">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search categories..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") handleSearchSubmit();
+            }}
+            className="pl-9"
+          />
+        </div>
+        {listParams.search && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchInput("");
+              setListParams((prev) => ({
+                ...prev,
+                page: DEFAULT_PAGE,
+                search: "",
+              }));
+            }}
+          >
+            Clear
+          </Button>
+        )}
+      </div>
+
       <CategoryTable
         categories={categories}
         canManageProducts={canManageProducts}
@@ -227,6 +297,14 @@ export function CategoriesPage() {
           ]),
         )}
         onManageSubcategories={handleOpenSubcategoryDialog}
+        totalItems={pagination.totalItems}
+      />
+
+      <DataTablePagination
+        pagination={pagination}
+        onPageChange={handlePageChange}
+        onPageSizeChange={handlePageSizeChange}
+        isLoading={isFetching}
       />
 
       {/* Subcategory Management Dialog */}

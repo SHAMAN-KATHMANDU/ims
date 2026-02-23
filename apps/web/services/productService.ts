@@ -34,7 +34,6 @@ export interface ProductSubVariation {
 export interface ProductVariation {
   id: string;
   productId: string;
-  color?: string | null;
   stockQuantity: number;
   imsCode: string;
   createdAt?: string;
@@ -149,7 +148,6 @@ export interface CreateProductData {
   attributeTypeIds?: string[];
   variations?: Array<{
     imsCode: string;
-    color?: string;
     stockQuantity?: number;
     attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
     subVariants?: string[];
@@ -183,7 +181,6 @@ export interface UpdateProductData {
   attributeTypeIds?: string[];
   variations?: Array<{
     imsCode?: string;
-    color?: string;
     stockQuantity?: number;
     attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
     subVariants?: string[];
@@ -404,6 +401,23 @@ export async function deleteProduct(id: string): Promise<void> {
     await api.delete(`/products/${id}`);
   } catch (error) {
     handleApiError(error, `delete product "${id}"`);
+  }
+}
+
+/**
+ * Delete a single variation from a product
+ */
+export async function deleteVariation(
+  productId: string,
+  variationId: string,
+): Promise<void> {
+  if (!productId?.trim()) throw new Error("Product ID is required");
+  if (!variationId?.trim()) throw new Error("Variation ID is required");
+
+  try {
+    await api.delete(`/products/${productId}/variations/${variationId}`);
+  } catch (error) {
+    handleApiError(error, `delete variation "${variationId}"`);
   }
 }
 

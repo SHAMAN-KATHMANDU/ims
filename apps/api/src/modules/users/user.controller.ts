@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import User, { Role } from "@/models/userModel";
+import { type Role } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import prisma from "@/config/prisma";
 import {
@@ -35,7 +35,7 @@ class UserController {
       }
 
       // Check if user already exists (within this tenant, auto-scoped)
-      const existingUser = await User.findFirst({
+      const existingUser = await prisma.user.findFirst({
         where: { username },
       });
 
@@ -49,7 +49,7 @@ class UserController {
       // Note: Standard practice is to hash passwords on the backend for security
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      const newUser = await User.create({
+      const newUser = await prisma.user.create({
         data: {
           tenantId: req.user!.tenantId,
           username,
@@ -110,7 +110,7 @@ class UserController {
       // Get total count and users in parallel
       const [totalItems, users] = await Promise.all([
         prisma.user.count({ where }),
-        User.findMany({
+        prisma.user.findMany({
           where,
           select: {
             id: true,
@@ -143,7 +143,7 @@ class UserController {
         ? req.params.id[0]
         : req.params.id;
 
-      const user = await User.findUnique({
+      const user = await prisma.user.findUnique({
         where: { id },
         select: {
           id: true,
@@ -176,7 +176,7 @@ class UserController {
       const { username, password, role } = req.body;
 
       // Check if user exists
-      const existingUser = await User.findUnique({
+      const existingUser = await prisma.user.findUnique({
         where: { id },
       });
 
@@ -189,7 +189,7 @@ class UserController {
 
       if (username) {
         // Check if new username is already taken by another user (within this tenant)
-        const usernameExists = await User.findFirst({
+        const usernameExists = await prisma.user.findFirst({
           where: { username },
         });
 
@@ -214,7 +214,7 @@ class UserController {
         updateData.role = role as Role;
       }
 
-      const updatedUser = await User.update({
+      const updatedUser = await prisma.user.update({
         where: { id },
         data: updateData,
         select: {
@@ -243,7 +243,7 @@ class UserController {
         : req.params.id;
 
       // Check if user exists
-      const existingUser = await User.findUnique({
+      const existingUser = await prisma.user.findUnique({
         where: { id },
       });
 
@@ -258,7 +258,7 @@ class UserController {
           .json({ message: "You cannot delete your own account" });
       }
 
-      await User.delete({
+      await prisma.user.delete({
         where: { id },
       });
 

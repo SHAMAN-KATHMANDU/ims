@@ -141,7 +141,7 @@ export function TransferDetail({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
-                        <TableHead>Color</TableHead>
+                        <TableHead>IMS Code</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -158,7 +158,7 @@ export function TransferDetail({
                               </p>
                             </div>
                           </TableCell>
-                          <TableCell>{item.variation.color}</TableCell>
+                          <TableCell>{item.variation.imsCode}</TableCell>
                           <TableCell className="text-right font-medium">
                             {item.quantity}
                           </TableCell>

@@ -18,6 +18,7 @@ class DealController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const {
         name,
         value,
@@ -37,8 +38,12 @@ class DealController {
       }
 
       const pipeline = pipelineId
-        ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })
-        : await prisma.pipeline.findFirst({ where: { isDefault: true } });
+        ? await prisma.pipeline.findFirst({
+            where: { id: pipelineId, tenantId },
+          })
+        : await prisma.pipeline.findFirst({
+            where: { tenantId, isDefault: true },
+          });
 
       if (!pipeline) {
         return res.status(400).json({
@@ -54,6 +59,7 @@ class DealController {
 
       const deal = await prisma.deal.create({
         data: {
+          tenantId,
           name: name.trim(),
           value: Number(value) || 0,
           stage: stage || firstStage,
@@ -94,6 +100,7 @@ class DealController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -118,7 +125,7 @@ class DealController {
         createdAt: "desc",
       };
 
-      const where: Record<string, unknown> = {};
+      const where: Record<string, unknown> = { tenantId };
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" as const } },
@@ -183,11 +190,16 @@ class DealController {
 
   async getByPipeline(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const pipelineId = req.query.pipelineId as string | undefined;
 
       const pipeline = pipelineId
-        ? await prisma.pipeline.findUnique({ where: { id: pipelineId } })
-        : await prisma.pipeline.findFirst({ where: { isDefault: true } });
+        ? await prisma.pipeline.findFirst({
+            where: { id: pipelineId, tenantId },
+          })
+        : await prisma.pipeline.findFirst({
+            where: { tenantId, isDefault: true },
+          });
 
       if (!pipeline) {
         return res.status(404).json({ message: "No pipeline found" });
@@ -199,6 +211,7 @@ class DealController {
 
       const deals = await prisma.deal.findMany({
         where: {
+          tenantId,
           pipelineId: pipeline.id,
           status: "OPEN",
         },
@@ -233,10 +246,11 @@ class DealController {
 
   async getById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const deal = await prisma.deal.findUnique({
-        where: { id },
+      const deal = await prisma.deal.findFirst({
+        where: { id, tenantId },
         include: {
           contact: true,
           member: true,
@@ -269,6 +283,7 @@ class DealController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const {
         name,
@@ -285,7 +300,9 @@ class DealController {
         assignedToId,
       } = req.body;
 
-      const existing = await prisma.deal.findUnique({ where: { id } });
+      const existing = await prisma.deal.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -356,6 +373,7 @@ class DealController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const { stage } = req.body;
 
@@ -363,7 +381,9 @@ class DealController {
         return res.status(400).json({ message: "Stage is required" });
       }
 
-      const existing = await prisma.deal.findUnique({ where: { id } });
+      const existing = await prisma.deal.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Deal not found" });
       }
@@ -401,9 +421,12 @@ class DealController {
 
   async delete(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const existing = await prisma.deal.findUnique({ where: { id } });
+      const existing = await prisma.deal.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Deal not found" });
       }

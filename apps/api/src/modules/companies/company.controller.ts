@@ -10,6 +10,7 @@ import { sendControllerError } from "@/utils/controllerError";
 class CompanyController {
   async create(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { name, website, address, phone } = req.body;
       if (!name || typeof name !== "string" || !name.trim()) {
         return res.status(400).json({ message: "Company name is required" });
@@ -17,6 +18,7 @@ class CompanyController {
 
       const company = await prisma.company.create({
         data: {
+          tenantId,
           name: name.trim(),
           website: website?.trim() || null,
           address: address?.trim() || null,
@@ -34,6 +36,7 @@ class CompanyController {
 
   async getAll(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -47,7 +50,7 @@ class CompanyController {
         name: "asc",
       };
 
-      const where: { OR?: Array<Record<string, unknown>> } = {};
+      const where: Record<string, unknown> = { tenantId };
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" as const } },
@@ -79,9 +82,10 @@ class CompanyController {
 
   async getById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
-      const company = await prisma.company.findUnique({
-        where: { id },
+      const company = await prisma.company.findFirst({
+        where: { id, tenantId },
         include: {
           contacts: {
             select: {
@@ -108,10 +112,13 @@ class CompanyController {
 
   async update(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const { name, website, address, phone } = req.body;
 
-      const existing = await prisma.company.findUnique({ where: { id } });
+      const existing = await prisma.company.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Company not found" });
       }
@@ -136,9 +143,12 @@ class CompanyController {
 
   async delete(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const existing = await prisma.company.findUnique({ where: { id } });
+      const existing = await prisma.company.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Company not found" });
       }
@@ -155,7 +165,9 @@ class CompanyController {
 
   async listForSelect(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const companies = await prisma.company.findMany({
+        where: { tenantId },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
         take: 500,

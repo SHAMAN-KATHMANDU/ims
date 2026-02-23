@@ -39,7 +39,6 @@ export interface SaleItem {
   variation: {
     id: string;
     imsCode: string;
-    color: string;
     product: {
       id: string;
       name: string;

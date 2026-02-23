@@ -7,6 +7,11 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+} from "@/lib/apiTypes";
 
 // ============================================
 // Types
@@ -19,6 +24,7 @@ export interface Category {
   createdAt?: string;
   updatedAt?: string;
   subCategories?: { name: string }[];
+  _count?: { products: number };
 }
 
 export interface CreateCategoryData {
@@ -31,17 +37,23 @@ export interface UpdateCategoryData {
   description?: string;
 }
 
-interface CategoriesResponse {
+export interface CategoryListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface PaginatedCategoriesResponse {
+  data: Category[];
+  pagination: PaginationMeta;
+}
+
+interface CategoriesApiResponse {
   message: string;
   data: Category[];
-  pagination: {
-    currentPage: number;
-    totalPages: number;
-    totalItems: number;
-    itemsPerPage: number;
-    hasNextPage: boolean;
-    hasPrevPage: boolean;
-  };
+  pagination: PaginationMeta;
 }
 
 interface CategoryResponse {
@@ -54,11 +66,45 @@ interface CategoryResponse {
 // ============================================
 
 /**
- * Get all categories
+ * Get categories with pagination, search, and sorting
+ */
+export async function getCategories(
+  params: CategoryListParams = {},
+): Promise<PaginatedCategoriesResponse> {
+  const {
+    page = DEFAULT_PAGE,
+    limit = DEFAULT_LIMIT,
+    search,
+    sortBy,
+    sortOrder,
+  } = params;
+
+  try {
+    const queryParams: Record<string, string | number> = { page, limit };
+    if (search) queryParams.search = search;
+    if (sortBy) queryParams.sortBy = sortBy;
+    if (sortOrder) queryParams.sortOrder = sortOrder;
+
+    const response = await api.get<CategoriesApiResponse>("/categories", {
+      params: queryParams,
+    });
+    return {
+      data: response.data.data || [],
+      pagination: response.data.pagination,
+    };
+  } catch (error) {
+    handleApiError(error, "fetch categories");
+  }
+}
+
+/**
+ * Get all categories (unpaginated, for dropdowns)
  */
 export async function getAllCategories(): Promise<Category[]> {
   try {
-    const response = await api.get<CategoriesResponse>("/categories");
+    const response = await api.get<CategoriesApiResponse>("/categories", {
+      params: { limit: 1000 },
+    });
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch categories");

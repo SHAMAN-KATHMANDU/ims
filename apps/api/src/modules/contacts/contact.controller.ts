@@ -8,7 +8,6 @@ import {
 import ExcelJS from "exceljs";
 import csvParser from "csv-parser";
 import fs from "fs";
-import { Readable } from "stream";
 import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
@@ -22,6 +21,7 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { firstName, lastName, email, phone, companyId, memberId, tagIds } =
         req.body;
       if (!firstName || typeof firstName !== "string" || !firstName.trim()) {
@@ -30,6 +30,7 @@ class ContactController {
 
       const contact = await prisma.contact.create({
         data: {
+          tenantId,
           firstName: firstName.trim(),
           lastName: lastName?.trim() || null,
           email: email?.trim() || null,
@@ -68,6 +69,7 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -91,7 +93,7 @@ class ContactController {
         createdAt: "desc",
       };
 
-      const where: Record<string, unknown> = {};
+      const where: Record<string, unknown> = { tenantId };
       if (search) {
         where.OR = [
           { firstName: { contains: search, mode: "insensitive" as const } },
@@ -135,10 +137,11 @@ class ContactController {
 
   async getById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const contact = await prisma.contact.findUnique({
-        where: { id },
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
         include: {
           company: true,
           member: {
@@ -196,11 +199,14 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const { firstName, lastName, email, phone, companyId, memberId, tagIds } =
         req.body;
 
-      const existing = await prisma.contact.findUnique({ where: { id } });
+      const existing = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Contact not found" });
       }
@@ -253,9 +259,12 @@ class ContactController {
 
   async delete(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const existing = await prisma.contact.findUnique({ where: { id } });
+      const existing = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Contact not found" });
       }
@@ -276,6 +285,7 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const { content } = req.body;
 
@@ -283,7 +293,9 @@ class ContactController {
         return res.status(400).json({ message: "Note content is required" });
       }
 
-      const contact = await prisma.contact.findUnique({ where: { id } });
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
 
@@ -304,7 +316,14 @@ class ContactController {
 
   async deleteNote(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id, noteId } = req.params;
+
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
+      if (!contact)
+        return res.status(404).json({ message: "Contact not found" });
 
       const note = await prisma.contactNote.findFirst({
         where: { id: noteId, contactId: id },
@@ -324,11 +343,14 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const file = (req as any).file;
       if (!file) return res.status(400).json({ message: "No file uploaded" });
 
-      const contact = await prisma.contact.findUnique({ where: { id } });
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
 
@@ -355,7 +377,14 @@ class ContactController {
 
   async deleteAttachment(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id, attachmentId } = req.params;
+
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
+      if (!contact)
+        return res.status(404).json({ message: "Contact not found" });
 
       const attachment = await prisma.contactAttachment.findFirst({
         where: { id: attachmentId, contactId: id },
@@ -385,6 +414,7 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const { type, subject, notes } = req.body;
 
@@ -395,7 +425,9 @@ class ContactController {
           .json({ message: "Valid type (CALL, EMAIL, MEETING) is required" });
       }
 
-      const contact = await prisma.contact.findUnique({ where: { id } });
+      const contact = await prisma.contact.findFirst({
+        where: { id, tenantId },
+      });
       if (!contact)
         return res.status(404).json({ message: "Contact not found" });
 
@@ -418,7 +450,9 @@ class ContactController {
 
   async getTags(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const tags = await prisma.contactTag.findMany({
+        where: { tenantId },
         orderBy: { name: "asc" },
         select: { id: true, name: true },
       });
@@ -430,20 +464,21 @@ class ContactController {
 
   async createTag(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { name } = req.body;
       if (!name || typeof name !== "string" || !name.trim()) {
         return res.status(400).json({ message: "Tag name is required" });
       }
 
       const existing = await prisma.contactTag.findUnique({
-        where: { name: name.trim() },
+        where: { tenantId_name: { tenantId, name: name.trim() } },
       });
       if (existing) {
         return res.status(200).json({ message: "OK", tag: existing });
       }
 
       const tag = await prisma.contactTag.create({
-        data: { name: name.trim() },
+        data: { tenantId, name: name.trim() },
       });
       res.status(201).json({ message: "Tag created", tag });
     } catch (error: unknown) {
@@ -457,6 +492,7 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const file = (req as any).file;
       if (!file) return res.status(400).json({ message: "No file uploaded" });
 
@@ -506,12 +542,12 @@ class ContactController {
         let companyId: string | null = null;
         if (row.companyName) {
           let company = await prisma.company.findFirst({
-            where: { name: row.companyName },
+            where: { tenantId, name: row.companyName },
             select: { id: true },
           });
           if (!company) {
             company = await prisma.company.create({
-              data: { name: row.companyName },
+              data: { tenantId, name: row.companyName },
               select: { id: true },
             });
           }
@@ -520,6 +556,7 @@ class ContactController {
 
         await prisma.contact.create({
           data: {
+            tenantId,
             firstName: row.firstName,
             lastName: row.lastName || null,
             email: row.email || null,
@@ -550,10 +587,11 @@ class ContactController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const ids = req.query.ids as string | undefined;
       const contactIds = ids ? ids.split(",").filter(Boolean) : undefined;
 
-      const where: Record<string, unknown> = {};
+      const where: Record<string, unknown> = { tenantId };
       if (contactIds && contactIds.length > 0) {
         where.id = { in: contactIds };
       }

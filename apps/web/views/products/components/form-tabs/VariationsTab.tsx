@@ -25,7 +25,7 @@ interface VariationsTabProps {
   onRemove: (index: number) => void;
   onUpdate: (
     index: number,
-    field: "color" | "stockQuantity" | "imsCode" | "attributes",
+    field: "stockQuantity" | "imsCode" | "attributes",
     value:
       | string
       | Array<{ attributeTypeId: string; attributeValueId: string }>,
@@ -68,19 +68,6 @@ export function VariationsTab({
     }
   };
 
-  const getAttributeDisplayFromIds = (
-    attrs: Array<{ attributeTypeId: string; attributeValueId: string }>,
-  ) => {
-    return attrs
-      .map((a) => {
-        const type = attributeTypes.find((t) => t.id === a.attributeTypeId);
-        const val = type?.values?.find((v) => v.id === a.attributeValueId);
-        return val?.value;
-      })
-      .filter(Boolean)
-      .join(" ");
-  };
-
   const setVariationAttribute = (
     index: number,
     attributeTypeId: string,
@@ -93,10 +80,6 @@ export function VariationsTab({
         ? rest
         : [...rest, { attributeTypeId, attributeValueId }];
     onUpdate(index, "attributes", next);
-    const display = getAttributeDisplayFromIds(next);
-    if (display) {
-      onUpdate(index, "color", display);
-    }
   };
 
   const handleBulkAddSubVariants = (index: number) => {
@@ -191,22 +174,6 @@ export function VariationsTab({
                 </div>
               )}
               <div className="flex gap-2 items-end flex-wrap">
-                <div className="flex-1 min-w-[120px] space-y-1">
-                  <Label htmlFor={`var-color-${index}`} className="text-xs">
-                    Variant name (optional, auto-filled from attributes)
-                  </Label>
-                  <Input
-                    id={`var-color-${index}`}
-                    placeholder="e.g., Red, Blue, Model A"
-                    value={variation.color}
-                    onChange={(e) => onUpdate(index, "color", e.target.value)}
-                  />
-                  {form.errors[`variation_${index}_color`] && (
-                    <p className="text-xs text-destructive">
-                      {form.errors[`variation_${index}_color`]}
-                    </p>
-                  )}
-                </div>
                 <div className="min-w-[120px] space-y-1">
                   <Label htmlFor={`var-imscode-${index}`} className="text-xs">
                     IMS code <span className="text-destructive">*</span>

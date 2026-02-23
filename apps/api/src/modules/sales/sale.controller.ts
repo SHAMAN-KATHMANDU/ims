@@ -200,12 +200,12 @@ class SaleController {
         const subVariationId = item.subVariationId ?? null;
         if (hasSubVariants && !subVariationId) {
           return res.status(400).json({
-            message: `Variation ${variation.color} has sub-variants; please specify subVariationId for each line item`,
+            message: `Variation ${variation.imsCode} has sub-variants; please specify subVariationId for each line item`,
           });
         }
         if (!hasSubVariants && subVariationId) {
           return res.status(400).json({
-            message: `Variation ${variation.color} has no sub-variants; do not send subVariationId`,
+            message: `Variation ${variation.imsCode} has no sub-variants; do not send subVariationId`,
           });
         }
         if (subVariationId) {
@@ -243,7 +243,7 @@ class SaleController {
         const availableStock = inventory?.quantity || 0;
         if (availableStock < item.quantity) {
           return res.status(400).json({
-            message: `Insufficient stock for ${variation.product.name} (${variation.color}${subVariationId ? ` / sub-variant` : ""})`,
+            message: `Insufficient stock for ${variation.product.name} (${variation.imsCode}${subVariationId ? ` / sub-variant` : ""})`,
             available: availableStock,
             requested: item.quantity,
           });
@@ -704,7 +704,7 @@ class SaleController {
         const prevHasSubVariants = (variation.subVariations?.length ?? 0) > 0;
         if (prevHasSubVariants && !prevSubVariationId) {
           return res.status(400).json({
-            message: `Variation ${variation.color} has sub-variants; specify subVariationId`,
+            message: `Variation ${variation.imsCode} has sub-variants; specify subVariationId`,
           });
         }
 
@@ -730,7 +730,7 @@ class SaleController {
         const availableStock = inventory?.quantity || 0;
         if (availableStock < item.quantity) {
           return res.status(400).json({
-            message: `Insufficient stock for ${variation.product.name} (${variation.color})`,
+            message: `Insufficient stock for ${variation.product.name} (${variation.imsCode})`,
             available: availableStock,
             requested: item.quantity,
           });
@@ -1526,7 +1526,7 @@ class SaleController {
           "product",
           "productnamr",
         ],
-        variation: ["variation", "color", "design", "variations"],
+        variation: ["variation", "design", "variations", "variant"],
         quantity: ["quantity", "qty", "qty"],
         mrp: ["mrp", "price", "unitprice", "unit_price"],
         discount: ["discount", "discountpercent", "discount_percent"],
@@ -1977,23 +1977,11 @@ class SaleController {
               const product = productMapByName.get(nameLower);
               if (product) {
                 variation =
-                  (await prisma.productVariation.findFirst({
-                    where: {
-                      productId: product.id,
-                      color: { equals: itemRow.variation, mode: "insensitive" },
-                    },
-                    select: {
-                      id: true,
-                      imsCode: true,
-                      productId: true,
-                      product: { select: { id: true, name: true } },
-                    },
-                  })) ??
                   (allVariations.find(
                     (v) =>
                       v.productId === product.id &&
                       v.imsCode.toLowerCase() === imsCodeLower,
-                  ) as typeof variation);
+                  ) as typeof variation) ?? undefined;
               }
             }
 
@@ -2350,7 +2338,7 @@ class SaleController {
                 productImsCode: item.variation.imsCode,
                 productName: product.name,
                 category: product.category?.name ?? "",
-                variation: item.variation.color,
+                variation: item.variation.imsCode,
                 quantity: item.quantity,
                 unitPrice: Number(item.unitPrice),
                 totalMrp: Number(item.totalMrp),

@@ -35,19 +35,10 @@ class InventoryController {
       if (search) {
         where.variation = {
           OR: [
-            { color: { contains: search, mode: "insensitive" } },
+            { imsCode: { contains: search, mode: "insensitive" } },
             {
               product: {
-                OR: [
-                  { name: { contains: search, mode: "insensitive" } },
-                  {
-                    variations: {
-                      some: {
-                        imsCode: { contains: search, mode: "insensitive" },
-                      },
-                    },
-                  },
-                ],
+                name: { contains: search, mode: "insensitive" },
               },
             },
           ],
@@ -144,7 +135,6 @@ class InventoryController {
             select: {
               id: true,
               imsCode: true,
-              color: true,
               stockQuantity: true,
             },
           },
@@ -173,7 +163,7 @@ class InventoryController {
           variation: {
             select: {
               id: true,
-              color: true,
+              imsCode: true,
             },
           },
           subVariation: { select: { id: true, name: true } },
@@ -181,7 +171,7 @@ class InventoryController {
         orderBy: [
           { location: { type: "asc" } },
           { location: { name: "asc" } },
-          { variation: { color: "asc" } },
+          { variation: { imsCode: "asc" } },
         ],
       });
 
@@ -198,7 +188,7 @@ class InventoryController {
           }
           acc[locationId].variations.push({
             variationId: item.variation.id,
-            color: item.variation.color,
+            imsCode: item.variation.imsCode,
             subVariationId: item.subVariationId ?? undefined,
             subVariation: item.subVariation
               ? { id: item.subVariation.id, name: item.subVariation.name }
@@ -350,7 +340,7 @@ class InventoryController {
           locationId,
           locationName: location.name,
           product: variation.product,
-          color: variation.color,
+          imsCode: variation.imsCode,
           subVariationId: inventory.subVariationId ?? undefined,
           previousQuantity,
           adjustmentAmount: adjustedQuantity,
@@ -449,7 +439,7 @@ class InventoryController {
           locationId,
           locationName: location.name,
           product: variation.product,
-          color: variation.color,
+          imsCode: variation.imsCode,
           subVariationId: inventory.subVariationId ?? undefined,
           quantity: inventory.quantity,
         },

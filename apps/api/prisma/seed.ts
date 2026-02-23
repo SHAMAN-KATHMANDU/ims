@@ -373,7 +373,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P001-Brown`,
       productId: product1.id,
-      color: "Brown",
       stockQuantity: 10,
     },
   });
@@ -382,7 +381,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P001-White`,
       productId: product1.id,
-      color: "White",
       stockQuantity: 5,
     },
   });
@@ -391,7 +389,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P002-Natural`,
       productId: product2.id,
-      color: "Natural",
       stockQuantity: 8,
     },
   });
@@ -400,7 +397,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P003-White`,
       productId: product3.id,
-      color: "White",
       stockQuantity: 50,
     },
   });
@@ -409,7 +405,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P004-Oak`,
       productId: product4.id,
-      color: "Oak",
       stockQuantity: 12,
     },
   });
@@ -418,7 +413,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P004-Walnut`,
       productId: product4.id,
-      color: "Walnut",
       stockQuantity: 8,
     },
   });
@@ -427,7 +421,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P005-Black`,
       productId: product5.id,
-      color: "Black",
       stockQuantity: 40,
     },
   });
@@ -436,7 +429,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P005-White`,
       productId: product5.id,
-      color: "White",
       stockQuantity: 35,
     },
   });
@@ -445,7 +437,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P006-Navy`,
       productId: product6.id,
-      color: "Navy",
       stockQuantity: 100,
     },
   });
@@ -454,7 +445,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P006-Black`,
       productId: product6.id,
-      color: "Black",
       stockQuantity: 80,
     },
   });
@@ -463,7 +453,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P007-Silver`,
       productId: product7.id,
-      color: "Silver",
       stockQuantity: 25,
     },
   });
@@ -472,7 +461,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P008-Black`,
       productId: product8.id,
-      color: "Black",
       stockQuantity: 30,
     },
   });
@@ -481,7 +469,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P009-Grey`,
       productId: product9.id,
-      color: "Grey",
       stockQuantity: 15,
     },
   });
@@ -490,7 +477,6 @@ async function seedTestTenant(
       tenantId: tenant.id,
       imsCode: `${pre}-P010-Black`,
       productId: product10.id,
-      color: "Black",
       stockQuantity: 45,
     },
   });
@@ -1455,25 +1441,35 @@ async function main() {
     await seedRubyTenant();
   }
 
-  // 5. Default CRM pipeline (required for Deals / Pipeline view)
-  const existingPipeline = await prisma.pipeline.findFirst({
-    where: { isDefault: true },
+  // 5. Default CRM pipeline per tenant (required for Deals / Pipeline view)
+  const allTenants = await prisma.tenant.findMany({
+    where: { slug: { not: "system" } },
+    select: { id: true, slug: true },
   });
-  if (!existingPipeline) {
-    await prisma.pipeline.create({
-      data: {
-        name: "Sales Pipeline",
-        isDefault: true,
-        stages: [
-          { id: "1", name: "Qualification", order: 1, probability: 10 },
-          { id: "2", name: "Proposal", order: 2, probability: 30 },
-          { id: "3", name: "Negotiation", order: 3, probability: 60 },
-          { id: "4", name: "Closed Won", order: 4, probability: 100 },
-          { id: "5", name: "Closed Lost", order: 5, probability: 0 },
-        ],
-      },
+  const defaultStages = [
+    { id: "1", name: "Qualification", order: 1, probability: 10 },
+    { id: "2", name: "Proposal", order: 2, probability: 30 },
+    { id: "3", name: "Negotiation", order: 3, probability: 60 },
+    { id: "4", name: "Closed Won", order: 4, probability: 100 },
+    { id: "5", name: "Closed Lost", order: 5, probability: 0 },
+  ];
+  for (const t of allTenants) {
+    const existing = await prisma.pipeline.findFirst({
+      where: { tenantId: t.id, isDefault: true },
     });
-    console.log("✅ Created default Sales Pipeline (for CRM Deals)");
+    if (!existing) {
+      await prisma.pipeline.create({
+        data: {
+          tenantId: t.id,
+          name: "Sales Pipeline",
+          isDefault: true,
+          stages: defaultStages,
+        },
+      });
+    }
+  }
+  if (allTenants.length > 0) {
+    console.log("✅ Created default Sales Pipeline for each tenant");
   }
 
   console.log("\n✅ Seed complete.");

@@ -33,7 +33,6 @@ export interface TransferItem {
   variation: {
     id: string;
     imsCode: string;
-    color: string;
     product: {
       id: string;
       name: string;

@@ -118,7 +118,6 @@ interface SaleItem {
   subVariationId?: string | null;
   subVariationName?: string;
   productName: string;
-  color: string;
   imsCode: string;
   unitPrice: number;
   quantity: number;
@@ -376,7 +375,6 @@ export function NewSaleForm({
     return inventory.filter((item) => {
       const productName = item.variation.product.name.toLowerCase();
       const imsCode = (item.variation.imsCode ?? "").toLowerCase();
-      const color = item.variation.color.toLowerCase();
       const subVariationName = item.subVariation?.name?.toLowerCase() || "";
       const categoryName =
         item.variation.product.category?.name?.toLowerCase() || "";
@@ -385,7 +383,7 @@ export function NewSaleForm({
       const productFields = [productName, imsCode, categoryName].filter(
         Boolean,
       );
-      const variationFields = [color, subVariationName].filter(Boolean);
+      const variationFields = [subVariationName].filter(Boolean);
       const allFields = [...productFields, ...variationFields];
 
       // For multi-word search: each word must match at least one field
@@ -469,7 +467,6 @@ export function NewSaleForm({
         subVariationId: inventoryItem.subVariationId ?? undefined,
         subVariationName: inventoryItem.subVariation?.name,
         productName: inventoryItem.variation.product.name,
-        color: inventoryItem.variation.color,
         imsCode: inventoryItem.variation.imsCode ?? "",
         unitPrice: Number(inventoryItem.variation.product.mrp),
         quantity: 1,
@@ -841,7 +838,7 @@ export function NewSaleForm({
                         <Input
                           value={productSearch}
                           onChange={(e) => setProductSearch(e.target.value)}
-                          placeholder="Search by product name, variation, color... (e.g., 'buddha red' or 'red buddha')"
+                          placeholder="Search by product name, IMS code, category..."
                           className="pl-9"
                         />
                       </div>
@@ -858,7 +855,7 @@ export function NewSaleForm({
                           <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
                             {filteredInventory.map((inv) => {
                               const variantLabel = [
-                                inv.variation.color,
+                                inv.variation.imsCode,
                                 inv.subVariation?.name,
                               ]
                                 .filter(Boolean)
@@ -1018,7 +1015,7 @@ export function NewSaleForm({
                                   {item.productName}
                                 </div>
                                 <div className="text-xs text-muted-foreground font-mono mt-1">
-                                  {item.imsCode} · {item.color}
+                                  {item.imsCode}
                                   {item.subVariationName
                                     ? ` / ${item.subVariationName}`
                                     : ""}

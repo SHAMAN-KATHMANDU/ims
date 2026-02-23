@@ -289,14 +289,13 @@ class ProductController {
           mrp: parseFloat(mrp.toString()),
           vendorId: vendorId || null,
           createdById: req.user!.id,
-          // Add variations (legacy: color/subVariants; new: sku + attributes)
+          // Add variations (sku + attributes)
           variations:
             variations && Array.isArray(variations)
               ? {
                   create: variations.map((variation: any) => ({
                     tenantId,
                     imsCode: (variation.imsCode ?? variation.sku ?? "").trim(),
-                    color: variation.color?.trim() || null,
                     stockQuantity: variation.stockQuantity || 0,
                     costPriceOverride:
                       variation.costPriceOverride != null
@@ -430,6 +429,7 @@ class ProductController {
       }
 
       // Link product to location (warehouseLocation already resolved and validated above)
+      // Only create inventory records for variations that actually have stock > 0
       try {
         if (warehouseLocation && product.variations?.length) {
           for (const v of product.variations) {
@@ -438,6 +438,7 @@ class ProductController {
               (v as any).subVariations.length > 0;
             if (hasSubVariants) continue; // stock is per location per sub-variant via inventory API
             const qty = Math.max(0, Number(v.stockQuantity) || 0);
+            if (qty === 0) continue; // don't create 0-stock inventory rows
             // Use findFirst + create/update because Prisma upsert with compound unique + null is unreliable
             const existing = await prisma.locationInventory.findFirst({
               where: {
@@ -507,7 +508,7 @@ class ProductController {
         return res.status(409).json({
           message: isImsConflict
             ? "Product with this IMS code already exists"
-            : "A duplicate value was provided (e.g. duplicate variation color).",
+            : "A duplicate value was provided.",
         });
       }
       return sendControllerError(req, res, error, "Create product error");
@@ -880,7 +881,7 @@ class ProductController {
         updateData.vendorId = vendorId || null;
       }
 
-      // Handle variations update if provided (upsert by color; do not delete variations referenced by sales/transfers)
+      // Handle variations update if provided (match by ID; do not delete variations referenced by sales/transfers)
       if (variations !== undefined) {
         const existingVariations = await prisma.productVariation.findMany({
           where: { productId: id },
@@ -891,19 +892,24 @@ class ProductController {
             },
           },
         });
-        const incomingColors = new Set(
-          Array.isArray(variations)
-            ? variations.map((v: any) => (v.color || "").trim()).filter(Boolean)
-            : [],
+
+        const incomingVariations: any[] = Array.isArray(variations)
+          ? variations
+          : [];
+        const incomingIds = new Set(
+          incomingVariations.map((v: any) => v.id).filter(Boolean) as string[],
         );
 
+        // Update existing or delete removed variations
         for (const existing of existingVariations) {
           const hasDependents =
             (existing._count?.saleItems ?? 0) > 0 ||
             (existing._count?.transferItems ?? 0) > 0;
-          if (incomingColors.has(existing.color)) {
-            const payload = variations.find(
-              (v: any) => (v.color || "").trim() === existing.color,
+
+          if (incomingIds.has(existing.id)) {
+            // Variation still present -- update it
+            const payload = incomingVariations.find(
+              (v: any) => v.id === existing.id,
             );
             if (payload) {
               const newPhotos =
@@ -971,39 +977,31 @@ class ProductController {
               });
             }
           } else if (!hasDependents) {
+            // Variation removed from the form and has no sale/transfer references -- safe to delete
             await prisma.productVariation.delete({
               where: { id: existing.id },
             });
           }
         }
 
-        for (const variation of Array.isArray(variations) ? variations : []) {
-          const color = (variation.color || "").trim();
+        // Create new variations (those without an id, i.e. added in the form)
+        const existingIdSet = new Set(existingVariations.map((e) => e.id));
+        for (const variation of incomingVariations) {
+          if (variation.id && existingIdSet.has(variation.id)) continue;
+
           const imsCode = (variation.imsCode ?? variation.sku ?? "").trim();
-          const hasImsCode = !!imsCode;
-          const hasColor = !!color;
-          const existingByColor = existingVariations.some(
-            (e) => e.color === color,
-          );
-          const existingByImsCode = hasImsCode
-            ? existingVariations.some((e) => e.imsCode === imsCode)
-            : false;
-          if (
-            (!hasColor && !hasImsCode) ||
-            existingByColor ||
-            existingByImsCode
-          )
-            continue;
+          if (!imsCode) continue;
+
           const conflict = await prisma.productVariation.findFirst({
             where: { tenantId: req.user!.tenantId, imsCode },
           });
           if (conflict) continue;
+
           await prisma.productVariation.create({
             data: {
               tenantId: req.user!.tenantId,
               productId: id,
               imsCode,
-              color: color || null,
               stockQuantity: variation.stockQuantity || 0,
               costPriceOverride:
                 variation.costPriceOverride != null
@@ -1236,7 +1234,7 @@ class ProductController {
         return res.status(409).json({
           message: isImsConflict
             ? "Product with this IMS code already exists"
-            : "A duplicate value was provided (e.g. duplicate variation color).",
+            : "A duplicate value was provided.",
         });
       }
       return sendControllerError(req, res, error, "Update product error");
@@ -1272,15 +1270,66 @@ class ProductController {
     }
   }
 
+  // Delete a single variation from a product (admin and superAdmin only)
+  async deleteVariation(req: Request, res: Response) {
+    try {
+      const productId = Array.isArray(req.params.productId)
+        ? req.params.productId[0]
+        : req.params.productId;
+      const variationId = Array.isArray(req.params.variationId)
+        ? req.params.variationId[0]
+        : req.params.variationId;
+      const tenantId = req.user!.tenantId;
+
+      const variation = await prisma.productVariation.findFirst({
+        where: { id: variationId, productId, tenantId },
+        include: {
+          _count: { select: { saleItems: true, transferItems: true } },
+        },
+      });
+
+      if (!variation) {
+        return res.status(404).json({ message: "Variation not found" });
+      }
+
+      const hasDependents =
+        (variation._count?.saleItems ?? 0) > 0 ||
+        (variation._count?.transferItems ?? 0) > 0;
+
+      if (hasDependents) {
+        return res.status(409).json({
+          message:
+            "Cannot delete this variation because it has associated sales or transfers. Remove those records first.",
+        });
+      }
+
+      const siblingCount = await prisma.productVariation.count({
+        where: { productId, id: { not: variationId } },
+      });
+
+      if (siblingCount === 0) {
+        return res.status(400).json({
+          message:
+            "Cannot delete the last variation of a product. Delete the product instead.",
+        });
+      }
+
+      await prisma.productVariation.delete({ where: { id: variationId } });
+
+      res.status(200).json({ message: "Variation deleted successfully" });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Delete variation error");
+    }
+  }
+
   // Get all categories (helper endpoint for dropdown/selection)
   async getAllCategories(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder } = getPaginationParams(req.query);
 
-      // Allowed fields for sorting
       const allowedSortFields = ["id", "name", "createdAt", "updatedAt"];
 
-      // Get orderBy for Prisma
       const orderBy = getPrismaOrderBy(
         sortBy,
         sortOrder,
@@ -1289,13 +1338,13 @@ class ProductController {
         name: "asc",
       };
 
-      // Calculate skip for pagination
+      const where = { tenantId, deletedAt: null };
       const skip = (page - 1) * limit;
 
-      // Get total count and categories in parallel
       const [totalItems, categories] = await Promise.all([
-        prisma.category.count(),
+        prisma.category.count({ where }),
         prisma.category.findMany({
+          where,
           select: {
             id: true,
             name: true,
@@ -2198,7 +2247,6 @@ class ProductController {
                     tenantId,
                     productId: existingProduct.id,
                     imsCode: imsCodeTrim,
-                    color: null,
                     stockQuantity: 0,
                     attributes: {
                       create: attributePairs.map((p) => ({
@@ -2232,29 +2280,31 @@ class ProductController {
                 }
               }
               const qty = variationRow.quantity ?? 0;
-              const existing = await prisma.locationInventory.findFirst({
-                where: {
-                  locationId: variationRow.locationId,
-                  variationId: variation.id,
-                  subVariationId: null,
-                },
-              });
-              if (existing) {
-                await prisma.locationInventory.update({
-                  where: { id: existing.id },
-                  data: { quantity: qty },
-                });
-              } else {
-                await prisma.locationInventory.create({
-                  data: {
+              if (qty > 0) {
+                const existing = await prisma.locationInventory.findFirst({
+                  where: {
                     locationId: variationRow.locationId,
                     variationId: variation.id,
                     subVariationId: null,
-                    quantity: qty,
                   },
                 });
+                if (existing) {
+                  await prisma.locationInventory.update({
+                    where: { id: existing.id },
+                    data: { quantity: qty },
+                  });
+                } else {
+                  await prisma.locationInventory.create({
+                    data: {
+                      locationId: variationRow.locationId,
+                      variationId: variation.id,
+                      subVariationId: null,
+                      quantity: qty,
+                    },
+                  });
+                }
+                inventoryUpserted++;
               }
-              inventoryUpserted++;
             }
             const locationNames = [
               ...new Set(
@@ -2379,7 +2429,6 @@ class ProductController {
                 create: productVariationsData.map((v) => ({
                   tenantId: req.user!.tenantId,
                   imsCode: v.imsCode,
-                  color: null,
                   stockQuantity: v.stockQuantity,
                   attributes: {
                     create: v.attributePairs.map((p) => ({
@@ -2441,6 +2490,7 @@ class ProductController {
             );
             if (!variation) continue;
             const qty = variationRow.quantity ?? 0;
+            if (qty === 0) continue; // don't create 0-stock inventory rows
             const existing = await prisma.locationInventory.findFirst({
               where: {
                 locationId: variationRow.locationId,
@@ -2858,7 +2908,7 @@ class ProductController {
         const variationsStr =
           product.variations.length > 0
             ? product.variations
-                .map((v) => `${v.color} (${v.stockQuantity})`)
+                .map((v) => `${v.imsCode} (${v.stockQuantity})`)
                 .join("; ")
             : "No variations";
 
@@ -2947,7 +2997,7 @@ class ProductController {
           const variationsStr =
             product.variations.length > 0
               ? product.variations
-                  .map((v) => `${v.color} (${v.stockQuantity})`)
+                  .map((v) => `${v.imsCode} (${v.stockQuantity})`)
                   .join("; ")
               : "No variations";
           const discountsStr =

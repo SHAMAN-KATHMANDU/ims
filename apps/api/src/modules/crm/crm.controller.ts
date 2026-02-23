@@ -41,6 +41,7 @@ class CrmController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const now = new Date();
       const thisMonthStart = startOfMonth(now);
       const thisMonthEnd = endOfMonth(now);
@@ -56,11 +57,12 @@ class CrmController {
         recentActivities,
       ] = await Promise.all([
         prisma.deal.aggregate({
-          where: { status: "OPEN" },
+          where: { tenantId, status: "OPEN" },
           _sum: { value: true },
         }),
         prisma.deal.count({
           where: {
+            tenantId,
             status: "OPEN",
             expectedCloseDate: {
               gte: thisMonthStart,
@@ -70,19 +72,22 @@ class CrmController {
         }),
         prisma.task.count({
           where: {
+            tenantId,
             completed: false,
             dueDate: { gte: todayStart, lte: todayEnd },
           },
         }),
         prisma.lead.groupBy({
           by: ["status"],
+          where: { tenantId },
           _count: true,
         }),
         prisma.deal.findMany({
-          where: { status: "WON" },
+          where: { tenantId, status: "WON" },
           select: { value: true, closedAt: true },
         }),
         prisma.activity.findMany({
+          where: { tenantId },
           orderBy: { activityAt: "desc" },
           take: 10,
           include: {
@@ -142,6 +147,7 @@ class CrmController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const year =
         parseInt(req.query.year as string) || new Date().getFullYear();
       const startOfYear = new Date(year, 0, 1);
@@ -151,12 +157,14 @@ class CrmController {
         await Promise.all([
           prisma.deal.count({
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
           }),
           prisma.deal.count({
             where: {
+              tenantId,
               status: "LOST",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -164,11 +172,12 @@ class CrmController {
           prisma.lead.groupBy({
             by: ["source"],
             _count: true,
-            where: { source: { not: null } },
+            where: { tenantId, source: { not: null } },
           }),
           prisma.deal.groupBy({
             by: ["assignedToId"],
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -177,6 +186,7 @@ class CrmController {
           }),
           prisma.deal.findMany({
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -251,6 +261,7 @@ class CrmController {
       if (!userId)
         return res.status(401).json({ message: "Not authenticated" });
 
+      const tenantId = req.user!.tenantId;
       const year =
         parseInt(req.query.year as string) || new Date().getFullYear();
       const startOfYear = new Date(year, 0, 1);
@@ -260,12 +271,14 @@ class CrmController {
         await Promise.all([
           prisma.deal.count({
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
           }),
           prisma.deal.count({
             where: {
+              tenantId,
               status: "LOST",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -273,6 +286,7 @@ class CrmController {
           prisma.deal.groupBy({
             by: ["assignedToId"],
             where: {
+              tenantId,
               status: "WON",
               closedAt: { gte: startOfYear, lte: endOfYear },
             },
@@ -282,7 +296,7 @@ class CrmController {
           prisma.lead.groupBy({
             by: ["source"],
             _count: true,
-            where: { source: { not: null } },
+            where: { tenantId, source: { not: null } },
           }),
         ]);
 

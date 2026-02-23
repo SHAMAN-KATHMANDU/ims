@@ -5,6 +5,7 @@ import { sendControllerError } from "@/utils/controllerError";
 class PipelineController {
   async create(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { name, stages, isDefault } = req.body;
 
       if (!name || typeof name !== "string" || !name.trim()) {
@@ -23,11 +24,15 @@ class PipelineController {
         Array.isArray(stages) && stages.length > 0 ? stages : defaultStages;
 
       if (isDefault) {
-        await prisma.pipeline.updateMany({ data: { isDefault: false } });
+        await prisma.pipeline.updateMany({
+          where: { tenantId },
+          data: { isDefault: false },
+        });
       }
 
       const pipeline = await prisma.pipeline.create({
         data: {
+          tenantId,
           name: name.trim(),
           stages: pipelineStages,
           isDefault: !!isDefault,
@@ -44,7 +49,9 @@ class PipelineController {
 
   async getAll(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const pipelines = await prisma.pipeline.findMany({
+        where: { tenantId },
         orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
         include: {
           _count: { select: { deals: true } },
@@ -59,10 +66,11 @@ class PipelineController {
 
   async getById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const pipeline = await prisma.pipeline.findUnique({
-        where: { id },
+      const pipeline = await prisma.pipeline.findFirst({
+        where: { id, tenantId },
         include: { _count: { select: { deals: true } } },
       });
 
@@ -78,17 +86,20 @@ class PipelineController {
 
   async update(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
       const { name, stages, isDefault } = req.body;
 
-      const existing = await prisma.pipeline.findUnique({ where: { id } });
+      const existing = await prisma.pipeline.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Pipeline not found" });
       }
 
       if (isDefault) {
         await prisma.pipeline.updateMany({
-          where: { id: { not: id } },
+          where: { tenantId, id: { not: id } },
           data: { isDefault: false },
         });
       }
@@ -114,14 +125,19 @@ class PipelineController {
 
   async delete(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { id } = req.params;
 
-      const existing = await prisma.pipeline.findUnique({ where: { id } });
+      const existing = await prisma.pipeline.findFirst({
+        where: { id, tenantId },
+      });
       if (!existing) {
         return res.status(404).json({ message: "Pipeline not found" });
       }
 
-      const dealCount = await prisma.deal.count({ where: { pipelineId: id } });
+      const dealCount = await prisma.deal.count({
+        where: { pipelineId: id, tenantId },
+      });
       if (dealCount > 0) {
         return res.status(400).json({
           message:

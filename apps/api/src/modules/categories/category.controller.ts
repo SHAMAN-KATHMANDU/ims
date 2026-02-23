@@ -18,9 +18,10 @@ class CategoryController {
         return res.status(400).json({ message: "Category name is required" });
       }
 
-      // Check if category already exists (within this tenant, auto-scoped)
+      const tenantId = req.user!.tenantId;
+
       const existingCategory = await prisma.category.findFirst({
-        where: { name },
+        where: { tenantId, name },
       });
 
       if (existingCategory) {
@@ -76,8 +77,9 @@ class CategoryController {
         name: "asc",
       };
 
-      // Build search filter
-      const where: any = {};
+      const tenantId = req.user!.tenantId;
+
+      const where: any = { tenantId, deletedAt: null };
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" } },
@@ -100,13 +102,14 @@ class CategoryController {
             createdAt: true,
             updatedAt: true,
             subCategories: {
+              where: { deletedAt: null },
               select: {
                 name: true,
               },
             },
             _count: {
               select: {
-                products: true,
+                products: { where: { deletedAt: null } },
               },
             },
           },
@@ -143,21 +146,24 @@ class CategoryController {
         return res.status(400).json({ message: "Category ID is required" });
       }
 
-      const category = await prisma.category.findUnique({
-        where: { id },
+      const tenantId = req.user!.tenantId;
+
+      const category = await prisma.category.findFirst({
+        where: { id, tenantId, deletedAt: null },
         include: {
           products: {
+            where: { deletedAt: null },
             select: {
               id: true,
               name: true,
               mrp: true,
               costPrice: true,
             },
-            take: 10, // Limit to first 10 products
+            take: 10,
           },
           _count: {
             select: {
-              products: true,
+              products: { where: { deletedAt: null } },
             },
           },
         },
@@ -187,10 +193,10 @@ class CategoryController {
         return res.status(400).json({ message: "Category ID is required" });
       }
 
-      // Fetch from SubCategory table instead of inferring from products
       const subcategoryRows = await prisma.subCategory.findMany({
         where: {
           categoryId: id,
+          deletedAt: null,
         },
         select: {
           name: true,
@@ -234,8 +240,10 @@ class CategoryController {
           .json({ message: "Subcategory name is required" });
       }
 
-      const category = await prisma.category.findUnique({
-        where: { id: categoryId },
+      const tenantId = req.user!.tenantId;
+
+      const category = await prisma.category.findFirst({
+        where: { id: categoryId, tenantId, deletedAt: null },
       });
       if (!category) {
         return res.status(404).json({ message: "Category not found" });
@@ -338,19 +346,19 @@ class CategoryController {
         return res.status(400).json({ message: "Category ID is required" });
       }
 
-      // Check if category exists
-      const existingCategory = await prisma.category.findUnique({
-        where: { id },
+      const tenantId = req.user!.tenantId;
+
+      const existingCategory = await prisma.category.findFirst({
+        where: { id, tenantId, deletedAt: null },
       });
 
       if (!existingCategory) {
         return res.status(404).json({ message: "Category not found" });
       }
 
-      // If name is being updated, check if new name already exists
       if (name && name !== existingCategory.name) {
         const nameExists = await prisma.category.findFirst({
-          where: { name },
+          where: { tenantId, name, id: { not: id } },
         });
 
         if (nameExists) {
@@ -406,9 +414,10 @@ class CategoryController {
         return res.status(400).json({ message: "Category ID is required" });
       }
 
-      // Check if category exists and get product count
-      const existingCategory = await prisma.category.findUnique({
-        where: { id },
+      const tenantId = req.user!.tenantId;
+
+      const existingCategory = await prisma.category.findFirst({
+        where: { id, tenantId, deletedAt: null },
         select: {
           id: true,
           name: true,
@@ -417,7 +426,7 @@ class CategoryController {
           updatedAt: true,
           _count: {
             select: {
-              products: true,
+              products: { where: { deletedAt: null } },
             },
           },
         },

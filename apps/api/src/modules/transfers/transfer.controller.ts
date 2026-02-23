@@ -123,12 +123,12 @@ class TransferController {
         const hasSubVariants = (variation.subVariations?.length ?? 0) > 0;
         if (hasSubVariants && !subVariationId) {
           return res.status(400).json({
-            message: `Variation ${variation.color} has sub-variants; specify subVariationId for each item`,
+            message: `Variation ${variation.imsCode} has sub-variants; specify subVariationId for each item`,
           });
         }
         if (!hasSubVariants && subVariationId) {
           return res.status(400).json({
-            message: `Variation ${variation.color} has no sub-variants; do not send subVariationId`,
+            message: `Variation ${variation.imsCode} has no sub-variants; do not send subVariationId`,
           });
         }
         if (subVariationId) {
@@ -156,7 +156,7 @@ class TransferController {
         if (availableQuantity < item.quantity) {
           insufficientStock.push({
             product: variation.product.name,
-            color: variation.color,
+            imsCode: variation.imsCode,
             subVariationId: subVariationId ?? undefined,
             requested: item.quantity,
             available: availableQuantity,
@@ -471,7 +471,7 @@ class TransferController {
         if (availableQuantity < item.quantity) {
           insufficientStock.push({
             product: item.variation.product.name,
-            color: item.variation.color,
+            imsCode: item.variation.imsCode,
             subVariationId: item.subVariationId ?? undefined,
             requested: item.quantity,
             available: availableQuantity,
