@@ -16,7 +16,10 @@
     "prisma:studio": "prisma studio",
     "prisma:seed": "node prisma/seed.js",
     "prisma:reset": "prisma migrate reset --force",
-    "check-user": "ts-node scripts/check-user.ts"
+    "check-user": "ts-node scripts/check-user.ts",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
@@ -54,6 +57,7 @@
     "prisma": "^5.22.0",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.18"
   }
 }

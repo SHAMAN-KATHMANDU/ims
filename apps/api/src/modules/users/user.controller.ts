@@ -15,12 +15,14 @@ class UserController {
     try {
       const { username, password, role } = req.body;
 
+      const normalizedUsername = username.toLowerCase().trim();
+
       // Validate required fields
-      if (!username || !password || !role) {
+      if (!normalizedUsername || !password || !role) {
         return res.status(400).json({
           message: "Username, password, and role are required",
           received: {
-            username: !!username,
+            username: !!normalizedUsername,
             password: !!password,
             role: !!role,
           },
@@ -28,15 +30,16 @@ class UserController {
       }
 
       // Validate role
-      if (!["superAdmin", "admin", "user"].includes(role)) {
+      if (!["platformAdmin", "superAdmin", "admin", "user"].includes(role)) {
         return res.status(400).json({
-          message: "Invalid role. Must be superAdmin, admin, or user",
+          message:
+            "Invalid role. Must be platformAdmin, superAdmin, admin, or user",
         });
       }
 
       // Check if user already exists (within this tenant, auto-scoped)
       const existingUser = await prisma.user.findFirst({
-        where: { username },
+        where: { username: normalizedUsername },
       });
 
       if (existingUser) {
@@ -52,7 +55,7 @@ class UserController {
       const newUser = await prisma.user.create({
         data: {
           tenantId: req.user!.tenantId,
-          username,
+          username: normalizedUsername,
           password: hashedPassword,
           role: role as Role,
         },
@@ -62,7 +65,7 @@ class UserController {
       const { password: _, ...userWithoutPassword } = newUser;
 
       res.status(201).json({
-        message: `User created successfully with username ${username}`,
+        message: `User created successfully with username ${normalizedUsername}`,
         user: userWithoutPassword,
       });
     } catch (error: unknown) {
@@ -189,15 +192,16 @@ class UserController {
 
       if (username) {
         // Check if new username is already taken by another user (within this tenant)
+        const normalizedUsername = username.toLowerCase().trim();
         const usernameExists = await prisma.user.findFirst({
-          where: { username },
+          where: { username: normalizedUsername },
         });
 
         if (usernameExists && usernameExists.id !== id) {
           return res.status(409).json({ message: "Username already taken" });
         }
 
-        updateData.username = username;
+        updateData.username = normalizedUsername;
       }
 
       if (password) {
@@ -206,9 +210,10 @@ class UserController {
       }
 
       if (role) {
-        if (!["superAdmin", "admin", "user"].includes(role)) {
+        if (!["platformAdmin", "superAdmin", "admin", "user"].includes(role)) {
           return res.status(400).json({
-            message: "Invalid role. Must be superAdmin, admin, or user",
+            message:
+              "Invalid role. Must be platformAdmin, superAdmin, admin, or user",
           });
         }
         updateData.role = role as Role;
