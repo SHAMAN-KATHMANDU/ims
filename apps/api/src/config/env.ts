@@ -80,6 +80,25 @@ if (!isDev && !apiPublicUrlEnv) {
   process.exit(1);
 }
 const publicApiUrl = apiPublicUrlEnv ?? "http://localhost:4000/api/v1";
+
+// CSP connect-src: origins the frontend may connect to (e.g. this API).
+// Optional CSP_CONNECT_SRC (comma-separated) overrides; otherwise derived from API public URL.
+const cspConnectSrcRaw = process.env.CSP_CONNECT_SRC?.trim();
+let cspConnectSrc: string[];
+if (cspConnectSrcRaw) {
+  cspConnectSrc = cspConnectSrcRaw
+    .split(",")
+    .map((o) => o.trim())
+    .filter(Boolean);
+} else {
+  try {
+    const apiOrigin = new URL(publicApiUrl).origin;
+    cspConnectSrc = ["'self'", apiOrigin];
+  } catch {
+    cspConnectSrc = ["'self'"];
+  }
+}
+
 const sentryDsn = process.env.SENTRY_DSN?.trim() || "";
 const sentryTracesSampleRate = Number.parseFloat(
   process.env.SENTRY_TRACES_SAMPLE_RATE ?? "0.1",
@@ -106,6 +125,7 @@ export const env = Object.freeze({
   databaseUrl,
   corsOrigin,
   publicApiUrl,
+  cspConnectSrc,
   sentryDsn,
   sentryTracesSampleRate: Number.isFinite(sentryTracesSampleRate)
     ? sentryTracesSampleRate
