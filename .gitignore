@@ -50,3 +50,5 @@ infra/terraform.tfvars
 !infra/terraform.tfvars.example
 
 .cursor
+
+docker-push-staging.sh

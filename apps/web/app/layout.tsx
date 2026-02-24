@@ -13,6 +13,7 @@ const dmSans = DM_Sans({
   variable: "--font-dm-sans",
   weight: ["400", "500", "700"],
   display: "swap",
+  preload: false,
   fallback: [
     "system-ui",
     "-apple-system",
@@ -30,6 +31,7 @@ const spaceMono = Space_Mono({
   variable: "--font-space-mono",
   weight: ["400", "700"],
   display: "swap",
+  preload: false,
   fallback: ["monospace"],
 });
 

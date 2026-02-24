@@ -132,8 +132,8 @@ export async function getLocations(
       `/locations?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch locations");
@@ -148,7 +148,7 @@ export async function getActiveLocations(): Promise<Location[]> {
     const response = await api.get<LocationsApiResponse>(
       "/locations?activeOnly=true&limit=100",
     );
-    return response.data.data || [];
+    return response.data?.data ?? [];
   } catch (error) {
     handleApiError(error, "fetch active locations");
   }
@@ -163,8 +163,12 @@ export async function getLocationById(id: string): Promise<Location> {
   }
 
   try {
-    const response = await api.get<LocationResponse>(`/locations/${id}`);
-    return response.data.location;
+    const response = await api.get<{ data?: LocationResponse }>(
+      `/locations/${id}`,
+    );
+    const location = response.data?.data?.location;
+    if (!location) throw new Error("Invalid response from server");
+    return location;
   } catch (error) {
     handleApiError(error, `fetch location "${id}"`);
   }
@@ -181,8 +185,13 @@ export async function createLocation(
   }
 
   try {
-    const response = await api.post<LocationResponse>("/locations", data);
-    return response.data.location;
+    const response = await api.post<{ data?: LocationResponse }>(
+      "/locations",
+      data,
+    );
+    const location = response.data?.data?.location;
+    if (!location) throw new Error("Invalid response from server");
+    return location;
   } catch (error) {
     handleApiError(error, "create location");
   }
@@ -203,8 +212,13 @@ export async function updateLocation(
   }
 
   try {
-    const response = await api.put<LocationResponse>(`/locations/${id}`, data);
-    return response.data.location;
+    const response = await api.put<{ data?: LocationResponse }>(
+      `/locations/${id}`,
+      data,
+    );
+    const location = response.data?.data?.location;
+    if (!location) throw new Error("Invalid response from server");
+    return location;
   } catch (error) {
     handleApiError(error, `update location "${id}"`);
   }

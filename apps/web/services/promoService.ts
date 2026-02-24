@@ -124,8 +124,8 @@ export async function getPromos(
       `/promos?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch promo codes");
@@ -137,8 +137,10 @@ export async function getPromoById(id: string): Promise<PromoCode> {
     throw new Error("Promo ID is required");
   }
   try {
-    const response = await api.get<PromoResponse>(`/promos/${id}`);
-    return response.data.promo;
+    const response = await api.get<{ data?: PromoResponse }>(`/promos/${id}`);
+    const promo = response.data?.data?.promo;
+    if (!promo) throw new Error("Invalid response from server");
+    return promo;
   } catch (error) {
     handleApiError(error, `fetch promo "${id}"`);
   }
@@ -158,8 +160,10 @@ export async function createPromo(
   }
 
   try {
-    const response = await api.post<PromoResponse>("/promos", data);
-    return response.data.promo;
+    const response = await api.post<{ data?: PromoResponse }>("/promos", data);
+    const promo = response.data?.data?.promo;
+    if (!promo) throw new Error("Invalid response from server");
+    return promo;
   } catch (error) {
     handleApiError(error, "create promo code");
   }
@@ -174,8 +178,13 @@ export async function updatePromo(
   }
 
   try {
-    const response = await api.put<PromoResponse>(`/promos/${id}`, data);
-    return response.data.promo;
+    const response = await api.put<{ data?: PromoResponse }>(
+      `/promos/${id}`,
+      data,
+    );
+    const promo = response.data?.data?.promo;
+    if (!promo) throw new Error("Invalid response from server");
+    return promo;
   } catch (error) {
     handleApiError(error, `update promo "${id}"`);
   }

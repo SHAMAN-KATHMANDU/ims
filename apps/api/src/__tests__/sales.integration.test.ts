@@ -178,14 +178,11 @@ describe.skipIf(!process.env.DATABASE_URL)("Sales integration", () => {
     expect(res.status).toBe(200);
     expect(res.body.success).toBe(true);
     expect(res.body.data).toBeDefined();
-    expect(res.body.data.items).toBeDefined();
-    expect(Array.isArray(res.body.data.items)).toBe(true);
-    expect(res.body.data.pagination).toBeDefined();
-    expect(typeof res.body.data.pagination.totalItems).toBe("number");
-    expect(res.body.data.items.length).toBeGreaterThanOrEqual(1);
-    const found = res.body.data.items.find(
-      (s: { id: string }) => s.id === saleId,
-    );
+    expect(Array.isArray(res.body.data)).toBe(true);
+    expect(res.body.pagination).toBeDefined();
+    expect(typeof res.body.pagination.totalItems).toBe("number");
+    expect(res.body.data.length).toBeGreaterThanOrEqual(1);
+    const found = res.body.data.find((s: { id: string }) => s.id === saleId);
     expect(found).toBeDefined();
   });
 

@@ -11,6 +11,7 @@ import {
   type PaginationMeta,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
+  DEFAULT_PAGINATION_META,
 } from "@/lib/apiTypes";
 
 export interface VendorProduct {
@@ -108,8 +109,8 @@ export async function getVendors(
       `/vendors?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch vendors");
@@ -121,8 +122,10 @@ export async function getVendorById(id: string): Promise<Vendor> {
     throw new Error("Vendor ID is required");
   }
   try {
-    const response = await api.get<VendorResponse>(`/vendors/${id}`);
-    return response.data.vendor;
+    const response = await api.get<{ data?: VendorResponse }>(`/vendors/${id}`);
+    const vendor = response.data?.data?.vendor;
+    if (!vendor) throw new Error("Invalid response from server");
+    return vendor;
   } catch (error) {
     handleApiError(error, `fetch vendor "${id}"`);
   }
@@ -149,12 +152,12 @@ export async function getVendorProducts(
     queryParams.set("search", search.trim());
   }
   try {
-    const response = await api.get<VendorProductsApiResponse>(
+    const response = await api.get<{ data?: VendorProductsApiResponse }>(
       `/vendors/${vendorId}/products?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data ?? [],
-      pagination: response.data.pagination,
+      data: response.data?.data?.data ?? [],
+      pagination: response.data?.data?.pagination ?? DEFAULT_PAGINATION_META,
     };
   } catch (error) {
     handleApiError(error, `fetch products for vendor "${vendorId}"`);
@@ -169,8 +172,13 @@ export async function createVendor(
   }
 
   try {
-    const response = await api.post<VendorResponse>("/vendors", data);
-    return response.data.vendor;
+    const response = await api.post<{ data?: VendorResponse }>(
+      "/vendors",
+      data,
+    );
+    const vendor = response.data?.data?.vendor;
+    if (!vendor) throw new Error("Invalid response from server");
+    return vendor;
   } catch (error) {
     handleApiError(error, "create vendor");
   }
@@ -185,8 +193,13 @@ export async function updateVendor(
   }
 
   try {
-    const response = await api.put<VendorResponse>(`/vendors/${id}`, data);
-    return response.data.vendor;
+    const response = await api.put<{ data?: VendorResponse }>(
+      `/vendors/${id}`,
+      data,
+    );
+    const vendor = response.data?.data?.vendor;
+    if (!vendor) throw new Error("Invalid response from server");
+    return vendor;
   } catch (error) {
     handleApiError(error, `update vendor "${id}"`);
   }

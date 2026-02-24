@@ -255,8 +255,8 @@ export async function getSales(
       `/sales?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch sales");
@@ -272,8 +272,10 @@ export async function getSaleById(id: string): Promise<Sale> {
   }
 
   try {
-    const response = await api.get<SaleResponse>(`/sales/${id}`);
-    return response.data.sale;
+    const response = await api.get<{ data?: SaleResponse }>(`/sales/${id}`);
+    const sale = response.data?.data?.sale;
+    if (!sale) throw new Error("Invalid response from server");
+    return sale;
   } catch (error) {
     handleApiError(error, `fetch sale "${id}"`);
   }
@@ -307,11 +309,13 @@ export async function addPaymentToSale(
   }
 
   try {
-    const response = await api.post<AddPaymentResponse>(
+    const response = await api.post<{ data?: AddPaymentResponse }>(
       `/sales/${saleId}/payments`,
       { method, amount },
     );
-    return response.data.sale;
+    const sale = response.data?.data?.sale;
+    if (!sale) throw new Error("Invalid response from server");
+    return sale;
   } catch (error) {
     handleApiError(error, "add payment to sale");
   }
@@ -336,8 +340,8 @@ export async function getSalesSinceLastLogin(
       `/sales/me/since-last-login?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch sales since last login");
@@ -363,17 +367,21 @@ export async function previewSale(
   if (!data.locationId?.trim() || !data.items?.length) {
     throw new Error("locationId and items required");
   }
-  const response = await api.post<SalePreviewResponse>("/sales/preview", {
-    locationId: data.locationId,
-    memberPhone: data.memberPhone,
-    memberName: data.memberName,
-    items: data.items.map((i) => ({
-      variationId: i.variationId,
-      quantity: i.quantity,
-      promoCode: i.promoCode,
-    })),
-  });
-  return response.data;
+  const response = await api.post<{ data?: SalePreviewResponse }>(
+    "/sales/preview",
+    {
+      locationId: data.locationId,
+      memberPhone: data.memberPhone,
+      memberName: data.memberName,
+      items: data.items.map((i) => ({
+        variationId: i.variationId,
+        quantity: i.quantity,
+        promoCode: i.promoCode,
+      })),
+    },
+  );
+  return ((response.data as { data?: SalePreviewResponse })?.data ??
+    response.data) as SalePreviewResponse;
 }
 
 /**
@@ -388,8 +396,10 @@ export async function createSale(data: CreateSaleData): Promise<Sale> {
   }
 
   try {
-    const response = await api.post<SaleResponse>("/sales", data);
-    return response.data.sale;
+    const response = await api.post<{ data?: SaleResponse }>("/sales", data);
+    const sale = response.data?.data?.sale;
+    if (!sale) throw new Error("Invalid response from server");
+    return sale;
   } catch (error) {
     handleApiError(error, "create sale");
   }
@@ -417,10 +427,12 @@ export async function getSalesSummary(
   }
 
   try {
-    const response = await api.get<SalesSummaryResponse>(
+    const response = await api.get<{ data?: SalesSummaryResponse }>(
       `/sales/analytics/summary?${queryParams.toString()}`,
     );
-    return response.data.summary;
+    const summary = response.data?.data?.summary;
+    if (!summary) throw new Error("Invalid response from server");
+    return summary;
   } catch (error) {
     handleApiError(error, "fetch sales summary");
   }
@@ -447,7 +459,7 @@ export async function getSalesByLocation(
     const response = await api.get<LocationSalesResponse>(
       `/sales/analytics/by-location?${queryParams.toString()}`,
     );
-    return response.data.data || [];
+    return response.data?.data ?? [];
   } catch (error) {
     handleApiError(error, "fetch sales by location");
   }
@@ -474,7 +486,7 @@ export async function getDailySales(
     const response = await api.get<DailySalesResponse>(
       `/sales/analytics/daily?${queryParams.toString()}`,
     );
-    return response.data.data || [];
+    return response.data?.data ?? [];
   } catch (error) {
     handleApiError(error, "fetch daily sales");
   }
@@ -567,7 +579,7 @@ export async function bulkUploadSales(
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await api.post<SaleBulkUploadResponse>(
+    const response = await api.post<{ data?: SaleBulkUploadResponse }>(
       "/bulk/upload/sales",
       formData,
       {
@@ -582,7 +594,8 @@ export async function bulkUploadSales(
       },
     );
 
-    return response.data;
+    return ((response.data as { data?: SaleBulkUploadResponse })?.data ??
+      response.data) as SaleBulkUploadResponse;
   } catch (error: unknown) {
     const axiosError = error as {
       isAxiosError?: boolean;

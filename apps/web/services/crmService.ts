@@ -40,17 +40,26 @@ export interface CrmReportsData {
 }
 
 export async function getCrmDashboard(): Promise<{ data: CrmDashboardData }> {
-  const res = await api.get("/crm/dashboard");
-  return res.data;
+  const res = await api.get<{ data?: { data: CrmDashboardData } }>(
+    "/crm/dashboard",
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function getCrmReports(
   year?: number,
 ): Promise<{ data: CrmReportsData }> {
-  const res = await api.get("/crm/reports", {
-    params: year ? { year } : {},
-  });
-  return res.data;
+  const res = await api.get<{ data?: { data: CrmReportsData } }>(
+    "/crm/reports",
+    {
+      params: year ? { year } : {},
+    },
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function exportCrmReports(year?: number): Promise<Blob> {

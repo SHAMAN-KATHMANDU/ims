@@ -7,7 +7,11 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
-import { type PaginationMeta, DEFAULT_PAGE } from "@/lib/apiTypes";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_PAGINATION_META,
+} from "@/lib/apiTypes";
 import type { Location, LocationType } from "./locationService";
 
 // ============================================
@@ -195,17 +199,18 @@ export async function getLocationInventory(
   }
 
   try {
-    const response = await api.get<InventoryApiResponse>(
+    const response = await api.get<{ data?: InventoryApiResponse }>(
       `/inventory/location/${locationId}?${queryParams.toString()}`,
     );
+    const d = response.data?.data;
     return {
       location: {
-        id: response.data.location.id,
-        name: response.data.location.name,
-        type: response.data.location.type,
+        id: d?.location?.id ?? "",
+        name: d?.location?.name ?? "",
+        type: (d?.location?.type ?? "WAREHOUSE") as LocationType,
       },
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: d?.data ?? [],
+      pagination: d?.pagination ?? DEFAULT_PAGINATION_META,
     };
   } catch (error) {
     handleApiError(error, "fetch location inventory");
@@ -223,13 +228,19 @@ export async function getProductStock(
   }
 
   try {
-    const response = await api.get<ProductStockApiResponse>(
+    const response = await api.get<{ data?: ProductStockApiResponse }>(
       `/inventory/product/${productId}`,
     );
+    const d = response.data?.data;
     return {
-      product: response.data.product,
-      totalStock: response.data.totalStock,
-      inventoryByLocation: response.data.inventoryByLocation || [],
+      product: d?.product ?? {
+        id: "",
+        imsCode: "",
+        name: "",
+        category: undefined,
+      },
+      totalStock: d?.totalStock ?? 0,
+      inventoryByLocation: d?.inventoryByLocation ?? [],
     };
   } catch (error) {
     handleApiError(error, `fetch product stock "${productId}"`);
@@ -241,11 +252,17 @@ export async function getProductStock(
  */
 export async function getInventorySummary(): Promise<InventorySummary> {
   try {
-    const response =
-      await api.get<InventorySummaryApiResponse>("/inventory/summary");
+    const response = await api.get<{ data?: InventorySummaryApiResponse }>(
+      "/inventory/summary",
+    );
+    const d = response.data?.data;
     return {
-      summary: response.data.summary,
-      locationStats: response.data.locationStats || [],
+      summary: d?.summary ?? {
+        totalLocations: 0,
+        totalItems: 0,
+        totalQuantity: 0,
+      },
+      locationStats: d?.locationStats ?? [],
     };
   } catch (error) {
     handleApiError(error, "fetch inventory summary");
@@ -277,19 +294,22 @@ export async function adjustInventory(data: AdjustInventoryData): Promise<{
 
   try {
     const response = await api.put<{
-      message: string;
-      adjustment: {
-        locationId: string;
-        locationName: string;
-        product: { id: string; imsCode: string; name: string };
-        color: string;
-        previousQuantity: number;
-        adjustmentAmount: number;
-        newQuantity: number;
-        reason: string;
+      data?: {
+        adjustment: {
+          locationId: string;
+          locationName: string;
+          product: { id: string; imsCode: string; name: string };
+          color: string;
+          previousQuantity: number;
+          adjustmentAmount: number;
+          newQuantity: number;
+          reason: string;
+        };
       };
     }>("/inventory/adjust", data);
-    return response.data.adjustment;
+    const adjustment = response.data?.data?.adjustment;
+    if (!adjustment) throw new Error("Invalid response from server");
+    return adjustment;
   } catch (error) {
     handleApiError(error, "adjust inventory");
   }
@@ -318,17 +338,20 @@ export async function setInventory(data: SetInventoryData): Promise<{
 
   try {
     const response = await api.put<{
-      message: string;
-      inventory: {
-        id: string;
-        locationId: string;
-        locationName: string;
-        product: { id: string; imsCode: string; name: string };
-        color: string;
-        quantity: number;
+      data?: {
+        inventory: {
+          id: string;
+          locationId: string;
+          locationName: string;
+          product: { id: string; imsCode: string; name: string };
+          color: string;
+          quantity: number;
+        };
       };
     }>("/inventory/set", data);
-    return response.data.inventory;
+    const inventory = response.data?.data?.inventory;
+    if (!inventory) throw new Error("Invalid response from server");
+    return inventory;
   } catch (error) {
     handleApiError(error, "set inventory");
   }

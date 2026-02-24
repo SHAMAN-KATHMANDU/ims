@@ -20,6 +20,7 @@ export function ok<T>(
 
 /**
  * Send a paginated success response.
+ * Shape: { success, data: T[], pagination, message? } so frontend can use response.data.data and response.data.pagination.
  */
 export function okPaginated<T>(
   res: Response,
@@ -29,11 +30,13 @@ export function okPaginated<T>(
 ): Response {
   const body: {
     success: boolean;
-    data: { items: T[]; pagination: PaginationResult<T>["pagination"] };
+    data: T[];
+    pagination: PaginationResult<T>["pagination"];
     message?: string;
   } = {
     success: true,
-    data: { items, pagination },
+    data: items,
+    pagination,
   };
   if (message) body.message = message;
   return res.status(200).json(body);

@@ -279,8 +279,8 @@ export async function getProducts(
       `/products?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch products");
@@ -295,7 +295,7 @@ export async function getAllProducts(): Promise<Product[]> {
   try {
     // Fetch with a large limit to get all products
     const response = await api.get<ProductsApiResponse>("/products?limit=1000");
-    return response.data.data || [];
+    return response.data?.data ?? [];
   } catch (error) {
     handleApiError(error, "fetch products");
   }
@@ -310,8 +310,12 @@ export async function getProductById(id: string): Promise<Product> {
   }
 
   try {
-    const response = await api.get<ProductResponse>(`/products/${id}`);
-    return response.data.product;
+    const response = await api.get<{ data?: ProductResponse }>(
+      `/products/${id}`,
+    );
+    const product = response.data?.data?.product;
+    if (!product) throw new Error("Invalid response from server");
+    return product;
   } catch (error) {
     handleApiError(error, `fetch product "${id}"`);
   }
@@ -339,8 +343,13 @@ export async function createProduct(data: CreateProductData): Promise<Product> {
   }
 
   try {
-    const response = await api.post<ProductResponse>("/products", data);
-    return response.data.product;
+    const response = await api.post<{ data?: ProductResponse }>(
+      "/products",
+      data,
+    );
+    const product = response.data?.data?.product;
+    if (!product) throw new Error("Invalid response from server");
+    return product;
   } catch (error) {
     handleApiError(error, "create product");
   }
@@ -361,8 +370,13 @@ export async function updateProduct(
   }
 
   try {
-    const response = await api.put<ProductResponse>(`/products/${id}`, data);
-    return response.data.product;
+    const response = await api.put<{ data?: ProductResponse }>(
+      `/products/${id}`,
+      data,
+    );
+    const product = response.data?.data?.product;
+    if (!product) throw new Error("Invalid response from server");
+    return product;
   } catch (error) {
     handleApiError(error, `update product "${id}"`);
   }
@@ -388,10 +402,10 @@ export async function deleteProduct(id: string): Promise<void> {
  */
 export async function getAllCategories(): Promise<Category[]> {
   try {
-    const response = await api.get<CategoriesResponse>(
+    const response = await api.get<{ data?: CategoriesResponse }>(
       "/products/categories/list",
     );
-    return response.data.categories || [];
+    return response.data?.data?.categories ?? [];
   } catch (error) {
     handleApiError(error, "fetch categories");
   }
@@ -407,7 +421,7 @@ export async function getAllDiscountTypes(): Promise<
     const response = await api.get<DiscountTypesResponse>(
       "/products/discount-types/list",
     );
-    return response.data.data || [];
+    return response.data?.data ?? [];
   } catch (error) {
     handleApiError(error, "fetch discount types");
   }
@@ -504,8 +518,8 @@ export async function getProductDiscountsList(
       pagination: PaginationMeta;
     }>(`/products/discounts/list?${queryParams.toString()}`);
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch product discounts");
@@ -579,7 +593,7 @@ export async function bulkUploadProducts(
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await api.post<BulkUploadResponse>(
+    const response = await api.post<{ data?: BulkUploadResponse }>(
       "/bulk/upload/products",
       formData,
       {
@@ -594,7 +608,8 @@ export async function bulkUploadProducts(
       },
     );
 
-    return response.data;
+    return ((response.data as { data?: BulkUploadResponse })?.data ??
+      response.data) as BulkUploadResponse;
   } catch (error: unknown) {
     const axiosError = error as {
       isAxiosError?: boolean;

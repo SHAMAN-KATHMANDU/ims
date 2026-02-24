@@ -162,8 +162,8 @@ export async function getMembers(
       `/members?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch members");
@@ -179,8 +179,12 @@ export async function getMemberById(id: string): Promise<MemberWithSales> {
   }
 
   try {
-    const response = await api.get<MemberWithSalesResponse>(`/members/${id}`);
-    return response.data.member;
+    const response = await api.get<{ data?: MemberWithSalesResponse }>(
+      `/members/${id}`,
+    );
+    const member = response.data?.data?.member;
+    if (!member) throw new Error("Invalid response from server");
+    return member;
   } catch (error) {
     handleApiError(error, `fetch member "${id}"`);
   }
@@ -195,10 +199,12 @@ export async function getMemberByPhone(phone: string): Promise<Member> {
   }
 
   try {
-    const response = await api.get<MemberResponse>(
+    const response = await api.get<{ data?: MemberResponse }>(
       `/members/phone/${encodeURIComponent(phone)}`,
     );
-    return response.data.member;
+    const member = response.data?.data?.member;
+    if (!member) throw new Error("Invalid response from server");
+    return member;
   } catch (error) {
     handleApiError(error, `fetch member by phone "${phone}"`);
   }
@@ -213,12 +219,12 @@ export async function checkMember(phone: string): Promise<MemberCheckResult> {
   }
 
   try {
-    const response = await api.get<MemberCheckResponse>(
+    const response = await api.get<{ data?: MemberCheckResponse }>(
       `/members/check/${encodeURIComponent(phone)}`,
     );
     return {
-      isMember: response.data.isMember,
-      member: response.data.member,
+      isMember: response.data?.data?.isMember ?? false,
+      member: response.data?.data?.member ?? null,
     };
   } catch {
     // If member not found, return false
@@ -235,8 +241,13 @@ export async function createMember(data: CreateMemberData): Promise<Member> {
   }
 
   try {
-    const response = await api.post<MemberResponse>("/members", data);
-    return response.data.member;
+    const response = await api.post<{ data?: MemberResponse }>(
+      "/members",
+      data,
+    );
+    const member = response.data?.data?.member;
+    if (!member) throw new Error("Invalid response from server");
+    return member;
   } catch (error) {
     handleApiError(error, "create member");
   }
@@ -257,8 +268,13 @@ export async function updateMember(
   }
 
   try {
-    const response = await api.put<MemberResponse>(`/members/${id}`, data);
-    return response.data.member;
+    const response = await api.put<{ data?: MemberResponse }>(
+      `/members/${id}`,
+      data,
+    );
+    const member = response.data?.data?.member;
+    if (!member) throw new Error("Invalid response from server");
+    return member;
   } catch (error) {
     handleApiError(error, `update member "${id}"`);
   }
@@ -317,7 +333,7 @@ export async function bulkUploadMembers(
     const formData = new FormData();
     formData.append("file", file);
 
-    const response = await api.post<MemberBulkUploadResponse>(
+    const response = await api.post<{ data?: MemberBulkUploadResponse }>(
       "/bulk/upload/members",
       formData,
       {
@@ -332,7 +348,8 @@ export async function bulkUploadMembers(
       },
     );
 
-    return response.data;
+    return ((response.data as { data?: MemberBulkUploadResponse })?.data ??
+      response.data) as MemberBulkUploadResponse;
   } catch (error: unknown) {
     const axiosError = error as {
       isAxiosError?: boolean;

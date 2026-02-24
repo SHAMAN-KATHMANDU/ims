@@ -12,6 +12,21 @@ export interface PaginationMeta {
   hasPrevPage: boolean;
 }
 
+/** API success body: ok() sends { success, data: payload }. Use for typing api.get/post/put response.data. */
+export interface ApiWrapped<T> {
+  data?: T;
+}
+
+/** Default pagination meta for fallbacks when API does not return pagination. */
+export const DEFAULT_PAGINATION_META: PaginationMeta = {
+  currentPage: 1,
+  totalPages: 0,
+  totalItems: 0,
+  itemsPerPage: 10,
+  hasNextPage: false,
+  hasPrevPage: false,
+};
+
 /** Single point of change: default pagination page. */
 export const DEFAULT_PAGE = 1;
 
