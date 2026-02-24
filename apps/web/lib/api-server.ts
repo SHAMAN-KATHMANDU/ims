@@ -45,8 +45,7 @@
  */
 
 function getBaseUrl(): string {
-  const publicUrl =
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  const publicUrl = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
   // Relative URL = using proxy; server must call self so cookies (same origin) work.
   if (publicUrl.startsWith("/")) {
     const port = process.env.PORT || "3000";

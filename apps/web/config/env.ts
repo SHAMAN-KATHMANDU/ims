@@ -17,7 +17,7 @@ if (!isDev && !apiUrlRaw) {
     "NEXT_PUBLIC_API_URL is required in staging and production. Set it in your environment.",
   );
 }
-export const apiBaseUrl = apiUrlRaw ?? "http://localhost:4000/api/v1";
+export const apiBaseUrl = apiUrlRaw ?? "/api/v1";
 
 export const cookieSecure = !isDev;
 export const reactQueryDevtoolsEnabled = isDev;
