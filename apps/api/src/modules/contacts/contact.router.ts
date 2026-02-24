@@ -13,9 +13,11 @@ import {
 import {
   addContactCommunicationSchema,
   addContactNoteSchema,
+  contactAttachmentParamsSchema,
   contactExportQuerySchema,
   contactIdParamsSchema,
   contactListQuerySchema,
+  contactNoteParamsSchema,
   createContactSchema,
   createTagSchema,
   updateContactSchema,
@@ -82,6 +84,7 @@ contactRouter.post(
 );
 contactRouter.delete(
   "/:id/notes/:noteId",
+  validateParams(contactNoteParamsSchema),
   asyncHandler(contactController.deleteNote),
 );
 contactRouter.post(
@@ -92,6 +95,7 @@ contactRouter.post(
 );
 contactRouter.delete(
   "/:id/attachments/:attachmentId",
+  validateParams(contactAttachmentParamsSchema),
   asyncHandler(contactController.deleteAttachment),
 );
 contactRouter.post(

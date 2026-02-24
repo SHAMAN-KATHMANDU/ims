@@ -40,24 +40,6 @@ services:
       timeout: 5s
       retries: 5
 
-  prod_minio:
-    image: minio/minio:latest
-    container_name: prod_minio
-    restart: always
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - prod_minio_data:/data
-    networks:
-      prod:
-        aliases:
-          - prod-minio
-
   prod_api:
     image: rpandox/dev-api-ims:prod
     container_name: prod_api
@@ -71,8 +53,6 @@ services:
         condition: service_healthy
       prod_redis:
         condition: service_healthy
-      prod_minio:
-        condition: service_started
     networks:
       - prod
 
@@ -122,4 +102,3 @@ networks:
 volumes:
   prod_db_data:
   prod_backups:
-  prod_minio_data:

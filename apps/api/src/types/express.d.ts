@@ -21,6 +21,8 @@ declare global {
       user?: UserPayload;
       /** Resolved tenant object (set by tenant middleware) */
       tenant?: Tenant;
+      /** Auth context (set by requireAuth middleware after verifyToken + resolveTenant) */
+      authContext?: import("@/shared/types").AuthContext;
     }
   }
 }

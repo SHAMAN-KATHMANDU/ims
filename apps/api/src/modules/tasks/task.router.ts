@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import taskController from "./task.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -17,7 +16,6 @@ import {
 
 const taskRouter = Router();
 
-taskRouter.use(verifyToken);
 taskRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
 taskRouter.post(

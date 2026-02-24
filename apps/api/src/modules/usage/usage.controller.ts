@@ -3,189 +3,64 @@
  */
 
 import { Request, Response } from "express";
-import { basePrisma } from "@/config/prisma";
-import { sendControllerError } from "@/utils/controllerError";
-import {
-  getTenantUsageSummary,
-  getResourceCount,
-  getEffectiveLimit,
-} from "@/services/planLimitService";
-import { type LimitedResource } from "@repo/shared";
+import { ok } from "@/shared/response";
+import { usageService } from "./usage.service";
 
 class UsageController {
-  /**
-   * GET /usage — full usage summary for the tenant.
-   */
   async getUsage(req: Request, res: Response) {
-    try {
-      const tenant = req.tenant;
-      if (!tenant) {
-        return res.status(403).json({ message: "Tenant context required" });
-      }
+    const auth = req.authContext!;
 
-      const usage = await getTenantUsageSummary(tenant.id, tenant.plan);
-      res.status(200).json({ usage, plan: tenant.plan });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Get usage error");
-    }
+    const { usage, plan } = await usageService.getUsage(auth.tenantId);
+    return ok(res, { usage, plan }, 200);
   }
 
-  /**
-   * GET /usage/:resource — usage for a single resource.
-   */
   async getResourceUsage(req: Request, res: Response) {
-    try {
-      const tenant = req.tenant;
-      if (!tenant) {
-        return res.status(403).json({ message: "Tenant context required" });
-      }
+    const auth = req.authContext!;
 
-      const { resource } = req.params as { resource: LimitedResource };
-      const r = resource;
-      const [current, limits] = await Promise.all([
-        getResourceCount(tenant.id, r),
-        getEffectiveLimit(tenant.id, tenant.plan, r),
-      ]);
-
-      const usagePercent =
-        limits.effectiveLimit === -1
-          ? 0
-          : Math.round((current / limits.effectiveLimit) * 100);
-
-      res.status(200).json({
-        resource: r,
-        current,
-        baseLimit: limits.baseLimit,
-        addOnQuantity: limits.addOnQuantity,
-        effectiveLimit: limits.effectiveLimit,
-        usagePercent: Math.min(usagePercent, 100),
-        isAtLimit:
-          limits.effectiveLimit !== -1 && current >= limits.effectiveLimit,
-      });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Get resource usage error");
-    }
+    const { resource } = req.params as { resource: string };
+    const data = await usageService.getResourceUsage(
+      auth.tenantId,
+      resource as import("@repo/shared").LimitedResource,
+    );
+    return ok(res, data, 200);
   }
 
-  /**
-   * POST /add-ons/request — tenant requests an add-on (PENDING until admin approves).
-   */
   async requestAddOn(req: Request, res: Response) {
-    try {
-      const tenant = req.tenant;
-      if (!tenant) {
-        return res.status(403).json({ message: "Tenant context required" });
-      }
+    const auth = req.authContext!;
 
-      const { type, quantity, notes } = req.body;
-
-      const addOn = await basePrisma.tenantAddOn.create({
-        data: {
-          tenantId: tenant.id,
-          type: type as any,
-          quantity: quantity ?? 1,
-          status: "PENDING",
-          notes: notes ?? null,
-        },
-      });
-
-      res.status(201).json({
-        message:
-          "Add-on request submitted. A platform administrator will review and approve it.",
-        addOn,
-      });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Request add-on error");
-    }
+    const { type, quantity, notes } = req.body;
+    const { addOn } = await usageService.requestAddOn(auth.tenantId, {
+      type,
+      quantity,
+      notes,
+    });
+    return ok(
+      res,
+      { addOn },
+      201,
+      "Add-on request submitted. A platform administrator will review and approve it.",
+    );
   }
 
-  /**
-   * GET /add-ons — tenant views their add-ons.
-   */
   async getAddOns(req: Request, res: Response) {
-    try {
-      const tenant = req.tenant;
-      if (!tenant) {
-        return res.status(403).json({ message: "Tenant context required" });
-      }
+    const auth = req.authContext!;
 
-      const addOns = await basePrisma.tenantAddOn.findMany({
-        where: { tenantId: tenant.id },
-        orderBy: { createdAt: "desc" },
-      });
-
-      res.status(200).json({ addOns });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Get add-ons error");
-    }
+    const { addOns } = await usageService.getAddOns(auth.tenantId);
+    return ok(res, { addOns }, 200);
   }
 
-  /**
-   * GET /plans — plans with pricing for tenant-facing upgrade display (read-only).
-   */
   async getPlansWithPricing(req: Request, res: Response) {
-    try {
-      const plans = await basePrisma.plan.findMany({
-        where: { isActive: true },
-        orderBy: { rank: "asc" },
-      });
+    const auth = req.authContext!;
 
-      const pricingPlans = await basePrisma.pricingPlan.findMany({
-        where: { isActive: true },
-      });
-
-      const plansWithPricing = plans.map((plan) => {
-        const monthly = pricingPlans.find(
-          (p) => p.tier === plan.tier && p.billingCycle === "MONTHLY",
-        );
-        const annual = pricingPlans.find(
-          (p) => p.tier === plan.tier && p.billingCycle === "ANNUAL",
-        );
-        return {
-          id: plan.id,
-          name: plan.name,
-          slug: plan.slug,
-          tier: plan.tier,
-          rank: plan.rank,
-          description: plan.description,
-          priceMonthly: monthly ? Number(monthly.price) : null,
-          priceAnnual: annual ? Number(annual.price) : null,
-        };
-      });
-
-      res.status(200).json({ plans: plansWithPricing });
-    } catch (error: unknown) {
-      return sendControllerError(
-        req,
-        res,
-        error,
-        "Get plans with pricing error",
-      );
-    }
+    const { plans } = await usageService.getPlansWithPricing();
+    return ok(res, { plans }, 200);
   }
 
-  /**
-   * GET /add-ons/pricing — available add-on pricing for the tenant's plan tier.
-   */
   async getAddOnPricing(req: Request, res: Response) {
-    try {
-      const tenant = req.tenant;
-      if (!tenant) {
-        return res.status(403).json({ message: "Tenant context required" });
-      }
+    const auth = req.authContext!;
 
-      const pricing = await basePrisma.addOnPricing.findMany({
-        where: {
-          isActive: true,
-          OR: [{ tier: null }, { tier: tenant.plan as any }],
-        },
-        orderBy: [{ type: "asc" }, { billingCycle: "asc" }],
-      });
-
-      res.status(200).json({ pricing });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Get add-on pricing error");
-    }
+    const { pricing } = await usageService.getAddOnPricing(auth.tenantId);
+    return ok(res, { pricing }, 200);
   }
 }
 

@@ -26,10 +26,3 @@ vi.mock("ioredis", () => {
     })),
   };
 });
-
-vi.mock("@aws-sdk/client-s3", () => ({
-  S3Client: vi.fn().mockImplementation(() => ({ send: vi.fn() })),
-  PutObjectCommand: vi.fn(),
-  GetObjectCommand: vi.fn(),
-  DeleteObjectCommand: vi.fn(),
-}));

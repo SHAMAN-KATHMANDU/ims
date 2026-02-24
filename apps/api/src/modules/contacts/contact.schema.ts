@@ -45,6 +45,16 @@ export const contactIdParamsSchema = z.object({
   id: z.string().trim().min(1, "Contact ID is required"),
 });
 
+export const contactNoteParamsSchema = z.object({
+  id: z.string().trim().min(1, "Contact ID is required"),
+  noteId: z.string().trim().min(1, "Note ID is required"),
+});
+
+export const contactAttachmentParamsSchema = z.object({
+  id: z.string().trim().min(1, "Contact ID is required"),
+  attachmentId: z.string().trim().min(1, "Attachment ID is required"),
+});
+
 export const contactListQuerySchema = z.object({
   page: z.coerce.number().int().min(1).optional(),
   limit: z.coerce.number().int().min(1).optional(),

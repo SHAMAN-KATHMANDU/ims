@@ -1,212 +1,56 @@
 import { Request, Response } from "express";
-import prisma from "@/config/prisma";
-import {
-  getPaginationParams,
-  createPaginationResult,
-  getPrismaOrderBy,
-} from "@/utils/pagination";
+import { ok, okPaginated } from "@/shared/response";
 import { getValidatedQuery } from "@/middlewares/validateRequest";
-import { sendControllerError } from "@/utils/controllerError";
-
-function getTenantId(req: Request): string | null {
-  return req.tenant?.id ?? (req as any).user?.tenantId ?? null;
-}
+import * as companiesService from "./companies.service";
 
 class CompanyController {
   async create(req: Request, res: Response) {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId)
-        return res.status(401).json({ message: "Tenant context is required" });
+    const auth = req.authContext!;
 
-      const { name, website, address, phone } = req.body;
-
-      const company = await prisma.company.create({
-        data: {
-          tenantId,
-          name,
-          website: website || null,
-          address: address || null,
-          phone: phone || null,
-        },
-      });
-
-      res
-        .status(201)
-        .json({ message: "Company created successfully", company });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Create company error");
-    }
+    const company = await companiesService.create(auth.tenantId, req.body);
+    return ok(res, { company }, 201, "Company created successfully");
   }
 
   async getAll(req: Request, res: Response) {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId)
-        return res.status(401).json({ message: "Tenant context is required" });
+    const auth = req.authContext!;
 
-      const query = getValidatedQuery<{
-        page?: number;
-        limit?: number;
-        search?: string;
-        sortBy?: "createdAt" | "updatedAt" | "name" | "id";
-        sortOrder?: "asc" | "desc";
-      }>(req, res);
-      const { page, limit, sortBy, sortOrder, search } =
-        getPaginationParams(query);
-
-      const allowedSortFields = ["createdAt", "updatedAt", "name", "id"];
-      const orderBy = getPrismaOrderBy(
-        sortBy,
-        sortOrder,
-        allowedSortFields,
-      ) || {
-        name: "asc",
-      };
-
-      const where: Record<string, unknown> = { tenantId };
-      if (search) {
-        where.OR = [
-          { name: { contains: search, mode: "insensitive" as const } },
-          { website: { contains: search, mode: "insensitive" as const } },
-        ];
-      }
-
-      const skip = (page - 1) * limit;
-
-      const [totalItems, companies] = await Promise.all([
-        prisma.company.count({ where }),
-        prisma.company.findMany({
-          where,
-          orderBy,
-          skip,
-          take: limit,
-          include: {
-            _count: { select: { contacts: true, deals: true } },
-          },
-        }),
-      ]);
-
-      const result = createPaginationResult(companies, totalItems, page, limit);
-      res.status(200).json({ message: "OK", ...result });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Get companies error");
-    }
+    const query = getValidatedQuery<companiesService.ListCompaniesQuery>(
+      req,
+      res,
+    );
+    const result = await companiesService.getAll(auth.tenantId, query);
+    return okPaginated(res, result.data, result.pagination, "OK");
   }
 
   async getById(req: Request, res: Response) {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId)
-        return res.status(401).json({ message: "Tenant context is required" });
+    const auth = req.authContext!;
 
-      const { id } = req.params;
-      const company = await prisma.company.findFirst({
-        where: { id, tenantId },
-        include: {
-          contacts: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-            },
-          },
-          _count: { select: { deals: true } },
-        },
-      });
-
-      if (!company) {
-        return res.status(404).json({ message: "Company not found" });
-      }
-
-      res.status(200).json({ message: "OK", company });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Get company by id error");
-    }
+    const { id } = req.params;
+    const company = await companiesService.getById(auth.tenantId, id);
+    return ok(res, { company }, 200, "OK");
   }
 
   async update(req: Request, res: Response) {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId)
-        return res.status(401).json({ message: "Tenant context is required" });
+    const auth = req.authContext!;
 
-      const { id } = req.params;
-      const { name, website, address, phone } = req.body;
-
-      const existing = await prisma.company.findFirst({
-        where: { id, tenantId },
-      });
-      if (!existing) {
-        return res.status(404).json({ message: "Company not found" });
-      }
-
-      const company = await prisma.company.update({
-        where: { id },
-        data: {
-          ...(name !== undefined && { name: name || existing.name }),
-          ...(website !== undefined && { website: website || null }),
-          ...(address !== undefined && { address: address || null }),
-          ...(phone !== undefined && { phone: phone || null }),
-        },
-      });
-
-      res
-        .status(200)
-        .json({ message: "Company updated successfully", company });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Update company error");
-    }
+    const { id } = req.params;
+    const company = await companiesService.update(auth.tenantId, id, req.body);
+    return ok(res, { company }, 200, "Company updated successfully");
   }
 
   async delete(req: Request, res: Response) {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId)
-        return res.status(401).json({ message: "Tenant context is required" });
+    const auth = req.authContext!;
 
-      const { id } = req.params;
-
-      const existing = await prisma.company.findFirst({
-        where: { id, tenantId },
-      });
-      if (!existing) {
-        return res.status(404).json({ message: "Company not found" });
-      }
-
-      await prisma.company.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
-      res.status(200).json({ message: "Company deleted successfully" });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Delete company error");
-    }
+    const { id } = req.params;
+    await companiesService.deleteCompany(auth.tenantId, id);
+    return ok(res, undefined, 200, "Company deleted successfully");
   }
 
   async listForSelect(req: Request, res: Response) {
-    try {
-      const tenantId = getTenantId(req);
-      if (!tenantId)
-        return res.status(401).json({ message: "Tenant context is required" });
+    const auth = req.authContext!;
 
-      const companies = await prisma.company.findMany({
-        where: { tenantId },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-        take: 500,
-      });
-      res.status(200).json({ message: "OK", companies });
-    } catch (error: unknown) {
-      return sendControllerError(
-        req,
-        res,
-        error,
-        "List companies for select error",
-      );
-    }
+    const companies = await companiesService.listForSelect(auth.tenantId);
+    return ok(res, { companies }, 200, "OK");
   }
 }
 

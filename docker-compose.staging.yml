@@ -33,19 +33,6 @@ services:
     networks:
       - ims-network
 
-  minio:
-    image: minio/minio:latest
-    container_name: ims-minio-staging
-    restart: unless-stopped
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
-    volumes:
-      - minio_data:/data
-    networks:
-      - ims-network
-
   api:
     build:
       context: .
@@ -57,8 +44,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
-        condition: service_started
     ports:
       - "${API_PORT:-4000}:4000"
     environment:
@@ -70,12 +55,6 @@ services:
       CORS_ORIGIN: ${CORS_ORIGIN}
       API_PUBLIC_URL: ${API_PUBLIC_URL}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
-      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY:-minioadmin}
-      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY:-minioadmin}
-      STORAGE_BUCKET: ${STORAGE_BUCKET:-projectx-files}
-      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
-      STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-1}
     networks:
       - ims-network
 
@@ -102,6 +81,4 @@ networks:
 
 volumes:
   postgres_data:
-    driver: local
-  minio_data:
     driver: local

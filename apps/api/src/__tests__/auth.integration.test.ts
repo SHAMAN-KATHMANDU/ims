@@ -55,12 +55,14 @@ describe.skipIf(!process.env.DATABASE_URL)("Auth flow integration", () => {
       .send({ username: TEST_USERNAME, password: TEST_PASSWORD });
 
     expect(res.status).toBe(200);
-    expect(res.body.user).toBeDefined();
-    expect(res.body.user.username).toBe(TEST_USERNAME);
-    expect(res.body.tenant).toBeDefined();
-    expect(res.body.tenant.slug).toBe(TEST_SLUG);
-    expect(typeof res.body.token).toBe("string");
-    expect(res.body.accessToken).toBeUndefined();
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.user).toBeDefined();
+    expect(res.body.data.user.username).toBe(TEST_USERNAME);
+    expect(res.body.data.tenant).toBeDefined();
+    expect(res.body.data.tenant.slug).toBe(TEST_SLUG);
+    expect(typeof res.body.data.token).toBe("string");
+    expect(res.body.data.accessToken).toBeUndefined();
     expect(res.headers["set-cookie"]).toBeDefined();
     const cookies = res.headers["set-cookie"];
     expect(
@@ -77,7 +79,8 @@ describe.skipIf(!process.env.DATABASE_URL)("Auth flow integration", () => {
       .send({ username: TEST_USERNAME, password: "wrongpassword" });
 
     expect(res.status).toBe(401);
-    expect(res.body.message).toMatch(/invalid|password/i);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/invalid|password/i);
   });
 
   it("POST /api/v1/auth/login with locked account returns 429", async () => {
@@ -95,7 +98,8 @@ describe.skipIf(!process.env.DATABASE_URL)("Auth flow integration", () => {
       .send({ username: TEST_USERNAME, password: TEST_PASSWORD });
 
     expect(res.status).toBe(429);
-    expect(res.body.message).toMatch(/locked|try again/i);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/locked|try again/i);
 
     await basePrisma.user.update({
       where: { id: userId },
@@ -121,8 +125,10 @@ describe.skipIf(!process.env.DATABASE_URL)("Auth flow integration", () => {
       .set("X-Tenant-Slug", TEST_SLUG);
 
     expect(meRes.status).toBe(200);
-    expect(meRes.body.user).toBeDefined();
-    expect(meRes.body.user.username).toBe(TEST_USERNAME);
+    expect(meRes.body.success).toBe(true);
+    expect(meRes.body.data).toBeDefined();
+    expect(meRes.body.data.user).toBeDefined();
+    expect(meRes.body.data.user.username).toBe(TEST_USERNAME);
   });
 
   it("GET /api/v1/auth/me without token returns 401", async () => {
@@ -131,5 +137,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Auth flow integration", () => {
       .set("X-Tenant-Slug", TEST_SLUG);
 
     expect(res.status).toBe(401);
+    // Auth middleware may send { message } or errorHandler may send { success: false, error }
+    expect(res.body.message ?? res.body.error).toBeDefined();
   });
 });

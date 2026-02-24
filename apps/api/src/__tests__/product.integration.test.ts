@@ -79,6 +79,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
       .set("X-Tenant-Slug", TEST_SLUG)
       .send({ username: TEST_USERNAME, password: TEST_PASSWORD });
     expect(loginRes.status).toBe(200);
+    expect(loginRes.body.success).toBe(true);
     const setCookie = loginRes.headers["set-cookie"];
     authCookie = Array.isArray(setCookie) ? setCookie.join("; ") : setCookie;
   }, 30000);
@@ -102,10 +103,12 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
       });
 
     expect(res.status).toBe(201);
-    expect(res.body.product).toBeDefined();
-    expect(res.body.product.imsCode).toBe(TEST_IMS_CODE);
-    expect(res.body.product.name).toBe("Integration Test Product");
-    productId = res.body.product.id;
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.product).toBeDefined();
+    expect(res.body.data.product.imsCode).toBe(TEST_IMS_CODE);
+    expect(res.body.data.product.name).toBe("Integration Test Product");
+    productId = res.body.data.product.id;
   });
 
   it("POST /api/v1/products with duplicate IMS code returns 409", async () => {
@@ -123,7 +126,8 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
       });
 
     expect(res.status).toBe(409);
-    expect(res.body.message).toMatch(/already exists|IMS code/i);
+    expect(res.body.success).toBe(false);
+    expect(res.body.error).toMatch(/already exists|IMS code/i);
   });
 
   it("GET /api/v1/products/:id returns correct product", async () => {
@@ -133,9 +137,11 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
       .set("X-Tenant-Slug", TEST_SLUG);
 
     expect(res.status).toBe(200);
-    expect(res.body.product).toBeDefined();
-    expect(res.body.product.id).toBe(productId);
-    expect(res.body.product.imsCode).toBe(TEST_IMS_CODE);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.product).toBeDefined();
+    expect(res.body.data.product.id).toBe(productId);
+    expect(res.body.data.product.imsCode).toBe(TEST_IMS_CODE);
   });
 
   it("PUT /api/v1/products/:id updates product fields", async () => {
@@ -146,8 +152,10 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
       .send({ name: "Updated Integration Product", mrp: 199 });
 
     expect(res.status).toBe(200);
-    expect(res.body.product.name).toBe("Updated Integration Product");
-    expect(Number(res.body.product.mrp)).toBe(199);
+    expect(res.body.success).toBe(true);
+    expect(res.body.data).toBeDefined();
+    expect(res.body.data.product.name).toBe("Updated Integration Product");
+    expect(Number(res.body.data.product.mrp)).toBe(199);
   });
 
   it("DELETE /api/v1/products/:id soft-deletes (sets deletedAt)", async () => {
@@ -157,6 +165,7 @@ describe.skipIf(!process.env.DATABASE_URL)("Product CRUD integration", () => {
       .set("X-Tenant-Slug", TEST_SLUG);
 
     expect(res.status).toBe(200);
+    expect(res.body.success).toBe(true);
 
     const found = await basePrisma.product.findUnique({
       where: { id: productId },

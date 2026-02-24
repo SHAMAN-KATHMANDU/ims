@@ -1,9 +1,11 @@
 /**
- * Sale service — business logic for creating sales, extracted from SaleController.
- * Uses tenant-scoped prisma (call from controller when tenant context is set).
+ * @deprecated Use modules/sales/sales.service.ts instead. This file is kept for
+ * backward compatibility during migration. All createSale logic has been migrated
+ * to sales.service with repository and strategy handlers.
  */
 
 import prisma from "@/config/prisma";
+import { AuditAction, AuditResource } from "@/shared/types";
 
 export class SaleServiceError extends Error {
   constructor(
@@ -468,8 +470,8 @@ export async function createSale(
       data: {
         tenantId,
         userId,
-        action: "CREATE_SALE",
-        resource: "sale",
+        action: AuditAction.CREATE_SALE,
+        resource: AuditResource.SALE,
         resourceId: sale.id,
         details: {
           saleCode: sale.saleCode,

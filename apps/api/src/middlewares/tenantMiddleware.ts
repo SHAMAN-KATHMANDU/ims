@@ -11,7 +11,8 @@
 import { Request, Response, NextFunction } from "express";
 import { basePrisma } from "@/config/prisma";
 import { runWithTenant } from "@/config/tenantContext";
-import { sendControllerError } from "@/utils/controllerError";
+import { fail } from "@/shared/response";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 
 /**
  * Resolve tenant from JWT and set up tenant context.
@@ -22,42 +23,40 @@ const resolveTenant = async (
   next: NextFunction,
 ) => {
   try {
-    const tenantId = req.user?.tenantId;
+    const auth = getAuthContext(req);
+    const tenantId = auth?.tenantId;
 
     if (!tenantId) {
-      return res.status(403).json({
-        message: "No tenant associated with this user",
-        error: "tenant_required",
-      });
+      return fail(
+        res,
+        "No tenant associated with this user",
+        403,
+        "tenant_required",
+      );
     }
 
-    // Fetch the full tenant object (use basePrisma to avoid scoping issues)
     const tenant = await basePrisma.tenant.findUnique({
       where: { id: tenantId },
     });
 
     if (!tenant) {
-      return res.status(403).json({
-        message: "Tenant not found",
-        error: "tenant_not_found",
-      });
+      return fail(res, "Tenant not found", 403, "tenant_not_found");
     }
 
     if (!tenant.isActive) {
-      return res.status(403).json({
-        message: "Your organization has been deactivated. Contact support.",
-        error: "tenant_inactive",
-      });
+      return fail(
+        res,
+        "Your organization has been deactivated. Contact support.",
+        403,
+        "tenant_inactive",
+      );
     }
 
-    // Attach tenant to request
     req.tenant = tenant;
 
-    // Run the rest of the middleware chain within tenant context
-    // This enables Prisma auto-scoping for all downstream queries
     return runWithTenant(tenantId, () => next());
   } catch (error: unknown) {
-    return sendControllerError(req, res, error, "Tenant resolution error");
+    next(error);
   }
 };
 

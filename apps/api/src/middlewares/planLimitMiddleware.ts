@@ -16,6 +16,7 @@ import {
   getEffectiveLimit,
 } from "@/services/planLimitService";
 import { RESOURCE_LIMIT_MAP, type LimitedResource } from "@repo/shared";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 
 const RESOURCE_LABELS: Record<LimitedResource, string> = {
   users: "users",
@@ -36,7 +37,7 @@ export function enforcePlanLimits(resource: LimitedResource) {
       }
 
       // Platform admins bypass limits
-      if (req.user?.role === "platformAdmin") {
+      if ((req.authContext ?? getAuthContext(req))?.role === "platformAdmin") {
         return next();
       }
 

@@ -104,7 +104,8 @@ describe("AuthController", () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
-        message: "Username and password are required",
+        success: false,
+        error: "Username and password are required",
       });
       expect(mockFindUniqueTenant).not.toHaveBeenCalled();
     });
@@ -120,7 +121,8 @@ describe("AuthController", () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(res.json).toHaveBeenCalledWith({
-        message: "Username and password are required",
+        success: false,
+        error: "Username and password are required",
       });
     });
 
@@ -128,14 +130,13 @@ describe("AuthController", () => {
       const req = {
         body: { username: "user", password: "pass" },
         headers: {},
+        get: vi.fn(),
       } as unknown as Request;
       const res = mockRes() as Response;
 
-      await authController.logIn(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(500);
-      expect(res.json).toHaveBeenCalledWith({
+      await expect(authController.logIn(req, res)).rejects.toMatchObject({
         message: "No tenant configured. Please contact support.",
+        statusCode: 500,
       });
       expect(mockFindUniqueTenant).not.toHaveBeenCalled();
     });
@@ -145,17 +146,16 @@ describe("AuthController", () => {
       const req = {
         body: { username: "user", password: "pass" },
         headers: { "x-tenant-slug": "unknown-org" },
+        get: vi.fn(),
       } as unknown as Request;
       const res = mockRes() as Response;
 
-      await authController.logIn(req, res);
-
+      await expect(authController.logIn(req, res)).rejects.toMatchObject({
+        message: "Organization not found",
+        statusCode: 404,
+      });
       expect(mockFindUniqueTenant).toHaveBeenCalledWith({
         where: { slug: "unknown-org" },
-      });
-      expect(res.status).toHaveBeenCalledWith(404);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Organization not found",
       });
     });
 
@@ -173,14 +173,13 @@ describe("AuthController", () => {
       const req = {
         body: { username: "user", password: "pass" },
         headers: { "x-tenant-slug": "acme" },
+        get: vi.fn(),
       } as unknown as Request;
       const res = mockRes() as Response;
 
-      await authController.logIn(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(403);
-      expect(res.json).toHaveBeenCalledWith({
+      await expect(authController.logIn(req, res)).rejects.toMatchObject({
         message: "This organization has been deactivated",
+        statusCode: 403,
       });
     });
 
@@ -199,16 +198,15 @@ describe("AuthController", () => {
       const req = {
         body: { username: "nobody", password: "pass" },
         headers: { "x-tenant-slug": "acme" },
+        get: vi.fn(),
       } as unknown as Request;
       const res = mockRes() as Response;
 
-      await authController.logIn(req, res);
-
-      expect(mockFindFirstUser).toHaveBeenCalled();
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
+      await expect(authController.logIn(req, res)).rejects.toMatchObject({
         message: "Invalid username or password",
+        statusCode: 401,
       });
+      expect(mockFindFirstUser).toHaveBeenCalled();
     });
 
     it("returns 401 when password does not match", async () => {
@@ -241,16 +239,15 @@ describe("AuthController", () => {
       const req = {
         body: { username: "user", password: "wrong" },
         headers: { "x-tenant-slug": "acme" },
+        get: vi.fn(),
       } as unknown as Request;
       const res = mockRes() as Response;
 
-      await authController.logIn(req, res);
-
-      expect(mockCompare).toHaveBeenCalledWith("wrong", "hashed");
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
+      await expect(authController.logIn(req, res)).rejects.toMatchObject({
         message: "Invalid username or password",
+        statusCode: 401,
       });
+      expect(mockCompare).toHaveBeenCalledWith("wrong", "hashed");
       // Lockout: basePrisma.user.update is called to increment failedLoginAttempts
       expect(mockUpdateUser).toHaveBeenCalledWith({
         where: { id: "user-1" },
@@ -340,13 +337,16 @@ describe("AuthController", () => {
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        token: "jwt-token-here",
-        user: expect.not.objectContaining({ password: expect.anything() }),
-        tenant: expect.objectContaining({
-          id: "tenant-1",
-          slug: "acme",
-          name: "Acme",
-        }),
+        success: true,
+        data: {
+          token: "jwt-token-here",
+          user: expect.not.objectContaining({ password: expect.anything() }),
+          tenant: expect.objectContaining({
+            id: "tenant-1",
+            slug: "acme",
+            name: "Acme",
+          }),
+        },
       });
     });
   });
@@ -360,7 +360,8 @@ describe("AuthController", () => {
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
-        message: "Refresh token required",
+        success: false,
+        error: "Refresh token required",
       });
     });
 
@@ -369,16 +370,17 @@ describe("AuthController", () => {
       const req = {
         body: { refreshToken: "invalid-token" },
         headers: {},
+        get: vi.fn(),
       } as unknown as Request;
       const res = mockRes() as Response;
 
-      await authController.refreshToken(req, res);
-
+      await expect(authController.refreshToken(req, res)).rejects.toMatchObject(
+        {
+          message: "Invalid refresh token",
+          statusCode: 401,
+        },
+      );
       expect(mockFindFirstRefreshToken).toHaveBeenCalled();
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Invalid refresh token",
-      });
     });
 
     it("returns 200 and rotates refresh token on success", async () => {
@@ -450,12 +452,15 @@ describe("AuthController", () => {
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        token: "new-access-token",
-        tenant: expect.objectContaining({
-          id: "tenant-1",
-          slug: "acme",
-          name: "Acme",
-        }),
+        success: true,
+        data: {
+          token: "new-access-token",
+          tenant: expect.objectContaining({
+            id: "tenant-1",
+            slug: "acme",
+            name: "Acme",
+          }),
+        },
       });
     });
   });
@@ -469,7 +474,8 @@ describe("AuthController", () => {
 
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
-        message: "User not authenticated",
+        success: false,
+        error: "User not authenticated",
       });
       expect(mockFindUniqueUser).not.toHaveBeenCalled();
     });
@@ -486,15 +492,15 @@ describe("AuthController", () => {
       } as unknown as Request;
       const res = mockRes() as Response;
 
-      await authController.getCurrentUser(req, res);
-
+      await expect(
+        authController.getCurrentUser(req, res),
+      ).rejects.toMatchObject({
+        message: "User not found or session invalid",
+        statusCode: 401,
+      });
       expect(mockFindUniqueUser).toHaveBeenCalledWith({
         where: { id: "user-1" },
         select: expect.any(Object),
-      });
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "User not found or session invalid",
       });
     });
 
@@ -532,7 +538,10 @@ describe("AuthController", () => {
       await authController.getCurrentUser(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ user: dbUser, tenant: dbTenant });
+      expect(res.json).toHaveBeenCalledWith({
+        success: true,
+        data: { user: dbUser, tenant: dbTenant },
+      });
     });
   });
 
@@ -554,8 +563,11 @@ describe("AuthController", () => {
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
-        message: "Logout successful",
-        revokedSessions: 1,
+        success: true,
+        data: {
+          message: "Logout successful",
+          revokedSessions: 1,
+        },
       });
     });
   });

@@ -136,7 +136,7 @@ export function buildSalesWhereFromFilters(
 
 /**
  * Apply role to sales where: user role must see only own sales (createdById).
- * Call this after buildSalesWhereFromFilters; pass req.user.role and req.user.id.
+ * Call this after buildSalesWhereFromFilters; pass req.authContext.role and req.authContext.userId (from requireAuth).
  * Admin/superAdmin: no createdById added. User: force createdById to current user and ignore filter userId.
  */
 export function applyRoleToSalesWhere(
