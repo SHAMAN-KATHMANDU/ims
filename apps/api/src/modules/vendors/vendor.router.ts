@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import vendorController from "@/modules/vendors/vendor.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -52,7 +51,6 @@ const vendorRouter = Router();
  */
 vendorRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(vendorController.createVendor),
 );
@@ -84,7 +82,6 @@ vendorRouter.post(
  */
 vendorRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(vendorController.getAllVendors),
 );
@@ -124,7 +121,6 @@ vendorRouter.get(
  */
 vendorRouter.get(
   "/:id/products",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(vendorController.getVendorProducts),
 );
@@ -152,7 +148,6 @@ vendorRouter.get(
  */
 vendorRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(vendorController.getVendorById),
 );
@@ -198,7 +193,6 @@ vendorRouter.get(
  */
 vendorRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(vendorController.updateVendor),
 );
@@ -228,7 +222,6 @@ vendorRouter.put(
  */
 vendorRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(vendorController.deleteVendor),
 );

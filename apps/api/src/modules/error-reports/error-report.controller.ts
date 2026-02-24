@@ -9,10 +9,6 @@ import { sendControllerError } from "@/utils/controllerError";
 class ErrorReportController {
   async create(req: Request, res: Response) {
     try {
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
       const { title, description, pageUrl } = req.body as {
         title?: string;
         description?: string;

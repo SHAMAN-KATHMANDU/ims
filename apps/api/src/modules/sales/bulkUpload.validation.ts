@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { BulkParseOptions } from "@/utils/bulkParse";
 
 /**
  * Parse date from Excel (serial number, ISO string, or common formats).
@@ -184,9 +185,95 @@ export const excelSaleRowSchema = z.object({
 
 export type ExcelSaleRow = z.infer<typeof excelSaleRowSchema>;
 
-export interface ValidationError {
-  row: number;
-  field?: string;
-  message: string;
-  value?: unknown;
+/** Field names for sale bulk parse. */
+export const saleBulkFields = [
+  "sn",
+  "saleId",
+  "dateOfSale",
+  "showroom",
+  "phone",
+  "soldBy",
+  "productImsCode",
+  "productName",
+  "variation",
+  "quantity",
+  "mrp",
+  "discount",
+  "finalAmount",
+  "paymentMethod",
+] as const;
+
+/** Header mappings for sale bulk file. */
+export const saleBulkHeaderMappings: Record<string, string[]> = {
+  sn: ["sn", "sno", "serial", "serialnumber"],
+  saleId: ["saleid", "sale_id", "id"],
+  dateOfSale: ["dateofsale", "date_of_sale", "date", "saledate", "sale_date"],
+  showroom: ["showroom", "location", "store"],
+  phone: [
+    "phonenumber",
+    "phone_number",
+    "phone",
+    "customerphone",
+    "customer_phone",
+    "mobile",
+    "contact",
+  ],
+  soldBy: ["soldby", "sold_by", "seller", "createdby", "created_by"],
+  productImsCode: [
+    "productimscode",
+    "product_ims_code",
+    "imscode",
+    "ims_code",
+    "ims",
+  ],
+  productName: [
+    "productname",
+    "product_name",
+    "name",
+    "product",
+    "productnamr",
+  ],
+  variation: [
+    "variation",
+    "design",
+    "variations",
+    "variant",
+    "attributes",
+    "attribute",
+  ],
+  quantity: ["quantity", "qty"],
+  mrp: ["mrp", "price", "unitprice", "unit_price"],
+  discount: ["discount", "discountpercent", "discount_percent"],
+  finalAmount: [
+    "finalamount",
+    "final_amount",
+    "line_total",
+    "linetotal",
+    "amount",
+  ],
+  paymentMethod: ["paymentmethod", "payment_method", "method", "payment"],
+};
+
+/** Required columns for sale bulk upload. */
+export const saleBulkRequiredColumns = [
+  "showroom",
+  "soldBy",
+  "productImsCode",
+  "productName",
+  "quantity",
+  "mrp",
+  "finalAmount",
+];
+
+/** Options for parseBulkFile when parsing sale bulk uploads. */
+export function getSaleBulkParseOptions(): BulkParseOptions<ExcelSaleRow> {
+  return {
+    headerMappings: saleBulkHeaderMappings,
+    requiredColumns: saleBulkRequiredColumns,
+    schema: excelSaleRowSchema,
+    fields: [...saleBulkFields],
+    skipExcelRows: 1,
+    missingColumnsHint:
+      "Required: Showroom, Sold by, Product IMS code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
+  };
 }

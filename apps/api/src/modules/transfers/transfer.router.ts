@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import transferController from "@/modules/transfers/transfer.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -54,7 +53,6 @@ const transferRouter = Router();
  */
 transferRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.createTransfer),
 );
@@ -103,7 +101,6 @@ transferRouter.post(
  */
 transferRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(transferController.getAllTransfers),
 );
@@ -131,7 +128,6 @@ transferRouter.get(
  */
 transferRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(transferController.getTransferById),
 );
@@ -159,7 +155,6 @@ transferRouter.get(
  */
 transferRouter.get(
   "/:id/logs",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(transferController.getTransferLogs),
 );
@@ -189,7 +184,6 @@ transferRouter.get(
  */
 transferRouter.put(
   "/:id/approve",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.approveTransfer),
 );
@@ -219,7 +213,6 @@ transferRouter.put(
  */
 transferRouter.put(
   "/:id/transit",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.startTransit),
 );
@@ -249,7 +242,6 @@ transferRouter.put(
  */
 transferRouter.put(
   "/:id/complete",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.completeTransfer),
 );
@@ -287,7 +279,6 @@ transferRouter.put(
  */
 transferRouter.put(
   "/:id/cancel",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.cancelTransfer),
 );

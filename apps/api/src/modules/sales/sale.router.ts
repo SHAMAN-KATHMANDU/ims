@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import saleController from "@/modules/sales/sale.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -50,7 +49,6 @@ const saleRouter = Router();
  */
 saleRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.createSale),
 );
@@ -87,7 +85,6 @@ saleRouter.post(
  */
 saleRouter.post(
   "/preview",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.previewSale),
 );
@@ -151,7 +148,6 @@ saleRouter.post(
  */
 saleRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getAllSales),
 );
@@ -179,7 +175,6 @@ saleRouter.get(
  */
 saleRouter.get(
   "/me/since-last-login",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getSalesSinceLastLogin),
 );
@@ -214,7 +209,6 @@ saleRouter.get(
  */
 saleRouter.get(
   "/analytics/summary",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getSalesSummary),
 );
@@ -244,7 +238,6 @@ saleRouter.get(
  */
 saleRouter.get(
   "/analytics/by-location",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(saleController.getSalesByLocation),
 );
@@ -274,7 +267,6 @@ saleRouter.get(
  */
 saleRouter.get(
   "/analytics/daily",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getDailySales),
 );
@@ -317,7 +309,6 @@ saleRouter.get(
  */
 saleRouter.post(
   "/:id/payments",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.addPayment),
 );
@@ -345,7 +336,6 @@ saleRouter.post(
  */
 saleRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getSaleById),
 );

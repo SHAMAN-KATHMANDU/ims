@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import userController from "@/modules/users/user.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -58,7 +57,6 @@ const userRouter = Router();
  */
 userRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("superAdmin"),
   asyncHandler(userController.createUser),
 );
@@ -92,7 +90,6 @@ userRouter.post(
  */
 userRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(userController.getAllUsers),
 );
@@ -134,7 +131,6 @@ userRouter.get(
  */
 userRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("superAdmin"),
   asyncHandler(userController.getUserById),
 );
@@ -193,7 +189,6 @@ userRouter.get(
  */
 userRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("superAdmin"),
   asyncHandler(userController.updateUser),
 );
@@ -233,7 +228,6 @@ userRouter.put(
  */
 userRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("superAdmin"),
   asyncHandler(userController.deleteUser),
 );

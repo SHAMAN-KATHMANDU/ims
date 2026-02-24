@@ -7,14 +7,14 @@ import {
 } from "@/utils/pagination";
 import ExcelJS from "exceljs";
 import fs from "fs";
-import path from "path";
-import { z } from "zod";
-import csvParser from "csv-parser";
+import type { ExcelSaleRow } from "./bulkUpload.validation";
+import { getSaleBulkParseOptions } from "./bulkUpload.validation";
 import {
-  excelSaleRowSchema,
-  type ExcelSaleRow,
-  type ValidationError,
-} from "./bulkUpload.validation";
+  processSaleBulkRows,
+  buildSaleBulkTemplate,
+} from "./sale.bulk.service";
+import { parseBulkFile, type ValidationError } from "@/utils/bulkParse";
+import { calculateSaleItems, SaleCalculationError } from "./sale.service";
 import { sendControllerError } from "@/utils/controllerError";
 
 // Generate a unique sale code
@@ -55,11 +55,6 @@ class SaleController {
           amount: number;
         }>;
       } = req.body;
-
-      // Validate user
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
 
       // Validate required fields
       if (!locationId) {
@@ -126,297 +121,35 @@ class SaleController {
         });
       }
 
-      // Get "Member" discount type for member sales (tenant-scoped)
-      let memberDiscountType = null;
-      if (saleType === "MEMBER" && req.user?.tenantId) {
-        memberDiscountType = await prisma.discountType.findFirst({
-          where: {
-            tenantId: req.user.tenantId,
-            name: { contains: "Member", mode: "insensitive" },
-          },
-        });
-      }
+      // Calculate all item prices, discounts, and promo codes
+      const { processedItems, subtotal, totalDiscount, total } =
+        await calculateSaleItems(
+          items,
+          locationId,
+          saleType,
+          req.user!.tenantId,
+        );
 
-      // Process items and validate stock & discounts
-      const processedItems: Array<{
-        variationId: string;
-        subVariationId: string | null;
-        quantity: number;
-        unitPrice: number;
-        totalMrp: number;
-        discountPercent: number;
-        discountAmount: number;
-        lineTotal: number;
-      }> = [];
-
-      let subtotal = 0;
-      let totalDiscount = 0;
-
+      // Increment promo usage counts (service is read-only; writes happen here)
+      const promoCodesUsed = new Set<string>();
       for (const item of items) {
-        if (!item.variationId || !item.quantity || item.quantity <= 0) {
-          return res.status(400).json({
-            message: "Each item must have a variationId and positive quantity",
-          });
-        }
-
-        // Get variation with product info, sub-variants, and active discounts
-        const variation = await prisma.productVariation.findUnique({
-          where: { id: item.variationId },
-          include: {
-            subVariations: { select: { id: true, name: true } },
-            product: {
-              include: {
-                discounts: {
-                  where: {
-                    isActive: true,
-                    OR: [
-                      { startDate: null },
-                      { startDate: { lte: new Date() } },
-                    ],
-                    AND: [
-                      {
-                        OR: [
-                          { endDate: null },
-                          { endDate: { gte: new Date() } },
-                        ],
-                      },
-                    ],
-                  },
-                  include: {
-                    discountType: true,
-                  },
-                },
-              },
-            },
-          },
-        });
-
-        if (!variation) {
-          return res.status(404).json({
-            message: `Product variation ${item.variationId} not found`,
-          });
-        }
-
-        const hasSubVariants = variation.subVariations?.length > 0;
-        const subVariationId = item.subVariationId ?? null;
-        if (hasSubVariants && !subVariationId) {
-          return res.status(400).json({
-            message: `Variation ${variation.imsCode} has sub-variants; please specify subVariationId for each line item`,
-          });
-        }
-        if (!hasSubVariants && subVariationId) {
-          return res.status(400).json({
-            message: `Variation ${variation.imsCode} has no sub-variants; do not send subVariationId`,
-          });
-        }
-        if (subVariationId) {
-          const belongs = variation.subVariations?.some(
-            (s) => s.id === subVariationId,
-          );
-          if (!belongs) {
-            return res.status(400).json({
-              message: `Sub-variation ${subVariationId} does not belong to variation ${item.variationId}`,
-            });
-          }
-        }
-
-        // Check stock at this location (and sub-variant when applicable)
-        // findFirst when subVariationId is null (Prisma findUnique does not accept null in compound unique)
-        const inventory =
-          subVariationId != null
-            ? await prisma.locationInventory.findUnique({
-                where: {
-                  locationId_variationId_subVariationId: {
-                    locationId,
-                    variationId: item.variationId,
-                    subVariationId,
-                  },
-                },
-              })
-            : await prisma.locationInventory.findFirst({
-                where: {
-                  locationId,
-                  variationId: item.variationId,
-                  subVariationId: null,
-                },
-              });
-
-        const availableStock = inventory?.quantity || 0;
-        if (availableStock < item.quantity) {
-          return res.status(400).json({
-            message: `Insufficient stock for ${variation.product.name} (${variation.imsCode}${subVariationId ? ` / sub-variant` : ""})`,
-            available: availableStock,
-            requested: item.quantity,
-          });
-        }
-
-        const unitPrice = Number(variation.product.mrp);
-        const itemSubtotal = unitPrice * item.quantity;
-        let discountPercent = 0;
-        let discountAmount = 0;
-
-        // Use frontend-selected discount if provided, otherwise auto-select
-        const activeDiscounts = variation.product.discounts as Array<
-          (typeof variation.product.discounts)[number] & {
-            discountType: { name: string };
-          }
-        >;
-
-        let baseDiscount: (typeof activeDiscounts)[number] | null = null;
-
-        if (item.discountId && item.discountId !== "none") {
-          baseDiscount =
-            activeDiscounts?.find((d) => d.id === item.discountId) ?? null;
-        } else if (!item.discountId) {
-          // Auto-select fallback (no discountId sent at all -- e.g. bulk upload)
-          if (activeDiscounts && activeDiscounts.length > 0) {
-            const eligible = activeDiscounts.filter((d) => {
-              const typeName = d.discountType.name.toLowerCase();
-              if (saleType === "MEMBER") {
-                return (
-                  typeName.includes("member") || typeName.includes("non-member")
-                );
-              }
-              return (
-                typeName.includes("non-member") ||
-                typeName.includes("wholesale")
-              );
-            });
-            if (eligible.length > 0) {
-              eligible.sort((a, b) => {
-                const aIsSpecial =
-                  a.discountType.name.toLowerCase() === "special" ? 1 : 0;
-                const bIsSpecial =
-                  b.discountType.name.toLowerCase() === "special" ? 1 : 0;
-                if (aIsSpecial !== bIsSpecial) return bIsSpecial - aIsSpecial;
-                const aValue =
-                  a.valueType === "FLAT"
-                    ? Number(a.value)
-                    : (Number(a.value) / 100) * itemSubtotal;
-                const bValue =
-                  b.valueType === "FLAT"
-                    ? Number(b.value)
-                    : (Number(b.value) / 100) * itemSubtotal;
-                return bValue - aValue;
-              });
-              baseDiscount = eligible[0];
-            }
-          }
-        }
-        // discountId === "none" means user explicitly chose no discount
-
-        if (baseDiscount) {
-          const val =
-            Number(baseDiscount.value) ||
-            Number(baseDiscount.discountPercentage);
-          if (baseDiscount.valueType === "FLAT") {
-            discountAmount += val;
-          } else {
-            discountPercent += val;
-          }
-        }
-
-        // Apply promo code logic (per product, processed after base discounts)
-        if (item.promoCode) {
+        if (item.promoCode && !promoCodesUsed.has(item.promoCode)) {
           const promo = await prisma.promoCode.findFirst({
-            where: { tenantId: req.user!.tenantId, code: item.promoCode },
-            include: {
-              products: {
-                include: { product: true },
-              },
+            where: {
+              tenantId: req.user!.tenantId,
+              code: item.promoCode,
+              isActive: true,
             },
           });
-
-          if (promo && promo.isActive) {
-            const now = new Date();
-            if (
-              (!promo.validFrom || promo.validFrom <= now) &&
-              (!promo.validTo || promo.validTo >= now) &&
-              (!promo.usageLimit || promo.usageCount < promo.usageLimit)
-            ) {
-              // Empty products list = applies to all products
-              const isProductEligible =
-                promo.products.length === 0 ||
-                promo.products.some(
-                  (pp) => pp.productId === variation.productId,
-                );
-
-              let isCustomerEligible = false;
-              if (promo.eligibility === "ALL") {
-                isCustomerEligible = true;
-              } else if (promo.eligibility === "MEMBER") {
-                isCustomerEligible = saleType === "MEMBER";
-              } else if (promo.eligibility === "NON_MEMBER") {
-                isCustomerEligible = saleType === "GENERAL";
-              } else if (promo.eligibility === "WHOLESALE") {
-                isCustomerEligible = false;
-              }
-
-              if (isProductEligible && isCustomerEligible) {
-                const baseAfterProductDiscount =
-                  itemSubtotal -
-                  (discountAmount + itemSubtotal * (discountPercent / 100));
-
-                let promoDiscountAmount = 0;
-                if (promo.valueType === "FLAT") {
-                  promoDiscountAmount = Number(promo.value);
-                } else {
-                  promoDiscountAmount =
-                    baseAfterProductDiscount * (Number(promo.value) / 100);
-                }
-
-                if (promo.overrideDiscounts) {
-                  discountAmount = promoDiscountAmount;
-                  discountPercent = 0;
-                } else if (promo.allowStacking) {
-                  discountAmount += promoDiscountAmount;
-                } else {
-                  const baseTotalDiscount =
-                    discountAmount + itemSubtotal * (discountPercent / 100);
-                  if (promoDiscountAmount > baseTotalDiscount) {
-                    discountAmount = promoDiscountAmount;
-                    discountPercent = 0;
-                  }
-                }
-
-                // Increment promo usage
-                await prisma.promoCode.update({
-                  where: { id: promo.id },
-                  data: {
-                    usageCount: {
-                      increment: 1,
-                    },
-                  },
-                });
-              }
-            }
+          if (promo) {
+            await prisma.promoCode.update({
+              where: { id: promo.id },
+              data: { usageCount: { increment: 1 } },
+            });
+            promoCodesUsed.add(item.promoCode);
           }
         }
-
-        // Clamp discounts so they never exceed subtotal
-        const effectiveDiscount =
-          Math.min(
-            itemSubtotal,
-            discountAmount + itemSubtotal * (discountPercent / 100),
-          ) || 0;
-        const lineTotal = itemSubtotal - effectiveDiscount;
-
-        subtotal += itemSubtotal;
-        totalDiscount += effectiveDiscount;
-
-        processedItems.push({
-          variationId: item.variationId,
-          subVariationId: subVariationId ?? null,
-          quantity: item.quantity,
-          unitPrice,
-          totalMrp: itemSubtotal,
-          discountPercent,
-          discountAmount: effectiveDiscount,
-          lineTotal,
-        });
       }
-
-      const total = Math.round((subtotal - totalDiscount) * 100) / 100;
 
       const creditSale = isCreditSale === true;
 
@@ -594,6 +327,11 @@ class SaleController {
         sale,
       });
     } catch (error: unknown) {
+      if (error instanceof SaleCalculationError) {
+        return res
+          .status(error.status)
+          .json({ message: error.message, ...error.extra });
+      }
       return sendControllerError(req, res, error, "Create sale error");
     }
   }
@@ -607,12 +345,10 @@ class SaleController {
       const {
         locationId,
         memberPhone,
-        memberName,
         items,
       }: {
         locationId: string;
         memberPhone?: string;
-        memberName?: string;
         items: Array<{
           variationId: string;
           subVariationId?: string | null;
@@ -642,244 +378,38 @@ class SaleController {
           .json({ message: "Invalid or inactive showroom" });
       }
 
-      let member: { id: string; isActive: boolean } | null = null;
       let saleType: "GENERAL" | "MEMBER" = "GENERAL";
       if (memberPhone) {
         const normalizedPhone = String(memberPhone)
           .replace(/[\s-]/g, "")
           .trim();
-        member = await prisma.member.findFirst({
+        const member = await prisma.member.findFirst({
           where: { phone: normalizedPhone },
           select: { id: true, isActive: true },
         });
         if (member?.isActive) saleType = "MEMBER";
       }
 
-      let subtotal = 0;
-      let totalDiscount = 0;
-      let totalPromoDiscount = 0;
-
-      for (const item of items) {
-        if (!item.variationId || !item.quantity || item.quantity <= 0) {
-          return res.status(400).json({
-            message: "Each item must have variationId and positive quantity",
-          });
-        }
-
-        const variation = await prisma.productVariation.findUnique({
-          where: { id: item.variationId },
-          include: {
-            subVariations: { select: { id: true, name: true } },
-            product: {
-              include: {
-                discounts: {
-                  where: {
-                    isActive: true,
-                    OR: [
-                      { startDate: null },
-                      { startDate: { lte: new Date() } },
-                    ],
-                    AND: [
-                      {
-                        OR: [
-                          { endDate: null },
-                          { endDate: { gte: new Date() } },
-                        ],
-                      },
-                    ],
-                  },
-                  include: { discountType: true },
-                },
-              },
-            },
-          },
-        });
-
-        if (!variation) {
-          return res.status(404).json({
-            message: `Variation ${item.variationId} not found`,
-          });
-        }
-
-        const prevSubVariationId = item.subVariationId ?? null;
-        const prevHasSubVariants = (variation.subVariations?.length ?? 0) > 0;
-        if (prevHasSubVariants && !prevSubVariationId) {
-          return res.status(400).json({
-            message: `Variation ${variation.imsCode} has sub-variants; specify subVariationId`,
-          });
-        }
-
-        // findFirst when subVariationId is null (Prisma findUnique does not accept null in compound unique)
-        const inventory =
-          prevSubVariationId != null
-            ? await prisma.locationInventory.findUnique({
-                where: {
-                  locationId_variationId_subVariationId: {
-                    locationId,
-                    variationId: item.variationId,
-                    subVariationId: prevSubVariationId,
-                  },
-                },
-              })
-            : await prisma.locationInventory.findFirst({
-                where: {
-                  locationId,
-                  variationId: item.variationId,
-                  subVariationId: null,
-                },
-              });
-        const availableStock = inventory?.quantity || 0;
-        if (availableStock < item.quantity) {
-          return res.status(400).json({
-            message: `Insufficient stock for ${variation.product.name} (${variation.imsCode})`,
-            available: availableStock,
-            requested: item.quantity,
-          });
-        }
-
-        const unitPrice = Number(variation.product.mrp);
-        const itemSubtotal = unitPrice * item.quantity;
-        let discountPercent = 0;
-        let discountAmount = 0;
-
-        const activeDiscounts = variation.product.discounts as Array<
-          (typeof variation.product.discounts)[number] & {
-            discountType: { name: string };
-          }
-        >;
-        let baseDiscount: (typeof activeDiscounts)[number] | null = null;
-
-        if (item.discountId && item.discountId !== "none") {
-          baseDiscount =
-            activeDiscounts?.find((d) => d.id === item.discountId) ?? null;
-        } else if (!item.discountId) {
-          if (activeDiscounts?.length > 0) {
-            const eligible = activeDiscounts.filter((d) => {
-              const typeName = d.discountType.name.toLowerCase();
-              if (saleType === "MEMBER") {
-                return (
-                  typeName.includes("member") || typeName.includes("non-member")
-                );
-              }
-              return (
-                typeName.includes("non-member") ||
-                typeName.includes("wholesale")
-              );
-            });
-            if (eligible.length > 0) {
-              eligible.sort((a, b) => {
-                const aIsSpecial =
-                  a.discountType.name.toLowerCase() === "special" ? 1 : 0;
-                const bIsSpecial =
-                  b.discountType.name.toLowerCase() === "special" ? 1 : 0;
-                if (aIsSpecial !== bIsSpecial) return bIsSpecial - aIsSpecial;
-                const aValue =
-                  a.valueType === "FLAT"
-                    ? Number(a.value)
-                    : (Number(a.value) / 100) * itemSubtotal;
-                const bValue =
-                  b.valueType === "FLAT"
-                    ? Number(b.value)
-                    : (Number(b.value) / 100) * itemSubtotal;
-                return bValue - aValue;
-              });
-              baseDiscount = eligible[0];
-            }
-          }
-        }
-
-        if (baseDiscount) {
-          const val =
-            Number(baseDiscount.value) ||
-            Number(baseDiscount.discountPercentage);
-          if (baseDiscount.valueType === "FLAT") {
-            discountAmount += val;
-          } else {
-            discountPercent += val;
-          }
-        }
-
-        if (item.promoCode) {
-          const promo = await prisma.promoCode.findFirst({
-            where: { tenantId: req.user!.tenantId, code: item.promoCode },
-            include: {
-              products: { include: { product: true } },
-            },
-          });
-
-          if (promo && promo.isActive) {
-            const now = new Date();
-            if (
-              (!promo.validFrom || promo.validFrom <= now) &&
-              (!promo.validTo || promo.validTo >= now) &&
-              (!promo.usageLimit || promo.usageCount < promo.usageLimit)
-            ) {
-              const isProductEligible =
-                promo.products.length === 0 ||
-                promo.products.some(
-                  (pp: { productId: string }) =>
-                    pp.productId === variation.productId,
-                );
-              let isCustomerEligible = false;
-              if (promo.eligibility === "ALL") isCustomerEligible = true;
-              else if (promo.eligibility === "MEMBER")
-                isCustomerEligible = saleType === "MEMBER";
-              else if (promo.eligibility === "NON_MEMBER")
-                isCustomerEligible = saleType === "GENERAL";
-
-              if (isProductEligible && isCustomerEligible) {
-                const baseAfterProductDiscount =
-                  itemSubtotal -
-                  (discountAmount + itemSubtotal * (discountPercent / 100));
-                let promoDiscountAmount = 0;
-                if (promo.valueType === "FLAT") {
-                  promoDiscountAmount = Number(promo.value);
-                } else {
-                  promoDiscountAmount =
-                    baseAfterProductDiscount * (Number(promo.value) / 100);
-                }
-
-                if (promo.overrideDiscounts) {
-                  discountAmount = promoDiscountAmount;
-                  discountPercent = 0;
-                } else if (promo.allowStacking) {
-                  discountAmount += promoDiscountAmount;
-                } else {
-                  const baseTotalDiscount =
-                    discountAmount + itemSubtotal * (discountPercent / 100);
-                  if (promoDiscountAmount > baseTotalDiscount) {
-                    discountAmount = promoDiscountAmount;
-                    discountPercent = 0;
-                  }
-                }
-                totalPromoDiscount += Math.min(
-                  promoDiscountAmount,
-                  itemSubtotal,
-                );
-                // Preview: do not increment promo usageCount
-              }
-            }
-          }
-        }
-
-        const effectiveDiscount =
-          Math.min(
-            itemSubtotal,
-            discountAmount + itemSubtotal * (discountPercent / 100),
-          ) || 0;
-        subtotal += itemSubtotal;
-        totalDiscount += effectiveDiscount;
-      }
-
-      const total = Math.round((subtotal - totalDiscount) * 100) / 100;
+      const { subtotal, totalDiscount, totalPromoDiscount, total } =
+        await calculateSaleItems(
+          items,
+          locationId,
+          saleType,
+          req.user!.tenantId,
+        );
 
       res.json({
-        subtotal: Math.round(subtotal * 100) / 100,
-        discount: Math.round(totalDiscount * 100) / 100,
+        subtotal,
+        discount: totalDiscount,
         total,
-        promoDiscount: Math.round(totalPromoDiscount * 100) / 100,
+        promoDiscount: totalPromoDiscount,
       });
     } catch (error: unknown) {
+      if (error instanceof SaleCalculationError) {
+        return res
+          .status(error.status)
+          .json({ message: error.message, ...error.extra });
+      }
       return sendControllerError(req, res, error, "Preview sale error");
     }
   }
@@ -1031,10 +561,6 @@ class SaleController {
   // Get current user's sales since last login (for User Sales Report)
   async getSalesSinceLastLogin(req: Request, res: Response) {
     try {
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
       const { page, limit } = getPaginationParams(req.query);
 
       const user = await prisma.user.findUnique({
@@ -1479,17 +1005,6 @@ class SaleController {
 
   // Bulk upload sales from Excel or CSV file
   async bulkUploadSales(req: Request, res: Response) {
-    const errors: ValidationError[] = [];
-    const createdSales: {
-      id: string;
-      saleCode: string;
-      itemsCount: number;
-    }[] = [];
-    const skippedSales: {
-      saleId: string | null;
-      reason: string;
-    }[] = [];
-
     try {
       if (!req.file) {
         return res.status(400).json({
@@ -1501,650 +1016,46 @@ class SaleController {
         });
       }
 
-      const filePath = req.file.path;
-      const fileExt = path.extname(req.file.originalname).toLowerCase();
-      const isCSV = fileExt === ".csv";
-
-      const normalizeHeader = (header: string): string => {
-        return header
-          .toString()
-          .toLowerCase()
-          .trim()
-          .replace(/[^a-z0-9]/g, "")
-          .replace(/\s+/g, "");
-      };
-
-      const headerMappings: Record<string, string[]> = {
-        sn: ["sn", "sno", "serial", "serialnumber"],
-        saleId: ["saleid", "sale_id", "id"],
-        dateOfSale: [
-          "dateofsale",
-          "date_of_sale",
-          "date",
-          "saledate",
-          "sale_date",
-        ],
-        showroom: ["showroom", "location", "store"],
-        phone: [
-          "phonenumber",
-          "phone_number",
-          "phone",
-          "customerphone",
-          "customer_phone",
-          "mobile",
-          "contact",
-        ],
-        soldBy: ["soldby", "sold_by", "seller", "createdby", "created_by"],
-        productImsCode: [
-          "productimscode",
-          "product_ims_code",
-          "imscode",
-          "ims_code",
-          "ims",
-        ],
-        productName: [
-          "productname",
-          "product_name",
-          "name",
-          "product",
-          "productnamr",
-        ],
-        variation: [
-          "variation",
-          "design",
-          "variations",
-          "variant",
-          "attributes",
-          "attribute",
-        ],
-        quantity: ["quantity", "qty", "qty"],
-        mrp: ["mrp", "price", "unitprice", "unit_price"],
-        discount: ["discount", "discountpercent", "discount_percent"],
-        finalAmount: [
-          "finalamount",
-          "final_amount",
-          "line_total",
-          "linetotal",
-          "amount",
-        ],
-        paymentMethod: ["paymentmethod", "payment_method", "method", "payment"],
-      };
-
-      const requiredColumns = [
-        "showroom",
-        "soldBy",
-        "productImsCode",
-        "productName",
-        "quantity",
-        "mrp",
-        "finalAmount",
-      ];
-      let rows: ExcelSaleRow[] = [];
-
-      if (isCSV) {
-        const csvRows: Record<string, any>[] = [];
-        const csvColumnMap: Record<string, string> = {};
-
-        await new Promise<void>((resolve, reject) => {
-          fs.createReadStream(filePath)
-            .pipe(csvParser())
-            .on("data", (row: Record<string, any>) => csvRows.push(row))
-            .on("end", () => resolve())
-            .on("error", reject);
-        });
-
-        if (csvRows.length === 0) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: "CSV file is empty or invalid",
-            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-            created: [],
-            skipped: [],
-            errors: [],
-          });
-        }
-
-        const csvHeaders = Object.keys(csvRows[0] || {});
-        for (const csvHeader of csvHeaders) {
-          const normalized = normalizeHeader(csvHeader);
-          let bestMatch: { fieldName: string; priority: number } | null = null;
-          for (const [fieldName, variations] of Object.entries(
-            headerMappings,
-          )) {
-            if (csvColumnMap[fieldName]) continue;
-            if (variations.some((v) => normalized === v)) {
-              bestMatch = { fieldName, priority: 2 };
-              break;
-            }
-            if (
-              !bestMatch &&
-              variations.some(
-                (v) => normalized.includes(v) || v.includes(normalized),
-              )
-            ) {
-              bestMatch = { fieldName, priority: 1 };
-            }
-          }
-          if (bestMatch) csvColumnMap[bestMatch.fieldName] = csvHeader;
-        }
-
-        const missingColumns = requiredColumns.filter(
-          (col) => !csvColumnMap[col],
+      let parseResult: { rows: ExcelSaleRow[]; errors: ValidationError[] };
+      try {
+        parseResult = await parseBulkFile<ExcelSaleRow>(
+          req.file.path,
+          req.file.originalname,
+          getSaleBulkParseOptions(),
         );
-        if (missingColumns.length > 0) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: "Missing required columns in CSV file",
-            missingColumns,
-            foundColumns: Object.keys(csvColumnMap),
-            hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
-            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-            created: [],
-            skipped: [],
-            errors: [],
-          });
+      } catch (err: unknown) {
+        const e = err as { status?: number; body?: unknown };
+        if (e?.status != null && e?.body != null) {
+          return res.status(e.status).json(e.body);
         }
-
-        csvRows.forEach((csvRow, rowIndex) => {
-          const getCellValue = (fieldName: string) => {
-            const col = csvColumnMap[fieldName];
-            if (!col) return undefined;
-            const value = csvRow[col];
-            return value === "" || value === null ? undefined : value;
-          };
-          const rowData = {
-            sn: getCellValue("sn"),
-            saleId: getCellValue("saleId"),
-            dateOfSale: getCellValue("dateOfSale"),
-            showroom: getCellValue("showroom"),
-            phone: getCellValue("phone"),
-            soldBy: getCellValue("soldBy"),
-            productImsCode: getCellValue("productImsCode"),
-            productName: getCellValue("productName"),
-            variation: getCellValue("variation"),
-            quantity: getCellValue("quantity"),
-            mrp: getCellValue("mrp"),
-            discount: getCellValue("discount"),
-            finalAmount: getCellValue("finalAmount"),
-            paymentMethod: getCellValue("paymentMethod"),
-          };
-          const hasData = Object.values(rowData).some(
-            (v) =>
-              v !== null &&
-              v !== undefined &&
-              String(v).trim() !== "" &&
-              String(v) !== "-",
-          );
-          if (!hasData) return;
-          try {
-            rows.push(excelSaleRowSchema.parse(rowData));
-          } catch (error: any) {
-            if (error instanceof z.ZodError) {
-              error.errors.forEach((err: any) => {
-                const fieldValue = err.path.reduce(
-                  (obj: any, key: string) => obj?.[key],
-                  rowData,
-                );
-                errors.push({
-                  row: rowIndex + 2,
-                  field: err.path.join("."),
-                  message: err.message,
-                  value: fieldValue,
-                });
-              });
-            } else {
-              errors.push({
-                row: rowIndex + 2,
-                message: error.message || "Invalid row data",
-              });
-            }
-          }
-        });
-      } else {
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.readFile(filePath);
-
-        const worksheet = workbook.worksheets[0];
-        if (!worksheet) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: "Excel file must contain at least one worksheet",
-            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-            created: [],
-            skipped: [],
-            errors: [],
-          });
-        }
-
-        const columnMap: Record<string, number> = {};
-        const headerRow = worksheet.getRow(1);
-        headerRow.eachCell((cell, colNumber) => {
-          if (cell.value) {
-            const headerValue = String(cell.value).trim();
-            const normalized = normalizeHeader(headerValue);
-            let bestMatch: { fieldName: string; priority: number } | null =
-              null;
-            for (const [fieldName, variations] of Object.entries(
-              headerMappings,
-            )) {
-              if (columnMap[fieldName]) continue;
-              if (variations.some((v) => normalized === v)) {
-                bestMatch = { fieldName, priority: 2 };
-                break;
-              }
-              if (
-                !bestMatch &&
-                variations.some(
-                  (v) => normalized.includes(v) || v.includes(normalized),
-                )
-              ) {
-                bestMatch = { fieldName, priority: 1 };
-              }
-            }
-            if (bestMatch) columnMap[bestMatch.fieldName] = colNumber;
-          }
-        });
-
-        const missingColumns = requiredColumns.filter((col) => !columnMap[col]);
-        if (missingColumns.length > 0) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: "Missing required columns in Excel file",
-            missingColumns,
-            foundColumns: Object.keys(columnMap),
-            hint: "Required: Showroom, Sold by, Product IMS code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
-            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-            created: [],
-            skipped: [],
-            errors: [],
-          });
-        }
-
-        worksheet.eachRow((row, rowIndex) => {
-          if (rowIndex === 1) return;
-          const getCellValue = (fieldName: string) => {
-            const colNumber = columnMap[fieldName];
-            return colNumber ? row.getCell(colNumber).value : undefined;
-          };
-          const rowData = {
-            sn: getCellValue("sn"),
-            saleId: getCellValue("saleId"),
-            dateOfSale: getCellValue("dateOfSale"),
-            showroom: getCellValue("showroom"),
-            phone: getCellValue("phone"),
-            soldBy: getCellValue("soldBy"),
-            productImsCode: getCellValue("productImsCode"),
-            productName: getCellValue("productName"),
-            variation: getCellValue("variation"),
-            quantity: getCellValue("quantity"),
-            mrp: getCellValue("mrp"),
-            discount: getCellValue("discount"),
-            finalAmount: getCellValue("finalAmount"),
-            paymentMethod: getCellValue("paymentMethod"),
-          };
-          const hasData = Object.values(rowData).some(
-            (v) =>
-              v !== null &&
-              v !== undefined &&
-              String(v).trim() !== "" &&
-              String(v) !== "-",
-          );
-          if (!hasData) return;
-          try {
-            rows.push(excelSaleRowSchema.parse(rowData));
-          } catch (error: any) {
-            if (error instanceof z.ZodError) {
-              error.errors.forEach((err: any) => {
-                const fieldValue = err.path.reduce(
-                  (obj: any, key: string) => obj?.[key],
-                  rowData,
-                );
-                errors.push({
-                  row: rowIndex,
-                  field: err.path.join("."),
-                  message: err.message,
-                  value: fieldValue,
-                });
-              });
-            } else {
-              errors.push({
-                row: rowIndex,
-                message: error.message || "Invalid row data",
-              });
-            }
-          }
-        });
+        throw err;
       }
 
-      // Group rows by sale_id (or by date + showroom + soldBy if no sale_id)
-      // Rows with the same sale_id should be grouped together
-      const saleGroups = new Map<
-        string,
-        {
-          saleId: string | null;
-          dateOfSale: Date | null;
-          showroom: string;
-          soldBy: string;
-          rows: ExcelSaleRow[];
-        }
-      >();
+      const { rows, errors: parseErrors } = parseResult;
+      const tenantId = req.user!.tenantId;
 
-      rows.forEach((row) => {
-        let groupKey: string;
-        if (row.saleId) {
-          // Group by sale_id
-          groupKey = `id:${row.saleId}`;
-        } else {
-          // Group by date + showroom + soldBy (same sale if all match)
-          const dateStr = row.dateOfSale
-            ? row.dateOfSale.toISOString().split("T")[0]
-            : "no-date";
-          groupKey = `group:${dateStr}-${row.showroom.toLowerCase()}-${row.soldBy.toLowerCase()}`;
-        }
+      const processResult = await processSaleBulkRows(rows, { tenantId });
 
-        if (!saleGroups.has(groupKey)) {
-          saleGroups.set(groupKey, {
-            saleId: row.saleId,
-            dateOfSale: row.dateOfSale,
-            showroom: row.showroom,
-            soldBy: row.soldBy,
-            rows: [],
-          });
-        }
-        saleGroups.get(groupKey)!.rows.push(row);
-      });
-
-      // Pre-fetch all locations, users, products, and variations for efficiency
-      const allLocations = await prisma.location.findMany({
-        where: { type: "SHOWROOM", isActive: true },
-        select: { id: true, name: true },
-      });
-      const locationMap = new Map(
-        allLocations.map((loc) => [loc.name.toLowerCase(), loc.id]),
-      );
-
-      const allUsers = await prisma.user.findMany({
-        select: { id: true, username: true },
-      });
-      const userMap = new Map(
-        allUsers.map((u) => [u.username.toLowerCase(), u.id]),
-      );
-
-      const allProducts = await prisma.product.findMany({
-        where: { tenantId: req.user!.tenantId },
-        select: { id: true, name: true },
-      });
-      const allVariations = await prisma.productVariation.findMany({
-        where: { tenantId: req.user!.tenantId },
-        select: {
-          id: true,
-          imsCode: true,
-          productId: true,
-          product: { select: { id: true, name: true } },
-        },
-      });
-      const variationMapByIms = new Map(
-        allVariations.map((v) => [v.imsCode.toLowerCase(), v]),
-      );
-      const productMapByName = new Map(
-        allProducts.map((p) => [p.name.toLowerCase(), p]),
-      );
-
-      // Process each sale group
-      for (const [groupKey, group] of saleGroups.entries()) {
-        try {
-          if (group.rows.length === 0) continue;
-
-          const firstRow = group.rows[0];
-
-          // Check if sale_id already exists
-          if (group.saleId) {
-            const existingSale = await prisma.sale.findUnique({
-              where: { id: group.saleId },
-            });
-            if (existingSale) {
-              skippedSales.push({
-                saleId: group.saleId,
-                reason: `Sale with ID "${group.saleId}" already exists`,
-              });
-              continue;
-            }
-          }
-
-          // Find location by showroom name
-          const showroomNameLower = firstRow.showroom.toLowerCase();
-          let locationId = locationMap.get(showroomNameLower);
-
-          if (!locationId) {
-            const location = allLocations.find(
-              (l) => l.name.toLowerCase() === showroomNameLower,
-            );
-            if (location) {
-              locationId = location.id;
-              locationMap.set(showroomNameLower, locationId);
-            } else {
-              errors.push({
-                row: rows.indexOf(firstRow) + 2,
-                field: "showroom",
-                message: `Showroom "${firstRow.showroom}" not found or is not active`,
-                value: firstRow.showroom,
-              });
-              skippedSales.push({
-                saleId: group.saleId,
-                reason: `Showroom "${firstRow.showroom}" not found`,
-              });
-              continue;
-            }
-          }
-
-          // Find user by username (sold by)
-          const soldByLower = firstRow.soldBy.toLowerCase();
-          let userId = userMap.get(soldByLower);
-
-          if (!userId) {
-            const user = allUsers.find(
-              (u) => u.username.toLowerCase() === soldByLower,
-            );
-            if (user) {
-              userId = user.id;
-              userMap.set(soldByLower, userId);
-            } else {
-              errors.push({
-                row: rows.indexOf(firstRow) + 2,
-                field: "soldBy",
-                message: `User "${firstRow.soldBy}" not found`,
-                value: firstRow.soldBy,
-              });
-              skippedSales.push({
-                saleId: group.saleId,
-                reason: `User "${firstRow.soldBy}" not found`,
-              });
-              continue;
-            }
-          }
-
-          // Phone number → member sale: find or create member, set type MEMBER
-          let memberId: string | null = null;
-          let saleType: "GENERAL" | "MEMBER" = "GENERAL";
-
-          const phoneVal = firstRow.phone;
-          if (phoneVal && phoneVal.length > 0) {
-            let member = await prisma.member.findFirst({
-              where: { phone: phoneVal },
-            });
-            if (!member) {
-              member = await prisma.member.create({
-                data: {
-                  tenantId: req.user!.tenantId,
-                  phone: phoneVal,
-                },
-              });
-            }
-            memberId = member.id;
-            saleType = "MEMBER";
-          }
-
-          // Process items and find variations
-          const saleItems: Array<{
-            variationId: string;
-            quantity: number;
-            unitPrice: number;
-            discountPercent: number;
-            discountAmount: number;
-            lineTotal: number;
-          }> = [];
-
-          let subtotal = 0;
-          let totalDiscount = 0;
-
-          for (const itemRow of group.rows) {
-            const imsCodeLower = itemRow.productImsCode.toLowerCase();
-            const nameLower = itemRow.productName.toLowerCase();
-
-            let variation = variationMapByIms.get(imsCodeLower);
-            if (!variation) {
-              const product = productMapByName.get(nameLower);
-              if (product) {
-                variation =
-                  (allVariations.find(
-                    (v) =>
-                      v.productId === product.id &&
-                      v.imsCode.toLowerCase() === imsCodeLower,
-                  ) as typeof variation) ?? undefined;
-              }
-            }
-
-            if (!variation) {
-              errors.push({
-                row: rows.indexOf(itemRow) + 2,
-                field: "productImsCode",
-                message: `Variation with IMS code "${itemRow.productImsCode}" not found for product "${itemRow.productName}"`,
-                value: itemRow.productImsCode,
-              });
-              continue;
-            }
-
-            // Calculate values from Excel
-            const unitPrice = itemRow.mrp;
-            const quantity = itemRow.quantity;
-            const totalMrp = unitPrice * quantity; // Total MRP before discount
-            const discountPercent = itemRow.discount || 0;
-            const discountAmount = (totalMrp * discountPercent) / 100;
-            const lineTotal = itemRow.finalAmount; // Final amount after discount
-
-            subtotal += totalMrp;
-            totalDiscount += discountAmount;
-
-            saleItems.push({
-              variationId: variation.id,
-              quantity,
-              unitPrice,
-              discountPercent,
-              discountAmount,
-              lineTotal,
-            });
-          }
-
-          if (saleItems.length === 0) {
-            skippedSales.push({
-              saleId: group.saleId,
-              reason: "No valid items found for this sale",
-            });
-            continue;
-          }
-
-          const total = subtotal - totalDiscount;
-
-          // Determine payment method (use first row's payment method, or default to CASH)
-          const paymentMethods = group.rows
-            .map((r) => r.paymentMethod)
-            .filter(
-              (method): method is string =>
-                method !== null && method !== undefined,
-            );
-          const paymentMethod =
-            paymentMethods.length > 0
-              ? (paymentMethods[0] as
-                  | "CASH"
-                  | "CARD"
-                  | "CHEQUE"
-                  | "FONEPAY"
-                  | "QR")
-              : "CASH";
-
-          // Create sale
-          const sale = await prisma.sale.create({
-            data: {
-              tenantId: req.user!.tenantId,
-              ...(group.saleId && { id: group.saleId }),
-              saleCode: generateSaleCode(),
-              type: saleType,
-              locationId,
-              ...(memberId && { memberId }),
-              createdById: userId,
-              subtotal,
-              discount: totalDiscount,
-              total,
-              createdAt: group.dateOfSale || new Date(),
-              items: {
-                create: saleItems.map((item) => ({
-                  variationId: item.variationId,
-                  quantity: item.quantity,
-                  unitPrice: item.unitPrice,
-                  totalMrp: item.unitPrice * item.quantity,
-                  discountPercent: item.discountPercent,
-                  discountAmount: item.discountAmount,
-                  lineTotal: item.lineTotal,
-                })),
-              },
-              payments: {
-                create: [
-                  {
-                    method: paymentMethod,
-                    amount: total,
-                  },
-                ],
-              },
-            },
-            include: {
-              items: true,
-            },
-          });
-
-          createdSales.push({
-            id: sale.id,
-            saleCode: sale.saleCode,
-            itemsCount: sale.items.length,
-          });
-        } catch (error: any) {
-          errors.push({
-            row: rows.indexOf(group.rows[0]) + 2,
-            message: error.message || "Error creating sale",
-          });
-          skippedSales.push({
-            saleId: group.saleId,
-            reason: error.message || "Error creating sale",
-          });
-        }
-      }
+      const allErrors = [...parseErrors, ...processResult.errors];
 
       try {
-        fs.unlinkSync(filePath);
+        if (req.file?.path) fs.unlinkSync(req.file.path);
       } catch (e) {
         console.error("Error cleaning up file:", e);
       }
 
+      const total = processResult.created.length + processResult.skipped.length;
       res.status(200).json({
         message: "Bulk upload completed",
         summary: {
-          total: saleGroups.size,
-          created: createdSales.length,
-          skipped: skippedSales.length,
-          errors: errors.length,
+          total,
+          created: processResult.created.length,
+          skipped: processResult.skipped.length,
+          errors: allErrors.length,
         },
-        created: createdSales,
-        skipped: skippedSales,
-        errors,
+        created: processResult.created,
+        skipped: processResult.skipped,
+        errors: allErrors,
       });
     } catch (error: unknown) {
       if (req.file?.path) {
@@ -2161,68 +1072,15 @@ class SaleController {
   // Download bulk upload template (headers only)
   async downloadBulkUploadTemplate(req: Request, res: Response) {
     try {
-      const workbook = new ExcelJS.Workbook();
-      const worksheet = workbook.addWorksheet("Sales Template");
-
-      const headers = [
-        { header: "SN", width: 8 },
-        { header: "Sale ID (UUID)", width: 18 },
-        { header: "Date of Sale", width: 14 },
-        { header: "Showroom", width: 15 },
-        { header: "Phone", width: 14 },
-        { header: "Sold By", width: 14 },
-        { header: "Product IMS Code", width: 18 },
-        { header: "Product Name", width: 22 },
-        { header: "Attributes", width: 22 },
-        { header: "Quantity", width: 10 },
-        { header: "MRP", width: 10 },
-        { header: "Discount", width: 10 },
-        { header: "Final Amount", width: 14 },
-        { header: "Payment Method", width: 18 },
-      ];
-      const requiredOptional = [
-        "Optional",
-        "Optional",
-        "Optional",
-        "Required",
-        "Optional",
-        "Required",
-        "Required",
-        "Required",
-        "Optional (e.g. Red / M)",
-        "Required",
-        "Required",
-        "Optional",
-        "Required",
-        "Optional (CASH, CARD, CHEQUE, FONEPAY, QR)",
-      ];
-
-      worksheet.columns = headers.map((h) => ({
-        header: h.header,
-        width: h.width,
-      }));
-      worksheet.getRow(1).font = { bold: true };
-      worksheet.getRow(1).fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: "FFE0E0E0" },
-      };
-      const row2 = worksheet.getRow(2);
-      requiredOptional.forEach((text, i) => {
-        row2.getCell(i + 1).value = text;
-      });
-      row2.font = { italic: true };
-
-      const filename = "sales_bulk_upload_template.xlsx";
+      const buffer = await buildSaleBulkTemplate();
       res.setHeader(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
       );
       res.setHeader(
         "Content-Disposition",
-        `attachment; filename="${filename}"`,
+        'attachment; filename="sales_bulk_upload_template.xlsx"',
       );
-      const buffer = await workbook.xlsx.writeBuffer();
       res.send(buffer);
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Download template error");

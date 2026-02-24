@@ -422,12 +422,14 @@ model VariationPhoto {
 }
 
 model DiscountType {
-  id          String   @id @default(uuid()) @map("discount_type_id")
-  tenantId    String   @map("tenant_id")
-  name        String   @map("type_name") @db.VarChar(100)
-  description String?  @db.Text
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String    @id @default(uuid()) @map("discount_type_id")
+  tenantId          String    @map("tenant_id")
+  name              String    @map("type_name") @db.VarChar(100)
+  description       String?   @db.Text
+  /// Default percentage off (0–100) when this discount type is used; optional
+  defaultPercentage Decimal?  @map("default_percentage") @db.Decimal(5, 2)
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   productDiscounts ProductDiscount[]

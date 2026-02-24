@@ -1,12 +1,10 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import activityController from "./activity.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const activityRouter = Router();
 
-activityRouter.use(verifyToken);
 activityRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
 activityRouter.post("/", asyncHandler(activityController.create));

@@ -7,14 +7,11 @@ import {
 } from "@/utils/pagination";
 import ExcelJS from "exceljs";
 import fs from "fs";
-import path from "path";
-import { z } from "zod";
-import csvParser from "csv-parser";
 import {
   excelMemberRowSchema,
   type ExcelMemberRow,
-  type ValidationError,
 } from "./bulkUpload.validation";
+import { parseBulkFile, type ValidationError } from "@/utils/bulkParse";
 import { sendControllerError } from "@/utils/controllerError";
 
 class MemberController {
@@ -310,9 +307,7 @@ class MemberController {
     }
   }
 
-  // Bulk upload members from Excel or CSV file
   async bulkUploadMembers(req: Request, res: Response) {
-    const errors: ValidationError[] = [];
     const createdMembers: { id: string; phone: string; name: string | null }[] =
       [];
     const skippedMembers: {
@@ -332,255 +327,49 @@ class MemberController {
         });
       }
 
-      const filePath = req.file.path;
-      const fileExt = path.extname(req.file.originalname).toLowerCase();
-      const isCSV = fileExt === ".csv";
+      const memberFields = [
+        "sn",
+        "id",
+        "name",
+        "address",
+        "phone",
+        "dob",
+        "notes",
+        "memberSince",
+      ];
 
-      const normalizeHeader = (header: string): string => {
-        return header
-          .toString()
-          .toLowerCase()
-          .trim()
-          .replace(/[^a-z0-9]/g, "")
-          .replace(/\s+/g, "");
-      };
-
-      const headerMappings: Record<string, string[]> = {
-        sn: ["sn", "sno", "serial", "serialnumber", "s n"],
-        id: ["id"],
-        name: ["name"],
-        address: ["address"],
-        phone: ["phonenumber", "phone", "phoneno", "mobile", "contact"],
-        dob: ["dob", "dateofbirth", "birthday", "birthdate"],
-        notes: ["notes"],
-        memberSince: ["membersince", "member_since"],
-      };
-
-      const requiredColumns = ["phone"];
-      let rows: ExcelMemberRow[] = [];
-
-      if (isCSV) {
-        const csvRows: Record<string, any>[] = [];
-        const csvColumnMap: Record<string, string> = {};
-
-        await new Promise<void>((resolve, reject) => {
-          fs.createReadStream(filePath)
-            .pipe(csvParser())
-            .on("data", (row: Record<string, any>) => csvRows.push(row))
-            .on("end", () => resolve())
-            .on("error", reject);
-        });
-
-        if (csvRows.length === 0) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: "CSV file is empty or invalid",
-            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-            created: [],
-            skipped: [],
-            errors: [],
-          });
-        }
-
-        const csvHeaders = Object.keys(csvRows[0] || {});
-        for (const csvHeader of csvHeaders) {
-          const normalized = normalizeHeader(csvHeader);
-          let bestMatch: { fieldName: string; priority: number } | null = null;
-          for (const [fieldName, variations] of Object.entries(
-            headerMappings,
-          )) {
-            if (csvColumnMap[fieldName]) continue;
-            if (variations.some((v) => normalized === v)) {
-              bestMatch = { fieldName, priority: 2 };
-              break;
-            }
-            if (
-              !bestMatch &&
-              variations.some(
-                (v) => normalized.includes(v) || v.includes(normalized),
-              )
-            ) {
-              bestMatch = { fieldName, priority: 1 };
-            }
-          }
-          if (bestMatch) csvColumnMap[bestMatch.fieldName] = csvHeader;
-        }
-
-        const missingColumns = requiredColumns.filter(
-          (col) => !csvColumnMap[col],
+      let result: { rows: ExcelMemberRow[]; errors: ValidationError[] };
+      try {
+        result = await parseBulkFile<ExcelMemberRow>(
+          req.file.path,
+          req.file.originalname,
+          {
+            headerMappings: {
+              sn: ["sn", "sno", "serial", "serialnumber", "s n"],
+              id: ["id"],
+              name: ["name"],
+              address: ["address"],
+              phone: ["phonenumber", "phone", "phoneno", "mobile", "contact"],
+              dob: ["dob", "dateofbirth", "birthday", "birthdate"],
+              notes: ["notes"],
+              memberSince: ["membersince", "member_since"],
+            },
+            requiredColumns: ["phone"],
+            schema: excelMemberRowSchema,
+            fields: memberFields,
+            skipExcelRows: 1,
+            missingColumnsHint:
+              "Required: Phone number. Optional: SN, ID (maps to member_id; must be valid UUID), Name, Address, DoB, Notes, Member since.",
+          },
         );
-        if (missingColumns.length > 0) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: "Missing required columns in CSV file",
-            missingColumns,
-            foundColumns: Object.keys(csvColumnMap),
-            hint: "Required: Phone number. Optional: SN, ID (maps to member_id; must be valid UUID), Name, Address, DoB, Notes, Member since.",
-            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-            created: [],
-            skipped: [],
-            errors: [],
-          });
+      } catch (err: any) {
+        if (err?.status && err?.body) {
+          return res.status(err.status).json(err.body);
         }
-
-        csvRows.forEach((csvRow, rowIndex) => {
-          const getCellValue = (fieldName: string) => {
-            const col = csvColumnMap[fieldName];
-            if (!col) return undefined;
-            const value = csvRow[col];
-            return value === "" || value === null ? undefined : value;
-          };
-          const rowData = {
-            sn: getCellValue("sn"),
-            id: getCellValue("id"),
-            name: getCellValue("name"),
-            address: getCellValue("address"),
-            phone: getCellValue("phone"),
-            dob: getCellValue("dob"),
-            notes: getCellValue("notes"),
-            memberSince: getCellValue("memberSince"),
-          };
-          const hasData = Object.values(rowData).some(
-            (v) =>
-              v !== null &&
-              v !== undefined &&
-              String(v).trim() !== "" &&
-              String(v) !== "-",
-          );
-          if (!hasData) return;
-          try {
-            rows.push(excelMemberRowSchema.parse(rowData));
-          } catch (error: any) {
-            if (error instanceof z.ZodError) {
-              error.errors.forEach((err: any) => {
-                const fieldValue = err.path.reduce(
-                  (obj: any, key: string) => obj?.[key],
-                  rowData,
-                );
-                errors.push({
-                  row: rowIndex + 2,
-                  field: err.path.join("."),
-                  message: err.message,
-                  value: fieldValue,
-                });
-              });
-            } else {
-              errors.push({
-                row: rowIndex + 2,
-                message: error.message || "Invalid row data",
-              });
-            }
-          }
-        });
-      } else {
-        const workbook = new ExcelJS.Workbook();
-        await workbook.xlsx.readFile(filePath);
-
-        const worksheet = workbook.worksheets[0];
-        if (!worksheet) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: "Excel file must contain at least one worksheet",
-            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-            created: [],
-            skipped: [],
-            errors: [],
-          });
-        }
-
-        const columnMap: Record<string, number> = {};
-        const headerRow = worksheet.getRow(1);
-        headerRow.eachCell((cell, colNumber) => {
-          if (cell.value) {
-            const headerValue = String(cell.value).trim();
-            const normalized = normalizeHeader(headerValue);
-            let bestMatch: { fieldName: string; priority: number } | null =
-              null;
-            for (const [fieldName, variations] of Object.entries(
-              headerMappings,
-            )) {
-              if (columnMap[fieldName]) continue;
-              if (variations.some((v) => normalized === v)) {
-                bestMatch = { fieldName, priority: 2 };
-                break;
-              }
-              if (
-                !bestMatch &&
-                variations.some(
-                  (v) => normalized.includes(v) || v.includes(normalized),
-                )
-              ) {
-                bestMatch = { fieldName, priority: 1 };
-              }
-            }
-            if (bestMatch) columnMap[bestMatch.fieldName] = colNumber;
-          }
-        });
-
-        const missingColumns = requiredColumns.filter((col) => !columnMap[col]);
-        if (missingColumns.length > 0) {
-          fs.unlinkSync(filePath);
-          return res.status(400).json({
-            message: "Missing required columns in Excel file",
-            missingColumns,
-            foundColumns: Object.keys(columnMap),
-            hint: "Required: Phone number. Optional: SN, ID (maps to member_id; must be valid UUID), Name, Address, DoB, Notes, Member since.",
-            summary: { total: 0, created: 0, skipped: 0, errors: 0 },
-            created: [],
-            skipped: [],
-            errors: [],
-          });
-        }
-
-        worksheet.eachRow((row, rowIndex) => {
-          if (rowIndex === 1) return;
-          const getCellValue = (fieldName: string) => {
-            const colNumber = columnMap[fieldName];
-            return colNumber ? row.getCell(colNumber).value : undefined;
-          };
-          const rowData = {
-            sn: getCellValue("sn"),
-            id: getCellValue("id"),
-            name: getCellValue("name"),
-            address: getCellValue("address"),
-            phone: getCellValue("phone"),
-            dob: getCellValue("dob"),
-            notes: getCellValue("notes"),
-            memberSince: getCellValue("memberSince"),
-          };
-          const hasData = Object.values(rowData).some(
-            (v) =>
-              v !== null &&
-              v !== undefined &&
-              String(v).trim() !== "" &&
-              String(v) !== "-",
-          );
-          if (!hasData) return;
-          try {
-            rows.push(excelMemberRowSchema.parse(rowData));
-          } catch (error: any) {
-            if (error instanceof z.ZodError) {
-              error.errors.forEach((err: any) => {
-                const fieldValue = err.path.reduce(
-                  (obj: any, key: string) => obj?.[key],
-                  rowData,
-                );
-                errors.push({
-                  row: rowIndex,
-                  field: err.path.join("."),
-                  message: err.message,
-                  value: fieldValue,
-                });
-              });
-            } else {
-              errors.push({
-                row: rowIndex,
-                message: error.message || "Invalid row data",
-              });
-            }
-          }
-        });
+        throw err;
       }
+
+      const { rows, errors } = result;
 
       for (const r of rows) {
         try {
@@ -644,7 +433,7 @@ class MemberController {
       }
 
       try {
-        fs.unlinkSync(filePath);
+        if (req.file?.path) fs.unlinkSync(req.file.path);
       } catch (e) {
         console.error("Error cleaning up file:", e);
       }

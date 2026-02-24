@@ -1,7 +1,8 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { validate } from "@/middlewares/validate";
 import productController from "@/modules/products/product.controller";
+import { createProductSchema, updateProductSchema } from "./product.validation";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const productRouter = Router();
@@ -93,8 +94,8 @@ const productRouter = Router();
  */
 productRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validate(createProductSchema),
   asyncHandler(productController.createProduct),
 );
 
@@ -150,7 +151,6 @@ productRouter.post(
  */
 productRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllProducts),
 );
@@ -169,7 +169,6 @@ productRouter.get(
  */
 productRouter.get(
   "/categories/list",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllCategories),
 );
@@ -188,9 +187,63 @@ productRouter.get(
  */
 productRouter.get(
   "/discount-types/list",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllDiscountTypes),
+);
+
+/**
+ * @swagger
+ * /products/discount-types:
+ *   post:
+ *     summary: Create a discount type (name + optional default percentage)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string }
+ *               description: { type: string }
+ *               defaultPercentage: { type: number, minimum: 0, maximum: 100 }
+ *     responses:
+ *       201:
+ *         description: Discount type created
+ *       409:
+ *         description: Name already exists
+ */
+productRouter.post(
+  "/discount-types",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(productController.createDiscountType),
+);
+
+/**
+ * @swagger
+ * /products/discount-types/{id}:
+ *   put:
+ *     summary: Update a discount type
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *   delete:
+ *     summary: Delete a discount type (fails if in use by products)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ */
+productRouter.put(
+  "/discount-types/:id",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(productController.updateDiscountType),
+);
+productRouter.delete(
+  "/discount-types/:id",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(productController.deleteDiscountType),
 );
 
 /**
@@ -252,7 +305,6 @@ productRouter.get(
  */
 productRouter.get(
   "/discounts/list",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllProductDiscounts),
 );
@@ -312,7 +364,6 @@ productRouter.get(
  */
 productRouter.get(
   "/:id/discounts",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getProductDiscounts),
 );
@@ -340,7 +391,6 @@ productRouter.get(
  */
 productRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getProductById),
 );
@@ -382,8 +432,8 @@ productRouter.get(
  */
 productRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validate(updateProductSchema),
   asyncHandler(productController.updateProduct),
 );
 
@@ -410,7 +460,6 @@ productRouter.put(
  */
 productRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(productController.deleteProduct),
 );
@@ -446,7 +495,6 @@ productRouter.delete(
  */
 productRouter.delete(
   "/:productId/variations/:variationId",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(productController.deleteVariation),
 );

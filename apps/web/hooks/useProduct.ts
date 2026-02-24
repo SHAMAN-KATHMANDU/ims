@@ -16,6 +16,9 @@ import {
   deleteProduct,
   deleteVariation,
   getAllDiscountTypes,
+  createDiscountType,
+  updateDiscountType,
+  deleteDiscountType,
   getProductDiscountsList,
   bulkUploadProducts,
   type Product,
@@ -29,6 +32,9 @@ import {
   type ProductDiscountListParams,
   type PaginatedProductDiscountsResponse,
   type ProductDiscountListItem,
+  type DiscountType,
+  type CreateDiscountTypeData,
+  type UpdateDiscountTypeData,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "@/services/productService";
@@ -62,6 +68,9 @@ export type {
   ProductDiscountListItem,
   ProductDiscountListParams,
   PaginatedProductDiscountsResponse,
+  DiscountType,
+  CreateDiscountTypeData,
+  UpdateDiscountTypeData,
 };
 
 // Re-export defaults
@@ -337,6 +346,67 @@ export function useDiscountTypes() {
     queryKey: discountTypeKeys.lists(),
     queryFn: getAllDiscountTypes,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes - discount types rarely change
+  });
+}
+
+export function useCreateDiscountType() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (data: CreateDiscountTypeData) => createDiscountType(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: discountTypeKeys.lists() });
+      toast({ title: "Discount type created" });
+    },
+    onError: (err: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to create discount type",
+        description: err.message,
+      });
+    },
+  });
+}
+
+export function useUpdateDiscountType() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: ({ id, data }: { id: string; data: UpdateDiscountTypeData }) =>
+      updateDiscountType(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: discountTypeKeys.lists() });
+      toast({ title: "Discount type updated" });
+    },
+    onError: (err: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to update discount type",
+        description: err.message,
+      });
+    },
+  });
+}
+
+export function useDeleteDiscountType() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => deleteDiscountType(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: discountTypeKeys.lists() });
+      toast({ title: "Discount type deleted" });
+    },
+    onError: (err: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to delete discount type",
+        description: err.message,
+      });
+    },
   });
 }
 

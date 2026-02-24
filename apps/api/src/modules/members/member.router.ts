@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import memberController from "@/modules/members/member.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -44,7 +43,6 @@ const memberRouter = Router();
  */
 memberRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(memberController.createMember),
 );
@@ -89,7 +87,6 @@ memberRouter.post(
  */
 memberRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(memberController.getAllMembers),
 );
@@ -114,7 +111,6 @@ memberRouter.get(
  */
 memberRouter.get(
   "/check/:phone",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(memberController.checkMember),
 );
@@ -141,7 +137,6 @@ memberRouter.get(
  */
 memberRouter.get(
   "/phone/:phone",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(memberController.getMemberByPhone),
 );
@@ -169,7 +164,6 @@ memberRouter.get(
  */
 memberRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(memberController.getMemberById),
 );
@@ -213,7 +207,6 @@ memberRouter.get(
  */
 memberRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(memberController.updateMember),
 );

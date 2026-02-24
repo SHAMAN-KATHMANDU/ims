@@ -31,7 +31,7 @@ export type ProductVariationForm = {
 };
 
 export type ProductDiscountForm = {
-  discountTypeName: string;
+  discountTypeId: string;
   discountPercentage: string;
   startDate: string;
   endDate: string;

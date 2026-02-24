@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import inventoryController from "@/modules/inventory/inventory.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -20,7 +19,6 @@ const inventoryRouter = Router();
  */
 inventoryRouter.get(
   "/summary",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(inventoryController.getInventorySummary),
 );
@@ -65,7 +63,6 @@ inventoryRouter.get(
  */
 inventoryRouter.get(
   "/location/:locationId",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(inventoryController.getLocationInventory),
 );
@@ -93,7 +90,6 @@ inventoryRouter.get(
  */
 inventoryRouter.get(
   "/product/:productId",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(inventoryController.getProductStock),
 );
@@ -139,7 +135,6 @@ inventoryRouter.get(
  */
 inventoryRouter.put(
   "/adjust",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(inventoryController.adjustInventory),
 );
@@ -182,7 +177,6 @@ inventoryRouter.put(
  */
 inventoryRouter.put(
   "/set",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(inventoryController.setInventory),
 );

@@ -1,12 +1,11 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import trashController from "./trash.controller";
 
 const trashRouter = Router();
 
-trashRouter.use(verifyToken, authorizeRoles("admin", "superAdmin"));
+trashRouter.use(authorizeRoles("admin", "superAdmin"));
 
 trashRouter.get("/", asyncHandler(trashController.listTrash));
 trashRouter.post(

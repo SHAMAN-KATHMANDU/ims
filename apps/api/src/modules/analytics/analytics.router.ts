@@ -1,13 +1,10 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import analyticsController from "@/modules/analytics/analytics.controller";
 import { analyticsCacheMiddleware } from "@/modules/analytics/analyticsCacheMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const analyticsRouter = Router();
-
-analyticsRouter.use(verifyToken);
 
 // Overview (admin and superAdmin only)
 analyticsRouter.get(

@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import locationController from "@/modules/locations/location.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -43,7 +42,6 @@ const locationRouter = Router();
  */
 locationRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(locationController.createLocation),
 );
@@ -84,7 +82,6 @@ locationRouter.post(
  */
 locationRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(locationController.getAllLocations),
 );
@@ -112,7 +109,6 @@ locationRouter.get(
  */
 locationRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(locationController.getLocationById),
 );
@@ -152,7 +148,6 @@ locationRouter.get(
  */
 locationRouter.get(
   "/:id/inventory",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(locationController.getLocationInventory),
 );
@@ -195,7 +190,6 @@ locationRouter.get(
  */
 locationRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(locationController.updateLocation),
 );
@@ -225,7 +219,6 @@ locationRouter.put(
  */
 locationRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(locationController.deleteLocation),
 );

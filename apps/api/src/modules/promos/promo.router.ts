@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import promoController from "@/modules/promos/promo.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -73,7 +72,6 @@ const promoRouter = Router();
  */
 promoRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(promoController.createPromo),
 );
@@ -109,7 +107,6 @@ promoRouter.post(
  */
 promoRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(promoController.getAllPromos),
 );
@@ -137,7 +134,6 @@ promoRouter.get(
  */
 promoRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(promoController.getPromoById),
 );
@@ -203,7 +199,6 @@ promoRouter.get(
  */
 promoRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(promoController.updatePromo),
 );
@@ -231,7 +226,6 @@ promoRouter.put(
  */
 promoRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(promoController.deletePromo),
 );

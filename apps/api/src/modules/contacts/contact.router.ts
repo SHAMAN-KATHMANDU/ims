@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { uploadAttachment, uploadSingle } from "@/config/multer.config";
 import contactController from "./contact.controller";
@@ -7,7 +6,6 @@ import { asyncHandler } from "@/middlewares/errorHandler";
 
 const contactRouter = Router();
 
-contactRouter.use(verifyToken);
 contactRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
 contactRouter.get("/tags", asyncHandler(contactController.getTags));

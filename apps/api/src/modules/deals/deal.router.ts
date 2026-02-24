@@ -1,12 +1,10 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import dealController from "./deal.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const dealRouter = Router();
 
-dealRouter.use(verifyToken);
 dealRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
 dealRouter.post("/", asyncHandler(dealController.create));

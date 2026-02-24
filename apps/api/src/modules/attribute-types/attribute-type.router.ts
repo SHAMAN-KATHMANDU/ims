@@ -1,12 +1,11 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import attributeTypeController from "./attribute-type.controller";
 
 const router = Router();
 
-router.use(verifyToken, authorizeRoles("admin", "superAdmin"));
+router.use(authorizeRoles("admin", "superAdmin"));
 
 router.get("/", asyncHandler(attributeTypeController.list));
 router.post("/", asyncHandler(attributeTypeController.create));

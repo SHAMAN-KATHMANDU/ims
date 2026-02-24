@@ -131,8 +131,7 @@ export interface PaginatedProductsResponse {
 
 export interface CreateProductData {
   name: string;
-  categoryId?: string;
-  categoryName?: string;
+  categoryId: string;
   description?: string;
   subCategory?: string;
   length?: number;
@@ -157,8 +156,7 @@ export interface CreateProductData {
     }>;
   }>;
   discounts?: Array<{
-    discountTypeId?: string;
-    discountTypeName?: string;
+    discountTypeId: string;
     discountPercentage: number;
     startDate?: string;
     endDate?: string;
@@ -190,8 +188,7 @@ export interface UpdateProductData {
     }>;
   }>;
   discounts?: Array<{
-    discountTypeId?: string;
-    discountTypeName?: string;
+    discountTypeId: string;
     discountPercentage: number;
     startDate?: string;
     endDate?: string;
@@ -216,9 +213,16 @@ interface CategoriesResponse {
   count: number;
 }
 
+export interface DiscountType {
+  id: string;
+  name: string;
+  description?: string | null;
+  defaultPercentage?: number | null;
+}
+
 interface DiscountTypesResponse {
   message: string;
-  data: Array<{ id: string; name: string; description?: string | null }>;
+  data: DiscountType[];
   pagination?: PaginationMeta;
 }
 
@@ -436,19 +440,55 @@ export async function getAllCategories(): Promise<Category[]> {
 }
 
 /**
- * Get all discount types (tenant-scoped)
+ * Get all discount types (tenant-scoped). Uses limit=100 to fetch all for dropdowns.
  */
-export async function getAllDiscountTypes(): Promise<
-  Array<{ id: string; name: string; description?: string | null }>
-> {
+export async function getAllDiscountTypes(): Promise<DiscountType[]> {
   try {
     const response = await api.get<DiscountTypesResponse>(
       "/products/discount-types/list",
+      { params: { limit: 100 } },
     );
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch discount types");
   }
+}
+
+export interface CreateDiscountTypeData {
+  name: string;
+  description?: string;
+  defaultPercentage?: number;
+}
+
+export interface UpdateDiscountTypeData {
+  name?: string;
+  description?: string;
+  defaultPercentage?: number;
+}
+
+export async function createDiscountType(
+  data: CreateDiscountTypeData,
+): Promise<{ discountType: DiscountType }> {
+  const response = await api.post<{
+    message: string;
+    discountType: DiscountType;
+  }>("/products/discount-types", data);
+  return { discountType: response.data.discountType };
+}
+
+export async function updateDiscountType(
+  id: string,
+  data: UpdateDiscountTypeData,
+): Promise<{ discountType: DiscountType }> {
+  const response = await api.put<{
+    message: string;
+    discountType: DiscountType;
+  }>(`/products/discount-types/${id}`, data);
+  return { discountType: response.data.discountType };
+}
+
+export async function deleteDiscountType(id: string): Promise<void> {
+  await api.delete(`/products/discount-types/${id}`);
 }
 
 // ============================================

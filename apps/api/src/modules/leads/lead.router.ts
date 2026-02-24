@@ -1,12 +1,10 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import leadController from "./lead.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const leadRouter = Router();
 
-leadRouter.use(verifyToken);
 leadRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
 leadRouter.post("/", asyncHandler(leadController.create));

@@ -32,7 +32,7 @@ interface DiscountsTabProps {
   onUpdate: (
     index: number,
     field:
-      | "discountTypeName"
+      | "discountTypeId"
       | "discountPercentage"
       | "startDate"
       | "endDate"
@@ -48,7 +48,8 @@ export function DiscountsTab({
   onRemove,
   onUpdate,
 }: DiscountsTabProps) {
-  const defaultTypes = ["Normal", "Special", "Member", "Wholesale"];
+  const defaultTypeNames = ["Normal", "Special", "Member", "Wholesale"];
+  const nameById = new Map(discountTypes.map((dt) => [dt.id, dt.name]));
 
   return (
     <div className="space-y-2">
@@ -66,28 +67,27 @@ export function DiscountsTab({
       </div>
       {discounts.length > 0 && (
         <div className="space-y-4 border rounded-lg p-4">
-          {/* Sort discounts: defaults first, then others */}
           {discounts
             .map((discount, originalIndex) => ({ discount, originalIndex }))
             .sort((a, b) => {
-              const aIsDefault = defaultTypes.includes(
-                a.discount.discountTypeName,
+              const aIsDefault = defaultTypeNames.includes(
+                nameById.get(a.discount.discountTypeId) ?? "",
               );
-              const bIsDefault = defaultTypes.includes(
-                b.discount.discountTypeName,
+              const bIsDefault = defaultTypeNames.includes(
+                nameById.get(b.discount.discountTypeId) ?? "",
               );
               if (aIsDefault && !bIsDefault) return -1;
               if (!aIsDefault && bIsDefault) return 1;
               return 0;
             })
             .map(({ discount, originalIndex: index }) => {
-              const isDefault = defaultTypes.includes(
-                discount.discountTypeName,
+              const isDefault = defaultTypeNames.includes(
+                nameById.get(discount.discountTypeId) ?? "",
               );
 
               return (
                 <div
-                  key={`${discount.discountTypeName}-${index}`}
+                  key={`${discount.discountTypeId}-${index}`}
                   className="space-y-3 border-b pb-4 last:border-b-0 last:pb-0"
                 >
                   {isDefault && (
@@ -101,31 +101,20 @@ export function DiscountsTab({
                         Discount Type *
                       </Label>
                       <Select
-                        value={discount.discountTypeName}
+                        value={discount.discountTypeId}
                         onValueChange={(value) =>
-                          onUpdate(index, "discountTypeName", value)
+                          onUpdate(index, "discountTypeId", value)
                         }
                       >
                         <SelectTrigger id={`disc-type-${index}`}>
                           <SelectValue placeholder="Select type" />
                         </SelectTrigger>
                         <SelectContent>
-                          {discountTypes.length > 0 ? (
-                            discountTypes.map((dt) => (
-                              <SelectItem key={dt.id} value={dt.name}>
-                                {dt.name}
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <>
-                              <SelectItem value="Normal">Normal</SelectItem>
-                              <SelectItem value="Special">Special</SelectItem>
-                              <SelectItem value="Member">Member</SelectItem>
-                              <SelectItem value="Wholesale">
-                                Wholesale
-                              </SelectItem>
-                            </>
-                          )}
+                          {discountTypes.map((dt) => (
+                            <SelectItem key={dt.id} value={dt.id}>
+                              {dt.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
                     </div>

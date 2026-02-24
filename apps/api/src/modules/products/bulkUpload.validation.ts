@@ -1,4 +1,5 @@
 import { z } from "zod";
+import type { BulkParseOptions } from "@/utils/bulkParse";
 
 /**
  * Zod schema for Excel/CSV row data validation
@@ -218,12 +219,73 @@ export const excelProductRowSchema = z
 
 export type ExcelProductRow = z.infer<typeof excelProductRowSchema>;
 
-/**
- * Validation error with row number and field details
- */
-export interface ValidationError {
-  row: number;
-  field?: string;
-  message: string;
-  value?: unknown;
+/** Field names for product bulk parse (column mapping keys). */
+export const productBulkFields = [
+  "imsCode",
+  "location",
+  "category",
+  "subCategory",
+  "name",
+  "attributes",
+  "values",
+  "description",
+  "length",
+  "breadth",
+  "height",
+  "weight",
+  "vendor",
+  "quantity",
+  "costPrice",
+  "finalSP",
+  "nonMemberDiscount",
+  "memberDiscount",
+  "wholesaleDiscount",
+] as const;
+
+/** Header mappings for product bulk file (Excel/CSV). */
+export const productBulkHeaderMappings: Record<string, string[]> = {
+  imsCode: ["imscode", "ims_code", "ims"],
+  location: ["location", "locationname", "location_id", "locationid"],
+  category: ["category"],
+  subCategory: ["subcategory", "sub-category", "sub_category"],
+  name: ["nameofproduct", "name", "productname", "product_name"],
+  attributes: ["attributes", "attribute"],
+  values: ["values", "value"],
+  description: ["description", "material", "desc"],
+  length: ["length"],
+  breadth: ["breadth", "bredth", "width"],
+  height: ["height"],
+  weight: ["weight"],
+  vendor: ["vendor"],
+  quantity: ["qty", "quantity"],
+  costPrice: ["costprice", "cost_price", "cost"],
+  finalSP: ["finalsp", "final_sp", "sellingprice", "mrp", "price"],
+  nonMemberDiscount: ["nonmemberdiscount", "non_member_discount", "nonmember"],
+  memberDiscount: ["memberdiscount", "member_discount", "member"],
+  wholesaleDiscount: ["wholesalediscount", "wholesale_discount", "wholesale"],
+};
+
+/** Required columns for product bulk upload. */
+export const productBulkRequiredColumns = [
+  "imsCode",
+  "location",
+  "category",
+  "name",
+  "attributes",
+  "values",
+  "costPrice",
+  "finalSP",
+];
+
+/** Options for parseBulkFile when parsing product bulk uploads. */
+export function getProductBulkParseOptions(): BulkParseOptions<ExcelProductRow> {
+  return {
+    headerMappings: productBulkHeaderMappings,
+    requiredColumns: productBulkRequiredColumns,
+    schema: excelProductRowSchema,
+    fields: [...productBulkFields],
+    skipExcelRows: 2,
+    missingColumnsHint:
+      "Please ensure your file has headers: IMS Code, Location, Category, Name of Product, Attributes, Values, Cost Price, Final SP",
+  };
 }

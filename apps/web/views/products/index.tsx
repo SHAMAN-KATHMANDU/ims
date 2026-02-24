@@ -213,7 +213,7 @@ export function ProductPage() {
       setProductDiscounts(
         product.discounts.map(
           (d): ProductDiscountForm => ({
-            discountTypeName: d.discountType?.name || "",
+            discountTypeId: d.discountTypeId || "",
             discountPercentage: (d.discountPercentage || 0).toString(),
             startDate: d.startDate
               ? new Date(d.startDate).toISOString().split("T")[0] || ""
@@ -618,7 +618,7 @@ export function ProductPage() {
           }));
 
           data.discounts = productDiscounts.map((d) => ({
-            discountTypeName: d.discountTypeName,
+            discountTypeId: d.discountTypeId,
             discountPercentage: Number(d.discountPercentage) || 0,
             startDate:
               d.startDate && d.startDate.trim() !== ""
@@ -653,7 +653,7 @@ export function ProductPage() {
 
           if (productDiscounts.length > 0) {
             data.discounts = productDiscounts.map((d) => ({
-              discountTypeName: d.discountTypeName,
+              discountTypeId: d.discountTypeId,
               discountPercentage: Number(d.discountPercentage) || 0,
               startDate:
                 d.startDate && d.startDate.trim() !== ""
@@ -790,7 +790,7 @@ export function ProductPage() {
       setProductDiscounts(
         product.discounts.map(
           (d): ProductDiscountForm => ({
-            discountTypeName: d.discountType?.name || "",
+            discountTypeId: d.discountTypeId || "",
             discountPercentage: (d.discountPercentage || 0).toString(),
             startDate: d.startDate
               ? new Date(d.startDate).toISOString().split("T")[0] || ""
@@ -925,7 +925,7 @@ export function ProductPage() {
     setProductDiscounts([
       ...productDiscounts,
       {
-        discountTypeName: "",
+        discountTypeId: "",
         discountPercentage: "0",
         startDate: "",
         endDate: "",
@@ -941,7 +941,7 @@ export function ProductPage() {
   const updateDiscountInForm = (
     index: number,
     field:
-      | "discountTypeName"
+      | "discountTypeId"
       | "discountPercentage"
       | "startDate"
       | "endDate"
@@ -950,10 +950,10 @@ export function ProductPage() {
   ) => {
     const updated = [...productDiscounts];
     updated[index] = {
-      discountTypeName:
-        field === "discountTypeName"
+      discountTypeId:
+        field === "discountTypeId"
           ? (value as string)
-          : updated[index]?.discountTypeName || "",
+          : updated[index]?.discountTypeId || "",
       discountPercentage:
         field === "discountPercentage"
           ? (value as string)

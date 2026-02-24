@@ -1,12 +1,10 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import companyController from "./company.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const companyRouter = Router();
 
-companyRouter.use(verifyToken);
 companyRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
 companyRouter.get("/list", asyncHandler(companyController.listForSelect));

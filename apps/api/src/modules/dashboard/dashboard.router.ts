@@ -1,11 +1,9 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import dashboardController from "./dashboard.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const dashboardRouter = Router();
-dashboardRouter.use(verifyToken);
 
 dashboardRouter.get(
   "/user-summary",

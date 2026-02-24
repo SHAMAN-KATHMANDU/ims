@@ -2,19 +2,18 @@
  * Platform Admin Routes — Tenant management for platform administrators.
  *
  * All routes require authentication + platformAdmin role.
- * These routes bypass tenant scoping since they operate across tenants.
+ * Auth, tenant resolution, and subscription checks are handled by the
+ * global middleware chain in router.config.ts.
  */
 
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import platformController from "./platform.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const router = Router();
 
-// All platform routes require platformAdmin role
-router.use(verifyToken, authorizeRoles("platformAdmin"));
+router.use(authorizeRoles("platformAdmin"));
 
 // ============================================
 // TENANT CRUD

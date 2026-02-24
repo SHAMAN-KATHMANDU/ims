@@ -257,40 +257,33 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
   // Initialize default discounts when opening product dialog for new products
   useEffect(() => {
-    if (productDialog && productDiscounts.length === 0 && !editingProduct) {
-      const defaultDiscounts = [
-        {
-          discountTypeName: "Non-Member",
-          discountPercentage: "10",
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        },
-        {
-          discountTypeName: "Special",
-          discountPercentage: "15",
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        },
-        {
-          discountTypeName: "Member",
-          discountPercentage: "20",
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        },
-        {
-          discountTypeName: "Wholesale",
-          discountPercentage: "40",
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        },
+    if (
+      productDialog &&
+      productDiscounts.length === 0 &&
+      !editingProduct &&
+      discountTypes.length > 0
+    ) {
+      const idByName = new Map(discountTypes.map((dt) => [dt.name, dt.id]));
+      const defaults: Array<{ name: string; pct: string }> = [
+        { name: "Non-Member", pct: "10" },
+        { name: "Special", pct: "15" },
+        { name: "Member", pct: "20" },
+        { name: "Wholesale", pct: "40" },
       ];
-      setProductDiscounts(defaultDiscounts);
+      const defaultDiscounts = defaults
+        .filter((d) => idByName.has(d.name))
+        .map((d) => ({
+          discountTypeId: idByName.get(d.name)!,
+          discountPercentage: d.pct,
+          startDate: "",
+          endDate: "",
+          isActive: true,
+        }));
+      if (defaultDiscounts.length > 0) {
+        setProductDiscounts(defaultDiscounts);
+      }
     }
-  }, [productDialog, editingProduct, productDiscounts.length]);
+  }, [productDialog, editingProduct, productDiscounts.length, discountTypes]);
 
   // Validation functions
   const validateProduct = (values: ProductFormValues) => {
@@ -459,7 +452,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           }));
 
           data.discounts = productDiscounts.map((d) => ({
-            discountTypeName: d.discountTypeName,
+            discountTypeId: d.discountTypeId,
             discountPercentage: Number(d.discountPercentage) || 0,
             startDate:
               d.startDate && d.startDate.trim() !== ""
@@ -490,7 +483,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
           if (productDiscounts.length > 0) {
             data.discounts = productDiscounts.map((d) => ({
-              discountTypeName: d.discountTypeName,
+              discountTypeId: d.discountTypeId,
               discountPercentage: Number(d.discountPercentage) || 0,
               startDate:
                 d.startDate && d.startDate.trim() !== ""
@@ -615,7 +608,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       setProductDiscounts(
         product.discounts.map(
           (d): ProductDiscountForm => ({
-            discountTypeName: d.discountType?.name || "",
+            discountTypeId: d.discountTypeId || "",
             discountPercentage: (d.discountPercentage || 0).toString(),
             startDate: d.startDate
               ? new Date(d.startDate).toISOString().split("T")[0] || ""
@@ -760,7 +753,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     setProductDiscounts([
       ...productDiscounts,
       {
-        discountTypeName: "",
+        discountTypeId: "",
         discountPercentage: "0",
         startDate: "",
         endDate: "",
@@ -776,7 +769,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const updateDiscountInForm = (
     index: number,
     field:
-      | "discountTypeName"
+      | "discountTypeId"
       | "discountPercentage"
       | "startDate"
       | "endDate"
@@ -785,10 +778,10 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   ) => {
     const updated = [...productDiscounts];
     updated[index] = {
-      discountTypeName:
-        field === "discountTypeName"
+      discountTypeId:
+        field === "discountTypeId"
           ? (value as string)
-          : updated[index]?.discountTypeName || "",
+          : updated[index]?.discountTypeId || "",
       discountPercentage:
         field === "discountPercentage"
           ? (value as string)

@@ -37,11 +37,6 @@ class TransferController {
     try {
       const { fromLocationId, toLocationId, items, notes } = req.body;
 
-      // Validate user
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
       // Validate required fields
       if (!fromLocationId) {
         return res.status(400).json({ message: "Source location is required" });
@@ -439,10 +434,6 @@ class TransferController {
         ? req.params.id[0]
         : req.params.id;
 
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
       const transfer = await prisma.transfer.findUnique({
         where: { id },
         include: {
@@ -550,10 +541,6 @@ class TransferController {
         ? req.params.id[0]
         : req.params.id;
 
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
-
       const transfer = await prisma.transfer.findUnique({
         where: { id },
         include: {
@@ -641,10 +628,6 @@ class TransferController {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
 
       const transfer = await prisma.transfer.findUnique({
         where: { id },
@@ -747,10 +730,6 @@ class TransferController {
         ? req.params.id[0]
         : req.params.id;
       const { reason } = req.body;
-
-      if (!req.user || !req.user.id) {
-        return res.status(401).json({ message: "User not authenticated" });
-      }
 
       const transfer = await prisma.transfer.findUnique({
         where: { id },

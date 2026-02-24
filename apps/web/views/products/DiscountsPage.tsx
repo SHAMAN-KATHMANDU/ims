@@ -1,5 +1,6 @@
 "use client";
 
+import { DiscountTypesCard } from "./components/DiscountTypesCard";
 import { DiscountsTab } from "./components/DiscountsTab";
 
 export function DiscountsPage() {
@@ -8,10 +9,12 @@ export function DiscountsPage() {
       <div>
         <h1 className="text-3xl font-bold">Discounts</h1>
         <p className="text-muted-foreground mt-2">
-          View and manage product discounts with filters, sort, and search
+          Add discount types (name and % off), then assign them to products.
+          View and filter product discounts below.
         </p>
       </div>
 
+      <DiscountTypesCard />
       <DiscountsTab />
     </div>
   );

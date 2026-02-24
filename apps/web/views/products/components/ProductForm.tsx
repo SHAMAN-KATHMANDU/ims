@@ -57,7 +57,7 @@ interface ProductFormProps {
   onUpdateDiscount: (
     index: number,
     field:
-      | "discountTypeName"
+      | "discountTypeId"
       | "discountPercentage"
       | "startDate"
       | "endDate"

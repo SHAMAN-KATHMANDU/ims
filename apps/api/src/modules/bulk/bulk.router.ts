@@ -1,13 +1,10 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { uploadSingle } from "@/config/multer.config";
 import * as bulkController from "./bulk.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const bulkRouter = Router();
-
-bulkRouter.use(verifyToken);
 
 /**
  * POST /bulk/upload/:type

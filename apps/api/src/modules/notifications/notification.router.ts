@@ -1,12 +1,10 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import notificationController from "./notification.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const notificationRouter = Router();
 
-notificationRouter.use(verifyToken);
 notificationRouter.use(authorizeRoles("user", "admin", "superAdmin"));
 
 notificationRouter.get("/", asyncHandler(notificationController.getAll));
