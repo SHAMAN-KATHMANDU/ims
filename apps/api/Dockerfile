@@ -20,10 +20,12 @@ RUN apk add --no-cache libc6-compat openssl
 RUN npm install -g pnpm@9.0.0
 WORKDIR /app
 
+# Hoisted node_modules avoids pnpm linkBins ENOENT with prisma in turbo-pruned workspace
+RUN echo 'node-linker=hoisted' > .npmrc
 
 # First install dependencies (as they change less often)
 COPY --from=builder /app/out/json/ .
-RUN pnpm install 
+RUN pnpm install --frozen-lockfile
 COPY --from=builder /app/out/full/ .
 
 # Generate Prisma client
