@@ -2,7 +2,7 @@
  * Route registration is the single source of truth; do not maintain a separate list of paths here.
  *
  * Middleware chain for tenant-scoped routes:
- *   verifyToken → resolveTenant → checkSubscription → [route handler]
+ *   verifyToken → resolveTenant → requireAuth → checkSubscription → [route handler]
  *
  * Platform admin routes have their own auth chain (no tenant scoping).
  */
@@ -10,6 +10,7 @@
 import { Request, Response, Router } from "express";
 import verifyToken from "@/middlewares/authMiddleware";
 import resolveTenant from "@/middlewares/tenantMiddleware";
+import { requireAuth } from "@/middlewares/requireAuth";
 import checkSubscription from "@/middlewares/subscriptionMiddleware";
 import authRouter from "@/modules/auth/auth.router";
 import userRouter from "@/modules/users/user.router";
@@ -64,7 +65,7 @@ router.use("/platform", platformRouter);
 // Tenant-scoped routes
 // All routes below require: auth → tenant resolution → subscription check
 // ============================================
-router.use(verifyToken, resolveTenant, checkSubscription);
+router.use(verifyToken, resolveTenant, requireAuth, checkSubscription);
 
 router.use("/users", userRouter);
 router.use("/products", productRouter);

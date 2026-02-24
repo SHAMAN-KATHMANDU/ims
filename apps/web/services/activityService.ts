@@ -22,15 +22,23 @@ export interface Activity {
 export async function getActivitiesByContact(
   contactId: string,
 ): Promise<{ activities: Activity[] }> {
-  const res = await api.get(`/activities/contact/${contactId}`);
-  return res.data;
+  const res = await api.get<{ data?: { activities: Activity[] } }>(
+    `/activities/contact/${contactId}`,
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function getActivitiesByDeal(
   dealId: string,
 ): Promise<{ activities: Activity[] }> {
-  const res = await api.get(`/activities/deal/${dealId}`);
-  return res.data;
+  const res = await api.get<{ data?: { activities: Activity[] } }>(
+    `/activities/deal/${dealId}`,
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function createActivity(data: {
@@ -42,8 +50,13 @@ export async function createActivity(data: {
   memberId?: string;
   dealId?: string;
 }): Promise<{ activity: Activity }> {
-  const res = await api.post("/activities", data);
-  return res.data;
+  const res = await api.post<{ data?: { activity: Activity } }>(
+    "/activities",
+    data,
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function deleteActivity(id: string): Promise<void> {

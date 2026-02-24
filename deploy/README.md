@@ -48,13 +48,11 @@ For **dev**:
 
 - `DATABASE_URL` must use hostname `dev_db`
 - `REDIS_URL` should be `redis://dev_redis:6379`
-- `STORAGE_ENDPOINT` should be `http://dev_minio:9000`
 
 For **prod**:
 
 - `DATABASE_URL` must use hostname `prod_db`
 - `REDIS_URL` should be `redis://prod_redis:6379`
-- `STORAGE_ENDPOINT` should be `http://prod_minio:9000`
 - use strong passwords/secrets for all credentials.
 
 ## 4. Start the stack on Dev EC2
@@ -73,7 +71,6 @@ Check:
 docker ps
 curl -s http://localhost:3000 | head
 curl -s http://localhost:4000/health
-curl -s http://localhost:9001 | head   # MinIO console
 ```
 
 ## 5. Start the stack on Prod EC2
@@ -253,7 +250,7 @@ docker exec -i prod_backup /bin/sh -c "zcat /backups/daily/ims-20250220.sql.gz |
 ## Troubleshooting
 
 - **Containers exit**: Run `docker compose -f docker-compose.dev.yml logs` (or prod) and fix `.env` (e.g. wrong `DATABASE_URL`).
-- **API can't connect to Redis/MinIO**: Verify `REDIS_URL` and `STORAGE_ENDPOINT` match compose service names (`dev_redis`/`dev_minio` or `prod_redis`/`prod_minio`).
+- **API can't connect to Redis**: Verify `REDIS_URL` matches compose service name (`dev_redis` or `prod_redis`).
 - **Watchtower can’t pull**: Ensure `docker login` was run on that EC2 and the repo is public or the token has pull permission.
 - **Network not found**: Start the app stack first (`docker-compose.dev.yml` or `docker-compose.prod.yml`), then start the watchtower compose so the `deploy_dev` / `deploy_prod` network exists.
 - **Nginx 502 Bad Gateway**: Ensure Docker containers are running (`docker ps`) and listening on `localhost:3000` (web) and `localhost:4000` (api).

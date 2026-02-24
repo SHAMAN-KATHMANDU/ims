@@ -50,11 +50,13 @@ export async function createErrorReport(
   data: CreateErrorReportData,
 ): Promise<ErrorReport> {
   try {
-    const response = await api.post<{ report: ErrorReport }>(
+    const response = await api.post<{ data?: { report: ErrorReport } }>(
       "/error-reports",
       data,
     );
-    return response.data.report;
+    const report = response.data?.data?.report;
+    if (!report) throw new Error("Invalid response from server");
+    return report;
   } catch (error) {
     handleApiError(error, "submit error report");
   }
@@ -78,8 +80,8 @@ export async function getErrorReports(
       pagination: PaginatedErrorReportsResponse["pagination"];
     }>(`/error-reports?${queryParams.toString()}`);
     return {
-      data: response.data.data ?? [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch error reports");
@@ -91,11 +93,13 @@ export async function updateErrorReportStatus(
   status: ErrorReportStatus,
 ): Promise<ErrorReport> {
   try {
-    const response = await api.patch<{ report: ErrorReport }>(
+    const response = await api.patch<{ data?: { report: ErrorReport } }>(
       `/error-reports/${id}`,
       { status },
     );
-    return response.data.report;
+    const report = response.data?.data?.report;
+    if (!report) throw new Error("Invalid response from server");
+    return report;
   } catch (error) {
     handleApiError(error, "update error report status");
   }

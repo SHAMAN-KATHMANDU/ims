@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
+import { DEFAULT_PAGINATION_META } from "@/lib/apiTypes";
 
 export interface Task {
   id: string;
@@ -56,33 +57,49 @@ export interface UpdateTaskData {
 export async function getTasks(
   params: TaskListParams = {},
 ): Promise<PaginatedTasksResponse> {
-  const res = await api.get("/tasks", { params });
-  return res.data;
+  const res = await api.get<{ data?: Task[]; pagination?: PaginationMeta }>(
+    "/tasks",
+    { params },
+  );
+  return {
+    data: res.data?.data ?? [],
+    pagination: res.data?.pagination ?? DEFAULT_PAGINATION_META,
+  };
 }
 
 export async function getTaskById(id: string): Promise<{ task: Task }> {
-  const res = await api.get(`/tasks/${id}`);
-  return res.data;
+  const res = await api.get<{ data?: { task: Task } }>(`/tasks/${id}`);
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function createTask(
   data: CreateTaskData,
 ): Promise<{ task: Task }> {
-  const res = await api.post("/tasks", data);
-  return res.data;
+  const res = await api.post<{ data?: { task: Task } }>("/tasks", data);
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function updateTask(
   id: string,
   data: UpdateTaskData,
 ): Promise<{ task: Task }> {
-  const res = await api.put(`/tasks/${id}`, data);
-  return res.data;
+  const res = await api.put<{ data?: { task: Task } }>(`/tasks/${id}`, data);
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function completeTask(id: string): Promise<{ task: Task }> {
-  const res = await api.post(`/tasks/${id}/complete`);
-  return res.data;
+  const res = await api.post<{ data?: { task: Task } }>(
+    `/tasks/${id}/complete`,
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function deleteTask(id: string): Promise<void> {

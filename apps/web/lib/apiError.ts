@@ -10,6 +10,7 @@ import { AxiosError } from "axios";
 
 interface ApiErrorResponse {
   message?: string;
+  error?: string;
 }
 
 /**
@@ -40,11 +41,16 @@ const MESSAGES = {
 export function getApiErrorMessage(error: unknown, context?: string): string {
   if (isAxiosError(error)) {
     const status = error.response?.status;
-    const backendMessage =
-      typeof error.response?.data?.message === "string" &&
-      error.response.data.message.trim() !== ""
-        ? error.response.data.message.trim()
+    const data = error.response?.data;
+    const messageStr =
+      typeof data?.message === "string" && data.message.trim() !== ""
+        ? data.message.trim()
         : null;
+    const errorStr =
+      typeof data?.error === "string" && data.error.trim() !== ""
+        ? data.error.trim()
+        : null;
+    const backendMessage = messageStr ?? errorStr;
 
     if (error.code === "ERR_NETWORK") {
       return MESSAGES.network;

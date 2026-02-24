@@ -76,7 +76,7 @@ export async function getAllUsers(params?: GetAllUsersParams): Promise<User[]> {
     const query = queryParams.toString();
     const url = query ? `/users?${query}` : "/users";
     const response = await api.get<UsersResponse>(url);
-    return response.data.data || [];
+    return response.data?.data ?? [];
   } catch (error) {
     handleApiError(error, "fetch users");
   }
@@ -91,8 +91,10 @@ export async function getUserById(id: string): Promise<User> {
   }
 
   try {
-    const response = await api.get<UserResponse>(`/users/${id}`);
-    return response.data.user;
+    const response = await api.get<{ data?: UserResponse }>(`/users/${id}`);
+    const user = response.data?.data?.user;
+    if (!user) throw new Error("Invalid response from server");
+    return user;
   } catch (error) {
     handleApiError(error, `fetch user "${id}"`);
   }
@@ -113,8 +115,10 @@ export async function createUser(data: CreateUserData): Promise<User> {
   }
 
   try {
-    const response = await api.post<UserResponse>("/users", data);
-    return response.data.user;
+    const response = await api.post<{ data?: UserResponse }>("/users", data);
+    const user = response.data?.data?.user;
+    if (!user) throw new Error("Invalid response from server");
+    return user;
   } catch (error) {
     handleApiError(error, "create user");
   }
@@ -135,8 +139,13 @@ export async function updateUser(
   }
 
   try {
-    const response = await api.put<UserResponse>(`/users/${id}`, data);
-    return response.data.user;
+    const response = await api.put<{ data?: UserResponse }>(
+      `/users/${id}`,
+      data,
+    );
+    const user = response.data?.data?.user;
+    if (!user) throw new Error("Invalid response from server");
+    return user;
   } catch (error) {
     handleApiError(error, `update user "${id}"`);
   }

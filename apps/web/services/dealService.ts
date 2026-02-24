@@ -2,6 +2,7 @@ import api from "@/lib/axios";
 import type { InternalAxiosRequestConfig } from "axios";
 import { isAxiosError } from "axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
+import { DEFAULT_PAGINATION_META } from "@/lib/apiTypes";
 
 export type DealStatus = "OPEN" | "WON" | "LOST";
 
@@ -103,8 +104,14 @@ export interface UpdateDealData {
 export async function getDeals(
   params: DealListParams = {},
 ): Promise<PaginatedDealsResponse> {
-  const res = await api.get("/deals", { params });
-  return res.data;
+  const res = await api.get<{ data?: Deal[]; pagination?: PaginationMeta }>(
+    "/deals",
+    { params },
+  );
+  return {
+    data: res.data?.data ?? [],
+    pagination: res.data?.pagination ?? DEFAULT_PAGINATION_META,
+  };
 }
 
 export async function getDealsKanban(pipelineId?: string): Promise<{
@@ -113,11 +120,18 @@ export async function getDealsKanban(pipelineId?: string): Promise<{
   deals: Deal[];
 }> {
   try {
-    const res = await api.get("/deals/kanban", {
+    const res = await api.get<{
+      data?: {
+        pipeline: unknown;
+        stages: Array<{ stage: string; deals: Deal[] }>;
+        deals: Deal[];
+      };
+    }>("/deals/kanban", {
       params: pipelineId ? { pipelineId } : {},
       skipGlobalErrorToast: true,
     } as unknown as InternalAxiosRequestConfig);
-    return res.data;
+    const payload = res.data?.data;
+    return payload ?? { pipeline: null, stages: [], deals: [] };
   } catch (error) {
     if (isAxiosError(error) && error.response?.status === 404) {
       return { pipeline: null, stages: [], deals: [] };
@@ -127,31 +141,41 @@ export async function getDealsKanban(pipelineId?: string): Promise<{
 }
 
 export async function getDealById(id: string): Promise<{ deal: Deal }> {
-  const res = await api.get(`/deals/${id}`);
-  return res.data;
+  const res = await api.get<{ data?: { deal: Deal } }>(`/deals/${id}`);
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function createDeal(
   data: CreateDealData,
 ): Promise<{ deal: Deal }> {
-  const res = await api.post("/deals", data);
-  return res.data;
+  const res = await api.post<{ data?: { deal: Deal } }>("/deals", data);
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function updateDeal(
   id: string,
   data: UpdateDealData,
 ): Promise<{ deal: Deal }> {
-  const res = await api.put(`/deals/${id}`, data);
-  return res.data;
+  const res = await api.put<{ data?: { deal: Deal } }>(`/deals/${id}`, data);
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function updateDealStage(
   id: string,
   stage: string,
 ): Promise<{ deal: Deal }> {
-  const res = await api.patch(`/deals/${id}/stage`, { stage });
-  return res.data;
+  const res = await api.patch<{ data?: { deal: Deal } }>(`/deals/${id}/stage`, {
+    stage,
+  });
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function deleteDeal(id: string): Promise<void> {

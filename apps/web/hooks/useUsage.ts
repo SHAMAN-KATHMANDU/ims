@@ -36,10 +36,13 @@ const usageKeys = {
   plans: () => [...usageKeys.all, "plans"] as const,
 };
 
+const USAGE_STALE_MS = 60 * 1000; // 1 min – usage/plans can be slightly stale
+
 export function useUsage() {
   return useQuery({
     queryKey: usageKeys.summary(),
     queryFn: getUsage,
+    staleTime: USAGE_STALE_MS,
   });
 }
 
@@ -48,6 +51,7 @@ export function useResourceUsage(resource: LimitedResource | null) {
     queryKey: usageKeys.resource(resource ?? ""),
     queryFn: () => getResourceUsage(resource!),
     enabled: !!resource,
+    staleTime: USAGE_STALE_MS,
   });
 }
 
@@ -55,6 +59,7 @@ export function useAddOns() {
   return useQuery({
     queryKey: usageKeys.addOns(),
     queryFn: getAddOns,
+    staleTime: USAGE_STALE_MS,
   });
 }
 
@@ -62,6 +67,7 @@ export function useAddOnPricing() {
   return useQuery({
     queryKey: usageKeys.pricing(),
     queryFn: getAddOnPricing,
+    staleTime: USAGE_STALE_MS,
   });
 }
 
@@ -69,6 +75,7 @@ export function useTenantPlans() {
   return useQuery({
     queryKey: usageKeys.plans(),
     queryFn: getPlansWithPricing,
+    staleTime: USAGE_STALE_MS,
   });
 }
 

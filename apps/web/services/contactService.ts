@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
+import { DEFAULT_PAGINATION_META } from "@/lib/apiTypes";
 
 export interface ContactTag {
   id: string;
@@ -110,22 +111,32 @@ export interface UpdateContactData {
 export async function getContacts(
   params: ContactListParams = {},
 ): Promise<PaginatedContactsResponse> {
-  const res = await api.get("/contacts", { params });
-  return res.data;
+  const res = await api.get<{ data?: Contact[]; pagination?: PaginationMeta }>(
+    "/contacts",
+    { params },
+  );
+  return {
+    data: res.data?.data ?? [],
+    pagination: res.data?.pagination ?? DEFAULT_PAGINATION_META,
+  };
 }
 
 export async function getContactById(
   id: string,
 ): Promise<{ contact: ContactDetail }> {
   const res = await api.get(`/contacts/${id}`);
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function createContact(
   data: CreateContactData,
 ): Promise<{ contact: Contact }> {
   const res = await api.post("/contacts", data);
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function updateContact(
@@ -133,7 +144,9 @@ export async function updateContact(
   data: UpdateContactData,
 ): Promise<{ contact: Contact }> {
   const res = await api.put(`/contacts/${id}`, data);
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function deleteContact(id: string): Promise<void> {
@@ -142,14 +155,18 @@ export async function deleteContact(id: string): Promise<void> {
 
 export async function getContactTags(): Promise<{ tags: ContactTag[] }> {
   const res = await api.get("/contacts/tags");
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function createContactTag(
   name: string,
 ): Promise<{ tag: ContactTag }> {
   const res = await api.post("/contacts/tags", { name });
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function addContactNote(
@@ -157,7 +174,9 @@ export async function addContactNote(
   content: string,
 ): Promise<{ note: unknown }> {
   const res = await api.post(`/contacts/${contactId}/notes`, { content });
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function deleteContactNote(
@@ -174,7 +193,9 @@ export async function addContactAttachment(
   const formData = new FormData();
   formData.append("file", file);
   const res = await api.post(`/contacts/${contactId}/attachments`, formData);
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function deleteContactAttachment(
@@ -193,7 +214,9 @@ export async function addContactCommunication(
   },
 ): Promise<{ communication: unknown }> {
   const res = await api.post(`/contacts/${contactId}/communications`, data);
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function importContactsCsv(file: File): Promise<{
@@ -203,7 +226,9 @@ export async function importContactsCsv(file: File): Promise<{
   const formData = new FormData();
   formData.append("file", file);
   const res = await api.post("/contacts/import", formData);
-  return res.data;
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function exportContactsCsv(ids?: string[]): Promise<Blob> {
@@ -212,5 +237,5 @@ export async function exportContactsCsv(ids?: string[]): Promise<Blob> {
     params,
     responseType: "blob",
   });
-  return res.data;
+  return res.data as Blob;
 }

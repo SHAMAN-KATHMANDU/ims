@@ -199,8 +199,8 @@ export async function getTransfers(
       `/transfers?${queryParams.toString()}`,
     );
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination,
     };
   } catch (error) {
     handleApiError(error, "fetch transfers");
@@ -216,8 +216,12 @@ export async function getTransferById(id: string): Promise<Transfer> {
   }
 
   try {
-    const response = await api.get<TransferResponse>(`/transfers/${id}`);
-    return response.data.transfer;
+    const response = await api.get<{ data?: TransferResponse }>(
+      `/transfers/${id}`,
+    );
+    const transfer = response.data?.data?.transfer;
+    if (!transfer) throw new Error("Invalid response from server");
+    return transfer;
   } catch (error) {
     handleApiError(error, `fetch transfer "${id}"`);
   }
@@ -234,12 +238,12 @@ export async function getTransferLogs(
   }
 
   try {
-    const response = await api.get<TransferLogsResponse>(
+    const response = await api.get<{ data?: TransferLogsResponse }>(
       `/transfers/${transferId}/logs`,
     );
     return {
-      transferCode: response.data.transferCode,
-      logs: response.data.logs || [],
+      transferCode: response.data?.data?.transferCode ?? "",
+      logs: response.data?.data?.logs ?? [],
     };
   } catch (error) {
     handleApiError(error, `fetch transfer logs "${transferId}"`);
@@ -276,8 +280,13 @@ export async function createTransfer(
   }
 
   try {
-    const response = await api.post<TransferResponse>("/transfers", data);
-    return response.data.transfer;
+    const response = await api.post<{ data?: TransferResponse }>(
+      "/transfers",
+      data,
+    );
+    const transfer = response.data?.data?.transfer;
+    if (!transfer) throw new Error("Invalid response from server");
+    return transfer;
   } catch (error) {
     handleApiError(error, "create transfer");
   }
@@ -292,10 +301,12 @@ export async function approveTransfer(id: string): Promise<Transfer> {
   }
 
   try {
-    const response = await api.put<TransferResponse>(
+    const response = await api.put<{ data?: TransferResponse }>(
       `/transfers/${id}/approve`,
     );
-    return response.data.transfer;
+    const transfer = response.data?.data?.transfer;
+    if (!transfer) throw new Error("Invalid response from server");
+    return transfer;
   } catch (error) {
     handleApiError(error, `approve transfer "${id}"`);
   }
@@ -310,10 +321,12 @@ export async function startTransit(id: string): Promise<Transfer> {
   }
 
   try {
-    const response = await api.put<TransferResponse>(
+    const response = await api.put<{ data?: TransferResponse }>(
       `/transfers/${id}/transit`,
     );
-    return response.data.transfer;
+    const transfer = response.data?.data?.transfer;
+    if (!transfer) throw new Error("Invalid response from server");
+    return transfer;
   } catch (error) {
     handleApiError(error, `start transit "${id}"`);
   }
@@ -328,10 +341,12 @@ export async function completeTransfer(id: string): Promise<Transfer> {
   }
 
   try {
-    const response = await api.put<TransferResponse>(
+    const response = await api.put<{ data?: TransferResponse }>(
       `/transfers/${id}/complete`,
     );
-    return response.data.transfer;
+    const transfer = response.data?.data?.transfer;
+    if (!transfer) throw new Error("Invalid response from server");
+    return transfer;
   } catch (error) {
     handleApiError(error, `complete transfer "${id}"`);
   }
@@ -349,13 +364,15 @@ export async function cancelTransfer(
   }
 
   try {
-    const response = await api.put<TransferResponse>(
+    const response = await api.put<{ data?: TransferResponse }>(
       `/transfers/${id}/cancel`,
       {
         reason,
       },
     );
-    return response.data.transfer;
+    const transfer = response.data?.data?.transfer;
+    if (!transfer) throw new Error("Invalid response from server");
+    return transfer;
   } catch (error) {
     handleApiError(error, `cancel transfer "${id}"`);
   }

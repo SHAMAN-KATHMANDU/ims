@@ -94,10 +94,18 @@ function progressColor(percent: number): string {
 
 export function UsageDashboard() {
   const tenant = useAuthStore(selectTenant);
-  const { data: usageData, isLoading: usageLoading } = useUsage();
+  const {
+    data: usageData,
+    isLoading: usageLoading,
+    isError: usageError,
+  } = useUsage();
   const { data: addOns = [], isLoading: addOnsLoading } = useAddOns();
   const { data: pricing = [] } = useAddOnPricing();
-  const { data: plans = [] } = useTenantPlans();
+  const {
+    data: plans = [],
+    isPending: plansLoading,
+    isError: plansError,
+  } = useTenantPlans();
   const requestAddOn = useRequestAddOn();
   const { toast } = useToast();
 
@@ -148,25 +156,25 @@ export function UsageDashboard() {
       : null;
 
   return (
-    <div className="space-y-6">
-      <div>
+    <div className="min-w-0 space-y-6">
+      <div className="min-w-0">
         <h1 className="text-3xl font-bold">Usage & Limits</h1>
-        <p className="text-muted-foreground mt-1">
+        <p className="text-muted-foreground mt-1 wrap-break-word">
           Resource usage and plan details for your organization
         </p>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card>
+      <div className="grid min-w-0 gap-4 md:grid-cols-3">
+        <Card className="min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <Shield className="h-4 w-4 text-muted-foreground" />
               Current Plan
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <span className="text-2xl font-bold">
+          <CardContent className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-2xl font-bold wrap-break-word">
                 {currentPlan?.name ?? tenant?.plan ?? "-"}
               </span>
               <Badge
@@ -192,28 +200,28 @@ export function UsageDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
+              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               {subscriptionInfo?.isTrial ? "Trial Period" : "Billing Period"}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="min-w-0">
             {daysRemaining !== null ? (
-              <>
+              <span className="flex flex-wrap items-baseline gap-x-1 gap-y-0">
                 <span className="text-2xl font-bold">{daysRemaining}</span>
-                <span className="text-sm text-muted-foreground ml-1">
+                <span className="text-sm text-muted-foreground">
                   days remaining
                 </span>
                 {daysRemaining <= 7 && (
-                  <p className="text-sm text-amber-600 mt-1">
+                  <p className="text-sm text-amber-600 mt-1 w-full">
                     {subscriptionInfo?.isTrial
                       ? "Your trial is ending soon"
                       : "Your subscription is expiring soon"}
                   </p>
                 )}
-              </>
+              </span>
             ) : (
               <span className="text-sm text-muted-foreground">
                 No expiry set
@@ -222,15 +230,17 @@ export function UsageDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="min-w-0">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <ArrowUpCircle className="h-4 w-4 text-muted-foreground" />
+              <ArrowUpCircle className="h-4 w-4 text-muted-foreground shrink-0" />
               Upgrade Path
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            {currentPlan && plans.length > 0 ? (
+          <CardContent className="min-w-0">
+            {plansLoading ? (
+              <Skeleton className="h-6 w-32" />
+            ) : currentPlan && plans.length > 0 ? (
               (() => {
                 const nextPlan = plans.find((p) => p.rank > currentPlan.rank);
                 return nextPlan ? (
@@ -253,94 +263,113 @@ export function UsageDashboard() {
                 );
               })()
             ) : (
-              <Skeleton className="h-6 w-32" />
+              <span className="text-sm text-muted-foreground">
+                {plansError
+                  ? "Couldn’t load upgrade options. You’re on "
+                  : "You’re on "}
+                <span className="font-medium">
+                  {tenant?.plan ?? "your current plan"}
+                </span>
+                .{plansError && " Refresh or try again later."}
+              </span>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {usageLoading
-          ? Array.from({ length: 6 }).map((_, i) => (
-              <Card key={i}>
+      <div className="grid min-w-0 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {usageLoading ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i} className="min-w-0">
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <Skeleton className="h-2 w-full" />
+                <Skeleton className="h-4 w-16" />
+              </CardContent>
+            </Card>
+          ))
+        ) : usageError ? (
+          <Card className="min-w-0 md:col-span-2 lg:col-span-3">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground">
+                Couldn’t load usage. Please refresh the page or try again later.
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          (usageData?.usage ?? []).map((item) => {
+            const meta = RESOURCE_META[item.resource];
+            const Icon = meta.icon;
+            const isUnlimited = item.effectiveLimit === -1;
+
+            return (
+              <Card key={item.resource} className="min-w-0">
                 <CardHeader className="pb-2">
-                  <Skeleton className="h-4 w-24" />
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-sm font-medium flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      {meta.label}
+                    </CardTitle>
+                    {item.isAtLimit && (
+                      <Badge variant="destructive" className="text-xs">
+                        At limit
+                      </Badge>
+                    )}
+                    {!item.isAtLimit && item.usagePercent >= 80 && (
+                      <Badge
+                        variant="outline"
+                        className="text-xs text-amber-600 border-amber-300"
+                      >
+                        Near limit
+                      </Badge>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  <Skeleton className="h-2 w-full" />
-                  <Skeleton className="h-4 w-16" />
+                  <div className="flex items-baseline justify-between">
+                    <span className="text-2xl font-bold">{item.current}</span>
+                    <span className="text-sm text-muted-foreground">
+                      / {isUnlimited ? "Unlimited" : item.effectiveLimit}
+                    </span>
+                  </div>
+                  {!isUnlimited && (
+                    <Progress
+                      value={item.usagePercent}
+                      className={`h-2 ${progressColor(item.usagePercent)}`}
+                    />
+                  )}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      Plan:{" "}
+                      {item.baseLimit === -1 ? "Unlimited" : item.baseLimit}
+                      {item.addOnQuantity > 0 &&
+                        ` + ${item.addOnQuantity} add-on`}
+                    </span>
+                    {((!isUnlimited && item.usagePercent >= 80) ||
+                      item.isAtLimit) && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs px-2"
+                        onClick={() => handleRequestAddOn(meta.addOnType)}
+                        disabled={requestAddOn.isPending}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Request Add-On
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
-            ))
-          : usageData?.usage.map((item) => {
-              const meta = RESOURCE_META[item.resource];
-              const Icon = meta.icon;
-              const isUnlimited = item.effectiveLimit === -1;
-
-              return (
-                <Card key={item.resource}>
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-medium flex items-center gap-2">
-                        <Icon className="h-4 w-4 text-muted-foreground" />
-                        {meta.label}
-                      </CardTitle>
-                      {item.isAtLimit && (
-                        <Badge variant="destructive" className="text-xs">
-                          At limit
-                        </Badge>
-                      )}
-                      {!item.isAtLimit && item.usagePercent >= 80 && (
-                        <Badge
-                          variant="outline"
-                          className="text-xs text-amber-600 border-amber-300"
-                        >
-                          Near limit
-                        </Badge>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-2xl font-bold">{item.current}</span>
-                      <span className="text-sm text-muted-foreground">
-                        / {isUnlimited ? "Unlimited" : item.effectiveLimit}
-                      </span>
-                    </div>
-                    {!isUnlimited && (
-                      <Progress
-                        value={item.usagePercent}
-                        className={`h-2 ${progressColor(item.usagePercent)}`}
-                      />
-                    )}
-                    <div className="flex items-center justify-between text-xs text-muted-foreground">
-                      <span>
-                        Plan:{" "}
-                        {item.baseLimit === -1 ? "Unlimited" : item.baseLimit}
-                        {item.addOnQuantity > 0 &&
-                          ` + ${item.addOnQuantity} add-on`}
-                      </span>
-                      {!isUnlimited && item.usagePercent >= 80 && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 text-xs px-2"
-                          onClick={() => handleRequestAddOn(meta.addOnType)}
-                          disabled={requestAddOn.isPending}
-                        >
-                          <Plus className="h-3 w-3 mr-1" />
-                          Request Add-On
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            );
+          })
+        )}
       </div>
 
       {plans.length > 0 && (
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Plans & Pricing</CardTitle>
             <CardDescription>
@@ -387,7 +416,7 @@ export function UsageDashboard() {
         </Card>
       )}
 
-      <Card>
+      <Card className="min-w-0">
         <CardHeader>
           <CardTitle>Your Add-Ons</CardTitle>
           <CardDescription>Active and pending add-on purchases</CardDescription>
@@ -442,7 +471,7 @@ export function UsageDashboard() {
       </Card>
 
       {pricing.length > 0 && (
-        <Card>
+        <Card className="min-w-0">
           <CardHeader>
             <CardTitle>Available Add-Ons</CardTitle>
             <CardDescription>Pricing for additional resources</CardDescription>

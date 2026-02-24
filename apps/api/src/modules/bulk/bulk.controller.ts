@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { fail } from "@/shared/response";
 import productController from "@/modules/products/product.controller";
 import memberController from "@/modules/members/member.controller";
 import saleController from "@/modules/sales/sale.controller";
@@ -12,9 +13,10 @@ export type BulkType = (typeof BULK_TYPES)[number];
  * Type from path param (:type) or query or body; file from multipart.
  */
 export async function bulkUpload(req: Request, res: Response): Promise<void> {
+  const auth = req.authContext!;
   const { type } = req.params as { type: BulkType };
   if (!req.file) {
-    res.status(400).json({ message: "No file uploaded" });
+    fail(res, "No file uploaded", 400);
     return;
   }
 
@@ -29,7 +31,8 @@ export async function bulkUpload(req: Request, res: Response): Promise<void> {
       await saleController.bulkUploadSales(req, res);
       return;
     default:
-      res.status(400).json({ message: "Invalid type" });
+      fail(res, "Invalid type", 400);
+      return;
   }
 }
 
@@ -40,6 +43,7 @@ export async function downloadTemplate(
   req: Request,
   res: Response,
 ): Promise<void> {
+  const auth = req.authContext!;
   const { type } = getValidatedQuery<{ type: BulkType }>(req, res);
 
   switch (type) {
@@ -53,7 +57,8 @@ export async function downloadTemplate(
       await saleController.downloadBulkUploadTemplate(req, res);
       return;
     default:
-      res.status(400).json({ message: "Invalid type" });
+      fail(res, "Invalid type", 400);
+      return;
   }
 }
 
@@ -61,6 +66,7 @@ export async function downloadTemplate(
  * Common data download (Excel/CSV): delegates by type. Query: type, format, ids.
  */
 export async function download(req: Request, res: Response): Promise<void> {
+  const auth = req.authContext!;
   const { type } = getValidatedQuery<{ type: BulkType }>(req, res);
 
   switch (type) {
@@ -74,6 +80,7 @@ export async function download(req: Request, res: Response): Promise<void> {
       await saleController.downloadSales(req, res);
       return;
     default:
-      res.status(400).json({ message: "Invalid type" });
+      fail(res, "Invalid type", 400);
+      return;
   }
 }

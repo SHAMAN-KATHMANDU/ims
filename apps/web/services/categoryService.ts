@@ -7,7 +7,8 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/apiError";
-import type { PaginationMeta } from "@/lib/apiTypes";
+import type { ApiWrapped, PaginationMeta } from "@/lib/apiTypes";
+import { DEFAULT_PAGINATION_META } from "@/lib/apiTypes";
 
 // ============================================
 // Types
@@ -45,15 +46,13 @@ export interface PaginatedCategoriesResponse {
   pagination: PaginationMeta;
 }
 
-interface CategoriesResponse {
-  message: string;
-  data: Category[];
-  pagination: PaginationMeta;
+interface CategoryResponse {
+  category: Category;
 }
 
-interface CategoryResponse {
-  message: string;
-  category: Category;
+interface SubcategoriesPayload {
+  categoryId: string;
+  subcategories: string[];
 }
 
 // ============================================
@@ -82,12 +81,12 @@ export async function getCategoriesPaginated(
   }
 
   try {
-    const response = await api.get<CategoriesResponse>(
-      `/categories?${queryParams.toString()}`,
-    );
+    const response = await api.get<
+      ApiWrapped<Category[]> & { pagination?: PaginationMeta }
+    >(`/categories?${queryParams.toString()}`);
     return {
-      data: response.data.data || [],
-      pagination: response.data.pagination,
+      data: response.data?.data ?? [],
+      pagination: response.data?.pagination ?? DEFAULT_PAGINATION_META,
     };
   } catch (error) {
     handleApiError(error, "fetch categories");
@@ -99,10 +98,10 @@ export async function getCategoriesPaginated(
  */
 export async function getAllCategories(): Promise<Category[]> {
   try {
-    const response = await api.get<CategoriesResponse>(
-      "/categories?limit=500&page=1",
-    );
-    return response.data.data || [];
+    const response = await api.get<
+      ApiWrapped<Category[]> & { pagination?: PaginationMeta }
+    >("/categories?limit=500&page=1");
+    return response.data?.data ?? [];
   } catch (error) {
     handleApiError(error, "fetch categories");
   }
@@ -117,8 +116,12 @@ export async function getCategoryById(id: string): Promise<Category> {
   }
 
   try {
-    const response = await api.get<CategoryResponse>(`/categories/${id}`);
-    return response.data.category;
+    const response = await api.get<ApiWrapped<CategoryResponse>>(
+      `/categories/${id}`,
+    );
+    const category = response.data?.data?.category;
+    if (!category) throw new Error("Invalid response from server");
+    return category;
   } catch (error) {
     handleApiError(error, `fetch category "${id}"`);
   }
@@ -129,12 +132,10 @@ export async function getCategorySubcategories(id: string): Promise<string[]> {
     throw new Error("Category ID is required");
   }
   try {
-    const response = await api.get<{
-      message: string;
-      categoryId: string;
-      subcategories: string[];
-    }>(`/categories/${id}/subcategories`);
-    return response.data.subcategories || [];
+    const response = await api.get<ApiWrapped<SubcategoriesPayload>>(
+      `/categories/${id}/subcategories`,
+    );
+    return response.data?.data?.subcategories ?? [];
   } catch (error) {
     handleApiError(error, `fetch subcategories for category "${id}"`);
   }
@@ -151,8 +152,13 @@ export async function createCategory(
   }
 
   try {
-    const response = await api.post<CategoryResponse>("/categories", data);
-    return response.data.category;
+    const response = await api.post<ApiWrapped<CategoryResponse>>(
+      "/categories",
+      data,
+    );
+    const category = response.data?.data?.category;
+    if (!category) throw new Error("Invalid response from server");
+    return category;
   } catch (error) {
     handleApiError(error, "create category");
   }
@@ -173,8 +179,13 @@ export async function updateCategory(
   }
 
   try {
-    const response = await api.put<CategoryResponse>(`/categories/${id}`, data);
-    return response.data.category;
+    const response = await api.put<ApiWrapped<CategoryResponse>>(
+      `/categories/${id}`,
+      data,
+    );
+    const category = response.data?.data?.category;
+    if (!category) throw new Error("Invalid response from server");
+    return category;
   } catch (error) {
     handleApiError(error, `update category "${id}"`);
   }

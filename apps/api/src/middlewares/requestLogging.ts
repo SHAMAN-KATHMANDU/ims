@@ -8,6 +8,7 @@
 import { Request, Response, NextFunction } from "express";
 import { logger } from "@/config/logger";
 import { httpRequestDuration, httpRequestTotal } from "@/config/metrics";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 
 const API_BASE_PATH = "/api/v1";
 
@@ -25,8 +26,9 @@ export const requestLoggingMiddleware = (
   const method = req.method;
   const path = req.path;
   const start = Date.now();
-  const tenantId = req.user?.tenantId;
-  const userId = req.user?.id;
+  const auth = req.authContext ?? getAuthContext(req);
+  const tenantId = auth?.tenantId;
+  const userId = auth?.userId;
 
   logger.request("API request", requestId, { method, path, tenantId, userId });
 

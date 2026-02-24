@@ -79,15 +79,18 @@ export interface PlanWithPricing {
 }
 
 // ============================================
-// API
+// API (response shape: { success, data: payload })
 // ============================================
+
+interface ApiWrapped<T> {
+  data?: T;
+}
 
 export async function getPlansWithPricing(): Promise<PlanWithPricing[]> {
   try {
-    const response = await api.get<{ plans: PlanWithPricing[] }>(
-      "/usage/plans",
-    );
-    return response.data.plans ?? [];
+    const response =
+      await api.get<ApiWrapped<{ plans: PlanWithPricing[] }>>("/usage/plans");
+    return response.data?.data?.plans ?? [];
   } catch (error) {
     handleApiError(error, "fetch plans with pricing");
   }
@@ -98,10 +101,15 @@ export async function getUsage(): Promise<{
   plan: string;
 }> {
   try {
-    const response = await api.get<{ usage: ResourceUsage[]; plan: string }>(
-      "/usage",
-    );
-    return response.data;
+    const response =
+      await api.get<ApiWrapped<{ usage: ResourceUsage[]; plan: string }>>(
+        "/usage",
+      );
+    const payload = response.data?.data;
+    if (!payload) {
+      return { usage: [], plan: "" };
+    }
+    return payload;
   } catch (error) {
     handleApiError(error, "fetch usage");
   }
@@ -111,8 +119,14 @@ export async function getResourceUsage(
   resource: LimitedResource,
 ): Promise<ResourceUsage> {
   try {
-    const response = await api.get<ResourceUsage>(`/usage/${resource}`);
-    return response.data;
+    const response = await api.get<ApiWrapped<ResourceUsage>>(
+      `/usage/${resource}`,
+    );
+    const payload = response.data?.data;
+    if (!payload) {
+      throw new Error("Invalid response from server");
+    }
+    return payload;
   } catch (error) {
     handleApiError(error, `fetch ${resource} usage`);
   }
@@ -120,8 +134,9 @@ export async function getResourceUsage(
 
 export async function getAddOns(): Promise<TenantAddOn[]> {
   try {
-    const response = await api.get<{ addOns: TenantAddOn[] }>("/usage/add-ons");
-    return response.data.addOns ?? [];
+    const response =
+      await api.get<ApiWrapped<{ addOns: TenantAddOn[] }>>("/usage/add-ons");
+    return response.data?.data?.addOns ?? [];
   } catch (error) {
     handleApiError(error, "fetch add-ons");
   }
@@ -129,10 +144,10 @@ export async function getAddOns(): Promise<TenantAddOn[]> {
 
 export async function getAddOnPricing(): Promise<AddOnPricing[]> {
   try {
-    const response = await api.get<{ pricing: AddOnPricing[] }>(
+    const response = await api.get<ApiWrapped<{ pricing: AddOnPricing[] }>>(
       "/usage/add-ons/pricing",
     );
-    return response.data.pricing ?? [];
+    return response.data?.data?.pricing ?? [];
   } catch (error) {
     handleApiError(error, "fetch add-on pricing");
   }
@@ -144,11 +159,14 @@ export async function requestAddOn(data: {
   notes?: string;
 }): Promise<TenantAddOn> {
   try {
-    const response = await api.post<{ addOn: TenantAddOn; message: string }>(
-      "/usage/add-ons/request",
-      data,
-    );
-    return response.data.addOn;
+    const response = await api.post<
+      ApiWrapped<{ addOn: TenantAddOn; message: string }>
+    >("/usage/add-ons/request", data);
+    const addOn = response.data?.data?.addOn;
+    if (!addOn) {
+      throw new Error("Invalid response from server");
+    }
+    return addOn;
   } catch (error) {
     handleApiError(error, "request add-on");
   }

@@ -43,19 +43,6 @@ services:
     networks:
       - ims-network
 
-  minio:
-    image: minio/minio:latest
-    container_name: ims-minio
-    restart: always
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    volumes:
-      - minio_data:/data
-    networks:
-      - ims-network
-
   # ============================================
   # Database backup (pg_dump daily, 7-day retention)
   # ============================================
@@ -94,8 +81,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-      minio:
-        condition: service_started
     ports:
       - "${API_PORT:-4000}:4000"
     environment:
@@ -107,12 +92,6 @@ services:
       SUPERADMIN_USERNAME: ${SUPERADMIN_USERNAME:-admin}
       SUPERADMIN_PASSWORD: ${SUPERADMIN_PASSWORD}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
-      STORAGE_ENDPOINT: ${STORAGE_ENDPOINT:-http://minio:9000}
-      STORAGE_ACCESS_KEY: ${STORAGE_ACCESS_KEY}
-      STORAGE_SECRET_KEY: ${STORAGE_SECRET_KEY}
-      STORAGE_BUCKET: ${STORAGE_BUCKET:-projectx-files}
-      STORAGE_REGION: ${STORAGE_REGION:-us-east-1}
-      STORAGE_FORCE_PATH_STYLE: ${STORAGE_FORCE_PATH_STYLE:-1}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
       interval: 30s
@@ -169,6 +148,4 @@ volumes:
   postgres_data:
     driver: local
   backup_data:
-    driver: local
-  minio_data:
     driver: local

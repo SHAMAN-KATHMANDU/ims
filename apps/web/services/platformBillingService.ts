@@ -78,15 +78,23 @@ export interface PricingPlan {
 }
 
 // ============================================
+// API (response shape: { success, data: payload })
+// ============================================
+
+interface ApiWrapped<T> {
+  data?: T;
+}
+
+// ============================================
 // Add-On Pricing CRUD
 // ============================================
 
 export async function getAddOnPricingList(): Promise<AddOnPricing[]> {
   try {
-    const response = await api.get<{ pricing: AddOnPricing[] }>(
+    const response = await api.get<ApiWrapped<{ pricing: AddOnPricing[] }>>(
       "/platform/add-on-pricing",
     );
-    return response.data.pricing ?? [];
+    return response.data?.data?.pricing ?? [];
   } catch (error) {
     handleApiError(error, "fetch add-on pricing");
   }
@@ -102,11 +110,13 @@ export async function createAddOnPricing(data: {
   isActive?: boolean;
 }): Promise<AddOnPricing> {
   try {
-    const response = await api.post<{ pricing: AddOnPricing }>(
+    const response = await api.post<ApiWrapped<{ pricing: AddOnPricing }>>(
       "/platform/add-on-pricing",
       data,
     );
-    return response.data.pricing;
+    const pricing = response.data?.data?.pricing;
+    if (!pricing) throw new Error("Invalid response from server");
+    return pricing;
   } catch (error) {
     handleApiError(error, "create add-on pricing");
   }
@@ -122,11 +132,13 @@ export async function updateAddOnPricing(
   },
 ): Promise<AddOnPricing> {
   try {
-    const response = await api.put<{ pricing: AddOnPricing }>(
+    const response = await api.put<ApiWrapped<{ pricing: AddOnPricing }>>(
       `/platform/add-on-pricing/${id}`,
       data,
     );
-    return response.data.pricing;
+    const pricing = response.data?.data?.pricing;
+    if (!pricing) throw new Error("Invalid response from server");
+    return pricing;
   } catch (error) {
     handleApiError(error, "update add-on pricing");
   }
@@ -149,13 +161,12 @@ export async function getTenantAddOns(params?: {
   status?: AddOnStatus;
 }): Promise<PlatformTenantAddOn[]> {
   try {
-    const response = await api.get<{ addOns: PlatformTenantAddOn[] }>(
-      "/platform/tenant-add-ons",
-      {
-        params,
-      },
-    );
-    return response.data.addOns ?? [];
+    const response = await api.get<{
+      data?: { addOns: PlatformTenantAddOn[] };
+    }>("/platform/tenant-add-ons", {
+      params,
+    });
+    return response.data?.data?.addOns ?? [];
   } catch (error) {
     handleApiError(error, "fetch tenant add-ons");
   }
@@ -171,11 +182,13 @@ export async function createTenantAddOn(data: {
   notes?: string;
 }): Promise<PlatformTenantAddOn> {
   try {
-    const response = await api.post<{ addOn: PlatformTenantAddOn }>(
+    const response = await api.post<{ data?: { addOn: PlatformTenantAddOn } }>(
       "/platform/tenant-add-ons",
       data,
     );
-    return response.data.addOn;
+    const addOn = response.data?.data?.addOn;
+    if (!addOn) throw new Error("Invalid response from server");
+    return addOn;
   } catch (error) {
     handleApiError(error, "create tenant add-on");
   }
@@ -192,11 +205,13 @@ export async function updateTenantAddOn(
   },
 ): Promise<PlatformTenantAddOn> {
   try {
-    const response = await api.put<{ addOn: PlatformTenantAddOn }>(
+    const response = await api.put<{ data?: { addOn: PlatformTenantAddOn } }>(
       `/platform/tenant-add-ons/${id}`,
       data,
     );
-    return response.data.addOn;
+    const addOn = response.data?.data?.addOn;
+    if (!addOn) throw new Error("Invalid response from server");
+    return addOn;
   } catch (error) {
     handleApiError(error, "update tenant add-on");
   }
@@ -206,10 +221,12 @@ export async function approveTenantAddOn(
   id: string,
 ): Promise<PlatformTenantAddOn> {
   try {
-    const response = await api.patch<{ addOn: PlatformTenantAddOn }>(
+    const response = await api.patch<{ data?: { addOn: PlatformTenantAddOn } }>(
       `/platform/tenant-add-ons/${id}/approve`,
     );
-    return response.data.addOn;
+    const addOn = response.data?.data?.addOn;
+    if (!addOn) throw new Error("Invalid response from server");
+    return addOn;
   } catch (error) {
     handleApiError(error, "approve tenant add-on");
   }
@@ -219,10 +236,12 @@ export async function cancelTenantAddOn(
   id: string,
 ): Promise<PlatformTenantAddOn> {
   try {
-    const response = await api.patch<{ addOn: PlatformTenantAddOn }>(
+    const response = await api.patch<{ data?: { addOn: PlatformTenantAddOn } }>(
       `/platform/tenant-add-ons/${id}/cancel`,
     );
-    return response.data.addOn;
+    const addOn = response.data?.data?.addOn;
+    if (!addOn) throw new Error("Invalid response from server");
+    return addOn;
   } catch (error) {
     handleApiError(error, "cancel tenant add-on");
   }
@@ -244,13 +263,12 @@ export async function getSubscriptions(
   tenantId?: string,
 ): Promise<Subscription[]> {
   try {
-    const response = await api.get<{ subscriptions: Subscription[] }>(
-      "/platform/subscriptions",
-      {
-        params: tenantId ? { tenantId } : undefined,
-      },
-    );
-    return response.data.subscriptions ?? [];
+    const response = await api.get<{
+      data?: { subscriptions: Subscription[] };
+    }>("/platform/subscriptions", {
+      params: tenantId ? { tenantId } : undefined,
+    });
+    return response.data?.data?.subscriptions ?? [];
   } catch (error) {
     handleApiError(error, "fetch subscriptions");
   }
@@ -261,11 +279,13 @@ export async function updateSubscription(
   data: Record<string, unknown>,
 ): Promise<Subscription> {
   try {
-    const response = await api.put<{ subscription: Subscription }>(
+    const response = await api.put<{ data?: { subscription: Subscription } }>(
       `/platform/subscriptions/${id}`,
       data,
     );
-    return response.data.subscription;
+    const subscription = response.data?.data?.subscription;
+    if (!subscription) throw new Error("Invalid response from server");
+    return subscription;
   } catch (error) {
     handleApiError(error, "update subscription");
   }
@@ -280,11 +300,11 @@ export async function getPayments(params?: {
   subscriptionId?: string;
 }): Promise<TenantPayment[]> {
   try {
-    const response = await api.get<{ payments: TenantPayment[] }>(
+    const response = await api.get<{ data?: { payments: TenantPayment[] } }>(
       "/platform/payments",
       { params },
     );
-    return response.data.payments ?? [];
+    return response.data?.data?.payments ?? [];
   } catch (error) {
     handleApiError(error, "fetch payments");
   }
@@ -295,11 +315,13 @@ export async function updatePayment(
   data: Record<string, unknown>,
 ): Promise<TenantPayment> {
   try {
-    const response = await api.put<{ payment: TenantPayment }>(
+    const response = await api.put<{ data?: { payment: TenantPayment } }>(
       `/platform/payments/${id}`,
       data,
     );
-    return response.data.payment;
+    const payment = response.data?.data?.payment;
+    if (!payment) throw new Error("Invalid response from server");
+    return payment;
   } catch (error) {
     handleApiError(error, "update payment");
   }
@@ -311,10 +333,10 @@ export async function updatePayment(
 
 export async function getPricingPlans(): Promise<PricingPlan[]> {
   try {
-    const response = await api.get<{ pricingPlans: PricingPlan[] }>(
+    const response = await api.get<{ data?: { pricingPlans: PricingPlan[] } }>(
       "/platform/pricing-plans",
     );
-    return response.data.pricingPlans ?? [];
+    return response.data?.data?.pricingPlans ?? [];
   } catch (error) {
     handleApiError(error, "fetch pricing plans");
   }
@@ -322,10 +344,10 @@ export async function getPricingPlans(): Promise<PricingPlan[]> {
 
 export async function initializeDefaultPricingPlans(): Promise<PricingPlan[]> {
   try {
-    const response = await api.post<{ pricingPlans: PricingPlan[] }>(
+    const response = await api.post<{ data?: { pricingPlans: PricingPlan[] } }>(
       "/platform/pricing-plans/initialize-defaults",
     );
-    return response.data.pricingPlans ?? [];
+    return response.data?.data?.pricingPlans ?? [];
   } catch (error) {
     handleApiError(error, "initialize default pricing plans");
   }
@@ -337,11 +359,13 @@ export async function updatePricingPlan(
   data: { price?: number; originalPrice?: number | null; isActive?: boolean },
 ): Promise<PricingPlan> {
   try {
-    const response = await api.put<{ pricingPlan: PricingPlan }>(
+    const response = await api.put<{ data?: { pricingPlan: PricingPlan } }>(
       `/platform/pricing-plans/${tier}/${billingCycle}`,
       data,
     );
-    return response.data.pricingPlan;
+    const pricingPlan = response.data?.data?.pricingPlan;
+    if (!pricingPlan) throw new Error("Invalid response from server");
+    return pricingPlan;
   } catch (error) {
     handleApiError(error, "update pricing plan");
   }
@@ -369,10 +393,10 @@ export interface PlanLimit {
 
 export async function getPlanLimits(): Promise<PlanLimit[]> {
   try {
-    const response = await api.get<{ planLimits: PlanLimit[] }>(
+    const response = await api.get<{ data?: { planLimits: PlanLimit[] } }>(
       "/platform/plan-limits",
     );
-    return response.data.planLimits ?? [];
+    return response.data?.data?.planLimits ?? [];
   } catch (error) {
     handleApiError(error, "fetch plan limits");
   }
@@ -382,11 +406,13 @@ export async function upsertPlanLimit(
   data: Partial<PlanLimit> & { tier: string },
 ): Promise<PlanLimit> {
   try {
-    const response = await api.post<{ planLimit: PlanLimit }>(
+    const response = await api.post<{ data?: { planLimit: PlanLimit } }>(
       "/platform/plan-limits",
       data,
     );
-    return response.data.planLimit;
+    const planLimit = response.data?.data?.planLimit;
+    if (!planLimit) throw new Error("Invalid response from server");
+    return planLimit;
   } catch (error) {
     handleApiError(error, "upsert plan limit");
   }
@@ -411,8 +437,10 @@ export interface Plan {
 
 export async function getPlans(): Promise<Plan[]> {
   try {
-    const response = await api.get<{ plans: Plan[] }>("/platform/plans");
-    return response.data.plans ?? [];
+    const response = await api.get<{ data?: { plans: Plan[] } }>(
+      "/platform/plans",
+    );
+    return response.data?.data?.plans ?? [];
   } catch (error) {
     handleApiError(error, "fetch plans");
   }
@@ -427,8 +455,13 @@ export async function createPlan(data: {
   description?: string;
 }): Promise<Plan> {
   try {
-    const response = await api.post<{ plan: Plan }>("/platform/plans", data);
-    return response.data.plan;
+    const response = await api.post<{ data?: { plan: Plan } }>(
+      "/platform/plans",
+      data,
+    );
+    const plan = response.data?.data?.plan;
+    if (!plan) throw new Error("Invalid response from server");
+    return plan;
   } catch (error) {
     handleApiError(error, "create plan");
   }
@@ -446,11 +479,13 @@ export async function updatePlan(
   },
 ): Promise<Plan> {
   try {
-    const response = await api.put<{ plan: Plan }>(
+    const response = await api.put<{ data?: { plan: Plan } }>(
       `/platform/plans/${id}`,
       data,
     );
-    return response.data.plan;
+    const plan = response.data?.data?.plan;
+    if (!plan) throw new Error("Invalid response from server");
+    return plan;
   } catch (error) {
     handleApiError(error, "update plan");
   }
@@ -502,8 +537,12 @@ export interface PlatformAnalytics {
 
 export async function getAnalytics(): Promise<PlatformAnalytics> {
   try {
-    const response = await api.get<PlatformAnalytics>("/platform/analytics");
-    return response.data;
+    const response = await api.get<ApiWrapped<PlatformAnalytics>>(
+      "/platform/analytics",
+    );
+    const payload = response.data?.data;
+    if (!payload) throw new Error("Invalid response from server");
+    return payload;
   } catch (error) {
     handleApiError(error, "fetch analytics");
   }
@@ -517,8 +556,12 @@ export async function getTenantDetail(
   id: string,
 ): Promise<Record<string, unknown>> {
   try {
-    const response = await api.get(`/platform/tenants/${id}/detail`);
-    return response.data.tenant;
+    const response = await api.get<
+      ApiWrapped<{ tenant: Record<string, unknown> }>
+    >(`/platform/tenants/${id}/detail`);
+    const tenant = response.data?.data?.tenant;
+    if (!tenant) throw new Error("Invalid response from server");
+    return tenant;
   } catch (error) {
     handleApiError(error, "fetch tenant detail");
   }
@@ -536,8 +579,18 @@ export async function checkSubscriptionExpiry(): Promise<{
   };
 }> {
   try {
-    const response = await api.post("/platform/subscriptions/check-expiry");
-    return response.data;
+    const response = await api.post<
+      ApiWrapped<{
+        updated: {
+          activeToPastDue: number;
+          pastDueToSuspended: number;
+          trialToSuspended: number;
+        };
+      }>
+    >("/platform/subscriptions/check-expiry");
+    const payload = response.data?.data;
+    if (!payload) throw new Error("Invalid response from server");
+    return payload;
   } catch (error) {
     handleApiError(error, "check subscription expiry");
   }
@@ -557,11 +610,13 @@ export async function createSubscription(data: {
   trialEndsAt?: string;
 }): Promise<Subscription> {
   try {
-    const response = await api.post<{ subscription: Subscription }>(
+    const response = await api.post<{ data?: { subscription: Subscription } }>(
       "/platform/subscriptions",
       data,
     );
-    return response.data.subscription;
+    const subscription = response.data?.data?.subscription;
+    if (!subscription) throw new Error("Invalid response from server");
+    return subscription;
   } catch (error) {
     handleApiError(error, "create subscription");
   }
@@ -592,11 +647,13 @@ export async function createPayment(data: {
   notes?: string;
 }): Promise<TenantPayment> {
   try {
-    const response = await api.post<{ payment: TenantPayment }>(
+    const response = await api.post<{ data?: { payment: TenantPayment } }>(
       "/platform/payments",
       data,
     );
-    return response.data.payment;
+    const payment = response.data?.data?.payment;
+    if (!payment) throw new Error("Invalid response from server");
+    return payment;
   } catch (error) {
     handleApiError(error, "create payment");
   }

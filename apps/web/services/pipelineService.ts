@@ -18,15 +18,21 @@ export interface Pipeline {
 }
 
 export async function getPipelines(): Promise<{ pipelines: Pipeline[] }> {
-  const res = await api.get("/pipelines");
-  return res.data;
+  const res = await api.get<{ data?: { pipelines: Pipeline[] } }>("/pipelines");
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function getPipelineById(
   id: string,
 ): Promise<{ pipeline: Pipeline }> {
-  const res = await api.get(`/pipelines/${id}`);
-  return res.data;
+  const res = await api.get<{ data?: { pipeline: Pipeline } }>(
+    `/pipelines/${id}`,
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function createPipeline(data: {
@@ -34,16 +40,26 @@ export async function createPipeline(data: {
   stages?: PipelineStage[];
   isDefault?: boolean;
 }): Promise<{ pipeline: Pipeline }> {
-  const res = await api.post("/pipelines", data);
-  return res.data;
+  const res = await api.post<{ data?: { pipeline: Pipeline } }>(
+    "/pipelines",
+    data,
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function updatePipeline(
   id: string,
   data: { name?: string; stages?: PipelineStage[]; isDefault?: boolean },
 ): Promise<{ pipeline: Pipeline }> {
-  const res = await api.put(`/pipelines/${id}`, data);
-  return res.data;
+  const res = await api.put<{ data?: { pipeline: Pipeline } }>(
+    `/pipelines/${id}`,
+    data,
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function deletePipeline(id: string): Promise<void> {

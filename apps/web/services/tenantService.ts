@@ -73,8 +73,12 @@ export interface PlatformStats {
 }
 
 // ============================================
-// API
+// API (response shape: { success, data: payload })
 // ============================================
+
+interface ApiWrapped<T> {
+  data?: T;
+}
 
 interface ListTenantsResponse {
   tenants: Tenant[];
@@ -92,18 +96,21 @@ interface CreateTenantResponse {
 
 export async function getPlatformStats(): Promise<PlatformStats> {
   try {
-    const response = await api.get<PlatformStats>("/platform/stats");
-    return response.data;
+    const response =
+      await api.get<ApiWrapped<PlatformStats>>("/platform/stats");
+    const payload = response.data?.data;
+    if (!payload) throw new Error("Invalid response from server");
+    return payload;
   } catch (error) {
     handleApiError(error, "fetch platform stats");
-    throw error;
   }
 }
 
 export async function getTenants(): Promise<Tenant[]> {
   try {
-    const response = await api.get<ListTenantsResponse>("/platform/tenants");
-    return response.data.tenants ?? [];
+    const response =
+      await api.get<ApiWrapped<ListTenantsResponse>>("/platform/tenants");
+    return response.data?.data?.tenants ?? [];
   } catch (error) {
     handleApiError(error, "fetch tenants");
   }
@@ -112,8 +119,12 @@ export async function getTenants(): Promise<Tenant[]> {
 export async function getTenantById(id: string): Promise<Tenant> {
   if (!id?.trim()) throw new Error("Tenant ID is required");
   try {
-    const response = await api.get<TenantResponse>(`/platform/tenants/${id}`);
-    return response.data.tenant;
+    const response = await api.get<ApiWrapped<TenantResponse>>(
+      `/platform/tenants/${id}`,
+    );
+    const tenant = response.data?.data?.tenant;
+    if (!tenant) throw new Error("Invalid response from server");
+    return tenant;
   } catch (error) {
     handleApiError(error, `fetch tenant "${id}"`);
   }
@@ -126,11 +137,13 @@ export async function createTenant(data: CreateTenantData): Promise<Tenant> {
     throw new Error("Admin username is required");
   if (!data.adminPassword) throw new Error("Admin password is required");
   try {
-    const response = await api.post<CreateTenantResponse>(
+    const response = await api.post<ApiWrapped<CreateTenantResponse>>(
       "/platform/tenants",
       data,
     );
-    return response.data.tenant;
+    const tenant = response.data?.data?.tenant;
+    if (!tenant) throw new Error("Invalid response from server");
+    return tenant;
   } catch (error) {
     handleApiError(error, "create tenant");
   }
@@ -142,11 +155,13 @@ export async function updateTenant(
 ): Promise<Tenant> {
   if (!id?.trim()) throw new Error("Tenant ID is required");
   try {
-    const response = await api.put<TenantResponse>(
+    const response = await api.put<ApiWrapped<TenantResponse>>(
       `/platform/tenants/${id}`,
       data,
     );
-    return response.data.tenant;
+    const tenant = response.data?.data?.tenant;
+    if (!tenant) throw new Error("Invalid response from server");
+    return tenant;
   } catch (error) {
     handleApiError(error, `update tenant "${id}"`);
   }
@@ -159,11 +174,13 @@ export async function changeTenantPlan(
 ): Promise<Tenant> {
   if (!id?.trim()) throw new Error("Tenant ID is required");
   try {
-    const response = await api.patch<TenantResponse>(
+    const response = await api.patch<ApiWrapped<TenantResponse>>(
       `/platform/tenants/${id}/plan`,
       { plan, expiresAt },
     );
-    return response.data.tenant;
+    const tenant = response.data?.data?.tenant;
+    if (!tenant) throw new Error("Invalid response from server");
+    return tenant;
   } catch (error) {
     handleApiError(error, `change plan for tenant "${id}"`);
   }
@@ -172,11 +189,13 @@ export async function changeTenantPlan(
 export async function activateTenant(id: string): Promise<Tenant> {
   if (!id?.trim()) throw new Error("Tenant ID is required");
   try {
-    const response = await api.patch<TenantResponse>(
+    const response = await api.patch<ApiWrapped<TenantResponse>>(
       `/platform/tenants/${id}/activate`,
       {},
     );
-    return response.data.tenant;
+    const tenant = response.data?.data?.tenant;
+    if (!tenant) throw new Error("Invalid response from server");
+    return tenant;
   } catch (error) {
     handleApiError(error, `activate tenant "${id}"`);
   }

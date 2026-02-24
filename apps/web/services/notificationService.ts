@@ -21,13 +21,22 @@ export async function getNotifications(params?: {
   limit?: number;
   unreadOnly?: boolean;
 }): Promise<{ notifications: Notification[] }> {
-  const res = await api.get("/notifications", { params });
-  return res.data;
+  const res = await api.get<{ data?: { notifications: Notification[] } }>(
+    "/notifications",
+    { params },
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function getUnreadCount(): Promise<{ count: number }> {
-  const res = await api.get("/notifications/unread-count");
-  return res.data;
+  const res = await api.get<{ data?: { count: number } }>(
+    "/notifications/unread-count",
+  );
+  const payload = res.data?.data;
+  if (!payload) throw new Error("Invalid response from server");
+  return payload;
 }
 
 export async function markNotificationRead(id: string): Promise<void> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { format } from "date-fns";
 import {
   Table,
@@ -49,6 +49,7 @@ export function SalesTable({
   selectedSales = new Set(),
   onSelectionChange,
 }: SalesTableProps) {
+  const list = useMemo(() => (Array.isArray(sales) ? sales : []), [sales]);
   const canSort = Boolean(onSort);
   // Calculate starting serial number for current page
   const getSerialNumber = (index: number) => {
@@ -76,18 +77,18 @@ export function SalesTable({
       if (!onSelectionChange) return;
 
       if (checked) {
-        const allIds = new Set(sales.map((s) => s.id));
+        const allIds = new Set(list.map((s) => s.id));
         onSelectionChange(allIds);
       } else {
         onSelectionChange(new Set());
       }
     },
-    [sales, onSelectionChange],
+    [list, onSelectionChange],
   );
 
   // Check if all sales on current page are selected
   const allSelected =
-    sales.length > 0 && sales.every((s) => selectedSales.has(s.id));
+    list.length > 0 && list.every((s) => selectedSales.has(s.id));
 
   // Calculate column count for empty state (S.N. + optional checkbox + Credit + rest)
   const baseColumnCount = 10; // S.N., Sale Code, Type, Credit, Location, Customer, Total, Payment Method, Date, Actions
@@ -162,7 +163,7 @@ export function SalesTable({
     );
   }
 
-  if (sales.length === 0) {
+  if (list.length === 0) {
     return (
       <div className="rounded-md border">
         <Table>
@@ -258,7 +259,7 @@ export function SalesTable({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sales.map((sale, index) => {
+          {list.map((sale, index) => {
             const isCredit = sale.isCreditSale === true;
             const amountPaid =
               sale.payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;

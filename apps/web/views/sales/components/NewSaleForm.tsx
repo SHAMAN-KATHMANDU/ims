@@ -423,19 +423,20 @@ export function NewSaleForm({
     const fetchProductDiscounts = async (productId: string) => {
       try {
         const response = await api.get<{
-          message: string;
-          discounts: Array<{
-            id: string;
-            name: string;
-            value: number;
-            valueType: "PERCENTAGE" | "FLAT";
-            discountType: string;
-            discountTypeId: string;
-            startDate: string | null;
-            endDate: string | null;
-          }>;
+          data?: {
+            discounts: Array<{
+              id: string;
+              name: string;
+              value: number;
+              valueType: "PERCENTAGE" | "FLAT";
+              discountType: string;
+              discountTypeId: string;
+              startDate: string | null;
+              endDate: string | null;
+            }>;
+          };
         }>(`/products/${productId}/discounts`);
-        return response.data.discounts || [];
+        return response.data?.data?.discounts ?? [];
       } catch (err: unknown) {
         const axiosErr = err as {
           response?: { data?: { message?: string }; status?: number };

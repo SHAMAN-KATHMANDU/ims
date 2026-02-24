@@ -10,6 +10,12 @@ import { handleApiError } from "@/lib/apiError";
 import type { AuthUser, TenantInfo } from "@/utils/auth";
 import type { InternalAxiosRequestConfig } from "axios";
 
+/** API success responses are wrapped as { success: true, data: T } */
+interface ApiWrappedResponse<T> {
+  success: true;
+  data: T;
+}
+
 export interface LoginResponse {
   user: AuthUser;
   tenant: TenantInfo;
@@ -47,7 +53,7 @@ export async function login(
       headers["X-Tenant-Slug"] = tenantSlug;
     }
 
-    const response = await api.post<LoginResponse>(
+    const response = await api.post<ApiWrappedResponse<LoginResponse>>(
       "/auth/login",
       {
         username: username.trim().toLowerCase(),
@@ -56,11 +62,12 @@ export async function login(
       { headers },
     );
 
-    if (!response.data.user) {
+    const payload = response.data?.data;
+    if (!payload?.user) {
       throw new Error("Invalid response from server");
     }
 
-    return response.data;
+    return payload;
   } catch (error: unknown) {
     handleApiError(error, "login");
   }
@@ -71,12 +78,15 @@ export async function login(
  */
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   try {
-    const response = await api.get<CurrentUserResponse>("/auth/me", {
-      skipGlobalErrorToast: true,
-      skipAuthRefresh: true,
-      skipAuthRedirect: true,
-    } as unknown as InternalAxiosRequestConfig);
-    return response.data;
+    const response = await api.get<ApiWrappedResponse<CurrentUserResponse>>(
+      "/auth/me",
+      {
+        skipGlobalErrorToast: true,
+        skipAuthRefresh: true,
+        skipAuthRedirect: true,
+      } as unknown as InternalAxiosRequestConfig,
+    );
+    return response.data?.data ?? null;
   } catch {
     return null;
   }
@@ -99,12 +109,12 @@ export async function refreshSession(): Promise<RefreshResponse> {
   } = {
     skipGlobalErrorToast: true,
   };
-  const response = await api.post<RefreshResponse>(
+  const response = await api.post<ApiWrappedResponse<RefreshResponse>>(
     "/auth/refresh",
     {},
     requestConfig as InternalAxiosRequestConfig,
   );
-  return response.data as RefreshResponse;
+  return response.data?.data as RefreshResponse;
 }
 
 export async function getWorkspaceInfo(
@@ -114,7 +124,7 @@ export async function getWorkspaceInfo(
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 1500);
   try {
-    const response = await api.get<WorkspaceInfoResponse>(
+    const response = await api.get<ApiWrappedResponse<WorkspaceInfoResponse>>(
       `/auth/workspace/${encodeURIComponent(tenantSlug.trim().toLowerCase())}`,
       {
         skipGlobalErrorToast: true,
@@ -122,7 +132,7 @@ export async function getWorkspaceInfo(
         signal: controller.signal,
       } as unknown as InternalAxiosRequestConfig,
     );
-    return response.data;
+    return response.data?.data ?? null;
   } catch {
     return null;
   } finally {

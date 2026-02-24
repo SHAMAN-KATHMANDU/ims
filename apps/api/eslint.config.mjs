@@ -16,4 +16,29 @@ export default [
       "turbo/no-undeclared-env-vars": "off",
     },
   },
+  // Shared code: re-enable prefer-const incrementally.
+  {
+    files: ["src/shared/**/*.ts"],
+    rules: {
+      "prefer-const": "warn",
+    },
+  },
+  // Controllers: no Prisma (use service/repository); prefer ≤300 lines.
+  {
+    files: ["src/modules/**/*.controller.ts", "src/modules/**/*.controller.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "warn",
+        {
+          paths: [
+            {
+              name: "@/config/prisma",
+              message: "Controllers must not import prisma; use service/repository layer.",
+            },
+          ],
+        },
+      ],
+      "max-lines": ["warn", { max: 300, skipBlankLines: true, skipComments: true }],
+    },
+  },
 ];

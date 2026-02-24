@@ -1,11 +1,19 @@
 /**
- * Product service — business logic extracted from ProductController.
- * Uses tenant-scoped prisma (call from controller when tenant context is set).
+ * Product service — shared orchestration for product create/update.
+ *
+ * Used by:
+ * - modules/products/products.service (createProduct: resolveCategory, resolveDiscounts, createProductWithInventory)
+ * - modules/products/product.update.controller (upsertVariations)
+ *
+ * Kept as shared (not migrated into products module) so both products.service and
+ * update controller use one place for category/discount resolution, product+inventory
+ * creation, and variation upsert. Uses tenant-scoped prisma; call when tenant context is set.
  */
 
 import { parseDate } from "@repo/shared";
 import prisma from "@/config/prisma";
 import { logger } from "@/config/logger";
+import { AuditAction, AuditResource } from "@/shared/types";
 
 export class ProductServiceError extends Error {
   constructor(
@@ -291,8 +299,8 @@ export async function createProductWithInventory(
       data: {
         tenantId,
         userId,
-        action: "CREATE_PRODUCT",
-        resource: "product",
+        action: AuditAction.CREATE_PRODUCT,
+        resource: AuditResource.PRODUCT,
         resourceId: product.id,
         details: { imsCode: product.imsCode, name: product.name },
         ip: auditMeta?.ip,

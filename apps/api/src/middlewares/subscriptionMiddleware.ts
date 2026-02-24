@@ -13,12 +13,16 @@
  */
 
 import { Request, Response, NextFunction } from "express";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 
 const checkSubscription = (req: Request, res: Response, next: NextFunction) => {
   const tenant = req.tenant;
 
   // Platform admins and unauthenticated routes bypass subscription checks
-  if (!tenant || req.user?.role === "platformAdmin") {
+  if (
+    !tenant ||
+    (req.authContext ?? getAuthContext(req))?.role === "platformAdmin"
+  ) {
     return next();
   }
 

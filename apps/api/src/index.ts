@@ -8,7 +8,6 @@ import { startTrashCleanupCron } from "@/jobs/trashCleanup";
 import { initSentry } from "@/config/sentry";
 import { connectRedis, disconnectRedis } from "@/config/redis";
 import { startMaintenanceWorker } from "@/queues/trashCleanup.queue";
-import { ensureStorageBucket } from "@/services/objectStorage";
 
 // Note: dotenv.config() is called in env.ts - do not call it here
 const PORT = env.port;
@@ -49,7 +48,6 @@ const startServer = async () => {
     await dbConnect();
     logger.log("Database connection established");
     await connectRedis();
-    await ensureStorageBucket();
 
     // Verify database connectivity with a simple query
     try {
