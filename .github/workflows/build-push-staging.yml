@@ -1,15 +1,11 @@
 # Build and push Docker images for staging. Tags: dev, dev-{commit_sha}.
-# Triggered by push to main, merged PRs into main, or manual dispatch.
+# Triggered by push to main or manual dispatch. Push to main fires when PRs are merged.
 # Watchtower on staging EC2 pulls :dev and restarts. No deployment or SSH.
 
 name: Build and Push (Staging)
 
 on:
   push:
-    branches:
-      - main
-  pull_request:
-    types: [closed]
     branches:
       - main
   workflow_dispatch:
@@ -32,32 +28,30 @@ on:
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: build-staging-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+  COMMIT_SHA: ${{ github.sha }}
 
 jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ steps.changes_filter.outputs.api || steps.fork_outputs.outputs.api }}
-      web: ${{ steps.changes_filter.outputs.web || steps.fork_outputs.outputs.web }}
-      shared: ${{ steps.changes_filter.outputs.shared || steps.fork_outputs.outputs.shared }}
+      api: ${{ steps.changes_filter.outputs.api }}
+      web: ${{ steps.changes_filter.outputs.web }}
+      shared: ${{ steps.changes_filter.outputs.shared }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Detect changed paths
         id: changes_filter
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: dorny/paths-filter@v3
         with:
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
+          base: ${{ github.event.before || 'HEAD~1' }}
           filters: |
             api:
               - "apps/api/**"
@@ -65,13 +59,6 @@ jobs:
               - "apps/web/**"
             shared:
               - "packages/**"
-      - name: Set all changes for fork PR
-        id: fork_outputs
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
-        run: |
-          echo "api=true" >> "$GITHUB_OUTPUT"
-          echo "web=true" >> "$GITHUB_OUTPUT"
-          echo "shared=true" >> "$GITHUB_OUTPUT"
 
   build-api:
     name: Build API (staging)
@@ -79,8 +66,7 @@ jobs:
     needs: [changes]
     if: |
       (github.event_name == 'workflow_dispatch' && (inputs.deploy_api || inputs.force_deploy)) ||
-      (github.event_name == 'push' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true')) ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'))
+      (github.event_name == 'push' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'))
     permissions:
       contents: read
       packages: write
@@ -88,7 +74,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to Docker Hub
@@ -120,8 +106,7 @@ jobs:
     needs: [changes]
     if: |
       (github.event_name == 'workflow_dispatch' && (inputs.deploy_web || inputs.force_deploy)) ||
-      (github.event_name == 'push' && (needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true')) ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'))
+      (github.event_name == 'push' && (needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'))
     permissions:
       contents: read
       packages: write
@@ -129,7 +114,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Create environment file for Web
         run: |
           mkdir -p apps/web
