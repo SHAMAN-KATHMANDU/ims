@@ -62,9 +62,11 @@ export function AuthGuard({
   const router = useRouter();
   const params = useParams();
   const { user, tenant, isAuthenticated, isLoading, isHydrated } = useAuth();
-  const urlSlug = (params?.workspace as string)?.trim();
+  const urlSlug = (params?.workspace as string)?.trim() ?? "";
   const resolvedLoginPath =
     loginPath ?? (urlSlug ? getLoginPath(urlSlug) : getLoginPath("system"));
+  // Stable primitive for roles avoids useEffect "dependency array changed size" error
+  const rolesKey = roles?.length ? roles.join(",") : "";
 
   useEffect(() => {
     // Wait for hydration
@@ -92,13 +94,15 @@ export function AuthGuard({
     if (roles && user && !roles.includes(user.role)) {
       router.push(unauthorizedPath);
     }
+    // rolesKey serializes roles - using roles directly can cause dep array size to change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     isAuthenticated,
     isHydrated,
     user,
     tenant,
     urlSlug,
-    roles,
+    rolesKey,
     unauthorizedPath,
     resolvedLoginPath,
     router,
