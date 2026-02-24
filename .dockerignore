@@ -1,45 +1,72 @@
-# Dependencies
-node_modules
+# Dependencies (reinstalled in image)
+**/node_modules
+**/node_modules/**
 .pnp
 .pnp.js
 
-# Build outputs
-.next
-.turbo
-dist
-build
-out
+# Build outputs and caches (huge; cause "no space left" in context)
+**/.next
+**/.next/**
+**/.turbo
+**/.turbo/**
+**/dist
+**/build
+**/out
 
-# Environment files
+# Environment files (never ship into image)
 .env
+.env.*
 .env.local
 .env.*.local
+!.env.example
+!*.env.example
 
-# Logs
+# Git and version control
+.git
+.gitignore
+.gitattributes
+
+# Logs and debug
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 
-# OS files
+# OS and misc
 .DS_Store
 *.pem
+Thumbs.db
 
-# Git
-.git
-.gitignore
-
-# IDE
+# IDE and editor
 .vscode
 .idea
+.cursor
 
-# Documentation
-README.md
-*.md
+# Documentation (not needed for API build)
+**/*.md
+!apps/api/**/*.md
 
-# Test coverage
-coverage
+# Test and tooling (not needed for production image)
+**/coverage
+**/test-results
+**/playwright-report
+**/playwright/.cache
+**/.nyc_output
+**/__snapshots__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
 
 # Vercel
 .vercel
+
+# Infra (terraform, large; not needed for app image)
+infra/.terraform
+infra/.terraform.lock.hcl
+infra/*.tfstate
+infra/*.tfstate.backup
+infra/*.tfvars
+!infra/*.tfvars.example
+
