@@ -18,8 +18,7 @@ import { getApiErrorMessage } from "@/lib/apiError";
 import { toast } from "@/hooks/useToast";
 
 // API base URL from environment variable with fallback
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "/api/v1";
 
 // Create axios instance
 const api = axios.create({
