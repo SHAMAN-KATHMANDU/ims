@@ -1,10 +1,35 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import { getTenantId } from "@/config/tenantContext";
 import {
   parseAnalyticsFilters,
   getSalesWhereForAnalytics,
 } from "./analytics.filters";
 import { sendControllerError } from "@/utils/controllerError";
+
+/** Augment sale where with tenantId so child-model queries (SalePayment, SaleItem) are tenant-scoped. */
+function saleWhereWithTenant<T extends Record<string, unknown>>(
+  where: T,
+): T & { tenantId?: string } {
+  const tenantId = getTenantId();
+  if (!tenantId) return where as T & { tenantId?: string };
+  return { ...where, tenantId };
+}
+
+/** LocationInventory has no tenantId; scope via location.tenantId. */
+function locationInventoryWhereWithTenant(
+  existingWhere: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const tenantId = getTenantId();
+  if (!tenantId) return existingWhere;
+  return {
+    ...existingWhere,
+    location: {
+      ...((existingWhere.location as Record<string, unknown>) ?? {}),
+      tenantId,
+    },
+  };
+}
 
 /** Calculate month difference between two "YYYY-MM" strings. */
 function monthDifference(from: string, to: string): number {
@@ -152,7 +177,7 @@ class AnalyticsController {
         }),
         prisma.salePayment.groupBy({
           by: ["method"],
-          where: { sale: where },
+          where: { sale: saleWhereWithTenant(where) },
           _sum: { amount: true },
           _count: true,
         }),
@@ -172,11 +197,11 @@ class AnalyticsController {
         }),
         prisma.salePayment.groupBy({
           by: ["saleId"],
-          where: { sale: creditWhere },
+          where: { sale: saleWhereWithTenant(creditWhere) },
           _sum: { amount: true },
         }),
         prisma.salePayment.findMany({
-          where: { sale: creditWhere },
+          where: { sale: saleWhereWithTenant(creditWhere) },
           select: { amount: true, createdAt: true },
         }),
         prisma.sale.groupBy({
@@ -366,7 +391,7 @@ class AnalyticsController {
       const [inventoryItems, transferCounts, completedTransfers] =
         await Promise.all([
           prisma.locationInventory.findMany({
-            where: invWhere,
+            where: locationInventoryWhereWithTenant(invWhere) as any,
             include: {
               variation: {
                 include: {
@@ -562,7 +587,7 @@ class AnalyticsController {
         }),
         prisma.saleItem.groupBy({
           by: ["variationId"],
-          where: { sale: salesWhere },
+          where: { sale: saleWhereWithTenant(salesWhere) },
           _sum: { lineTotal: true, quantity: true },
           _count: true,
         }),
@@ -749,7 +774,7 @@ class AnalyticsController {
       );
 
       const payments = await prisma.salePayment.findMany({
-        where: { sale: where },
+        where: { sale: saleWhereWithTenant(where) },
         select: {
           method: true,
           amount: true,
@@ -1010,7 +1035,7 @@ class AnalyticsController {
 
       const [saleItemsRaw, inventoryItems, categories] = await Promise.all([
         prisma.saleItem.findMany({
-          where: { sale: where },
+          where: { sale: saleWhereWithTenant(where) },
           select: {
             saleId: true,
             variationId: true,
@@ -1033,6 +1058,7 @@ class AnalyticsController {
           },
         }),
         prisma.locationInventory.findMany({
+          where: locationInventoryWhereWithTenant() as any,
           select: { variationId: true, quantity: true },
         }),
         prisma.category.findMany({ select: { id: true, name: true } }),
@@ -1207,6 +1233,7 @@ class AnalyticsController {
 
       const [inventoryItems, saleItems, locations] = await Promise.all([
         prisma.locationInventory.findMany({
+          where: locationInventoryWhereWithTenant() as any,
           include: {
             variation: {
               include: {
@@ -1219,7 +1246,7 @@ class AnalyticsController {
           },
         }),
         prisma.saleItem.findMany({
-          where: { sale: where },
+          where: { sale: saleWhereWithTenant(where) },
           select: {
             quantity: true,
             lineTotal: true,
@@ -1786,7 +1813,7 @@ class AnalyticsController {
       );
 
       const saleItems = await prisma.saleItem.findMany({
-        where: { sale: where },
+        where: { sale: saleWhereWithTenant(where) },
         select: {
           quantity: true,
           lineTotal: true,
@@ -1995,6 +2022,7 @@ class AnalyticsController {
         }
       } else if (exportType === "inventory-ops") {
         const invItems = await prisma.locationInventory.findMany({
+          where: locationInventoryWhereWithTenant() as any,
           include: {
             variation: {
               include: {
@@ -2074,7 +2102,7 @@ class AnalyticsController {
           }),
           prisma.saleItem.groupBy({
             by: ["variationId"],
-            where: { sale: where },
+            where: { sale: saleWhereWithTenant(where) },
             _sum: { lineTotal: true, quantity: true },
             _count: true,
           }),
@@ -2281,7 +2309,7 @@ class AnalyticsController {
         );
       } else if (exportType === "financial") {
         const saleItems = await prisma.saleItem.findMany({
-          where: { sale: where },
+          where: { sale: saleWhereWithTenant(where) },
           select: {
             quantity: true,
             lineTotal: true,

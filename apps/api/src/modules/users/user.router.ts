@@ -92,7 +92,7 @@ userRouter.post(
  */
 userRouter.get(
   "/",
-  authorizeRoles("superAdmin"),
+  authorizeRoles("superAdmin", "admin"),
   asyncHandler(userController.getAllUsers),
 );
 
