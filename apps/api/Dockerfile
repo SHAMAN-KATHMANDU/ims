@@ -40,8 +40,11 @@ RUN find apps/api -type f \
     -not -name 'package.json' \
     -delete && rm -rf apps/api/test apps/api/src
 
-# Remove dev-only packages from node_modules to reduce size
-RUN pnpm prune --prod && pnpm store prune
+# Remove dev-only packages from node_modules to reduce size.
+# prisma CLI is kept because docker-entrypoint.sh runs `prisma migrate deploy`
+# at container startup before the app boots.
+RUN pnpm prune --prod --no-optional && pnpm store prune && \
+    pnpm --filter api add --save-dev prisma || true
 
 
 FROM base AS runner
@@ -58,9 +61,14 @@ RUN mkdir -p /app/.log && chmod -R 777 /app/.log
 # Create uploads directory for multer and give ownership to nestjs
 RUN mkdir -p /app/uploads && chown -R nestjs:nestjs /app/uploads
 
-USER nestjs
 COPY --from=installer /app .
+COPY apps/api/docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
 # Tag the final image
 LABEL stage="final"
 RUN docker rmi $(docker images -f "label=stage=intermediate" -q) || true
-CMD node apps/api/dist/index.js
+
+USER nestjs
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
