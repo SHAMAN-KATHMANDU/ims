@@ -69,8 +69,8 @@ export function AuthGuard({
   const rolesKey = roles?.length ? roles.join(",") : "";
 
   useEffect(() => {
-    // Wait for hydration
-    if (!isHydrated) return;
+    // Wait for hydration and for the auth query to finish loading
+    if (!isHydrated || isLoading) return;
 
     // Not authenticated - redirect to login (slug-based path when in tenant URL)
     if (!isAuthenticated) {
@@ -99,6 +99,7 @@ export function AuthGuard({
   }, [
     isAuthenticated,
     isHydrated,
+    isLoading,
     user,
     tenant,
     urlSlug,
