@@ -41,10 +41,12 @@ const host = process.env.HOST?.trim() ?? "0.0.0.0";
 const jwtSecret = process.env.JWT_SECRET ?? "";
 const databaseUrl = process.env.DATABASE_URL ?? "";
 
-// CORS: must be set explicitly in staging/production. In dev, default to * for convenience.
+// CORS: must be set explicitly in staging/production.
+// With credentials (cookies), the browser requires a specific origin, not "*".
+// In dev, default to common local frontend origins so credentials work.
 // CORS_ORIGIN can be a single origin or comma-separated list.
 const corsOriginRaw = process.env.CORS_ORIGIN?.trim();
-let corsOrigin: string | string[] = "*";
+let corsOrigin: string | string[];
 if (corsOriginRaw) {
   corsOrigin = corsOriginRaw.includes(",")
     ? corsOriginRaw
@@ -52,7 +54,14 @@ if (corsOriginRaw) {
         .map((o) => o.trim())
         .filter(Boolean)
     : corsOriginRaw;
-} else if (!isDev) {
+} else if (isDev) {
+  corsOrigin = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3001",
+  ];
+} else {
   console.error(
     "FATAL: CORS_ORIGIN is required in staging and production. Set it to your frontend origin(s).",
   );
