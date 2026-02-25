@@ -41,10 +41,9 @@ RUN find apps/api -type f \
     -delete && rm -rf apps/api/test apps/api/src
 
 # Remove dev-only packages from node_modules to reduce size.
-# prisma CLI is kept because docker-entrypoint.sh runs `prisma migrate deploy`
-# at container startup before the app boots.
-RUN pnpm prune --prod --no-optional && pnpm store prune && \
-    pnpm --filter api add --save-dev prisma || true
+# prisma is in dependencies (not devDependencies) so it survives this prune —
+# the docker-entrypoint.sh needs `prisma migrate deploy` at container startup.
+RUN pnpm prune --prod && pnpm store prune
 
 
 FROM base AS runner
