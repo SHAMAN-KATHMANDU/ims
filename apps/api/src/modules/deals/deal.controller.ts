@@ -193,13 +193,21 @@ class DealController {
       const tenantId = req.user!.tenantId;
       const pipelineId = req.query.pipelineId as string | undefined;
 
-      const pipeline = pipelineId
+      let pipeline = pipelineId
         ? await prisma.pipeline.findFirst({
             where: { id: pipelineId, tenantId },
           })
         : await prisma.pipeline.findFirst({
             where: { tenantId, isDefault: true },
           });
+
+      // If no default pipeline, use first pipeline for tenant so kanban works when at least one exists
+      if (!pipeline) {
+        pipeline = await prisma.pipeline.findFirst({
+          where: { tenantId, deletedAt: null },
+          orderBy: { createdAt: "asc" },
+        });
+      }
 
       if (!pipeline) {
         return res.status(404).json({ message: "No pipeline found" });
