@@ -6,7 +6,7 @@
       "dependsOn": ["^build", "^prisma:generate"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"],
-      "env": ["NODE_ENV", "DOCKER_ENV"]
+      "env": ["NODE_ENV", "DOCKER_ENV", "PORT"]
     },
     "lint": {
       "inputs": ["$TURBO_DEFAULT$"],
