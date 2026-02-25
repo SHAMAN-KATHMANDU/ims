@@ -1,6 +1,7 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { validate } from "@/middlewares/validate";
+import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import productController from "@/modules/products/product.controller";
 import { createProductSchema, updateProductSchema } from "./product.validation";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -95,6 +96,7 @@ const productRouter = Router();
 productRouter.post(
   "/",
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanLimits("products"),
   validate(createProductSchema),
   asyncHandler(productController.createProduct),
 );

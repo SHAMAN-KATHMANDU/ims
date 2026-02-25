@@ -1,10 +1,14 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import analyticsController from "@/modules/analytics/analytics.controller";
 import { analyticsCacheMiddleware } from "@/modules/analytics/analyticsCacheMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const analyticsRouter = Router();
+
+// All analytics routes require the analytics plan feature
+analyticsRouter.use(enforcePlanFeature("analytics"));
 
 // Overview (admin and superAdmin only)
 analyticsRouter.get(

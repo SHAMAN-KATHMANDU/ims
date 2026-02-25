@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -63,6 +63,19 @@ export function EditTenantPage() {
   } | null>(null);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [limitOverrides, setLimitOverrides] = useState<{
+    customMaxUsers: string;
+    customMaxProducts: string;
+    customMaxLocations: string;
+    customMaxMembers: string;
+    customMaxCustomers: string;
+  }>({
+    customMaxUsers: "",
+    customMaxProducts: "",
+    customMaxLocations: "",
+    customMaxMembers: "",
+    customMaxCustomers: "",
+  });
 
   const handleSubmit = useCallback(
     async (data: {
@@ -100,6 +113,56 @@ export function EditTenantPage() {
   const handleCancel = useCallback(() => {
     router.push(`${basePath}/platform/tenants`);
   }, [router, basePath]);
+
+  useEffect(() => {
+    if (!tenant) return;
+    setLimitOverrides({
+      customMaxUsers:
+        tenant.customMaxUsers != null ? String(tenant.customMaxUsers) : "",
+      customMaxProducts:
+        tenant.customMaxProducts != null
+          ? String(tenant.customMaxProducts)
+          : "",
+      customMaxLocations:
+        tenant.customMaxLocations != null
+          ? String(tenant.customMaxLocations)
+          : "",
+      customMaxMembers:
+        tenant.customMaxMembers != null ? String(tenant.customMaxMembers) : "",
+      customMaxCustomers:
+        tenant.customMaxCustomers != null
+          ? String(tenant.customMaxCustomers)
+          : "",
+    });
+  }, [tenant]);
+
+  const parseOverride = (v: string): number | null => {
+    const t = v.trim();
+    if (t === "") return null;
+    const n = parseInt(t, 10);
+    return isNaN(n) ? null : n;
+  };
+
+  const handleSaveLimitOverrides = useCallback(async () => {
+    if (!id) return;
+    try {
+      await updateMutation.mutateAsync({
+        id,
+        data: {
+          customMaxUsers: parseOverride(limitOverrides.customMaxUsers),
+          customMaxProducts: parseOverride(limitOverrides.customMaxProducts),
+          customMaxLocations: parseOverride(limitOverrides.customMaxLocations),
+          customMaxMembers: parseOverride(limitOverrides.customMaxMembers),
+          customMaxCustomers: parseOverride(limitOverrides.customMaxCustomers),
+        },
+      });
+      toast({ title: "Limit overrides saved" });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to save overrides";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    }
+  }, [id, limitOverrides, updateMutation, toast]);
 
   const handleChangePlan = useCallback(async () => {
     if (!id || !selectedPlan) return;
@@ -273,6 +336,107 @@ export function EditTenantPage() {
             disabled={!selectedPlan || changePlanMutation.isPending}
           >
             {changePlanMutation.isPending ? "Updating…" : "Change plan"}
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-lg">
+        <CardHeader>
+          <CardTitle>Limit overrides</CardTitle>
+          <CardDescription>
+            Override plan limits for this tenant. Leave empty to use plan
+            default. Use -1 for unlimited.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="customMaxUsers">Max users</Label>
+              <Input
+                id="customMaxUsers"
+                type="number"
+                min={-1}
+                placeholder="Plan default"
+                value={limitOverrides.customMaxUsers}
+                onChange={(e) =>
+                  setLimitOverrides((p) => ({
+                    ...p,
+                    customMaxUsers: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customMaxProducts">Max products</Label>
+              <Input
+                id="customMaxProducts"
+                type="number"
+                min={-1}
+                placeholder="Plan default"
+                value={limitOverrides.customMaxProducts}
+                onChange={(e) =>
+                  setLimitOverrides((p) => ({
+                    ...p,
+                    customMaxProducts: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customMaxLocations">Max locations</Label>
+              <Input
+                id="customMaxLocations"
+                type="number"
+                min={-1}
+                placeholder="Plan default"
+                value={limitOverrides.customMaxLocations}
+                onChange={(e) =>
+                  setLimitOverrides((p) => ({
+                    ...p,
+                    customMaxLocations: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customMaxMembers">Max members</Label>
+              <Input
+                id="customMaxMembers"
+                type="number"
+                min={-1}
+                placeholder="Plan default"
+                value={limitOverrides.customMaxMembers}
+                onChange={(e) =>
+                  setLimitOverrides((p) => ({
+                    ...p,
+                    customMaxMembers: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="customMaxCustomers">Max customers</Label>
+              <Input
+                id="customMaxCustomers"
+                type="number"
+                min={-1}
+                placeholder="Plan default"
+                value={limitOverrides.customMaxCustomers}
+                onChange={(e) =>
+                  setLimitOverrides((p) => ({
+                    ...p,
+                    customMaxCustomers: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          </div>
+          <Button
+            type="button"
+            onClick={handleSaveLimitOverrides}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? "Saving…" : "Save limit overrides"}
           </Button>
         </CardContent>
       </Card>

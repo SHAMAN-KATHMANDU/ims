@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { uploadSingle } from "@/config/multer.config";
 import * as bulkController from "./bulk.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -13,6 +14,7 @@ const bulkRouter = Router();
 bulkRouter.post(
   "/upload/:type",
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanFeature("bulkUpload"),
   uploadSingle,
   asyncHandler(bulkController.bulkUpload),
 );
@@ -23,6 +25,7 @@ bulkRouter.post(
 bulkRouter.get(
   "/template",
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanFeature("bulkUpload"),
   asyncHandler(bulkController.downloadTemplate),
 );
 

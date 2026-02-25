@@ -1,0 +1,12 @@
+import { AuthGuard } from "@/components/auth/auth-guard";
+import { WORKSPACE_ROOT } from "@/config/routes";
+import { PlanLimitsPage } from "@/views/planLimits/PlanLimitsPage";
+
+/** Platform plan limits – platformAdmin only. */
+export default function PlatformPlanLimitsRoute() {
+  return (
+    <AuthGuard roles={["platformAdmin"]} unauthorizedPath={WORKSPACE_ROOT}>
+      <PlanLimitsPage />
+    </AuthGuard>
+  );
+}

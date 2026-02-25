@@ -1,5 +1,6 @@
 export * from "./src/utils/date";
 export * from "./src/types/user";
+export * from "./src/config/features";
 
 /**
  * Application version - single source for frontend/build-time use.

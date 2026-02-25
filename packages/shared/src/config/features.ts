@@ -151,6 +151,7 @@ export interface PlanLimits {
   maxProducts: number;
   maxLocations: number;
   maxMembers: number;
+  maxCustomers: number; // -1 = unlimited (CRM contacts)
   bulkUpload: boolean;
   analytics: boolean;
   promoManagement: boolean;
@@ -168,6 +169,7 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxProducts: 100,
     maxLocations: 2,
     maxMembers: 500,
+    maxCustomers: 100,
     bulkUpload: false,
     analytics: false,
     promoManagement: false,
@@ -179,6 +181,7 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxProducts: 1000,
     maxLocations: 10,
     maxMembers: 5000,
+    maxCustomers: 1000,
     bulkUpload: true,
     analytics: true,
     promoManagement: true,
@@ -190,6 +193,7 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxProducts: -1,
     maxLocations: -1,
     maxMembers: -1,
+    maxCustomers: -1,
     bulkUpload: true,
     analytics: true,
     promoManagement: true,

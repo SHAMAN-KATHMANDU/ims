@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import locationController from "@/modules/locations/location.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -43,6 +44,7 @@ const locationRouter = Router();
 locationRouter.post(
   "/",
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanLimits("locations"),
   asyncHandler(locationController.createLocation),
 );
 

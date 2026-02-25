@@ -8,7 +8,14 @@
 import { Request, Response } from "express";
 import { basePrisma } from "@/config/prisma";
 import bcrypt from "bcryptjs";
+import { DEFAULT_PLAN_LIMITS, PlanTier } from "@repo/shared";
 import { sendControllerError } from "@/utils/controllerError";
+
+const PLAN_TIERS: PlanTier[] = [
+  PlanTier.STARTER,
+  PlanTier.PROFESSIONAL,
+  PlanTier.ENTERPRISE,
+];
 
 class PlatformController {
   /**
@@ -252,6 +259,11 @@ class PlatformController {
         trialEndsAt,
         planExpiresAt,
         settings,
+        customMaxUsers,
+        customMaxProducts,
+        customMaxLocations,
+        customMaxMembers,
+        customMaxCustomers,
       } = req.body;
 
       // Check if tenant exists
@@ -314,6 +326,36 @@ class PlatformController {
             planExpiresAt: planExpiresAt ? new Date(planExpiresAt) : null,
           }),
           ...(settings !== undefined && { settings }),
+          ...(customMaxUsers !== undefined && {
+            customMaxUsers:
+              customMaxUsers === null || customMaxUsers === ""
+                ? null
+                : Number(customMaxUsers),
+          }),
+          ...(customMaxProducts !== undefined && {
+            customMaxProducts:
+              customMaxProducts === null || customMaxProducts === ""
+                ? null
+                : Number(customMaxProducts),
+          }),
+          ...(customMaxLocations !== undefined && {
+            customMaxLocations:
+              customMaxLocations === null || customMaxLocations === ""
+                ? null
+                : Number(customMaxLocations),
+          }),
+          ...(customMaxMembers !== undefined && {
+            customMaxMembers:
+              customMaxMembers === null || customMaxMembers === ""
+                ? null
+                : Number(customMaxMembers),
+          }),
+          ...(customMaxCustomers !== undefined && {
+            customMaxCustomers:
+              customMaxCustomers === null || customMaxCustomers === ""
+                ? null
+                : Number(customMaxCustomers),
+          }),
         },
       });
 
@@ -476,12 +518,53 @@ class PlatformController {
   // ============================================
 
   /**
-   * List all plan limits.
+   * List all plan limits. Returns effective limits for every tier: from DB if a row exists, otherwise from DEFAULT_PLAN_LIMITS so the UI always has values to display.
    */
   async listPlanLimits(req: Request, res: Response) {
     try {
-      const planLimits = await basePrisma.planLimit.findMany({
+      const rows = await basePrisma.planLimit.findMany({
         orderBy: { tier: "asc" },
+      });
+      const byTier = new Map(rows.map((r) => [r.tier as PlanTier, r]));
+
+      const planLimits = PLAN_TIERS.map((tier) => {
+        const row = byTier.get(tier);
+        if (row) {
+          const r = row as typeof row & { maxCustomers?: number };
+          return {
+            id: row.id,
+            tier: row.tier,
+            maxUsers: row.maxUsers,
+            maxProducts: row.maxProducts,
+            maxLocations: row.maxLocations,
+            maxMembers: row.maxMembers,
+            maxCustomers: r.maxCustomers ?? 100,
+            bulkUpload: row.bulkUpload,
+            analytics: row.analytics,
+            promoManagement: row.promoManagement,
+            auditLogs: row.auditLogs,
+            apiAccess: row.apiAccess,
+            createdAt: row.createdAt.toISOString(),
+            updatedAt: row.updatedAt.toISOString(),
+          };
+        }
+        const defaults = DEFAULT_PLAN_LIMITS[tier];
+        return {
+          id: "",
+          tier,
+          maxUsers: defaults.maxUsers,
+          maxProducts: defaults.maxProducts,
+          maxLocations: defaults.maxLocations,
+          maxMembers: defaults.maxMembers,
+          maxCustomers: defaults.maxCustomers,
+          bulkUpload: defaults.bulkUpload,
+          analytics: defaults.analytics,
+          promoManagement: defaults.promoManagement,
+          auditLogs: defaults.auditLogs,
+          apiAccess: defaults.apiAccess,
+          createdAt: "",
+          updatedAt: "",
+        };
       });
 
       res.status(200).json({ planLimits });
@@ -529,6 +612,7 @@ class PlatformController {
         maxProducts,
         maxLocations,
         maxMembers,
+        maxCustomers,
         bulkUpload,
         analytics,
         promoManagement,
@@ -554,6 +638,7 @@ class PlatformController {
           ...(maxProducts !== undefined && { maxProducts }),
           ...(maxLocations !== undefined && { maxLocations }),
           ...(maxMembers !== undefined && { maxMembers }),
+          ...(maxCustomers !== undefined && { maxCustomers }),
           ...(bulkUpload !== undefined && { bulkUpload }),
           ...(analytics !== undefined && { analytics }),
           ...(promoManagement !== undefined && { promoManagement }),
@@ -566,6 +651,7 @@ class PlatformController {
           maxProducts: maxProducts ?? 100,
           maxLocations: maxLocations ?? 2,
           maxMembers: maxMembers ?? 50,
+          maxCustomers: maxCustomers ?? 100,
           bulkUpload: bulkUpload ?? false,
           analytics: analytics ?? false,
           promoManagement: promoManagement ?? false,

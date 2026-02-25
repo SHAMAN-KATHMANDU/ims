@@ -85,6 +85,12 @@ const navSections: NavSection[] = [
         icon: ShieldCheck,
         roles: ["platformAdmin"],
       },
+      {
+        path: "platform/plan-limits",
+        label: "Plan limits",
+        icon: Settings,
+        roles: ["platformAdmin"],
+      },
     ],
   },
   {

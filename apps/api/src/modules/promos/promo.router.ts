@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import promoController from "@/modules/promos/promo.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -73,6 +74,7 @@ const promoRouter = Router();
 promoRouter.post(
   "/",
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.createPromo),
 );
 
@@ -200,6 +202,7 @@ promoRouter.get(
 promoRouter.put(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.updatePromo),
 );
 
@@ -227,6 +230,7 @@ promoRouter.put(
 promoRouter.delete(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.deletePromo),
 );
 

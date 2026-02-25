@@ -1,5 +1,6 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import { uploadAttachment, uploadSingle } from "@/config/multer.config";
 import contactController from "./contact.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -14,7 +15,11 @@ contactRouter.post(
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(contactController.createTag),
 );
-contactRouter.post("/", asyncHandler(contactController.create));
+contactRouter.post(
+  "/",
+  enforcePlanLimits("customers"),
+  asyncHandler(contactController.create),
+);
 contactRouter.get("/", asyncHandler(contactController.getAll));
 contactRouter.get("/export", asyncHandler(contactController.exportCsv));
 contactRouter.post(

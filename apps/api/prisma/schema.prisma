@@ -27,6 +27,12 @@ model Tenant {
   trialEndsAt        DateTime?          @map("trial_ends_at")
   subscriptionStatus SubscriptionStatus @default(TRIAL) @map("subscription_status")
   settings           Json?
+  /// Override plan limit for this tenant (null = use plan default). -1 = unlimited.
+  customMaxUsers     Int?               @map("custom_max_users")
+  customMaxProducts  Int?               @map("custom_max_products")
+  customMaxLocations Int?               @map("custom_max_locations")
+  customMaxMembers   Int?               @map("custom_max_members")
+  customMaxCustomers Int?               @map("custom_max_customers")
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
@@ -83,6 +89,7 @@ model PlanLimit {
   maxProducts     Int      @map("max_products")
   maxLocations    Int      @map("max_locations")
   maxMembers      Int      @map("max_members")
+  maxCustomers    Int      @map("max_customers")
   bulkUpload      Boolean  @default(false) @map("bulk_upload")
   analytics       Boolean  @default(false)
   promoManagement Boolean  @default(false) @map("promo_management")

@@ -31,6 +31,11 @@ export interface Tenant {
   trialEndsAt: string | null;
   subscriptionStatus: SubscriptionStatus;
   settings: Record<string, unknown> | null;
+  customMaxUsers?: number | null;
+  customMaxProducts?: number | null;
+  customMaxLocations?: number | null;
+  customMaxMembers?: number | null;
+  customMaxCustomers?: number | null;
   createdAt: string;
   updatedAt: string;
   _count?: {
@@ -61,6 +66,12 @@ export interface UpdateTenantData {
   trialEndsAt?: string | null;
   planExpiresAt?: string | null;
   settings?: Record<string, unknown> | null;
+  /** Override plan limits for this tenant. -1 = unlimited, null/undefined = use plan default. */
+  customMaxUsers?: number | null;
+  customMaxProducts?: number | null;
+  customMaxLocations?: number | null;
+  customMaxMembers?: number | null;
+  customMaxCustomers?: number | null;
 }
 
 export interface PlatformStats {
