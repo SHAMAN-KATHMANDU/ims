@@ -1,7 +1,5 @@
-import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { SalesPageClient } from "@/views/sales";
-import { getSalesServer } from "@/services/salesServiceServer";
 import type { SalesListParams } from "@/services/salesService";
 import { buildSalesListParamsFromSearch } from "@/lib/searchParams";
 
@@ -15,9 +13,12 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: `Sales | ${workspace}` };
 }
 
-/** Route shell; server-fetches initial data and passes to client view. */
-export default async function Sales({ params, searchParams }: Props) {
-  const { workspace } = await params;
+/**
+ * Sales page — client-side data fetching only.
+ * Server-side fetch is not used because the auth cookie (access_token) is scoped
+ * to the API domain and cannot be forwarded from the web server in this architecture.
+ */
+export default async function Sales({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const rawParams = buildSalesListParamsFromSearch(resolvedSearchParams);
   const listParams: SalesListParams = {
@@ -25,12 +26,5 @@ export default async function Sales({ params, searchParams }: Props) {
     type: rawParams.type as SalesListParams["type"],
   };
 
-  const headersList = await headers();
-  const cookie = headersList.get("cookie");
-
-  const initialData = await getSalesServer(cookie, workspace, listParams);
-
-  return (
-    <SalesPageClient initialData={initialData} initialParams={listParams} />
-  );
+  return <SalesPageClient initialData={undefined} initialParams={listParams} />;
 }

@@ -22,14 +22,16 @@ import {
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Use access_token (HttpOnly) as source of truth for auth. auth-storage can be stale.
-  const accessTokenCookie = request.cookies.get("access_token");
+  // The access_token is an HttpOnly cookie scoped to the API domain (stage-api.*), so it is
+  // never visible here on the web domain. We use auth-storage (Zustand cookie, set on this
+  // domain after login) as the presence signal for middleware redirects.
+  // The client-side AuthGuard re-validates with auth/me on every page load for real security.
   const authStorage = request.cookies.get("auth-storage");
   let storedUser: { role?: string } | null = null;
   let storedTenantSlug: string | null = null;
   if (authStorage?.value) {
     try {
-      const parsed = JSON.parse(authStorage.value);
+      const parsed = JSON.parse(decodeURIComponent(authStorage.value));
       storedUser = parsed?.state?.user ?? null;
       storedTenantSlug = parsed?.state?.tenant?.slug ?? null;
     } catch {
@@ -37,8 +39,8 @@ export function middleware(request: NextRequest) {
       storedTenantSlug = null;
     }
   }
-  // Require actual access_token for protected routes; authStorage alone may be stale (expired session)
-  const hasToken = !!accessTokenCookie?.value;
+  // Use auth-storage user as the session signal (populated by Zustand after login)
+  const hasToken = !!storedUser;
 
   // Legacy /login (no slug): redirect to root
   if (pathname === "/login") {

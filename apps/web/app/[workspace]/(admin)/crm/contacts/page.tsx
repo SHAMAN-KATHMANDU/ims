@@ -1,7 +1,5 @@
-import { headers } from "next/headers";
 import type { Metadata } from "next";
 import { ContactsPageClient } from "@/views/crm/contacts/ContactsPage";
-import { getContactsServer } from "@/services/contactServiceServer";
 import { buildContactListParamsFromSearch } from "@/lib/searchParams";
 
 type Props = {
@@ -14,18 +12,11 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   return { title: `Contacts | ${workspace}` };
 }
 
-/** CRM Contacts. Server-fetches initial data. */
-export default async function CrmContacts({ params, searchParams }: Props) {
-  const { workspace } = await params;
+export default async function CrmContacts({ searchParams }: Props) {
   const resolvedSearchParams = await searchParams;
   const listParams = buildContactListParamsFromSearch(resolvedSearchParams);
 
-  const headersList = await headers();
-  const cookie = headersList.get("cookie");
-
-  const initialData = await getContactsServer(cookie, workspace, listParams);
-
   return (
-    <ContactsPageClient initialData={initialData} initialParams={listParams} />
+    <ContactsPageClient initialData={undefined} initialParams={listParams} />
   );
 }
