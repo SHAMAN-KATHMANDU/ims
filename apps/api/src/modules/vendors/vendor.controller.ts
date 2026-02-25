@@ -80,7 +80,7 @@ class VendorController {
         name: "asc",
       };
 
-      const where: any = { tenantId };
+      const where: any = { tenantId, deletedAt: null };
       if (search) {
         where.OR = [
           { name: { contains: search, mode: "insensitive" } },

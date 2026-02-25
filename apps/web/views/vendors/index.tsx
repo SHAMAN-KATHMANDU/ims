@@ -82,6 +82,9 @@ export function VendorPage() {
   const [deleteBlockedVendor, setDeleteBlockedVendor] = useState<Vendor | null>(
     null,
   );
+  const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(
+    null,
+  );
 
   const { data: vendorsResponse, isLoading } = useVendorsPaginated({
     page,
@@ -184,6 +187,7 @@ export function VendorPage() {
         error instanceof Error
           ? error.message
           : "Failed to delete vendor. Please try again.";
+      setDeleteErrorMessage(message);
       toast({
         title: "Cannot delete vendor",
         description: message,
@@ -243,6 +247,28 @@ export function VendorPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setDeleteBlockedVendor(null)}>
+              OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Show API error when delete is blocked (e.g. products associated) */}
+      <AlertDialog
+        open={!!deleteErrorMessage}
+        onOpenChange={(open) => {
+          if (!open) setDeleteErrorMessage(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cannot delete vendor</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteErrorMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setDeleteErrorMessage(null)}>
               OK
             </AlertDialogAction>
           </AlertDialogFooter>

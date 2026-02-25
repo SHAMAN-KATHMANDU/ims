@@ -179,16 +179,50 @@ class TaskController {
         return res.status(404).json({ message: "Task not found" });
       }
 
+      // Normalize optional FK fields: empty string -> null to avoid Prisma P2003 (invalid reference)
+      const normalizedContactId =
+        contactId !== undefined
+          ? contactId && String(contactId).trim()
+            ? contactId
+            : null
+          : undefined;
+      const normalizedMemberId =
+        memberId !== undefined
+          ? memberId && String(memberId).trim()
+            ? memberId
+            : null
+          : undefined;
+      const normalizedDealId =
+        dealId !== undefined
+          ? dealId && String(dealId).trim()
+            ? dealId
+            : null
+          : undefined;
+      const normalizedAssignedToId =
+        assignedToId !== undefined &&
+        assignedToId &&
+        String(assignedToId).trim()
+          ? assignedToId
+          : assignedToId === undefined
+            ? undefined
+            : existing.assignedToId;
+
       const updateData: Record<string, unknown> = {
         ...(title !== undefined && { title: title?.trim() || existing.title }),
         ...(dueDate !== undefined && {
           dueDate: dueDate ? new Date(dueDate) : null,
         }),
         ...(completed !== undefined && { completed: !!completed }),
-        ...(contactId !== undefined && { contactId: contactId || null }),
-        ...(memberId !== undefined && { memberId: memberId || null }),
-        ...(dealId !== undefined && { dealId: dealId || null }),
-        ...(assignedToId !== undefined && { assignedToId }),
+        ...(normalizedContactId !== undefined && {
+          contactId: normalizedContactId,
+        }),
+        ...(normalizedMemberId !== undefined && {
+          memberId: normalizedMemberId,
+        }),
+        ...(normalizedDealId !== undefined && { dealId: normalizedDealId }),
+        ...(normalizedAssignedToId !== undefined && {
+          assignedToId: normalizedAssignedToId,
+        }),
       };
 
       const task = await prisma.task.update({

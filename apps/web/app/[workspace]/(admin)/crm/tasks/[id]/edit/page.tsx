@@ -104,15 +104,17 @@ export default function EditTaskPage() {
       </div>
       <form
         onSubmit={form.handleSubmit(async (values) => {
+          const emptyToNull = (v: string | undefined) =>
+            v == null || String(v).trim() === "" ? null : v;
           await updateMutation.mutateAsync({
             id,
             data: {
-              title: values.title,
-              dueDate: values.dueDate || null,
-              contactId: values.contactId || null,
-              memberId: values.memberId || null,
-              dealId: values.dealId || null,
-              assignedToId: values.assignedToId,
+              title: values.title.trim(),
+              dueDate: values.dueDate?.trim() || null,
+              contactId: emptyToNull(values.contactId),
+              memberId: emptyToNull(values.memberId),
+              dealId: emptyToNull(values.dealId),
+              assignedToId: values.assignedToId?.trim() || undefined,
             },
           });
           toast({ title: "Task updated" });

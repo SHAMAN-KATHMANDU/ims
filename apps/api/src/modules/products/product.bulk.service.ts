@@ -25,11 +25,14 @@ export interface ProcessProductBulkResult {
   errors: ValidationError[];
 }
 
-type RowWithLocation = ExcelProductRow & { locationId: string };
+type RowWithLocation = ExcelProductRow & {
+  locationId: string;
+  vendorId?: string | null;
+};
 
 /**
  * Process parsed product bulk rows: resolve locations, group by product,
- * create/update products and variations, apply discounts and inventory.
+ * create/update products and variations, apply inventory. Discounts are not uploaded; add them manually later.
  */
 export async function processProductBulkRows(
   rows: ExcelProductRow[],
@@ -41,12 +44,8 @@ export async function processProductBulkRows(
   const skipped: ProcessProductBulkResult["skipped"] = [];
   const errors: ValidationError[] = [];
 
-  const [allCategories, allDiscountTypes, allLocations] = await Promise.all([
+  const [allCategories, allLocations, allVendors] = await Promise.all([
     prisma.category.findMany({
-      where: { tenantId },
-      select: { id: true, name: true },
-    }),
-    prisma.discountType.findMany({
       where: { tenantId },
       select: { id: true, name: true },
     }),
@@ -54,18 +53,23 @@ export async function processProductBulkRows(
       where: { tenantId, isActive: true },
       select: { id: true, name: true },
     }),
+    prisma.vendor.findMany({
+      where: { tenantId },
+      select: { id: true, name: true },
+    }),
   ]);
 
   const categoryMap = new Map(
     allCategories.map((cat) => [cat.name.toLowerCase(), cat.id]),
   );
-  const discountTypeMap = new Map(
-    allDiscountTypes.map((dt) => [dt.name.toLowerCase(), dt.id]),
-  );
   const locationByNameMap = new Map(
     allLocations.map((loc) => [loc.name.toLowerCase().trim(), loc.id]),
   );
   const locationByIdMap = new Map(allLocations.map((loc) => [loc.id, loc.id]));
+  const vendorByNameMap = new Map(
+    allVendors.map((v) => [v.name.toLowerCase().trim(), v.id]),
+  );
+  const vendorByIdMap = new Map(allVendors.map((v) => [v.id, v.id]));
 
   const rowsWithLocation: RowWithLocation[] = [];
   for (let i = 0; i < rows.length; i++) {
@@ -83,7 +87,24 @@ export async function processProductBulkRows(
       });
       continue;
     }
-    rowsWithLocation.push({ ...row, locationId });
+    let vendorId: string | null | undefined = null;
+    if (row.vendor != null && String(row.vendor).trim() !== "") {
+      const vendorInput = String(row.vendor).trim();
+      const resolvedVendorId =
+        vendorByIdMap.get(vendorInput) ??
+        vendorByNameMap.get(vendorInput.toLowerCase());
+      if (!resolvedVendorId) {
+        errors.push({
+          row: i + 2,
+          field: "vendor",
+          message: `row ${i + 2} vendor not found`,
+          value: vendorInput,
+        });
+        continue;
+      }
+      vendorId = resolvedVendorId;
+    }
+    rowsWithLocation.push({ ...row, locationId, vendorId });
   }
 
   const productGroups = new Map<
@@ -171,12 +192,6 @@ export async function processProductBulkRows(
       pairs.push(pair);
     }
     return pairs;
-  };
-
-  const discountMappings: Record<string, string> = {
-    "non member": "Normal",
-    member: "Member",
-    wholesale: "Wholesale",
   };
 
   for (const [, group] of productGroups.entries()) {
@@ -363,66 +378,6 @@ export async function processProductBulkRows(
         });
       }
 
-      const discounts: Array<{
-        discountTypeId: string;
-        discountPercentage: number;
-        valueType: "PERCENTAGE";
-        value: number;
-        isActive: boolean;
-      }> = [];
-
-      if (
-        firstRow.nonMemberDiscount !== null &&
-        firstRow.nonMemberDiscount !== undefined
-      ) {
-        const discountTypeId = discountTypeMap.get(
-          discountMappings["non member"].toLowerCase(),
-        );
-        if (discountTypeId) {
-          discounts.push({
-            discountTypeId,
-            discountPercentage: firstRow.nonMemberDiscount,
-            valueType: "PERCENTAGE",
-            value: firstRow.nonMemberDiscount,
-            isActive: true,
-          });
-        }
-      }
-      if (
-        firstRow.memberDiscount !== null &&
-        firstRow.memberDiscount !== undefined
-      ) {
-        const discountTypeId = discountTypeMap.get(
-          discountMappings["member"].toLowerCase(),
-        );
-        if (discountTypeId) {
-          discounts.push({
-            discountTypeId,
-            discountPercentage: firstRow.memberDiscount,
-            valueType: "PERCENTAGE",
-            value: firstRow.memberDiscount,
-            isActive: true,
-          });
-        }
-      }
-      if (
-        firstRow.wholesaleDiscount !== null &&
-        firstRow.wholesaleDiscount !== undefined
-      ) {
-        const discountTypeId = discountTypeMap.get(
-          discountMappings["wholesale"].toLowerCase(),
-        );
-        if (discountTypeId) {
-          discounts.push({
-            discountTypeId,
-            discountPercentage: firstRow.wholesaleDiscount,
-            valueType: "PERCENTAGE",
-            value: firstRow.wholesaleDiscount,
-            isActive: true,
-          });
-        }
-      }
-
       const product = await prisma.product.create({
         data: {
           tenantId,
@@ -433,6 +388,7 @@ export async function processProductBulkRows(
           breadth: firstRow.breadth,
           height: firstRow.height,
           weight: firstRow.weight,
+          vendorId: firstRow.vendorId ?? undefined,
           costPrice: firstRow.costPrice,
           mrp: firstRow.finalSP,
           createdById: userId,
@@ -449,12 +405,10 @@ export async function processProductBulkRows(
               },
             })),
           },
-          discounts: discounts.length > 0 ? { create: discounts } : undefined,
         },
         include: {
           category: true,
           variations: true,
-          discounts: { include: { discountType: true } },
         },
       });
 
@@ -560,9 +514,6 @@ const PRODUCT_TEMPLATE_HEADERS = [
   { header: "Qty", width: 8 },
   { header: "Cost Price", width: 12 },
   { header: "Final SP", width: 12 },
-  { header: "Non Member Discount", width: 20 },
-  { header: "Member Discount", width: 18 },
-  { header: "Wholesale Discount", width: 20 },
 ];
 
 const PRODUCT_TEMPLATE_REQUIRED_OPTIONAL = [
@@ -582,9 +533,6 @@ const PRODUCT_TEMPLATE_REQUIRED_OPTIONAL = [
   "Optional",
   "Required",
   "Required",
-  "Optional",
-  "Optional",
-  "Optional",
 ];
 
 /** Build the product bulk upload Excel template (headers + hint row). Returns buffer. */

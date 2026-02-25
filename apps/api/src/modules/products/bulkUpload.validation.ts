@@ -165,39 +165,6 @@ export const excelProductRowSchema = z
       .refine((val) => val >= 0, {
         message: "Final SP must be greater than or equal to 0",
       }),
-
-    // Column Q: NON MEMBER DISCOUNT
-    nonMemberDiscount: z
-      .union([z.string(), z.number(), z.null(), z.undefined()])
-      .optional()
-      .transform((val) => {
-        if (val === null || val === undefined) return null;
-        if (typeof val === "number") return val;
-        const num = parseFloat(String(val));
-        return isNaN(num) ? null : num;
-      }),
-
-    // Column R: MEMBER DISCOUNT
-    memberDiscount: z
-      .union([z.string(), z.number(), z.null(), z.undefined()])
-      .optional()
-      .transform((val) => {
-        if (val === null || val === undefined) return null;
-        if (typeof val === "number") return val;
-        const num = parseFloat(String(val));
-        return isNaN(num) ? null : num;
-      }),
-
-    // Column S: WHOLESALE DISCOUNT
-    wholesaleDiscount: z
-      .union([z.string(), z.number(), z.null(), z.undefined()])
-      .optional()
-      .transform((val) => {
-        if (val === null || val === undefined) return null;
-        if (typeof val === "number") return val;
-        const num = parseFloat(String(val));
-        return isNaN(num) ? null : num;
-      }),
   })
   .refine(
     (row) => {
@@ -237,9 +204,6 @@ export const productBulkFields = [
   "quantity",
   "costPrice",
   "finalSP",
-  "nonMemberDiscount",
-  "memberDiscount",
-  "wholesaleDiscount",
 ] as const;
 
 /** Header mappings for product bulk file (Excel/CSV). */
@@ -260,9 +224,6 @@ export const productBulkHeaderMappings: Record<string, string[]> = {
   quantity: ["qty", "quantity"],
   costPrice: ["costprice", "cost_price", "cost"],
   finalSP: ["finalsp", "final_sp", "sellingprice", "mrp", "price"],
-  nonMemberDiscount: ["nonmemberdiscount", "non_member_discount", "nonmember"],
-  memberDiscount: ["memberdiscount", "member_discount", "member"],
-  wholesaleDiscount: ["wholesalediscount", "wholesale_discount", "wholesale"],
 };
 
 /** Required columns for product bulk upload. */

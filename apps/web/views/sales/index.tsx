@@ -75,7 +75,7 @@ export function SalesPage() {
   const userRole = useAuthStore(selectUserRole);
   const isAdmin = useAuthStore(selectIsAdmin);
   const isUserRole = userRole === "user";
-  const canManageSales = isAdmin;
+  const canManageSales = isAdmin || isUserRole;
   const isMobile = useIsMobile();
 
   // Zustand store for sale selection

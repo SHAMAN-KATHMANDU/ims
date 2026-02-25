@@ -35,7 +35,8 @@ export function mapPrismaError(
       };
     case "P2003":
       return {
-        message: "Invalid reference.",
+        message:
+          "Invalid reference. One of the linked records (contact, member, deal, or assigned user) was not found or is not valid.",
         statusCode: 400,
       };
     default:
