@@ -46,6 +46,11 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Accept NEXT_PUBLIC_API_URL as a build arg so it gets baked into the JS bundle.
+# Pass via: docker build --build-arg NEXT_PUBLIC_API_URL=https://...
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+
 # Build the shared package first (web depends on it)
 RUN pnpm --filter @repo/shared build
 
