@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
@@ -67,7 +68,7 @@ export function LeadForm({
         await onSubmit({
           name: v.name,
           email: v.email || undefined,
-          phone: v.phone || undefined,
+          phone: v.phone?.trim() || undefined,
           companyName: v.companyName || undefined,
           status: v.status as CreateLeadData["status"],
           source: v.source || undefined,
@@ -96,8 +97,14 @@ export function LeadForm({
         />
       </div>
       <div>
-        <Label htmlFor="phone">Phone</Label>
-        <Input id="phone" {...form.register("phone")} className="mt-1" />
+        <Label htmlFor="lead-phone">Phone</Label>
+        <PhoneInput
+          value={form.watch("phone") ?? ""}
+          onChange={(e164) => form.setValue("phone", e164 || undefined)}
+          placeholder="e.g. 9841234567"
+          numberInputId="lead-phone"
+          className="mt-1"
+        />
       </div>
       <div>
         <Label htmlFor="companyName">Company</Label>

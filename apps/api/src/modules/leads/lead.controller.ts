@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { normalizePhoneOptional } from "@/utils/phone";
 import { sendControllerError } from "@/utils/controllerError";
 
 function getUserId(req: Request): string | null {
@@ -43,12 +44,24 @@ class LeadController {
 
       const assigneeId = assignedToId || userId;
 
+      let phoneNormalized: string | null = null;
+      if (phone != null && String(phone).trim()) {
+        try {
+          phoneNormalized = normalizePhoneOptional(phone);
+        } catch (err: unknown) {
+          return res.status(400).json({
+            message:
+              err instanceof Error ? err.message : "Invalid phone number",
+          });
+        }
+      }
+
       const lead = await prisma.lead.create({
         data: {
           tenantId,
           name: name.trim(),
           email: email?.trim() || null,
-          phone: phone?.trim() || null,
+          phone: phoneNormalized,
           companyName: companyName?.trim() || null,
           status: status && LEAD_STATUSES.includes(status) ? status : "NEW",
           source: source?.trim() || null,
@@ -180,10 +193,26 @@ class LeadController {
         return res.status(404).json({ message: "Lead not found" });
       }
 
+      let phoneNormalized: string | null | undefined = undefined;
+      if (phone !== undefined) {
+        if (phone == null || String(phone).trim() === "") {
+          phoneNormalized = null;
+        } else {
+          try {
+            phoneNormalized = normalizePhoneOptional(phone);
+          } catch (err: unknown) {
+            return res.status(400).json({
+              message:
+                err instanceof Error ? err.message : "Invalid phone number",
+            });
+          }
+        }
+      }
+
       const updateData: Record<string, unknown> = {
         ...(name !== undefined && { name: name?.trim() || existing.name }),
         ...(email !== undefined && { email: email?.trim() || null }),
-        ...(phone !== undefined && { phone: phone?.trim() || null }),
+        ...(phoneNormalized !== undefined && { phone: phoneNormalized }),
         ...(companyName !== undefined && {
           companyName: companyName?.trim() || null,
         }),

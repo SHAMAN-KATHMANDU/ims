@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useParams } from "next/navigation";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { useToast } from "@/hooks/useToast";
 import {
   useCompaniesPaginated,
@@ -287,15 +288,13 @@ export function CompaniesPage() {
             </div>
             <div>
               <Label>Phone</Label>
-              <Input
+              <PhoneInput
                 value={formData.phone ?? ""}
-                onChange={(e) =>
-                  setFormData((p) => ({
-                    ...p,
-                    phone: e.target.value || undefined,
-                  }))
+                onChange={(phone) =>
+                  setFormData((p) => ({ ...p, phone: phone || undefined }))
                 }
-                placeholder="Phone"
+                placeholder="e.g. 9841234567"
+                numberInputId="company-phone"
                 className="mt-1"
               />
             </div>

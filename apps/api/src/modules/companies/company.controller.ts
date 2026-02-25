@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { normalizePhoneOptional } from "@/utils/phone";
 import { sendControllerError } from "@/utils/controllerError";
 
 class CompanyController {
@@ -16,13 +17,25 @@ class CompanyController {
         return res.status(400).json({ message: "Company name is required" });
       }
 
+      let phoneNormalized: string | null = null;
+      if (phone != null && String(phone).trim()) {
+        try {
+          phoneNormalized = normalizePhoneOptional(phone);
+        } catch (err: unknown) {
+          return res.status(400).json({
+            message:
+              err instanceof Error ? err.message : "Invalid phone number",
+          });
+        }
+      }
+
       const company = await prisma.company.create({
         data: {
           tenantId,
           name: name.trim(),
           website: website?.trim() || null,
           address: address?.trim() || null,
-          phone: phone?.trim() || null,
+          phone: phoneNormalized,
         },
       });
 
@@ -123,13 +136,29 @@ class CompanyController {
         return res.status(404).json({ message: "Company not found" });
       }
 
+      let phoneNormalized: string | null | undefined = undefined;
+      if (phone !== undefined) {
+        if (phone == null || String(phone).trim() === "") {
+          phoneNormalized = null;
+        } else {
+          try {
+            phoneNormalized = normalizePhoneOptional(phone);
+          } catch (err: unknown) {
+            return res.status(400).json({
+              message:
+                err instanceof Error ? err.message : "Invalid phone number",
+            });
+          }
+        }
+      }
+
       const company = await prisma.company.update({
         where: { id },
         data: {
           ...(name !== undefined && { name: name?.trim() || existing.name }),
           ...(website !== undefined && { website: website?.trim() || null }),
           ...(address !== undefined && { address: address?.trim() || null }),
-          ...(phone !== undefined && { phone: phone?.trim() || null }),
+          ...(phoneNormalized !== undefined && { phone: phoneNormalized }),
         },
       });
 
