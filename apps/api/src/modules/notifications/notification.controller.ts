@@ -2,16 +2,10 @@ import { Request, Response } from "express";
 import prisma from "@/config/prisma";
 import { sendControllerError } from "@/utils/controllerError";
 
-function getUserId(req: Request): string | null {
-  return (req as any).user?.id ?? null;
-}
-
 class NotificationController {
   async getAll(req: Request, res: Response) {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
+      const userId = (req as any).user.id;
 
       const limit = Math.min(
         100,
@@ -38,9 +32,7 @@ class NotificationController {
 
   async getUnreadCount(req: Request, res: Response) {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
+      const userId = (req as any).user.id;
 
       const count = await prisma.notification.count({
         where: { userId, readAt: null },
@@ -58,10 +50,7 @@ class NotificationController {
 
   async markRead(req: Request, res: Response) {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
-
+      const userId = (req as any).user.id;
       const { id } = req.params;
 
       const notification = await prisma.notification.findFirst({
@@ -85,9 +74,7 @@ class NotificationController {
 
   async markAllRead(req: Request, res: Response) {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
+      const userId = (req as any).user.id;
 
       await prisma.notification.updateMany({
         where: { userId, readAt: null },
@@ -97,6 +84,25 @@ class NotificationController {
       res.status(200).json({ message: "All notifications marked as read" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Mark all read error");
+    }
+  }
+
+  async deleteAll(req: Request, res: Response) {
+    try {
+      const userId = (req as any).user.id;
+
+      await prisma.notification.deleteMany({
+        where: { userId },
+      });
+
+      res.status(200).json({ message: "All notifications cleared" });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Delete all notifications error",
+      );
     }
   }
 }

@@ -37,3 +37,7 @@ export async function markNotificationRead(id: string): Promise<void> {
 export async function markAllNotificationsRead(): Promise<void> {
   await api.post("/notifications/read-all");
 }
+
+export async function deleteAllNotifications(): Promise<void> {
+  await api.delete("/notifications");
+}

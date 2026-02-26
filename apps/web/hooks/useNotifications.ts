@@ -6,6 +6,7 @@ import {
   getUnreadCount,
   markNotificationRead,
   markAllNotificationsRead,
+  deleteAllNotifications,
 } from "@/services/notificationService";
 
 export const notificationKeys = {
@@ -48,6 +49,16 @@ export function useMarkAllNotificationsRead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: () => markAllNotificationsRead(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: notificationKeys.all });
+    },
+  });
+}
+
+export function useDeleteAllNotifications() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => deleteAllNotifications(),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: notificationKeys.all });
     },

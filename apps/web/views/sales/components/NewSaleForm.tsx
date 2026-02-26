@@ -714,7 +714,7 @@ export function NewSaleForm({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 -ml-4">
                       <Label className="text-xs font-medium text-muted-foreground">
                         Customer Phone
                       </Label>

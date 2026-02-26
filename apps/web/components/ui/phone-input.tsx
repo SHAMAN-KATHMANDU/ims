@@ -125,8 +125,8 @@ export function PhoneInput({
   })();
 
   return (
-    <div className={cn("space-y-2", className)} id={id}>
-      <div className="flex gap-2">
+    <div className={cn("space-y-2 min-w-0", className)} id={id}>
+      <div className="flex gap-2 min-w-0">
         <Select
           value={country}
           onValueChange={handleCountryChange}
@@ -134,7 +134,7 @@ export function PhoneInput({
         >
           <SelectTrigger
             className={cn(
-              "w-[180px] shrink-0",
+              "w-[100px] shrink-0 text-sm",
               showError && "border-destructive",
             )}
             aria-label="Country"
