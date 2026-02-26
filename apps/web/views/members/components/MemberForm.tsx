@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -92,7 +93,7 @@ export function MemberForm({
     if (!phone.trim()) return;
 
     const commonData = {
-      phone: phone.trim(),
+      phone,
       name: name.trim() || undefined,
       email: email.trim() || undefined,
       notes: notes.trim() || undefined,
@@ -143,13 +144,13 @@ export function MemberForm({
       <div className="space-y-4 py-4">
         {/* Phone */}
         <div className="space-y-2">
-          <Label htmlFor="phone">Phone Number *</Label>
-          <Input
-            id="phone"
+          <Label htmlFor="phone-number">Phone Number *</Label>
+          <PhoneInput
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            placeholder="e.g., 9841234567"
+            onChange={setPhone}
             required
+            numberInputId="phone-number"
+            placeholder="e.g. 9841234567"
           />
         </div>
 

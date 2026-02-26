@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { normalizePhoneRequired, parseAndValidatePhone } from "@/utils/phone";
 import ExcelJS from "exceljs";
 import fs from "fs";
 import {
@@ -20,13 +21,18 @@ class MemberController {
     try {
       const { phone, name, email, notes } = req.body;
 
-      // Validate required fields
       if (!phone) {
         return res.status(400).json({ message: "Phone number is required" });
       }
 
-      // Normalize phone number (remove spaces, dashes)
-      const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
+      let normalizedPhone: string;
+      try {
+        normalizedPhone = normalizePhoneRequired(phone);
+      } catch (err: unknown) {
+        return res.status(400).json({
+          message: err instanceof Error ? err.message : "Invalid phone number",
+        });
+      }
 
       // Check if member already exists
       const existingMember = await prisma.member.findFirst({
@@ -130,8 +136,12 @@ class MemberController {
         ? req.params.phone[0]
         : req.params.phone;
 
-      // Normalize phone number
-      const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
+      const parsed = parseAndValidatePhone(phone);
+      if (!parsed.valid) {
+        const err = parsed as { valid: false; message: string };
+        return res.status(400).json({ message: err.message });
+      }
+      const normalizedPhone = parsed.e164;
 
       const member = await prisma.member.findFirst({
         where: { phone: normalizedPhone },
@@ -227,7 +237,15 @@ class MemberController {
       const updateData: any = {};
 
       if (phone !== undefined) {
-        const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
+        let normalizedPhone: string;
+        try {
+          normalizedPhone = normalizePhoneRequired(phone);
+        } catch (err: unknown) {
+          return res.status(400).json({
+            message:
+              err instanceof Error ? err.message : "Invalid phone number",
+          });
+        }
         // Check if new phone is already taken by another member
         if (normalizedPhone !== existingMember.phone) {
           const phoneExists = await prisma.member.findFirst({
@@ -285,8 +303,12 @@ class MemberController {
         ? req.params.phone[0]
         : req.params.phone;
 
-      // Normalize phone number
-      const normalizedPhone = phone.replace(/[\s-]/g, "").trim();
+      const parsed = parseAndValidatePhone(phone);
+      if (!parsed.valid) {
+        const err = parsed as { valid: false; message: string };
+        return res.status(400).json({ message: err.message });
+      }
+      const normalizedPhone = parsed.e164;
 
       const member = await prisma.member.findFirst({
         where: { phone: normalizedPhone },
@@ -373,7 +395,16 @@ class MemberController {
 
       for (const r of rows) {
         try {
-          const normalizedPhone = r.phone.replace(/[\s-]/g, "").trim();
+          const parsed = parseAndValidatePhone(r.phone);
+          if (!parsed.valid) {
+            const err = parsed as { valid: false; message: string };
+            errors.push({
+              row: rows.indexOf(r) + 2,
+              message: err.message,
+            });
+            continue;
+          }
+          const normalizedPhone = parsed.e164;
 
           if (r.id) {
             const existingById = await prisma.member.findUnique({

@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { normalizePhoneOptional } from "@/utils/phone";
 import { sendControllerError } from "@/utils/controllerError";
 
 class VendorController {
@@ -32,12 +33,24 @@ class VendorController {
         });
       }
 
+      let normalizedPhone: string | null = null;
+      if (phone != null && String(phone).trim()) {
+        try {
+          normalizedPhone = normalizePhoneOptional(phone);
+        } catch (err: unknown) {
+          return res.status(400).json({
+            message:
+              err instanceof Error ? err.message : "Invalid phone number",
+          });
+        }
+      }
+
       const vendor = await prisma.vendor.create({
         data: {
           tenantId,
           name: (name as string).trim(),
           contact: contact || null,
-          phone: phone || null,
+          phone: normalizedPhone,
           address: address || null,
         },
       });
@@ -284,7 +297,16 @@ class VendorController {
       const updateData: any = {};
       if (name !== undefined) updateData.name = name;
       if (contact !== undefined) updateData.contact = contact || null;
-      if (phone !== undefined) updateData.phone = phone || null;
+      if (phone !== undefined) {
+        try {
+          updateData.phone = normalizePhoneOptional(phone);
+        } catch (err: unknown) {
+          return res.status(400).json({
+            message:
+              err instanceof Error ? err.message : "Invalid phone number",
+          });
+        }
+      }
       if (address !== undefined) updateData.address = address || null;
 
       const updatedVendor = await prisma.vendor.update({
