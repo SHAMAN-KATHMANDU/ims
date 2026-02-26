@@ -34,7 +34,6 @@ class MemberController {
         });
       }
 
-      // Check if member already exists
       const existingMember = await prisma.member.findFirst({
         where: { phone: normalizedPhone },
       });
@@ -72,15 +71,8 @@ class MemberController {
         req.query,
       );
 
-      // Allowed fields for sorting (date added = createdAt); sorting at DB level
-      const allowedSortFields = [
-        "createdAt", // date added
-        "updatedAt",
-        "name",
-        "id",
-      ];
+      const allowedSortFields = ["createdAt", "updatedAt", "name", "id"];
 
-      // Get orderBy for Prisma (sortOrder: asc | desc)
       const orderBy = getPrismaOrderBy(
         sortBy,
         sortOrder,
@@ -224,7 +216,6 @@ class MemberController {
         : req.params.id;
       const { phone, name, email, notes, isActive } = req.body;
 
-      // Check if member exists
       const existingMember = await prisma.member.findUnique({
         where: { id },
       });
@@ -233,7 +224,6 @@ class MemberController {
         return res.status(404).json({ message: "Member not found" });
       }
 
-      // Prepare update data
       const updateData: any = {};
 
       if (phone !== undefined) {
@@ -246,12 +236,10 @@ class MemberController {
               err instanceof Error ? err.message : "Invalid phone number",
           });
         }
-        // Check if new phone is already taken by another member
         if (normalizedPhone !== existingMember.phone) {
           const phoneExists = await prisma.member.findFirst({
             where: { phone: normalizedPhone },
           });
-
           if (phoneExists) {
             return res.status(409).json({
               message: "Phone number already taken by another member",
@@ -261,21 +249,10 @@ class MemberController {
         updateData.phone = normalizedPhone;
       }
 
-      if (name !== undefined) {
-        updateData.name = name || null;
-      }
-
-      if (email !== undefined) {
-        updateData.email = email || null;
-      }
-
-      if (notes !== undefined) {
-        updateData.notes = notes || null;
-      }
-
-      if (isActive !== undefined) {
-        updateData.isActive = isActive;
-      }
+      if (name !== undefined) updateData.name = name || null;
+      if (email !== undefined) updateData.email = email || null;
+      if (notes !== undefined) updateData.notes = notes || null;
+      if (isActive !== undefined) updateData.isActive = isActive;
 
       const updatedMember = await prisma.member.update({
         where: { id },
