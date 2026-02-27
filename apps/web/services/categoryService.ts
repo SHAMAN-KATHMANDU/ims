@@ -50,7 +50,8 @@ export interface PaginatedCategoriesResponse {
   pagination: PaginationMeta;
 }
 
-interface CategoriesApiResponse {
+/** Shape of the paginated GET /categories response body */
+interface PaginatedCategoriesApiResponse {
   message: string;
   data: Category[];
   pagination: PaginationMeta;
@@ -85,9 +86,10 @@ export async function getCategories(
     if (sortBy) queryParams.sortBy = sortBy;
     if (sortOrder) queryParams.sortOrder = sortOrder;
 
-    const response = await api.get<CategoriesApiResponse>("/categories", {
-      params: queryParams,
-    });
+    const response = await api.get<PaginatedCategoriesApiResponse>(
+      "/categories",
+      { params: queryParams },
+    );
     return {
       data: response.data.data || [],
       pagination: response.data.pagination,
@@ -98,13 +100,15 @@ export async function getCategories(
 }
 
 /**
- * Get all categories (unpaginated, for dropdowns)
+ * Get all categories (unpaginated, for dropdowns).
+ * Uses a high limit as a practical ceiling — increase if tenants grow beyond this.
  */
 export async function getAllCategories(): Promise<Category[]> {
   try {
-    const response = await api.get<CategoriesApiResponse>("/categories", {
-      params: { limit: 1000 },
-    });
+    const response = await api.get<PaginatedCategoriesApiResponse>(
+      "/categories",
+      { params: { limit: 1000 } },
+    );
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch categories");
