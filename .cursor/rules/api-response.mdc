@@ -1,0 +1,100 @@
+---
+description: Enforces standardized ok()/fail() response helpers from shared/response/ in all API controllers
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# Standardized API Response Format
+
+All API controllers must use the response helpers from `apps/api/src/shared/response/index.ts`.
+
+## Response Shape
+
+```typescript
+// Success
+{ success: true, data: T }
+
+// Error
+{ success: false, message: string }
+```
+
+## Helpers
+
+```typescript
+// apps/api/src/shared/response/index.ts
+export function ok<T>(res: Response, data: T, statusCode = 200): Response {
+  return res.status(statusCode).json({ success: true, data });
+}
+
+export function fail(res: Response, message: string, statusCode = 400): Response {
+  return res.status(statusCode).json({ success: false, message });
+}
+
+export type ApiResponse<T> =
+  | { success: true; data: T }
+  | { success: false; message: string };
+```
+
+## Usage Rules
+
+### ✅ ALWAYS use ok() and fail()
+
+```typescript
+// Success responses
+return ok(res, { category });           // 200
+return ok(res, { category }, 201);      // 201 Created
+return ok(res, { items, pagination });  // 200 with pagination
+
+// Error responses
+return fail(res, "Category not found", 404);
+return fail(res, "Name is required", 400);
+return fail(res, "Unauthorized", 401);
+return fail(res, "Something went wrong", 500);
+```
+
+### ❌ NEVER use raw res.json() in controllers
+
+```typescript
+// BAD — raw responses
+res.status(200).json({ category });
+res.status(201).json({ message: "created", category });
+res.status(400).json({ message: "required" });
+res.json({ success: false, error: "..." });
+
+// BAD — inconsistent shapes
+res.status(200).json({ data: category });
+res.status(200).json({ result: category });
+```
+
+## Error Handling in Controllers
+
+Use `sendControllerError` (from `shared/errors/`) for catch blocks:
+
+```typescript
+async createCategory(req: Request, res: Response) {
+  try {
+    const { tenantId } = getAuthContext(req);
+    const body = CreateCategorySchema.parse(req.body);
+    const category = await this.service.create(tenantId, body);
+    return ok(res, { category }, 201);
+  } catch (error) {
+    if (error instanceof AppError) {
+      return fail(res, error.message, error.statusCode);
+    }
+    return sendControllerError(req, res, error, "createCategory");
+  }
+}
+```
+
+## HTTP Status Code Reference
+
+| Situation | Status | Helper |
+|-----------|--------|--------|
+| GET success | 200 | `ok(res, data)` |
+| POST created | 201 | `ok(res, data, 201)` |
+| Validation error | 400 | `fail(res, msg, 400)` |
+| Unauthorized | 401 | `fail(res, msg, 401)` |
+| Forbidden | 403 | `fail(res, msg, 403)` |
+| Not found | 404 | `fail(res, msg, 404)` |
+| Conflict/duplicate | 409 | `fail(res, msg, 409)` |
+| Server error | 500 | `sendControllerError(...)` |

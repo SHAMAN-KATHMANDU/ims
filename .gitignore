@@ -45,3 +45,8 @@ infra/terraform.tfstate.backup
 infra/terraform.tfvars
 *.tfvars
 !infra/terraform.tfvars.example
+
+
+.cursor/plans/*
+apps/web/test-results/
+scripts/docker-push-staging.sh

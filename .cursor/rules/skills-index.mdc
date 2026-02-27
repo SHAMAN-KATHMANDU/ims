@@ -1,0 +1,118 @@
+---
+description: Skills catalog — consult the relevant skill file before working on any matching task
+alwaysApply: true
+---
+
+# Skills Index
+
+This project has 21 skills in `.cursor/skills/`. Before working on any task below, read the corresponding `SKILL.md` file first.
+
+## How to Use
+
+When a task matches a skill's context, read the skill file:
+
+```
+Read: .cursor/skills/<skill-name>/SKILL.md
+```
+
+Then follow the patterns and guidelines it contains.
+
+---
+
+## Skill Catalog
+
+### Code Quality & Standards
+
+| Trigger Context | Skill File |
+|----------------|------------|
+| Writing any TypeScript/JavaScript code, naming conventions, async patterns, error handling, file organization | `.cursor/skills/coding-standards/SKILL.md` |
+| Before writing a utility function or adding a new npm dependency | `.cursor/skills/search-first/SKILL.md` |
+| Writing a new feature, fixing a bug, refactoring existing code | `.cursor/skills/tdd-workflow/SKILL.md` |
+| Before creating a PR, after completing a feature implementation | `.cursor/skills/verification-loop/SKILL.md` |
+
+### API & Backend
+
+| Trigger Context | Skill File |
+|----------------|------------|
+| Designing new API endpoints, URL structure, HTTP status codes, pagination, error responses | `.cursor/skills/api-design/SKILL.md` |
+| Building services, repositories, caching with Redis, database transactions, JWT auth, rate limiting | `.cursor/skills/backend-patterns/SKILL.md` |
+| File upload processing, import/export pipelines, avoiding reprocessing duplicate content | `.cursor/skills/content-hash-cache-pattern/SKILL.md` |
+
+### Database
+
+| Trigger Context | Skill File |
+|----------------|------------|
+| Prisma schema changes, adding columns/tables/indexes, backfilling data, zero-downtime migrations | `.cursor/skills/database-migrations/SKILL.md` |
+| Index design, query optimization, data type selection, RLS policies, cursor pagination, slow queries | `.cursor/skills/postgres-patterns/SKILL.md` |
+
+### Security
+
+| Trigger Context | Skill File |
+|----------------|------------|
+| Auth/authorization changes, new endpoints, pre-PR security check, OWASP review | `.cursor/skills/security-review/SKILL.md` |
+| Auditing `.cursor/` config files, checking skills/rules for injection risks | `.cursor/skills/security-scan/SKILL.md` |
+
+### Frontend
+
+| Trigger Context | Skill File |
+|----------------|------------|
+| React components, custom hooks, Next.js App Router, state management, forms, accessibility | `.cursor/skills/frontend-patterns/SKILL.md` |
+
+### Testing
+
+| Trigger Context | Skill File |
+|----------------|------------|
+| Playwright E2E tests, Page Object Model, critical user flows, CI test integration | `.cursor/skills/e2e-testing/SKILL.md` |
+| LLM/AI feature evaluation, capability evals, regression evals, pass@k metrics | `.cursor/skills/eval-harness/SKILL.md` |
+
+### Infrastructure & Deployment
+
+| Trigger Context | Skill File |
+|----------------|------------|
+| Dockerfile, docker-compose, container networking, volumes, container security | `.cursor/skills/docker-patterns/SKILL.md` |
+| CI/CD pipelines, GitHub Actions, rolling/blue-green/canary deployments, rollback | `.cursor/skills/deployment-patterns/SKILL.md` |
+
+### AI Agent Workflow
+
+| Trigger Context | Skill File |
+|----------------|------------|
+| Exploring unfamiliar code, multi-file tasks, gathering context before implementing | `.cursor/skills/iterative-retrieval/SKILL.md` |
+| Context window is large, switching from research to implementation, completing a milestone | `.cursor/skills/strategic-compact/SKILL.md` |
+| End of a significant session, extracting reusable patterns to save for future use | `.cursor/skills/continuous-learning/SKILL.md` |
+| Tracking instincts with confidence scores, `/instinct-status`, `/evolve` commands | `.cursor/skills/continuous-learning-v2/SKILL.md` |
+| Monthly skill audit, reviewing skill quality, retiring outdated skills | `.cursor/skills/skill-stocktake/SKILL.md` |
+
+---
+
+## Quick Reference
+
+```
+coding-standards        → any TS/JS code
+search-first            → before adding dependencies
+tdd-workflow            → new features, bug fixes
+verification-loop       → before PR
+
+api-design              → new endpoints
+backend-patterns        → services, caching, auth
+content-hash-cache      → file processing pipelines
+
+database-migrations     → schema changes
+postgres-patterns       → indexes, query optimization
+
+security-review         → auth changes, new endpoints
+security-scan           → .cursor/ config audit
+
+frontend-patterns       → React, Next.js, hooks
+
+e2e-testing             → Playwright tests
+eval-harness            → LLM feature evals
+
+docker-patterns         → Dockerfile, compose
+deployment-patterns     → CI/CD, rollouts
+
+iterative-retrieval     → exploring unfamiliar code
+strategic-compact       → context management
+continuous-learning     → session pattern extraction
+continuous-learning-v2  → instinct-based learning
+skill-stocktake         → skill quality audit
+```

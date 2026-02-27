@@ -1,0 +1,93 @@
+---
+description: Enforces the 3-layer Controller → Service → Repository architecture for all API modules
+alwaysApply: true
+---
+
+# API Module Architecture
+
+Every module under `apps/api/src/modules/<name>/` must have exactly these 5 files:
+
+```
+<name>.repository.ts   ← ONLY file that imports prisma
+<name>.service.ts      ← business logic only, no req/res
+<name>.controller.ts   ← thin HTTP layer: calls service, uses ok()/fail()
+<name>.schema.ts       ← Zod validation schemas
+<name>.schema.test.ts  ← unit tests for schemas
+```
+
+## Layer Rules
+
+### Repository (`*.repository.ts`)
+- The **only** layer that imports `prisma`
+- No business logic — pure data access
+- Returns domain objects, throws on not-found
+
+```typescript
+// ✅ GOOD
+import prisma from "@/config/prisma";
+export class CategoryRepository {
+  async findByTenant(tenantId: string) {
+    return prisma.category.findMany({ where: { tenantId } });
+  }
+}
+
+// ❌ BAD — prisma in controller
+import prisma from "@/config/prisma"; // never in controller or service
+```
+
+### Service (`*.service.ts`)
+- Business logic only
+- No `req`, `res`, or HTTP concepts
+- Calls repository methods, applies business rules
+
+```typescript
+// ✅ GOOD
+export class CategoryService {
+  constructor(private repo: CategoryRepository) {}
+  async create(tenantId: string, data: CreateCategoryDto) {
+    const existing = await this.repo.findByName(tenantId, data.name);
+    if (existing) throw new AppError("Category already exists", 409);
+    return this.repo.create(tenantId, data);
+  }
+}
+
+// ❌ BAD — req/res in service
+async create(req: Request, res: Response) { ... }
+```
+
+### Controller (`*.controller.ts`)
+- Thin HTTP layer only
+- Calls `getAuthContext(req)` for tenant/user
+- Calls service methods
+- Returns `ok()` or `fail()` — never raw `res.json()`
+- No Prisma imports, no business logic
+
+```typescript
+// ✅ GOOD
+async createCategory(req: Request, res: Response) {
+  const { tenantId } = getAuthContext(req);
+  const body = CreateCategorySchema.parse(req.body);
+  const category = await this.service.create(tenantId, body);
+  return ok(res, { category }, 201);
+}
+
+// ❌ BAD — fat controller
+async createCategory(req: Request, res: Response) {
+  if (!req.body.name) return res.status(400).json({ message: "required" });
+  const tenantId = req.user!.tenantId; // use getAuthContext instead
+  const category = await prisma.category.create(...); // use service instead
+  res.status(201).json({ category }); // use ok() instead
+}
+```
+
+### Schema (`*.schema.ts`)
+- Zod schemas for all request bodies
+- No inline validation in controllers (`if (!name)` is forbidden)
+
+```typescript
+export const CreateCategorySchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+});
+export type CreateCategoryDto = z.infer<typeof CreateCategorySchema>;
+```
