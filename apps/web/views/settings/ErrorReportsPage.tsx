@@ -54,10 +54,11 @@ export function ErrorReportsPage() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
 
-  const { data: users = [] } = useQuery({
+  const { data: usersResult } = useQuery({
     queryKey: ["users-for-filter"],
     queryFn: () => getAllUsers({ page: 1, limit: 100 }),
   });
+  const users = usersResult?.users ?? [];
 
   const { data, isLoading } = useQuery({
     queryKey: [

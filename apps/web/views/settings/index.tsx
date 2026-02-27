@@ -72,11 +72,7 @@ export function SettingsPage() {
         return;
       }
 
-      await changePassword(
-        currentUser.id,
-        data.currentPassword,
-        data.newPassword,
-      );
+      await changePassword(currentUser.id, data.newPassword);
 
       toast({
         title: "Password changed successfully",

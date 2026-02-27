@@ -60,12 +60,20 @@ export interface GetAllUsersParams {
   limit?: number;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
+  search?: string;
+}
+
+export interface UsersResult {
+  users: User[];
+  pagination: UsersResponse["pagination"];
 }
 
 /**
  * Get all users (superAdmin only). Pass page/limit for dropdowns (e.g. { page: 1, limit: 100 }).
  */
-export async function getAllUsers(params?: GetAllUsersParams): Promise<User[]> {
+export async function getAllUsers(
+  params?: GetAllUsersParams,
+): Promise<UsersResult> {
   try {
     const queryParams = new URLSearchParams();
     if (params?.page != null) queryParams.set("page", String(params.page));
@@ -73,10 +81,14 @@ export async function getAllUsers(params?: GetAllUsersParams): Promise<User[]> {
     if (params?.sortBy != null) queryParams.set("sortBy", params.sortBy);
     if (params?.sortOrder != null)
       queryParams.set("sortOrder", params.sortOrder);
+    if (params?.search != null) queryParams.set("search", params.search);
     const query = queryParams.toString();
     const url = query ? `/users?${query}` : "/users";
     const response = await api.get<UsersResponse>(url);
-    return response.data.data || [];
+    return {
+      users: response.data.data ?? [],
+      pagination: response.data.pagination,
+    };
   } catch (error) {
     handleApiError(error, "fetch users");
   }
@@ -158,28 +170,21 @@ export async function deleteUser(id: string): Promise<void> {
 }
 
 /**
- * Change user password
+ * Change user password (superAdmin only — no current-password verification at API level)
  */
 export async function changePassword(
   userId: string,
-  currentPassword: string,
   newPassword: string,
 ): Promise<void> {
   if (!userId?.trim()) {
     throw new Error("User ID is required");
-  }
-  if (!currentPassword) {
-    throw new Error("Current password is required");
   }
   if (!newPassword) {
     throw new Error("New password is required");
   }
 
   try {
-    await api.put(`/users/${userId}`, {
-      password: newPassword,
-      currentPassword,
-    });
+    await api.put(`/users/${userId}`, { password: newPassword });
   } catch (error) {
     handleApiError(error, "change password");
   }

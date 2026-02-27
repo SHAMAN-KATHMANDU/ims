@@ -14,10 +14,18 @@ import {
   type User,
   type CreateUserData,
   type UpdateUserData,
+  type GetAllUsersParams,
+  type UsersResult,
 } from "@/services/userService";
 
 // Re-export types for convenience
-export type { User, CreateUserData, UpdateUserData };
+export type {
+  User,
+  CreateUserData,
+  UpdateUserData,
+  GetAllUsersParams,
+  UsersResult,
+};
 
 // Query keys
 export const userKeys = {
@@ -31,12 +39,7 @@ export const userKeys = {
 /**
  * Hook for fetching all users
  */
-export function useUsers(params?: {
-  page?: number;
-  limit?: number;
-  sortBy?: string;
-  sortOrder?: "asc" | "desc";
-}) {
+export function useUsers(params?: GetAllUsersParams) {
   return useQuery({
     queryKey: [...userKeys.lists(), params],
     queryFn: () => getAllUsers(params),

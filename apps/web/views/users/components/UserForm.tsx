@@ -49,7 +49,8 @@ const updateUserSchema = z.object({
   }),
 });
 
-type UserFormValues = z.infer<typeof createUserSchema>;
+/** Union type covering both create (password required) and update (password optional) */
+type UserFormValues = z.infer<typeof updateUserSchema>;
 
 interface UserFormProps {
   open: boolean;
