@@ -106,11 +106,11 @@ jobs:
     name: Clean GitHub Actions cache
     runs-on: ubuntu-latest
     steps:
-      - name: Delete caches older than 7 days
+      - name: Delete caches older than 14 days
         uses: actions/github-script@v7
         with:
           script: |
-            const retentionDays = 7;
+            const retentionDays = 14;
             // Schedule runs perform deletes; manual default is dry run
             const dryRun = context.eventName === 'schedule' ? false : ('${{ github.event.inputs.dry_run }}' !== 'false');
             const cutoff = new Date(Date.now() - retentionDays * 24 * 60 * 60 * 1000);
