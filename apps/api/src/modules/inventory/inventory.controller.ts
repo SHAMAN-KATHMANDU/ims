@@ -1,10 +1,25 @@
 import { Request, Response } from "express";
 import prisma from "@/config/prisma";
+import { getTenantId } from "@/config/tenantContext";
 import {
   getPaginationParams,
   createPaginationResult,
 } from "@/utils/pagination";
 import { sendControllerError } from "@/utils/controllerError";
+
+function locationInventoryTenantWhere(
+  existingWhere: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const tenantId = getTenantId();
+  if (!tenantId) return existingWhere;
+  return {
+    ...existingWhere,
+    location: {
+      ...((existingWhere.location as Record<string, unknown>) ?? {}),
+      tenantId,
+    },
+  };
+}
 
 class InventoryController {
   // Get inventory for a specific location
@@ -151,13 +166,11 @@ class InventoryController {
         return res.status(404).json({ message: "Product not found" });
       }
 
-      // Get inventory for all variations across all locations
+      // Get inventory for all variations across all locations (tenant-scoped)
       const inventory = await prisma.locationInventory.findMany({
-        where: {
-          variation: {
-            productId,
-          },
-        },
+        where: locationInventoryTenantWhere({
+          variation: { productId },
+        }) as any,
         include: {
           location: {
             select: {

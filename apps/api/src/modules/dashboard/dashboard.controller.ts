@@ -1,12 +1,31 @@
 import { Request, Response } from "express";
 import { sendControllerError } from "@/utils/controllerError";
 import prisma from "@/config/prisma";
+import { getTenantId } from "@/config/tenantContext";
 import { getCached, setCached } from "./dashboardCache";
 import type {
   DashboardUserSummary,
   DashboardAdminSummary,
   DashboardSuperAdminSummary,
 } from "./dashboard.types";
+
+/**
+ * LocationInventory has no tenantId column — scope via location.tenantId.
+ * Returns a where clause fragment that restricts rows to the current tenant.
+ */
+function locationInventoryTenantWhere(
+  existingWhere: Record<string, unknown> = {},
+): Record<string, unknown> {
+  const tenantId = getTenantId();
+  if (!tenantId) return existingWhere;
+  return {
+    ...existingWhere,
+    location: {
+      ...((existingWhere.location as Record<string, unknown>) ?? {}),
+      tenantId,
+    },
+  };
+}
 
 // Overdue = credit sale with balance > 0 and older than N days (no dueDate on Sale)
 const OVERDUE_CREDIT_DAYS = 30;
@@ -250,6 +269,7 @@ class DashboardController {
           },
         }),
         prisma.locationInventory.findMany({
+          where: locationInventoryTenantWhere() as any,
           select: {
             quantity: true,
             variation: {
@@ -259,10 +279,11 @@ class DashboardController {
             },
           },
         }),
-        // Low stock by variant: count variants whose total (across all locations) is < threshold (any variant < 5)
+        // Low stock by variant: count variants whose total (across all locations) is < threshold
         prisma.locationInventory
           .groupBy({
             by: ["variationId"],
+            where: locationInventoryTenantWhere() as any,
             _sum: { quantity: true },
           })
           .then(
