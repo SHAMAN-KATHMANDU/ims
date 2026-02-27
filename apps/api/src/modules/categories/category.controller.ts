@@ -13,7 +13,7 @@ import categoryService, { CategoryService } from "./category.service";
 class CategoryController {
   constructor(private service: CategoryService) {}
 
-  async createCategory(req: Request, res: Response) {
+  createCategory = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const body = CreateCategorySchema.parse(req.body);
@@ -35,9 +35,9 @@ class CategoryController {
       }
       return sendControllerError(req, res, error, "Create category error");
     }
-  }
+  };
 
-  async getAllCategories(req: Request, res: Response) {
+  getAllCategories = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const result = await this.service.findAll(tenantId, req.query);
@@ -47,9 +47,9 @@ class CategoryController {
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get all categories error");
     }
-  }
+  };
 
-  async getCategoryById(req: Request, res: Response) {
+  getCategoryById = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
@@ -65,9 +65,9 @@ class CategoryController {
       }
       return sendControllerError(req, res, error, "Get category by ID error");
     }
-  }
+  };
 
-  async updateCategory(req: Request, res: Response) {
+  updateCategory = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
@@ -96,9 +96,9 @@ class CategoryController {
       }
       return sendControllerError(req, res, error, "Update category error");
     }
-  }
+  };
 
-  async deleteCategory(req: Request, res: Response) {
+  deleteCategory = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
@@ -120,9 +120,9 @@ class CategoryController {
       }
       return sendControllerError(req, res, error, "Delete category error");
     }
-  }
+  };
 
-  async getCategorySubcategories(req: Request, res: Response) {
+  getCategorySubcategories = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
@@ -141,9 +141,9 @@ class CategoryController {
         "Get category subcategories error",
       );
     }
-  }
+  };
 
-  async createSubcategory(req: Request, res: Response) {
+  createSubcategory = async (req: Request, res: Response) => {
     try {
       const categoryId = Array.isArray(req.params.id)
         ? req.params.id[0]
@@ -176,9 +176,9 @@ class CategoryController {
       }
       return sendControllerError(req, res, error, "Create subcategory error");
     }
-  }
+  };
 
-  async deleteSubcategory(req: Request, res: Response) {
+  deleteSubcategory = async (req: Request, res: Response) => {
     try {
       const categoryId = Array.isArray(req.params.id)
         ? req.params.id[0]
@@ -203,7 +203,7 @@ class CategoryController {
       }
       return sendControllerError(req, res, error, "Delete subcategory error");
     }
-  }
+  };
 }
 
 export default new CategoryController(categoryService);
