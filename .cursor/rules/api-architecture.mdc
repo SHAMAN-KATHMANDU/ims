@@ -1,0 +1,178 @@
+---
+description: Enforces the 3-layer Controller → Service → Repository architecture for all API modules
+alwaysApply: true
+---
+
+# API Module Architecture
+
+Every module under `apps/api/src/modules/<name>/` must have exactly these 6 files:
+
+```
+<name>.repository.ts        ← ONLY file that imports prisma
+<name>.service.ts           ← business logic only, no req/res
+<name>.controller.ts        ← thin HTTP layer: calls service, uses ok()/fail()
+<name>.schema.ts            ← Zod validation schemas
+<name>.schema.test.ts       ← unit tests for schemas
+<name>.controller.test.ts   ← unit tests for the controller
+```
+
+## Layer Rules
+
+### Repository (`*.repository.ts`)
+- The **only** layer that imports `prisma`
+- No business logic — pure data access
+- Returns domain objects, throws on not-found
+
+```typescript
+// ✅ GOOD
+import prisma from "@/config/prisma";
+export class CategoryRepository {
+  async findByTenant(tenantId: string) {
+    return prisma.category.findMany({ where: { tenantId } });
+  }
+}
+
+// ❌ BAD — prisma in controller
+import prisma from "@/config/prisma"; // never in controller or service
+```
+
+### Service (`*.service.ts`)
+- Business logic only
+- No `req`, `res`, or HTTP concepts
+- Calls repository methods, applies business rules
+
+```typescript
+// ✅ GOOD
+export class CategoryService {
+  constructor(private repo: CategoryRepository) {}
+  async create(tenantId: string, data: CreateCategoryDto) {
+    const existing = await this.repo.findByName(tenantId, data.name);
+    if (existing) throw new AppError("Category already exists", 409);
+    return this.repo.create(tenantId, data);
+  }
+}
+
+// ❌ BAD — req/res in service
+async create(req: Request, res: Response) { ... }
+```
+
+### Controller (`*.controller.ts`)
+- Thin HTTP layer only
+- Calls `getAuthContext(req)` for tenant/user
+- Calls service methods
+- Returns `ok()` or `fail()` — never raw `res.json()`
+- No Prisma imports, no business logic
+
+```typescript
+// ✅ GOOD
+async createCategory(req: Request, res: Response) {
+  const { tenantId } = getAuthContext(req);
+  const body = CreateCategorySchema.parse(req.body);
+  const category = await this.service.create(tenantId, body);
+  return ok(res, { category }, 201);
+}
+
+// ❌ BAD — fat controller
+async createCategory(req: Request, res: Response) {
+  if (!req.body.name) return res.status(400).json({ message: "required" });
+  const tenantId = req.user!.tenantId; // use getAuthContext instead
+  const category = await prisma.category.create(...); // use service instead
+  res.status(201).json({ category }); // use ok() instead
+}
+```
+
+### Schema (`*.schema.ts`)
+- Zod schemas for all request bodies
+- No inline validation in controllers (`if (!name)` is forbidden)
+
+```typescript
+export const CreateCategorySchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().optional(),
+});
+export type CreateCategoryDto = z.infer<typeof CreateCategorySchema>;
+```
+
+### Controller Tests (`*.controller.test.ts`)
+- Required for every controller — no exceptions
+- Use **Vitest** (`describe`, `it`, `expect`, `vi`, `beforeEach`)
+- Call controller methods directly as functions — never spin up an HTTP server
+- Always call `vi.clearAllMocks()` in `beforeEach`
+
+**Setup pattern** — mock the service, `getAuthContext`, and `sendControllerError`:
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Request, Response } from "express";
+import categoryController from "./category.controller";
+
+const mockService = { create: vi.fn(), findAll: vi.fn() };
+vi.mock("./category.service", () => ({
+  CategoryService: vi.fn(() => mockService),
+}));
+vi.mock("@/shared/auth/getAuthContext", () => ({
+  getAuthContext: vi.fn().mockReturnValue({ tenantId: "t1", userId: "u1", role: "admin" }),
+}));
+vi.mock("@/utils/controllerError", () => ({
+  sendControllerError: vi.fn(),
+}));
+
+function mockRes(): Partial<Response> {
+  return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
+}
+
+describe("CategoryController", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  describe("createCategory", () => {
+    it("returns 201 with created category on success", async () => {
+      const category = { id: "1", name: "Shoes" };
+      mockService.create.mockResolvedValue(category);
+      const req = { body: { name: "Shoes" } } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await categoryController.createCategory(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({ success: true, data: { category } });
+    });
+
+    it("calls sendControllerError on unexpected error", async () => {
+      const { sendControllerError } = await import("@/utils/controllerError");
+      mockService.create.mockRejectedValue(new Error("DB down"));
+      const req = { body: { name: "Shoes" } } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await categoryController.createCategory(req, res);
+
+      expect(sendControllerError).toHaveBeenCalled();
+    });
+  });
+});
+```
+
+**Required test cases per handler:**
+- Happy path: correct `ok()` status code and response shape
+- Validation error (Zod `parse` failure): `fail()` with 400
+- `AppError` thrown by service: `fail()` with the error's `statusCode`
+- Unexpected error: `sendControllerError` is called
+
+**What NOT to test in controller tests:**
+- Business logic — belongs in `*.service.test.ts`
+- Database queries — belongs in `*.repository.test.ts`
+
+**Anti-patterns:**
+
+```typescript
+// ❌ BAD — never import prisma in a controller test
+import prisma from "@/config/prisma";
+
+// ❌ BAD — never use supertest/HTTP server for unit tests
+import request from "supertest";
+await request(app).post("/categories").send({ name: "Shoes" });
+
+// ❌ BAD — never skip clearAllMocks
+// (missing beforeEach with vi.clearAllMocks() causes test bleed)
+```

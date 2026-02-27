@@ -81,8 +81,8 @@ importers:
         specifier: ^9.0.3
         version: 9.0.3
       libphonenumber-js:
-        specifier: ^1.12.37
-        version: 1.12.37
+        specifier: ^1.12.38
+        version: 1.12.38
       multer:
         specifier: ^2.0.2
         version: 2.0.2
@@ -284,7 +284,7 @@ importers:
         version: 1.4.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       libphonenumber-js:
         specifier: ^1.12.37
-        version: 1.12.37
+        version: 1.12.38
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.0)
@@ -6429,10 +6429,10 @@ packages:
       }
     engines: { node: ">= 0.8.0" }
 
-  libphonenumber-js@1.12.37:
+  libphonenumber-js@1.12.38:
     resolution:
       {
-        integrity: sha512-rDU6bkpuMs8YRt/UpkuYEAsYSoNuDEbrE41I3KNvmXREGH6DGBJ8Wbak4by29wNOQ27zk4g4HL82zf0OGhwRuw==,
+        integrity: sha512-vwzxmasAy9hZigxtqTbFEwp8ZdZ975TiqVDwj5bKx5sR+zi5ucUQy9mbVTkKM9GzqdLdxux/hTw2nmN5J7POMA==,
       }
 
   lie@3.3.0:
@@ -13258,7 +13258,7 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
-  libphonenumber-js@1.12.37: {}
+  libphonenumber-js@1.12.38: {}
 
   lie@3.3.0:
     dependencies:
