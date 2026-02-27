@@ -45,11 +45,11 @@ export function UserLogsPage() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
 
-  const { data: usersData } = useQuery({
+  const { data: usersResult } = useQuery({
     queryKey: ["users", "list"],
     queryFn: () => getAllUsers({ page: 1, limit: 200 }),
   });
-  const users = usersData ?? [];
+  const users = usersResult?.users ?? [];
 
   const { data, isLoading } = useQuery({
     queryKey: [

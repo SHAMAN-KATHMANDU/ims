@@ -1,0 +1,156 @@
+---
+description: Enforces frontend service/hook alignment whenever API response shapes, endpoints, or schemas change
+alwaysApply: true
+---
+
+# Frontend–API Contract
+
+Whenever you change an API endpoint — response shape, request body, URL, HTTP method, status code, or Zod schema — you **must** search the entire frontend for every caller of that service function and fix them all before finishing.
+
+---
+
+## Step 1 — Find Every Frontend Caller
+
+After changing an API service function signature or return type, run a ripgrep search to find **all** usages across the entire frontend — not just the primary view:
+
+```bash
+# Find every file that imports or calls the changed function
+rg "getAllUsers|useUsers" apps/web --include="*.ts" --include="*.tsx" -l
+
+# Or for any function name
+rg "<functionName>" apps/web --include="*.ts" --include="*.tsx" -l
+```
+
+**Do not assume only the primary view uses it.** In this codebase, service functions are called from:
+- `views/<module>/` — primary CRUD views
+- `views/settings/` — audit logs, error reports, user filters
+- `views/analytics/` — filter bars, report dropdowns
+- `views/dashboard/` — widgets and KPI cards
+- Other `views/` that use the data for dropdowns or filters
+
+---
+
+## Step 2 — Fix Every Caller Pattern
+
+### Return type changed (e.g. `User[]` → `UsersResult`)
+
+Every file that destructures the old shape must be updated:
+
+```typescript
+// ❌ BAD — assumes service returns User[] directly
+const { data: users = [] } = useUsers({ limit: 500 });
+const { data: users = [] } = useQuery({ queryFn: () => getAllUsers(...) });
+const users = usersData ?? [];
+
+// ✅ GOOD — extract the array from the new result shape
+const { data: usersResult } = useUsers({ limit: 500 });
+const users = usersResult?.users ?? [];
+
+const { data: usersResult } = useQuery({ queryFn: () => getAllUsers(...) });
+const users = usersResult?.users ?? [];
+```
+
+### Function signature changed (e.g. args removed)
+
+Every call site must match the new signature:
+
+```typescript
+// ❌ BAD — old 3-arg signature
+await changePassword(userId, data.currentPassword, data.newPassword);
+
+// ✅ GOOD — new 2-arg signature
+await changePassword(userId, data.newPassword);
+```
+
+### Response field renamed or restructured
+
+Update every place that reads the old field name:
+
+```typescript
+// ❌ BAD — old field
+const total = users.length;  // was page count, not real total
+
+// ✅ GOOD — use pagination metadata
+const total = usersResult?.pagination?.totalItems ?? 0;
+```
+
+---
+
+## Step 3 — Checklist on Every API Change
+
+### Response shape changed
+- [ ] Update the matching `interface` in `apps/web/services/<name>Service.ts`
+- [ ] Verify the service function reads the correct field (e.g. `response.data.data`, `response.data.user`)
+- [ ] If a paginated endpoint returns `{ data, pagination }`, the service must return both — never discard `pagination`
+- [ ] **Search all frontend files** for callers and update every destructuring pattern
+
+### Request body / Zod schema changed
+- [ ] Update `CreateXxxData` / `UpdateXxxData` interfaces in the service file
+- [ ] Update the matching Zod schema in the frontend form component (`views/<name>/components/XxxForm.tsx`)
+- [ ] Ensure the exported `XxxFormValues` type covers **both** create and update modes (use the looser update schema)
+- [ ] **Search all frontend files** for call sites passing the removed/changed field
+
+### Function signature changed
+- [ ] **Search all frontend files** for every call site and update argument lists
+
+### Endpoint URL or HTTP method changed
+- [ ] Update every `api.get/post/put/delete(...)` call in `apps/web/services/<name>Service.ts`
+
+### New field added to the API response
+- [ ] Add the field to the frontend `interface` so TypeScript catches missing usages
+
+### Field removed from the API response
+- [ ] Remove it from the frontend `interface` and fix any code that referenced it
+
+### New query parameter added
+- [ ] Add it to `GetAllXxxParams` in the service and pass it through in the hook
+
+---
+
+## Step 4 — Verify with Type-Check
+
+After fixing all callers, run the type-checker. **Both must pass with zero errors.**
+
+```bash
+cd apps/web && npx tsc --noEmit
+cd apps/api && npx tsc --noEmit
+```
+
+Do not consider the task complete until both commands exit cleanly.
+
+---
+
+## File Mapping
+
+| API module | Frontend service | Frontend hook | Primary views | Also used in |
+|---|---|---|---|---|
+| `modules/users/` | `services/userService.ts` | `hooks/useUser.ts` | `views/users/` | `views/settings/UserLogsPage.tsx`, `views/settings/ErrorReportsPage.tsx`, `views/settings/index.tsx`, `views/analytics/components/AnalyticsFilterBar.tsx` |
+| `modules/categories/` | `services/categoryService.ts` | `hooks/useCategory.ts` | `views/products/` | `views/analytics/`, `views/sales/` |
+| `modules/products/` | `services/productService.ts` | `hooks/useProduct.ts` | `views/products/` | `views/analytics/`, `views/sales/`, `views/dashboard/` |
+| `modules/auth/` | `services/authService.ts` | `hooks/useAuth.ts` | `views/auth/` | — |
+
+Update the "Also used in" column whenever you discover a new caller.
+
+---
+
+## Real Examples of This Going Wrong
+
+These bugs were introduced by changing `getAllUsers` return type from `User[]` to `UsersResult` without updating all callers:
+
+```typescript
+// views/analytics/components/AnalyticsFilterBar.tsx — BROKE
+const { data: users = [] } = useUsers({ limit: 500 });
+// users was now UsersResult, not User[] — .map() failed at runtime
+
+// views/settings/ErrorReportsPage.tsx — BROKE
+const { data: users = [] } = useQuery({ queryFn: () => getAllUsers(...) });
+
+// views/settings/UserLogsPage.tsx — BROKE
+const users = usersData ?? [];  // usersData was UsersResult, not User[]
+
+// views/settings/index.tsx — BROKE
+await changePassword(userId, data.currentPassword, data.newPassword);
+// changePassword signature was reduced to 2 args — TS error at call site
+```
+
+All four were caught by `tsc --noEmit` — which is why running it after every API change is mandatory.

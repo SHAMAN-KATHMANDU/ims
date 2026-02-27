@@ -24,7 +24,7 @@ export function NewUserPage() {
       try {
         const createData: CreateUserData = {
           username: data.username,
-          password: data.password,
+          password: data.password!,
           role: data.role as UserRoleType,
         };
         await createMutation.mutateAsync(createData);

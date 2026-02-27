@@ -63,10 +63,9 @@ export function UsersPage() {
     setSortOrder(order);
   }, []);
 
-  const { data: users = [], isLoading } = useUsers({
-    sortBy,
-    sortOrder,
-  });
+  const { data: usersResult, isLoading } = useUsers({ sortBy, sortOrder });
+  const users = usersResult?.users ?? [];
+  const totalItems = usersResult?.pagination?.totalItems ?? 0;
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
@@ -92,7 +91,7 @@ export function UsersPage() {
       } else {
         const createData: CreateUserData = {
           username: data.username,
-          password: data.password,
+          password: data.password!,
           role: data.role as UserRoleType,
         };
         await createUserMutation.mutateAsync(createData);
@@ -186,7 +185,7 @@ export function UsersPage() {
         <Card>
           <CardHeader>
             <CardTitle>Users</CardTitle>
-            <CardDescription>Total: {users.length}</CardDescription>
+            <CardDescription>Total: {totalItems}</CardDescription>
           </CardHeader>
           <CardContent>
             {isLoading ? (
