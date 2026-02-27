@@ -1,0 +1,129 @@
+---
+description: Documents the shared/ directory contracts — errors, auth context, types, and response helpers for the API
+globs: apps/api/**/*.ts
+alwaysApply: false
+---
+
+# Shared Utilities (`apps/api/src/shared/`)
+
+The `shared/` directory provides cross-cutting utilities used by all modules. Always import from here — never duplicate these patterns inline.
+
+## Directory Structure
+
+```
+apps/api/src/shared/
+  errors/
+    index.ts          ← AppError, NotFoundError, mapPrismaError()
+  auth/
+    getAuthContext.ts ← single source of auth truth
+  response/
+    index.ts          ← ok(), fail(), ApiResponse<T>
+  types/
+    index.ts          ← AuthContext, AuditAction, AuditResource enums
+```
+
+---
+
+## `shared/auth/getAuthContext.ts`
+
+**Always use `getAuthContext(req)` — never access `req.user!` directly.**
+
+```typescript
+import { getAuthContext } from "@/shared/auth/getAuthContext";
+
+// ✅ GOOD
+async myHandler(req: Request, res: Response) {
+  const { tenantId, userId, role } = getAuthContext(req);
+  // ...
+}
+
+// ❌ BAD — direct req.user access
+const tenantId = req.user!.tenantId;
+const userId = (req as any).user.id;
+```
+
+`AuthContext` shape:
+```typescript
+interface AuthContext {
+  tenantId: string;
+  userId: string;
+  role: "superAdmin" | "admin" | "user";
+}
+```
+
+---
+
+## `shared/errors/index.ts`
+
+```typescript
+// AppError — for known business errors
+throw new AppError("Category already exists", 409);
+throw new AppError("Unauthorized", 401);
+
+// NotFoundError — shorthand for 404
+throw new NotFoundError("Category");
+
+// mapPrismaError() — maps Prisma error codes to HTTP responses
+// P2025 → 404, P2002 → 409, P2003 → 400
+const mapped = mapPrismaError(error);
+
+// sendControllerError() — for catch blocks in controllers
+// Logs + maps Prisma errors + sends generic 500 if unknown
+sendControllerError(req, res, error, "contextMessage");
+```
+
+### ✅ Error handling pattern in controllers
+
+```typescript
+} catch (error) {
+  if (error instanceof AppError) {
+    return fail(res, error.message, error.statusCode);
+  }
+  return sendControllerError(req, res, error, "createCategory");
+}
+```
+
+---
+
+## `shared/types/index.ts`
+
+```typescript
+// Use these enums for audit logging — never hardcode strings
+import { AuditAction, AuditResource } from "@/shared/types";
+
+AuditAction.CREATE   // "CREATE"
+AuditAction.UPDATE   // "UPDATE"
+AuditAction.DELETE   // "DELETE"
+
+AuditResource.CATEGORY  // "CATEGORY"
+AuditResource.PRODUCT   // "PRODUCT"
+// etc.
+```
+
+---
+
+## `shared/response/index.ts`
+
+See `api-response` rule for full details. Quick reference:
+
+```typescript
+import { ok, fail } from "@/shared/response";
+
+return ok(res, data);           // 200
+return ok(res, data, 201);      // 201
+return fail(res, "msg", 400);   // 400
+return fail(res, "msg", 404);   // 404
+```
+
+---
+
+## Import Paths
+
+Use the `@/` alias (maps to `apps/api/src/`):
+
+```typescript
+import { getAuthContext } from "@/shared/auth/getAuthContext";
+import { AppError, NotFoundError, mapPrismaError, sendControllerError } from "@/shared/errors";
+import { ok, fail, ApiResponse } from "@/shared/response";
+import { AuthContext, AuditAction, AuditResource } from "@/shared/types";
+```
