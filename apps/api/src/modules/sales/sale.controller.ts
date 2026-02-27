@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { parseAndValidatePhone } from "@/utils/phone";
 import ExcelJS from "exceljs";
 import fs from "fs";
 import type { ExcelSaleRow } from "./bulkUpload.validation";
@@ -90,7 +91,12 @@ class SaleController {
       let saleType: "GENERAL" | "MEMBER" = "GENERAL";
 
       if (memberPhone) {
-        const normalizedPhone = memberPhone.replace(/[\s-]/g, "").trim();
+        const parsed = parseAndValidatePhone(memberPhone);
+        if (!parsed.valid) {
+          const err = parsed as { valid: false; message: string };
+          return res.status(400).json({ message: err.message });
+        }
+        const normalizedPhone = parsed.e164;
 
         // Find or create member
         member = await prisma.member.findFirst({
@@ -380,11 +386,13 @@ class SaleController {
 
       let saleType: "GENERAL" | "MEMBER" = "GENERAL";
       if (memberPhone) {
-        const normalizedPhone = String(memberPhone)
-          .replace(/[\s-]/g, "")
-          .trim();
+        const parsed = parseAndValidatePhone(memberPhone);
+        if (!parsed.valid) {
+          const err = parsed as { valid: false; message: string };
+          return res.status(400).json({ message: err.message });
+        }
         const member = await prisma.member.findFirst({
-          where: { phone: normalizedPhone },
+          where: { phone: parsed.e164 },
           select: { id: true, isActive: true },
         });
         if (member?.isActive) saleType = "MEMBER";

@@ -1,5 +1,6 @@
 import ExcelJS from "exceljs";
 import prisma from "@/config/prisma";
+import { parseAndValidatePhone } from "@/utils/phone";
 import type { ExcelSaleRow } from "./bulkUpload.validation";
 import type { ValidationError } from "@/utils/bulkParse";
 
@@ -178,16 +179,19 @@ export async function processSaleBulkRows(
       let saleType: "GENERAL" | "MEMBER" = "GENERAL";
       const phoneVal = firstRow.phone;
       if (phoneVal && phoneVal.length > 0) {
-        let member = await prisma.member.findFirst({
-          where: { phone: phoneVal },
-        });
-        if (!member) {
-          member = await prisma.member.create({
-            data: { tenantId, phone: phoneVal },
+        const parsed = parseAndValidatePhone(phoneVal);
+        if (parsed.valid) {
+          let member = await prisma.member.findFirst({
+            where: { phone: parsed.e164 },
           });
+          if (!member) {
+            member = await prisma.member.create({
+              data: { tenantId, phone: parsed.e164 },
+            });
+          }
+          memberId = member.id;
+          saleType = "MEMBER";
         }
-        memberId = member.id;
-        saleType = "MEMBER";
       }
 
       const saleItems: Array<{

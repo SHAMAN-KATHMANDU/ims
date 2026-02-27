@@ -109,7 +109,7 @@ const navSections: NavSection[] = [
     items: [
       {
         path: "crm",
-        label: "Dashboard",
+        label: "Overview",
         icon: LayoutDashboard,
         roles: ["user", "admin", "superAdmin"],
       },

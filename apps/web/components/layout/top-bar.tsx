@@ -31,11 +31,14 @@ import { useIsMobile } from "@/hooks/useMobile";
 import {
   useNotifications,
   useUnreadNotificationCount,
+  useDeleteAllNotifications,
 } from "@/hooks/useNotifications";
+import { Trash2 } from "lucide-react";
 
 function NotificationsBell({ basePath }: { basePath: string }) {
   const { data: countData } = useUnreadNotificationCount();
   const { data: notifData } = useNotifications({ limit: 5, unreadOnly: false });
+  const deleteAll = useDeleteAllNotifications();
   const unreadCount = countData?.count ?? 0;
   const notifications = notifData?.notifications ?? [];
 
@@ -57,13 +60,27 @@ function NotificationsBell({ basePath }: { basePath: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        <div className="flex items-center justify-between px-2 py-1.5">
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
           <span className="font-semibold">Notifications</span>
-          <Link href={`${basePath}/crm/notifications`}>
-            <Button variant="ghost" size="sm" className="h-auto py-1 text-xs">
-              View all
-            </Button>
-          </Link>
+          <div className="flex items-center gap-1">
+            {notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto py-1 text-xs"
+                onClick={() => deleteAll.mutate()}
+                disabled={deleteAll.isPending}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Clear all
+              </Button>
+            )}
+            <Link href={`${basePath}/crm/notifications`}>
+              <Button variant="ghost" size="sm" className="h-auto py-1 text-xs">
+                View all
+              </Button>
+            </Link>
+          </div>
         </div>
         <DropdownMenuSeparator />
         {notifications.length === 0 ? (

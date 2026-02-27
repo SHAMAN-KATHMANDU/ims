@@ -47,6 +47,6 @@ infra/terraform.tfvars
 !infra/terraform.tfvars.example
 
 
-.cursor/
+.cursor/plans/*
 apps/web/test-results/
 scripts/docker-push-staging.sh

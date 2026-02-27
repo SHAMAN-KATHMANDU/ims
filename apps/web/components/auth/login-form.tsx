@@ -59,7 +59,14 @@ export default function LoginForm({ tenantSlug }: { tenantSlug: string }) {
         tenantSlug: slug,
       });
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : "Login failed");
+      const message = error instanceof Error ? error.message : "Login failed";
+      // 404 on login usually means wrong org URL; show a clearer message
+      const isGenericNotFound = message === "The requested item was not found.";
+      setSubmitError(
+        isGenericNotFound
+          ? "Organization not found. Please use your organization's login link (e.g. yourapp.com/yourorg/login)."
+          : message,
+      );
     }
   };
 

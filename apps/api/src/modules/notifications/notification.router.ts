@@ -20,5 +20,6 @@ notificationRouter.post(
   "/read-all",
   asyncHandler(notificationController.markAllRead),
 );
+notificationRouter.delete("/", asyncHandler(notificationController.deleteAll));
 
 export default notificationRouter;

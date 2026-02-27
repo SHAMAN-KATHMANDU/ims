@@ -27,7 +27,7 @@ export function CrmDashboardPage() {
   if (isLoading || !d) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold">CRM Dashboard</h1>
+        <h1 className="text-3xl font-bold">CRM Overview</h1>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-32" />
@@ -40,7 +40,7 @@ export function CrmDashboardPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">CRM Dashboard</h1>
+        <h1 className="text-3xl font-bold">CRM Overview</h1>
         <p className="text-muted-foreground mt-1">
           Sales overview and key metrics
         </p>

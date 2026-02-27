@@ -80,6 +80,9 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.3
         version: 9.0.3
+      libphonenumber-js:
+        specifier: ^1.12.38
+        version: 1.12.38
       multer:
         specifier: ^2.0.2
         version: 2.0.2
@@ -279,6 +282,9 @@ importers:
       input-otp:
         specifier: 1.4.1
         version: 1.4.1(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      libphonenumber-js:
+        specifier: ^1.12.37
+        version: 1.12.38
       lucide-react:
         specifier: ^0.562.0
         version: 0.562.0(react@19.2.0)
@@ -6422,6 +6428,12 @@ packages:
         integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==,
       }
     engines: { node: ">= 0.8.0" }
+
+  libphonenumber-js@1.12.38:
+    resolution:
+      {
+        integrity: sha512-vwzxmasAy9hZigxtqTbFEwp8ZdZ975TiqVDwj5bKx5sR+zi5ucUQy9mbVTkKM9GzqdLdxux/hTw2nmN5J7POMA==,
+      }
 
   lie@3.3.0:
     resolution:
@@ -13245,6 +13257,8 @@ snapshots:
     dependencies:
       prelude-ls: 1.2.1
       type-check: 0.4.0
+
+  libphonenumber-js@1.12.38: {}
 
   lie@3.3.0:
     dependencies:

@@ -29,7 +29,6 @@
   "license": "ISC",
   "dependencies": {
     "@prisma/client": "^5.22.0",
-    "prisma": "^5.22.0",
     "@repo/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
@@ -38,8 +37,10 @@
     "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
+    "libphonenumber-js": "^1.12.38",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
+    "prisma": "^5.22.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
     "tsconfig-paths": "^4.2.0",
