@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Dialog,
   DialogContent,
@@ -96,12 +97,13 @@ export function VendorForm({
       </div>
       <div className="space-y-2">
         <label className="text-sm font-medium">Phone</label>
-        <Input
+        <PhoneInput
           value={formData.phone ?? ""}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, phone: e.target.value }))
+          onChange={(phone) =>
+            setFormData((prev) => ({ ...prev, phone: phone || "" }))
           }
-          placeholder="Contact number"
+          placeholder="e.g. 9841234567"
+          numberInputId="vendor-phone"
         />
       </div>
       <div className="space-y-2">

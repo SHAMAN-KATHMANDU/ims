@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
-import { z } from "zod";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckMember } from "@/hooks/useMember";
 import { useToast } from "@/hooks/useToast";
@@ -11,7 +10,6 @@ import {
 } from "@/services/inventoryService";
 import api from "@/lib/axios";
 import { type Location } from "@/services/locationService";
-import { cn } from "@/lib/utils";
 import {
   type CreateSaleData,
   type SalePreviewResponse,
@@ -45,21 +43,10 @@ import {
   Minus,
   Trash2,
   Search,
-  User,
   ShoppingCart,
   Loader2,
 } from "lucide-react";
-
-// Zod schema for phone validation
-const phoneSchema = z
-  .string()
-  .optional()
-  .refine((val) => !val || /^\d+$/.test(val), {
-    message: "Phone number must contain only digits",
-  })
-  .refine((val) => !val || val.length >= 10, {
-    message: "Phone number must be at least 10 digits",
-  });
+import { PhoneInput } from "@/components/ui/phone-input";
 
 interface ProductDiscount {
   id: string;
@@ -157,7 +144,6 @@ export function NewSaleForm({
   // Form state
   const [locationId, setLocationId] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
-  const [phoneError, setPhoneError] = useState<string | null>(null);
   const [memberName, setMemberName] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SaleItem[]>([]);
@@ -585,21 +571,7 @@ export function NewSaleForm({
 
     if (!locationId || items.length === 0) return;
 
-    // Validate phone number if provided
-    if (memberPhone.trim()) {
-      const result = phoneSchema.safeParse(memberPhone.trim());
-      if (!result.success) {
-        setPhoneError(
-          result.error.errors[0]?.message || "Invalid phone number",
-        );
-        toast({
-          title: "Validation Error",
-          description: "Please enter a valid phone number",
-          variant: "destructive",
-        });
-        return;
-      }
-    }
+    const submittedPhone = memberPhone.trim() || undefined;
 
     if (
       !isCreditSale &&
@@ -616,7 +588,7 @@ export function NewSaleForm({
 
     await onSubmit({
       locationId,
-      memberPhone: memberPhone.trim() || undefined,
+      memberPhone: submittedPhone,
       memberName: memberName.trim() || undefined,
       items: items.map((item) => ({
         variationId: item.variationId,
@@ -636,7 +608,6 @@ export function NewSaleForm({
     // Reset form
     setLocationId("");
     setMemberPhone("");
-    setPhoneError(null);
     setMemberName("");
     setNotes("");
     setItems([]);
@@ -660,7 +631,6 @@ export function NewSaleForm({
       completeSaleClickedRef.current = false;
       setLocationId("");
       setMemberPhone("");
-      setPhoneError(null);
       setMemberName("");
       setNotes("");
       setItems([]);
@@ -744,38 +714,18 @@ export function NewSaleForm({
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-2">
+                    <div className="space-y-2 -ml-4">
                       <Label className="text-xs font-medium text-muted-foreground">
                         Customer Phone
                       </Label>
-                      <div className="relative">
-                        <User className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          type="tel"
-                          value={memberPhone}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setMemberPhone(v);
-                            if (v.trim()) {
-                              const r = phoneSchema.safeParse(v.trim());
-                              setPhoneError(
-                                r.success
-                                  ? null
-                                  : (r.error.errors[0]?.message ?? "Invalid"),
-                              );
-                            } else setPhoneError(null);
-                          }}
-                          placeholder="9800000000"
-                          className={cn(
-                            "pl-9 bg-surface border-border/50",
-                            phoneError && "border-destructive",
-                          )}
-                        />
-                      </div>
-                      {phoneError && (
-                        <p className="text-xs text-destructive">{phoneError}</p>
-                      )}
-                      {memberPhone && !phoneError && (
+                      <PhoneInput
+                        value={memberPhone}
+                        onChange={setMemberPhone}
+                        numberInputId="customer-phone"
+                        placeholder="e.g. 9800000000"
+                        className="[&_input]:bg-surface [&_input]:border-border/50"
+                      />
+                      {memberPhone && (
                         <div className="flex items-center gap-2 flex-wrap mt-2">
                           {checkingMember ? (
                             <span className="text-xs text-muted-foreground">

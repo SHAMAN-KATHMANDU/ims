@@ -6,6 +6,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
   SelectContent,
@@ -70,7 +71,7 @@ export function ContactForm({
           firstName: values.firstName,
           lastName: values.lastName || undefined,
           email: values.email || undefined,
-          phone: values.phone || undefined,
+          phone: values.phone?.trim() || undefined,
           companyId: values.companyId || undefined,
           memberId: values.memberId || undefined,
           tagIds: values.tagIds,
@@ -111,8 +112,14 @@ export function ContactForm({
         />
       </div>
       <div>
-        <Label htmlFor="phone">Phone</Label>
-        <Input id="phone" {...form.register("phone")} className="mt-1" />
+        <Label htmlFor="contact-phone">Phone</Label>
+        <PhoneInput
+          value={form.watch("phone") ?? ""}
+          onChange={(e164) => form.setValue("phone", e164 || undefined)}
+          placeholder="e.g. 9841234567"
+          numberInputId="contact-phone"
+          className="mt-1"
+        />
       </div>
       <div>
         <Label>Company</Label>

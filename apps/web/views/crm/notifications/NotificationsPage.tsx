@@ -4,15 +4,17 @@ import {
   useNotifications,
   useMarkNotificationRead,
   useMarkAllNotificationsRead,
+  useDeleteAllNotifications,
 } from "@/hooks/useNotifications";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bell, CheckCheck } from "lucide-react";
+import { Bell, CheckCheck, Trash2 } from "lucide-react";
 
 export function NotificationsPage() {
   const { data, isLoading } = useNotifications({ limit: 50 });
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
+  const deleteAll = useDeleteAllNotifications();
 
   const notifications = data?.notifications ?? [];
 
@@ -29,16 +31,31 @@ export function NotificationsPage() {
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">Notifications</h1>
-        {notifications.some((n) => !n.readAt) && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => markAllRead.mutate()}
-            disabled={markAllRead.isPending}
-          >
-            <CheckCheck className="h-4 w-4 mr-2" />
-            Mark all as read
-          </Button>
+        {(notifications.length > 0 || notifications.some((n) => !n.readAt)) && (
+          <div className="flex items-center gap-2">
+            {notifications.some((n) => !n.readAt) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => markAllRead.mutate()}
+                disabled={markAllRead.isPending}
+              >
+                <CheckCheck className="h-4 w-4 mr-2" />
+                Mark all as read
+              </Button>
+            )}
+            {notifications.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => deleteAll.mutate()}
+                disabled={deleteAll.isPending}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear all
+              </Button>
+            )}
+          </div>
         )}
       </div>
 

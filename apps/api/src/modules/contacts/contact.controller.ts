@@ -5,6 +5,7 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
+import { normalizePhoneOptional } from "@/utils/phone";
 import ExcelJS from "exceljs";
 import csvParser from "csv-parser";
 import fs from "fs";
@@ -28,13 +29,25 @@ class ContactController {
         return res.status(400).json({ message: "First name is required" });
       }
 
+      let phoneNormalized: string | null = null;
+      if (phone != null && String(phone).trim()) {
+        try {
+          phoneNormalized = normalizePhoneOptional(phone);
+        } catch (err: unknown) {
+          return res.status(400).json({
+            message:
+              err instanceof Error ? err.message : "Invalid phone number",
+          });
+        }
+      }
+
       const contact = await prisma.contact.create({
         data: {
           tenantId,
           firstName: firstName.trim(),
           lastName: lastName?.trim() || null,
           email: email?.trim() || null,
-          phone: phone?.trim() || null,
+          phone: phoneNormalized,
           companyId: companyId || null,
           memberId: memberId || null,
           ownedById: userId,
@@ -211,6 +224,22 @@ class ContactController {
         return res.status(404).json({ message: "Contact not found" });
       }
 
+      let phoneNormalized: string | null | undefined = undefined;
+      if (phone !== undefined) {
+        if (phone == null || String(phone).trim() === "") {
+          phoneNormalized = null;
+        } else {
+          try {
+            phoneNormalized = normalizePhoneOptional(phone);
+          } catch (err: unknown) {
+            return res.status(400).json({
+              message:
+                err instanceof Error ? err.message : "Invalid phone number",
+            });
+          }
+        }
+      }
+
       await prisma.$transaction(async (tx) => {
         const updateData: Record<string, unknown> = {
           ...(firstName !== undefined && {
@@ -218,7 +247,7 @@ class ContactController {
           }),
           ...(lastName !== undefined && { lastName: lastName?.trim() || null }),
           ...(email !== undefined && { email: email?.trim() || null }),
-          ...(phone !== undefined && { phone: phone?.trim() || null }),
+          ...(phoneNormalized !== undefined && { phone: phoneNormalized }),
           ...(companyId !== undefined && { companyId: companyId || null }),
           ...(memberId !== undefined && { memberId: memberId || null }),
         };
@@ -554,13 +583,21 @@ class ContactController {
           companyId = company.id;
         }
 
+        let phoneVal: string | null = null;
+        if (row.phone?.trim()) {
+          try {
+            phoneVal = normalizePhoneOptional(row.phone);
+          } catch {
+            // Invalid phone in CSV: store null for this contact
+          }
+        }
         await prisma.contact.create({
           data: {
             tenantId,
             firstName: row.firstName,
             lastName: row.lastName || null,
             email: row.email || null,
-            phone: row.phone || null,
+            phone: phoneVal,
             companyId,
             ownedById: userId,
             createdById: userId,
