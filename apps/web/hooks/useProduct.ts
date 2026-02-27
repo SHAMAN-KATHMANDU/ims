@@ -92,7 +92,8 @@ export const productKeys = {
 export const categoryKeys = {
   all: ["categories"] as const,
   lists: () => [...categoryKeys.all, "list"] as const,
-  list: (filters: string) => [...categoryKeys.lists(), { filters }] as const,
+  list: (params: CategoryListParams) =>
+    [...categoryKeys.lists(), params] as const,
   details: () => [...categoryKeys.all, "detail"] as const,
   detail: (id: string) => [...categoryKeys.details(), id] as const,
 };
@@ -317,9 +318,17 @@ export function useBulkUploadProducts() {
 // ============================================
 
 export function useCategoriesPaginated(params: CategoryListParams = {}) {
+  const normalizedParams: CategoryListParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    search: params.search?.trim() || "",
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
+  };
+
   return useQuery({
-    queryKey: categoryKeys.list(JSON.stringify(params)),
-    queryFn: () => getCategories(params),
+    queryKey: categoryKeys.list(normalizedParams),
+    queryFn: () => getCategories(normalizedParams),
     placeholderData: (prev) => prev,
   });
 }
@@ -452,6 +461,7 @@ export function useDeleteSubcategory() {
       queryClient.invalidateQueries({
         queryKey: categoryKeys.detail(`${variables.categoryId}-subcategories`),
       });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
     },
   });
 }
@@ -462,7 +472,7 @@ export function useCreateCategory() {
   return useMutation({
     mutationFn: (data: CreateCategoryData) => createCategory(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: categoryKeys.all });
     },
   });
 }

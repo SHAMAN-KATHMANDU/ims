@@ -58,27 +58,38 @@ async create(req: Request, res: Response) { ... }
 
 ### Controller (`*.controller.ts`)
 - Thin HTTP layer only
-- Calls `getAuthContext(req)` for tenant/user
+- Uses `req.user!.tenantId` for tenant context
 - Calls service methods
-- Returns `ok()` or `fail()` — never raw `res.json()`
+- Returns `res.status().json()` responses
 - No Prisma imports, no business logic
+- **All methods must be arrow function class fields** — regular `async` methods lose `this` when passed as callbacks to `asyncHandler`
 
 ```typescript
-// ✅ GOOD
-async createCategory(req: Request, res: Response) {
-  const { tenantId } = getAuthContext(req);
-  const body = CreateCategorySchema.parse(req.body);
-  const category = await this.service.create(tenantId, body);
-  return ok(res, { category }, 201);
+// ✅ GOOD — arrow function field preserves `this` when passed to asyncHandler
+class CategoryController {
+  constructor(private service: CategoryService) {}
+
+  createCategory = async (req: Request, res: Response) => {
+    const tenantId = req.user!.tenantId;
+    const body = CreateCategorySchema.parse(req.body);
+    const category = await this.service.create(tenantId, body);
+    return res.status(201).json({ message: "Category created successfully", category });
+  };
+}
+
+// ❌ BAD — regular method loses `this` when Express calls it as a callback
+class CategoryController {
+  async createCategory(req: Request, res: Response) {
+    // `this` is undefined here — throws "Cannot read properties of undefined"
+    const category = await this.service.create(...);
+  }
 }
 
 // ❌ BAD — fat controller
-async createCategory(req: Request, res: Response) {
+createCategory = async (req: Request, res: Response) => {
   if (!req.body.name) return res.status(400).json({ message: "required" });
-  const tenantId = req.user!.tenantId; // use getAuthContext instead
   const category = await prisma.category.create(...); // use service instead
-  res.status(201).json({ category }); // use ok() instead
-}
+};
 ```
 
 ### Schema (`*.schema.ts`)
@@ -99,26 +110,45 @@ export type CreateCategoryDto = z.infer<typeof CreateCategorySchema>;
 - Call controller methods directly as functions — never spin up an HTTP server
 - Always call `vi.clearAllMocks()` in `beforeEach`
 
-**Setup pattern** — mock the service, `getAuthContext`, and `sendControllerError`:
+**Setup pattern** — declare `vi.mock` at the top level (hoisted by Vitest), then import the mocked default to get a reference to the mock functions:
 
 ```typescript
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response } from "express";
-import categoryController from "./category.controller";
 
-const mockService = { create: vi.fn(), findAll: vi.fn() };
+// vi.mock is hoisted — must NOT reference outer variables inside the factory
 vi.mock("./category.service", () => ({
-  CategoryService: vi.fn(() => mockService),
-}));
-vi.mock("@/shared/auth/getAuthContext", () => ({
-  getAuthContext: vi.fn().mockReturnValue({ tenantId: "t1", userId: "u1", role: "admin" }),
+  CategoryService: vi.fn(),
+  default: {
+    create: vi.fn(),
+    findAll: vi.fn(),
+    // ... all methods
+  },
 }));
 vi.mock("@/utils/controllerError", () => ({
   sendControllerError: vi.fn(),
 }));
+vi.mock("@/config/prisma", () => ({ default: {} }));
+
+// Import AFTER vi.mock declarations
+import categoryController from "./category.controller";
+import * as categoryServiceModule from "./category.service";
+import { sendControllerError } from "@/utils/controllerError";
+
+const mockService = categoryServiceModule.default as Record<string, ReturnType<typeof vi.fn>>;
 
 function mockRes(): Partial<Response> {
   return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
+}
+
+function makeReq(overrides: Partial<Request> = {}): Request {
+  return {
+    user: { id: "u1", tenantId: "t1", role: "admin", tenantSlug: "acme" },
+    params: {},
+    body: {},
+    query: {},
+    ...overrides,
+  } as unknown as Request;
 }
 
 describe("CategoryController", () => {
@@ -130,19 +160,18 @@ describe("CategoryController", () => {
     it("returns 201 with created category on success", async () => {
       const category = { id: "1", name: "Shoes" };
       mockService.create.mockResolvedValue(category);
-      const req = { body: { name: "Shoes" } } as unknown as Request;
+      const req = makeReq({ body: { name: "Shoes" } });
       const res = mockRes() as Response;
 
       await categoryController.createCategory(req, res);
 
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith({ success: true, data: { category } });
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ category }));
     });
 
     it("calls sendControllerError on unexpected error", async () => {
-      const { sendControllerError } = await import("@/utils/controllerError");
       mockService.create.mockRejectedValue(new Error("DB down"));
-      const req = { body: { name: "Shoes" } } as unknown as Request;
+      const req = makeReq({ body: { name: "Shoes" } });
       const res = mockRes() as Response;
 
       await categoryController.createCategory(req, res);
@@ -154,9 +183,9 @@ describe("CategoryController", () => {
 ```
 
 **Required test cases per handler:**
-- Happy path: correct `ok()` status code and response shape
-- Validation error (Zod `parse` failure): `fail()` with 400
-- `AppError` thrown by service: `fail()` with the error's `statusCode`
+- Happy path: correct status code and response shape
+- Validation error (Zod `parse` failure): 400 with message
+- `AppError` thrown by service: matching `statusCode` from the error
 - Unexpected error: `sendControllerError` is called
 
 **What NOT to test in controller tests:**
