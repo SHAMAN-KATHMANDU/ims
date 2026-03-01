@@ -4,6 +4,11 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  minimatch@<3.1.3: 3.1.3
+  minimatch@>=5.0.0 <5.1.7: 5.1.7
+  serialize-javascript: 7.0.3
+
 importers:
   .:
     dependencies:
@@ -12,7 +17,7 @@ importers:
         version: 5.22.0(prisma@5.22.0)
       "@vercel/analytics":
         specifier: 1.3.1
-        version: 1.3.1(next@16.1.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
+        version: 1.3.1(next@16.1.6(@playwright/test@1.58.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
       prisma:
         specifier: ^5.20.0
         version: 5.22.0
@@ -254,7 +259,7 @@ importers:
         version: 5.90.16(react@19.2.0)
       "@vercel/analytics":
         specifier: 1.3.1
-        version: 1.3.1(next@16.1.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
+        version: 1.3.1(next@16.1.6(@playwright/test@1.58.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)
       axios:
         specifier: ^1.13.5
         version: 1.13.5
@@ -293,7 +298,7 @@ importers:
         version: 3.7.2
       next:
         specifier: 16.1.6
-        version: 16.1.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+        version: 16.1.6(@playwright/test@1.58.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       next-themes:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -346,6 +351,9 @@ importers:
         specifier: ^5.0.10
         version: 5.0.10(@types/react@19.2.2)(react@19.2.0)(use-sync-external-store@1.6.0(react@19.2.0))
     devDependencies:
+      "@playwright/test":
+        specifier: ^1.50.0
+        version: 1.58.2
       "@repo/eslint-config":
         specifier: workspace:*
         version: link:../../packages/eslint-config
@@ -1511,6 +1519,14 @@ packages:
         integrity: sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg==,
       }
     engines: { node: ">= 8" }
+
+  "@playwright/test@1.58.2":
+    resolution:
+      {
+        integrity: sha512-akea+6bHYBBfA9uQqSYmlJXn61cTa+jbO87xVLCWbTqbWadRVmhxlXATaOjOgcBaWU4ePo0wB41KMFv3o35IXA==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
 
   "@plotly/d3-sankey-circular@0.33.1":
     resolution:
@@ -5417,6 +5433,14 @@ packages:
         integrity: sha512-OO0pH2lK6a0hZnAdau5ItzHPI6pUlvI7jMVnxUQRtw4owF2wk8lOSabtGDCTP4Ggrg2MbGnWO9X8K1t4+fGMDw==,
       }
 
+  fsevents@2.3.2:
+    resolution:
+      {
+        integrity: sha512-xiqMQR4xAeHTuB9uWm+fFRcIOgKBMiOBP+eXiyT7jsgVCq1bkVygt00oASowB7EdtpOHaaPgKt812P9ab+DDKA==,
+      }
+    engines: { node: ^8.16.0 || ^10.6.0 || >=11.0.0 }
+    os: [darwin]
+
   fsevents@2.3.3:
     resolution:
       {
@@ -6917,16 +6941,16 @@ packages:
       }
     engines: { node: ">=18" }
 
-  minimatch@3.1.2:
+  minimatch@3.1.3:
     resolution:
       {
-        integrity: sha512-J7p63hRiAjw1NDEww1W7i37+ByIrOWO5XQQAzZ3VOcL0PNybwpfmV/N05zFAzwQ9USyEcX6t3UO+K5aqBQOIHw==,
+        integrity: sha512-M2GCs7Vk83NxkUyQV1bkABc4yxgz9kILhHImZiBPAZ9ybuvCb0/H7lEl5XvIg3g+9d4eNotkZA5IWwYl0tibaA==,
       }
 
-  minimatch@5.1.6:
+  minimatch@5.1.7:
     resolution:
       {
-        integrity: sha512-lKwV/1brpG6mBUFHtb7NUmtABCb2WZZmm2wNiOA5hAb8VdCS4B3dtMWyvcoViccwAW/COERjXLt0zP1zXUN26g==,
+        integrity: sha512-FjiwU9HaHW6YB3H4a1sFudnv93lvydNjz2lmyUXR6IwKhGI+bgL3SOZrBGn6kvvX2pJvhEkGSGjyTHN47O4rqA==,
       }
     engines: { node: ">=10" }
 
@@ -7405,6 +7429,22 @@ packages:
     engines: { node: ">=0.10" }
     hasBin: true
 
+  playwright-core@1.58.2:
+    resolution:
+      {
+        integrity: sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
+
+  playwright@1.58.2:
+    resolution:
+      {
+        integrity: sha512-vA30H8Nvkq/cPBnNw4Q8TWz1EJyqgpuinBcHET0YVJVFldr8JDNiU9LaWAE1KqSkRYazuaBhTpB5ZzShOezQ6A==,
+      }
+    engines: { node: ">=18" }
+    hasBin: true
+
   plimit-lit@1.6.1:
     resolution:
       {
@@ -7620,12 +7660,6 @@ packages:
     resolution:
       {
         integrity: sha512-Sq4CW4QhwOHE8ucn6J34MqtZCeWFP2aQSmrlroYgqAV1PjStIhJXxYuTgUIfkEk7zTLjmIjLmU5q+fbD1NnOJA==,
-      }
-
-  randombytes@2.1.0:
-    resolution:
-      {
-        integrity: sha512-vYl3iOX+4CKUWuxGi9Ukhie6fsqXqS9FE2Zaic4tNFD2N2QQaXOMFbuKK4QmDHC0JO6B1Zp41J0LpT0oR68amQ==,
       }
 
   range-parser@1.2.1:
@@ -8079,11 +8113,12 @@ packages:
       }
     engines: { node: ">= 18" }
 
-  serialize-javascript@6.0.2:
+  serialize-javascript@7.0.3:
     resolution:
       {
-        integrity: sha512-Saa1xPByTTq2gdeFZYLLo+RFE35NHZkAbqZeWNd3BpzppeVisAqpDjcp8dyf6uIvEqJRd46jemmyA4iFIeVk8g==,
+        integrity: sha512-h+cZ/XXarqDgCjo+YSyQU/ulDEESGGf8AMK9pPNmhNSl/FzPl6L8pMp1leca5z6NuG6tvV/auC8/43tmovowww==,
       }
+    engines: { node: ">=20.0.0" }
 
   serve-static@2.2.1:
     resolution:
@@ -9675,7 +9710,7 @@ snapshots:
     dependencies:
       "@eslint/object-schema": 2.1.7
       debug: 4.4.3(supports-color@5.5.0)
-      minimatch: 3.1.2
+      minimatch: 3.1.3
     transitivePeerDependencies:
       - supports-color
 
@@ -9696,7 +9731,7 @@ snapshots:
       ignore: 5.3.2
       import-fresh: 3.3.1
       js-yaml: 4.1.0
-      minimatch: 3.1.2
+      minimatch: 3.1.3
       strip-json-comments: 3.1.1
     transitivePeerDependencies:
       - supports-color
@@ -9979,6 +10014,10 @@ snapshots:
     dependencies:
       "@nodelib/fs.scandir": 2.1.5
       fastq: 1.19.1
+
+  "@playwright/test@1.58.2":
+    dependencies:
+      playwright: 1.58.2
 
   "@plotly/d3-sankey-circular@0.33.1":
     dependencies:
@@ -11203,11 +11242,11 @@ snapshots:
       "@typescript-eslint/types": 8.50.0
       eslint-visitor-keys: 4.2.1
 
-  "@vercel/analytics@1.3.1(next@16.1.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)":
+  "@vercel/analytics@1.3.1(next@16.1.6(@playwright/test@1.58.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0))(react@19.2.0)":
     dependencies:
       server-only: 0.0.1
     optionalDependencies:
-      next: 16.1.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
+      next: 16.1.6(@playwright/test@1.58.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react: 19.2.0
 
   "@vitest/expect@4.0.18":
@@ -12375,7 +12414,7 @@ snapshots:
       estraverse: 5.3.0
       hasown: 2.0.2
       jsx-ast-utils: 3.3.5
-      minimatch: 3.1.2
+      minimatch: 3.1.3
       object.entries: 1.1.9
       object.fromentries: 2.0.8
       object.values: 1.2.1
@@ -12438,7 +12477,7 @@ snapshots:
       is-glob: 4.0.3
       json-stable-stringify-without-jsonify: 1.0.1
       lodash.merge: 4.6.2
-      minimatch: 3.1.2
+      minimatch: 3.1.3
       natural-compare: 1.4.0
       optionator: 0.9.4
     optionalDependencies:
@@ -12659,6 +12698,9 @@ snapshots:
 
   fs.realpath@1.0.0: {}
 
+  fsevents@2.3.2:
+    optional: true
+
   fsevents@2.3.3:
     optional: true
 
@@ -12779,7 +12821,7 @@ snapshots:
       fs.realpath: 1.0.0
       inflight: 1.0.6
       inherits: 2.0.4
-      minimatch: 3.1.2
+      minimatch: 3.1.3
       once: 1.4.0
       path-is-absolute: 1.0.1
 
@@ -12788,7 +12830,7 @@ snapshots:
       fs.realpath: 1.0.0
       inflight: 1.0.6
       inherits: 2.0.4
-      minimatch: 3.1.2
+      minimatch: 3.1.3
       once: 1.4.0
       path-is-absolute: 1.0.1
 
@@ -13515,11 +13557,11 @@ snapshots:
 
   mimic-function@5.0.1: {}
 
-  minimatch@3.1.2:
+  minimatch@3.1.3:
     dependencies:
       brace-expansion: 1.1.12
 
-  minimatch@5.1.6:
+  minimatch@5.1.7:
     dependencies:
       brace-expansion: 2.0.2
 
@@ -13596,7 +13638,7 @@ snapshots:
 
   next-tick@1.1.0: {}
 
-  next@16.1.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
+  next@16.1.6(@playwright/test@1.58.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0):
     dependencies:
       "@next/env": 16.1.6
       "@swc/helpers": 0.5.15
@@ -13615,6 +13657,7 @@ snapshots:
       "@next/swc-linux-x64-musl": 16.1.6
       "@next/swc-win32-arm64-msvc": 16.1.6
       "@next/swc-win32-x64-msvc": 16.1.6
+      "@playwright/test": 1.58.2
       sharp: 0.34.5
     transitivePeerDependencies:
       - "@babel/core"
@@ -13629,7 +13672,7 @@ snapshots:
       chokidar: 3.6.0
       debug: 4.4.3(supports-color@5.5.0)
       ignore-by-default: 1.0.1
-      minimatch: 3.1.2
+      minimatch: 3.1.3
       pstree.remy: 1.1.8
       semver: 7.7.3
       simple-update-notifier: 2.0.0
@@ -13783,6 +13826,14 @@ snapshots:
   picomatch@4.0.3: {}
 
   pidtree@0.6.0: {}
+
+  playwright-core@1.58.2: {}
+
+  playwright@1.58.2:
+    dependencies:
+      playwright-core: 1.58.2
+    optionalDependencies:
+      fsevents: 2.3.2
 
   plimit-lit@1.6.1:
     dependencies:
@@ -13953,10 +14004,6 @@ snapshots:
     dependencies:
       performance-now: 2.1.0
 
-  randombytes@2.1.0:
-    dependencies:
-      safe-buffer: 5.2.1
-
   range-parser@1.2.1: {}
 
   raw-body@3.0.2:
@@ -14080,7 +14127,7 @@ snapshots:
 
   readdir-glob@1.1.3:
     dependencies:
-      minimatch: 5.1.6
+      minimatch: 5.1.7
 
   readdirp@3.6.0:
     dependencies:
@@ -14328,9 +14375,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  serialize-javascript@6.0.2:
-    dependencies:
-      randombytes: 2.1.0
+  serialize-javascript@7.0.3: {}
 
   serve-static@2.2.1:
     dependencies:
@@ -14687,7 +14732,7 @@ snapshots:
       "@jridgewell/trace-mapping": 0.3.31
       jest-worker: 27.5.1
       schema-utils: 4.3.3
-      serialize-javascript: 6.0.2
+      serialize-javascript: 7.0.3
       terser: 5.46.0
       webpack: 5.104.1
 
