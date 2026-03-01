@@ -1,7 +1,6 @@
 import type React from "react";
 import type { Metadata } from "next";
 import { DM_Sans, Space_Mono } from "next/font/google";
-import { Analytics } from "@vercel/analytics/next";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryClientProvider } from "@/components/providers/query-client-provider";
 import { Toaster } from "@/components/ui/toaster";
@@ -74,7 +73,6 @@ export default function RootLayout({
           <QueryClientProvider>{children}</QueryClientProvider>
           <Toaster />
         </ThemeProvider>
-        <Analytics />
       </body>
     </html>
   );
