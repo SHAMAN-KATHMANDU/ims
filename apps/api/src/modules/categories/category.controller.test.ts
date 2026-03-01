@@ -25,7 +25,7 @@ import categoryController from "./category.controller";
 import * as categoryServiceModule from "./category.service";
 import { sendControllerError } from "@/utils/controllerError";
 
-const mockService = categoryServiceModule.default as Record<
+const mockService = categoryServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;
