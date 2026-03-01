@@ -1,6 +1,11 @@
 # Build and push Docker images for staging. Tags: dev, dev-{commit_sha}.
 # Triggered by push to main or manual dispatch. Push to main fires when PRs are merged.
 # Watchtower on staging EC2 pulls :dev and restarts. No deployment or SSH.
+#
+# Manual trigger (Actions → Run workflow):
+#   stage = "api"  → builds API only
+#   stage = "web"  → builds Web only
+#   stage = "all"  → builds both
 
 name: Build and Push (Staging)
 
@@ -10,21 +15,15 @@ on:
       - main
   workflow_dispatch:
     inputs:
-      deploy_api:
-        description: "Build and push API image"
-        required: false
-        type: boolean
-        default: true
-      deploy_web:
-        description: "Build and push Web image"
-        required: false
-        type: boolean
-        default: true
-      force_deploy:
-        description: "Build all images regardless of changes"
-        required: false
-        type: boolean
-        default: false
+      stage:
+        description: "Which stage to build and push"
+        required: true
+        type: choice
+        default: "all"
+        options:
+          - all
+          - api
+          - web
 
 permissions:
   contents: read
@@ -65,7 +64,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes]
     if: |
-      (github.event_name == 'workflow_dispatch' && (inputs.deploy_api || inputs.force_deploy)) ||
+      (github.event_name == 'workflow_dispatch' && (inputs.stage == 'api' || inputs.stage == 'all')) ||
       (github.event_name == 'push' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'))
     permissions:
       contents: read
@@ -105,7 +104,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [changes]
     if: |
-      (github.event_name == 'workflow_dispatch' && (inputs.deploy_web || inputs.force_deploy)) ||
+      (github.event_name == 'workflow_dispatch' && (inputs.stage == 'web' || inputs.stage == 'all')) ||
       (github.event_name == 'push' && (needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'))
     permissions:
       contents: read
