@@ -20,7 +20,7 @@ import userController from "./user.controller";
 import * as userServiceModule from "./user.service";
 import { sendControllerError } from "@/utils/controllerError";
 
-const mockService = userServiceModule.default as Record<
+const mockService = userServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;
