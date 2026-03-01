@@ -583,6 +583,7 @@ export function ProductPage() {
         const data: CreateProductData = {
           name: values.name,
           categoryId: values.categoryId,
+          subCategory: values.subCategory || undefined,
           description: values.description,
           length: values.length ? Number(values.length) : undefined,
           breadth: values.breadth ? Number(values.breadth) : undefined,
@@ -590,6 +591,7 @@ export function ProductPage() {
           weight: values.weight ? Number(values.weight) : undefined,
           costPrice: costPrice,
           mrp: mrp,
+          vendorId: values.vendorId || undefined,
         };
 
         if (productAttributeTypeIds.length > 0) {
