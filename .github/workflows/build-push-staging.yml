@@ -115,10 +115,12 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.sha }}
-      - name: Create environment file for Web
+      - name: Parse DEV_UI env vars into build args
+        id: dev_ui
         run: |
-          mkdir -p apps/web
-          printf '%s\n' "${{ vars.DEV_UI }}" > apps/web/.env
+          # Extract NEXT_PUBLIC_API_URL from the DEV_UI GitHub variable
+          API_URL=$(printf '%s\n' "${{ vars.DEV_UI }}" | grep '^NEXT_PUBLIC_API_URL=' | cut -d'=' -f2-)
+          echo "next_public_api_url=${API_URL}" >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to Docker Hub
@@ -141,5 +143,7 @@ jobs:
           file: ./apps/web/Dockerfile
           push: true
           tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.dev_ui.outputs.next_public_api_url }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
