@@ -1,207 +1,106 @@
 import { Request, Response } from "express";
-import prisma from "@/config/prisma";
-import {
-  getPaginationParams,
-  createPaginationResult,
-  getPrismaOrderBy,
-} from "@/utils/pagination";
-import { normalizePhoneOptional } from "@/utils/phone";
+import { ZodError } from "zod";
+import { CreateCompanySchema, UpdateCompanySchema } from "./company.schema";
+import companyService from "./company.service";
 import { sendControllerError } from "@/utils/controllerError";
+import type { AppError } from "@/middlewares/errorHandler";
+
+const handleAppError = (res: Response, error: unknown): Response | null => {
+  if ((error as AppError).statusCode) {
+    return res
+      .status((error as AppError).statusCode!)
+      .json({ message: (error as AppError).message });
+  }
+  return null;
+};
 
 class CompanyController {
-  async create(req: Request, res: Response) {
+  create = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const { name, website, address, phone } = req.body;
-      if (!name || typeof name !== "string" || !name.trim()) {
-        return res.status(400).json({ message: "Company name is required" });
-      }
-
-      let phoneNormalized: string | null = null;
-      if (phone != null && String(phone).trim()) {
-        try {
-          phoneNormalized = normalizePhoneOptional(phone);
-        } catch (err: unknown) {
-          return res.status(400).json({
-            message:
-              err instanceof Error ? err.message : "Invalid phone number",
-          });
-        }
-      }
-
-      const company = await prisma.company.create({
-        data: {
-          tenantId,
-          name: name.trim(),
-          website: website?.trim() || null,
-          address: address?.trim() || null,
-          phone: phoneNormalized,
-        },
-      });
-
-      res
+      const body = CreateCompanySchema.parse(req.body);
+      const company = await companyService.create(tenantId, body);
+      return res
         .status(201)
         .json({ message: "Company created successfully", company });
     } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Create company error");
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Create company error")
+      );
     }
-  }
+  };
 
-  async getAll(req: Request, res: Response) {
+  getAll = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-
-      const allowedSortFields = ["createdAt", "updatedAt", "name", "id"];
-      const orderBy = getPrismaOrderBy(
-        sortBy,
-        sortOrder,
-        allowedSortFields,
-      ) || {
-        name: "asc",
-      };
-
-      const where: Record<string, unknown> = { tenantId };
-      if (search) {
-        where.OR = [
-          { name: { contains: search, mode: "insensitive" as const } },
-          { website: { contains: search, mode: "insensitive" as const } },
-        ];
-      }
-
-      const skip = (page - 1) * limit;
-
-      const [totalItems, companies] = await Promise.all([
-        prisma.company.count({ where }),
-        prisma.company.findMany({
-          where,
-          orderBy,
-          skip,
-          take: limit,
-          include: {
-            _count: { select: { contacts: true, deals: true } },
-          },
-        }),
-      ]);
-
-      const result = createPaginationResult(companies, totalItems, page, limit);
-      res.status(200).json({ message: "OK", ...result });
+      const result = await companyService.getAll(tenantId, req.query);
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get companies error");
     }
-  }
+  };
 
-  async getById(req: Request, res: Response) {
+  getById = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const { id } = req.params;
-      const company = await prisma.company.findFirst({
-        where: { id, tenantId },
-        include: {
-          contacts: {
-            select: {
-              id: true,
-              firstName: true,
-              lastName: true,
-              email: true,
-              phone: true,
-            },
-          },
-          _count: { select: { deals: true } },
-        },
-      });
-
-      if (!company) {
-        return res.status(404).json({ message: "Company not found" });
-      }
-
-      res.status(200).json({ message: "OK", company });
+      const company = await companyService.getById(tenantId, id);
+      return res.status(200).json({ message: "OK", company });
     } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Get company by id error");
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Get company by id error")
+      );
     }
-  }
+  };
 
-  async update(req: Request, res: Response) {
+  update = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const { id } = req.params;
-      const { name, website, address, phone } = req.body;
-
-      const existing = await prisma.company.findFirst({
-        where: { id, tenantId },
-      });
-      if (!existing) {
-        return res.status(404).json({ message: "Company not found" });
-      }
-
-      let phoneNormalized: string | null | undefined = undefined;
-      if (phone !== undefined) {
-        if (phone == null || String(phone).trim() === "") {
-          phoneNormalized = null;
-        } else {
-          try {
-            phoneNormalized = normalizePhoneOptional(phone);
-          } catch (err: unknown) {
-            return res.status(400).json({
-              message:
-                err instanceof Error ? err.message : "Invalid phone number",
-            });
-          }
-        }
-      }
-
-      const company = await prisma.company.update({
-        where: { id },
-        data: {
-          ...(name !== undefined && { name: name?.trim() || existing.name }),
-          ...(website !== undefined && { website: website?.trim() || null }),
-          ...(address !== undefined && { address: address?.trim() || null }),
-          ...(phoneNormalized !== undefined && { phone: phoneNormalized }),
-        },
-      });
-
-      res
+      const body = UpdateCompanySchema.parse(req.body);
+      const company = await companyService.update(tenantId, id, body);
+      return res
         .status(200)
         .json({ message: "Company updated successfully", company });
     } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Update company error");
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Update company error")
+      );
     }
-  }
+  };
 
-  async delete(req: Request, res: Response) {
+  delete = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const { id } = req.params;
-
-      const existing = await prisma.company.findFirst({
-        where: { id, tenantId },
-      });
-      if (!existing) {
-        return res.status(404).json({ message: "Company not found" });
-      }
-
-      await prisma.company.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
-      res.status(200).json({ message: "Company deleted successfully" });
+      await companyService.delete(tenantId, id);
+      return res.status(200).json({ message: "Company deleted successfully" });
     } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Delete company error");
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Delete company error")
+      );
     }
-  }
+  };
 
-  async listForSelect(req: Request, res: Response) {
+  listForSelect = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const companies = await prisma.company.findMany({
-        where: { tenantId },
-        orderBy: { name: "asc" },
-        select: { id: true, name: true },
-        take: 500,
-      });
-      res.status(200).json({ message: "OK", companies });
+      const companies = await companyService.listForSelect(tenantId);
+      return res.status(200).json({ message: "OK", companies });
     } catch (error: unknown) {
       return sendControllerError(
         req,
@@ -210,7 +109,7 @@ class CompanyController {
         "List companies for select error",
       );
     }
-  }
+  };
 }
 
 export default new CompanyController();

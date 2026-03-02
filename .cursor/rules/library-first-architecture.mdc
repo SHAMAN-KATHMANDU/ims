@@ -1,0 +1,225 @@
+---
+name: library-first-architecture
+description: >
+  Library-First Architecture — prefer well-maintained, battle-tested libraries over custom utility code.
+  Enforced on all apps/web/ and apps/api/ code. Apply whenever writing utilities, helpers, or infrastructure.
+globs:
+  - "apps/web/**/*.ts"
+  - "apps/web/**/*.tsx"
+  - "apps/api/**/*.ts"
+alwaysApply: true
+---
+
+# Library-First Architecture Rule
+
+**Custom utilities are the last resort, not the default choice.**
+
+---
+
+## 1. Philosophy
+
+### Why Reinventing Utilities Creates Tech Debt
+
+Custom helpers duplicate what libraries already solve. Each new utility:
+- Adds surface area to maintain
+- Buries bugs that library maintainers have already fixed
+- Diverges from community conventions
+- Becomes orphaned when the original author leaves
+
+### Why Custom Helpers Become Unmaintained
+
+In-house utilities lack:
+- Dedicated maintainers
+- Security advisories
+- Ecosystem momentum
+- Peer review from thousands of users
+
+They silently drift into legacy code. No one volunteers to refactor them.
+
+### Why Libraries Are Tested, Optimized, and Secure
+
+Mature libraries (zod, date-fns, axios, react-hook-form):
+- Handle edge cases you have not imagined
+- Are optimized for performance and bundle size
+- Receive CVE fixes and security patches
+- Are battle-tested across thousands of production apps
+
+### Why Consistency Improves Onboarding and Scaling
+
+When new developers join, they expect:
+- `zod` for validation — not `utils/validate.ts`
+- `date-fns` for dates — not `utils/date.ts`
+- `clsx` + `tailwind-merge` for class names — not `utils/cn.ts`
+
+A predictable stack reduces cognitive load. Hiring becomes easier when the stack aligns with industry standards.
+
+---
+
+**We prefer installing a mature library over writing custom utility code.**
+
+---
+
+## 2. Strict Rule
+
+### Non-Negotiable
+
+- **Do NOT** create custom utility functions if a stable, widely adopted library exists.
+- **Do NOT** duplicate functionality already available in ecosystem tools.
+- **Every new utility** must justify in the PR description why a library cannot be used.
+
+### Enforcement
+
+PRs that introduce new utilities without justification will be rejected. The burden of proof lies with the author.
+
+---
+
+## 3. Approved Libraries (Frontend)
+
+Use these for common tasks. Do not create custom alternatives.
+
+| Task | Approved Library | Notes |
+|------|------------------|-------|
+| **Validation** | `zod` | Single source of truth for schemas. Share with backend when possible. |
+| **Forms** | `react-hook-form` | With `@hookform/resolvers/zod` for Zod integration. |
+| **API Calls** | `axios` | Use shared instance from `lib/axios.ts`. Native `fetch` wrapper only if justified (e.g., edge runtime constraints). |
+| **Server State** | `@tanstack/react-query` | All async server data. No custom cache layer. |
+| **Date Handling** | `date-fns` | No custom `formatDate`, `addDays`, `isBefore`, etc. |
+| **Class Merging** | `clsx` + `tailwind-merge` | Use the shared `cn()` utility that composes both. |
+| **Schema Validation** | `zod` | Shared frontend/backend when possible. |
+| **Debouncing** | `use-debounce` | Do not implement custom debounce or throttle. |
+
+---
+
+## 4. Approved Libraries (Backend / API Layer)
+
+| Task | Approved Library | Notes |
+|------|------------------|-------|
+| **Validation** | `zod` | All request bodies, query params, env vars. |
+| **HTTP Client** | `axios` | Outbound API calls. No custom wrapper framework. |
+| **Environment Validation** | `zod` + `dotenv` | Validate env at startup. Fail fast on missing/invalid vars. |
+| **Rate Limiting** | Existing middleware | Use `express-rate-limit` or equivalent. Do not roll custom rate limiter. |
+
+### Never Create
+
+- Custom validation framework
+- Custom HTTP wrapper framework
+- Custom date formatter library
+- Custom state manager
+
+---
+
+## 5. When Custom Utils ARE Allowed
+
+Custom utilities are allowed **only** if:
+
+1. **Logic is domain-specific** — maps directly to your business rules.
+2. **No mature library exists** — you have searched npm/GitHub and confirmed no suitable package.
+3. **Tightly coupled to business logic** — cannot be cleanly extracted.
+4. **Cannot be composed from existing packages** — no combination of libraries solves it.
+
+### Examples of Allowed Custom Utils
+
+```typescript
+// Domain-specific transform — no library does "workout scoring"
+export function calculateExerciseScore(reps: number, weight: number, targetRPE: number): number { ... }
+
+// Maps API shape to domain model — project-specific contract
+export function mapApiResponseToDomainModel(raw: ApiResponse): Workout { ... }
+
+// Business rule — tightly coupled to product logic
+export function transformWorkoutData(workout: RawWorkout, userPrefs: UserPrefs): TransformedWorkout { ... }
+```
+
+### Examples of Forbidden Custom Utils
+
+```typescript
+// ❌ Use date-fns
+function formatDate(d: Date): string { ... }
+
+// ❌ Use zod
+function validateEmail(s: string): boolean { ... }
+
+// ❌ Use use-debounce
+function useDebounce<T>(value: T, ms: number): T { ... }
+
+// ❌ Use clsx + tailwind-merge
+function cn(...classes: string[]): string { ... }
+
+// ❌ Use lodash.clonedeep or structuredClone
+function deepClone<T>(obj: T): T { ... }
+```
+
+---
+
+## 6. Decision Checklist (Mandatory Before Writing Utility)
+
+Before creating any new utility function, developers **must** answer:
+
+| Question | If answer is "yes" → |
+|----------|----------------------|
+| Does a stable library already solve this? | **Use the library.** |
+| Is this logic domain-specific? | Proceed only if no library exists. |
+| Is the performance benefit proven? | If not, use the library. |
+| Will this utility require future maintenance? | Prefer library — they maintain it. |
+| Is this abstraction premature? | If yes, inline or use library. |
+
+**If any answer suggests a library is better → use the library.**
+
+---
+
+## 7. Anti-Patterns to Avoid
+
+| Anti-Pattern | Approved Alternative |
+|--------------|----------------------|
+| `utils/date.ts` | `date-fns` |
+| `utils/fetch.ts` or custom HTTP wrapper | `axios` or native `fetch` |
+| `utils/validate.ts` | `zod` |
+| Custom `debounce` / `throttle` | `use-debounce` (frontend), `lodash.debounce` (backend) |
+| Custom `deepClone` | `structuredClone` (built-in) or `lodash.clonedeep` |
+| Custom `cn()` or class merger | `clsx` + `tailwind-merge` |
+
+---
+
+## 8. Scalability & Maintenance Impact
+
+### Fewer Custom Helpers Reduce Cognitive Load
+
+Developers spend less time reading `utils/` and more time on features. Everyone knows `zod` and `date-fns` — no one knows your `utils/legacy-format.ts`.
+
+### Libraries Improve Performance & Security
+
+- zod is optimized for parsing performance
+- date-fns is tree-shakeable (no moment.js bloat)
+- axios handles retries, interceptors, and edge cases
+- Libraries receive security patches; custom code does not
+
+### Codebase Becomes Predictable
+
+New developers can guess where validation lives (`zod`), where dates are formatted (`date-fns`), and where API calls go (`axios` + TanStack Query). No archaeology required.
+
+### Hiring Becomes Easier
+
+"Experience with zod, React Hook Form, TanStack Query" is standard. "Experience with AcmeCorp's custom validation framework" is not.
+
+---
+
+## 9. Enforcement Rule
+
+This rule must be enforced in:
+
+- **Code reviews** — Reject PRs that add utilities without justification.
+- **PR checklist** — "Does this PR introduce a new utility? If yes, why can't a library be used?"
+- **Architecture audits** — Quarterly review of `utils/` and `lib/` for redundant custom code.
+
+### PR Template Addition
+
+```markdown
+## New Utilities (if any)
+
+- [ ] No new utilities added, OR
+- [ ] New utility `utils/foo.ts` added because: [justification — no library exists / domain-specific / etc.]
+```
+
+---
+
+**Custom utilities are the last resort, not the default choice.**

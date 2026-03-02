@@ -7,6 +7,10 @@ vi.mock("./crm-settings.service", () => ({
     createSource: vi.fn(),
     updateSource: vi.fn(),
     deleteSource: vi.fn(),
+    getAllJourneyTypes: vi.fn(),
+    createJourneyType: vi.fn(),
+    updateJourneyType: vi.fn(),
+    deleteJourneyType: vi.fn(),
   },
 }));
 vi.mock("@/utils/controllerError", () => ({
@@ -157,6 +161,84 @@ describe("CrmSettingsController", () => {
       await crmSettingsController.deleteSource(req, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe("getAllJourneyTypes", () => {
+    it("returns 200 with journey types on success", async () => {
+      const journeyTypes = [
+        { id: "1", name: "Prospect", createdAt: new Date() },
+      ];
+      mockService.getAllJourneyTypes.mockResolvedValue(journeyTypes);
+      const req = makeReq();
+      const res = mockRes() as Response;
+
+      await crmSettingsController.getAllJourneyTypes(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ journeyTypes }),
+      );
+    });
+  });
+
+  describe("createJourneyType", () => {
+    it("returns 201 with created journey type on success", async () => {
+      const journeyType = { id: "1", name: "Prospect", createdAt: new Date() };
+      mockService.createJourneyType.mockResolvedValue(journeyType);
+      const req = makeReq({ body: { name: "Prospect" } });
+      const res = mockRes() as Response;
+
+      await crmSettingsController.createJourneyType(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ journeyType }),
+      );
+    });
+
+    it("returns 400 on Zod validation error", async () => {
+      const req = makeReq({ body: { name: "" } });
+      const res = mockRes() as Response;
+
+      await crmSettingsController.createJourneyType(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+    });
+  });
+
+  describe("updateJourneyType", () => {
+    it("returns 200 with updated journey type on success", async () => {
+      const journeyType = {
+        id: "1",
+        name: "Customer",
+        createdAt: new Date(),
+      };
+      mockService.updateJourneyType.mockResolvedValue(journeyType);
+      const req = makeReq({
+        params: { id: "1" },
+        body: { name: "Customer" },
+      });
+      const res = mockRes() as Response;
+
+      await crmSettingsController.updateJourneyType(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ journeyType }),
+      );
+    });
+  });
+
+  describe("deleteJourneyType", () => {
+    it("returns 200 on successful delete", async () => {
+      mockService.deleteJourneyType.mockResolvedValue(undefined);
+      const req = makeReq({ params: { id: "1" } });
+      const res = mockRes() as Response;
+
+      await crmSettingsController.deleteJourneyType(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
     });
   });
 });
