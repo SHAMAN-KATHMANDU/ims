@@ -1,428 +1,145 @@
 import { Request, Response } from "express";
-import prisma from "@/config/prisma";
-import {
-  getPaginationParams,
-  createPaginationResult,
-  getPrismaOrderBy,
-} from "@/utils/pagination";
+import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
+import { AppError } from "@/middlewares/errorHandler";
+import { CreateLocationSchema, UpdateLocationSchema } from "./location.schema";
+import locationService, { LocationService } from "./location.service";
 
 class LocationController {
-  // Create location (superAdmin only)
-  async createLocation(req: Request, res: Response) {
+  constructor(private service: LocationService) {}
+
+  createLocation = async (req: Request, res: Response) => {
     try {
-      const { name, type, address, isDefaultWarehouse } = req.body;
-
-      // Validate required fields
-      if (!name) {
-        return res.status(400).json({ message: "Location name is required" });
-      }
-
-      // Validate type if provided
-      if (type && !["WAREHOUSE", "SHOWROOM"].includes(type)) {
-        return res.status(400).json({
-          message: "Invalid location type. Must be WAREHOUSE or SHOWROOM",
-        });
-      }
-
-      // Check if location already exists
-      const existingLocation = await prisma.location.findFirst({
-        where: { name },
-      });
-
-      if (existingLocation) {
-        return res
-          .status(409)
-          .json({ message: "Location with this name already exists" });
-      }
-
-      // If setting as default warehouse, unset any existing default
-      if (isDefaultWarehouse === true) {
-        await prisma.location.updateMany({
-          where: { isDefaultWarehouse: true },
-          data: { isDefaultWarehouse: false },
-        });
-      }
-
-      const location = await prisma.location.create({
-        data: {
-          tenantId: req.user!.tenantId,
-          name,
-          type: type || "SHOWROOM",
-          address: address || null,
-          isDefaultWarehouse: isDefaultWarehouse === true,
-        },
-      });
-
-      res.status(201).json({
+      const tenantId = req.user!.tenantId;
+      const body = CreateLocationSchema.parse(req.body);
+      const location = await this.service.create(tenantId, body);
+      return res.status(201).json({
         message: "Location created successfully",
         location,
       });
     } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      const appErr = error as AppError;
+      if (appErr.statusCode === 409) {
+        return res.status(409).json({ message: appErr.message });
+      }
       return sendControllerError(req, res, error, "Create location error");
     }
-  }
+  };
 
-  // Get all locations (all authenticated users)
-  async getAllLocations(req: Request, res: Response) {
+  getAllLocations = async (req: Request, res: Response) => {
     try {
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
-      );
-
-      // Parse type and status filters from query
+      const tenantId = req.user!.tenantId;
       const typeFilter = req.query.type as string | undefined;
       const activeOnly = req.query.activeOnly === "true";
       const statusFilter = req.query.status as string | undefined;
-
-      // Allowed fields for sorting
-      const allowedSortFields = [
-        "id",
-        "name",
-        "type",
-        "createdAt",
-        "updatedAt",
-      ];
-
-      // Get orderBy for Prisma
-      const orderBy = getPrismaOrderBy(
-        sortBy,
-        sortOrder,
-        allowedSortFields,
-      ) || {
-        name: "asc",
-      };
-
-      // Build filter
-      const where: any = {};
-
-      if (search) {
-        where.OR = [
-          { name: { contains: search, mode: "insensitive" } },
-          { address: { contains: search, mode: "insensitive" } },
-        ];
-      }
-
-      if (typeFilter && ["WAREHOUSE", "SHOWROOM"].includes(typeFilter)) {
-        where.type = typeFilter;
-      }
-
-      if (activeOnly || statusFilter === "active") {
-        where.isActive = true;
-      } else if (statusFilter === "inactive") {
-        where.isActive = false;
-      }
-
-      // Calculate skip for pagination
-      const skip = (page - 1) * limit;
-
-      // Get total count and locations in parallel
-      const [totalItems, locations] = await Promise.all([
-        prisma.location.count({ where }),
-        prisma.location.findMany({
-          where,
-          orderBy,
-          skip,
-          take: limit,
-          include: {
-            _count: {
-              select: {
-                inventory: true,
-                transfersFrom: true,
-                transfersTo: true,
-              },
-            },
-          },
-        }),
-      ]);
-
-      const result = createPaginationResult(locations, totalItems, page, limit);
-
-      res.status(200).json({
+      const result = await this.service.findAll(tenantId, req.query, {
+        type: typeFilter,
+        activeOnly,
+        status: statusFilter,
+      });
+      return res.status(200).json({
         message: "Locations fetched successfully",
         ...result,
       });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get all locations error");
     }
-  }
+  };
 
-  // Get location by ID (all authenticated users)
-  async getLocationById(req: Request, res: Response) {
+  getLocationById = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-
-      const location = await prisma.location.findUnique({
-        where: { id },
-        include: {
-          _count: {
-            select: {
-              inventory: true,
-              transfersFrom: true,
-              transfersTo: true,
-            },
-          },
-        },
-      });
-
-      if (!location) {
-        return res.status(404).json({ message: "Location not found" });
-      }
-
-      res.status(200).json({
+      const tenantId = req.user!.tenantId;
+      const location = await this.service.findById(id, tenantId);
+      return res.status(200).json({
         message: "Location fetched successfully",
         location,
       });
     } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (appErr.statusCode === 404) {
+        return res.status(404).json({ message: appErr.message });
+      }
       return sendControllerError(req, res, error, "Get location by ID error");
     }
-  }
+  };
 
-  // Update location (superAdmin only)
-  async updateLocation(req: Request, res: Response) {
+  updateLocation = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-      const { name, type, address, isActive, isDefaultWarehouse } = req.body;
-
-      // Check if location exists
-      const existingLocation = await prisma.location.findUnique({
-        where: { id },
-      });
-
-      if (!existingLocation) {
-        return res.status(404).json({ message: "Location not found" });
-      }
-
-      // Prepare update data
-      const updateData: any = {};
-
-      if (name !== undefined) {
-        // Check if new name is already taken by another location
-        if (name !== existingLocation.name) {
-          const nameExists = await prisma.location.findFirst({
-            where: { name },
-          });
-
-          if (nameExists) {
-            return res
-              .status(409)
-              .json({ message: "Location name already taken" });
-          }
-        }
-        updateData.name = name;
-      }
-
-      if (type !== undefined) {
-        if (!["WAREHOUSE", "SHOWROOM"].includes(type)) {
-          return res.status(400).json({
-            message: "Invalid location type. Must be WAREHOUSE or SHOWROOM",
-          });
-        }
-        updateData.type = type;
-      }
-
-      if (address !== undefined) {
-        updateData.address = address || null;
-      }
-
-      if (isActive !== undefined) {
-        // Warehouses: require at least one active warehouse at all times
-        if (
-          isActive === false &&
-          existingLocation.type === "WAREHOUSE" &&
-          existingLocation.isActive
-        ) {
-          const activeWarehouseCount = await prisma.location.count({
-            where: { type: "WAREHOUSE", isActive: true },
-          });
-          if (activeWarehouseCount <= 1) {
-            return res.status(400).json({
-              message:
-                "At least one warehouse must remain active. Please activate another warehouse before deactivating this one.",
-            });
-          }
-        }
-        updateData.isActive = isActive;
-      }
-
-      if (isDefaultWarehouse !== undefined) {
-        updateData.isDefaultWarehouse = isDefaultWarehouse === true;
-        // If setting this location as default warehouse, unset others
-        if (isDefaultWarehouse === true) {
-          await prisma.location.updateMany({
-            where: { id: { not: id } },
-            data: { isDefaultWarehouse: false },
-          });
-        }
-      }
-
-      const updatedLocation = await prisma.location.update({
-        where: { id },
-        data: updateData,
-        include: {
-          _count: {
-            select: {
-              inventory: true,
-              transfersFrom: true,
-              transfersTo: true,
-            },
-          },
-        },
-      });
-
-      res.status(200).json({
+      const tenantId = req.user!.tenantId;
+      const body = UpdateLocationSchema.parse(req.body);
+      const location = await this.service.update(id, body, tenantId);
+      return res.status(200).json({
         message: "Location updated successfully",
-        location: updatedLocation,
+        location,
       });
     } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      const appErr = error as AppError;
+      if (appErr.statusCode === 404) {
+        return res.status(404).json({ message: appErr.message });
+      }
+      if (appErr.statusCode === 409) {
+        return res.status(409).json({ message: appErr.message });
+      }
+      if (appErr.statusCode === 400) {
+        return res.status(400).json({ message: appErr.message });
+      }
       return sendControllerError(req, res, error, "Update location error");
     }
-  }
+  };
 
-  // Delete location (superAdmin only) - soft delete by setting isActive to false
-  async deleteLocation(req: Request, res: Response) {
+  deleteLocation = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-
-      // Check if location exists
-      const existingLocation = await prisma.location.findUnique({
-        where: { id },
-        include: {
-          _count: {
-            select: {
-              inventory: true,
-              transfersFrom: { where: { status: { not: "COMPLETED" } } },
-              transfersTo: { where: { status: { not: "COMPLETED" } } },
-            },
-          },
-        },
-      });
-
-      if (!existingLocation) {
-        return res.status(404).json({ message: "Location not found" });
-      }
-
-      // Check if there are pending transfers
-      if (
-        existingLocation._count.transfersFrom > 0 ||
-        existingLocation._count.transfersTo > 0
-      ) {
-        return res.status(400).json({
-          message:
-            "Cannot delete location with pending transfers. Complete or cancel all transfers first.",
-        });
-      }
-
-      // Warehouses: require at least one active warehouse at all times (soft delete = deactivate)
-      if (existingLocation.type === "WAREHOUSE" && existingLocation.isActive) {
-        const activeWarehouseCount = await prisma.location.count({
-          where: { type: "WAREHOUSE", isActive: true },
-        });
-        if (activeWarehouseCount <= 1) {
-          return res.status(400).json({
-            message:
-              "At least one warehouse must remain active. Please activate another warehouse before deactivating this one.",
-          });
-        }
-      }
-
-      // Soft delete - set isActive to false and deletedAt for trash
-      await prisma.location.update({
-        where: { id },
-        data: { isActive: false, deletedAt: new Date() },
-      });
-
-      res.status(200).json({
+      const tenantId = req.user!.tenantId;
+      await this.service.delete(id, tenantId);
+      return res.status(200).json({
         message: "Location deactivated successfully",
       });
     } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (appErr.statusCode === 404) {
+        return res.status(404).json({ message: appErr.message });
+      }
+      if (appErr.statusCode === 400) {
+        return res.status(400).json({ message: appErr.message });
+      }
       return sendControllerError(req, res, error, "Delete location error");
     }
-  }
+  };
 
-  // Get location with inventory summary
-  async getLocationInventory(req: Request, res: Response) {
+  getLocationInventory = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-
-      const { page, limit, search } = getPaginationParams(req.query);
-
-      const location = await prisma.location.findUnique({
-        where: { id },
-      });
-
-      if (!location) {
-        return res.status(404).json({ message: "Location not found" });
-      }
-
-      // Build search filter for inventory
-      const where: any = { locationId: id };
-
-      if (search) {
-        where.variation = {
-          OR: [
-            { imsCode: { contains: search, mode: "insensitive" } },
-            {
-              product: {
-                name: { contains: search, mode: "insensitive" },
-              },
-            },
-          ],
-        };
-      }
-
-      const skip = (page - 1) * limit;
-
-      const [totalItems, inventory] = await Promise.all([
-        prisma.locationInventory.count({ where }),
-        prisma.locationInventory.findMany({
-          where,
-          skip,
-          take: limit,
-          include: {
-            variation: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    name: true,
-                    category: true,
-                  },
-                },
-                photos: {
-                  where: { isPrimary: true },
-                  take: 1,
-                },
-              },
-            },
-            subVariation: { select: { id: true, name: true } },
-          },
-          orderBy: {
-            variation: {
-              product: {
-                name: "asc",
-              },
-            },
-          },
-        }),
-      ]);
-
-      const result = createPaginationResult(inventory, totalItems, page, limit);
-
-      res.status(200).json({
+      const result = await this.service.getInventory(id, req.query);
+      return res.status(200).json({
         message: "Location inventory fetched successfully",
-        location,
         ...result,
       });
     } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (appErr.statusCode === 404) {
+        return res.status(404).json({ message: appErr.message });
+      }
       return sendControllerError(
         req,
         res,
@@ -430,7 +147,7 @@ class LocationController {
         "Get location inventory error",
       );
     }
-  }
+  };
 }
 
-export default new LocationController();
+export default new LocationController(locationService);

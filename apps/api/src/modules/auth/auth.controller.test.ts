@@ -1,35 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response } from "express";
-import authController from "./auth.controller";
 
-const mockFindUniqueTenant = vi.fn();
-const mockFindFirstUser = vi.fn();
-const mockUpdateUser = vi.fn();
-const mockCreateAuditLog = vi.fn();
-const mockFindUniqueUser = vi.fn();
-
-vi.mock("@/config/prisma", () => ({
-  basePrisma: {
-    tenant: {
-      findUnique: (...args: unknown[]) => mockFindUniqueTenant(...args),
-    },
-    user: {
-      findFirst: (...args: unknown[]) => mockFindFirstUser(...args),
-      findUnique: (...args: unknown[]) => mockFindUniqueUser(...args),
-      update: (...args: unknown[]) => mockUpdateUser(...args),
-    },
-    auditLog: { create: (...args: unknown[]) => mockCreateAuditLog(...args) },
+vi.mock("./auth.service", () => ({
+  AuthService: vi.fn(),
+  default: {
+    login: vi.fn(),
+    getMe: vi.fn(),
   },
-}));
-
-const mockCompare = vi.fn();
-vi.mock("bcryptjs", () => ({
-  default: { compare: (...args: unknown[]) => mockCompare(...args) },
-}));
-
-const mockSign = vi.fn();
-vi.mock("jsonwebtoken", () => ({
-  default: { sign: (...args: unknown[]) => mockSign(...args) },
 }));
 
 vi.mock("@/config/env", () => ({
@@ -45,6 +22,15 @@ vi.mock("@/utils/controllerError", () => ({
   sendControllerError: (...args: unknown[]) => mockSendControllerError(...args),
 }));
 
+import { createError } from "@/middlewares/errorHandler";
+import authController from "./auth.controller";
+import * as authServiceModule from "./auth.service";
+
+const mockService = authServiceModule.default as Record<
+  string,
+  ReturnType<typeof vi.fn>
+>;
+
 function mockRes(): Partial<Response> {
   return {
     status: vi.fn().mockReturnThis(),
@@ -58,40 +44,6 @@ describe("AuthController", () => {
   });
 
   describe("logIn", () => {
-    it("returns 400 when username and password are missing", async () => {
-      const req = {
-        body: {},
-        headers: {},
-        ip: undefined,
-        socket: { remoteAddress: undefined },
-        get: vi.fn(),
-      } as unknown as Request;
-      const res = mockRes() as Response;
-
-      await authController.logIn(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Username and password are required",
-      });
-      expect(mockFindUniqueTenant).not.toHaveBeenCalled();
-    });
-
-    it("returns 400 when username is empty string", async () => {
-      const req = {
-        body: { username: "   ", password: "pwd" },
-        headers: {},
-      } as unknown as Request;
-      const res = mockRes() as Response;
-
-      await authController.logIn(req, res);
-
-      expect(res.status).toHaveBeenCalledWith(400);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Username and password are required",
-      });
-    });
-
     it("returns 500 when x-tenant-slug header is missing", async () => {
       const req = {
         body: { username: "user", password: "pass" },
@@ -105,22 +57,62 @@ describe("AuthController", () => {
       expect(res.json).toHaveBeenCalledWith({
         message: "No tenant configured. Please contact support.",
       });
-      expect(mockFindUniqueTenant).not.toHaveBeenCalled();
+      expect(mockService.login).not.toHaveBeenCalled();
     });
 
-    it("returns 404 when organization (tenant) is not found", async () => {
-      mockFindUniqueTenant.mockResolvedValue(null);
+    it("returns 400 when username and password are missing", async () => {
       const req = {
-        body: { username: "user", password: "pass" },
-        headers: { "x-tenant-slug": "unknown-org" },
+        body: {},
+        headers: { "x-tenant-slug": "acme" },
       } as unknown as Request;
       const res = mockRes() as Response;
 
       await authController.logIn(req, res);
 
-      expect(mockFindUniqueTenant).toHaveBeenCalledWith({
-        where: { slug: "unknown-org" },
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Username and password are required",
       });
+      expect(mockService.login).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when username is empty string", async () => {
+      const req = {
+        body: { username: "   ", password: "pwd" },
+        headers: { "x-tenant-slug": "acme" },
+      } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.logIn(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Username and password are required",
+      });
+    });
+
+    it("returns 404 when organization (tenant) is not found", async () => {
+      mockService.login.mockRejectedValue(
+        createError("Organization not found", 404),
+      );
+      const req = {
+        body: { username: "user", password: "pass" },
+        headers: { "x-tenant-slug": "unknown-org" },
+        get: vi.fn(),
+        ip: undefined,
+        socket: { remoteAddress: undefined },
+      } as unknown as Request;
+      const res = mockRes() as Response;
+
+      await authController.logIn(req, res);
+
+      expect(mockService.login).toHaveBeenCalledWith(
+        expect.objectContaining({
+          username: "user",
+          password: "pass",
+          tenantSlug: "unknown-org",
+        }),
+      );
       expect(res.status).toHaveBeenCalledWith(404);
       expect(res.json).toHaveBeenCalledWith({
         message: "Organization not found",
@@ -128,19 +120,15 @@ describe("AuthController", () => {
     });
 
     it("returns 403 when tenant is inactive", async () => {
-      mockFindUniqueTenant.mockResolvedValue({
-        id: "tenant-1",
-        slug: "acme",
-        name: "Acme",
-        isActive: false,
-        plan: "free",
-        subscriptionStatus: "active",
-        planExpiresAt: null,
-        trialEndsAt: null,
-      });
+      mockService.login.mockRejectedValue(
+        createError("This organization has been deactivated", 403),
+      );
       const req = {
         body: { username: "user", password: "pass" },
         headers: { "x-tenant-slug": "acme" },
+        get: vi.fn(),
+        ip: undefined,
+        socket: { remoteAddress: undefined },
       } as unknown as Request;
       const res = mockRes() as Response;
 
@@ -153,100 +141,48 @@ describe("AuthController", () => {
     });
 
     it("returns 401 when user is not found", async () => {
-      mockFindUniqueTenant.mockResolvedValue({
-        id: "tenant-1",
-        slug: "acme",
-        name: "Acme",
-        isActive: true,
-        plan: "free",
-        subscriptionStatus: "active",
-        planExpiresAt: null,
-        trialEndsAt: null,
-      });
-      mockFindFirstUser.mockResolvedValue(null);
+      mockService.login.mockRejectedValue(
+        createError("Invalid username or password", 401),
+      );
       const req = {
         body: { username: "nobody", password: "pass" },
         headers: { "x-tenant-slug": "acme" },
+        get: vi.fn(),
+        ip: undefined,
+        socket: { remoteAddress: undefined },
       } as unknown as Request;
       const res = mockRes() as Response;
 
       await authController.logIn(req, res);
 
-      expect(mockFindFirstUser).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
         message: "Invalid username or password",
       });
-    });
-
-    it("returns 401 when password does not match", async () => {
-      const tenant = {
-        id: "tenant-1",
-        slug: "acme",
-        name: "Acme",
-        isActive: true,
-        plan: "free",
-        subscriptionStatus: "active",
-        planExpiresAt: null,
-        trialEndsAt: null,
-      };
-      const user = {
-        id: "user-1",
-        tenantId: "tenant-1",
-        username: "user",
-        role: "admin",
-        password: "hashed",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastLoginAt: null,
-      };
-      mockFindUniqueTenant.mockResolvedValue(tenant);
-      mockFindFirstUser.mockResolvedValue(user);
-      mockCompare.mockResolvedValue(false);
-
-      const req = {
-        body: { username: "user", password: "wrong" },
-        headers: { "x-tenant-slug": "acme" },
-      } as unknown as Request;
-      const res = mockRes() as Response;
-
-      await authController.logIn(req, res);
-
-      expect(mockCompare).toHaveBeenCalledWith("wrong", "hashed");
-      expect(res.status).toHaveBeenCalledWith(401);
-      expect(res.json).toHaveBeenCalledWith({
-        message: "Invalid username or password",
-      });
-      expect(mockUpdateUser).not.toHaveBeenCalled();
     });
 
     it("returns 200 with token and user on successful login", async () => {
-      const tenant = {
-        id: "tenant-1",
-        slug: "acme",
-        name: "Acme",
-        isActive: true,
-        plan: "free",
-        subscriptionStatus: "active",
-        planExpiresAt: null,
-        trialEndsAt: null,
+      const result = {
+        token: "jwt-token-here",
+        user: {
+          id: "user-1",
+          tenantId: "tenant-1",
+          username: "user",
+          role: "admin",
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+        tenant: {
+          id: "tenant-1",
+          slug: "acme",
+          name: "Acme",
+          plan: "free",
+          subscriptionStatus: "active",
+          planExpiresAt: null,
+          trialEndsAt: null,
+        },
       };
-      const user = {
-        id: "user-1",
-        tenantId: "tenant-1",
-        username: "user",
-        role: "admin",
-        password: "hashed",
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        lastLoginAt: null,
-      };
-      mockFindUniqueTenant.mockResolvedValue(tenant);
-      mockFindFirstUser.mockResolvedValue(user);
-      mockCompare.mockResolvedValue(true);
-      mockUpdateUser.mockResolvedValue(user);
-      mockCreateAuditLog.mockResolvedValue({});
-      mockSign.mockReturnValue("jwt-token-here");
+      mockService.login.mockResolvedValue(result);
 
       const req = {
         body: { username: "User", password: "correct" },
@@ -259,42 +195,15 @@ describe("AuthController", () => {
 
       await authController.logIn(req, res);
 
-      expect(mockCompare).toHaveBeenCalledWith("correct", "hashed");
-      expect(mockUpdateUser).toHaveBeenCalledWith({
-        where: { id: "user-1" },
-        data: expect.any(Object),
-      });
-      expect(mockCreateAuditLog).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          tenantId: "tenant-1",
-          userId: "user-1",
-          action: "LOGIN",
-          resource: "auth",
-          resourceId: "user-1",
-          details: { username: "user", tenantSlug: "acme" },
-        }),
-      });
-      expect(mockSign).toHaveBeenCalledWith(
+      expect(mockService.login).toHaveBeenCalledWith(
         expect.objectContaining({
-          id: "user-1",
           username: "user",
-          role: "admin",
-          tenantId: "tenant-1",
+          password: "correct",
           tenantSlug: "acme",
         }),
-        "test-secret",
-        { expiresIn: "24h" },
       );
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({
-        token: "jwt-token-here",
-        user: expect.not.objectContaining({ password: expect.anything() }),
-        tenant: expect.objectContaining({
-          id: "tenant-1",
-          slug: "acme",
-          name: "Acme",
-        }),
-      });
+      expect(res.json).toHaveBeenCalledWith(result);
     });
   });
 
@@ -309,11 +218,13 @@ describe("AuthController", () => {
       expect(res.json).toHaveBeenCalledWith({
         message: "User not authenticated",
       });
-      expect(mockFindUniqueUser).not.toHaveBeenCalled();
+      expect(mockService.getMe).not.toHaveBeenCalled();
     });
 
     it("returns 401 when user is not found in database", async () => {
-      mockFindUniqueUser.mockResolvedValue(null);
+      mockService.getMe.mockRejectedValue(
+        createError("User not found or session invalid", 401),
+      );
       const req = {
         user: {
           id: "user-1",
@@ -326,10 +237,7 @@ describe("AuthController", () => {
 
       await authController.getCurrentUser(req, res);
 
-      expect(mockFindUniqueUser).toHaveBeenCalledWith({
-        where: { id: "user-1" },
-        select: expect.any(Object),
-      });
+      expect(mockService.getMe).toHaveBeenCalledWith("user-1");
       expect(res.status).toHaveBeenCalledWith(401);
       expect(res.json).toHaveBeenCalledWith({
         message: "User not found or session invalid",
@@ -354,8 +262,7 @@ describe("AuthController", () => {
         planExpiresAt: null,
         trialEndsAt: null,
       };
-      mockFindUniqueUser.mockResolvedValue(dbUser);
-      mockFindUniqueTenant.mockResolvedValue(dbTenant);
+      mockService.getMe.mockResolvedValue({ user: dbUser, tenant: dbTenant });
 
       const req = {
         user: {
