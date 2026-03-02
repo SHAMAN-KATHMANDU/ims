@@ -14,6 +14,8 @@ export interface Contact {
   phone?: string | null;
   companyId?: string | null;
   memberId?: string | null;
+  source?: string | null;
+  journeyType?: string | null;
   ownedById: string;
   createdById: string;
   createdAt: string;
@@ -24,51 +26,65 @@ export interface Contact {
     name: string | null;
     phone: string;
     email?: string | null;
+    memberStatus?: string | null;
+    totalSales?: number | null;
+    memberSince?: string | null;
   } | null;
   owner?: { id: string; username: string };
   tagLinks?: Array<{ tag: ContactTag }>;
   _count?: { deals: number; tasks: number };
+  deals?: Array<{ stage: string }>;
 }
 
+export type ContactNote = {
+  id: string;
+  content: string;
+  createdAt: string;
+  creator?: { id: string; username: string };
+};
+
+export type ContactAttachment = {
+  id: string;
+  fileName: string;
+  filePath: string;
+  fileSize?: number;
+  mimeType?: string;
+  createdAt: string;
+  uploader?: { id: string; username: string };
+};
+
+export type ContactCommunication = {
+  id: string;
+  type: "CALL" | "EMAIL" | "MEETING";
+  subject?: string | null;
+  notes?: string | null;
+  createdAt: string;
+  creator?: { id: string; username: string };
+};
+
+export type ContactDeal = {
+  id: string;
+  name: string;
+  value: number;
+  stage: string;
+  status: string;
+  expectedCloseDate?: string | null;
+};
+
+export type ContactTask = {
+  id: string;
+  title: string;
+  dueDate?: string | null;
+  completed: boolean;
+  assignedTo?: { id: string; username: string };
+};
+
 export interface ContactDetail extends Contact {
-  notes?: Array<{
-    id: string;
-    content: string;
-    createdAt: string;
-    creator?: { id: string; username: string };
-  }>;
-  attachments?: Array<{
-    id: string;
-    fileName: string;
-    filePath: string;
-    fileSize?: number;
-    mimeType?: string;
-    createdAt: string;
-    uploader?: { id: string; username: string };
-  }>;
-  communications?: Array<{
-    id: string;
-    type: "CALL" | "EMAIL" | "MEETING";
-    subject?: string | null;
-    notes?: string | null;
-    createdAt: string;
-    creator?: { id: string; username: string };
-  }>;
-  deals?: Array<{
-    id: string;
-    name: string;
-    value: number;
-    stage: string;
-    status: string;
-    expectedCloseDate?: string | null;
-  }>;
-  tasks?: Array<{
-    id: string;
-    title: string;
-    dueDate?: string | null;
-    completed: boolean;
-    assignedTo?: { id: string; username: string };
-  }>;
+  notes?: ContactNote[];
+  attachments?: ContactAttachment[];
+  communications?: ContactCommunication[];
+  deals?: ContactDeal[];
+  tasks?: ContactTask[];
 }
 
 export interface ContactListParams {
@@ -95,6 +111,8 @@ export interface CreateContactData {
   companyId?: string;
   memberId?: string;
   tagIds?: string[];
+  source?: string;
+  journeyType?: string;
 }
 
 export interface UpdateContactData {
@@ -105,6 +123,8 @@ export interface UpdateContactData {
   companyId?: string;
   memberId?: string;
   tagIds?: string[];
+  source?: string;
+  journeyType?: string;
 }
 
 export async function getContacts(
@@ -155,7 +175,7 @@ export async function createContactTag(
 export async function addContactNote(
   contactId: string,
   content: string,
-): Promise<{ note: unknown }> {
+): Promise<{ note: ContactNote }> {
   const res = await api.post(`/contacts/${contactId}/notes`, { content });
   return res.data;
 }
@@ -170,7 +190,7 @@ export async function deleteContactNote(
 export async function addContactAttachment(
   contactId: string,
   file: File,
-): Promise<{ attachment: unknown }> {
+): Promise<{ attachment: ContactAttachment }> {
   const formData = new FormData();
   formData.append("file", file);
   const res = await api.post(`/contacts/${contactId}/attachments`, formData);
@@ -191,7 +211,7 @@ export async function addContactCommunication(
     subject?: string;
     notes?: string;
   },
-): Promise<{ communication: unknown }> {
+): Promise<{ communication: ContactCommunication }> {
   const res = await api.post(`/contacts/${contactId}/communications`, data);
   return res.data;
 }

@@ -51,7 +51,8 @@ export default function EditDealPage() {
   const { data: companiesData } = useCompaniesForSelect();
   const { data: contactsData } = useContactsPaginated({ limit: 200 });
   const { data: membersData } = useMembersPaginated({ limit: 500 });
-  const { data: users = [] } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 500 });
+  const users = usersResult?.users ?? [];
 
   const deal = data?.deal;
   const pipeline = deal?.pipeline as
@@ -254,7 +255,7 @@ export default function EditDealPage() {
               <SelectValue placeholder="Select user" />
             </SelectTrigger>
             <SelectContent>
-              {(users as Array<{ id: string; username: string }>).map((u) => (
+              {users.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.username}
                 </SelectItem>

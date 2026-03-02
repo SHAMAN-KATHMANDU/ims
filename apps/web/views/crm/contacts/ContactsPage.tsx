@@ -23,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Upload, Download } from "lucide-react";
+import { Search, Plus, Upload, Download, Pencil } from "lucide-react";
 import {
   DataTablePagination,
   type PaginationState,
@@ -220,9 +220,16 @@ export function ContactsPage() {
         open={!!selectedId}
         onOpenChange={(o) => !o && setSelectedId(null)}
       >
-        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
-          <SheetHeader>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+          <SheetHeader className="flex flex-row items-start justify-between pr-10">
             <SheetTitle>Contact Details</SheetTitle>
+            {selectedId && (
+              <Link href={`${basePath}/crm/contacts/${selectedId}/edit`}>
+                <Button size="sm" variant="outline">
+                  <Pencil className="h-4 w-4 mr-1" /> Edit
+                </Button>
+              </Link>
+            )}
           </SheetHeader>
           {selectedId && (
             <ContactDetail

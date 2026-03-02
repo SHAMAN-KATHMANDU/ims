@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface ContactTableProps {
   contacts: Contact[];
@@ -38,7 +39,8 @@ export function ContactTable({
               <TableHead>Name</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Company</TableHead>
-              <TableHead>Deals</TableHead>
+              <TableHead>Deal Stage</TableHead>
+              <TableHead>Member</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -78,7 +80,8 @@ export function ContactTable({
             <TableHead>Phone</TableHead>
             <TableHead>Company</TableHead>
             <TableHead>Tags</TableHead>
-            <TableHead>Deals</TableHead>
+            <TableHead>Deal Stage</TableHead>
+            <TableHead>Member</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
@@ -86,57 +89,77 @@ export function ContactTable({
           {contacts.length === 0 ? (
             <TableRow>
               <TableCell
-                colSpan={7}
+                colSpan={8}
                 className="text-center py-8 text-muted-foreground"
               >
                 No contacts found
               </TableCell>
             </TableRow>
           ) : (
-            contacts.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell>
-                  <Button
-                    variant="link"
-                    className="h-auto p-0 font-medium"
-                    onClick={() => onView(c.id)}
-                  >
-                    {c.firstName} {c.lastName || ""}
-                  </Button>
-                </TableCell>
-                <TableCell>{c.email || "—"}</TableCell>
-                <TableCell>{c.phone || "—"}</TableCell>
-                <TableCell>{c.company?.name || "—"}</TableCell>
-                <TableCell>
-                  {c.tagLinks?.map((l) => l.tag.name).join(", ") || "—"}
-                </TableCell>
-                <TableCell>{c._count?.deals ?? 0}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onView(c.id)}
-                  >
-                    View
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => onEdit(c.id)}
-                  >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive"
-                    onClick={() => onDelete(c.id)}
-                  >
-                    Delete
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))
+            contacts.map((c) => {
+              const openDealStage = c.deals?.[0]?.stage;
+              return (
+                <TableRow key={c.id}>
+                  <TableCell>
+                    <Button
+                      variant="link"
+                      className="h-auto p-0 font-medium"
+                      onClick={() => onView(c.id)}
+                    >
+                      {c.firstName} {c.lastName || ""}
+                    </Button>
+                  </TableCell>
+                  <TableCell>{c.email || "—"}</TableCell>
+                  <TableCell>{c.phone || "—"}</TableCell>
+                  <TableCell>{c.company?.name || "—"}</TableCell>
+                  <TableCell>
+                    {c.tagLinks?.map((l) => l.tag.name).join(", ") || "—"}
+                  </TableCell>
+                  <TableCell>
+                    {openDealStage ? (
+                      <Badge variant="outline" className="text-xs">
+                        {openDealStage}
+                      </Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {c.member?.memberStatus ? (
+                      <Badge variant="secondary" className="text-xs">
+                        {c.member.memberStatus}
+                      </Badge>
+                    ) : (
+                      "—"
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onView(c.id)}
+                    >
+                      View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onEdit(c.id)}
+                    >
+                      Edit
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-destructive"
+                      onClick={() => onDelete(c.id)}
+                    >
+                      Delete
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>

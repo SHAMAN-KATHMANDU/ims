@@ -696,13 +696,13 @@ function EditPipelineDialog({
   );
 }
 
-function normalizeStages(raw: unknown): PipelineStage[] {
+function normalizeStages(raw: PipelineStage[]): PipelineStage[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((s, i) => ({
-    id: typeof s?.id === "string" ? s.id : String(i + 1),
-    name: typeof s?.name === "string" ? s.name : `Stage ${i + 1}`,
-    order: typeof s?.order === "number" ? s.order : i + 1,
-    probability: typeof s?.probability === "number" ? s.probability : 0,
+    id: s.id ?? String(i + 1),
+    name: s.name ?? `Stage ${i + 1}`,
+    order: s.order ?? i + 1,
+    probability: s.probability ?? 0,
   }));
 }
 

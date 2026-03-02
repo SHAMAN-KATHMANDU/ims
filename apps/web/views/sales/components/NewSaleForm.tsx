@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useCheckMember } from "@/hooks/useMember";
+import { useContactsPaginated } from "@/hooks/useContacts";
 import { useToast } from "@/hooks/useToast";
 import {
   getLocationInventory,
@@ -45,6 +46,8 @@ import {
   Search,
   ShoppingCart,
   Loader2,
+  UserRound,
+  X,
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 
@@ -145,6 +148,9 @@ export function NewSaleForm({
   const [locationId, setLocationId] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
   const [memberName, setMemberName] = useState("");
+  const [contactId, setContactId] = useState<string | null>(null);
+  const [contactSearch, setContactSearch] = useState("");
+  const [showContactDropdown, setShowContactDropdown] = useState(false);
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SaleItem[]>([]);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
@@ -266,6 +272,15 @@ export function NewSaleForm({
   const debouncedPhone = useDebounce(memberPhone, 500);
   const { data: memberCheck, isLoading: checkingMember } =
     useCheckMember(debouncedPhone);
+
+  // Contact search
+  const debouncedContactSearch = useDebounce(contactSearch, 400);
+  const { data: contactsResult } = useContactsPaginated({
+    search: debouncedContactSearch,
+    limit: 10,
+  });
+  const contactOptions = contactsResult?.data ?? [];
+
   const { toast } = useToast();
 
   // Get showrooms only
@@ -590,6 +605,7 @@ export function NewSaleForm({
       locationId,
       memberPhone: submittedPhone,
       memberName: memberName.trim() || undefined,
+      contactId: contactId || undefined,
       items: items.map((item) => ({
         variationId: item.variationId,
         subVariationId: item.subVariationId ?? undefined,
@@ -609,6 +625,8 @@ export function NewSaleForm({
     setLocationId("");
     setMemberPhone("");
     setMemberName("");
+    setContactId(null);
+    setContactSearch("");
     setNotes("");
     setItems([]);
     setProductSearch("");
@@ -768,6 +786,83 @@ export function NewSaleForm({
                       Enter customer phone (member) to enable credit sale.
                     </p>
                   )}
+
+                  {/* CRM Contact Linkage */}
+                  <div className="mt-4 space-y-2">
+                    <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                      <UserRound className="h-3 w-3" />
+                      Link CRM Contact (optional)
+                    </Label>
+                    {contactId ? (
+                      <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/40 text-sm">
+                        <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span className="flex-1 truncate">
+                          {contactOptions.find((c) => c.id === contactId)
+                            ? `${contactOptions.find((c) => c.id === contactId)!.firstName}${contactOptions.find((c) => c.id === contactId)!.lastName ? ` ${contactOptions.find((c) => c.id === contactId)!.lastName}` : ""}`
+                            : "Contact linked"}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setContactId(null);
+                            setContactSearch("");
+                          }}
+                          className="text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                        <Input
+                          value={contactSearch}
+                          onChange={(e) => {
+                            setContactSearch(e.target.value);
+                            setShowContactDropdown(true);
+                          }}
+                          onFocus={() => setShowContactDropdown(true)}
+                          onBlur={() =>
+                            setTimeout(() => setShowContactDropdown(false), 200)
+                          }
+                          placeholder="Search contacts by name, email, phone..."
+                          className="pl-9 bg-surface border-border/50"
+                        />
+                        {showContactDropdown && contactSearch.trim() && (
+                          <div className="absolute z-50 top-full mt-1 w-full bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
+                            {contactOptions.length === 0 ? (
+                              <div className="p-3 text-sm text-muted-foreground text-center">
+                                No contacts found
+                              </div>
+                            ) : (
+                              contactOptions.map((c) => (
+                                <button
+                                  key={c.id}
+                                  type="button"
+                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
+                                  onMouseDown={() => {
+                                    setContactId(c.id);
+                                    setContactSearch("");
+                                    setShowContactDropdown(false);
+                                  }}
+                                >
+                                  <span className="font-medium">
+                                    {c.firstName}
+                                    {c.lastName ? ` ${c.lastName}` : ""}
+                                  </span>
+                                  {(c.email || c.phone) && (
+                                    <span className="text-xs text-muted-foreground">
+                                      {c.email ?? c.phone}
+                                    </span>
+                                  )}
+                                </button>
+                              ))
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </FormSection>
               </div>
 

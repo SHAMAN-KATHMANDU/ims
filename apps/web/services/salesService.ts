@@ -73,6 +73,7 @@ export interface Sale {
   isCreditSale: boolean;
   locationId: string;
   memberId?: string;
+  contactId?: string | null;
   subtotal: number;
   discount: number;
   total: number;
@@ -88,6 +89,13 @@ export interface Sale {
     phone: string;
     name?: string;
   };
+  contact?: {
+    id: string;
+    firstName: string;
+    lastName?: string | null;
+    email?: string | null;
+    phone?: string | null;
+  } | null;
   createdBy: {
     id: string;
     username: string;
@@ -133,6 +141,7 @@ export interface CreateSaleData {
   locationId: string;
   memberPhone?: string;
   memberName?: string;
+  contactId?: string | null;
   items: CreateSaleItem[];
   notes?: string;
   payments?: SalePayment[];

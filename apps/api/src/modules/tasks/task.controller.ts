@@ -1,297 +1,115 @@
 import { Request, Response } from "express";
-import prisma from "@/config/prisma";
-import {
-  getPaginationParams,
-  createPaginationResult,
-  getPrismaOrderBy,
-} from "@/utils/pagination";
+import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
-
-function getUserId(req: Request): string | null {
-  return (req as any).user?.id ?? null;
-}
+import { AppError } from "@/middlewares/errorHandler";
+import { CreateTaskSchema, UpdateTaskSchema } from "./task.schema";
+import taskService from "./task.service";
 
 class TaskController {
-  async create(req: Request, res: Response) {
+  create = async (req: Request, res: Response) => {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
-
       const tenantId = req.user!.tenantId;
-      const { title, dueDate, contactId, memberId, dealId, assignedToId } =
-        req.body;
-
-      if (!title || typeof title !== "string" || !title.trim()) {
-        return res.status(400).json({ message: "Task title is required" });
-      }
-
-      const task = await prisma.task.create({
-        data: {
-          tenantId,
-          title: title.trim(),
-          dueDate: dueDate ? new Date(dueDate) : null,
-          contactId: contactId || null,
-          memberId: memberId || null,
-          dealId: dealId || null,
-          assignedToId: assignedToId || userId,
-        },
-        include: {
-          contact: { select: { id: true, firstName: true, lastName: true } },
-          member: { select: { id: true, name: true, phone: true } },
-          deal: { select: { id: true, name: true } },
-          assignedTo: { select: { id: true, username: true } },
-        },
-      });
-
-      if (task.dueDate && task.assignedToId) {
-        await prisma.notification.create({
-          data: {
-            userId: task.assignedToId,
-            type: "TASK_DUE",
-            title: "Task due",
-            message: `Task "${task.title}" is due ${task.dueDate.toLocaleDateString()}`,
-            resourceType: "task",
-            resourceId: task.id,
-          },
-        });
-      }
-
-      res.status(201).json({ message: "Task created successfully", task });
+      const userId = req.user!.id;
+      const body = CreateTaskSchema.parse(req.body);
+      const task = await taskService.create(tenantId, body, userId);
+      return res
+        .status(201)
+        .json({ message: "Task created successfully", task });
     } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
       return sendControllerError(req, res, error, "Create task error");
     }
-  }
+  };
 
-  async getAll(req: Request, res: Response) {
+  getAll = async (req: Request, res: Response) => {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
-
       const tenantId = req.user!.tenantId;
-      const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
-        req.query,
+      const result = await taskService.getAll(
+        tenantId,
+        req.query as Record<string, unknown>,
       );
-      const completed = req.query.completed as string | undefined;
-      const assignedToId = req.query.assignedToId as string | undefined;
-      const dueToday = req.query.dueToday === "true";
-
-      const allowedSortFields = [
-        "createdAt",
-        "updatedAt",
-        "dueDate",
-        "title",
-        "id",
-      ];
-      const orderBy = getPrismaOrderBy(
-        sortBy,
-        sortOrder,
-        allowedSortFields,
-      ) || {
-        dueDate: "asc",
-      };
-
-      const where: Record<string, unknown> = { tenantId };
-      if (search) {
-        where.title = { contains: search, mode: "insensitive" as const };
-      }
-      if (completed === "true") where.completed = true;
-      else if (completed === "false") where.completed = false;
-      if (assignedToId) where.assignedToId = assignedToId;
-
-      if (dueToday) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        where.dueDate = { gte: today, lt: tomorrow };
-      }
-
-      const skip = (page - 1) * limit;
-
-      const [totalItems, tasks] = await Promise.all([
-        prisma.task.count({ where }),
-        prisma.task.findMany({
-          where,
-          orderBy,
-          skip,
-          take: limit,
-          include: {
-            contact: { select: { id: true, firstName: true, lastName: true } },
-            member: { select: { id: true, name: true, phone: true } },
-            deal: { select: { id: true, name: true } },
-            assignedTo: { select: { id: true, username: true } },
-          },
-        }),
-      ]);
-
-      const result = createPaginationResult(tasks, totalItems, page, limit);
-      res.status(200).json({ message: "OK", ...result });
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get tasks error");
     }
-  }
+  };
 
-  async getById(req: Request, res: Response) {
+  getById = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const { id } = req.params;
-
-      const task = await prisma.task.findFirst({
-        where: { id, tenantId },
-        include: {
-          contact: true,
-          member: true,
-          deal: true,
-          assignedTo: { select: { id: true, username: true } },
-        },
-      });
-
-      if (!task) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      res.status(200).json({ message: "OK", task });
+      const task = await taskService.getById(tenantId, req.params.id);
+      return res.status(200).json({ message: "OK", task });
     } catch (error: unknown) {
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
       return sendControllerError(req, res, error, "Get task by id error");
     }
-  }
+  };
 
-  async update(req: Request, res: Response) {
+  update = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const { id } = req.params;
-      const {
-        title,
-        dueDate,
-        completed,
-        contactId,
-        memberId,
-        dealId,
-        assignedToId,
-      } = req.body;
-
-      const existing = await prisma.task.findFirst({
-        where: { id, tenantId },
-      });
-      if (!existing) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      // Normalize optional FK fields: empty string -> null to avoid Prisma P2003 (invalid reference)
-      const normalizedContactId =
-        contactId !== undefined
-          ? contactId && String(contactId).trim()
-            ? contactId
-            : null
-          : undefined;
-      const normalizedMemberId =
-        memberId !== undefined
-          ? memberId && String(memberId).trim()
-            ? memberId
-            : null
-          : undefined;
-      const normalizedDealId =
-        dealId !== undefined
-          ? dealId && String(dealId).trim()
-            ? dealId
-            : null
-          : undefined;
-      const normalizedAssignedToId =
-        assignedToId !== undefined &&
-        assignedToId &&
-        String(assignedToId).trim()
-          ? assignedToId
-          : assignedToId === undefined
-            ? undefined
-            : existing.assignedToId;
-
-      const updateData: Record<string, unknown> = {
-        ...(title !== undefined && { title: title?.trim() || existing.title }),
-        ...(dueDate !== undefined && {
-          dueDate: dueDate ? new Date(dueDate) : null,
-        }),
-        ...(completed !== undefined && { completed: !!completed }),
-        ...(normalizedContactId !== undefined && {
-          contactId: normalizedContactId,
-        }),
-        ...(normalizedMemberId !== undefined && {
-          memberId: normalizedMemberId,
-        }),
-        ...(normalizedDealId !== undefined && { dealId: normalizedDealId }),
-        ...(normalizedAssignedToId !== undefined && {
-          assignedToId: normalizedAssignedToId,
-        }),
-      };
-
-      const task = await prisma.task.update({
-        where: { id },
-        data: updateData,
-        include: {
-          contact: { select: { id: true, firstName: true, lastName: true } },
-          member: { select: { id: true, name: true, phone: true } },
-          deal: { select: { id: true, name: true } },
-          assignedTo: { select: { id: true, username: true } },
-        },
-      });
-
-      res.status(200).json({ message: "Task updated successfully", task });
+      const body = UpdateTaskSchema.parse(req.body);
+      const task = await taskService.update(tenantId, req.params.id, body);
+      return res
+        .status(200)
+        .json({ message: "Task updated successfully", task });
     } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
       return sendControllerError(req, res, error, "Update task error");
     }
-  }
+  };
 
-  async complete(req: Request, res: Response) {
+  complete = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const { id } = req.params;
-
-      const existing = await prisma.task.findFirst({
-        where: { id, tenantId },
-      });
-      if (!existing) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      const task = await prisma.task.update({
-        where: { id },
-        data: { completed: true },
-        include: {
-          contact: { select: { id: true, firstName: true, lastName: true } },
-          member: { select: { id: true, name: true, phone: true } },
-          deal: { select: { id: true, name: true } },
-          assignedTo: { select: { id: true, username: true } },
-        },
-      });
-
-      res.status(200).json({ message: "Task completed", task });
+      const task = await taskService.complete(tenantId, req.params.id);
+      return res.status(200).json({ message: "Task completed", task });
     } catch (error: unknown) {
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
       return sendControllerError(req, res, error, "Complete task error");
     }
-  }
+  };
 
-  async delete(req: Request, res: Response) {
+  delete = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const { id } = req.params;
-
-      const existing = await prisma.task.findFirst({
-        where: { id, tenantId },
-      });
-      if (!existing) {
-        return res.status(404).json({ message: "Task not found" });
-      }
-
-      await prisma.task.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
-      res.status(200).json({ message: "Task deleted successfully" });
+      await taskService.delete(tenantId, req.params.id);
+      return res.status(200).json({ message: "Task deleted successfully" });
     } catch (error: unknown) {
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
       return sendControllerError(req, res, error, "Delete task error");
     }
-  }
+  };
 }
 
 export default new TaskController();

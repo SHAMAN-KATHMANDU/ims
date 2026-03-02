@@ -25,8 +25,7 @@ interface DealDetailProps {
 
 function useStagesFromDeal(deal: Deal | undefined): string[] {
   if (!deal?.pipeline?.stages) return [];
-  const stages = deal.pipeline.stages as Array<{ name: string }>;
-  return Array.isArray(stages) ? stages.map((s) => s.name) : [];
+  return deal.pipeline.stages.map((s) => s.name);
 }
 
 export function DealDetail({ dealId, basePath }: DealDetailProps) {

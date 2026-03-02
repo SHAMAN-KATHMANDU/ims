@@ -49,7 +49,8 @@ export default function NewDealPage() {
   const { data: companiesData } = useCompaniesForSelect();
   const { data: contactsData } = useContactsPaginated({ limit: 200 });
   const { data: membersData } = useMembersPaginated({ limit: 500 });
-  const { data: users = [] } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 500 });
+  const users = usersResult?.users ?? [];
 
   const pipelines = pipelinesData?.pipelines ?? [];
   const defaultPipeline = pipelines.find((p) => p.isDefault) ?? pipelines[0];
@@ -179,7 +180,7 @@ export default function NewDealPage() {
               <SelectValue placeholder="Select user" />
             </SelectTrigger>
             <SelectContent>
-              {(users as Array<{ id: string; username: string }>).map((u) => (
+              {users.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.username}
                 </SelectItem>

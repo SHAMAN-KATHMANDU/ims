@@ -17,6 +17,7 @@ import {
 import { useCompaniesForSelect } from "@/hooks/useCompanies";
 import { useContactTags } from "@/hooks/useContacts";
 import { useMembersPaginated } from "@/hooks/useMember";
+import { useCrmSources } from "@/hooks/useCrmSettings";
 import type { CreateContactData } from "@/services/contactService";
 
 const schema = z.object({
@@ -27,6 +28,8 @@ const schema = z.object({
   companyId: z.string().optional(),
   memberId: z.string().optional(),
   tagIds: z.array(z.string()).optional(),
+  source: z.string().optional(),
+  journeyType: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -47,9 +50,11 @@ export function ContactForm({
   const { data: companiesData } = useCompaniesForSelect();
   const { data: tagsData } = useContactTags();
   const { data: membersData } = useMembersPaginated({ limit: 500 });
+  const { data: sourcesData } = useCrmSources();
   const companies = companiesData?.companies ?? [];
   const tags = tagsData?.tags ?? [];
   const members = membersData?.data ?? [];
+  const sources = sourcesData?.sources ?? [];
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -61,6 +66,8 @@ export function ContactForm({
       companyId: defaultValues?.companyId ?? "",
       memberId: defaultValues?.memberId ?? "",
       tagIds: defaultValues?.tagIds ?? [],
+      source: defaultValues?.source ?? "",
+      journeyType: defaultValues?.journeyType ?? "",
     },
   });
 
@@ -75,6 +82,8 @@ export function ContactForm({
           companyId: values.companyId || undefined,
           memberId: values.memberId || undefined,
           tagIds: values.tagIds,
+          source: values.source || undefined,
+          journeyType: values.journeyType || undefined,
         });
       })}
       className="space-y-4"
@@ -162,6 +171,38 @@ export function ContactForm({
             ))}
           </SelectContent>
         </Select>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label>Source</Label>
+          <Select
+            value={form.watch("source") || "__none__"}
+            onValueChange={(v) =>
+              form.setValue("source", v === "__none__" ? undefined : v)
+            }
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">None</SelectItem>
+              {sources.map((s) => (
+                <SelectItem key={s.id} value={s.name}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label htmlFor="journeyType">Journey Type</Label>
+          <Input
+            id="journeyType"
+            placeholder="e.g. Prospecting, Negotiation"
+            {...form.register("journeyType")}
+            className="mt-1"
+          />
+        </div>
       </div>
       {tags.length > 0 && (
         <div>

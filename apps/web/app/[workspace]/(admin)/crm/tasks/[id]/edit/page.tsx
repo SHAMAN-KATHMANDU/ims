@@ -49,7 +49,8 @@ export default function EditTaskPage() {
   const { data: contactsData } = useContactsPaginated({ limit: 100 });
   const { data: dealsData } = useDealsPaginated({ limit: 100 });
   const { data: membersData } = useMembersPaginated({ limit: 500 });
-  const { data: users = [] } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 500 });
+  const users = usersResult?.users ?? [];
 
   const task = data?.task;
   const contacts = contactsData?.data ?? [];
@@ -67,7 +68,7 @@ export default function EditTaskPage() {
           contactId: task.contactId ?? undefined,
           memberId: task.memberId ?? undefined,
           dealId: task.dealId ?? undefined,
-          assignedToId: task.assignedToId,
+          assignedToId: task.assignedToId ?? "",
         }
       : undefined,
   });
@@ -145,7 +146,7 @@ export default function EditTaskPage() {
               <SelectValue placeholder="Select user" />
             </SelectTrigger>
             <SelectContent>
-              {(users as Array<{ id: string; username: string }>).map((u) => (
+              {users.map((u) => (
                 <SelectItem key={u.id} value={u.id}>
                   {u.username}
                 </SelectItem>
