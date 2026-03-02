@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import {
   useLeadsPaginated,
   useLead,
@@ -14,6 +15,7 @@ import {
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -21,7 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, Mail, Phone as PhoneIcon } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -57,12 +59,24 @@ const STATUS_OPTIONS: LeadStatus[] = [
   "CONVERTED",
 ];
 
+const statusVariant: Record<
+  LeadStatus,
+  "default" | "secondary" | "outline" | "destructive"
+> = {
+  NEW: "secondary",
+  CONTACTED: "outline",
+  QUALIFIED: "default",
+  LOST: "destructive",
+  CONVERTED: "secondary",
+};
+
 export function LeadsPage() {
   const params = useParams();
-  const _router = useRouter();
+  const router = useRouter();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
+  const isDesktop = useIsDesktop();
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -95,6 +109,22 @@ export function LeadsPage() {
         hasPrevPage: data.pagination.hasPrevPage,
       } as PaginationState)
     : null;
+
+  const openView = (id: string) => {
+    if (isDesktop) {
+      setSelectedId(id);
+    } else {
+      router.push(`${basePath}/crm/leads/${id}`);
+    }
+  };
+
+  const openEdit = (id: string) => {
+    if (isDesktop) {
+      router.push(`${basePath}/crm/leads/${id}/edit`);
+    } else {
+      router.push(`${basePath}/crm/leads/${id}/edit`);
+    }
+  };
 
   const handleConvert = (lead: Lead) => {
     setConvertLeadId(lead.id);
@@ -146,7 +176,7 @@ export function LeadsPage() {
             setPage(DEFAULT_PAGE);
           }}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All statuses" />
           </SelectTrigger>
           <SelectContent>
@@ -160,7 +190,101 @@ export function LeadsPage() {
         </Select>
       </div>
 
-      <div className="rounded-md border">
+      {/* ── Mobile card list ─────────────────────────────────────────── */}
+      <div className="sm:hidden space-y-2">
+        {isLoading ? (
+          [1, 2, 3].map((i) => (
+            <div key={i} className="rounded-lg border p-3 space-y-2">
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-3 w-48" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))
+        ) : leads.length === 0 ? (
+          <div className="rounded-md border py-8 text-center text-muted-foreground">
+            No leads found
+          </div>
+        ) : (
+          leads.map((lead) => (
+            <div
+              key={lead.id}
+              className="rounded-lg border bg-card p-3 space-y-2 cursor-pointer"
+              onClick={() => openView(lead.id)}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-semibold">{lead.name}</span>
+                <Badge
+                  variant={statusVariant[lead.status]}
+                  className="text-xs shrink-0"
+                >
+                  {lead.status}
+                </Badge>
+              </div>
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {lead.email && (
+                  <span className="flex items-center gap-1">
+                    <Mail className="h-3 w-3" />
+                    {lead.email}
+                  </span>
+                )}
+                {lead.phone && (
+                  <span className="flex items-center gap-1">
+                    <PhoneIcon className="h-3 w-3" />
+                    {lead.phone}
+                  </span>
+                )}
+                {lead.source && <span>{lead.source}</span>}
+                {lead.assignedTo && <span>{lead.assignedTo.username}</span>}
+              </div>
+              <div
+                className="flex gap-1 pt-1"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  disabled={lead.status === "CONVERTED"}
+                  onClick={() => handleConvert(lead)}
+                >
+                  Convert
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  onClick={() => openEdit(lead.id)}
+                >
+                  Edit
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs text-destructive hover:text-destructive"
+                  onClick={() => {
+                    if (confirm("Delete this lead?")) {
+                      deleteMutation.mutate(lead.id, {
+                        onSuccess: () => toast({ title: "Lead deleted" }),
+                        onError: () =>
+                          toast({
+                            title: "Delete failed",
+                            variant: "destructive",
+                          }),
+                      });
+                      if (selectedId === lead.id) setSelectedId(null);
+                    }
+                  }}
+                >
+                  Delete
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ── Desktop table ────────────────────────────────────────────── */}
+      <div className="hidden sm:block overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -307,7 +431,7 @@ export function LeadsPage() {
                   <p className="text-sm mt-2">{leadData.lead.notes}</p>
                 )}
               </div>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   disabled={leadData.lead.status === "CONVERTED"}
                   onClick={() => handleConvert(leadData.lead)}

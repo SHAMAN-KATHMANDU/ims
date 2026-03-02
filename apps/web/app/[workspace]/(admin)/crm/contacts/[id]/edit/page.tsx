@@ -40,7 +40,6 @@ export default function EditContactPage() {
           email: contact.email ?? undefined,
           phone: contact.phone ?? undefined,
           companyId: contact.companyId ?? undefined,
-          memberId: contact.memberId ?? undefined,
           tagIds: contact.tagLinks?.map((l) => l.tag.id),
         }}
         onSubmit={async (data) => {

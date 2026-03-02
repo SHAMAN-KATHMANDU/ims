@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import {
@@ -10,9 +9,12 @@ import {
   useDeleteContact,
   useImportContacts,
   exportContactsCsv,
+  useCreateContact,
+  useUpdateContact,
 } from "@/hooks/useContacts";
 import { useCompaniesForSelect } from "@/hooks/useCompanies";
 import { useContactTags } from "@/hooks/useContacts";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -23,7 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Upload, Download, Pencil } from "lucide-react";
+import { Search, Plus, Upload, Download } from "lucide-react";
 import {
   DataTablePagination,
   type PaginationState,
@@ -31,13 +33,12 @@ import {
 import { downloadBlob } from "@/lib/downloadBlob";
 import { ContactTable } from "./ContactTable";
 import { ContactDetail } from "./ContactDetail";
+import { ContactForm } from "./ContactForm";
 import { ContactImportDialog } from "./ContactImportDialog";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/components/ui/sheet";
+import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
+import type { CreateContactData } from "@/services/contactService";
+
+type DrawerMode = "view" | "new" | "edit" | null;
 
 export function ContactsPage() {
   const params = useParams();
@@ -45,6 +46,7 @@ export function ContactsPage() {
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
+  const isDesktop = useIsDesktop();
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -55,6 +57,7 @@ export function ContactsPage() {
   const [tagId, setTagId] = useState<string>("");
   const [importOpen, setImportOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
 
   const { data, isLoading } = useContactsPaginated({
     page,
@@ -73,6 +76,8 @@ export function ContactsPage() {
   const tags = tagsData?.tags ?? [];
   const deleteMutation = useDeleteContact();
   const importMutation = useImportContacts();
+  const createMutation = useCreateContact();
+  const updateMutation = useUpdateContact();
 
   const contacts = data?.data ?? [];
   const pagination = data?.pagination
@@ -109,11 +114,65 @@ export function ContactsPage() {
     toast({ title: "Contacts imported successfully" });
   };
 
+  const openNew = () => {
+    if (isDesktop) {
+      setSelectedId(null);
+      setDrawerMode("new");
+    } else {
+      router.push(`${basePath}/crm/contacts/new`);
+    }
+  };
+
+  const openView = (id: string) => {
+    if (isDesktop) {
+      setSelectedId(id);
+      setDrawerMode("view");
+    } else {
+      router.push(`${basePath}/crm/contacts/${id}`);
+    }
+  };
+
+  const openEdit = (id: string) => {
+    if (isDesktop) {
+      setSelectedId(id);
+      setDrawerMode("edit");
+    } else {
+      router.push(`${basePath}/crm/contacts/${id}/edit`);
+    }
+  };
+
+  const closeDrawer = () => {
+    setDrawerMode(null);
+    setSelectedId(null);
+  };
+
+  const handleCreateContact = async (data: CreateContactData) => {
+    await createMutation.mutateAsync(data);
+    toast({ title: "Contact created" });
+    closeDrawer();
+  };
+
+  const handleUpdateContact = async (data: CreateContactData) => {
+    if (!selectedId) return;
+    await updateMutation.mutateAsync({ id: selectedId, data });
+    toast({ title: "Contact updated" });
+    setDrawerMode("view");
+  };
+
+  const drawerTitle =
+    drawerMode === "new"
+      ? "New Contact"
+      : drawerMode === "edit"
+        ? "Edit Contact"
+        : "Contact Details";
+
+  const drawerOpen = drawerMode !== null;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">Contacts</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             variant="outline"
             size="sm"
@@ -126,12 +185,10 @@ export function ContactsPage() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Link href={`${basePath}/crm/contacts/new`}>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Contact
-            </Button>
-          </Link>
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Contact
+          </Button>
         </div>
       </div>
 
@@ -152,7 +209,7 @@ export function ContactsPage() {
             setPage(DEFAULT_PAGE);
           }}
         >
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-full sm:w-[180px]">
             <SelectValue placeholder="All companies" />
           </SelectTrigger>
           <SelectContent>
@@ -171,7 +228,7 @@ export function ContactsPage() {
             setPage(DEFAULT_PAGE);
           }}
         >
-          <SelectTrigger className="w-[160px]">
+          <SelectTrigger className="w-full sm:w-[160px]">
             <SelectValue placeholder="All tags" />
           </SelectTrigger>
           <SelectContent>
@@ -189,14 +246,14 @@ export function ContactsPage() {
         contacts={contacts}
         isLoading={isLoading}
         basePath={basePath}
-        onView={(id) => setSelectedId(id)}
-        onEdit={(id) => router.push(`${basePath}/crm/contacts/${id}/edit`)}
+        onView={openView}
+        onEdit={openEdit}
         onDelete={(id) => {
           if (confirm("Delete this contact?")) {
             deleteMutation.mutate(id, {
               onSuccess: () => {
                 toast({ title: "Contact deleted" });
-                if (selectedId === id) setSelectedId(null);
+                if (selectedId === id) closeDrawer();
               },
               onError: () =>
                 toast({ title: "Delete failed", variant: "destructive" }),
@@ -216,31 +273,64 @@ export function ContactsPage() {
         />
       )}
 
-      <Sheet
-        open={!!selectedId}
-        onOpenChange={(o) => !o && setSelectedId(null)}
+      <ResponsiveDrawer
+        open={drawerOpen}
+        onOpenChange={(o) => !o && closeDrawer()}
+        title={drawerTitle}
+        size="2xl"
       >
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
-          <SheetHeader className="flex flex-row items-start justify-between pr-10">
-            <SheetTitle>Contact Details</SheetTitle>
-            {selectedId && (
-              <Link href={`${basePath}/crm/contacts/${selectedId}/edit`}>
-                <Button size="sm" variant="outline">
-                  <Pencil className="h-4 w-4 mr-1" /> Edit
-                </Button>
-              </Link>
-            )}
-          </SheetHeader>
-          {selectedId && (
-            <ContactDetail
-              contactId={selectedId}
-              contact={contactData?.contact}
-              basePath={basePath}
-              onClose={() => setSelectedId(null)}
-            />
-          )}
-        </SheetContent>
-      </Sheet>
+        {drawerMode === "view" && selectedId && (
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-end px-6 py-3 border-b shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openEdit(selectedId)}
+              >
+                Edit Contact
+              </Button>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ContactDetail
+                contactId={selectedId}
+                contact={contactData?.contact}
+                basePath={basePath}
+                onClose={closeDrawer}
+              />
+            </div>
+          </div>
+        )}
+        {drawerMode === "new" && (
+          <ContactForm
+            onSubmit={handleCreateContact}
+            onCancel={closeDrawer}
+            isLoading={createMutation.isPending}
+          />
+        )}
+        {drawerMode === "edit" && selectedId && (
+          <ContactForm
+            defaultValues={
+              contactData?.contact
+                ? {
+                    firstName: contactData.contact.firstName,
+                    lastName: contactData.contact.lastName ?? undefined,
+                    email: contactData.contact.email ?? undefined,
+                    phone: contactData.contact.phone ?? undefined,
+                    companyId: contactData.contact.companyId ?? undefined,
+                    source: contactData.contact.source ?? undefined,
+                    journeyType: contactData.contact.journeyType ?? undefined,
+                    tagIds:
+                      contactData.contact.tagLinks?.map((tl) => tl.tag.id) ??
+                      [],
+                  }
+                : undefined
+            }
+            onSubmit={handleUpdateContact}
+            onCancel={() => setDrawerMode("view")}
+            isLoading={updateMutation.isPending}
+          />
+        )}
+      </ResponsiveDrawer>
 
       <ContactImportDialog
         open={importOpen}

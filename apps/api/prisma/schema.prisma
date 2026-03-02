@@ -63,7 +63,8 @@ model Tenant {
   deals          Deal[]
   tasks          Task[]
   activities     Activity[]
-  crmSources     CrmSource[]
+  crmSources       CrmSource[]
+  crmJourneyTypes  CrmJourneyType[]
 
   @@map("tenants")
 }
@@ -1125,6 +1126,20 @@ model CrmSource {
   @@unique([tenantId, name])
   @@index([tenantId])
   @@map("crm_sources")
+}
+
+model CrmJourneyType {
+  id        String   @id @default(uuid()) @map("crm_journey_type_id")
+  tenantId  String   @map("tenant_id")
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("crm_journey_types")
 }
 
 enum NotificationType {

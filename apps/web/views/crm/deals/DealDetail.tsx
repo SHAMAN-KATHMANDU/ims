@@ -21,6 +21,7 @@ import { Check } from "lucide-react";
 interface DealDetailProps {
   dealId: string;
   basePath: string;
+  onEdit?: () => void;
 }
 
 function useStagesFromDeal(deal: Deal | undefined): string[] {
@@ -28,7 +29,7 @@ function useStagesFromDeal(deal: Deal | undefined): string[] {
   return deal.pipeline.stages.map((s) => s.name);
 }
 
-export function DealDetail({ dealId, basePath }: DealDetailProps) {
+export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
   const { data, isLoading } = useDeal(dealId);
   const { data: activitiesData } = useActivitiesByDeal(dealId);
   const updateStageMutation = useUpdateDealStage();
@@ -56,9 +57,13 @@ export function DealDetail({ dealId, basePath }: DealDetailProps) {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href={`${basePath}/crm/deals/${dealId}/edit`}>
-            <Button>Edit</Button>
-          </Link>
+          {onEdit ? (
+            <Button onClick={onEdit}>Edit</Button>
+          ) : (
+            <Link href={`${basePath}/crm/deals/${dealId}/edit`}>
+              <Button>Edit</Button>
+            </Link>
+          )}
           <Link href={`${basePath}/crm/deals`}>
             <Button variant="outline">Back to Deals</Button>
           </Link>
@@ -75,18 +80,14 @@ export function DealDetail({ dealId, basePath }: DealDetailProps) {
             {new Date(deal.expectedCloseDate).toLocaleDateString()}
           </p>
         )}
-        {(deal.contact || deal.member) && (
+        {deal.contact && (
           <p>
-            Contact/Member:{" "}
-            {deal.contact ? (
-              <Link href={`${basePath}/crm/contacts/${deal.contact.id}`}>
-                <span className="text-primary hover:underline">
-                  {deal.contact.firstName} {deal.contact.lastName || ""}
-                </span>
-              </Link>
-            ) : deal.member ? (
-              <span>{deal.member.name || deal.member.phone}</span>
-            ) : null}
+            Contact:{" "}
+            <Link href={`${basePath}/crm/contacts/${deal.contact.id}`}>
+              <span className="text-primary hover:underline">
+                {deal.contact.firstName} {deal.contact.lastName || ""}
+              </span>
+            </Link>
           </p>
         )}
         {deal.company && <p>Company: {deal.company.name}</p>}
@@ -122,7 +123,6 @@ export function DealDetail({ dealId, basePath }: DealDetailProps) {
             <LogActivityForm
               dealId={dealId}
               contactId={deal.contactId ?? undefined}
-              memberId={deal.memberId ?? undefined}
               onSuccess={() => {}}
             />
           </div>
