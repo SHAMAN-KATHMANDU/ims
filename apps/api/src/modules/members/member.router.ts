@@ -3,6 +3,7 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import memberController from "@/modules/members/member.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { uploadSingle } from "@/config/multer.config";
 
 const memberRouter = Router();
 
@@ -211,6 +212,25 @@ memberRouter.put(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(memberController.updateMember),
+);
+
+memberRouter.post(
+  "/bulk-upload",
+  authorizeRoles("admin", "superAdmin"),
+  uploadSingle,
+  asyncHandler(memberController.bulkUploadMembers),
+);
+
+memberRouter.get(
+  "/download/template",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(memberController.downloadBulkUploadTemplate),
+);
+
+memberRouter.get(
+  "/download/export",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(memberController.downloadMembers),
 );
 
 export default memberRouter;

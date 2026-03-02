@@ -10,7 +10,7 @@ export interface PipelineStage {
 export interface Pipeline {
   id: string;
   name: string;
-  stages: PipelineStage[] | unknown;
+  stages: PipelineStage[];
   isDefault: boolean;
   createdAt: string;
   updatedAt: string;

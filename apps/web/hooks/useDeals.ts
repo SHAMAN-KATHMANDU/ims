@@ -44,6 +44,7 @@ export function useDealsPaginated(params: DealListParams = {}) {
       stage: params.stage,
       status: params.status,
       assignedToId: params.assignedToId,
+      contactId: params.contactId,
     }),
     queryFn: () => getDeals(params),
     placeholderData: (prev) => prev,

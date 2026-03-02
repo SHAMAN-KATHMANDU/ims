@@ -1,0 +1,1294 @@
+---
+name: frontend-architecture
+description: >
+  Comprehensive Frontend Architecture rules for the Next.js 14+ App Router application.
+  Enforced on all React/TypeScript code in apps/web/. Apply whenever writing components,
+  hooks, services, stores, or pages.
+globs:
+  - "apps/web/**/*.ts"
+  - "apps/web/**/*.tsx"
+alwaysApply: true
+---
+
+# Frontend Architecture
+
+Stack: **Next.js App Router · React 19 · TypeScript 5 · Tailwind CSS v4 · shadcn/ui · TanStack Query v5 · Zustand v5 · React Hook Form v7 · Zod v3 · Axios**
+
+---
+
+## 1. Architecture Overview
+
+### Philosophy
+
+This codebase follows **Feature-Based Clean Architecture**. Every piece of code belongs to either a *feature module* or a *shared module*. Features are vertical slices — each slice owns its UI, state, API calls, types, and validation. Shared modules are horizontal utilities consumed by any feature.
+
+This is deliberately **not** a type-based structure (i.e., not `components/`, `hooks/`, `services/` at the root for all features). Type-based structures collapse under team growth: files become impossible to navigate, ownership blurs, and cross-feature coupling silently accumulates.
+
+**Why feature-based:**
+- A developer working on `products` touches only `features/products/` — no grep required.
+- Features can be extracted, replaced, or deleted without touching unrelated code.
+- Ownership is explicit: the team that owns the feature owns the folder.
+- Onboarding is faster: new developers read one feature folder to understand the full vertical slice.
+
+### Backend → Frontend Layer Mapping
+
+The backend enforces a strict 3-layer architecture. The frontend mirrors it:
+
+| Backend | Frontend Equivalent | Responsibility |
+|---|---|---|
+| `*.repository.ts` | `features/<name>/services/<name>.service.ts` | HTTP calls only — no React, no state |
+| `*.service.ts` | `features/<name>/hooks/use<Name>.ts` | Orchestration — React Query, mutations, side-effects |
+| `*.controller.ts` | `features/<name>/components/<Name>Page.tsx` | UI composition — renders, no business logic |
+| `*.schema.ts` | `features/<name>/validation.ts` | Zod schemas — single source of truth for shape |
+| `*.types.ts` | `features/<name>/types.ts` | DTOs, interfaces, enums |
+
+### Dependency Direction
+
+```
+app/[workspace]/page.tsx
+  └─ features/<name>/components/<Name>Page.tsx   ← UI composition
+       └─ features/<name>/hooks/use<Name>.ts      ← orchestration
+            ├─ features/<name>/services/<name>.service.ts  ← HTTP
+            │    └─ lib/axios.ts                           ← shared transport
+            └─ store/<name>-store.ts (read-only selectors) ← global UI state
+```
+
+**Rule: dependencies only flow downward. No layer may import from a layer above it.**
+
+---
+
+## 2. Folder Structure
+
+```
+apps/web/
+├── app/                          # Next.js App Router — routing ONLY
+│   └── [workspace]/
+│       ├── (admin)/              # Route group: authenticated admin routes
+│       │   ├── products/
+│       │   │   └── page.tsx      # Thin shell: imports from features/products
+│       │   └── layout.tsx        # AuthGuard + DashboardLayout
+│       └── (superadmin)/
+│
+├── features/                     # ONE folder per vertical feature slice
+│   ├── auth/
+│   ├── products/
+│   ├── sales/
+│   └── ...
+│
+├── components/                   # Shared UI only — no feature-specific logic
+│   ├── ui/                       # shadcn/ui primitives (Button, Dialog, Table…)
+│   ├── layout/                   # DashboardLayout, Sidebar, TopBar
+│   ├── auth/                     # AuthGuard, RoleGuard (shared auth wrappers)
+│   └── providers/                # QueryClientProvider, ThemeProvider
+│
+├── hooks/                        # Shared hooks used by 2+ features
+│   ├── use-debounce.ts
+│   ├── use-pagination.ts
+│   └── use-local-storage.ts
+│
+├── lib/                          # Infrastructure — no React
+│   ├── axios.ts                  # Single Axios instance with interceptors
+│   ├── api-error.ts              # handleApiError() utility
+│   └── query-client.ts           # TanStack QueryClient singleton
+│
+├── store/                        # Zustand stores — global UI state only
+│   ├── auth-store.ts
+│   ├── sidebar-store.ts
+│   └── create-selection-store.ts # Factory for row-selection stores
+│
+├── types/                        # Global TypeScript types shared across features
+│   ├── api.ts                    # PaginatedResponse<T>, ApiError, etc.
+│   └── auth.ts                   # User, TenantContext, Role enums
+│
+├── utils/                        # Pure functions — no React, no side-effects
+│   ├── format.ts                 # formatCurrency, formatDate
+│   ├── cn.ts                     # Tailwind class merge utility
+│   └── auth.ts                   # Token helpers
+│
+└── constants/                    # App-wide constants
+    ├── routes.ts                 # Typed route builders
+    └── query-keys.ts             # Shared query key namespaces
+```
+
+### Folder Rules
+
+- `app/` contains **only** Next.js routing files (`page.tsx`, `layout.tsx`, `loading.tsx`, `error.tsx`). Zero business logic. Zero direct API calls.
+- `features/` is the primary development target. All new feature work starts here.
+- `components/` is for UI primitives and layout shells shared across 2+ features. If a component is used by exactly one feature, it lives inside that feature.
+- `hooks/` at the root is for generic utility hooks (debounce, pagination, local storage). Feature-specific hooks live inside the feature.
+- `lib/` contains infrastructure setup. Nothing in `lib/` may import from `features/`, `components/`, or `store/`.
+- `store/` contains only Zustand stores for global UI state. Server/async state lives in React Query, not here.
+- `utils/` contains pure functions. No `useState`, no `useEffect`, no imports from React.
+
+---
+
+## 3. Feature Module Structure
+
+Every feature under `features/` must follow this exact structure:
+
+```
+features/{feature-name}/
+├── components/
+│   ├── {FeatureName}Page.tsx     # Top-level page component (composed from below)
+│   ├── {Entity}Form.tsx          # Form component
+│   ├── {Entity}Table.tsx         # Table/list component
+│   └── {Entity}Detail.tsx        # Detail/view component
+├── hooks/
+│   ├── use-{entity}.ts           # Primary data hook (list + CRUD)
+│   └── use-{entity}-form.ts      # Form state hook (if complex)
+├── services/
+│   └── {feature}.service.ts      # All HTTP calls for this feature
+├── types.ts                      # DTOs, form value types, enums
+├── validation.ts                 # Zod schemas
+└── index.ts                      # Public API — explicit re-exports only
+```
+
+### `components/` — UI Only
+
+- Render data passed via props or returned from hooks.
+- **Must not** call `fetch`, `axios`, or any service function directly.
+- **Must not** contain business logic (calculations, transformations, conditionals that belong in a service).
+- Use `useXxx` hooks from the same feature's `hooks/` folder for all state and data.
+- Accept callbacks (`onSuccess`, `onError`, `onChange`) as props — never handle navigation or toasts internally unless the component is a page-level component.
+
+```tsx
+// ✅ GOOD — pure UI component
+interface ProductTableProps {
+  products: Product[];
+  isLoading: boolean;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
+}
+
+export function ProductTable({ products, isLoading, onEdit, onDelete }: ProductTableProps) {
+  if (isLoading) return <TableSkeleton />;
+  return (
+    <Table>
+      {products.map((p) => (
+        <ProductRow key={p.id} product={p} onEdit={onEdit} onDelete={onDelete} />
+      ))}
+    </Table>
+  );
+}
+
+// ❌ BAD — component fetching its own data
+export function ProductTable() {
+  const [products, setProducts] = useState([]);
+  useEffect(() => {
+    axios.get("/products").then((r) => setProducts(r.data));
+  }, []);
+  // ...
+}
+```
+
+### `hooks/` — Orchestration
+
+- Wrap service calls in `useQuery` / `useMutation` from TanStack Query.
+- Own all cache invalidation logic.
+- Own toast notifications for mutations (success/error).
+- Own navigation side-effects after mutations (`router.push`).
+- **Must not** contain JSX.
+- **Must not** import from `components/`.
+
+```tsx
+// ✅ GOOD
+export function useProducts(params: ProductListParams) {
+  return useQuery({
+    queryKey: productKeys.list(params),
+    queryFn: () => productService.getAll(params),
+    staleTime: 2 * 60 * 1000,
+  });
+}
+
+export function useCreateProduct() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: productService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: productKeys.lists() });
+      toast({ title: "Product created" });
+    },
+    onError: (error) => {
+      toast({ title: "Failed to create product", variant: "destructive" });
+    },
+  });
+}
+```
+
+### `services/` — HTTP Layer
+
+- Pure async functions. No React hooks, no `useState`, no `useEffect`.
+- One file per feature: `{feature}.service.ts`.
+- All request/response types are defined in the feature's `types.ts` and imported here.
+- Call `handleApiError()` from `lib/api-error.ts` in catch blocks.
+- Use the shared Axios instance from `lib/axios.ts` — never create a new Axios instance.
+
+```tsx
+// ✅ GOOD
+import api from "@/lib/axios";
+import { handleApiError } from "@/lib/api-error";
+import type { Product, CreateProductData, ProductListParams, PaginatedProductsResponse } from "../types";
+
+export const productService = {
+  async getAll(params: ProductListParams): Promise<PaginatedProductsResponse> {
+    try {
+      const { data } = await api.get("/products", { params });
+      return data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  async create(payload: CreateProductData): Promise<Product> {
+    try {
+      const { data } = await api.post("/products", payload);
+      return data.product;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+};
+```
+
+### `types.ts` — DTOs and Interfaces
+
+- Defines all TypeScript interfaces for the feature: request payloads, response shapes, form value types, enums.
+- **Never** import from `services/` or `hooks/` — types are the foundation, nothing depends on them except everything else.
+- Form value types are named `{Entity}FormValues`.
+- API response types are named `{Entity}` (singular) and `Paginated{Entity}Response`.
+- API request types are named `Create{Entity}Data` and `Update{Entity}Data`.
+
+```typescript
+// features/products/types.ts
+export interface Product {
+  id: string;
+  name: string;
+  sku: string;
+  price: number;
+  tenantId: string;
+  createdAt: string;
+}
+
+export interface CreateProductData {
+  name: string;
+  sku: string;
+  price: number;
+  categoryId: string;
+}
+
+export interface UpdateProductData extends Partial<CreateProductData> {}
+
+export interface ProductListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  categoryId?: string;
+}
+
+export interface PaginatedProductsResponse {
+  products: Product[];
+  pagination: {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+  };
+}
+
+export interface ProductFormValues {
+  name: string;
+  sku: string;
+  price: string; // string in form, coerced to number on submit
+  categoryId: string;
+}
+```
+
+### `validation.ts` — Zod Schemas
+
+- One file per feature containing all Zod schemas for that feature.
+- Schema names: `{Entity}Schema`, `Create{Entity}Schema`, `Update{Entity}Schema`.
+- Export inferred types alongside schemas: `export type CreateProductInput = z.infer<typeof CreateProductSchema>`.
+- Used in both form validation (`zodResolver`) and API response parsing.
+
+```typescript
+// features/products/validation.ts
+import { z } from "zod";
+
+export const CreateProductSchema = z.object({
+  name: z.string().min(1, "Name is required").max(200),
+  sku: z.string().min(1, "SKU is required").max(50),
+  price: z.coerce.number().positive("Price must be positive"),
+  categoryId: z.string().uuid("Invalid category"),
+});
+
+export type CreateProductInput = z.infer<typeof CreateProductSchema>;
+
+export const UpdateProductSchema = CreateProductSchema.partial();
+export type UpdateProductInput = z.infer<typeof UpdateProductSchema>;
+```
+
+### `index.ts` — Public API
+
+- The **only** file other features or `app/` pages may import from.
+- Explicitly re-export only what is intended to be public.
+- Never re-export internal implementation details.
+
+```typescript
+// features/products/index.ts
+export { ProductsPage } from "./components/ProductsPage";
+export { useProducts, useCreateProduct } from "./hooks/use-products";
+export type { Product, ProductFormValues } from "./types";
+```
+
+---
+
+## 4. Layer Responsibilities
+
+### Strict Rules
+
+| Layer | May Import | Must NOT Import |
+|---|---|---|
+| `app/page.tsx` | `features/*/index.ts`, `components/` | Services, hooks directly, stores |
+| `features/*/components/` | Feature hooks, shared `components/`, `utils/`, `constants/` | Other features directly, services, stores |
+| `features/*/hooks/` | Feature services, `store/`, `lib/`, `utils/`, TanStack Query | Components, other feature hooks |
+| `features/*/services/` | `lib/axios.ts`, `lib/api-error.ts`, feature `types.ts` | React, hooks, components, stores |
+| `store/` | `lib/`, `utils/`, `types/` | Features, components, hooks |
+| `lib/` | External packages only | Anything in `apps/web/` |
+
+### Server vs Client Component Rules
+
+**Default to Server Components.** Add `"use client"` only when required.
+
+A component **must** be a Server Component when:
+- It fetches data directly (database, internal API via `fetch`)
+- It renders static or infrequently-changing content
+- It has no interactivity (no event handlers, no browser APIs)
+- It is a layout, page shell, or data-loading boundary
+
+A component **must** be a Client Component (`"use client"`) when:
+- It uses `useState`, `useEffect`, `useRef`, or any React hook
+- It uses browser APIs (`window`, `document`, `localStorage`)
+- It uses TanStack Query (`useQuery`, `useMutation`)
+- It uses Zustand stores
+- It handles user events (`onClick`, `onChange`, `onSubmit`)
+- It uses `useRouter`, `useSearchParams`, `usePathname`
+
+**Push `"use client"` as far down the tree as possible.** A page should be a Server Component that imports a single Client Component boundary at the interactive leaf.
+
+```tsx
+// ✅ GOOD — page is a Server Component
+// app/[workspace]/(admin)/products/page.tsx
+import { ProductsPage } from "@/features/products";
+
+export default function Page() {
+  return <ProductsPage />;  // ProductsPage is "use client"
+}
+
+// ✅ GOOD — server component fetches, passes to client leaf
+// app/[workspace]/(admin)/products/[id]/page.tsx
+import { getProduct } from "@/features/products/services/product.service";
+import { ProductDetailClient } from "@/features/products/components/ProductDetailClient";
+
+export default async function Page({ params }: { params: { id: string } }) {
+  const product = await getProduct(params.id);  // Server-side fetch
+  return <ProductDetailClient initialData={product} />;
+}
+```
+
+---
+
+## 5. Data Fetching Strategy
+
+### Decision Tree
+
+```
+Does the data need to be indexed by search engines or rendered on first paint?
+  YES → Server Component with direct fetch() or service call
+  NO  → Does the data change based on user interaction?
+          YES → TanStack Query (useQuery) in a Client Component
+          NO  → Server Component with fetch() + revalidation
+```
+
+### Server Components — When to Use
+
+- Initial page data that does not depend on client-side state
+- SEO-critical content
+- Data that can be fetched once and passed as props
+
+```tsx
+// ✅ GOOD — Server Component data fetch
+export default async function ProductsPage() {
+  const products = await productService.getAll({ page: 1, limit: 20 });
+  return <ProductList initialProducts={products} />;
+}
+```
+
+### TanStack Query — When to Use
+
+- Any data that changes based on user filters, search, or pagination
+- Data that must stay fresh after mutations
+- Optimistic updates
+- Background refetching
+
+**Query key conventions** — every feature defines a key factory:
+
+```typescript
+// features/products/hooks/use-products.ts
+export const productKeys = {
+  all: ["products"] as const,
+  lists: () => [...productKeys.all, "list"] as const,
+  list: (params: ProductListParams) => [...productKeys.lists(), params] as const,
+  details: () => [...productKeys.all, "detail"] as const,
+  detail: (id: string) => [...productKeys.details(), id] as const,
+};
+```
+
+**Stale time defaults:**
+
+| Data type | `staleTime` |
+|---|---|
+| User/auth data | `Infinity` (invalidate on mutation only) |
+| Reference data (categories, locations) | `10 * 60 * 1000` (10 min) |
+| List data (products, sales) | `2 * 60 * 1000` (2 min) |
+| Real-time data (inventory levels) | `0` (always refetch) |
+
+### Caching and Revalidation
+
+- Use `queryClient.invalidateQueries({ queryKey: productKeys.lists() })` after every mutation — never invalidate `productKeys.all` (too broad).
+- Use `queryClient.setQueryData` for optimistic updates on simple mutations.
+- For Next.js `fetch()` in Server Components, use `{ next: { revalidate: 60 } }` for reference data and `{ cache: "no-store" }` for user-specific data.
+- Never use `refetchInterval` unless the feature explicitly requires polling (e.g., live order status).
+
+### Where to Put Fetch Logic
+
+| Scenario | Location |
+|---|---|
+| Server-side initial data | `app/[workspace]/*/page.tsx` or feature service called from page |
+| Client-side reactive data | Feature hook (`use-{entity}.ts`) wrapping `useQuery` |
+| One-off imperative fetch | Feature service called directly inside a mutation's `mutationFn` |
+| Shared across features | `hooks/use-{shared-concept}.ts` wrapping `useQuery` |
+
+---
+
+## 6. State Management Rules
+
+### State Type Decision
+
+```
+Is the state server/async data?
+  YES → TanStack Query (useQuery / useMutation)
+  NO  → Is it needed by more than one component in the same tree?
+          NO  → useState (local)
+          YES → Is it needed across unrelated parts of the app?
+                  NO  → Lift state up or use React Context
+                  YES → Zustand store
+```
+
+### Local State (`useState`)
+
+Use for:
+- Form field values (when not using React Hook Form)
+- UI toggles: `isOpen`, `isExpanded`, `activeTab`
+- Transient input state before submission
+- Component-internal animation state
+
+```tsx
+const [isOpen, setIsOpen] = useState(false);
+const [activeTab, setActiveTab] = useState<"details" | "history">("details");
+```
+
+### Server State (TanStack Query)
+
+Use for **all** async data from the API. This is not optional.
+
+```tsx
+// ✅ REQUIRED pattern for all API data
+const { data, isLoading, error } = useProducts(params);
+const createProduct = useCreateProduct();
+```
+
+Never mirror server state into `useState` or Zustand:
+
+```tsx
+// ❌ FORBIDDEN — duplicating server state into local state
+const { data } = useProducts(params);
+const [products, setProducts] = useState(data?.products ?? []);
+```
+
+### Global UI State (Zustand)
+
+Use only for:
+- Auth session (`auth-store.ts`) — user, token, tenant slug
+- UI shell state (`sidebar-store.ts`) — sidebar open/collapsed
+- Cross-feature selection state (`*-selection-store.ts`) — selected row IDs
+
+**Zustand store rules:**
+- One store per concern. Never put unrelated state in one store.
+- Export named selectors to prevent unnecessary re-renders: `export const selectUser = (s: AuthStore) => s.user`.
+- Stores that need to persist across page refreshes use `persist` middleware with `cookieStorage` (for SSR compatibility) or `localStorage`.
+- Stores must be typed with an explicit interface.
+
+```typescript
+// ✅ GOOD — typed, selector-exported Zustand store
+interface SidebarStore {
+  isOpen: boolean;
+  toggle: () => void;
+  close: () => void;
+}
+
+export const useSidebarStore = create<SidebarStore>((set) => ({
+  isOpen: true,
+  toggle: () => set((s) => ({ isOpen: !s.isOpen })),
+  close: () => set({ isOpen: false }),
+}));
+
+export const selectSidebarOpen = (s: SidebarStore) => s.isOpen;
+
+// Usage — only re-renders when isOpen changes
+const isOpen = useSidebarStore(selectSidebarOpen);
+```
+
+### When NOT to Use Global State
+
+- **Never** put form state in Zustand. Use React Hook Form.
+- **Never** put server/API data in Zustand. Use TanStack Query.
+- **Never** put per-page filter/sort/pagination state in Zustand. Use `useSearchParams` or local state.
+- **Never** create a Zustand store for state that only one component uses.
+
+---
+
+## 7. Naming Conventions
+
+### Components
+
+| Type | Convention | Example |
+|---|---|---|
+| Page component | `{Feature}Page` | `ProductsPage`, `NewSalePage` |
+| Form component | `{Entity}Form` | `ProductForm`, `LoginForm` |
+| Table/list component | `{Entity}Table` or `{Entity}List` | `ProductTable`, `OrderList` |
+| Detail/view component | `{Entity}Detail` or `{Entity}Card` | `ProductDetail`, `UserCard` |
+| Dialog/modal | `{Entity}{Action}Dialog` | `DeleteProductDialog`, `EditUserDialog` |
+| Shared UI primitive | Single noun or adjective-noun | `Button`, `DataTable`, `SearchInput` |
+
+### Hooks
+
+| Type | Convention | Example |
+|---|---|---|
+| Data query hook | `use{Entities}` (plural) | `useProducts`, `useOrders` |
+| Single entity hook | `use{Entity}(id)` | `useProduct(id)`, `useUser(id)` |
+| Mutation hook | `use{Action}{Entity}` | `useCreateProduct`, `useDeleteOrder` |
+| Form hook | `use{Entity}Form` | `useProductForm`, `useLoginForm` |
+| Utility hook | `use{Concept}` | `useDebounce`, `usePagination` |
+| Store hook | `use{Store}Store` | `useAuthStore`, `useSidebarStore` |
+
+### Services
+
+| Type | Convention | Example |
+|---|---|---|
+| Service object | `{feature}Service` (camelCase) | `productService`, `authService` |
+| Service methods | camelCase verbs | `getAll`, `getById`, `create`, `update`, `delete` |
+| Request type | `Create{Entity}Data`, `Update{Entity}Data` | `CreateProductData` |
+| Response type | `{Entity}`, `Paginated{Entity}Response` | `Product`, `PaginatedProductsResponse` |
+| Params type | `{Entity}ListParams` | `ProductListParams` |
+
+### Files
+
+| Type | Convention | Example |
+|---|---|---|
+| Component file | `{ComponentName}.tsx` (PascalCase) | `ProductForm.tsx`, `LoginPage.tsx` |
+| Hook file | `use-{concept}.ts` (kebab-case) | `use-products.ts`, `use-debounce.ts` |
+| Service file | `{feature}.service.ts` (kebab-case) | `product.service.ts`, `auth.service.ts` |
+| Store file | `{concept}-store.ts` (kebab-case) | `auth-store.ts`, `sidebar-store.ts` |
+| Types file | `types.ts` inside feature, or `{concept}.ts` in global `types/` | `types.ts`, `api.ts` |
+| Validation file | `validation.ts` inside feature | `validation.ts` |
+| Test file | `{filename}.test.ts(x)` co-located | `use-products.test.ts`, `ProductForm.test.tsx` |
+
+### Folders
+
+- Feature folders: `kebab-case` matching the domain noun (`products`, `sales`, `auth`, `crm`)
+- Component sub-folders inside features: `components/`, `hooks/`, `services/`
+- Route groups: lowercase with parentheses `(admin)`, `(superadmin)`
+- Dynamic segments: `[workspace]`, `[id]`
+
+---
+
+## 8. Dependency Flow Rules
+
+### Unidirectional Dependency Graph
+
+```
+app/ (routing shell)
+  │
+  ▼
+features/<name>/components/  (UI composition)
+  │
+  ▼
+features/<name>/hooks/        (orchestration)
+  │           │
+  ▼           ▼
+features/<name>/services/    store/
+  │
+  ▼
+lib/axios.ts                  (transport)
+  │
+  ▼
+External API
+```
+
+### Cross-Feature Rules
+
+**Features must not import from each other directly.** This is the single most important rule for long-term maintainability.
+
+```typescript
+// ❌ FORBIDDEN — direct cross-feature import
+// features/sales/hooks/use-sales.ts
+import { useProducts } from "@/features/products/hooks/use-products";
+
+// ✅ CORRECT — shared data goes through shared hooks or is passed as props
+// hooks/use-product-lookup.ts  (shared hook)
+export function useProductLookup(id: string) {
+  return useQuery({ queryKey: ["product", id], queryFn: () => productService.getById(id) });
+}
+```
+
+When two features need the same data:
+1. Extract the shared hook to `hooks/` (root-level shared hooks).
+2. Extract the shared service call to `lib/` if it is pure HTTP with no React.
+3. Pass data as props from a parent page component that composes both features.
+
+### Shared Module Rules
+
+Code belongs in a shared module when it is used by **2 or more** features. Do not pre-emptively share — wait for the second consumer.
+
+| Shared concern | Location |
+|---|---|
+| Generic UI components | `components/ui/` or `components/` |
+| Generic hooks | `hooks/` |
+| HTTP transport | `lib/axios.ts` |
+| Error handling | `lib/api-error.ts` |
+| Global types | `types/` |
+| Pure utilities | `utils/` |
+| Constants / routes | `constants/` |
+
+### Circular Dependency Prevention
+
+- `lib/` never imports from `features/`, `store/`, `components/`, or `hooks/`.
+- `utils/` never imports from `lib/`, `features/`, `store/`, or `components/`.
+- `types/` never imports from anywhere in the project.
+- `store/` never imports from `features/` or `components/`.
+
+Run `madge --circular apps/web/src` in CI to catch circular imports automatically.
+
+---
+
+## 9. Testing Strategy
+
+### Test File Location
+
+Co-locate tests with the code they test:
+
+```
+features/products/
+├── components/
+│   ├── ProductForm.tsx
+│   └── ProductForm.test.tsx      ← unit test for the component
+├── hooks/
+│   ├── use-products.ts
+│   └── use-products.test.ts      ← unit test for the hook
+├── services/
+│   ├── product.service.ts
+│   └── product.service.test.ts   ← unit test for the service
+└── validation.ts
+    (tested inline in service/hook tests)
+```
+
+E2E tests live separately:
+
+```
+apps/web/e2e/
+├── products/
+│   ├── product-crud.spec.ts
+│   └── product-search.spec.ts
+└── auth/
+    └── login.spec.ts
+```
+
+### What to Test at Each Layer
+
+**Service layer** (`*.service.test.ts`):
+- Mock Axios with `vi.mock("@/lib/axios")`
+- Test that correct HTTP method, URL, and payload are used
+- Test error handling — `handleApiError` is called on failure
+- Do NOT test business logic here
+
+```typescript
+it("calls POST /products with correct payload", async () => {
+  const mockPost = vi.spyOn(api, "post").mockResolvedValue({ data: { product: mockProduct } });
+  await productService.create({ name: "Shoes", sku: "SH-001", price: 99, categoryId: "cat-1" });
+  expect(mockPost).toHaveBeenCalledWith("/products", expect.objectContaining({ name: "Shoes" }));
+});
+```
+
+**Hook layer** (`*.test.ts` with `renderHook`):
+- Wrap in `QueryClientWrapper` test helper
+- Test loading, success, and error states
+- Test that `queryClient.invalidateQueries` is called after mutations
+- Mock the service layer with `vi.mock`
+
+```typescript
+it("invalidates product list after create", async () => {
+  vi.mocked(productService.create).mockResolvedValue(mockProduct);
+  const { result } = renderHook(() => useCreateProduct(), { wrapper: QueryClientWrapper });
+  await act(() => result.current.mutateAsync(mockPayload));
+  expect(queryClient.getQueryState(productKeys.lists())).toBeUndefined(); // invalidated
+});
+```
+
+**Component layer** (`*.test.tsx` with React Testing Library):
+- Test rendered output, not implementation details
+- Test user interactions: fill form, click button, see result
+- Mock hooks with `vi.mock` — never mock services directly in component tests
+- Test accessibility: labels, ARIA roles, keyboard navigation
+
+```typescript
+it("submits form with correct values", async () => {
+  const onSubmit = vi.fn();
+  render(<ProductForm onSubmit={onSubmit} />);
+  await userEvent.type(screen.getByLabelText("Name"), "Shoes");
+  await userEvent.click(screen.getByRole("button", { name: "Create Product" }));
+  expect(onSubmit).toHaveBeenCalledWith(expect.objectContaining({ name: "Shoes" }));
+});
+```
+
+**E2E layer** (Playwright):
+- Test critical user journeys end-to-end against a real (test) backend
+- Use Page Object Model — one class per page/feature
+- Test happy path + one key error path per journey
+- Never test implementation details — only what the user sees
+
+### Coverage Targets
+
+| Layer | Target |
+|---|---|
+| Services | 90%+ (pure functions, easy to test) |
+| Hooks | 80%+ |
+| Components | 70%+ (focus on interaction paths) |
+| E2E | All critical user journeys |
+
+---
+
+## 10. Auth Feature — Full Example
+
+This is the canonical reference implementation. All other features follow this pattern.
+
+### File Structure
+
+```
+features/auth/
+├── components/
+│   ├── LoginForm.tsx
+│   └── LoginPage.tsx
+├── hooks/
+│   └── use-login.ts
+├── services/
+│   └── auth.service.ts
+├── types.ts
+├── validation.ts
+└── index.ts
+```
+
+### `features/auth/types.ts`
+
+```typescript
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface AuthUser {
+  id: string;
+  email: string;
+  name: string;
+  role: "admin" | "superadmin" | "staff";
+  tenantId: string;
+  tenantSlug: string;
+}
+
+export interface LoginResponse {
+  user: AuthUser;
+  token: string;
+}
+
+export interface LoginFormValues {
+  email: string;
+  password: string;
+}
+```
+
+### `features/auth/validation.ts`
+
+```typescript
+import { z } from "zod";
+
+export const LoginSchema = z.object({
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+});
+
+export type LoginInput = z.infer<typeof LoginSchema>;
+```
+
+### `features/auth/services/auth.service.ts`
+
+```typescript
+import api from "@/lib/axios";
+import { handleApiError } from "@/lib/api-error";
+import type { LoginCredentials, LoginResponse } from "../types";
+
+export const authService = {
+  async login(credentials: LoginCredentials): Promise<LoginResponse> {
+    try {
+      const { data } = await api.post<LoginResponse>("/auth/login", credentials);
+      return data;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  async logout(): Promise<void> {
+    try {
+      await api.post("/auth/logout");
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+
+  async getMe(): Promise<AuthUser> {
+    try {
+      const { data } = await api.get<{ user: AuthUser }>("/auth/me");
+      return data.user;
+    } catch (error) {
+      throw handleApiError(error);
+    }
+  },
+};
+```
+
+### `features/auth/hooks/use-login.ts`
+
+```typescript
+"use client";
+
+import { useMutation } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
+import { authService } from "../services/auth.service";
+import { useAuthStore } from "@/store/auth-store";
+import { routes } from "@/constants/routes";
+import type { LoginCredentials } from "../types";
+
+export function useLogin() {
+  const router = useRouter();
+  const setAuth = useAuthStore((s) => s.setAuth);
+
+  return useMutation({
+    mutationFn: (credentials: LoginCredentials) => authService.login(credentials),
+    onSuccess: ({ user, token }) => {
+      setAuth({ user, token });
+      router.push(routes.dashboard(user.tenantSlug));
+    },
+    onError: (error: Error) => {
+      toast.error(error.message ?? "Login failed. Please try again.");
+    },
+  });
+}
+```
+
+### `features/auth/components/LoginForm.tsx`
+
+```tsx
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { LoginSchema, type LoginInput } from "../validation";
+
+interface LoginFormProps {
+  onSubmit: (values: LoginInput) => void;
+  isLoading: boolean;
+}
+
+export function LoginForm({ onSubmit, isLoading }: LoginFormProps) {
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginInput>({ resolver: zodResolver(LoginSchema) });
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} noValidate>
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="email">Email</Label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            aria-describedby={errors.email ? "email-error" : undefined}
+            {...register("email")}
+          />
+          {errors.email && (
+            <p id="email-error" role="alert" className="text-sm text-destructive mt-1">
+              {errors.email.message}
+            </p>
+          )}
+        </div>
+
+        <div>
+          <Label htmlFor="password">Password</Label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            aria-describedby={errors.password ? "password-error" : undefined}
+            {...register("password")}
+          />
+          {errors.password && (
+            <p id="password-error" role="alert" className="text-sm text-destructive mt-1">
+              {errors.password.message}
+            </p>
+          )}
+        </div>
+
+        <Button type="submit" className="w-full" disabled={isLoading} aria-busy={isLoading}>
+          {isLoading ? "Signing in…" : "Sign in"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+```
+
+### `features/auth/components/LoginPage.tsx`
+
+```tsx
+"use client";
+
+import { LoginForm } from "./LoginForm";
+import { useLogin } from "../hooks/use-login";
+
+export function LoginPage() {
+  const login = useLogin();
+
+  return (
+    <main className="min-h-screen flex items-center justify-center bg-background">
+      <div className="w-full max-w-sm space-y-6 p-8 rounded-xl border bg-card shadow-sm">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+          <p className="text-sm text-muted-foreground mt-1">Enter your credentials to continue</p>
+        </div>
+        <LoginForm
+          onSubmit={login.mutate}
+          isLoading={login.isPending}
+        />
+      </div>
+    </main>
+  );
+}
+```
+
+### `app/login/page.tsx` — Page Shell
+
+```tsx
+// Server Component — no "use client"
+import { LoginPage } from "@/features/auth";
+
+export const metadata = { title: "Sign in" };
+
+export default function Page() {
+  return <LoginPage />;
+}
+```
+
+### `features/auth/index.ts`
+
+```typescript
+export { LoginPage } from "./components/LoginPage";
+export { useLogin } from "./hooks/use-login";
+export { authService } from "./services/auth.service";
+export type { AuthUser, LoginFormValues } from "./types";
+```
+
+---
+
+## 11. Anti-Patterns to Avoid
+
+### Fat Components
+
+**Violation:** A component contains business logic, API calls, and complex state management in a single file exceeding 200 lines.
+
+```tsx
+// ❌ FORBIDDEN
+export function ProductsPage() {
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+
+  useEffect(() => {
+    setLoading(true);
+    axios.get(`/products?search=${search}&page=${page}`)
+      .then(r => setProducts(r.data))
+      .finally(() => setLoading(false));
+  }, [search, page]);
+
+  const handleDelete = async (id: string) => {
+    await axios.delete(`/products/${id}`);
+    setProducts(prev => prev.filter(p => p.id !== id));
+  };
+
+  // 150 more lines of JSX...
+}
+```
+
+**Fix:** Extract service → hook → component layers as defined in Section 3.
+
+---
+
+### API Calls Inside JSX / `useEffect`
+
+**Violation:** Calling `fetch` or `axios` directly inside a component.
+
+```tsx
+// ❌ FORBIDDEN
+function ProductList() {
+  useEffect(() => {
+    fetch("/api/products").then(...); // Never
+  }, []);
+}
+
+// ❌ FORBIDDEN
+<button onClick={() => axios.delete(`/products/${id}`)}>Delete</button>
+```
+
+**Fix:** All HTTP calls go through `features/<name>/services/<name>.service.ts`, consumed via hooks.
+
+---
+
+### Shared Mutable State
+
+**Violation:** Storing data that should be server state (React Query) in a Zustand store, then mutating it directly.
+
+```typescript
+// ❌ FORBIDDEN
+const useProductStore = create((set) => ({
+  products: [],
+  addProduct: (p) => set((s) => ({ products: [...s.products, p] })),
+  removeProduct: (id) => set((s) => ({ products: s.products.filter(p => p.id !== id) })),
+}));
+```
+
+**Fix:** Use TanStack Query for all server data. Zustand is for UI state only.
+
+---
+
+### Circular Dependencies
+
+**Violation:** Feature A imports from Feature B, and Feature B imports from Feature A.
+
+```typescript
+// ❌ FORBIDDEN
+// features/sales/hooks/use-sales.ts
+import { useProducts } from "@/features/products/hooks/use-products";
+
+// features/products/hooks/use-products.ts
+import { useSales } from "@/features/sales/hooks/use-sales";
+```
+
+**Fix:** Extract shared logic to `hooks/` (shared) or `lib/`. Pass data as props from a parent that composes both features.
+
+---
+
+### Overusing Global State
+
+**Violation:** Creating Zustand stores for state that is local to a single component or page.
+
+```typescript
+// ❌ FORBIDDEN — this belongs in useState
+const useModalStore = create((set) => ({
+  isDeleteModalOpen: false,
+  openDeleteModal: () => set({ isDeleteModalOpen: true }),
+  closeDeleteModal: () => set({ isDeleteModalOpen: false }),
+}));
+```
+
+**Fix:** Use `useState` for component-local UI state. Only escalate to Zustand when the state is genuinely needed across unrelated parts of the application.
+
+---
+
+### Prop Drilling Beyond 2 Levels
+
+**Violation:** Passing a prop through 3+ component levels where intermediate components do not use it.
+
+```tsx
+// ❌ BAD — tenantId drilled through 3 levels
+<ProductsPage tenantId={tenantId}>
+  <ProductTable tenantId={tenantId}>
+    <ProductRow tenantId={tenantId} />
+  </ProductTable>
+</ProductsPage>
+```
+
+**Fix:** Read tenant context from the auth store inside the component that needs it, or use React Context for subtree-scoped values.
+
+---
+
+### Importing Across Feature Boundaries
+
+**Violation:** Importing from another feature's internal files (not its `index.ts`).
+
+```typescript
+// ❌ FORBIDDEN — bypasses the public API
+import { productService } from "@/features/products/services/product.service";
+import { useProductForm } from "@/features/products/hooks/use-product-form";
+```
+
+**Fix:** Only import from a feature's `index.ts`. If you need something that is not exported, either add it to the feature's public API or extract it to a shared module.
+
+---
+
+### `any` Type Usage
+
+**Violation:** Using `any` to bypass TypeScript.
+
+```typescript
+// ❌ FORBIDDEN
+const handleResponse = (data: any) => { ... };
+```
+
+**Fix:** Define explicit interfaces in `types.ts`. Use `unknown` with type guards when the shape is genuinely unknown.
+
+---
+
+## 12. Scalability Guidelines
+
+### Phase 1 — Small Team (1–5 developers, 1–5 features)
+
+The structure described in this document is sufficient. All features live flat under `features/`. Shared code lives in `components/`, `hooks/`, `lib/`, `utils/`.
+
+```
+features/
+├── auth/
+├── products/
+└── sales/
+```
+
+### Phase 2 — Growing Team (5–15 developers, 5–15 features)
+
+Introduce **domain grouping** inside `features/` when features cluster around business domains:
+
+```
+features/
+├── catalog/           # Domain: product catalog
+│   ├── products/
+│   ├── categories/
+│   └── inventory/
+├── commerce/          # Domain: transactions
+│   ├── sales/
+│   ├── orders/
+│   └── payments/
+└── operations/        # Domain: back-office
+    ├── vendors/
+    ├── transfers/
+    └── locations/
+```
+
+Rules remain the same — features within a domain still must not import from each other directly. Shared domain logic goes into a `{domain}/shared/` folder.
+
+### Phase 3 — Enterprise (15+ developers, 15+ features)
+
+Introduce **Clean Architecture layers** inside each domain:
+
+```
+features/catalog/
+├── application/       # Use cases: orchestration, no framework
+│   ├── use-cases/
+│   └── ports/         # Interfaces that infrastructure implements
+├── domain/            # Pure business logic: entities, value objects
+│   ├── entities/
+│   └── rules/
+├── infrastructure/    # Framework-specific: React Query, Axios, Zustand
+│   ├── api/
+│   └── stores/
+└── presentation/      # React components and hooks
+    ├── components/
+    └── hooks/
+```
+
+**When to introduce this:** Only when:
+1. Business logic is complex enough to warrant unit testing without React (domain layer).
+2. You need to swap infrastructure (e.g., replace Axios with a GraphQL client) without touching business logic.
+3. Multiple teams own different parts of the same domain.
+
+Do not introduce this prematurely. The Phase 1/2 structure handles most production applications at scale.
+
+### Feature Flag Integration
+
+When features need to be toggled per tenant or environment, add a `flags/` module:
+
+```
+features/
+└── flags/
+    ├── flag-store.ts          # Zustand store for resolved flags
+    ├── use-feature-flag.ts    # Hook: useFeatureFlag("new-checkout")
+    └── flags.service.ts       # Fetches flags from API on app init
+```
+
+Components gate features via the hook, never via environment variables directly:
+
+```tsx
+// ✅ GOOD
+const isNewCheckoutEnabled = useFeatureFlag("new-checkout");
+if (!isNewCheckoutEnabled) return <LegacyCheckout />;
+return <NewCheckout />;
+```
+
+### Performance Scaling
+
+As the application grows:
+
+1. **Bundle splitting**: Each feature's `index.ts` is a natural code-split boundary. Use `dynamic()` from Next.js for heavy feature pages.
+2. **Virtualization**: Use `@tanstack/react-virtual` for any list exceeding 100 items.
+3. **Query deduplication**: TanStack Query deduplicates identical queries automatically — lean on this rather than lifting state.
+4. **Selective hydration**: Use `<Suspense>` boundaries at the feature level to stream in content progressively.
+
+```tsx
+// ✅ GOOD — feature-level code splitting
+const ProductsPage = dynamic(() =>
+  import("@/features/products").then((m) => ({ default: m.ProductsPage })),
+  { loading: () => <PageSkeleton /> }
+);
+```
+
+---
+
+## Enforcement Checklist (Code Review)
+
+Before approving any PR touching `apps/web/`, verify:
+
+- [ ] New feature code lives inside `features/<name>/` with the correct sub-structure
+- [ ] No component calls `axios`, `fetch`, or any service function directly
+- [ ] No cross-feature imports (only via `index.ts` public API)
+- [ ] All HTTP calls go through `features/<name>/services/<name>.service.ts`
+- [ ] All server/async state uses TanStack Query — not Zustand, not `useState`
+- [ ] New Zustand stores are for UI state only, typed, and export named selectors
+- [ ] `"use client"` is only added when strictly required
+- [ ] New shared components/hooks are in `components/` or `hooks/` only if used by 2+ features
+- [ ] All new files follow the naming conventions in Section 7
+- [ ] `npx tsc --noEmit` passes with zero errors
+- [ ] Tests exist for the service and hook layers of new features

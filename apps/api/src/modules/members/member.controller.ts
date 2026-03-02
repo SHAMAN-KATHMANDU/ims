@@ -34,8 +34,10 @@ class MemberController {
         });
       }
 
+      const tenantId = req.user!.tenantId;
+
       const existingMember = await prisma.member.findFirst({
-        where: { phone: normalizedPhone },
+        where: { phone: normalizedPhone, tenantId },
       });
 
       if (existingMember) {
@@ -47,7 +49,7 @@ class MemberController {
 
       const member = await prisma.member.create({
         data: {
-          tenantId: req.user!.tenantId,
+          tenantId,
           phone: normalizedPhone,
           name: name || null,
           email: email || null,
@@ -67,6 +69,7 @@ class MemberController {
   // Get all members with pagination and search
   async getAllMembers(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const { page, limit, sortBy, sortOrder, search } = getPaginationParams(
         req.query,
       );
@@ -81,8 +84,8 @@ class MemberController {
         createdAt: "desc",
       };
 
-      // Build search filter
-      const where: any = {};
+      // Build search filter — always scope to tenant
+      const where: any = { tenantId, deletedAt: null };
       if (search) {
         where.OR = [
           { phone: { contains: search, mode: "insensitive" } },
@@ -124,6 +127,7 @@ class MemberController {
   // Get member by phone number
   async getMemberByPhone(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const phone = Array.isArray(req.params.phone)
         ? req.params.phone[0]
         : req.params.phone;
@@ -136,7 +140,7 @@ class MemberController {
       const normalizedPhone = parsed.e164;
 
       const member = await prisma.member.findFirst({
-        where: { phone: normalizedPhone },
+        where: { phone: normalizedPhone, tenantId, deletedAt: null },
         include: {
           _count: {
             select: { sales: true },
@@ -160,12 +164,13 @@ class MemberController {
   // Get member by ID
   async getMemberById(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
 
-      const member = await prisma.member.findUnique({
-        where: { id },
+      const member = await prisma.member.findFirst({
+        where: { id, tenantId, deletedAt: null },
         include: {
           sales: {
             orderBy: { createdAt: "desc" },
@@ -211,13 +216,14 @@ class MemberController {
   // Update member
   async updateMember(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
       const { phone, name, email, notes, isActive } = req.body;
 
-      const existingMember = await prisma.member.findUnique({
-        where: { id },
+      const existingMember = await prisma.member.findFirst({
+        where: { id, tenantId, deletedAt: null },
       });
 
       if (!existingMember) {
@@ -238,7 +244,7 @@ class MemberController {
         }
         if (normalizedPhone !== existingMember.phone) {
           const phoneExists = await prisma.member.findFirst({
-            where: { phone: normalizedPhone },
+            where: { phone: normalizedPhone, tenantId },
           });
           if (phoneExists) {
             return res.status(409).json({
@@ -276,6 +282,7 @@ class MemberController {
   // Check if phone number is a member (quick lookup for sales)
   async checkMember(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const phone = Array.isArray(req.params.phone)
         ? req.params.phone[0]
         : req.params.phone;
@@ -288,7 +295,7 @@ class MemberController {
       const normalizedPhone = parsed.e164;
 
       const member = await prisma.member.findFirst({
-        where: { phone: normalizedPhone },
+        where: { phone: normalizedPhone, tenantId, deletedAt: null },
         select: {
           id: true,
           phone: true,
@@ -307,6 +314,7 @@ class MemberController {
   }
 
   async bulkUploadMembers(req: Request, res: Response) {
+    const tenantId = req.user!.tenantId;
     const createdMembers: { id: string; phone: string; name: string | null }[] =
       [];
     const skippedMembers: {
@@ -384,8 +392,8 @@ class MemberController {
           const normalizedPhone = parsed.e164;
 
           if (r.id) {
-            const existingById = await prisma.member.findUnique({
-              where: { id: r.id },
+            const existingById = await prisma.member.findFirst({
+              where: { id: r.id, tenantId },
             });
             if (existingById) {
               skippedMembers.push({
@@ -398,7 +406,7 @@ class MemberController {
           }
 
           const existingByPhone = await prisma.member.findFirst({
-            where: { phone: normalizedPhone },
+            where: { phone: normalizedPhone, tenantId },
           });
           if (existingByPhone) {
             skippedMembers.push({
@@ -532,6 +540,7 @@ class MemberController {
   // Download members as Excel or CSV
   async downloadMembers(req: Request, res: Response) {
     try {
+      const tenantId = req.user!.tenantId;
       const format = (req.query.format as string)?.toLowerCase() || "excel";
       const idsParam = req.query.ids as string | undefined;
 
@@ -551,8 +560,8 @@ class MemberController {
           .filter(Boolean);
       }
 
-      // Build where clause
-      const where: any = {};
+      // Build where clause — always scope to tenant
+      const where: any = { tenantId, deletedAt: null };
       if (memberIds && memberIds.length > 0) {
         where.id = { in: memberIds };
       }

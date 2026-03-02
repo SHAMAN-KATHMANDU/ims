@@ -1,12 +1,13 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   DndContext,
   type DragEndEvent,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -16,6 +17,9 @@ import {
   useDealsKanban,
   useUpdateDealStage,
   useDeleteDeal,
+  useCreateDeal,
+  useUpdateDeal,
+  useDeal,
 } from "@/hooks/useDeals";
 import {
   usePipelines,
@@ -24,9 +28,15 @@ import {
 } from "@/hooks/usePipelines";
 import { dealKeys } from "@/hooks/useDeals";
 import { useQueryClient } from "@tanstack/react-query";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { useToast } from "@/hooks/useToast";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
+import { DealForm } from "./DealForm";
+import { DealDetail } from "./DealDetail";
+import type { CreateDealData, UpdateDealData } from "@/services/dealService";
 import {
   Select,
   SelectContent,
@@ -76,19 +86,30 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Deal } from "@/services/dealService";
 import type { Pipeline, PipelineStage } from "@/services/pipelineService";
 
+type DrawerMode = "view" | "new" | "edit" | null;
+
 export function DealsKanbanPage() {
   const params = useParams();
+  const router = useRouter();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
+  const isDesktop = useIsDesktop();
+  const { toast } = useToast();
 
   const [pipelineId, setPipelineId] = useState<string>("");
   const [addPipelineOpen, setAddPipelineOpen] = useState(false);
   const [editPipelineOpen, setEditPipelineOpen] = useState(false);
   const [editStagesOpen, setEditStagesOpen] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
+  const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
+
   const { data, isLoading } = useDealsKanban(pipelineId || undefined);
   const { data: pipelinesData } = usePipelines();
+  const { data: selectedDealData } = useDeal(selectedDealId ?? "");
   const updateStageMutation = useUpdateDealStage();
   const deleteDealMutation = useDeleteDeal();
+  const createDealMutation = useCreateDeal();
+  const updateDealMutation = useUpdateDeal();
   const qc = useQueryClient();
   const currentPipeline = (data?.pipeline ??
     pipelinesData?.pipelines?.find((p) => p.id === pipelineId)) as
@@ -142,6 +163,59 @@ export function DealsKanbanPage() {
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
     }),
+    useSensor(TouchSensor, {
+      activationConstraint: { delay: 250, tolerance: 5 },
+    }),
+  );
+
+  const openNew = useCallback(() => {
+    if (isDesktop) {
+      setSelectedDealId(null);
+      setDrawerMode("new");
+    } else {
+      router.push(`${basePath}/crm/deals/new`);
+    }
+  }, [isDesktop, router, basePath]);
+
+  const openView = useCallback((id: string) => {
+    setSelectedDealId(id);
+    setDrawerMode("view");
+  }, []);
+
+  const openEdit = useCallback(
+    (id: string) => {
+      if (isDesktop) {
+        setSelectedDealId(id);
+        setDrawerMode("edit");
+      } else {
+        router.push(`${basePath}/crm/deals/${id}/edit`);
+      }
+    },
+    [isDesktop, router, basePath],
+  );
+
+  const closeDrawer = useCallback(() => {
+    setDrawerMode(null);
+    setSelectedDealId(null);
+  }, []);
+
+  const handleCreateDeal = useCallback(
+    async (data: CreateDealData) => {
+      await createDealMutation.mutateAsync(data);
+      toast({ title: "Deal created" });
+      closeDrawer();
+    },
+    [createDealMutation, toast, closeDrawer],
+  );
+
+  const handleUpdateDeal = useCallback(
+    async (data: UpdateDealData) => {
+      if (!selectedDealId) return;
+      await updateDealMutation.mutateAsync({ id: selectedDealId, data });
+      toast({ title: "Deal updated" });
+      setDrawerMode("view");
+    },
+    [selectedDealId, updateDealMutation, toast],
   );
 
   if (isLoading && !data) {
@@ -235,12 +309,10 @@ export function DealsKanbanPage() {
               </Button>
             }
           />
-          <Link href={`${basePath}/crm/deals/new`}>
-            <Button>
-              <Plus className="h-4 w-4 mr-2" />
-              New Deal
-            </Button>
-          </Link>
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            New Deal
+          </Button>
           {currentPipeline && (
             <>
               <EditPipelineDialog
@@ -270,8 +342,67 @@ export function DealsKanbanPage() {
         </div>
       </div>
 
+      {/* ── Mobile list view ─────────────────────────────────────────── */}
+      <div className="sm:hidden space-y-4">
+        {stages.map(
+          (col) =>
+            col.deals.length > 0 && (
+              <div key={col.stage}>
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 flex items-center gap-2">
+                  {col.stage}
+                  <span className="bg-muted text-muted-foreground rounded-full px-1.5 py-0.5 text-xs font-normal">
+                    {col.deals.length}
+                  </span>
+                </h3>
+                <div className="space-y-2">
+                  {col.deals.map((deal) => (
+                    <div
+                      key={deal.id}
+                      className="rounded-lg border bg-card p-3 space-y-1.5 cursor-pointer"
+                      onClick={() =>
+                        router.push(`${basePath}/crm/deals/${deal.id}`)
+                      }
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="text-sm font-medium">{deal.name}</span>
+                        <span className="text-sm font-semibold text-primary shrink-0">
+                          {formatCurrency(Number(deal.value))}
+                        </span>
+                      </div>
+                      {(deal.contact || deal.expectedCloseDate) && (
+                        <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+                          {deal.contact && (
+                            <span>
+                              {deal.contact.firstName}{" "}
+                              {deal.contact.lastName || ""}
+                            </span>
+                          )}
+                          {deal.expectedCloseDate && (
+                            <span>
+                              Closes{" "}
+                              {new Date(
+                                deal.expectedCloseDate,
+                              ).toLocaleDateString()}
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ),
+        )}
+        {stages.every((col) => col.deals.length === 0) && (
+          <div className="rounded-md border py-8 text-center text-muted-foreground">
+            No deals yet. Create one to get started.
+          </div>
+        )}
+      </div>
+
+      {/* ── Desktop kanban ───────────────────────────────────────────── */}
       <DndContext onDragEnd={handleDragEnd} sensors={sensors}>
-        <div className="flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
+        <div className="hidden sm:flex gap-4 overflow-x-auto pb-4 min-h-[500px]">
           {stages.map((col) => (
             <DroppableStageColumn
               key={col.stage}
@@ -287,12 +418,85 @@ export function DealsKanbanPage() {
                   onStageChange={handleStageChange}
                   onDelete={(id) => deleteDealMutation.mutate(id)}
                   isDeleting={deleteDealMutation.isPending}
+                  onView={openView}
+                  onEdit={openEdit}
                 />
               ))}
             </DroppableStageColumn>
           ))}
         </div>
       </DndContext>
+
+      <ResponsiveDrawer
+        open={drawerMode !== null}
+        onOpenChange={(o) => !o && closeDrawer()}
+        title={
+          drawerMode === "new"
+            ? "New Deal"
+            : drawerMode === "edit"
+              ? "Edit Deal"
+              : "Deal Details"
+        }
+        size="2xl"
+      >
+        {drawerMode === "view" && selectedDealId && (
+          <div className="flex flex-col h-full">
+            <div className="flex items-center justify-end px-6 py-3 border-b shrink-0">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => openEdit(selectedDealId)}
+              >
+                Edit Deal
+              </Button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-6">
+              <DealDetail
+                dealId={selectedDealId}
+                basePath={basePath}
+                onEdit={() => openEdit(selectedDealId)}
+              />
+            </div>
+          </div>
+        )}
+        {drawerMode === "new" && (
+          <DealForm
+            mode="create"
+            onSubmit={handleCreateDeal}
+            onCancel={closeDrawer}
+            isLoading={createDealMutation.isPending}
+          />
+        )}
+        {drawerMode === "edit" && selectedDealId && selectedDealData?.deal && (
+          <DealForm
+            mode="edit"
+            defaultValues={{
+              name: selectedDealData.deal.name,
+              value: Number(selectedDealData.deal.value),
+              stage: selectedDealData.deal.stage,
+              probability: selectedDealData.deal.probability,
+              expectedCloseDate: selectedDealData.deal.expectedCloseDate
+                ? new Date(selectedDealData.deal.expectedCloseDate)
+                    .toISOString()
+                    .slice(0, 10)
+                : "",
+              status: selectedDealData.deal.status,
+              contactId: selectedDealData.deal.contactId ?? undefined,
+              companyId: selectedDealData.deal.companyId ?? undefined,
+              assignedToId: selectedDealData.deal.assignedToId ?? "",
+              stageNames:
+                (
+                  selectedDealData.deal.pipeline as
+                    | { stages?: Array<{ name: string }> }
+                    | undefined
+                )?.stages?.map((s) => s.name) ?? [],
+            }}
+            onSubmit={handleUpdateDeal}
+            onCancel={() => setDrawerMode("view")}
+            isLoading={updateDealMutation.isPending}
+          />
+        )}
+      </ResponsiveDrawer>
     </div>
   );
 }
@@ -332,6 +536,8 @@ function DraggableDealCard({
   onStageChange,
   onDelete,
   isDeleting,
+  onView,
+  onEdit,
 }: {
   deal: Deal;
   basePath: string;
@@ -339,6 +545,8 @@ function DraggableDealCard({
   onStageChange: (dealId: string, stage: string) => void;
   onDelete: (id: string) => void;
   isDeleting?: boolean;
+  onView?: (id: string) => void;
+  onEdit?: (id: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({
@@ -366,6 +574,8 @@ function DraggableDealCard({
         onDelete={onDelete}
         isDeleting={isDeleting}
         dragHandleProps={{ ...attributes, ...listeners }}
+        onView={onView}
+        onEdit={onEdit}
       />
     </div>
   );
@@ -379,6 +589,8 @@ function DealCard({
   onDelete,
   isDeleting,
   dragHandleProps,
+  onView,
+  onEdit,
 }: {
   deal: Deal;
   basePath: string;
@@ -387,13 +599,13 @@ function DealCard({
   onDelete?: (id: string) => void;
   isDeleting?: boolean;
   dragHandleProps?: React.HTMLAttributes<HTMLDivElement>;
+  onView?: (id: string) => void;
+  onEdit?: (id: string) => void;
 }) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const contactName = deal.contact
     ? `${deal.contact.firstName} ${deal.contact.lastName || ""}`.trim()
-    : deal.member
-      ? deal.member.name || deal.member.phone
-      : deal.company?.name || "—";
+    : deal.company?.name || "—";
 
   const handleConfirmDelete = useCallback(() => {
     onDelete?.(deal.id);
@@ -412,31 +624,62 @@ function DealCard({
             <GripVertical className="h-4 w-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <Link
-              href={`${basePath}/crm/deals/${deal.id}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              <span className="font-medium hover:underline">{deal.name}</span>
-            </Link>
+            {onView ? (
+              <button
+                type="button"
+                className="font-medium hover:underline text-left"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onView(deal.id);
+                }}
+              >
+                {deal.name}
+              </button>
+            ) : (
+              <Link
+                href={`${basePath}/crm/deals/${deal.id}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                <span className="font-medium hover:underline">{deal.name}</span>
+              </Link>
+            )}
             <p className="text-sm text-muted-foreground">{contactName}</p>
           </div>
-          {onDelete && (
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                setDeleteOpen(true);
-              }}
-              disabled={isDeleting}
-              aria-label="Delete deal"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          )}
+          <div className="flex items-center gap-1 shrink-0">
+            {onEdit && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onEdit(deal.id);
+                }}
+                aria-label="Edit deal"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDeleteOpen(true);
+                }}
+                disabled={isDeleting}
+                aria-label="Delete deal"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="p-3 pt-0 space-y-2">
           <p className="text-lg font-semibold">
@@ -696,13 +939,13 @@ function EditPipelineDialog({
   );
 }
 
-function normalizeStages(raw: unknown): PipelineStage[] {
+function normalizeStages(raw: PipelineStage[]): PipelineStage[] {
   if (!Array.isArray(raw)) return [];
   return raw.map((s, i) => ({
-    id: typeof s?.id === "string" ? s.id : String(i + 1),
-    name: typeof s?.name === "string" ? s.name : `Stage ${i + 1}`,
-    order: typeof s?.order === "number" ? s.order : i + 1,
-    probability: typeof s?.probability === "number" ? s.probability : 0,
+    id: s.id ?? String(i + 1),
+    name: s.name ?? `Stage ${i + 1}`,
+    order: s.order ?? i + 1,
+    probability: s.probability ?? 0,
   }));
 }
 

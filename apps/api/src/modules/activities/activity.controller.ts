@@ -1,78 +1,49 @@
 import { Request, Response } from "express";
-import prisma from "@/config/prisma";
+import { ZodError } from "zod";
+import { CreateActivitySchema } from "./activity.schema";
+import activityService from "./activity.service";
 import { sendControllerError } from "@/utils/controllerError";
+import type { AppError } from "@/middlewares/errorHandler";
 
-function getUserId(req: Request): string | null {
-  return (req as any).user?.id ?? null;
-}
-
-const ACTIVITY_TYPES = ["CALL", "MEETING"] as const;
+const handleAppError = (res: Response, error: unknown): Response | null => {
+  if ((error as AppError).statusCode) {
+    return res
+      .status((error as AppError).statusCode!)
+      .json({ message: (error as AppError).message });
+  }
+  return null;
+};
 
 class ActivityController {
-  async create(req: Request, res: Response) {
+  create = async (req: Request, res: Response) => {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
-
+      const userId = req.user!.id;
       const tenantId = req.user!.tenantId;
-      const { type, subject, notes, activityAt, contactId, memberId, dealId } =
-        req.body;
-
-      if (!type || !ACTIVITY_TYPES.includes(type)) {
+      const body = CreateActivitySchema.parse(req.body);
+      const activity = await activityService.create(tenantId, userId, body);
+      return res.status(201).json({ message: "Activity logged", activity });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
         return res
           .status(400)
-          .json({ message: "Valid type (CALL, MEETING) is required" });
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
       }
-
-      if (!contactId && !memberId && !dealId) {
-        return res.status(400).json({
-          message: "Either contactId, memberId, or dealId is required",
-        });
-      }
-
-      const activity = await prisma.activity.create({
-        data: {
-          tenantId,
-          type,
-          subject: subject?.trim() || null,
-          notes: notes?.trim() || null,
-          activityAt: activityAt ? new Date(activityAt) : new Date(),
-          contactId: contactId || null,
-          memberId: memberId || null,
-          dealId: dealId || null,
-          createdById: userId,
-        },
-        include: {
-          contact: { select: { id: true, firstName: true, lastName: true } },
-          member: { select: { id: true, name: true, phone: true } },
-          deal: { select: { id: true, name: true } },
-          creator: { select: { id: true, username: true } },
-        },
-      });
-
-      res.status(201).json({ message: "Activity logged", activity });
-    } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Create activity error");
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Create activity error")
+      );
     }
-  }
+  };
 
-  async getByContact(req: Request, res: Response) {
+  getByContact = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const { contactId } = req.params;
-
-      const activities = await prisma.activity.findMany({
-        where: { tenantId, contactId },
-        orderBy: { activityAt: "desc" },
-        include: {
-          creator: { select: { id: true, username: true } },
-          member: { select: { id: true, name: true, phone: true } },
-          deal: { select: { id: true, name: true } },
-        },
-      });
-
-      res.status(200).json({ message: "OK", activities });
+      const activities = await activityService.getByContact(
+        tenantId,
+        contactId,
+      );
+      return res.status(200).json({ message: "OK", activities });
     } catch (error: unknown) {
       return sendControllerError(
         req,
@@ -81,24 +52,14 @@ class ActivityController {
         "Get activities by contact error",
       );
     }
-  }
+  };
 
-  async getByDeal(req: Request, res: Response) {
+  getByDeal = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const { dealId } = req.params;
-
-      const activities = await prisma.activity.findMany({
-        where: { tenantId, dealId },
-        orderBy: { activityAt: "desc" },
-        include: {
-          creator: { select: { id: true, username: true } },
-          contact: { select: { id: true, firstName: true, lastName: true } },
-          member: { select: { id: true, name: true, phone: true } },
-        },
-      });
-
-      res.status(200).json({ message: "OK", activities });
+      const activities = await activityService.getByDeal(tenantId, dealId);
+      return res.status(200).json({ message: "OK", activities });
     } catch (error: unknown) {
       return sendControllerError(
         req,
@@ -107,54 +68,35 @@ class ActivityController {
         "Get activities by deal error",
       );
     }
-  }
+  };
 
-  async getById(req: Request, res: Response) {
+  getById = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const { id } = req.params;
-
-      const activity = await prisma.activity.findFirst({
-        where: { id, tenantId },
-        include: {
-          contact: true,
-          member: true,
-          deal: true,
-          creator: { select: { id: true, username: true } },
-        },
-      });
-
-      if (!activity) {
-        return res.status(404).json({ message: "Activity not found" });
-      }
-
-      res.status(200).json({ message: "OK", activity });
+      const activity = await activityService.getById(tenantId, id);
+      return res.status(200).json({ message: "OK", activity });
     } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Get activity by id error");
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Get activity by id error")
+      );
     }
-  }
+  };
 
-  async delete(req: Request, res: Response) {
+  delete = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
       const { id } = req.params;
-
-      const existing = await prisma.activity.findFirst({
-        where: { id, tenantId },
-      });
-      if (!existing) {
-        return res.status(404).json({ message: "Activity not found" });
-      }
-
-      await prisma.activity.update({
-        where: { id },
-        data: { deletedAt: new Date() },
-      });
-      res.status(200).json({ message: "Activity deleted" });
+      await activityService.delete(tenantId, id);
+      return res.status(200).json({ message: "Activity deleted" });
     } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Delete activity error");
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Delete activity error")
+      );
     }
-  }
+  };
 }
 
 export default new ActivityController();

@@ -2,16 +2,29 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import {
   useTasksPaginated,
   useCompleteTask,
   useDeleteTask,
+  useTask,
+  useCreateTask,
+  useUpdateTask,
 } from "@/hooks/useTasks";
+import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Search, Plus, Check, Pencil } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import {
+  Search,
+  Plus,
+  Check,
+  Pencil,
+  Trash2,
+  Calendar,
+  User as UserIcon,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -27,20 +40,28 @@ import {
 } from "@/components/ui/data-table-pagination";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/useToast";
+import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
+import { TaskForm } from "./TaskForm";
+import type { CreateTaskData, UpdateTaskData } from "@/services/taskService";
 
 type TaskFilterTab = "all" | "incomplete" | "complete";
+type DrawerMode = "new" | "edit" | null;
 
 export function TasksPage() {
   const params = useParams();
+  const router = useRouter();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const { toast } = useToast();
+  const isDesktop = useIsDesktop();
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const [taskTab, setTaskTab] = useState<TaskFilterTab>("all");
   const [dueToday, setDueToday] = useState(false);
+  const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const completedFilter =
     taskTab === "incomplete"
@@ -57,8 +78,11 @@ export function TasksPage() {
     dueToday,
   });
 
+  const { data: selectedTaskData } = useTask(selectedId ?? "");
   const completeMutation = useCompleteTask();
   const deleteMutation = useDeleteTask();
+  const createMutation = useCreateTask();
+  const updateMutation = useUpdateTask();
 
   const tasks = data?.data ?? [];
   const pagination = data?.pagination
@@ -72,16 +96,50 @@ export function TasksPage() {
       } as PaginationState)
     : null;
 
+  const openNew = () => {
+    if (isDesktop) {
+      setSelectedId(null);
+      setDrawerMode("new");
+    } else {
+      router.push(`${basePath}/crm/tasks/new`);
+    }
+  };
+
+  const openEdit = (id: string) => {
+    if (isDesktop) {
+      setSelectedId(id);
+      setDrawerMode("edit");
+    } else {
+      router.push(`${basePath}/crm/tasks/${id}/edit`);
+    }
+  };
+
+  const closeDrawer = () => {
+    setDrawerMode(null);
+    setSelectedId(null);
+  };
+
+  const handleCreateTask = async (data: CreateTaskData) => {
+    await createMutation.mutateAsync(data);
+    toast({ title: "Task created" });
+    closeDrawer();
+  };
+
+  const handleUpdateTask = async (data: UpdateTaskData) => {
+    if (!selectedId) return;
+    await updateMutation.mutateAsync({ id: selectedId, data });
+    toast({ title: "Task updated" });
+    closeDrawer();
+  };
+
   return (
     <div className="space-y-4">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <h1 className="text-3xl font-bold">Tasks</h1>
-        <Link href={`${basePath}/crm/tasks/new`}>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            New Task
-          </Button>
-        </Link>
+        <Button onClick={openNew}>
+          <Plus className="h-4 w-4 mr-2" />
+          New Task
+        </Button>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
@@ -124,7 +182,116 @@ export function TasksPage() {
         </div>
       </div>
 
-      <div className="rounded-md border">
+      {/* ── Mobile card list ─────────────────────────────────────────── */}
+      <div className="sm:hidden space-y-2">
+        {isLoading ? (
+          [1, 2, 3].map((i) => (
+            <div key={i} className="rounded-lg border p-3 space-y-2">
+              <Skeleton className="h-4 w-48" />
+              <Skeleton className="h-3 w-32" />
+              <Skeleton className="h-3 w-24" />
+            </div>
+          ))
+        ) : tasks.length === 0 ? (
+          <div className="rounded-md border py-8 text-center text-muted-foreground">
+            No tasks found
+          </div>
+        ) : (
+          tasks.map((task) => (
+            <div
+              key={task.id}
+              className="rounded-lg border bg-card p-3 space-y-2"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <span
+                  className={`text-sm font-medium ${task.completed ? "line-through text-muted-foreground" : ""}`}
+                >
+                  {task.title}
+                </span>
+                <Badge
+                  variant={task.completed ? "secondary" : "outline"}
+                  className="text-xs shrink-0"
+                >
+                  {task.completed ? "Done" : "Todo"}
+                </Badge>
+              </div>
+
+              <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                {task.dueDate && (
+                  <span className="flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(task.dueDate).toLocaleDateString()}
+                  </span>
+                )}
+                {task.assignedTo && (
+                  <span className="flex items-center gap-1">
+                    <UserIcon className="h-3 w-3" />
+                    {task.assignedTo.username}
+                  </span>
+                )}
+                {task.contact && (
+                  <Link href={`${basePath}/crm/contacts/${task.contact.id}`}>
+                    <span className="text-primary hover:underline">
+                      {task.contact.firstName} {task.contact.lastName || ""}
+                    </span>
+                  </Link>
+                )}
+                {task.deal && (
+                  <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
+                    <span className="text-primary hover:underline">
+                      {task.deal.name}
+                    </span>
+                  </Link>
+                )}
+              </div>
+
+              <div className="flex gap-1 pt-1">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs flex-1"
+                  onClick={() => openEdit(task.id)}
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+                {!task.completed && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs flex-1"
+                    onClick={() => {
+                      completeMutation.mutate(task.id, {
+                        onSuccess: () => toast({ title: "Task completed" }),
+                      });
+                    }}
+                  >
+                    <Check className="h-3 w-3 mr-1" />
+                    Done
+                  </Button>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 text-xs text-destructive hover:text-destructive"
+                  onClick={() => {
+                    if (confirm("Delete this task?")) {
+                      deleteMutation.mutate(task.id, {
+                        onSuccess: () => toast({ title: "Task deleted" }),
+                      });
+                    }
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ))
+        )}
+      </div>
+
+      {/* ── Desktop table ────────────────────────────────────────────── */}
+      <div className="hidden sm:block overflow-x-auto rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
@@ -192,8 +359,6 @@ export function TasksPage() {
                           {task.contact.firstName} {task.contact.lastName || ""}
                         </span>
                       </Link>
-                    ) : task.member ? (
-                      <span>{task.member.name || task.member.phone}</span>
                     ) : (
                       "—"
                     )}
@@ -218,11 +383,13 @@ export function TasksPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="sm" asChild>
-                        <Link href={`${basePath}/crm/tasks/${task.id}/edit`}>
-                          <Pencil className="h-4 w-4 mr-1" />
-                          Edit
-                        </Link>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => openEdit(task.id)}
+                      >
+                        <Pencil className="h-4 w-4 mr-1" />
+                        Edit
                       </Button>
                       {!task.completed && (
                         <Button
@@ -272,6 +439,40 @@ export function TasksPage() {
           }}
         />
       )}
+
+      <ResponsiveDrawer
+        open={drawerMode !== null}
+        onOpenChange={(o) => !o && closeDrawer()}
+        title={drawerMode === "new" ? "New Task" : "Edit Task"}
+      >
+        {drawerMode === "new" && (
+          <TaskForm
+            mode="create"
+            onSubmit={handleCreateTask}
+            onCancel={closeDrawer}
+            isLoading={createMutation.isPending}
+          />
+        )}
+        {drawerMode === "edit" && selectedId && selectedTaskData?.task && (
+          <TaskForm
+            mode="edit"
+            defaultValues={{
+              title: selectedTaskData.task.title,
+              dueDate: selectedTaskData.task.dueDate
+                ? new Date(selectedTaskData.task.dueDate)
+                    .toISOString()
+                    .slice(0, 10)
+                : "",
+              contactId: selectedTaskData.task.contactId ?? undefined,
+              dealId: selectedTaskData.task.dealId ?? undefined,
+              assignedToId: selectedTaskData.task.assignedToId ?? undefined,
+            }}
+            onSubmit={handleUpdateTask}
+            onCancel={closeDrawer}
+            isLoading={updateMutation.isPending}
+          />
+        )}
+      </ResponsiveDrawer>
     </div>
   );
 }

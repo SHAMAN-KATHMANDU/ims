@@ -33,6 +33,8 @@ export function useTasksPaginated(params: TaskListParams = {}) {
       completed: params.completed,
       assignedToId: params.assignedToId,
       dueToday: params.dueToday,
+      contactId: params.contactId,
+      dealId: params.dealId,
     }),
     queryFn: () => getTasks(params),
     placeholderData: (prev) => prev,

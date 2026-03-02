@@ -46,6 +46,7 @@ import {
   Calendar,
   Hash,
   CreditCard,
+  Contact,
 } from "lucide-react";
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -182,6 +183,32 @@ export function SaleDetail({
                 )}
               </div>
             </div>
+
+            {/* CRM Contact */}
+            {sale.contact && (
+              <div className="space-y-1">
+                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                  <Contact className="h-4 w-4" />
+                  CRM Contact
+                </div>
+                <div>
+                  <p className="font-medium">
+                    {sale.contact.firstName}
+                    {sale.contact.lastName ? ` ${sale.contact.lastName}` : ""}
+                  </p>
+                  {sale.contact.email && (
+                    <p className="text-sm text-muted-foreground">
+                      {sale.contact.email}
+                    </p>
+                  )}
+                  {sale.contact.phone && (
+                    <p className="text-sm text-muted-foreground">
+                      {sale.contact.phone}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Sold By */}
             <div className="space-y-1">

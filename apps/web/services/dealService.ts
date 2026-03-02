@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
+import type { PipelineStage } from "@/services/pipelineService";
 
 export type DealStatus = "OPEN" | "WON" | "LOST";
 
@@ -34,7 +35,12 @@ export interface Deal {
     email?: string | null;
   } | null;
   company?: { id: string; name: string } | null;
-  pipeline?: { id: string; name: string; stages: unknown };
+  pipeline?: {
+    id: string;
+    name: string;
+    stages: PipelineStage[];
+    isDefault: boolean;
+  } | null;
   assignedTo?: { id: string; username: string };
   tasks?: Array<{
     id: string;
@@ -63,6 +69,7 @@ export interface DealListParams {
   stage?: string;
   status?: DealStatus;
   assignedToId?: string;
+  contactId?: string;
 }
 
 export interface PaginatedDealsResponse {
@@ -75,13 +82,12 @@ export interface CreateDealData {
   value?: number;
   stage?: string;
   probability?: number;
-  status?: DealStatus;
-  expectedCloseDate?: string;
-  contactId?: string;
-  memberId?: string;
-  companyId?: string;
-  pipelineId?: string;
-  assignedToId?: string;
+  expectedCloseDate?: string | null;
+  contactId?: string | null;
+  memberId?: string | null;
+  companyId?: string | null;
+  pipelineId?: string | null;
+  assignedToId?: string | null;
 }
 
 export interface UpdateDealData {

@@ -9,13 +9,13 @@ export interface Task {
   contactId?: string | null;
   memberId?: string | null;
   dealId?: string | null;
-  assignedToId: string;
+  assignedToId?: string | null;
   createdAt: string;
   updatedAt: string;
   contact?: { id: string; firstName: string; lastName?: string | null } | null;
   member?: { id: string; name: string | null; phone: string } | null;
   deal?: { id: string; name: string } | null;
-  assignedTo?: { id: string; username: string };
+  assignedTo?: { id: string; username: string } | null;
 }
 
 export interface TaskListParams {
@@ -27,6 +27,8 @@ export interface TaskListParams {
   completed?: boolean;
   assignedToId?: string;
   dueToday?: boolean;
+  contactId?: string;
+  dealId?: string;
 }
 
 export interface PaginatedTasksResponse {

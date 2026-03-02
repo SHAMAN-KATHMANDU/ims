@@ -16,7 +16,6 @@ import {
   UserCog,
   Users,
   Receipt,
-  UserCheck,
   Factory,
   Percent,
   Tags,
@@ -26,7 +25,6 @@ import {
   ShieldCheck,
   LayoutDashboard,
   Contact,
-  Target,
   Handshake,
   CheckSquare,
   Bell,
@@ -126,12 +124,6 @@ const navSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
       },
       {
-        path: "crm/leads",
-        label: "Leads",
-        icon: Target,
-        roles: ["user", "admin", "superAdmin"],
-      },
-      {
         path: "crm/deals",
         label: "Deals",
         icon: Handshake,
@@ -149,6 +141,12 @@ const navSections: NavSection[] = [
         icon: Bell,
         roles: ["user", "admin", "superAdmin"],
       },
+      {
+        path: "crm/settings",
+        label: "CRM Settings",
+        icon: Settings,
+        roles: ["admin", "superAdmin"],
+      },
     ],
   },
   {
@@ -158,12 +156,6 @@ const navSections: NavSection[] = [
         path: "sales",
         label: "Sales",
         icon: Receipt,
-        roles: ["user", "admin", "superAdmin"],
-      },
-      {
-        path: "members",
-        label: "Members",
-        icon: UserCheck,
         roles: ["user", "admin", "superAdmin"],
       },
       {

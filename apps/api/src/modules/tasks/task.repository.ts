@@ -1,0 +1,172 @@
+import prisma from "@/config/prisma";
+import {
+  getPaginationParams,
+  createPaginationResult,
+  getPrismaOrderBy,
+} from "@/utils/pagination";
+import type { CreateTaskDto, UpdateTaskDto } from "./task.schema";
+
+const TASK_INCLUDE = {
+  contact: { select: { id: true, firstName: true, lastName: true } },
+  member: { select: { id: true, name: true, phone: true } },
+  deal: { select: { id: true, name: true } },
+  assignedTo: { select: { id: true, username: true } },
+} as const;
+
+const TASK_DETAIL_INCLUDE = {
+  contact: true,
+  member: true,
+  deal: true,
+  assignedTo: { select: { id: true, username: true } },
+} as const;
+
+export class TaskRepository {
+  async findAll(tenantId: string, query: Record<string, unknown>) {
+    const { page, limit, sortBy, sortOrder, search } =
+      getPaginationParams(query);
+    const completed = query.completed as string | undefined;
+    const assignedToId = query.assignedToId as string | undefined;
+    const dueToday = query.dueToday === "true";
+    const contactId = query.contactId as string | undefined;
+    const dealId = query.dealId as string | undefined;
+
+    const allowedSortFields = [
+      "createdAt",
+      "updatedAt",
+      "dueDate",
+      "title",
+      "id",
+    ];
+    const orderBy = getPrismaOrderBy(sortBy, sortOrder, allowedSortFields) || {
+      dueDate: "asc",
+    };
+
+    const where: Record<string, unknown> = { tenantId, deletedAt: null };
+    if (search) where.title = { contains: search, mode: "insensitive" };
+    if (completed === "true") where.completed = true;
+    else if (completed === "false") where.completed = false;
+    if (assignedToId) where.assignedToId = assignedToId;
+    if (contactId) where.contactId = contactId;
+    if (dealId) where.dealId = dealId;
+
+    if (dueToday) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      where.dueDate = { gte: today, lt: tomorrow };
+    }
+
+    const skip = (page - 1) * limit;
+
+    const [totalItems, tasks] = await Promise.all([
+      prisma.task.count({ where }),
+      prisma.task.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
+        include: TASK_INCLUDE,
+      }),
+    ]);
+
+    return createPaginationResult(tasks, totalItems, page, limit);
+  }
+
+  async findById(tenantId: string, id: string) {
+    return prisma.task.findFirst({
+      where: { id, tenantId, deletedAt: null },
+      include: TASK_DETAIL_INCLUDE,
+    });
+  }
+
+  async create(tenantId: string, data: CreateTaskDto, userId: string) {
+    return prisma.task.create({
+      data: {
+        tenantId,
+        title: data.title.trim(),
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+        contactId: data.contactId || null,
+        memberId: data.memberId || null,
+        dealId: data.dealId || null,
+        assignedToId: data.assignedToId || userId,
+      },
+      include: TASK_INCLUDE,
+    });
+  }
+
+  async update(
+    id: string,
+    data: UpdateTaskDto,
+    existing: { title: string; assignedToId: string | null },
+  ) {
+    const normalizeId = (
+      val: string | null | undefined,
+      fallback?: string | null,
+    ) => {
+      if (val === undefined) return undefined;
+      return val && String(val).trim() ? val : (fallback ?? null);
+    };
+
+    const updateData: Record<string, unknown> = {
+      ...(data.title !== undefined && {
+        title: data.title?.trim() || existing.title,
+      }),
+      ...(data.dueDate !== undefined && {
+        dueDate: data.dueDate ? new Date(data.dueDate) : null,
+      }),
+      ...(data.completed !== undefined && { completed: !!data.completed }),
+      ...(data.contactId !== undefined && {
+        contactId: normalizeId(data.contactId),
+      }),
+      ...(data.memberId !== undefined && {
+        memberId: normalizeId(data.memberId),
+      }),
+      ...(data.dealId !== undefined && { dealId: normalizeId(data.dealId) }),
+      ...(data.assignedToId !== undefined && {
+        assignedToId: normalizeId(data.assignedToId, existing.assignedToId),
+      }),
+    };
+
+    return prisma.task.update({
+      where: { id },
+      data: updateData,
+      include: TASK_INCLUDE,
+    });
+  }
+
+  async complete(id: string) {
+    return prisma.task.update({
+      where: { id },
+      data: { completed: true },
+      include: TASK_INCLUDE,
+    });
+  }
+
+  async softDelete(id: string) {
+    return prisma.task.update({
+      where: { id },
+      data: { deletedAt: new Date() },
+    });
+  }
+
+  async createNotification(
+    userId: string,
+    taskId: string,
+    taskTitle: string,
+    dueDate: Date,
+  ) {
+    return prisma.notification.create({
+      data: {
+        userId,
+        type: "TASK_DUE",
+        title: "Task due",
+        message: `Task "${taskTitle}" is due ${dueDate.toLocaleDateString()}`,
+        resourceType: "task",
+        resourceId: taskId,
+      },
+    });
+  }
+}
+
+export default new TaskRepository();
