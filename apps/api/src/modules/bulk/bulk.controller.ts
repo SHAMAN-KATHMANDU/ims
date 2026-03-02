@@ -2,14 +2,12 @@ import { Request, Response } from "express";
 import productController from "@/modules/products/product.controller";
 import memberController from "@/modules/members/member.controller";
 import saleController from "@/modules/sales/sale.controller";
+import { BulkTypeSchema } from "./bulk.schema";
 
-const BULK_TYPES = ["products", "members", "sales"] as const;
-export type BulkType = (typeof BULK_TYPES)[number];
-
-function parseType(value: unknown): BulkType | null {
+function parseType(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  const t = value.toLowerCase().trim();
-  return BULK_TYPES.includes(t as BulkType) ? (t as BulkType) : null;
+  const parsed = BulkTypeSchema.safeParse(value.toLowerCase().trim());
+  return parsed.success ? parsed.data : null;
 }
 
 /**
