@@ -2,6 +2,7 @@
 
 import { useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
 import { useActiveLocations } from "@/hooks/useLocation";
 import { getLocationInventory } from "@/services/inventoryService";
@@ -12,7 +13,6 @@ import {
   useCompleteTransfer,
 } from "@/hooks/useTransfer";
 import { TransferForm } from "./components/TransferForm";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 
@@ -83,6 +83,8 @@ export function CreateTransferPage() {
     router.push(`${basePath}/transfers`);
   }, [router, basePath]);
 
+  const canCreateTransfer = locations.length >= 2;
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -103,20 +105,40 @@ export function CreateTransferPage() {
         </Button>
       </div>
 
-      <TransferForm
-        open={true}
-        onOpenChange={(open) => !open && handleCancel()}
-        locations={locations}
-        onSubmit={handleSubmit}
-        isLoading={
-          createTransferMutation.isPending ||
-          approveTransferMutation.isPending ||
-          startTransitMutation.isPending ||
-          completeTransferMutation.isPending
-        }
-        getLocationInventory={fetchLocationInventory}
-        inline
-      />
+      {!canCreateTransfer ? (
+        <div className="rounded-lg border border-border bg-muted/30 p-8 text-center">
+          <p className="text-muted-foreground mb-4">
+            {locations.length === 0
+              ? "You need at least two locations to create transfers. Complete setup or add warehouses and showrooms in Locations."
+              : "You need at least two locations to create transfers. Add another location in Locations."}
+          </p>
+          <Link
+            href={
+              locations.length === 0
+                ? `${basePath}/onboarding`
+                : `${basePath}/locations/new`
+            }
+            className="text-primary underline hover:no-underline font-medium"
+          >
+            {locations.length === 0 ? "Complete setup" : "Add location"}
+          </Link>
+        </div>
+      ) : (
+        <TransferForm
+          open={true}
+          onOpenChange={(open) => !open && handleCancel()}
+          locations={locations}
+          onSubmit={handleSubmit}
+          isLoading={
+            createTransferMutation.isPending ||
+            approveTransferMutation.isPending ||
+            startTransitMutation.isPending ||
+            completeTransferMutation.isPending
+          }
+          getLocationInventory={fetchLocationInventory}
+          inline
+        />
+      )}
     </div>
   );
 }

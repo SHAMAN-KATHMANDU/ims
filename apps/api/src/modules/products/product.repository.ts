@@ -393,8 +393,17 @@ export class ProductRepository {
     return prisma.productVariation.delete({ where: { id } });
   }
 
-  createProductVariation(data: Prisma.ProductVariationUncheckedCreateInput) {
-    return prisma.productVariation.create({ data });
+  createProductVariation(
+    data: Prisma.ProductVariationUncheckedCreateInput,
+    options?: { includeSubVariations?: boolean },
+  ) {
+    return prisma.productVariation.create({
+      data,
+      include:
+        options?.includeSubVariations === true
+          ? { subVariations: { select: { id: true } } }
+          : undefined,
+    });
   }
 
   deleteProductDiscounts(productId: string) {

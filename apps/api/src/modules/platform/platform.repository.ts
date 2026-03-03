@@ -128,6 +128,24 @@ export class PlatformRepository {
         });
       }
 
+      await tx.location.create({
+        data: {
+          tenantId: tenant.id,
+          name: "Main Location",
+          type: "WAREHOUSE",
+          isActive: true,
+          isDefaultWarehouse: true,
+        },
+      });
+
+      await tx.category.create({
+        data: {
+          tenantId: tenant.id,
+          name: "Uncategorized",
+          description: "Default category",
+        },
+      });
+
       return {
         tenant,
         adminUser: {
