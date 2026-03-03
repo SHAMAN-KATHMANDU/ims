@@ -132,6 +132,12 @@ export async function findMemberByPhone(phone: string) {
   });
 }
 
+export async function findMemberById(id: string) {
+  return prisma.member.findUnique({
+    where: { id },
+  });
+}
+
 export async function createMember(data: {
   tenantId: string;
   phone: string;
@@ -142,6 +148,20 @@ export async function createMember(data: {
       tenantId: data.tenantId,
       phone: data.phone,
       name: data.name ?? null,
+    },
+  });
+}
+
+export async function findContactForSale(tenantId: string, contactId: string) {
+  return prisma.contact.findFirst({
+    where: { id: contactId, tenantId, deletedAt: null },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      phone: true,
+      memberId: true,
+      member: { select: { id: true, phone: true, name: true, isActive: true } },
     },
   });
 }
@@ -263,6 +283,7 @@ export interface CreateSaleWithItemsInput {
   isCreditSale: boolean;
   locationId: string;
   memberId: string | null;
+  contactId: string | null;
   createdById: string;
   subtotal: number;
   discount: number;
@@ -319,6 +340,7 @@ export async function createSaleWithItemsAndDeductInventory(
         isCreditSale: input.isCreditSale,
         locationId: input.locationId,
         memberId: input.memberId,
+        contactId: input.contactId,
         subtotal: input.subtotal,
         discount: input.discount,
         total: input.total,

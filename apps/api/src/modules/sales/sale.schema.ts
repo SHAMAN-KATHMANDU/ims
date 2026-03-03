@@ -14,6 +14,7 @@ export const CreateSaleSchema = z.object({
   locationId: z.string().uuid("Location ID is required"),
   memberPhone: z.string().optional(),
   memberName: z.string().optional(),
+  contactId: z.string().uuid().optional().nullable(),
   isCreditSale: z.boolean().optional(),
   items: z.array(SALE_ITEM_SCHEMA).min(1, "At least one item is required"),
   notes: z.string().optional(),
@@ -32,6 +33,8 @@ export type CreateSaleDto = z.infer<typeof CreateSaleSchema>;
 export const PreviewSaleSchema = z.object({
   locationId: z.string().uuid("Location ID is required"),
   memberPhone: z.string().optional(),
+  memberName: z.string().optional(),
+  contactId: z.string().uuid().optional().nullable(),
   items: z.array(SALE_ITEM_SCHEMA).min(1, "At least one item is required"),
 });
 

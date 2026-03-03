@@ -535,6 +535,37 @@ export interface PaginatedProductDiscountsResponse {
   pagination: PaginationMeta;
 }
 
+/** Discount for sale item selection (from GET /products/:id/discounts) */
+export interface ProductDiscountForSale {
+  id: string;
+  name: string;
+  value: number;
+  valueType: "PERCENTAGE" | "FLAT";
+  discountType: string;
+  discountTypeId: string;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+/**
+ * Get active discounts for a product (for sale item discount selection).
+ * Returns empty array on error (e.g. product not found) so callers can fall back.
+ */
+export async function getProductDiscounts(
+  productId: string,
+): Promise<ProductDiscountForSale[]> {
+  if (!productId?.trim()) return [];
+  try {
+    const response = await api.get<{
+      message: string;
+      discounts: ProductDiscountForSale[];
+    }>(`/products/${productId}/discounts`);
+    return response.data.discounts ?? [];
+  } catch {
+    return [];
+  }
+}
+
 export async function getProductDiscountsList(
   params: ProductDiscountListParams = {},
 ): Promise<PaginatedProductDiscountsResponse> {

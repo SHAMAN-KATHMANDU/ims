@@ -9,7 +9,9 @@ import {
   findPromoByCodeWithProducts,
   findLocationById,
   findMemberByPhone,
+  findMemberById,
   createMember,
+  findContactForSale,
   findPromoByCode,
   incrementPromoUsage,
   createSaleWithItemsAndDeductInventory,
@@ -348,6 +350,7 @@ export async function createSale(
     locationId: string;
     memberPhone?: string;
     memberName?: string;
+    contactId?: string | null;
     isCreditSale?: boolean;
     items: SaleItemInput[];
     notes?: string;
@@ -373,8 +376,42 @@ export async function createSale(
 
   let member: Awaited<ReturnType<typeof findMemberByPhone>> = null;
   let saleType: "GENERAL" | "MEMBER" = "GENERAL";
+  let resolvedContactId: string | null = null;
 
-  if (dto.memberPhone) {
+  if (dto.contactId) {
+    const contact = await findContactForSale(ctx.tenantId, dto.contactId);
+    if (!contact) {
+      throw Object.assign(new Error("Contact not found"), { statusCode: 404 });
+    }
+    resolvedContactId = contact.id;
+    if (contact.memberId || contact.member) {
+      const existingMember = contact.member;
+      if (existingMember) {
+        member = await findMemberById(existingMember.id);
+        if (member?.isActive) saleType = "MEMBER";
+      }
+    } else if (contact.phone) {
+      const { parseAndValidatePhone } = await import("@/utils/phone");
+      const parsed = parseAndValidatePhone(contact.phone);
+      if (parsed.valid) {
+        member = await findMemberByPhone((parsed as { e164: string }).e164);
+        if (!member) {
+          const name = [contact.firstName, contact.lastName]
+            .filter(Boolean)
+            .join(" ")
+            .trim();
+          member = await createMember({
+            tenantId: ctx.tenantId,
+            phone: (parsed as { e164: string }).e164,
+            name: name || null,
+          });
+        }
+        if (member.isActive) saleType = "MEMBER";
+      }
+    }
+  }
+
+  if (dto.memberPhone && !member) {
     const { parseAndValidatePhone } = await import("@/utils/phone");
     const parsed = parseAndValidatePhone(dto.memberPhone);
     if (!parsed.valid) {
@@ -392,10 +429,10 @@ export async function createSale(
     if (member.isActive) saleType = "MEMBER";
   }
 
-  if (dto.isCreditSale === true && !member) {
+  if (dto.isCreditSale === true && !member && !resolvedContactId) {
     throw Object.assign(
       new Error(
-        "Credit sales require a customer (member). Please enter the customer's phone number.",
+        "Credit sales require a customer. Select a contact or enter the customer's phone number.",
       ),
       { statusCode: 400 },
     );
@@ -439,6 +476,7 @@ export async function createSale(
     isCreditSale: creditSale,
     locationId: dto.locationId,
     memberId: member?.id ?? null,
+    contactId: resolvedContactId,
     createdById: ctx.userId,
     subtotal,
     discount: totalDiscount,
@@ -496,6 +534,8 @@ export async function previewSale(
   dto: {
     locationId: string;
     memberPhone?: string;
+    memberName?: string;
+    contactId?: string | null;
     items: SaleItemInput[];
   },
 ) {
@@ -507,14 +547,28 @@ export async function previewSale(
   }
 
   let saleType: "GENERAL" | "MEMBER" = "GENERAL";
-  if (dto.memberPhone) {
+  if (dto.contactId) {
+    const contact = await findContactForSale(ctx.tenantId, dto.contactId);
+    if (contact?.member?.isActive) saleType = "MEMBER";
+    else if (contact?.phone) {
+      const { parseAndValidatePhone } = await import("@/utils/phone");
+      const parsed = parseAndValidatePhone(contact.phone);
+      if (parsed.valid) {
+        const member = await findMemberByPhone(
+          (parsed as { e164: string }).e164,
+        );
+        if (member?.isActive) saleType = "MEMBER";
+      }
+    }
+  }
+  if (dto.memberPhone && saleType !== "MEMBER") {
     const { parseAndValidatePhone } = await import("@/utils/phone");
     const parsed = parseAndValidatePhone(dto.memberPhone);
     if (!parsed.valid) {
       const err = parsed as { valid: false; message: string };
       throw Object.assign(new Error(err.message), { statusCode: 400 });
     }
-    const member = await findMemberByPhone(parsed.e164);
+    const member = await findMemberByPhone((parsed as { e164: string }).e164);
     if (member?.isActive) saleType = "MEMBER";
   }
 
@@ -769,6 +823,7 @@ export class SaleService {
       locationId: string;
       memberPhone?: string;
       memberName?: string;
+      contactId?: string | null;
       isCreditSale?: boolean;
       items: SaleItemInput[];
       notes?: string;
@@ -786,6 +841,8 @@ export class SaleService {
     dto: {
       locationId: string;
       memberPhone?: string;
+      memberName?: string;
+      contactId?: string | null;
       items: SaleItemInput[];
     },
   ) {

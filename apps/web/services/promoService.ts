@@ -181,6 +181,21 @@ export async function updatePromo(
   }
 }
 
+/**
+ * Search for a promo by code (for validation in sale flow).
+ * Returns the matching promo or null if not found.
+ */
+export async function searchPromoByCode(
+  code: string,
+): Promise<PromoCode | null> {
+  if (!code?.trim()) return null;
+  const result = await getPromos({ search: code.trim(), limit: 1 });
+  const found = result.data?.find(
+    (p) => p.code.toLowerCase() === code.trim().toLowerCase(),
+  );
+  return found ?? null;
+}
+
 export async function deletePromo(id: string): Promise<void> {
   if (!id?.trim()) {
     throw new Error("Promo ID is required");
