@@ -370,7 +370,7 @@ export interface SalePreviewResponse {
 export async function previewSale(
   data: Pick<
     CreateSaleData,
-    "locationId" | "memberPhone" | "memberName" | "items"
+    "locationId" | "memberPhone" | "memberName" | "contactId" | "items"
   >,
 ): Promise<SalePreviewResponse> {
   if (!data.locationId?.trim() || !data.items?.length) {
@@ -380,6 +380,7 @@ export async function previewSale(
     locationId: data.locationId,
     memberPhone: data.memberPhone,
     memberName: data.memberName,
+    contactId: data.contactId ?? undefined,
     items: data.items.map((i) => ({
       variationId: i.variationId,
       quantity: i.quantity,

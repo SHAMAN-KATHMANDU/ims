@@ -9,7 +9,8 @@ import {
   getLocationInventory,
   type LocationInventoryItem,
 } from "@/services/inventoryService";
-import api from "@/lib/axios";
+import { searchPromoByCode } from "@/services/promoService";
+import { getProductDiscounts } from "@/services/productService";
 import { type Location } from "@/services/locationService";
 import {
   type CreateSaleData,
@@ -163,12 +164,36 @@ export function NewSaleForm({
   const [promoCodeValidating, setPromoCodeValidating] = useState(false);
   const debouncedPromoCode = useDebounce(promoCode, 2000);
 
-  // Credit sale requires a member; clear credit sale if phone is cleared
+  // Contact search (200ms debounce) — must be before auto-fill effect
+  const debouncedContactSearch = useDebounce(contactSearch, 200);
+  const { data: contactsResult } = useContactsPaginated({
+    search: debouncedContactSearch,
+    limit: 10,
+  });
+  const contactOptions = useMemo(
+    () => contactsResult?.data ?? [],
+    [contactsResult?.data],
+  );
+
+  // Credit sale requires member or contact; clear credit sale if both are cleared
   useEffect(() => {
-    if (!memberPhone.trim() && isCreditSale) {
+    if (!memberPhone.trim() && !contactId && isCreditSale) {
       setIsCreditSale(false);
     }
-  }, [memberPhone, isCreditSale]);
+  }, [memberPhone, contactId, isCreditSale]);
+
+  // When contact is selected, auto-fill phone and name from contact
+  useEffect(() => {
+    if (contactId && contactOptions.length > 0) {
+      const c = contactOptions.find((x) => x.id === contactId);
+      if (c) {
+        const phone = c.member?.phone ?? c.phone ?? "";
+        const name = [c.firstName, c.lastName].filter(Boolean).join(" ").trim();
+        if (phone) setMemberPhone(phone);
+        if (name) setMemberName(name);
+      }
+    }
+  }, [contactId, contactOptions]);
 
   // Validate promo code when debounced value changes
   useEffect(() => {
@@ -191,23 +216,7 @@ export function NewSaleForm({
       setPromoCodeError(null);
 
       try {
-        // Search for promo code using the search endpoint
-        const response = await api.get<{
-          message: string;
-          data: Array<{
-            id: string;
-            code: string;
-            isActive: boolean;
-            products?: Array<{ productId: string }>;
-          }>;
-        }>(
-          `/promos?search=${encodeURIComponent(debouncedPromoCode.trim())}&limit=1`,
-        );
-
-        const foundPromo = response.data.data?.find(
-          (p) =>
-            p.code.toLowerCase() === debouncedPromoCode.trim().toLowerCase(),
-        );
+        const foundPromo = await searchPromoByCode(debouncedPromoCode.trim());
 
         if (foundPromo) {
           if (!foundPromo.isActive) {
@@ -273,14 +282,6 @@ export function NewSaleForm({
   const { data: memberCheck, isLoading: checkingMember } =
     useCheckMember(debouncedPhone);
 
-  // Contact search
-  const debouncedContactSearch = useDebounce(contactSearch, 400);
-  const { data: contactsResult } = useContactsPaginated({
-    search: debouncedContactSearch,
-    limit: 10,
-  });
-  const contactOptions = contactsResult?.data ?? [];
-
   const { toast } = useToast();
 
   // Get showrooms only
@@ -301,12 +302,21 @@ export function NewSaleForm({
         .then((res) => {
           setInventory(res.data.filter((item) => item.quantity > 0));
         })
-        .catch(console.error)
+        .catch((err) => {
+          console.error(err);
+          toast({
+            title: "Failed to load inventory",
+            description:
+              err instanceof Error ? err.message : "Please try again.",
+            variant: "destructive",
+          });
+          setInventory([]);
+        })
         .finally(() => setInventoryLoading(false));
     } else {
       setInventory([]);
     }
-  }, [locationId]);
+  }, [locationId, toast]);
 
   // When member is detected, auto-apply best eligible discount (matches backend logic)
   useEffect(() => {
@@ -340,6 +350,7 @@ export function NewSaleForm({
       locationId,
       memberPhone: memberPhone.trim() || undefined,
       memberName: memberName.trim() || undefined,
+      contactId: contactId ?? undefined,
       items: items.map((i) => ({
         variationId: i.variationId,
         subVariationId: i.subVariationId ?? undefined,
@@ -360,12 +371,13 @@ export function NewSaleForm({
     return () => {
       cancelled = true;
     };
-  }, [locationId, memberPhone, memberName, items, items.length]);
+  }, [locationId, memberPhone, memberName, contactId, items, items.length]);
 
   // Filter inventory by search - handles multi-word searches where words can match product OR variation
   // Example: "buddha red" matches products with "buddha" in name AND "red" in variation (order independent)
+  // When search is empty, show first 100 items for browsing
   const filteredInventory = useMemo(() => {
-    if (!productSearch.trim()) return [];
+    if (!productSearch.trim()) return inventory.slice(0, 100);
 
     const searchTerms = productSearch
       .toLowerCase()
@@ -425,38 +437,7 @@ export function NewSaleForm({
     }
 
     // Fetch available discounts for this product
-    const fetchProductDiscounts = async (productId: string) => {
-      try {
-        const response = await api.get<{
-          message: string;
-          discounts: Array<{
-            id: string;
-            name: string;
-            value: number;
-            valueType: "PERCENTAGE" | "FLAT";
-            discountType: string;
-            discountTypeId: string;
-            startDate: string | null;
-            endDate: string | null;
-          }>;
-        }>(`/products/${productId}/discounts`);
-        return response.data.discounts || [];
-      } catch (err: unknown) {
-        const axiosErr = err as {
-          response?: { data?: { message?: string }; status?: number };
-          message?: string;
-        };
-        const msg =
-          axiosErr.response?.data?.message ??
-          axiosErr.message ??
-          "Unknown error";
-        console.warn("Failed to fetch discounts for product:", productId, msg);
-        return [];
-      }
-    };
-
-    // Fetch discounts and add item
-    const discounts = await fetchProductDiscounts(
+    const discounts = await getProductDiscounts(
       inventoryItem.variation.product.id,
     );
     // Auto-apply Member discount when customer is a member
@@ -650,6 +631,8 @@ export function NewSaleForm({
       setLocationId("");
       setMemberPhone("");
       setMemberName("");
+      setContactId(null);
+      setContactSearch("");
       setNotes("");
       setItems([]);
       setProductSearch("");
@@ -732,45 +715,129 @@ export function NewSaleForm({
                         </SelectContent>
                       </Select>
                     </div>
+
+                    {/* CRM Contact (primary customer selection) */}
                     <div className="space-y-2 -ml-4">
-                      <Label className="text-xs font-medium text-muted-foreground">
-                        Customer Phone
+                      <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                        <UserRound className="h-3 w-3" />
+                        Customer (Contact)
                       </Label>
-                      <PhoneInput
-                        value={memberPhone}
-                        onChange={setMemberPhone}
-                        numberInputId="customer-phone"
-                        placeholder="e.g. 9800000000"
-                        className="[&_input]:bg-surface [&_input]:border-border/50"
-                      />
-                      {memberPhone && (
-                        <div className="flex items-center gap-2 flex-wrap mt-2">
-                          {checkingMember ? (
-                            <span className="text-xs text-muted-foreground">
-                              Checking...
-                            </span>
-                          ) : memberCheck?.isMember ? (
-                            <Badge className="bg-[#00FF94] text-[#0A0E27] text-xs font-mono font-bold uppercase px-2 py-0.5">
-                              Member
-                            </Badge>
-                          ) : (
-                            <Input
-                              type="text"
-                              value={memberName}
-                              onChange={(e) => setMemberName(e.target.value)}
-                              placeholder="Customer name (optional)"
-                              className="h-8 text-sm bg-surface border-border/50"
-                            />
+                      {contactId ? (
+                        <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/40 text-sm">
+                          <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="flex-1 truncate">
+                            {contactOptions.find((c) => c.id === contactId)
+                              ? `${contactOptions.find((c) => c.id === contactId)!.firstName}${contactOptions.find((c) => c.id === contactId)!.lastName ? ` ${contactOptions.find((c) => c.id === contactId)!.lastName}` : ""}`
+                              : "Contact linked"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setContactId(null);
+                              setContactSearch("");
+                            }}
+                            aria-label="Remove contact"
+                            className="text-muted-foreground hover:text-foreground"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                          <Input
+                            value={contactSearch}
+                            onChange={(e) => {
+                              setContactSearch(e.target.value);
+                              setShowContactDropdown(true);
+                            }}
+                            onFocus={() => setShowContactDropdown(true)}
+                            onBlur={() =>
+                              setTimeout(
+                                () => setShowContactDropdown(false),
+                                200,
+                              )
+                            }
+                            placeholder="Search contacts by name, email, phone..."
+                            className="pl-9 bg-surface border-border/50"
+                          />
+                          {showContactDropdown && (
+                            <div className="absolute z-50 top-full mt-1 w-full bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
+                              {contactOptions.length === 0 ? (
+                                <div className="p-3 text-sm text-muted-foreground text-center">
+                                  No contacts found
+                                </div>
+                              ) : (
+                                contactOptions.map((c) => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
+                                    onMouseDown={() => {
+                                      setContactId(c.id);
+                                      setContactSearch("");
+                                      setShowContactDropdown(false);
+                                    }}
+                                  >
+                                    <span className="font-medium">
+                                      {c.firstName}
+                                      {c.lastName ? ` ${c.lastName}` : ""}
+                                    </span>
+                                    {(c.email || c.phone) && (
+                                      <span className="text-xs text-muted-foreground">
+                                        {c.email ?? c.phone}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))
+                              )}
+                            </div>
                           )}
                         </div>
                       )}
                     </div>
                   </div>
+
+                  {/* Phone (walk-in or from contact) */}
+                  <div className="mt-4 space-y-2">
+                    <Label className="text-xs font-medium text-muted-foreground">
+                      Phone (optional — for walk-in or member lookup)
+                    </Label>
+                    <PhoneInput
+                      value={memberPhone}
+                      onChange={setMemberPhone}
+                      numberInputId="customer-phone"
+                      placeholder="e.g. 9800000000"
+                      className="[&_input]:bg-surface [&_input]:border-border/50"
+                    />
+                    {memberPhone && (
+                      <div className="flex items-center gap-2 flex-wrap mt-2">
+                        {checkingMember ? (
+                          <span className="text-xs text-muted-foreground">
+                            Checking...
+                          </span>
+                        ) : memberCheck?.isMember ? (
+                          <Badge className="bg-[#00FF94] text-[#0A0E27] text-xs font-mono font-bold uppercase px-2 py-0.5">
+                            Member
+                          </Badge>
+                        ) : (
+                          <Input
+                            type="text"
+                            value={memberName}
+                            onChange={(e) => setMemberName(e.target.value)}
+                            placeholder="Customer name (optional)"
+                            className="h-8 text-sm bg-surface border-border/50"
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex items-center gap-3 mt-4">
                     <Checkbox
                       id="credit-sale"
                       checked={isCreditSale}
-                      disabled={!memberPhone.trim()}
+                      disabled={!memberPhone.trim() && !contactId}
                       onCheckedChange={(c) => setIsCreditSale(c === true)}
                       className="border-border/50 data-[state=checked]:bg-accent data-[state=checked]:border-accent"
                     />
@@ -781,95 +848,23 @@ export function NewSaleForm({
                       Credit Sale (Pay Later)
                     </Label>
                   </div>
-                  {!memberPhone.trim() && (
+                  {!memberPhone.trim() && !contactId && (
                     <p className="text-xs text-muted-foreground mt-2 ml-7">
-                      Enter customer phone (member) to enable credit sale.
+                      Select a contact or enter customer phone to enable credit
+                      sale.
                     </p>
                   )}
-
-                  {/* CRM Contact Linkage */}
-                  <div className="mt-4 space-y-2">
-                    <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                      <UserRound className="h-3 w-3" />
-                      Link CRM Contact (optional)
-                    </Label>
-                    {contactId ? (
-                      <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/40 text-sm">
-                        <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="flex-1 truncate">
-                          {contactOptions.find((c) => c.id === contactId)
-                            ? `${contactOptions.find((c) => c.id === contactId)!.firstName}${contactOptions.find((c) => c.id === contactId)!.lastName ? ` ${contactOptions.find((c) => c.id === contactId)!.lastName}` : ""}`
-                            : "Contact linked"}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setContactId(null);
-                            setContactSearch("");
-                          }}
-                          className="text-muted-foreground hover:text-foreground"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                        <Input
-                          value={contactSearch}
-                          onChange={(e) => {
-                            setContactSearch(e.target.value);
-                            setShowContactDropdown(true);
-                          }}
-                          onFocus={() => setShowContactDropdown(true)}
-                          onBlur={() =>
-                            setTimeout(() => setShowContactDropdown(false), 200)
-                          }
-                          placeholder="Search contacts by name, email, phone..."
-                          className="pl-9 bg-surface border-border/50"
-                        />
-                        {showContactDropdown && contactSearch.trim() && (
-                          <div className="absolute z-50 top-full mt-1 w-full bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
-                            {contactOptions.length === 0 ? (
-                              <div className="p-3 text-sm text-muted-foreground text-center">
-                                No contacts found
-                              </div>
-                            ) : (
-                              contactOptions.map((c) => (
-                                <button
-                                  key={c.id}
-                                  type="button"
-                                  className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
-                                  onMouseDown={() => {
-                                    setContactId(c.id);
-                                    setContactSearch("");
-                                    setShowContactDropdown(false);
-                                  }}
-                                >
-                                  <span className="font-medium">
-                                    {c.firstName}
-                                    {c.lastName ? ` ${c.lastName}` : ""}
-                                  </span>
-                                  {(c.email || c.phone) && (
-                                    <span className="text-xs text-muted-foreground">
-                                      {c.email ?? c.phone}
-                                    </span>
-                                  )}
-                                </button>
-                              ))
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </div>
                 </FormSection>
               </div>
 
               {/* Products Search */}
-              {locationId && (
-                <div className="form-panel">
-                  <FormSection title="Add Product">
+              <div className="form-panel">
+                <FormSection title="Add Product">
+                  {!locationId ? (
+                    <p className="text-sm text-muted-foreground py-4">
+                      Select a showroom above to add products.
+                    </p>
+                  ) : (
                     <div className="space-y-3">
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -884,90 +879,89 @@ export function NewSaleForm({
                         <div className="flex justify-center py-4">
                           <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                         </div>
-                      ) : productSearch.trim() ? (
-                        filteredInventory.length === 0 ? (
+                      ) : filteredInventory.length === 0 ? (
+                        productSearch.trim() ? (
                           <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
                             No products found. Try a different search term.
                           </div>
                         ) : (
-                          <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
-                            {filteredInventory.map((inv) => {
-                              const attrLabel =
-                                inv.variation.attributes
-                                  ?.map((a) => a.attributeValue.value)
-                                  .join(" / ") || "";
-                              const variantLabel = [
-                                attrLabel,
-                                inv.subVariation?.name,
-                              ]
-                                .filter(Boolean)
-                                .join(" / ");
-                              return (
-                                <div
-                                  key={inv.id}
-                                  className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                                  onClick={() => {
-                                    handleAddItem(inv);
-                                    setProductSearch("");
-                                  }}
-                                >
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-medium text-sm">
-                                      {inv.variation.product.name}
-                                      {variantLabel && (
-                                        <span className="text-muted-foreground font-normal ml-1.5">
-                                          — {variantLabel}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                                      {inv.variation.imsCode}
-                                      {inv.variation.product.category?.name && (
-                                        <span className="ml-2">
-                                          •{" "}
-                                          {inv.variation.product.category.name}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="ml-4 flex items-center gap-4 shrink-0">
-                                    <div className="text-right">
-                                      <div className="font-semibold text-sm">
-                                        {formatCurrency(
-                                          Number(inv.variation.product.mrp),
-                                        )}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground">
-                                        Stock: {inv.quantity}
-                                      </div>
-                                    </div>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleAddItem(inv);
-                                        setProductSearch("");
-                                      }}
-                                    >
-                                      <Plus className="h-4 w-4 mr-1" />
-                                      Add
-                                    </Button>
-                                  </div>
-                                </div>
-                              );
-                            })}
+                          <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
+                            No products in stock at this location.
                           </div>
                         )
                       ) : (
-                        <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
-                          Start typing to search products and variations...
+                        <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
+                          {filteredInventory.map((inv) => {
+                            const attrLabel =
+                              inv.variation.attributes
+                                ?.map((a) => a.attributeValue.value)
+                                .join(" / ") || "";
+                            const variantLabel = [
+                              attrLabel,
+                              inv.subVariation?.name,
+                            ]
+                              .filter(Boolean)
+                              .join(" / ");
+                            return (
+                              <div
+                                key={inv.id}
+                                className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                                onClick={() => {
+                                  handleAddItem(inv);
+                                  setProductSearch("");
+                                }}
+                              >
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm">
+                                    {inv.variation.product.name}
+                                    {variantLabel && (
+                                      <span className="text-muted-foreground font-normal ml-1.5">
+                                        — {variantLabel}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground font-mono mt-0.5">
+                                    {inv.variation.imsCode}
+                                    {inv.variation.product.category?.name && (
+                                      <span className="ml-2">
+                                        • {inv.variation.product.category.name}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="ml-4 flex items-center gap-4 shrink-0">
+                                  <div className="text-right">
+                                    <div className="font-semibold text-sm">
+                                      {formatCurrency(
+                                        Number(inv.variation.product.mrp),
+                                      )}
+                                    </div>
+                                    <div className="text-xs text-muted-foreground">
+                                      Stock: {inv.quantity}
+                                    </div>
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleAddItem(inv);
+                                      setProductSearch("");
+                                    }}
+                                  >
+                                    <Plus className="h-4 w-4 mr-1" />
+                                    Add
+                                  </Button>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>
-                  </FormSection>
-                </div>
-              )}
+                  )}
+                </FormSection>
+              </div>
 
               {/* Cart Panel */}
               <div className="form-panel flex flex-col">

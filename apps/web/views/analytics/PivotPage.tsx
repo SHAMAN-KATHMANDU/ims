@@ -198,21 +198,12 @@ export function PivotPage() {
   const { data: customersData } = useCustomersPromosAnalytics(apiParams);
   const { data: inventoryData } = useInventoryOpsAnalytics(apiParams);
   const { data: productsResponse } = useProductsPaginated({ limit: 1000 });
-  const paginated = productsResponse?.data as
-    | {
-        data?: Array<{
-          id: string;
-          name: string;
-          category?: { name: string };
-          costPrice: number;
-          mrp: number;
-          variations?: unknown[];
-        }>;
-      }
-    | undefined;
+  const products = useMemo(
+    () => productsResponse?.data ?? [],
+    [productsResponse?.data],
+  );
 
   const pivotData = useMemo(() => {
-    const products = paginated?.data ?? [];
     const rows: PivotRow[] = [];
     const perfs = customersData?.productPerformance ?? [];
     const perfMap = new Map(perfs.map((p) => [p.productId, p]));
@@ -273,7 +264,7 @@ export function PivotPage() {
       .map((r) => sanitizePivotRow(r))
       .filter((r): r is PivotRow => r != null && typeof r === "object");
   }, [
-    paginated?.data,
+    products,
     customersData?.productPerformance,
     locationData,
     inventoryData?.heatmap,

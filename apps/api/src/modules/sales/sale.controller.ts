@@ -87,6 +87,7 @@ class SaleController {
           locationId: body.locationId,
           memberPhone: body.memberPhone,
           memberName: body.memberName,
+          contactId: body.contactId ?? undefined,
           isCreditSale: body.isCreditSale,
           items: body.items as SaleItemInput[],
           notes: body.notes,
@@ -121,6 +122,8 @@ class SaleController {
         {
           locationId: body.locationId,
           memberPhone: body.memberPhone,
+          memberName: body.memberName,
+          contactId: body.contactId ?? undefined,
           items: body.items as SaleItemInput[],
         },
       );

@@ -46,7 +46,8 @@ export function LeadForm({
   onCancel,
   isLoading,
 }: LeadFormProps) {
-  const { data: users = [] } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 500 });
+  const users = usersResult?.users ?? [];
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -153,7 +154,7 @@ export function LeadForm({
             <SelectValue placeholder="Select user" />
           </SelectTrigger>
           <SelectContent>
-            {(users as Array<{ id: string; username: string }>).map((u) => (
+            {users.map((u) => (
               <SelectItem key={u.id} value={u.id}>
                 {u.username}
               </SelectItem>
