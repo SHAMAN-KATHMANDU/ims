@@ -1,8 +1,17 @@
 import ExcelJS from "exceljs";
-import prisma from "@/config/prisma";
 import { parseAndValidatePhone } from "@/utils/phone";
 import type { ExcelSaleRow } from "./bulkUpload.validation";
 import type { ValidationError } from "@/utils/bulkParse";
+import {
+  findLocationsShowrooms,
+  findAllUsersForBulk,
+  findProductsByTenant,
+  findVariationsByTenant,
+  findSaleByIdMinimal,
+  findMemberByPhone,
+  createMember,
+  createSaleBulk,
+} from "./sale.repository";
 
 export interface ProcessSaleBulkContext {
   tenantId: string;
@@ -73,26 +82,10 @@ export async function processSaleBulkRows(
 
   const [allLocations, allUsers, allProducts, allVariations] =
     await Promise.all([
-      prisma.location.findMany({
-        where: { tenantId, type: "SHOWROOM", isActive: true },
-        select: { id: true, name: true },
-      }),
-      prisma.user.findMany({
-        select: { id: true, username: true },
-      }),
-      prisma.product.findMany({
-        where: { tenantId },
-        select: { id: true, name: true },
-      }),
-      prisma.productVariation.findMany({
-        where: { tenantId },
-        select: {
-          id: true,
-          imsCode: true,
-          productId: true,
-          product: { select: { id: true, name: true } },
-        },
-      }),
+      findLocationsShowrooms(tenantId),
+      findAllUsersForBulk(),
+      findProductsByTenant(tenantId),
+      findVariationsByTenant(tenantId),
     ]);
 
   const locationMap = new Map(
@@ -115,9 +108,7 @@ export async function processSaleBulkRows(
       const firstRow = group.rows[0];
 
       if (group.saleId) {
-        const existingSale = await prisma.sale.findUnique({
-          where: { id: group.saleId },
-        });
+        const existingSale = await findSaleByIdMinimal(group.saleId);
         if (existingSale) {
           skipped.push({
             saleId: group.saleId,
@@ -181,12 +172,11 @@ export async function processSaleBulkRows(
       if (phoneVal && phoneVal.length > 0) {
         const parsed = parseAndValidatePhone(phoneVal);
         if (parsed.valid) {
-          let member = await prisma.member.findFirst({
-            where: { phone: parsed.e164 },
-          });
+          let member = await findMemberByPhone(parsed.e164);
           if (!member) {
-            member = await prisma.member.create({
-              data: { tenantId, phone: parsed.e164 },
+            member = await createMember({
+              tenantId,
+              phone: parsed.e164,
             });
           }
           memberId = member.id;
@@ -273,35 +263,20 @@ export async function processSaleBulkRows(
           ? (paymentMethods[0] as "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR")
           : "CASH";
 
-      const sale = await prisma.sale.create({
-        data: {
-          tenantId,
-          ...(group.saleId && { id: group.saleId }),
-          saleCode: generateSaleCode(),
-          type: saleType,
-          locationId,
-          ...(memberId && { memberId }),
-          createdById: userId,
-          subtotal,
-          discount: totalDiscount,
-          total,
-          createdAt: group.dateOfSale || new Date(),
-          items: {
-            create: saleItems.map((item) => ({
-              variationId: item.variationId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalMrp: item.unitPrice * item.quantity,
-              discountPercent: item.discountPercent,
-              discountAmount: item.discountAmount,
-              lineTotal: item.lineTotal,
-            })),
-          },
-          payments: {
-            create: [{ method: paymentMethod, amount: total }],
-          },
-        },
-        include: { items: true },
+      const sale = await createSaleBulk({
+        tenantId,
+        ...(group.saleId && { id: group.saleId }),
+        saleCode: generateSaleCode(),
+        type: saleType,
+        locationId,
+        ...(memberId && { memberId }),
+        createdById: userId,
+        subtotal,
+        discount: totalDiscount,
+        total,
+        createdAt: group.dateOfSale || new Date(),
+        items: saleItems,
+        paymentMethod,
       });
 
       created.push({

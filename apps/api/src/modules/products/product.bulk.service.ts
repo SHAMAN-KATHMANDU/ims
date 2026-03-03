@@ -1,5 +1,5 @@
 import ExcelJS from "exceljs";
-import prisma from "@/config/prisma";
+import productRepository from "./product.repository";
 import type { ExcelProductRow } from "./bulkUpload.validation";
 import type { ValidationError } from "@/utils/bulkParse";
 
@@ -45,18 +45,9 @@ export async function processProductBulkRows(
   const errors: ValidationError[] = [];
 
   const [allCategories, allLocations, allVendors] = await Promise.all([
-    prisma.category.findMany({
-      where: { tenantId },
-      select: { id: true, name: true },
-    }),
-    prisma.location.findMany({
-      where: { tenantId, isActive: true },
-      select: { id: true, name: true },
-    }),
-    prisma.vendor.findMany({
-      where: { tenantId },
-      select: { id: true, name: true },
-    }),
+    productRepository.findCategoriesByTenant(tenantId),
+    productRepository.findLocationsByTenant(tenantId),
+    productRepository.findVendorsByTenant(tenantId),
   ]);
 
   const categoryMap = new Map(
@@ -128,37 +119,26 @@ export async function processProductBulkRows(
     const code = attrName.trim().toLowerCase().replace(/\s+/g, "_");
     const nameTrim = attrName.trim();
     const valueTrim = value.trim();
-    let attrType = await prisma.attributeType.findFirst({
-      where: { tenantId, code },
-      select: { id: true },
-    });
+    let attrType = await productRepository.findAttributeTypeByCode(
+      tenantId,
+      code,
+    );
     if (!attrType) {
-      attrType = await prisma.attributeType.create({
-        data: {
-          tenantId,
-          name: nameTrim,
-          code: code || "attr",
-          displayOrder: 0,
-        },
-        select: { id: true },
-      });
+      attrType = await productRepository.createAttributeType(
+        tenantId,
+        nameTrim,
+        code || "attr",
+      );
     }
-    let attrVal = await prisma.attributeValue.findFirst({
-      where: {
-        attributeTypeId: attrType.id,
-        value: valueTrim,
-      },
-      select: { id: true },
-    });
+    let attrVal = await productRepository.findAttributeValueByTypeAndValue(
+      attrType.id,
+      valueTrim,
+    );
     if (!attrVal) {
-      attrVal = await prisma.attributeValue.create({
-        data: {
-          attributeTypeId: attrType.id,
-          value: valueTrim,
-          displayOrder: 0,
-        },
-        select: { id: true },
-      });
+      attrVal = await productRepository.createAttributeValue(
+        attrType.id,
+        valueTrim,
+      );
     }
     return {
       attributeTypeId: attrType.id,
@@ -204,15 +184,13 @@ export async function processProductBulkRows(
       const categoryNameLower = firstRow.category.toLowerCase();
 
       if (!categoryId) {
-        let existingCategory = await prisma.category.findFirst({
-          where: { name: categoryNameOriginal },
-        });
+        let existingCategory =
+          await productRepository.findCategoryByName(categoryNameOriginal);
         if (!existingCategory) {
-          const allCategoriesSearch = await prisma.category.findMany({
-            where: {
-              name: { contains: categoryNameOriginal, mode: "insensitive" },
-            },
-          });
+          const allCategoriesSearch =
+            await productRepository.findCategoriesByNameContains(
+              categoryNameOriginal,
+            );
           existingCategory =
             allCategoriesSearch.find(
               (cat) => cat.name.toLowerCase() === categoryNameLower,
@@ -224,40 +202,38 @@ export async function processProductBulkRows(
           categoryMap.set(categoryNameLower, categoryId);
         } else {
           try {
-            const newCategory = await prisma.category.create({
-              data: { tenantId, name: categoryNameOriginal },
-            });
+            const newCategory = await productRepository.createCategory(
+              tenantId,
+              categoryNameOriginal,
+            );
             categoryId = newCategory.id;
             categoryMap.set(categoryNameLower, categoryId);
-          } catch (createError: unknown) {
-            const err = createError as { code?: string };
+          } catch (createErr: unknown) {
+            const err = createErr as { code?: string };
             if (err.code === "P2002") {
-              const foundCategory = await prisma.category.findFirst({
-                where: { name: categoryNameOriginal },
-              });
+              const foundCategory =
+                await productRepository.findCategoryByName(
+                  categoryNameOriginal,
+                );
               if (foundCategory) {
                 categoryId = foundCategory.id;
                 categoryMap.set(categoryNameLower, categoryId);
               } else {
-                throw createError;
+                throw createErr;
               }
             } else {
-              throw createError;
+              throw createErr;
             }
           }
         }
       }
 
-      const existingProduct = await prisma.product.findFirst({
-        where: {
+      const existingProduct =
+        await productRepository.findProductByTenantAndImsOrName(
           tenantId,
-          OR: [
-            { variations: { some: { imsCode: firstRow.imsCode } } },
-            { name: firstRow.name.trim() },
-          ],
-        },
-        include: { variations: true },
-      });
+          firstRow.imsCode,
+          firstRow.name.trim(),
+        );
 
       if (existingProduct) {
         const variationByImsCode = new Map(
@@ -276,8 +252,8 @@ export async function processProductBulkRows(
               variationRow.attributes,
               variationRow.values,
             );
-            const newVariation = await prisma.productVariation.create({
-              data: {
+            const newVariation = await productRepository.createProductVariation(
+              {
                 tenantId,
                 productId: existingProduct.id,
                 imsCode: imsCodeTrim,
@@ -289,51 +265,38 @@ export async function processProductBulkRows(
                   })),
                 },
               },
-            });
+            );
             variationByImsCode.set(imsCodeTrim.toLowerCase(), newVariation);
             variation = newVariation;
             const typeIds = [
               ...new Set(attributePairs.map((p) => p.attributeTypeId)),
             ];
             for (const typeId of typeIds) {
-              await prisma.productAttributeType.upsert({
-                where: {
-                  productId_attributeTypeId: {
-                    productId: existingProduct.id,
-                    attributeTypeId: typeId,
-                  },
-                },
-                create: {
-                  productId: existingProduct.id,
-                  attributeTypeId: typeId,
-                  displayOrder: 0,
-                },
-                update: {},
-              });
+              await productRepository.upsertProductAttributeType(
+                existingProduct.id,
+                typeId,
+                0,
+              );
             }
           }
           const qty = variationRow.quantity ?? 0;
           if (qty > 0) {
-            const existing = await prisma.locationInventory.findFirst({
-              where: {
+            const existingInv = await productRepository.findLocationInventory(
+              variationRow.locationId,
+              variation.id,
+              null,
+            );
+            if (existingInv) {
+              await productRepository.setLocationInventoryQuantity(
+                existingInv.id,
+                qty,
+              );
+            } else {
+              await productRepository.createLocationInventory({
                 locationId: variationRow.locationId,
                 variationId: variation.id,
                 subVariationId: null,
-              },
-            });
-            if (existing) {
-              await prisma.locationInventory.update({
-                where: { id: existing.id },
-                data: { quantity: qty },
-              });
-            } else {
-              await prisma.locationInventory.create({
-                data: {
-                  locationId: variationRow.locationId,
-                  variationId: variation.id,
-                  subVariationId: null,
-                  quantity: qty,
-                },
+                quantity: qty,
               });
             }
             inventoryUpserted++;
@@ -378,37 +341,31 @@ export async function processProductBulkRows(
         });
       }
 
-      const product = await prisma.product.create({
-        data: {
-          tenantId,
-          name: firstRow.name,
-          categoryId: categoryId!,
-          description: firstRow.description || null,
-          length: firstRow.length,
-          breadth: firstRow.breadth,
-          height: firstRow.height,
-          weight: firstRow.weight,
-          vendorId: firstRow.vendorId ?? undefined,
-          costPrice: firstRow.costPrice,
-          mrp: firstRow.finalSP,
-          createdById: userId,
-          variations: {
-            create: productVariationsData.map((v) => ({
-              tenantId,
-              imsCode: v.imsCode,
-              stockQuantity: v.stockQuantity,
-              attributes: {
-                create: v.attributePairs.map((p) => ({
-                  attributeTypeId: p.attributeTypeId,
-                  attributeValueId: p.attributeValueId,
-                })),
-              },
-            })),
-          },
-        },
-        include: {
-          category: true,
-          variations: true,
+      const product = await productRepository.createProductWithVariations({
+        tenantId,
+        name: firstRow.name,
+        categoryId: categoryId!,
+        description: firstRow.description || null,
+        length: firstRow.length,
+        breadth: firstRow.breadth,
+        height: firstRow.height,
+        weight: firstRow.weight,
+        vendorId: firstRow.vendorId ?? undefined,
+        costPrice: firstRow.costPrice,
+        mrp: firstRow.finalSP,
+        createdById: userId,
+        variations: {
+          create: productVariationsData.map((v) => ({
+            tenantId,
+            imsCode: v.imsCode,
+            stockQuantity: v.stockQuantity,
+            attributes: {
+              create: v.attributePairs.map((p) => ({
+                attributeTypeId: p.attributeTypeId,
+                attributeValueId: p.attributeValueId,
+              })),
+            },
+          })),
         },
       });
 
@@ -420,20 +377,11 @@ export async function processProductBulkRows(
         ),
       ];
       for (let i = 0; i < attributeTypeIds.length; i++) {
-        await prisma.productAttributeType.upsert({
-          where: {
-            productId_attributeTypeId: {
-              productId: product.id,
-              attributeTypeId: attributeTypeIds[i]!,
-            },
-          },
-          create: {
-            productId: product.id,
-            attributeTypeId: attributeTypeIds[i]!,
-            displayOrder: i,
-          },
-          update: {},
-        });
+        await productRepository.upsertProductAttributeType(
+          product.id,
+          attributeTypeIds[i]!,
+          i,
+        );
       }
 
       const variationByImsCode = new Map(
@@ -446,26 +394,22 @@ export async function processProductBulkRows(
         if (!variation) continue;
         const qty = variationRow.quantity ?? 0;
         if (qty === 0) continue;
-        const existing = await prisma.locationInventory.findFirst({
-          where: {
+        const existingInv = await productRepository.findLocationInventory(
+          variationRow.locationId,
+          variation.id,
+          null,
+        );
+        if (existingInv) {
+          await productRepository.setLocationInventoryQuantity(
+            existingInv.id,
+            qty,
+          );
+        } else {
+          await productRepository.createLocationInventory({
             locationId: variationRow.locationId,
             variationId: variation.id,
             subVariationId: null,
-          },
-        });
-        if (existing) {
-          await prisma.locationInventory.update({
-            where: { id: existing.id },
-            data: { quantity: qty },
-          });
-        } else {
-          await prisma.locationInventory.create({
-            data: {
-              locationId: variationRow.locationId,
-              variationId: variation.id,
-              subVariationId: null,
-              quantity: qty,
-            },
+            quantity: qty,
           });
         }
       }

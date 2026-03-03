@@ -1,0 +1,236 @@
+import { createError } from "@/middlewares/errorHandler";
+import {
+  getPaginationParams,
+  createPaginationResult,
+} from "@/utils/pagination";
+import { getTenantId } from "@/config/tenantContext";
+import inventoryRepository from "./inventory.repository";
+import type { AdjustInventoryDto, SetInventoryDto } from "./inventory.schema";
+
+export class InventoryService {
+  async getLocationInventory(
+    locationId: string,
+    rawQuery: Record<string, unknown>,
+  ) {
+    const tenantId = getTenantId();
+    const { page, limit, search } = getPaginationParams(rawQuery);
+    const categoryId = rawQuery.categoryId as string | undefined;
+
+    const location = await inventoryRepository.findLocationById(locationId);
+    if (!location) throw createError("Location not found", 404);
+
+    const { totalItems, inventory } =
+      await inventoryRepository.getLocationInventory(tenantId, {
+        locationId,
+        page,
+        limit,
+        search: search || undefined,
+        categoryId,
+      });
+
+    const result = createPaginationResult(inventory, totalItems, page, limit);
+
+    return {
+      location: {
+        id: location.id,
+        name: location.name,
+        type: location.type,
+      },
+      ...result,
+    };
+  }
+
+  async getProductStock(productId: string) {
+    const tenantId = getTenantId();
+
+    const product = await inventoryRepository.findProductById(productId);
+    if (!product) throw createError("Product not found", 404);
+
+    const inventory = await inventoryRepository.getProductStock(
+      tenantId,
+      productId,
+    );
+
+    const inventoryByLocation = inventory.reduce(
+      (acc: Record<string, any>, item) => {
+        const locId = item.location.id;
+        if (!acc[locId]) {
+          acc[locId] = {
+            location: item.location,
+            variations: [],
+            totalQuantity: 0,
+          };
+        }
+        acc[locId].variations.push({
+          variationId: item.variation.id,
+          imsCode: item.variation.imsCode,
+          subVariationId: item.subVariationId ?? undefined,
+          subVariation: item.subVariation
+            ? { id: item.subVariation.id, name: item.subVariation.name }
+            : undefined,
+          quantity: item.quantity,
+        });
+        acc[locId].totalQuantity += item.quantity;
+        return acc;
+      },
+      {},
+    );
+
+    const totalStock = inventory.reduce((sum, item) => sum + item.quantity, 0);
+
+    return {
+      product: {
+        id: product.id,
+        imsCode: product.variations?.[0]?.imsCode ?? "",
+        name: product.name,
+        category: product.category,
+      },
+      totalStock,
+      inventoryByLocation: Object.values(inventoryByLocation),
+    };
+  }
+
+  async adjustInventory(data: AdjustInventoryDto) {
+    const location = await inventoryRepository.findLocationById(
+      data.locationId,
+    );
+    if (!location) throw createError("Location not found", 404);
+
+    const variation = await inventoryRepository.findVariationById(
+      data.variationId,
+    );
+    if (!variation) throw createError("Product variation not found", 404);
+
+    const subVariationId = data.subVariationId ?? null;
+    if (subVariationId) {
+      const subVar = await inventoryRepository.findSubVariation(
+        subVariationId,
+        data.variationId,
+      );
+      if (!subVar) {
+        throw createError(
+          "Sub-variation not found or does not belong to this variation",
+          404,
+        );
+      }
+    }
+
+    const existing = await inventoryRepository.findInventoryByUniqueKey(
+      data.locationId,
+      data.variationId,
+      subVariationId,
+    );
+
+    let inventory;
+    let previousQuantity = 0;
+
+    if (existing) {
+      previousQuantity = existing.quantity;
+      const newQuantity = existing.quantity + data.quantity;
+      if (newQuantity < 0) {
+        const err = createError(
+          "Adjustment would result in negative inventory",
+          400,
+        ) as Error & { currentQuantity?: number; adjustmentAmount?: number };
+        err.currentQuantity = existing.quantity;
+        err.adjustmentAmount = data.quantity;
+        throw err;
+      }
+      inventory = await inventoryRepository.updateInventoryQuantity(
+        existing.id,
+        newQuantity,
+      );
+    } else {
+      if (data.quantity < 0) {
+        throw createError(
+          "Cannot create inventory with negative quantity",
+          400,
+        );
+      }
+      inventory = await inventoryRepository.createInventory(
+        data.locationId,
+        data.variationId,
+        subVariationId,
+        data.quantity,
+      );
+    }
+
+    return {
+      locationId: data.locationId,
+      locationName: location.name,
+      product: variation.product,
+      imsCode: variation.imsCode,
+      subVariationId: inventory.subVariationId ?? undefined,
+      previousQuantity,
+      adjustmentAmount: data.quantity,
+      newQuantity: inventory.quantity,
+      reason: data.reason || "Manual adjustment",
+    };
+  }
+
+  async setInventory(data: SetInventoryDto) {
+    const location = await inventoryRepository.findLocationById(
+      data.locationId,
+    );
+    if (!location) throw createError("Location not found", 404);
+
+    const variation = await inventoryRepository.findVariationById(
+      data.variationId,
+    );
+    if (!variation) throw createError("Product variation not found", 404);
+
+    const subVariationId = data.subVariationId ?? null;
+    if (subVariationId) {
+      const subVar = await inventoryRepository.findSubVariation(
+        subVariationId,
+        data.variationId,
+      );
+      if (!subVar) {
+        throw createError(
+          "Sub-variation not found or does not belong to this variation",
+          404,
+        );
+      }
+    }
+
+    const inventory = await inventoryRepository.upsertInventory(
+      data.locationId,
+      data.variationId,
+      subVariationId,
+      data.quantity,
+    );
+
+    return {
+      id: inventory.id,
+      locationId: data.locationId,
+      locationName: location.name,
+      product: variation.product,
+      imsCode: variation.imsCode,
+      subVariationId: inventory.subVariationId ?? undefined,
+      quantity: inventory.quantity,
+    };
+  }
+
+  async getInventorySummary() {
+    const { locations, locationStats } =
+      await inventoryRepository.getInventorySummary();
+
+    const overallTotal = locationStats.reduce(
+      (acc, loc) => ({
+        totalItems: acc.totalItems + loc.totalItems,
+        totalQuantity: acc.totalQuantity + loc.totalQuantity,
+      }),
+      { totalItems: 0, totalQuantity: 0 },
+    );
+
+    return {
+      summary: {
+        totalLocations: locations.length,
+        ...overallTotal,
+      },
+      locationStats,
+    };
+  }
+}
+
+export default new InventoryService();
