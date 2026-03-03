@@ -1,4 +1,16 @@
+import type { Prisma } from "@prisma/client";
 import prisma from "@/config/prisma";
+
+export interface CreateAuditLogData {
+  tenantId: string | null;
+  userId: string;
+  action: string;
+  resource: string;
+  resourceId: string;
+  details?: Record<string, unknown>;
+  ip?: string;
+  userAgent?: string;
+}
 
 export interface AuditLogWhere {
   tenantId?: string | null;
@@ -14,6 +26,23 @@ export interface FindAuditLogsParams {
 }
 
 export class AuditRepository {
+  async create(data: CreateAuditLogData) {
+    return prisma.auditLog.create({
+      data: {
+        tenantId: data.tenantId,
+        userId: data.userId,
+        action: data.action,
+        resource: data.resource,
+        resourceId: data.resourceId,
+        details: (data.details ?? undefined) as
+          | Prisma.InputJsonValue
+          | undefined,
+        ip: data.ip,
+        userAgent: data.userAgent,
+      },
+    });
+  }
+
   async count(where: AuditLogWhere) {
     return prisma.auditLog.count({ where });
   }

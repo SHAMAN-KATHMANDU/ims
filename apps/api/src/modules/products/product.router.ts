@@ -3,7 +3,7 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import { validate } from "@/middlewares/validate";
 import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import productController from "@/modules/products/product.controller";
-import { createProductSchema, updateProductSchema } from "./product.validation";
+import { CreateProductSchema, UpdateProductSchema } from "./product.schema";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const productRouter = Router();
@@ -97,7 +97,7 @@ productRouter.post(
   "/",
   authorizeRoles("admin", "superAdmin"),
   enforcePlanLimits("products"),
-  validate(createProductSchema),
+  validate(CreateProductSchema),
   asyncHandler(productController.createProduct),
 );
 
@@ -435,7 +435,7 @@ productRouter.get(
 productRouter.put(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
-  validate(updateProductSchema),
+  validate(UpdateProductSchema),
   asyncHandler(productController.updateProduct),
 );
 

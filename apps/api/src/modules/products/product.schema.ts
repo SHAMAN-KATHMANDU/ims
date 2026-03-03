@@ -1,0 +1,212 @@
+import { z } from "zod";
+
+// ─── Query schemas (for list and export) ─────────────────────────────────────
+
+export const GetAllProductsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  sortBy: z.string().optional().default("dateCreated"),
+  sortOrder: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v?.toLowerCase() === "desc" ? ("desc" as const) : ("asc" as const),
+    ),
+  search: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || ""),
+  locationId: z.string().uuid().optional(),
+  categoryId: z.string().uuid().optional(),
+  subCategoryId: z.string().uuid().optional(),
+  subCategory: z.string().optional(),
+  vendorId: z.string().uuid().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  lowStock: z
+    .union([
+      z.literal("1"),
+      z.literal("true"),
+      z.literal("0"),
+      z.literal("false"),
+    ])
+    .optional()
+    .transform((v) => v === "1" || v === "true"),
+});
+
+export const DownloadProductsQuerySchema = z.object({
+  format: z
+    .string()
+    .optional()
+    .default("excel")
+    .transform((v) => v?.toLowerCase() || "excel")
+    .refine((v) => v === "excel" || v === "csv", {
+      message: "Invalid format. Supported formats: excel, csv",
+    }),
+  ids: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v
+        ? v
+            .split(",")
+            .map((id) => id.trim())
+            .filter(Boolean)
+        : undefined,
+    ),
+});
+
+export const GetListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  limit: z.coerce.number().int().min(1).max(100).default(10),
+  sortBy: z.string().optional().default("id"),
+  sortOrder: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v?.toLowerCase() === "desc" ? ("desc" as const) : ("asc" as const),
+    ),
+  search: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() ?? "")
+    .default(""),
+});
+
+export const GetProductDiscountsListQuerySchema = GetListQuerySchema.extend({
+  productId: z.string().uuid().optional(),
+  categoryId: z.string().uuid().optional(),
+  subCategoryId: z.string().uuid().optional(),
+  discountTypeId: z.string().uuid().optional(),
+});
+
+export type GetAllProductsQueryDto = z.infer<typeof GetAllProductsQuerySchema>;
+export type DownloadProductsQueryDto = z.infer<
+  typeof DownloadProductsQuerySchema
+>;
+export type GetListQueryDto = z.infer<typeof GetListQuerySchema>;
+export type GetProductDiscountsListQueryDto = z.infer<
+  typeof GetProductDiscountsListQuerySchema
+>;
+
+// ─── Bulk upload (re-export for alignment) ───────────────────────────────────
+
+export {
+  getProductBulkParseOptions,
+  excelProductRowSchema,
+  productBulkFields,
+  productBulkHeaderMappings,
+  productBulkRequiredColumns,
+} from "./bulkUpload.validation";
+export type { ExcelProductRow } from "./bulkUpload.validation";
+
+// ─── Variation schema (used in create/update product) ────────────────────────
+const VariationSchema = z.object({
+  id: z.string().uuid().optional(),
+  imsCode: z
+    .string({ required_error: "Each variation must have an IMS code" })
+    .min(1, "Each variation must have an IMS code")
+    .transform((v) => v.trim()),
+  stockQuantity: z.coerce.number().min(0).default(0),
+  costPriceOverride: z.coerce.number().nullish(),
+  mrpOverride: z.coerce.number().nullish(),
+  finalSpOverride: z.coerce.number().nullish(),
+  attributes: z
+    .array(
+      z.object({
+        attributeTypeId: z.string().uuid(),
+        attributeValueId: z.string().uuid(),
+      }),
+    )
+    .optional(),
+  subVariants: z
+    .array(z.union([z.string(), z.object({ name: z.string() })]))
+    .optional(),
+  photos: z
+    .array(
+      z.object({
+        photoUrl: z.string().url(),
+        isPrimary: z.boolean().optional(),
+      }),
+    )
+    .optional(),
+});
+
+// Discount schema (used in create/update product)
+const DiscountSchema = z.object({
+  discountTypeId: z
+    .string({ required_error: "Discount type ID is required" })
+    .uuid("Discount type ID must be a valid UUID"),
+  discountPercentage: z.coerce.number().min(0).max(100),
+  valueType: z.enum(["PERCENTAGE", "FLAT"]).default("PERCENTAGE"),
+  value: z.coerce.number().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  isActive: z.boolean().default(true),
+});
+
+export const CreateProductSchema = z.object({
+  name: z
+    .string({ required_error: "Product name is required" })
+    .min(1, "Product name is required"),
+  categoryId: z
+    .string({ required_error: "Category ID is required" })
+    .uuid("Category ID must be a valid UUID"),
+  description: z.string().nullish(),
+  subCategory: z.string().nullish(),
+  length: z.coerce.number().positive().nullish(),
+  breadth: z.coerce.number().positive().nullish(),
+  height: z.coerce.number().positive().nullish(),
+  weight: z.coerce.number().positive().nullish(),
+  costPrice: z.coerce.number({ required_error: "Cost price is required" }),
+  mrp: z.coerce.number({ required_error: "MRP is required" }),
+  vendorId: z.string().uuid().nullish(),
+  defaultLocationId: z.string().uuid().nullish(),
+  attributeTypeIds: z.array(z.string().uuid()).optional(),
+  variations: z
+    .array(VariationSchema)
+    .min(1, "At least one variation is required")
+    .refine(
+      (vars) => {
+        const codes = vars.map((v) => v.imsCode);
+        return new Set(codes).size === codes.length;
+      },
+      { message: "Duplicate IMS codes in variations" },
+    ),
+  discounts: z.array(DiscountSchema).optional(),
+});
+
+export const UpdateProductSchema = z.object({
+  name: z.string().min(1).optional(),
+  categoryId: z.string().uuid().optional(),
+  description: z.string().nullish(),
+  subCategory: z.string().nullish(),
+  length: z.coerce.number().positive().nullish(),
+  breadth: z.coerce.number().positive().nullish(),
+  height: z.coerce.number().positive().nullish(),
+  weight: z.coerce.number().positive().nullish(),
+  costPrice: z.coerce.number().optional(),
+  mrp: z.coerce.number().optional(),
+  vendorId: z.string().uuid().nullish(),
+  attributeTypeIds: z.array(z.string().uuid()).optional(),
+  variations: z.array(VariationSchema).optional(),
+  discounts: z.array(DiscountSchema).optional(),
+});
+
+// Helper/related schemas
+export const CreateDiscountTypeSchema = z.object({
+  name: z.string().min(1, "Name is required").max(100),
+  description: z.string().max(500).optional(),
+  defaultPercentage: z.coerce.number().min(0).max(100).optional(),
+});
+
+export const UpdateDiscountTypeSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).nullable().optional(),
+  defaultPercentage: z.coerce.number().min(0).max(100).nullable().optional(),
+});
+
+export type CreateProductDto = z.infer<typeof CreateProductSchema>;
+export type UpdateProductDto = z.infer<typeof UpdateProductSchema>;
+export type CreateDiscountTypeDto = z.infer<typeof CreateDiscountTypeSchema>;
+export type UpdateDiscountTypeDto = z.infer<typeof UpdateDiscountTypeSchema>;
