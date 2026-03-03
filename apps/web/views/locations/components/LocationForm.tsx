@@ -39,6 +39,12 @@ interface LocationFormProps {
   isLoading?: boolean;
   /** When true, render form only (no Dialog/trigger). For use on dedicated pages (e.g. mobile). */
   inline?: boolean;
+  /** Default values when creating (editingLocation is null). Used e.g. for onboarding. */
+  defaultValues?: {
+    name?: string;
+    type?: LocationType;
+    isDefaultWarehouse?: boolean;
+  };
 }
 
 export function LocationForm({
@@ -49,11 +55,16 @@ export function LocationForm({
   onReset,
   isLoading,
   inline = false,
+  defaultValues,
 }: LocationFormProps) {
-  const [name, setName] = useState("");
-  const [type, setType] = useState<LocationType>("SHOWROOM");
+  const [name, setName] = useState(defaultValues?.name ?? "");
+  const [type, setType] = useState<LocationType>(
+    defaultValues?.type ?? "SHOWROOM",
+  );
   const [address, setAddress] = useState("");
-  const [isDefaultWarehouse, setIsDefaultWarehouse] = useState(false);
+  const [isDefaultWarehouse, setIsDefaultWarehouse] = useState(
+    defaultValues?.isDefaultWarehouse ?? false,
+  );
 
   // Populate form when editing
   useEffect(() => {
@@ -63,12 +74,12 @@ export function LocationForm({
       setAddress(editingLocation.address || "");
       setIsDefaultWarehouse(editingLocation.isDefaultWarehouse ?? false);
     } else {
-      setName("");
-      setType("SHOWROOM");
+      setName(defaultValues?.name ?? "");
+      setType(defaultValues?.type ?? "SHOWROOM");
       setAddress("");
-      setIsDefaultWarehouse(false);
+      setIsDefaultWarehouse(defaultValues?.isDefaultWarehouse ?? false);
     }
-  }, [editingLocation, open]);
+  }, [editingLocation, open, defaultValues]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -261,29 +261,50 @@ export class ProductService {
 
     if (warehouseLocation && product.variations?.length) {
       for (const v of product.variations) {
-        const hasSubVariants =
-          Array.isArray((v as { subVariations?: unknown[] }).subVariations) &&
-          (v as { subVariations: unknown[] }).subVariations.length > 0;
-        if (hasSubVariants) continue;
-        const qty = Math.max(
-          0,
-          Number((v as { stockQuantity?: number }).stockQuantity) || 0,
-        );
-        if (qty === 0) continue;
-        const existing = await this.repo.findLocationInventory(
-          warehouseLocation.id,
-          v.id,
-          null,
-        );
-        if (existing) {
-          await this.repo.updateLocationInventoryQuantity(existing.id, qty);
+        const subVariations = Array.isArray(
+          (v as { subVariations?: unknown[] }).subVariations,
+        )
+          ? (v as { subVariations: Array<{ id: string }> }).subVariations
+          : [];
+        const hasSubVariants = subVariations.length > 0;
+
+        if (hasSubVariants) {
+          for (const sub of subVariations) {
+            const existing = await this.repo.findLocationInventory(
+              warehouseLocation.id,
+              v.id,
+              sub.id,
+            );
+            if (!existing) {
+              await this.repo.createLocationInventory({
+                locationId: warehouseLocation.id,
+                variationId: v.id,
+                subVariationId: sub.id,
+                quantity: 0,
+              });
+            }
+          }
         } else {
-          await this.repo.createLocationInventory({
-            locationId: warehouseLocation.id,
-            variationId: v.id,
-            subVariationId: null,
-            quantity: qty,
-          });
+          const qty = Math.max(
+            0,
+            Number((v as { stockQuantity?: number }).stockQuantity) || 0,
+          );
+          if (qty === 0) continue;
+          const existing = await this.repo.findLocationInventory(
+            warehouseLocation.id,
+            v.id,
+            null,
+          );
+          if (existing) {
+            await this.repo.updateLocationInventoryQuantity(existing.id, qty);
+          } else {
+            await this.repo.createLocationInventory({
+              locationId: warehouseLocation.id,
+              variationId: v.id,
+              subVariationId: null,
+              quantity: qty,
+            });
+          }
         }
       }
     }
@@ -560,6 +581,20 @@ export class ProductService {
       }
 
       const existingIdSet = new Set(existingVariations.map((e) => e.id));
+      const hasNewVariations = incomingVariations.some(
+        (v) => !v.id || !existingIdSet.has(v.id),
+      );
+      let warehouseLocation: { id: string } | null = null;
+      if (hasNewVariations) {
+        warehouseLocation = await this.repo.findDefaultWarehouse(tenantId);
+        if (!warehouseLocation) {
+          throw createError(
+            "Cannot add variations: tenant has no default warehouse. Set one in Locations.",
+            400,
+          );
+        }
+      }
+
       for (const variation of incomingVariations) {
         if (variation.id && existingIdSet.has(variation.id)) continue;
         const imsCode = (
@@ -575,50 +610,97 @@ export class ProductService {
         );
         if (conflict) continue;
 
-        await this.repo.createProductVariation({
-          tenantId,
-          productId: id,
-          imsCode,
-          stockQuantity: variation.stockQuantity ?? 0,
-          costPriceOverride:
-            variation.costPriceOverride != null
-              ? Number(variation.costPriceOverride)
-              : null,
-          mrpOverride:
-            variation.mrpOverride != null
-              ? Number(variation.mrpOverride)
-              : null,
-          finalSpOverride:
-            variation.finalSpOverride != null
-              ? Number(variation.finalSpOverride)
-              : null,
-          photos: variation.photos?.length
-            ? {
-                create: variation.photos.map((p) => ({
-                  photoUrl: p.photoUrl,
-                  isPrimary: p.isPrimary ?? false,
-                })),
+        const newVariation = await this.repo.createProductVariation(
+          {
+            tenantId,
+            productId: id,
+            imsCode,
+            stockQuantity: variation.stockQuantity ?? 0,
+            costPriceOverride:
+              variation.costPriceOverride != null
+                ? Number(variation.costPriceOverride)
+                : null,
+            mrpOverride:
+              variation.mrpOverride != null
+                ? Number(variation.mrpOverride)
+                : null,
+            finalSpOverride:
+              variation.finalSpOverride != null
+                ? Number(variation.finalSpOverride)
+                : null,
+            photos: variation.photos?.length
+              ? {
+                  create: variation.photos.map((p) => ({
+                    photoUrl: p.photoUrl,
+                    isPrimary: p.isPrimary ?? false,
+                  })),
+                }
+              : undefined,
+            subVariations: variation.subVariants?.length
+              ? {
+                  create: variation.subVariants
+                    .map((n: string | { name?: string }) =>
+                      typeof n === "string" ? n.trim() : (n?.name ?? "").trim(),
+                    )
+                    .filter(Boolean)
+                    .map((name) => ({ name })),
+                }
+              : undefined,
+            attributes: variation.attributes?.length
+              ? {
+                  create: variation.attributes.map((a) => ({
+                    attributeTypeId: a.attributeTypeId,
+                    attributeValueId: a.attributeValueId,
+                  })),
+                }
+              : undefined,
+          },
+          { includeSubVariations: true },
+        );
+
+        if (warehouseLocation) {
+          const subVariations = Array.isArray(
+            (newVariation as { subVariations?: Array<{ id: string }> })
+              .subVariations,
+          )
+            ? (newVariation as { subVariations: Array<{ id: string }> })
+                .subVariations
+            : [];
+          if (subVariations.length > 0) {
+            for (const sub of subVariations) {
+              const existing = await this.repo.findLocationInventory(
+                warehouseLocation.id,
+                newVariation.id,
+                sub.id,
+              );
+              if (!existing) {
+                await this.repo.createLocationInventory({
+                  locationId: warehouseLocation.id,
+                  variationId: newVariation.id,
+                  subVariationId: sub.id,
+                  quantity: 0,
+                });
               }
-            : undefined,
-          subVariations: variation.subVariants?.length
-            ? {
-                create: variation.subVariants
-                  .map((n: string | { name?: string }) =>
-                    typeof n === "string" ? n.trim() : (n?.name ?? "").trim(),
-                  )
-                  .filter(Boolean)
-                  .map((name) => ({ name })),
-              }
-            : undefined,
-          attributes: variation.attributes?.length
-            ? {
-                create: variation.attributes.map((a) => ({
-                  attributeTypeId: a.attributeTypeId,
-                  attributeValueId: a.attributeValueId,
-                })),
-              }
-            : undefined,
-        });
+            }
+          } else {
+            const qty = Math.max(0, Number(variation.stockQuantity) || 0);
+            const existing = await this.repo.findLocationInventory(
+              warehouseLocation.id,
+              newVariation.id,
+              null,
+            );
+            if (existing) {
+              await this.repo.updateLocationInventoryQuantity(existing.id, qty);
+            } else {
+              await this.repo.createLocationInventory({
+                locationId: warehouseLocation.id,
+                variationId: newVariation.id,
+                subVariationId: null,
+                quantity: qty,
+              });
+            }
+          }
+        }
       }
     }
 
