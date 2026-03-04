@@ -83,8 +83,8 @@ export const CreateTenantUserSchema = z.object({
     .max(100)
     .transform((val) => val.toLowerCase().trim()),
   password: z.string().min(6, "Password must be at least 6 characters"),
-  role: z.enum(["admin", "user"], {
-    errorMap: () => ({ message: "Role must be admin or user" }),
+  role: z.enum(["admin", "user", "superAdmin"], {
+    errorMap: () => ({ message: "Role must be admin, user, or superAdmin" }),
   }),
 });
 

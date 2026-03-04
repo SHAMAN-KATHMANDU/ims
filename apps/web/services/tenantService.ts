@@ -205,7 +205,7 @@ export async function deactivateTenant(id: string): Promise<void> {
 export interface CreateTenantUserData {
   username: string;
   password: string;
-  role: "admin" | "user";
+  role: "admin" | "user" | "superAdmin";
 }
 
 export async function createTenantUser(

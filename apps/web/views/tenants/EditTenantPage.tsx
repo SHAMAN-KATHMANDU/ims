@@ -63,9 +63,9 @@ export function EditTenantPage() {
   const [createUserPassword, setCreateUserPassword] = useState("");
   const [createUserConfirmPassword, setCreateUserConfirmPassword] =
     useState("");
-  const [createUserRole, setCreateUserRole] = useState<"admin" | "user">(
-    "user",
-  );
+  const [createUserRole, setCreateUserRole] = useState<
+    "admin" | "user" | "superAdmin"
+  >("user");
   const [planExpiresAt, setPlanExpiresAt] = useState("");
   const [resetPasswordUser, setResetPasswordUser] = useState<{
     id: string;
@@ -688,7 +688,9 @@ export function EditTenantPage() {
               <Label htmlFor="createUserRole">Role</Label>
               <Select
                 value={createUserRole}
-                onValueChange={(v) => setCreateUserRole(v as "admin" | "user")}
+                onValueChange={(v) =>
+                  setCreateUserRole(v as "admin" | "user" | "superAdmin")
+                }
               >
                 <SelectTrigger id="createUserRole">
                   <SelectValue placeholder="Select role" />
@@ -696,6 +698,7 @@ export function EditTenantPage() {
                 <SelectContent>
                   <SelectItem value="user">User</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="superAdmin">Super Admin</SelectItem>
                 </SelectContent>
               </Select>
             </div>

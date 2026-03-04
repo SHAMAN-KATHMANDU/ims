@@ -264,7 +264,7 @@ export class PlatformRepository {
     data: {
       username: string;
       hashedPassword: string;
-      role: "admin" | "user";
+      role: "admin" | "user" | "superAdmin";
     },
   ) {
     return basePrisma.user.create({
