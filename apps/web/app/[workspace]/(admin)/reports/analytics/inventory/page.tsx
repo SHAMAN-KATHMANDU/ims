@@ -2,6 +2,8 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { InventoryOpsPage } from "@/features/analytics";
 
+export const metadata = { title: "Inventory & Operations Analytics" };
+
 /**
  * Inventory & Operations Analytics – admin/superAdmin only.
  */

@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { getWorkspaceRoot } from "@/constants/routes";
@@ -31,11 +32,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import {
-  useAuthStore,
-  selectUserRole,
-  selectTenant,
-} from "@/store/auth-store";
+import { useAuthStore, selectUserRole, selectTenant } from "@/store/auth-store";
 import {
   useSidebarStore,
   selectSidebarWidth,
@@ -653,8 +650,15 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       className={cn(
         "relative flex flex-col border-r border-border bg-background shrink-0",
         !isOpen && "transition-all duration-300",
+        isOpen ? "w-[var(--sidebar-computed-width)]" : "w-20",
       )}
-      style={isOpen ? { width: sidebarWidth } : { width: 80 }}
+      style={
+        isOpen
+          ? ({
+              "--sidebar-computed-width": `${sidebarWidth}px`,
+            } as React.CSSProperties)
+          : undefined
+      }
     >
       {sidebarContent}
       {!isMobile && isOpen && (

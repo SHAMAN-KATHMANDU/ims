@@ -42,28 +42,11 @@ import {
   fN,
   fS,
   fP,
-  tooltipStyle,
   axisTick,
   gridProps,
-  type ChartTooltipProps,
-  type ChartTooltipPayloadItem,
+  tooltipStyle,
 } from "./reportTheme";
-
-const DarkTooltip = ({ active, payload, label }: ChartTooltipProps) => {
-  if (!active || !payload) return null;
-  return (
-    <div style={tooltipStyle}>
-      <div style={{ fontWeight: 600, color: C.text, marginBottom: 6 }}>
-        {label}
-      </div>
-      {payload.map((p: ChartTooltipPayloadItem, i: number) => (
-        <div key={i} style={{ color: p.color || C.text, marginBottom: 2 }}>
-          {p.name}: {typeof p.value === "number" ? fN(p.value) : p.value}
-        </div>
-      ))}
-    </div>
-  );
-};
+import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
 
 export function FinancialPage() {
   const { apiParams } = useAnalyticsFilters();
@@ -231,7 +214,7 @@ export function FinancialPage() {
                     <CartesianGrid {...gridProps} />
                     <XAxis dataKey="date" tick={axisTick} />
                     <YAxis tickFormatter={fS} tick={axisTick} />
-                    <Tooltip content={<DarkTooltip />} />
+                    <Tooltip content={<AnalyticsChartTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Area
                       type="monotone"
@@ -317,7 +300,7 @@ export function FinancialPage() {
                         <CartesianGrid {...gridProps} />
                         <XAxis dataKey="locationName" tick={axisTick} />
                         <YAxis tickFormatter={fS} tick={axisTick} />
-                        <Tooltip content={<DarkTooltip />} />
+                        <Tooltip content={<AnalyticsChartTooltip />} />
                         <Bar dataKey="cogs" radius={[4, 4, 0, 0]} name="COGS">
                           {data.cogsByLocation.map((_, i) => (
                             <Cell key={i} fill={getChartColor(i)} />

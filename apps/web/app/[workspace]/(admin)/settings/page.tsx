@@ -2,6 +2,8 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { SettingsPage } from "@/features/settings";
 
+export const metadata = { title: "Settings" };
+
 /** Workspace settings – admin/superAdmin only. */
 export default function Settings() {
   return (

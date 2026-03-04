@@ -56,6 +56,7 @@ import {
   tooltipStyle,
   axisTick,
   gridProps,
+  colorToDataKey,
   type ChartTooltipProps,
   type ChartTooltipPayloadItem,
 } from "./reportTheme";
@@ -63,12 +64,14 @@ import {
 const DarkTooltip = ({ active, payload, label }: ChartTooltipProps) => {
   if (!active || !payload) return null;
   return (
-    <div style={tooltipStyle}>
-      <div style={{ fontWeight: 600, color: C.text, marginBottom: 6 }}>
-        {label}
-      </div>
+    <div className="analytics-tooltip">
+      <div className="analytics-tooltip-label">{label}</div>
       {payload.map((p: ChartTooltipPayloadItem, i: number) => (
-        <div key={i} style={{ color: p.color || C.text, marginBottom: 2 }}>
+        <div
+          key={i}
+          className="analytics-tooltip-row"
+          data-color={colorToDataKey(p.color)}
+        >
           {p.name}: {typeof p.value === "number" ? fN(p.value) : p.value}
         </div>
       ))}
@@ -437,11 +440,10 @@ export function CustomersPromosPage() {
                                   <td className="p-2">
                                     <span className="inline-flex items-center gap-2">
                                       <span
-                                        className="w-2 h-2 rounded-full shrink-0"
-                                        style={{
-                                          backgroundColor:
-                                            RFM_COLORS[s.segment] ?? C.tm,
-                                        }}
+                                        className="analytics-legend-dot"
+                                        data-color={colorToDataKey(
+                                          RFM_COLORS[s.segment] ?? C.tm,
+                                        )}
                                       />
                                       <span className="font-medium">
                                         {s.segment}
@@ -569,8 +571,8 @@ export function CustomersPromosPage() {
                             className="flex items-center gap-1.5"
                           >
                             <div
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: g.color }}
+                              className="analytics-legend-dot"
+                              data-color={colorToDataKey(g.color)}
                             />
                             <span className="text-muted-foreground">
                               {g.label}

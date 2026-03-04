@@ -69,29 +69,14 @@ import {
   fN,
   fS,
   fP,
-  tooltipStyle,
   axisTick,
   gridProps,
-  type ChartTooltipProps,
-  type ChartTooltipPayloadItem,
+  colorToDataKey,
+  snapWidthPercent,
+  tooltipStyle,
 } from "./reportTheme";
+import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
 import type { Sale } from "@/features/sales";
-
-const DarkTooltip = ({ active, payload, label }: ChartTooltipProps) => {
-  if (!active || !payload) return null;
-  return (
-    <div style={tooltipStyle}>
-      <div style={{ fontWeight: 600, color: C.text, marginBottom: 6 }}>
-        {label}
-      </div>
-      {payload.map((p: ChartTooltipPayloadItem, i: number) => (
-        <div key={i} style={{ color: p.color || C.text, marginBottom: 2 }}>
-          {p.name}: {typeof p.value === "number" ? fN(p.value) : p.value}
-        </div>
-      ))}
-    </div>
-  );
-};
 
 function ProgressBar({
   v,
@@ -102,14 +87,14 @@ function ProgressBar({
   mx: number;
   color?: string;
 }) {
+  const width = snapWidthPercent(v, mx);
+  const dataColor = colorToDataKey(color) || "primary";
   return (
-    <div className="h-1.5 w-full rounded bg-muted overflow-hidden">
+    <div className="analytics-progress-track">
       <div
-        className="h-full rounded bg-primary transition-[width]"
-        style={{
-          width: `${Math.min((v / mx) * 100, 100)}%`,
-          backgroundColor: color,
-        }}
+        className="analytics-progress-fill"
+        data-width={width}
+        data-color={dataColor}
       />
     </div>
   );
@@ -392,7 +377,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="month" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Area
                         type="monotone"
                         dataKey="net"
@@ -462,7 +447,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="locationName" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Bar
                         dataKey="revenue"
                         radius={[4, 4, 0, 0]}
@@ -518,8 +503,8 @@ export function SalesRevenuePage() {
                         return (
                           <div key={i} className="flex items-center gap-1.5">
                             <div
-                              className="w-2 h-2 rounded-full shrink-0"
-                              style={{ backgroundColor: d.color }}
+                              className="analytics-legend-dot"
+                              data-color={colorToDataKey(d.color)}
                             />
                             <span className="text-muted-foreground">
                               {d.name}
@@ -548,7 +533,7 @@ export function SalesRevenuePage() {
                     <CartesianGrid {...gridProps} />
                     <XAxis dataKey="date" tick={axisTick} />
                     <YAxis tickFormatter={fS} tick={axisTick} />
-                    <Tooltip content={<DarkTooltip />} />
+                    <Tooltip content={<AnalyticsChartTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Line
                       type="monotone"
@@ -592,7 +577,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="day" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Bar
                         dataKey="revenue"
                         radius={[4, 4, 0, 0]}
@@ -617,7 +602,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="hour" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Bar
                         dataKey="revenue"
                         radius={[2, 2, 0, 0]}
@@ -681,7 +666,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="date" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       {paymentMethodSeries.map((s) => (
                         <Line
@@ -728,7 +713,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="date" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Area
                         type="monotone"
                         dataKey="discount"
@@ -799,12 +784,12 @@ export function SalesRevenuePage() {
                                 <td className="p-2">
                                   <span className="inline-flex items-center gap-2">
                                     <span
-                                      className="w-2 h-2 rounded-full shrink-0"
-                                      style={{
-                                        backgroundColor: getChartColor(
+                                      className="analytics-legend-dot"
+                                      data-color={colorToDataKey(
+                                        getChartColor(
                                           (page - 1) * LOCATION_PAGE_SIZE + i,
                                         ),
-                                      }}
+                                      )}
                                     />
                                     <Button
                                       variant="link"
@@ -894,7 +879,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="locationName" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Bar
                         dataKey="discount"
                         radius={[4, 4, 0, 0]}
@@ -924,7 +909,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="date" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Line
                         type="monotone"
@@ -984,8 +969,8 @@ export function SalesRevenuePage() {
                                 {b.label}
                               </span>
                               <span
-                                className="font-semibold tabular-nums"
-                                style={{ color: b.color }}
+                                className="font-semibold tabular-nums analytics-value"
+                                data-color={colorToDataKey(b.color)}
                               >
                                 {fN(b.value)}
                               </span>
@@ -1017,7 +1002,7 @@ export function SalesRevenuePage() {
                     <CartesianGrid {...gridProps} />
                     <XAxis dataKey="username" tick={axisTick} />
                     <YAxis tickFormatter={fS} tick={axisTick} />
-                    <Tooltip content={<DarkTooltip />} />
+                    <Tooltip content={<AnalyticsChartTooltip />} />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar
                       dataKey="revenue"
@@ -1062,7 +1047,7 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="username" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Bar
                         dataKey="discount"
                         radius={[4, 4, 0, 0]}

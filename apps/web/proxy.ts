@@ -9,7 +9,7 @@ import {
 } from "@/constants/routes";
 
 /**
- * Next.js Middleware for Route Protection
+ * Next.js Proxy for Route Protection
  *
  * Tenant is identified by the first path segment (e.g. /ruby/login, /ruby).
  * - / → show landing (no redirect to login; user must use org URL)
@@ -17,7 +17,7 @@ import {
  * - /:slug/... (rest) → protected (redirect to /:slug/login if no token)
  */
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const authStorage = request.cookies.get("auth-storage");
@@ -55,6 +55,22 @@ export function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Bare paths (no workspace prefix): redirect to /{tenant}/{path} when logged in
+  const BARE_PATHS = ["/onboarding", "/sales", "/crm", "/product", "/settings"];
+  if (hasToken && BARE_PATHS.includes(pathname)) {
+    try {
+      const parsed = authStorage?.value ? JSON.parse(authStorage.value) : null;
+      const tenantSlug = parsed?.state?.tenant?.slug?.trim();
+      if (tenantSlug) {
+        return NextResponse.redirect(
+          new URL(`/${tenantSlug}${pathname}`, request.url),
+        );
+      }
+    } catch {
+      // Fall through to normal handling
+    }
+  }
+
   const slug = getSlugFromPathname(pathname);
   const loginRoute = slug ? getLoginPath(slug) : null;
   const isLogin = isLoginPath(pathname);
@@ -73,7 +89,7 @@ export function middleware(request: NextRequest) {
   return NextResponse.next();
 }
 
-// Configure which routes the middleware runs on
+// Configure which routes the proxy runs on
 export const config = {
   matcher: [
     /*

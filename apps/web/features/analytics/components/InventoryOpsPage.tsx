@@ -45,9 +45,11 @@ import {
   C,
   getChartColor,
   fN,
-  tooltipStyle,
+  colorToDataKey,
+  snapWidthPercent,
   axisTick,
   gridProps,
+  tooltipStyle,
 } from "./reportTheme";
 
 function ProgressBar({
@@ -59,14 +61,14 @@ function ProgressBar({
   mx: number;
   color?: string;
 }) {
+  const width = snapWidthPercent(v, mx);
+  const dataColor = colorToDataKey(color) || "primary";
   return (
-    <div className="h-1.5 w-full rounded bg-muted overflow-hidden">
+    <div className="analytics-progress-track">
       <div
-        className="h-full rounded transition-[width]"
-        style={{
-          width: `${Math.min((v / mx) * 100, 100)}%`,
-          backgroundColor: color ?? "var(--primary)",
-        }}
+        className="analytics-progress-fill"
+        data-width={width}
+        data-color={dataColor}
       />
     </div>
   );
@@ -267,8 +269,8 @@ export function InventoryOpsPage() {
                                 {b.label}
                               </span>
                               <span
-                                className="font-semibold tabular-nums"
-                                style={{ color: b.color }}
+                                className="font-semibold tabular-nums analytics-value"
+                                data-color={colorToDataKey(b.color)}
                               >
                                 {fN(b.value)}
                               </span>
@@ -325,8 +327,8 @@ export function InventoryOpsPage() {
                                 {s.label}
                               </span>
                               <span
-                                className="font-semibold tabular-nums"
-                                style={{ color: s.color }}
+                                className="font-semibold tabular-nums analytics-value"
+                                data-color={colorToDataKey(s.color)}
                               >
                                 {s.value}
                               </span>
@@ -451,15 +453,14 @@ export function InventoryOpsPage() {
                                   {item.dailySalesRate}
                                 </td>
                                 <td
-                                  className="text-right p-2 font-bold tabular-nums"
-                                  style={{
-                                    color:
-                                      item.daysOnHand >= 999
-                                        ? C.red
-                                        : item.daysOnHand > 90
-                                          ? C.gold
-                                          : C.gongabu,
-                                  }}
+                                  className="text-right p-2 font-bold tabular-nums analytics-value"
+                                  data-color={
+                                    item.daysOnHand >= 999
+                                      ? "red"
+                                      : item.daysOnHand > 90
+                                        ? "gold"
+                                        : "gongabu"
+                                  }
                                 >
                                   {item.daysOnHand >= 999
                                     ? "∞"

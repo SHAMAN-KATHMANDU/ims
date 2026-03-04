@@ -36,6 +36,7 @@ import {
   TrendingUp,
   BarChart3,
 } from "lucide-react";
+import { snapWidthPercent, snapBarHeight } from "@/lib/chart-utils";
 
 export function AnalyticsPage() {
   const [selectedLocation, setSelectedLocation] = useState<string>("ALL");
@@ -222,12 +223,13 @@ export function AnalyticsPage() {
                         sales)
                       </span>
                     </div>
-                    <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
+                    <div className="h-3 w-full rounded-full overflow-hidden chart-progress-track">
                       <div
-                        className="h-full bg-primary rounded-full transition-all"
-                        style={{
-                          width: `${(stat.totalRevenue / maxLocationRevenue) * 100}%`,
-                        }}
+                        className="chart-progress-fill rounded-full"
+                        data-width={snapWidthPercent(
+                          stat.totalRevenue,
+                          maxLocationRevenue,
+                        )}
                       />
                     </div>
                   </div>
@@ -288,28 +290,30 @@ export function AnalyticsPage() {
                     </div>
                   </div>
                 </div>
-                <div className="h-4 w-full bg-secondary rounded-full overflow-hidden flex">
+                <div className="h-4 w-full rounded overflow-hidden flex chart-progress-track">
                   <div
-                    className="h-full bg-gray-400 transition-all"
-                    style={{
-                      width: `${
-                        summary.totalSales > 0
-                          ? (summary.generalSales.count / summary.totalSales) *
-                            100
-                          : 50
-                      }%`,
-                    }}
+                    className="chart-progress-fill shrink-0"
+                    data-width={
+                      summary.totalSales > 0
+                        ? snapWidthPercent(
+                            summary.generalSales.count,
+                            summary.totalSales,
+                          )
+                        : 50
+                    }
+                    data-color="gray"
                   />
                   <div
-                    className="h-full bg-blue-500 transition-all"
-                    style={{
-                      width: `${
-                        summary.totalSales > 0
-                          ? (summary.memberSales.count / summary.totalSales) *
-                            100
-                          : 50
-                      }%`,
-                    }}
+                    className="chart-progress-fill shrink-0"
+                    data-width={
+                      summary.totalSales > 0
+                        ? snapWidthPercent(
+                            summary.memberSales.count,
+                            summary.totalSales,
+                          )
+                        : 50
+                    }
+                    data-color="blue"
                   />
                 </div>
               </div>
@@ -344,22 +348,22 @@ export function AnalyticsPage() {
                 >
                   <div className="w-full flex flex-col gap-[1px]">
                     <div
-                      className="w-full bg-blue-500 rounded-t transition-all"
-                      style={{
-                        height: `${Math.max(
+                      className="w-full bg-blue-500 rounded-t chart-bar-height"
+                      data-height={snapBarHeight(
+                        Math.max(
                           (stat.member / maxDailyRevenue) * 150,
                           stat.member > 0 ? 4 : 0,
-                        )}px`,
-                      }}
+                        ),
+                      )}
                     />
                     <div
-                      className="w-full bg-gray-400 rounded-b transition-all"
-                      style={{
-                        height: `${Math.max(
+                      className="w-full bg-gray-400 rounded-b chart-bar-height"
+                      data-height={snapBarHeight(
+                        Math.max(
                           (stat.general / maxDailyRevenue) * 150,
                           stat.general > 0 ? 4 : 0,
-                        )}px`,
-                      }}
+                        ),
+                      )}
                     />
                   </div>
                   {/* Tooltip */}

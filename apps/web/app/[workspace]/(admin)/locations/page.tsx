@@ -2,6 +2,8 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { LocationsPage } from "@/features/locations";
 
+export const metadata = { title: "Locations" };
+
 /** Locations – admin/superAdmin only. */
 export default function Locations() {
   return (

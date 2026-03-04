@@ -37,7 +37,7 @@ interface AuthGuardProps {
  * - Optionally checks roles (redirects to unauthorizedPath if not authorized)
  * - Shows loading state during hydration
  *
- * Note: Server-side protection is handled by middleware.ts
+ * Note: Server-side protection is handled by proxy.ts
  * This component handles client-side state and loading UI.
  *
  * @example

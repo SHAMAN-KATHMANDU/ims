@@ -5,6 +5,7 @@
  * Data: useDashboardAdminSummary (locationSnapshot).
  */
 
+import { snapWidthPercent } from "@/lib/chart-utils";
 import {
   Card,
   CardContent,
@@ -73,12 +74,10 @@ export function AdminLocationSnapshot({
                     {formatCurrency(loc.revenue)}
                   </span>
                 </div>
-                <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                <div className="h-2 w-full rounded-full overflow-hidden chart-progress-track">
                   <div
-                    className="h-full bg-primary rounded-full transition-all"
-                    style={{
-                      width: `${(loc.revenue / maxRevenue) * 100}%`,
-                    }}
+                    className="chart-progress-fill rounded-full"
+                    data-width={snapWidthPercent(loc.revenue, maxRevenue)}
                   />
                 </div>
               </div>

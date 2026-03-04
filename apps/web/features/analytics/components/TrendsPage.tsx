@@ -36,32 +36,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  C,
-  fN,
-  fS,
-  tooltipStyle,
-  axisTick,
-  gridProps,
-  type ChartTooltipProps,
-  type ChartTooltipPayloadItem,
-} from "./reportTheme";
-
-const DarkTooltip = ({ active, payload, label }: ChartTooltipProps) => {
-  if (!active || !payload) return null;
-  return (
-    <div style={tooltipStyle}>
-      <div style={{ fontWeight: 600, color: C.text, marginBottom: 6 }}>
-        {label}
-      </div>
-      {payload.map((p: ChartTooltipPayloadItem, i: number) => (
-        <div key={i} style={{ color: p.color || C.text, marginBottom: 2 }}>
-          {p.name}: {typeof p.value === "number" ? fN(p.value) : p.value}
-        </div>
-      ))}
-    </div>
-  );
-};
+import { C, fS, tooltipStyle, axisTick, gridProps } from "./reportTheme";
+import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
 
 export function TrendsPage() {
   const { apiParams } = useAnalyticsFilters();
@@ -222,7 +198,7 @@ export function TrendsPage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="month" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar
                         dataKey="revenue"
@@ -250,7 +226,7 @@ export function TrendsPage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="date" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<DarkTooltip />} />
+                      <Tooltip content={<AnalyticsChartTooltip />} />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Line
                         type="monotone"
@@ -395,14 +371,16 @@ export function TrendsPage() {
                                 if (!r)
                                   return <td key={i} className="p-2 sm:p-3" />;
                                 const rate = Number(r.rate);
-                                const opacity = rate / 100;
+                                const opacityBucket = Math.min(
+                                  10,
+                                  Math.round(rate / 10),
+                                );
                                 return (
                                   <td
                                     key={i}
                                     className={`p-2 sm:p-3 text-center font-mono tabular-nums ${rate > 50 ? "text-foreground" : "text-muted-foreground"}`}
-                                    style={{
-                                      background: `rgba(63, 185, 80, ${opacity * 0.4})`,
-                                    }}
+                                    data-heatmap="green"
+                                    data-opacity={opacityBucket}
                                   >
                                     {rate}%
                                   </td>
@@ -457,16 +435,16 @@ export function TrendsPage() {
                             {day.hours.map((h) => {
                               const intensity =
                                 peakMax > 0 ? h.revenue / peakMax : 0;
+                              const opacityBucket =
+                                intensity > 0
+                                  ? Math.min(10, Math.round(intensity * 10))
+                                  : 0;
                               return (
                                 <td
                                   key={h.hour}
                                   className={`p-1.5 text-center font-mono tabular-nums rounded-sm ${intensity > 0.5 ? "text-white" : "text-muted-foreground"}`}
-                                  style={{
-                                    background:
-                                      intensity > 0
-                                        ? `rgba(201, 136, 90, ${intensity * 0.8})`
-                                        : "transparent",
-                                  }}
+                                  data-heatmap="accent"
+                                  data-opacity={opacityBucket}
                                 >
                                   {h.revenue > 0 ? fS(h.revenue) : ""}
                                 </td>

@@ -4,6 +4,8 @@
  * Funnel chart for transfer status: pending → approved → in-transit → completed.
  */
 
+import { snapWidthPercent } from "@/lib/chart-utils";
+
 export interface TransferFunnelCounts {
   PENDING: number;
   APPROVED: number;
@@ -35,7 +37,7 @@ export function TransferFunnel({
     <div className="space-y-3" role="region" aria-label={ariaLabel}>
       {STEPS.map(({ key, label }) => {
         const value = data[key];
-        const pct = max > 0 ? (value / max) * 100 : 0;
+        const width = snapWidthPercent(value, max);
         return (
           <div key={key} className="space-y-1">
             <div className="flex justify-between text-sm">
@@ -44,11 +46,8 @@ export function TransferFunnel({
                 {formatValue(value)}
               </span>
             </div>
-            <div className="h-6 w-full bg-secondary rounded overflow-hidden">
-              <div
-                className="h-full bg-primary rounded transition-all"
-                style={{ width: `${pct}%` }}
-              />
+            <div className="h-6 w-full rounded overflow-hidden chart-progress-track">
+              <div className="chart-progress-fill" data-width={width} />
             </div>
           </div>
         );

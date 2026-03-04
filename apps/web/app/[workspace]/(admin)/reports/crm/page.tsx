@@ -2,6 +2,8 @@ import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
 import { CrmReportsPage } from "@/features/crm";
 
+export const metadata = { title: "CRM Reports" };
+
 /**
  * CRM Reports: deals won/lost, revenue, conversion rate, sales per user, leads by source.
  * Admin and superAdmin only.

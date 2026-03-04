@@ -1,6 +1,8 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { UsersPage } from "@/features/users";
 
+export const metadata = { title: "Admin Controls" };
+
 /**
  * Admin Controls Page
  *

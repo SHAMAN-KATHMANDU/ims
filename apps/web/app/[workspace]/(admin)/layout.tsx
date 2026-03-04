@@ -1,8 +1,13 @@
 import type React from "react";
+import type { Metadata } from "next";
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { OnboardingGuard } from "@/components/auth/onboarding-guard";
 import { WorkspaceSlugGuard } from "@/components/auth/workspace-slug-guard";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+
+export const metadata: Metadata = {
+  title: { template: "%s | IMS", default: "Dashboard" },
+};
 
 type Props = {
   children: React.ReactNode;
