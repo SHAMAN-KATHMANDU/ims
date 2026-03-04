@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { InventoryOpsPage } from "@/views/analytics/InventoryOpsPage";
+import { InventoryOpsPage } from "@/features/analytics";
 
 /**
  * Inventory & Operations Analytics – admin/superAdmin only.

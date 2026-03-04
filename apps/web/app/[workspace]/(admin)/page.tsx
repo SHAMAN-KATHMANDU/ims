@@ -1,4 +1,4 @@
-import { HomePage } from "@/views/dashboard/home";
+import { HomePage } from "@/features/dashboard";
 
 export default function WorkspaceDashboardPage() {
   return <HomePage />;

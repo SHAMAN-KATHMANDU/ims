@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { UserLogsPage } from "@/views/settings/UserLogsPage";
+import { UserLogsPage } from "@/features/settings";
 
 /** User logs – superAdmin only. */
 export default function UserLogsRoute() {

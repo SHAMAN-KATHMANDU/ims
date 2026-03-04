@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { TrendsPage } from "@/views/analytics/TrendsPage";
+import { TrendsPage } from "@/features/analytics";
 
 /**
  * Trends & Patterns Analytics: MoM growth, seasonality, cohort retention, peak hours.

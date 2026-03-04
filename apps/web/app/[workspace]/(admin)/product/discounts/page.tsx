@@ -1,4 +1,4 @@
-import { DiscountsPage } from "@/views/products/DiscountsPage";
+import { DiscountsPage } from "@/features/products";
 
 export default function Discounts() {
   return <DiscountsPage />;

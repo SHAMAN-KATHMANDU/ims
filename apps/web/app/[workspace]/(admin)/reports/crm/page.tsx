@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { CrmReportsPage } from "@/views/crm/reports/CrmReportsPage";
+import { CrmReportsPage } from "@/features/crm";
 
 /**
  * CRM Reports: deals won/lost, revenue, conversion rate, sales per user, leads by source.

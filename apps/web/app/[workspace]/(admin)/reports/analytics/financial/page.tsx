@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { FinancialPage } from "@/views/analytics/FinancialPage";
+import { FinancialPage } from "@/features/analytics";
 
 /**
  * Financial Analytics: gross profit, COGS breakdown, margin by category.

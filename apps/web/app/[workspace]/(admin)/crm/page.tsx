@@ -1,4 +1,4 @@
-import { CrmDashboardPage } from "@/views/crm/CrmDashboardPage";
+import { CrmDashboardPage } from "@/features/crm";
 
 export default function CrmDashboard() {
   return <CrmDashboardPage />;

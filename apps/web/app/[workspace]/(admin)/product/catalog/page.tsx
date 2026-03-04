@@ -1,4 +1,4 @@
-import { CatalogPage } from "@/views/products/CatalogPage";
+import { CatalogPage } from "@/features/products";
 
 /**
  * Catalog page – read-only product catalog for all roles.

@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { ErrorReportsPage } from "@/views/settings/ErrorReportsPage";
+import { ErrorReportsPage } from "@/features/settings";
 
 /** Error reports – superAdmin only. */
 export default function ErrorReportsRoute() {

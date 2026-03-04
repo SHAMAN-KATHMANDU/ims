@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { AnalyticsIndexPage } from "@/views/analytics/AnalyticsIndexPage";
+import { AnalyticsIndexPage } from "@/features/analytics";
 
 /**
  * Analytics index: lists report types (Sales & Revenue, Inventory & Operations, Customers & Promotions).

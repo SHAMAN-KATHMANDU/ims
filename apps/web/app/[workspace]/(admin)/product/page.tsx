@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { ProductPage } from "@/views/products";
+import { ProductPage } from "@/features/products";
 
 /** Products (inventory) – admin/superAdmin only. */
 export default function Product() {

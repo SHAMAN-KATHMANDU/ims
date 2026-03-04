@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { PromoPage } from "@/views/promos";
+import { PromoPage } from "@/features/promos";
 
 /** Promo Codes (full management) – admin/superAdmin only. */
 export default function Promos() {

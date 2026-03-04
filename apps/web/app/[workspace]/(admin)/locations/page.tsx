@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { LocationsPage } from "@/views/locations";
+import { LocationsPage } from "@/features/locations";
 
 /** Locations – admin/superAdmin only. */
 export default function Locations() {

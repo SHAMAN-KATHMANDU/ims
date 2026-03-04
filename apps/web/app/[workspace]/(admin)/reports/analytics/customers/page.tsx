@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { CustomersPromosPage } from "@/views/analytics/CustomersPromosPage";
+import { CustomersPromosPage } from "@/features/analytics";
 
 /**
  * Customers, Products & Promotions Analytics – admin/superAdmin only.

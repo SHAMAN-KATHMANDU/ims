@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { NewPromoPage } from "@/views/promos/NewPromoPage";
+import { NewPromoPage } from "@/features/promos";
 
 export default function NewPromoRoute() {
   return (

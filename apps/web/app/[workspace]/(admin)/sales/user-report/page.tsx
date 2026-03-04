@@ -7,9 +7,8 @@ import {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   type Sale,
-} from "@/hooks/useSales";
-import { SalesTable } from "@/views/sales/components/SalesTable";
-import { SaleDetail } from "@/views/sales/components/SaleDetail";
+} from "@/features/sales";
+import { SalesTable, SaleDetail } from "@/features/sales";
 import {
   DataTablePagination,
   type PaginationState,

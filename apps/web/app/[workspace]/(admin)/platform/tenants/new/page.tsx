@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { NewTenantPage } from "@/views/tenants/NewTenantPage";
+import { NewTenantPage } from "@/features/tenants";
 
 export default function NewTenantRoute() {
   return (

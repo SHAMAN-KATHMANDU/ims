@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { UsersPage } from "@/views/users";
+import { UsersPage } from "@/features/users";
 
 /**
  * Admin Controls Page

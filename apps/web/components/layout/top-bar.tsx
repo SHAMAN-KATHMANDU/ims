@@ -24,7 +24,7 @@ import {
   Building2,
   Bell,
 } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/features/auth";
 import { useToast } from "@/hooks/useToast";
 import { ReportErrorDialog } from "./ReportErrorDialog";
 import { useIsMobile } from "@/hooks/useMobile";
@@ -32,7 +32,7 @@ import {
   useNotifications,
   useUnreadNotificationCount,
   useDeleteAllNotifications,
-} from "@/hooks/useNotifications";
+} from "@/features/crm";
 import { Trash2 } from "lucide-react";
 
 function NotificationsBell({ basePath }: { basePath: string }) {

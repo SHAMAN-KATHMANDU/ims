@@ -3,7 +3,7 @@
 import type React from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/features/auth";
 import { LoadingPage } from "../layout/loading-page";
 import type { UserRole } from "@/utils/auth";
 

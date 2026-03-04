@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { UsersPage } from "@/views/users";
+import { UsersPage } from "@/features/users";
 
 /** Users management – superAdmin only. */
 export default function UsersManagementPage() {

@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { SettingsPage } from "@/views/settings";
+import { SettingsPage } from "@/features/settings";
 
 /** Workspace settings – admin/superAdmin only. */
 export default function Settings() {

@@ -1,4 +1,4 @@
-import { DealsKanbanPage } from "@/views/crm/deals/DealsKanbanPage";
+import { DealsKanbanPage } from "@/features/crm";
 
 export default function CrmDeals() {
   return <DealsKanbanPage />;

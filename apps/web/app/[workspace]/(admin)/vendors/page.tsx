@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { VendorPage } from "@/views/vendors";
+import { VendorPage } from "@/features/vendors";
 
 /** Vendors – admin/superAdmin only. */
 export default function Vendors() {
