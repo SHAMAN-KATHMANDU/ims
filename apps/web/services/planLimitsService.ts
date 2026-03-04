@@ -4,7 +4,7 @@
  */
 
 import api from "@/lib/axios";
-import { handleApiError } from "@/lib/apiError";
+import { handleApiError } from "@/lib/api-error";
 
 export type PlanTier = "STARTER" | "PROFESSIONAL" | "ENTERPRISE";
 

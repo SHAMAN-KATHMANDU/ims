@@ -4,7 +4,7 @@ import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import Link from "next/link";
-import { getWorkspaceRoot } from "@/config/routes";
+import { getWorkspaceRoot } from "@/constants/routes";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,

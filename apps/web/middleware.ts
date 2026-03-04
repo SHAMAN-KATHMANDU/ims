@@ -6,7 +6,7 @@ import {
   getLoginPath,
   isLoginPath,
   isProtectedPath,
-} from "@/config/routes";
+} from "@/constants/routes";
 
 /**
  * Next.js Middleware for Route Protection

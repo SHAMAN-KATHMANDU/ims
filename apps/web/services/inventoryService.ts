@@ -6,7 +6,7 @@
  */
 
 import api from "@/lib/axios";
-import { handleApiError } from "@/lib/apiError";
+import { handleApiError } from "@/lib/api-error";
 import { type PaginationMeta, DEFAULT_PAGE } from "@/lib/apiTypes";
 import type { Location, LocationType } from "./locationService";
 

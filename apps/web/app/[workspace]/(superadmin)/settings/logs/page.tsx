@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
+import { WORKSPACE_ROOT } from "@/constants/routes";
 import { UserLogsPage } from "@/views/settings/UserLogsPage";
 
 /** User logs – superAdmin only. */

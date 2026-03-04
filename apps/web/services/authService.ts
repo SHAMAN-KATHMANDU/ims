@@ -2,11 +2,11 @@
  * Auth Service
  *
  * Single source for auth API calls. All auth HTTP requests must go through this file.
- * Auth errors use handleApiError for consistency; login message may be customized in apiError if needed.
+ * Auth errors use handleApiError for consistency; login message may be customized in api-error if needed.
  */
 
 import api from "@/lib/axios";
-import { handleApiError } from "@/lib/apiError";
+import { handleApiError } from "@/lib/api-error";
 import type { AuthUser, TenantInfo } from "@/utils/auth";
 
 export interface LoginResponse {

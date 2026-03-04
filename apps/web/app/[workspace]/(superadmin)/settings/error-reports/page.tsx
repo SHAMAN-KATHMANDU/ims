@@ -1,5 +1,5 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
+import { WORKSPACE_ROOT } from "@/constants/routes";
 import { ErrorReportsPage } from "@/views/settings/ErrorReportsPage";
 
 /** Error reports – superAdmin only. */

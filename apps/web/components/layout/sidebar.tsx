@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getWorkspaceRoot } from "@/config/routes";
+import { getWorkspaceRoot } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 import {
   Home,

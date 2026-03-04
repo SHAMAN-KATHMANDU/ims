@@ -4,7 +4,7 @@
  */
 
 import api from "@/lib/axios";
-import { handleApiError } from "@/lib/apiError";
+import { handleApiError } from "@/lib/api-error";
 
 export interface AuditLogEntry {
   id: string;
