@@ -14,6 +14,7 @@ import platformRepository, {
 import type {
   CreateTenantDto,
   UpdateTenantDto,
+  CreateTenantUserDto,
   ResetTenantUserPasswordDto,
   ChangePlanDto,
   UpsertPlanLimitDto,
@@ -70,6 +71,76 @@ export class PlatformService {
 
   async findTenantById(id: string) {
     return this.repo.findTenantById(id);
+  }
+
+  async createTenantUser(
+    tenantId: string,
+    data: CreateTenantUserDto,
+  ): Promise<{
+    id: string;
+    username: string;
+    role: string;
+    createdAt: Date;
+    updatedAt: Date;
+  }> {
+    const tenant = await this.repo.findTenantById(tenantId);
+    if (!tenant) {
+      throw Object.assign(new Error("Tenant not found"), { statusCode: 404 });
+    }
+
+    let limits = DEFAULT_PLAN_LIMITS[(tenant.plan as PlanTier) ?? "STARTER"];
+    try {
+      const planLimitRow = await this.repo.findPlanLimitByTier(tenant.plan);
+      if (planLimitRow) {
+        const row = planLimitRow as typeof planLimitRow & {
+          maxCustomers: number;
+        };
+        limits = {
+          maxUsers: row.maxUsers,
+          maxProducts: row.maxProducts,
+          maxLocations: row.maxLocations,
+          maxMembers: row.maxMembers,
+          maxCustomers: row.maxCustomers,
+          bulkUpload: row.bulkUpload,
+          analytics: row.analytics,
+          promoManagement: row.promoManagement,
+          auditLogs: row.auditLogs,
+          apiAccess: row.apiAccess,
+        };
+      }
+    } catch {
+      limits = DEFAULT_PLAN_LIMITS[(tenant.plan as PlanTier) ?? "STARTER"];
+    }
+
+    let maxUsers = limits.maxUsers;
+    const tenantOverride = tenant.customMaxUsers;
+    if (tenantOverride !== undefined && tenantOverride !== null) {
+      maxUsers = tenantOverride;
+    }
+    const currentCount = tenant._count?.users ?? 0;
+    if (maxUsers !== -1 && currentCount >= maxUsers) {
+      throw Object.assign(
+        new Error("Tenant has reached the user limit for their plan."),
+        { statusCode: 403 },
+      );
+    }
+
+    const existing = await this.repo.findUserByTenantAndUsername(
+      tenantId,
+      data.username,
+    );
+    if (existing) {
+      throw Object.assign(new Error("User with this username already exists"), {
+        statusCode: 409,
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(data.password, BCRYPT_ROUNDS);
+    return this.repo.createUserForTenant(tenantId, {
+      username: data.username,
+      hashedPassword,
+      role: data.role,
+    });
   }
 
   async resetTenantUserPassword(

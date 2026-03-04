@@ -10,6 +10,7 @@ import {
   useTenant,
   useUpdateTenant,
   useChangeTenantPlan,
+  useCreateTenantUser,
   useResetTenantUserPassword,
   type SubscriptionStatus,
   type PlanTier,
@@ -40,7 +41,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { KeyRound } from "lucide-react";
+import { KeyRound, UserPlus } from "lucide-react";
 
 const PLANS: PlanTier[] = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
 
@@ -54,8 +55,17 @@ export function EditTenantPage() {
   const { data: tenant, isLoading: loadingTenant } = useTenant(id);
   const updateMutation = useUpdateTenant();
   const changePlanMutation = useChangeTenantPlan();
+  const createUserMutation = useCreateTenantUser();
   const resetPasswordMutation = useResetTenantUserPassword();
   const [selectedPlan, setSelectedPlan] = useState<PlanTier | null>(null);
+  const [createUserOpen, setCreateUserOpen] = useState(false);
+  const [createUserUsername, setCreateUserUsername] = useState("");
+  const [createUserPassword, setCreateUserPassword] = useState("");
+  const [createUserConfirmPassword, setCreateUserConfirmPassword] =
+    useState("");
+  const [createUserRole, setCreateUserRole] = useState<"admin" | "user">(
+    "user",
+  );
   const [planExpiresAt, setPlanExpiresAt] = useState("");
   const [resetPasswordUser, setResetPasswordUser] = useState<{
     id: string;
@@ -185,6 +195,71 @@ export function EditTenantPage() {
       });
     }
   }, [id, selectedPlan, planExpiresAt, changePlanMutation, toast]);
+
+  const handleCloseCreateUser = useCallback(() => {
+    setCreateUserOpen(false);
+    setCreateUserUsername("");
+    setCreateUserPassword("");
+    setCreateUserConfirmPassword("");
+    setCreateUserRole("user");
+  }, []);
+
+  const handleCreateUser = useCallback(async () => {
+    if (!id) return;
+    if (!createUserUsername.trim()) {
+      toast({
+        title: "Error",
+        description: "Username is required",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (createUserPassword.length < 6) {
+      toast({
+        title: "Error",
+        description: "Password must be at least 6 characters",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (createUserPassword !== createUserConfirmPassword) {
+      toast({
+        title: "Error",
+        description: "Passwords do not match",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      await createUserMutation.mutateAsync({
+        tenantId: id,
+        data: {
+          username: createUserUsername.trim(),
+          password: createUserPassword,
+          role: createUserRole,
+        },
+      });
+      toast({ title: "User created successfully" });
+      handleCloseCreateUser();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to create user";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    }
+  }, [
+    id,
+    createUserUsername,
+    createUserPassword,
+    createUserConfirmPassword,
+    createUserRole,
+    createUserMutation,
+    toast,
+    handleCloseCreateUser,
+  ]);
 
   const handleOpenResetPassword = useCallback(
     (user: { id: string; username: string }) => {
@@ -441,6 +516,26 @@ export function EditTenantPage() {
         </CardContent>
       </Card>
 
+      <Card className="max-w-md">
+        <CardHeader>
+          <CardTitle>Create user</CardTitle>
+          <CardDescription>
+            Add a new user to this tenant. They can log in with their username
+            and password.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setCreateUserOpen(true)}
+          >
+            <UserPlus className="mr-1 h-4 w-4" />
+            Add user
+          </Button>
+        </CardContent>
+      </Card>
+
       {tenant.users && tenant.users.length > 0 && (
         <Card className="max-w-md">
           <CardHeader>
@@ -538,6 +633,92 @@ export function EditTenantPage() {
               {resetPasswordMutation.isPending
                 ? "Resetting…"
                 : "Reset password"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={createUserOpen}
+        onOpenChange={(open) => !open && handleCloseCreateUser()}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create user</DialogTitle>
+            <DialogDescription>
+              Add a new user to this tenant. They will log in with their
+              username and password.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="createUserUsername">Username</Label>
+              <Input
+                id="createUserUsername"
+                type="text"
+                value={createUserUsername}
+                onChange={(e) => setCreateUserUsername(e.target.value)}
+                placeholder="Enter username"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="createUserPassword">Password</Label>
+              <Input
+                id="createUserPassword"
+                type="password"
+                value={createUserPassword}
+                onChange={(e) => setCreateUserPassword(e.target.value)}
+                placeholder="Min 6 characters"
+                minLength={6}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="createUserConfirmPassword">
+                Confirm password
+              </Label>
+              <Input
+                id="createUserConfirmPassword"
+                type="password"
+                value={createUserConfirmPassword}
+                onChange={(e) => setCreateUserConfirmPassword(e.target.value)}
+                placeholder="Confirm password"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="createUserRole">Role</Label>
+              <Select
+                value={createUserRole}
+                onValueChange={(v) => setCreateUserRole(v as "admin" | "user")}
+              >
+                <SelectTrigger id="createUserRole">
+                  <SelectValue placeholder="Select role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="user">User</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleCloseCreateUser}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleCreateUser}
+              disabled={
+                createUserMutation.isPending ||
+                !createUserUsername.trim() ||
+                createUserPassword.length < 6 ||
+                createUserPassword !== createUserConfirmPassword
+              }
+            >
+              {createUserMutation.isPending ? "Creating…" : "Create user"}
             </Button>
           </DialogFooter>
         </DialogContent>

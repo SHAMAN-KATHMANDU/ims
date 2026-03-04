@@ -202,6 +202,30 @@ export async function deactivateTenant(id: string): Promise<void> {
   }
 }
 
+export interface CreateTenantUserData {
+  username: string;
+  password: string;
+  role: "admin" | "user";
+}
+
+export async function createTenantUser(
+  tenantId: string,
+  data: CreateTenantUserData,
+): Promise<{ id: string; username: string; role: string }> {
+  if (!tenantId?.trim()) throw new Error("Tenant ID is required");
+  if (!data.username?.trim()) throw new Error("Username is required");
+  if (!data.password || data.password.length < 6)
+    throw new Error("Password must be at least 6 characters");
+  try {
+    const response = await api.post<{
+      user: { id: string; username: string; role: string };
+    }>(`/platform/tenants/${tenantId}/users`, data);
+    return response.data.user;
+  } catch (error) {
+    handleApiError(error, "create tenant user");
+  }
+}
+
 export async function resetTenantUserPassword(
   tenantId: string,
   userId: string,

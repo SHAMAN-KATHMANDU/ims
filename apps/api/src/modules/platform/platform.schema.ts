@@ -75,6 +75,19 @@ export const ResetTenantUserPasswordSchema = z.object({
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+/** Create tenant user (platform admin). Role restricted to tenant-scoped roles only. */
+export const CreateTenantUserSchema = z.object({
+  username: z
+    .string()
+    .min(1, "Username is required")
+    .max(100)
+    .transform((val) => val.toLowerCase().trim()),
+  password: z.string().min(6, "Password must be at least 6 characters"),
+  role: z.enum(["admin", "user"], {
+    errorMap: () => ({ message: "Role must be admin or user" }),
+  }),
+});
+
 /** Change tenant plan. */
 export const ChangePlanSchema = z.object({
   plan: planTierSchema,
@@ -213,6 +226,7 @@ export type UpdateTenantDto = z.infer<typeof UpdateTenantSchema>;
 export type ResetTenantUserPasswordDto = z.infer<
   typeof ResetTenantUserPasswordSchema
 >;
+export type CreateTenantUserDto = z.infer<typeof CreateTenantUserSchema>;
 export type ChangePlanDto = z.infer<typeof ChangePlanSchema>;
 export type UpsertPlanLimitDto = z.infer<typeof UpsertPlanLimitSchema>;
 export type CreatePricingPlanDto = z.infer<typeof CreatePricingPlanSchema>;
