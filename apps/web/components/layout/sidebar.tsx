@@ -358,18 +358,29 @@ function SidebarDropdown({
 }) {
   if (!isVisible || !triggerRect) return null;
 
+  const BRIDGE_WIDTH = 12;
+
   const panel = (
     <div
-      role="menu"
-      aria-label={`${title} submenu`}
-      className="fixed z-50 min-w-48 rounded-md border border-border bg-popover shadow-md animate-in fade-in-0 slide-in-from-left-2 duration-200"
+      className="fixed z-50 flex animate-in fade-in-0 slide-in-from-left-2 duration-200"
       style={{
         top: triggerRect.top,
-        left: triggerRect.right + 2,
+        left: triggerRect.right - BRIDGE_WIDTH,
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
+      role="presentation"
     >
+      <div
+        className="shrink-0"
+        style={{ width: BRIDGE_WIDTH, minHeight: triggerRect.height }}
+        aria-hidden
+      />
+      <div
+        role="menu"
+        aria-label={`${title} submenu`}
+        className="min-w-48 rounded-md border border-border bg-popover shadow-md"
+      >
       <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
         {title}
       </div>
@@ -396,6 +407,7 @@ function SidebarDropdown({
             </Link>
           );
         })}
+      </div>
       </div>
     </div>
   );
@@ -764,7 +776,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       setHoveredSection(null);
       setDropdownTriggerRect(null);
       hoverTimeoutRef.current = null;
-    }, 200);
+    }, 500);
   }, []);
 
   const handleItemClick = useCallback(() => {
