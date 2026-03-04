@@ -365,7 +365,7 @@ function SidebarDropdown({
       className="fixed z-50 min-w-48 rounded-md border border-border bg-popover shadow-md animate-in fade-in-0 slide-in-from-left-2 duration-200"
       style={{
         top: triggerRect.top,
-        left: triggerRect.right + 4,
+        left: triggerRect.right + 2,
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
@@ -533,42 +533,36 @@ function SidebarSection({
   if (isCollapsed && hasMultipleItems && firstItem && FirstIcon) {
     return (
       <div className="space-y-1" onMouseLeave={onSectionHoverEnd}>
-        <Tooltip delayDuration={400}>
-          <TooltipTrigger asChild>
-            <div
-              role="button"
-              tabIndex={0}
-              aria-expanded={showDropdown}
-              aria-haspopup="menu"
-              aria-label={`${section.title} menu`}
-              onMouseEnter={(e) =>
-                onSectionHoverStart(section.title, e.currentTarget)
-              }
-              onMouseLeave={onSectionHoverEnd}
-              className={cn(
-                "flex items-center justify-center w-10 h-10 mx-auto rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-                pathname === firstItem?.href ||
-                  section.items.some((i) => pathname === i.href)
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-              )}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  onSectionHoverStart(
-                    section.title,
-                    e.currentTarget as HTMLElement,
-                  );
-                }
-              }}
-            >
-              <FirstIcon className="h-5 w-5" aria-hidden />
-            </div>
-          </TooltipTrigger>
-          <TooltipContent side="right" sideOffset={8}>
-            {section.title}
-          </TooltipContent>
-        </Tooltip>
+        <div
+          role="button"
+          tabIndex={0}
+          aria-expanded={showDropdown}
+          aria-haspopup="menu"
+          aria-label={`${section.title} menu`}
+          title={section.title}
+          onMouseEnter={(e) =>
+            onSectionHoverStart(section.title, e.currentTarget)
+          }
+          onMouseLeave={onSectionHoverEnd}
+          className={cn(
+            "flex items-center justify-center w-10 h-10 mx-auto rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            pathname === firstItem?.href ||
+              section.items.some((i) => pathname === i.href)
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          )}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onSectionHoverStart(
+                section.title,
+                e.currentTarget as HTMLElement,
+              );
+            }
+          }}
+        >
+          <FirstIcon className="h-5 w-5" aria-hidden />
+        </div>
         <SidebarDropdown
           title={section.title}
           items={section.items}
@@ -770,7 +764,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       setHoveredSection(null);
       setDropdownTriggerRect(null);
       hoverTimeoutRef.current = null;
-    }, 100);
+    }, 200);
   }, []);
 
   const handleItemClick = useCallback(() => {

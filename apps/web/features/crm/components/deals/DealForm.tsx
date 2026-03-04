@@ -28,7 +28,11 @@ const createSchema = z.object({
   name: z.string().min(1, "Name is required"),
   value: z.coerce.number().min(0),
   stage: z.string().optional(),
-  probability: z.coerce.number().min(0).max(100).optional(),
+  probability: z.coerce
+    .number()
+    .min(0, "Probability must be at least 0")
+    .max(100, "Probability must be between 0 and 100")
+    .optional(),
   expectedCloseDate: z.string().optional(),
   contactId: z.string().optional(),
   companyId: z.string().optional(),
@@ -37,7 +41,10 @@ const createSchema = z.object({
 
 const editSchema = createSchema.extend({
   stage: z.string(),
-  probability: z.coerce.number().min(0).max(100),
+  probability: z.coerce
+    .number()
+    .min(0, "Probability must be at least 0")
+    .max(100, "Probability must be between 0 and 100"),
   status: z.enum(["OPEN", "WON", "LOST"]),
 });
 
