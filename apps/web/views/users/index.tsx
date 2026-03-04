@@ -41,7 +41,7 @@ import {
   type CreateUserData,
   type UpdateUserData,
 } from "@/hooks/useUser";
-import { useAuthStore, selectUser } from "@/stores/auth-store";
+import { useAuthStore, selectUser } from "@/store/auth-store";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { useIsMobile } from "@/hooks/useMobile";
 import { UserForm, type UserFormValues } from "./components/UserForm";

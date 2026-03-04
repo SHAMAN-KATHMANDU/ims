@@ -13,7 +13,7 @@ import {
   DASHBOARD_STALE_TIME_MS,
 } from "@/services/dashboardService";
 import { getPlatformStats } from "@/services/tenantService";
-import { useAuthStore, selectUserRole } from "@/stores/auth-store";
+import { useAuthStore, selectUserRole } from "@/store/auth-store";
 
 export const dashboardKeys = {
   all: ["dashboard"] as const,

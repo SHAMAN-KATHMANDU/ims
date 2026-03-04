@@ -4,12 +4,12 @@ import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import {
   useMemberSelectionStore,
   selectSelectedMemberIds,
   selectClearMemberSelection,
-} from "@/stores/member-selection-store";
+} from "@/store/member-selection-store";
 import { downloadMembers } from "@/services/memberService";
 import {
   useMembersPaginated,

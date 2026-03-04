@@ -15,12 +15,12 @@ import {
   useAuthStore,
   selectIsAdmin,
   selectUserRole,
-} from "@/stores/auth-store";
+} from "@/store/auth-store";
 import {
   useSaleSelectionStore,
   selectSelectedSaleIds,
   selectClearSaleSelection,
-} from "@/stores/sale-selection-store";
+} from "@/store/sale-selection-store";
 import { downloadSales } from "@/services/salesService";
 import {
   useSalesPaginated,

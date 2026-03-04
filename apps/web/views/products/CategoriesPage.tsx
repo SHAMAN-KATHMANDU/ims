@@ -16,7 +16,7 @@ import {
   type Category,
   type CategoryListParams,
 } from "@/hooks/useProduct";
-import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import { CategoryForm } from "./components/CategoryForm";
 import { CategoryTable } from "./components/CategoryTable";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";

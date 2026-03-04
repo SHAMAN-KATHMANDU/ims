@@ -15,7 +15,7 @@ import type { ProductFormValues } from "../../types";
 import type { Category } from "@/hooks/useProduct";
 import type { UseFormReturn } from "@/hooks/useForm";
 import { useVendorsPaginated } from "@/hooks/useVendors";
-import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import { useCategorySubcategories } from "@/hooks/useProduct";
 
 interface GeneralTabProps {

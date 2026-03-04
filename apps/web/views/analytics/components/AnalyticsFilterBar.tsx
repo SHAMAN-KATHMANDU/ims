@@ -34,7 +34,7 @@ import { useActiveLocations } from "@/hooks/useLocation";
 import { useUsers } from "@/hooks/useUser";
 import { useCategories } from "@/hooks/useProduct";
 import { useVendorsPaginated } from "@/hooks/useVendors";
-import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import type { User } from "@/services/userService";
 
 export function AnalyticsFilterBar() {

@@ -23,12 +23,12 @@ import {
 } from "@/hooks/useProduct";
 import { useAttributeTypes } from "@/hooks/useAttributeTypes";
 import { useVendorsPaginated } from "@/hooks/useVendors";
-import { useAuthStore, selectIsAdmin } from "@/stores/auth-store";
+import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import {
   useProductSelectionStore,
   selectSelectedProductIds,
   selectClearSelection,
-} from "@/stores/product-selection-store";
+} from "@/store/product-selection-store";
 import { type CreateProductData } from "@/services/productService";
 import { ProductForm } from "./components/ProductForm";
 import { ProductTable } from "./components/ProductTable";

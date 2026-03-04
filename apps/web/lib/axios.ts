@@ -13,7 +13,7 @@
  */
 
 import axios, { type InternalAxiosRequestConfig } from "axios";
-import { useAuthStore } from "@/stores/auth-store";
+import { useAuthStore } from "@/store/auth-store";
 import { getApiErrorMessage } from "@/lib/apiError";
 import { toast } from "@/hooks/useToast";
 

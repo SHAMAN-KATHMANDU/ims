@@ -6,7 +6,7 @@
  */
 
 import { useParams } from "next/navigation";
-import { useAuthStore, selectUserRole } from "@/stores/auth-store";
+import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import { getWidgetsForRole } from "@/views/dashboard/widgets/registry";
 import { DashboardWidgetBoundary } from "@/views/dashboard/widgets/DashboardWidgetBoundary";
 import type { UserRole } from "@/utils/auth";

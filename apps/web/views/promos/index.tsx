@@ -39,7 +39,7 @@ import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
-import { useAuthStore, selectUserRole } from "@/stores/auth-store";
+import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import { useIsMobile } from "@/hooks/useMobile";
 import { PromoForm } from "./components/PromoForm";
 

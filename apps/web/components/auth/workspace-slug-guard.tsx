@@ -7,7 +7,7 @@ import {
   useAuthStore,
   selectTenant,
   selectIsHydrated,
-} from "@/stores/auth-store";
+} from "@/store/auth-store";
 import { LoadingPage } from "../layout/loading-page";
 
 /**

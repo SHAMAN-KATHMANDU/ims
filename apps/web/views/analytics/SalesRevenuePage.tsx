@@ -49,7 +49,7 @@ import {
   useLocationComparisonAnalytics,
   useSalesExtendedAnalytics,
 } from "@/hooks/useAnalytics";
-import { useAuthStore, selectUserRole } from "@/stores/auth-store";
+import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import { useSalesPaginated, useSale } from "@/hooks/useSales";
 import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
 import { SalesTable } from "@/views/sales/components/SalesTable";

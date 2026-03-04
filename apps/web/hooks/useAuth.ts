@@ -21,7 +21,7 @@ import {
   selectTenant,
   selectIsAuthenticated,
   selectIsHydrated,
-} from "@/stores/auth-store";
+} from "@/store/auth-store";
 
 // ============================================
 // Types

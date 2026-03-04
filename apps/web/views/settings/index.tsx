@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { changePassword } from "@/services/userService";
 import { Eye, EyeOff } from "lucide-react";
-import { useAuthStore, selectUser } from "@/stores/auth-store";
+import { useAuthStore, selectUser } from "@/store/auth-store";
 
 // Zod schema for password change validation
 const passwordSchema = z

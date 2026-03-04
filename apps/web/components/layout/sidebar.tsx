@@ -35,12 +35,12 @@ import {
   useAuthStore,
   selectUserRole,
   selectTenant,
-} from "@/stores/auth-store";
+} from "@/store/auth-store";
 import {
   useSidebarStore,
   selectSidebarWidth,
   selectSetSidebarWidth,
-} from "@/stores/sidebar-store";
+} from "@/store/sidebar-store";
 import type { UserRole } from "@/utils/auth";
 import { Badge } from "../ui/badge";
 import { useMemo, useState, useRef, useEffect } from "react";
