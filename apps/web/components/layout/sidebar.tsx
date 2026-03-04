@@ -2,7 +2,6 @@
 
 import type React from "react";
 import Link from "next/link";
-import { createPortal } from "react-dom";
 import { usePathname } from "next/navigation";
 import { getWorkspaceRoot } from "@/constants/routes";
 import { cn } from "@/lib/utils";
@@ -54,6 +53,11 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "../ui/tooltip";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "../ui/hover-card";
 import { useIsMobile } from "@/hooks/useMobile";
 
 interface NavItem {
@@ -337,85 +341,6 @@ const navSections: NavSection[] = [
 
 type NavItemWithHref = NavItem & { href: string };
 
-function SidebarDropdown({
-  title,
-  items,
-  pathname,
-  triggerRect,
-  isVisible,
-  onMouseEnter,
-  onMouseLeave,
-  onItemClick,
-}: {
-  title: string;
-  items: NavItemWithHref[];
-  pathname: string;
-  triggerRect: DOMRect | null;
-  isVisible: boolean;
-  onMouseEnter: () => void;
-  onMouseLeave: () => void;
-  onItemClick: () => void;
-}) {
-  if (!isVisible || !triggerRect) return null;
-
-  const BRIDGE_WIDTH = 12;
-
-  const panel = (
-    <div
-      className="fixed z-50 flex animate-in fade-in-0 slide-in-from-left-2 duration-200"
-      style={{
-        top: triggerRect.top,
-        left: triggerRect.right - BRIDGE_WIDTH,
-      }}
-      onMouseEnter={onMouseEnter}
-      onMouseLeave={onMouseLeave}
-      role="presentation"
-    >
-      <div
-        className="shrink-0"
-        style={{ width: BRIDGE_WIDTH, minHeight: triggerRect.height }}
-        aria-hidden
-      />
-      <nav
-        aria-label={`${title} submenu`}
-        className="min-w-48 rounded-md border border-border bg-popover shadow-md"
-      >
-        <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
-          {title}
-        </div>
-        <div className="py-1">
-          {items.map((navItem) => {
-            if (!navItem) return null;
-            const Icon = navItem.icon;
-            const active = pathname === navItem.href;
-            return (
-              <Link
-                key={navItem.href}
-                href={navItem.href}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-muted text-foreground"
-                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                )}
-                onClick={onItemClick}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                <span>{navItem.label}</span>
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-    </div>
-  );
-
-  if (typeof document !== "undefined") {
-    return createPortal(panel, document.body);
-  }
-  return null;
-}
-
 function SidebarItem({
   item,
   basePath,
@@ -509,10 +434,6 @@ function SidebarSection({
   onToggleSection,
   onItemClick,
   isCollapsed,
-  hoveredSection,
-  dropdownTriggerRect,
-  onSectionHoverStart,
-  onSectionHoverEnd,
 }: {
   section: { title: string; items: NavItemWithHref[] };
   basePath: string;
@@ -522,14 +443,8 @@ function SidebarSection({
   onToggleSection: (title: string) => void;
   onItemClick: () => void;
   isCollapsed: boolean;
-  hoveredSection: string | null;
-  dropdownTriggerRect: DOMRect | null;
-  onSectionHoverStart: (title: string, triggerEl?: HTMLElement) => void;
-  onSectionHoverEnd: () => void;
 }) {
   const hasMultipleItems = section.items.length > 1;
-  const showDropdown =
-    isCollapsed && hasMultipleItems && hoveredSection === section.title;
   const firstItem = section.items[0];
   const FirstIcon = firstItem?.icon;
 
@@ -542,48 +457,61 @@ function SidebarSection({
 
   if (isCollapsed && hasMultipleItems && firstItem && FirstIcon) {
     return (
-      <div className="space-y-1" onMouseLeave={onSectionHoverEnd}>
-        <div
-          role="button"
-          tabIndex={0}
-          aria-expanded={showDropdown ? "true" : "false"}
-          aria-haspopup="menu"
-          aria-label={`${section.title} menu`}
-          title={section.title}
-          onMouseEnter={(e) =>
-            onSectionHoverStart(section.title, e.currentTarget)
-          }
-          onMouseLeave={onSectionHoverEnd}
-          className={cn(
-            "flex items-center justify-center w-10 h-10 mx-auto rounded-md transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
-            pathname === firstItem?.href ||
-              section.items.some((i) => pathname === i.href)
-              ? "bg-muted text-foreground"
-              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-          )}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              onSectionHoverStart(
-                section.title,
-                e.currentTarget as HTMLElement,
-              );
-            }
-          }}
+      <HoverCard openDelay={100} closeDelay={400}>
+        <HoverCardTrigger asChild>
+          <div
+            role="button"
+            tabIndex={0}
+            aria-haspopup="menu"
+            aria-label={`${section.title} menu`}
+            title={section.title}
+            className={cn(
+              "flex items-center justify-center w-10 h-10 mx-auto rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              pathname === firstItem?.href ||
+                section.items.some((i) => pathname === i.href)
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+            )}
+          >
+            <FirstIcon className="h-5 w-5" aria-hidden />
+          </div>
+        </HoverCardTrigger>
+        <HoverCardContent
+          side="right"
+          align="start"
+          sideOffset={8}
+          className="w-48 p-0"
         >
-          <FirstIcon className="h-5 w-5" aria-hidden />
-        </div>
-        <SidebarDropdown
-          title={section.title}
-          items={section.items}
-          pathname={pathname}
-          triggerRect={showDropdown ? dropdownTriggerRect : null}
-          isVisible={showDropdown}
-          onMouseEnter={() => onSectionHoverStart(section.title)}
-          onMouseLeave={onSectionHoverEnd}
-          onItemClick={onItemClick}
-        />
-      </div>
+          <nav aria-label={`${section.title} submenu`}>
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
+              {section.title}
+            </div>
+            <div className="py-1">
+              {section.items.map((navItem) => {
+                if (!navItem) return null;
+                const Icon = navItem.icon;
+                const active = pathname === navItem.href;
+                return (
+                  <Link
+                    key={navItem.href}
+                    href={navItem.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                    )}
+                    onClick={onItemClick}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{navItem.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </HoverCardContent>
+      </HoverCard>
     );
   }
 
@@ -673,10 +601,6 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const [resizing, setResizing] = useState(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
-  const [hoveredSection, setHoveredSection] = useState<string | null>(null);
-  const [dropdownTriggerRect, setDropdownTriggerRect] =
-    useState<DOMRect | null>(null);
-  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (!resizing) return;
@@ -696,12 +620,6 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       document.body.style.userSelect = "";
     };
   }, [resizing, setSidebarWidth]);
-
-  useEffect(() => {
-    return () => {
-      if (hoverTimeoutRef.current) clearTimeout(hoverTimeoutRef.current);
-    };
-  }, []);
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     PLATFORM: true,
@@ -754,28 +672,6 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     },
     [isMobile, isOpen],
   );
-
-  const handleSectionHoverStart = useCallback(
-    (title: string, triggerEl?: HTMLElement) => {
-      if (hoverTimeoutRef.current) {
-        clearTimeout(hoverTimeoutRef.current);
-        hoverTimeoutRef.current = null;
-      }
-      if (triggerEl) {
-        setDropdownTriggerRect(triggerEl.getBoundingClientRect());
-      }
-      setHoveredSection(title);
-    },
-    [],
-  );
-
-  const handleSectionHoverEnd = useCallback(() => {
-    hoverTimeoutRef.current = setTimeout(() => {
-      setHoveredSection(null);
-      setDropdownTriggerRect(null);
-      hoverTimeoutRef.current = null;
-    }, 500);
-  }, []);
 
   const handleItemClick = useCallback(() => {
     if (isMobile) onToggle();
@@ -875,12 +771,6 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
             onToggleSection={toggleSection}
             onItemClick={handleItemClick}
             isCollapsed={!isOpen}
-            hoveredSection={hoveredSection}
-            dropdownTriggerRect={
-              hoveredSection === section.title ? dropdownTriggerRect : null
-            }
-            onSectionHoverStart={handleSectionHoverStart}
-            onSectionHoverEnd={handleSectionHoverEnd}
           />
         ))}
       </nav>
