@@ -10,6 +10,7 @@ import platformService from "./platform.service";
 import {
   CreateTenantSchema,
   UpdateTenantSchema,
+  CreateTenantUserSchema,
   ResetTenantUserPasswordSchema,
   ChangePlanSchema,
   UpsertPlanLimitSchema,
@@ -87,6 +88,24 @@ class PlatformController {
       return res.status(200).json({ tenant });
     } catch (error) {
       return sendControllerError(req, res, error, "Get tenant error");
+    }
+  };
+
+  createTenantUser = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getParam(req, "tenantId");
+      const body = CreateTenantUserSchema.parse(req.body);
+      const user = await platformService.createTenantUser(tenantId, body);
+      return res
+        .status(201)
+        .json({ message: "User created successfully", user });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          message: error.errors[0]?.message ?? "Validation error",
+        });
+      }
+      return handleError(req, res, error, "Create tenant user error");
     }
   };
 

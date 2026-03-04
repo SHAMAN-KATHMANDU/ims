@@ -247,10 +247,41 @@ export class PlatformRepository {
     });
   }
 
-  // ─── User (reset password) ─────────────────────────────────────────────────
+  // ─── User (reset password, create) ─────────────────────────────────────────
 
   async findUserById(userId: string) {
     return basePrisma.user.findUnique({ where: { id: userId } });
+  }
+
+  async findUserByTenantAndUsername(tenantId: string, username: string) {
+    return basePrisma.user.findFirst({
+      where: { tenantId, username: username.toLowerCase().trim() },
+    });
+  }
+
+  async createUserForTenant(
+    tenantId: string,
+    data: {
+      username: string;
+      hashedPassword: string;
+      role: "admin" | "user" | "superAdmin";
+    },
+  ) {
+    return basePrisma.user.create({
+      data: {
+        tenantId,
+        username: data.username,
+        password: data.hashedPassword,
+        role: data.role,
+      },
+      select: {
+        id: true,
+        username: true,
+        role: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
   }
 
   async updateUserPassword(userId: string, hashedPassword: string) {

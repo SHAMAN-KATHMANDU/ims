@@ -9,10 +9,12 @@ import {
   changeTenantPlan,
   activateTenant,
   deactivateTenant,
+  createTenantUser,
   resetTenantUserPassword,
   type Tenant,
   type CreateTenantData,
   type UpdateTenantData,
+  type CreateTenantUserData,
   type PlanTier,
   type SubscriptionStatus,
 } from "@/services/tenantService";
@@ -106,6 +108,22 @@ export function useDeactivateTenant() {
     mutationFn: deactivateTenant,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: tenantKeys.lists() });
+    },
+  });
+}
+
+export function useCreateTenantUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      tenantId,
+      data,
+    }: {
+      tenantId: string;
+      data: CreateTenantUserData;
+    }) => createTenantUser(tenantId, data),
+    onSuccess: (_, { tenantId }) => {
+      queryClient.invalidateQueries({ queryKey: tenantKeys.detail(tenantId) });
     },
   });
 }

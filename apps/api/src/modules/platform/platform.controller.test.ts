@@ -6,6 +6,7 @@ vi.mock("./platform.service", () => ({
     createTenant: vi.fn(),
     findAllTenants: vi.fn(),
     findTenantById: vi.fn(),
+    createTenantUser: vi.fn(),
     resetTenantUserPassword: vi.fn(),
     updateTenant: vi.fn(),
     changePlan: vi.fn(),
@@ -187,6 +188,117 @@ describe("PlatformController", () => {
       expect(res.json).toHaveBeenCalledWith({
         message: "Tenant not found",
       });
+    });
+  });
+
+  describe("createTenantUser", () => {
+    it("returns 201 with user on success", async () => {
+      const user = {
+        id: "u1",
+        username: "newuser",
+        role: "user",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      mockService.createTenantUser.mockResolvedValue(user);
+
+      const req = makeReq({
+        params: { tenantId: "t1" },
+        body: { username: "newuser", password: "secret123", role: "user" },
+      });
+      const res = mockRes() as Response;
+
+      await platformController.createTenantUser(req, res);
+
+      expect(mockService.createTenantUser).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({
+          username: "newuser",
+          password: "secret123",
+          role: "user",
+        }),
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "User created successfully",
+        user,
+      });
+    });
+
+    it("returns 400 on Zod validation error", async () => {
+      const req = makeReq({
+        params: { tenantId: "t1" },
+        body: { username: "newuser" }, // missing password, role
+      });
+      const res = mockRes() as Response;
+
+      await platformController.createTenantUser(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockService.createTenantUser).not.toHaveBeenCalled();
+    });
+
+    it("returns 404 when tenant not found", async () => {
+      mockService.createTenantUser.mockRejectedValue(
+        Object.assign(new Error("Tenant not found"), { statusCode: 404 }),
+      );
+      const req = makeReq({
+        params: { tenantId: "t1" },
+        body: { username: "newuser", password: "secret123", role: "user" },
+      });
+      const res = mockRes() as Response;
+
+      await platformController.createTenantUser(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it("returns 409 when username already exists", async () => {
+      mockService.createTenantUser.mockRejectedValue(
+        Object.assign(new Error("User with this username already exists"), {
+          statusCode: 409,
+        }),
+      );
+      const req = makeReq({
+        params: { tenantId: "t1" },
+        body: { username: "existing", password: "secret123", role: "user" },
+      });
+      const res = mockRes() as Response;
+
+      await platformController.createTenantUser(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+    });
+
+    it("returns 403 when plan limit exceeded", async () => {
+      mockService.createTenantUser.mockRejectedValue(
+        Object.assign(
+          new Error("Tenant has reached the user limit for their plan."),
+          { statusCode: 403 },
+        ),
+      );
+      const req = makeReq({
+        params: { tenantId: "t1" },
+        body: { username: "newuser", password: "secret123", role: "user" },
+      });
+      const res = mockRes() as Response;
+
+      await platformController.createTenantUser(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+    });
+
+    it("calls sendControllerError on unexpected error", async () => {
+      mockService.createTenantUser.mockRejectedValue(new Error("DB down"));
+      const req = makeReq({
+        params: { tenantId: "t1" },
+        body: { username: "newuser", password: "secret123", role: "user" },
+      });
+      const res = mockRes() as Response;
+
+      await platformController.createTenantUser(req, res);
+
+      expect(sendControllerError).toHaveBeenCalled();
     });
   });
 

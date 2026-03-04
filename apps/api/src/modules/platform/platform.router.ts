@@ -21,6 +21,10 @@ router.use(authorizeRoles("platformAdmin"));
 router.post("/tenants", asyncHandler(platformController.createTenant));
 router.get("/tenants", asyncHandler(platformController.listTenants));
 router.get("/tenants/:id", asyncHandler(platformController.getTenant));
+router.post(
+  "/tenants/:tenantId/users",
+  asyncHandler(platformController.createTenantUser),
+);
 router.patch(
   "/tenants/:tenantId/users/:userId/password",
   asyncHandler(platformController.resetTenantUserPassword),
