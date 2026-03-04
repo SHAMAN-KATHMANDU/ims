@@ -376,39 +376,37 @@ function SidebarDropdown({
         style={{ width: BRIDGE_WIDTH, minHeight: triggerRect.height }}
         aria-hidden
       />
-      <div
-        role="menu"
+      <nav
         aria-label={`${title} submenu`}
         className="min-w-48 rounded-md border border-border bg-popover shadow-md"
       >
-      <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
-        {title}
-      </div>
-      <div className="py-1">
-        {items.map((navItem) => {
-          if (!navItem) return null;
-          const Icon = navItem.icon;
-          const active = pathname === navItem.href;
-          return (
-            <Link
-              key={navItem.href}
-              href={navItem.href}
-              role="menuitem"
-              className={cn(
-                "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
-                active
-                  ? "bg-muted text-foreground"
-                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-              )}
-              onClick={onItemClick}
-            >
-              <Icon className="h-4 w-4 shrink-0" />
-              <span>{navItem.label}</span>
-            </Link>
-          );
-        })}
-      </div>
-      </div>
+        <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
+          {title}
+        </div>
+        <div className="py-1">
+          {items.map((navItem) => {
+            if (!navItem) return null;
+            const Icon = navItem.icon;
+            const active = pathname === navItem.href;
+            return (
+              <Link
+                key={navItem.href}
+                href={navItem.href}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
+                  active
+                    ? "bg-muted text-foreground"
+                    : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                )}
+                onClick={onItemClick}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span>{navItem.label}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
     </div>
   );
 
@@ -548,7 +546,7 @@ function SidebarSection({
         <div
           role="button"
           tabIndex={0}
-          aria-expanded={showDropdown}
+          aria-expanded={showDropdown ? "true" : "false"}
           aria-haspopup="menu"
           aria-label={`${section.title} menu`}
           title={section.title}
@@ -626,7 +624,7 @@ function SidebarSection({
       <div className="space-y-2">
         <CollapsibleTrigger
           className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-expanded={openSections[section.title] ?? true}
+          aria-expanded={(openSections[section.title] ?? true) ? "true" : "false"}
           onKeyDown={(e) =>
             handleKeyDown(e, () => onToggleSection(section.title))
           }
@@ -842,7 +840,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
                 size="icon"
                 onClick={onToggle}
                 className="ml-auto h-8 w-8 shrink-0"
-                aria-expanded={isOpen}
+                aria-expanded={isOpen ? "true" : "false"}
                 aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
                 onKeyDown={handleCollapseKeyDown}
               >
