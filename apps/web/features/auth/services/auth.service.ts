@@ -2,7 +2,6 @@
  * Auth Service
  *
  * Single source for auth API calls. All auth HTTP requests must go through this file.
- * Auth errors use handleApiError for consistency; login message may be customized in api-error if needed.
  */
 
 import api from "@/lib/axios";
@@ -20,10 +19,6 @@ interface CurrentUserResponse {
   tenant: TenantInfo;
 }
 
-/**
- * Login with username and password.
- * Optionally pass a tenant slug for multi-tenant login.
- */
 export async function login(
   username: string,
   password: string,
@@ -54,9 +49,6 @@ export async function login(
   }
 }
 
-/**
- * Get current user info (includes tenant info)
- */
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   try {
     const response = await api.get<CurrentUserResponse>("/auth/me");
@@ -66,9 +58,6 @@ export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   }
 }
 
-/**
- * Logout user
- */
 export async function logout(): Promise<void> {
   try {
     await api.post("/auth/logout");
