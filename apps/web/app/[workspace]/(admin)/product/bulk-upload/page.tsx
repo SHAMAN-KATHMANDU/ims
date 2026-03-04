@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { ProductBulkUploadPage } from "@/views/products/ProductBulkUploadPage";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { ProductBulkUploadPage } from "@/features/products";
 
 export default function ProductBulkUploadRoute() {
   return (

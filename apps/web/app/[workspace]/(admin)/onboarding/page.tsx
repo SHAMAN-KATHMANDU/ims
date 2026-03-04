@@ -1,4 +1,4 @@
-import { OnboardingPage } from "@/views/onboarding/OnboardingPage";
+import { OnboardingPage } from "@/features/onboarding";
 
 export const metadata = { title: "Get started" };
 

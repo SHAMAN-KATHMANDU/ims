@@ -8,7 +8,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Warehouse, Store } from "lucide-react";
-import { useActiveLocations } from "@/hooks/useLocation";
+import { useActiveLocations } from "@/features/locations";
 
 interface LocationSelectorProps {
   value: string;

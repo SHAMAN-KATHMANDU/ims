@@ -1,4 +1,6 @@
-import LoginForm from "@/components/auth/login-form";
+import { LoginForm } from "@/features/auth";
+
+export const metadata = { title: "Sign in" };
 
 type Props = {
   params: Promise<{ workspace: string }>;

@@ -3,12 +3,12 @@
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
-import { useTask, useUpdateTask, useCompleteTask } from "@/hooks/useTasks";
+import { useTask, useUpdateTask, useCompleteTask } from "@/features/crm";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Check } from "lucide-react";
-import { TaskForm } from "@/views/crm/tasks/TaskForm";
-import type { UpdateTaskData } from "@/services/taskService";
+import { TaskForm } from "@/features/crm";
+import type { UpdateTaskData } from "@/features/crm";
 
 export default function EditTaskPage() {
   const params = useParams();

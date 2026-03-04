@@ -13,8 +13,8 @@
  */
 
 import axios, { type InternalAxiosRequestConfig } from "axios";
-import { useAuthStore } from "@/stores/auth-store";
-import { getApiErrorMessage } from "@/lib/apiError";
+import { useAuthStore } from "@/store/auth-store";
+import { getApiErrorMessage } from "@/lib/api-error";
 import { toast } from "@/hooks/useToast";
 
 // API base URL from environment variable with fallback

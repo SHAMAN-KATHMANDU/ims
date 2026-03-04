@@ -3,10 +3,10 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
-import { useCreateTask } from "@/hooks/useTasks";
+import { useCreateTask } from "@/features/crm";
 import { Button } from "@/components/ui/button";
-import { TaskForm } from "@/views/crm/tasks/TaskForm";
-import type { CreateTaskData } from "@/services/taskService";
+import { TaskForm } from "@/features/crm";
+import type { CreateTaskData } from "@/features/crm";
 
 export default function NewTaskPage() {
   const params = useParams();

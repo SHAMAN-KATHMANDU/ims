@@ -3,10 +3,10 @@
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
-import { useCreateDeal } from "@/hooks/useDeals";
+import { useCreateDeal } from "@/features/crm";
 import { Button } from "@/components/ui/button";
-import { DealForm } from "@/views/crm/deals/DealForm";
-import type { CreateDealData } from "@/services/dealService";
+import { DealForm } from "@/features/crm";
+import type { CreateDealData } from "@/features/crm";
 
 export default function NewDealPage() {
   const params = useParams();

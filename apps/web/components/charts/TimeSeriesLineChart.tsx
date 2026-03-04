@@ -66,8 +66,8 @@ export function TimeSeriesLineChart({
       <div className="text-xs text-muted-foreground mb-1">{yLabel}</div>
       <ChartContainer
         config={config}
-        className="min-w-0 w-full max-w-full"
-        style={{ height }}
+        className="min-w-0 w-full max-w-full h-[var(--chart-height)]"
+        style={{ "--chart-height": `${height}px` } as React.CSSProperties}
       >
         <LineChart data={chartData} margin={{ left: 12, right: 12 }}>
           <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />

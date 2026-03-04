@@ -82,8 +82,8 @@ export function ReportsDoughnutChart({
   if (data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-muted-foreground text-sm"
-        style={{ height: size, width: size }}
+        className="flex items-center justify-center text-muted-foreground text-sm h-[var(--chart-size)] w-[var(--chart-size)]"
+        style={{ "--chart-size": `${size}px` } as React.CSSProperties}
         aria-label={ariaLabel ?? "Doughnut chart (no data)"}
       >
         No data
@@ -104,7 +104,10 @@ export function ReportsDoughnutChart({
           {title}
         </p>
       )}
-      <div style={{ height: size, width: "100%" }}>
+      <div
+        className="h-[var(--chart-size)] w-full"
+        style={{ "--chart-size": `${size}px` } as React.CSSProperties}
+      >
         <Doughnut data={chartData} options={options} />
       </div>
     </div>

@@ -1,4 +1,4 @@
-import CrmSettingsPage from "@/views/crm/settings/CrmSettingsPage";
+import { CrmSettingsPage } from "@/features/crm";
 
 export default function CrmSettings() {
   return <CrmSettingsPage />;

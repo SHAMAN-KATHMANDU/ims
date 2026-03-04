@@ -1,6 +1,8 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { TenantsPage } from "@/views/tenants";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { TenantsPage } from "@/features/tenants";
+
+export const metadata = { title: "Tenants" };
 
 /** Platform tenants list – platformAdmin only. */
 export default function PlatformTenantsRoute() {

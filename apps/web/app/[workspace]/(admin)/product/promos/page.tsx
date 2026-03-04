@@ -1,4 +1,4 @@
-import { PromoPage } from "@/views/promos";
+import { PromoPage } from "@/features/promos";
 
 /**
  * Product Promo Codes – read-only list for all roles.

@@ -1,6 +1,8 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { FinancialPage } from "@/views/analytics/FinancialPage";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { FinancialPage } from "@/features/analytics";
+
+export const metadata = { title: "Financial Analytics" };
 
 /**
  * Financial Analytics: gross profit, COGS breakdown, margin by category.

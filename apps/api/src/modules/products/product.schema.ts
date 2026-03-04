@@ -137,7 +137,10 @@ const DiscountSchema = z.object({
   discountTypeId: z
     .string({ required_error: "Discount type ID is required" })
     .uuid("Discount type ID must be a valid UUID"),
-  discountPercentage: z.coerce.number().min(0).max(100),
+  discountPercentage: z.coerce
+    .number()
+    .min(0, "Discount must be at least 0")
+    .max(100, "Discount percentage must be between 0 and 100"),
   valueType: z.enum(["PERCENTAGE", "FLAT"]).default("PERCENTAGE"),
   value: z.coerce.number().optional(),
   startDate: z.string().optional(),
@@ -197,13 +200,22 @@ export const UpdateProductSchema = z.object({
 export const CreateDiscountTypeSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   description: z.string().max(500).optional(),
-  defaultPercentage: z.coerce.number().min(0).max(100).optional(),
+  defaultPercentage: z.coerce
+    .number()
+    .min(0, "Percentage must be at least 0")
+    .max(100, "Default percentage must be between 0 and 100")
+    .optional(),
 });
 
 export const UpdateDiscountTypeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   description: z.string().max(500).nullable().optional(),
-  defaultPercentage: z.coerce.number().min(0).max(100).nullable().optional(),
+  defaultPercentage: z.coerce
+    .number()
+    .min(0, "Percentage must be at least 0")
+    .max(100, "Default percentage must be between 0 and 100")
+    .nullable()
+    .optional(),
 });
 
 export type CreateProductDto = z.infer<typeof CreateProductSchema>;

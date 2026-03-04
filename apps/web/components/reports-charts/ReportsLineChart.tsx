@@ -126,8 +126,8 @@ export function ReportsLineChart({
 
   return (
     <div
-      className="w-full"
-      style={{ height }}
+      className="w-full h-[var(--chart-height)]"
+      style={{ "--chart-height": `${height}px` } as React.CSSProperties}
       aria-label={ariaLabel}
       role="img"
     >

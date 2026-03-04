@@ -3,11 +3,11 @@
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
-import { useDeal, useUpdateDeal } from "@/hooks/useDeals";
+import { useDeal, useUpdateDeal } from "@/features/crm";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { DealForm } from "@/views/crm/deals/DealForm";
-import type { UpdateDealData } from "@/services/dealService";
+import { DealForm } from "@/features/crm";
+import type { UpdateDealData } from "@/features/crm";
 
 export default function EditDealPage() {
   const params = useParams();

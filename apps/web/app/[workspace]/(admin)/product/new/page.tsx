@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { ProductNewPage } from "@/views/products/ProductNewPage";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { ProductNewPage } from "@/features/products";
 
 export default function NewProductRoute() {
   return (

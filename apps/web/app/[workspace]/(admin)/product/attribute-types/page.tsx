@@ -1,4 +1,4 @@
-import { AttributeTypesPage } from "@/views/products/AttributeTypesPage";
+import { AttributeTypesPage } from "@/features/products";
 
 export default function ProductAttributeTypesPage() {
   return <AttributeTypesPage />;

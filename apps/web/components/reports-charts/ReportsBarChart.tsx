@@ -111,8 +111,8 @@ export function ReportsBarChart({
   if (data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-muted-foreground text-sm"
-        style={{ height }}
+        className="flex items-center justify-center text-muted-foreground text-sm h-[var(--chart-height)]"
+        style={{ "--chart-height": `${height}px` } as React.CSSProperties}
         aria-label={ariaLabel ?? "Bar chart (no data)"}
       >
         No data
@@ -122,8 +122,8 @@ export function ReportsBarChart({
 
   return (
     <div
-      className="w-full"
-      style={{ height }}
+      className="w-full h-[var(--chart-height)]"
+      style={{ "--chart-height": `${height}px` } as React.CSSProperties}
       aria-label={ariaLabel ?? `${valueLabel} by ${xLabel}`}
       role="img"
     >

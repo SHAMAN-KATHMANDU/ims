@@ -1,6 +1,8 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { TrashPage } from "@/views/trash/TrashPage";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { TrashPage } from "@/features/trash";
+
+export const metadata = { title: "Trash" };
 
 /** Trash – admin/superAdmin only. */
 export default function Trash() {

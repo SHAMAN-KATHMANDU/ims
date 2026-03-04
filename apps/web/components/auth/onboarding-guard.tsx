@@ -3,8 +3,8 @@
 import type React from "react";
 import { useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
-import { useActiveLocations } from "@/hooks/useLocation";
-import { useAuthStore, selectUser } from "@/stores/auth-store";
+import { useActiveLocations } from "@/features/locations";
+import { useAuthStore, selectUser } from "@/store/auth-store";
 
 /**
  * Redirects to onboarding when tenant has no default warehouse.

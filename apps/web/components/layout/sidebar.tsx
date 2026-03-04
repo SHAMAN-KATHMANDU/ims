@@ -1,8 +1,9 @@
 "use client";
 
+import type React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { getWorkspaceRoot } from "@/config/routes";
+import { getWorkspaceRoot } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 import {
   Home,
@@ -31,25 +32,32 @@ import {
   Trash2,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import {
-  useAuthStore,
-  selectUserRole,
-  selectTenant,
-} from "@/stores/auth-store";
+import { useAuthStore, selectUserRole, selectTenant } from "@/store/auth-store";
 import {
   useSidebarStore,
   selectSidebarWidth,
   selectSetSidebarWidth,
-} from "@/stores/sidebar-store";
+} from "@/store/sidebar-store";
 import type { UserRole } from "@/utils/auth";
 import { Badge } from "../ui/badge";
-import { useMemo, useState, useRef, useEffect } from "react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "../ui/collapsible";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "../ui/sheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "../ui/tooltip";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "../ui/hover-card";
 import { useIsMobile } from "@/hooks/useMobile";
 
 interface NavItem {
@@ -66,17 +74,11 @@ interface NavSection {
   items: NavItem[];
 }
 
-// Define nav sections
 const navSections: NavSection[] = [
   {
     title: "PLATFORM",
     items: [
-      {
-        path: "",
-        label: "Dashboard",
-        icon: Home,
-        roles: ["platformAdmin"],
-      },
+      { path: "", label: "Dashboard", icon: Home, roles: ["platformAdmin"] },
       {
         path: "platform/tenants",
         label: "Tenants",
@@ -175,7 +177,6 @@ const navSections: NavSection[] = [
         icon: Package,
         roles: ["user", "admin", "superAdmin"],
       },
-
       {
         path: "product/discounts",
         label: "Discounts",
@@ -338,6 +339,252 @@ const navSections: NavSection[] = [
   },
 ];
 
+type NavItemWithHref = NavItem & { href: string };
+
+function SidebarItem({
+  item,
+  basePath,
+  pathname,
+  isExpanded,
+  onItemClick,
+}: {
+  item: NavItemWithHref;
+  basePath: string;
+  pathname: string;
+  isExpanded: boolean;
+  onItemClick: () => void;
+}) {
+  const Icon = item.icon;
+  const active = pathname === item.href;
+  const hasChildren = item.children && item.children.length > 0;
+
+  const linkContent = (
+    <>
+      <Icon className="h-4 w-4 shrink-0" aria-hidden />
+      {isExpanded && <span>{item.label}</span>}
+    </>
+  );
+
+  if (hasChildren && isExpanded) {
+    return (
+      <Collapsible>
+        <CollapsibleTrigger
+          className={cn(
+            "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+            active
+              ? "bg-muted text-foreground"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+          )}
+          aria-expanded={undefined}
+        >
+          {linkContent}
+          <ChevronDown className="h-4 w-4 shrink-0" />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pl-4 mt-1 space-y-1">
+          {item.children?.map((child) => {
+            const childHref =
+              child.href ?? `${basePath}${child.path ? `/${child.path}` : ""}`;
+            return (
+              <Link
+                key={childHref}
+                href={childHref}
+                className={cn(
+                  "flex items-center gap-3 px-3 py-1.5 text-sm rounded-md transition-colors",
+                  pathname === childHref
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+                onClick={(e) => {
+                  onItemClick();
+                  e.stopPropagation();
+                }}
+              >
+                <span className="h-1 w-1 rounded-full bg-current" aria-hidden />
+                <span>{child.label}</span>
+              </Link>
+            );
+          })}
+        </CollapsibleContent>
+      </Collapsible>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      className={cn(
+        "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
+        active
+          ? "bg-muted text-foreground"
+          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+      )}
+      onClick={onItemClick}
+    >
+      {linkContent}
+    </Link>
+  );
+}
+
+function SidebarSection({
+  section,
+  basePath,
+  pathname,
+  isExpanded,
+  openSections,
+  onToggleSection,
+  onItemClick,
+  isCollapsed,
+}: {
+  section: { title: string; items: NavItemWithHref[] };
+  basePath: string;
+  pathname: string;
+  isExpanded: boolean;
+  openSections: Record<string, boolean>;
+  onToggleSection: (title: string) => void;
+  onItemClick: () => void;
+  isCollapsed: boolean;
+}) {
+  const hasMultipleItems = section.items.length > 1;
+  const firstItem = section.items[0];
+  const FirstIcon = firstItem?.icon;
+
+  const handleKeyDown = (e: React.KeyboardEvent, action: () => void) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      action();
+    }
+  };
+
+  if (isCollapsed && hasMultipleItems && firstItem && FirstIcon) {
+    return (
+      <HoverCard openDelay={100} closeDelay={400}>
+        <HoverCardTrigger asChild>
+          <div
+            role="button"
+            tabIndex={0}
+            aria-haspopup="menu"
+            aria-label={`${section.title} menu`}
+            title={section.title}
+            className={cn(
+              "flex items-center justify-center w-10 h-10 mx-auto rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              pathname === firstItem?.href ||
+                section.items.some((i) => pathname === i.href)
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+            )}
+          >
+            <FirstIcon className="h-5 w-5" aria-hidden />
+          </div>
+        </HoverCardTrigger>
+        <HoverCardContent
+          side="right"
+          align="start"
+          sideOffset={8}
+          className="w-48 p-0"
+        >
+          <nav aria-label={`${section.title} submenu`}>
+            <div className="px-3 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-b border-border">
+              {section.title}
+            </div>
+            <div className="py-1">
+              {section.items.map((navItem) => {
+                if (!navItem) return null;
+                const Icon = navItem.icon;
+                const active = pathname === navItem.href;
+                return (
+                  <Link
+                    key={navItem.href}
+                    href={navItem.href}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors",
+                      active
+                        ? "bg-muted text-foreground"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                    )}
+                    onClick={onItemClick}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span>{navItem.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          </nav>
+        </HoverCardContent>
+      </HoverCard>
+    );
+  }
+
+  if (isCollapsed && section.items.length === 1) {
+    const item = section.items[0];
+    if (!item) return null;
+    const Icon = item.icon;
+    const active = pathname === item.href;
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>
+          <Link
+            href={item.href}
+            className={cn(
+              "flex items-center justify-center w-10 h-10 mx-auto rounded-md transition-colors",
+              active
+                ? "bg-muted text-foreground"
+                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+            )}
+            onClick={onItemClick}
+            aria-label={item.label}
+          >
+            <Icon className="h-5 w-5" aria-hidden />
+          </Link>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>
+          {item.label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
+  return (
+    <Collapsible
+      open={openSections[section.title] ?? true}
+      onOpenChange={() => onToggleSection(section.title)}
+    >
+      <div className="space-y-2">
+        <CollapsibleTrigger
+          className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          aria-expanded={(openSections[section.title] ?? true) ? "true" : "false"}
+          onKeyDown={(e) =>
+            handleKeyDown(e, () => onToggleSection(section.title))
+          }
+        >
+          <span>{section.title}</span>
+          <ChevronDown
+            className={cn(
+              "h-3 w-3 transition-transform duration-200",
+              openSections[section.title] && "rotate-180",
+            )}
+            aria-hidden
+          />
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-1">
+            {section.items.map((item) => (
+              <SidebarItem
+                key={item.href}
+                item={item}
+                basePath={basePath}
+                pathname={pathname}
+                isExpanded={isExpanded}
+                onItemClick={onItemClick}
+              />
+            ))}
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
 interface SidebarProps {
   isOpen: boolean;
   onToggle: () => void;
@@ -386,7 +633,6 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     SETTINGS: true,
   });
 
-  // Base path: first segment is workspace (e.g. /admin, /admin/sales -> /admin).
   const detectedBasePath = useMemo(() => {
     if (basePath) return basePath;
     const segment = pathname.split("/")[1];
@@ -401,10 +647,8 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     return getWorkspaceRoot();
   }, [pathname, basePath]);
 
-  // Build nav items with full paths
   const filteredSections = useMemo(() => {
     if (!userRole) return [];
-
     return navSections
       .map((section) => ({
         ...section,
@@ -418,35 +662,38 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       .filter((section) => section.items.length > 0);
   }, [userRole, detectedBasePath]);
 
-  const toggleSection = (sectionTitle: string) => {
-    // Don't toggle sections when sidebar is minimized on desktop
-    if (!isMobile && !isOpen) {
-      return;
-    }
-    setOpenSections((prev) => ({
-      ...prev,
-      [sectionTitle]: !prev[sectionTitle],
-    }));
-  };
+  const toggleSection = useCallback(
+    (sectionTitle: string) => {
+      if (!isMobile && !isOpen) return;
+      setOpenSections((prev) => ({
+        ...prev,
+        [sectionTitle]: !prev[sectionTitle],
+      }));
+    },
+    [isMobile, isOpen],
+  );
 
-  // Only the current page link is active: exact pathname match (no parent paths as active).
-  const isItemActive = (
-    item: NavItem & { href?: string },
-    detectedBasePath: string,
-  ) => {
-    const href =
-      item.href || `${detectedBasePath}${item.path ? `/${item.path}` : ""}`;
-    return pathname === href;
+  const handleItemClick = useCallback(() => {
+    if (isMobile) onToggle();
+  }, [isMobile, onToggle]);
+
+  const handleCollapseKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      onToggle();
+    }
   };
 
   const sidebarContent = (
-    <>
-      {/* Header with tenant info */}
-      <div className="flex h-16 items-center justify-between px-4 border-b border-border">
+    <TooltipProvider delayDuration={300}>
+      <div className="flex h-16 items-center justify-between px-4 border-b border-border shrink-0">
         {isOpen ? (
           <div className="flex items-center gap-2 min-w-0">
             <div className="h-8 w-8 rounded bg-primary flex items-center justify-center shrink-0">
-              <Building2 className="h-4 w-4 text-primary-foreground" />
+              <Building2
+                className="h-4 w-4 text-primary-foreground"
+                aria-hidden
+              />
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold truncate">
@@ -467,167 +714,69 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
             </div>
           </div>
         ) : (
-          <div className="h-8 w-8 rounded bg-primary flex items-center justify-center mx-auto">
-            <Building2 className="h-4 w-4 text-primary-foreground" />
-          </div>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <div className="h-8 w-8 rounded bg-primary flex items-center justify-center mx-auto shrink-0">
+                <Building2
+                  className="h-4 w-4 text-primary-foreground"
+                  aria-hidden
+                />
+              </div>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {tenant?.name ?? "IMS"}
+            </TooltipContent>
+          </Tooltip>
         )}
         {!isMobile && (
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={onToggle}
-            className="ml-auto h-8 w-8"
-          >
-            <ChevronLeft
-              className={cn(
-                "h-4 w-4 transition-transform",
-                !isOpen && "rotate-180",
-              )}
-            />
-          </Button>
+          <Tooltip delayDuration={0}>
+            <TooltipTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={onToggle}
+                className="ml-auto h-8 w-8 shrink-0"
+                aria-expanded={isOpen ? "true" : "false"}
+                aria-label={isOpen ? "Collapse sidebar" : "Expand sidebar"}
+                onKeyDown={handleCollapseKeyDown}
+              >
+                <ChevronLeft
+                  className={cn(
+                    "h-4 w-4 transition-transform duration-200",
+                    !isOpen && "rotate-180",
+                  )}
+                  aria-hidden
+                />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="right" sideOffset={8}>
+              {isOpen ? "Collapse sidebar" : "Expand sidebar"}
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6">
+      <nav
+        className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6"
+        aria-label="Main navigation"
+      >
         {filteredSections.map((section) => (
-          <Collapsible
+          <SidebarSection
             key={section.title}
-            open={openSections[section.title] ?? true}
-            onOpenChange={() => {
-              // Prevent toggling sections when sidebar is minimized on desktop
-              if (!isMobile && !isOpen) {
-                return;
-              }
-              toggleSection(section.title);
-            }}
-          >
-            <div className="space-y-2">
-              {isOpen ? (
-                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors">
-                  <span>{section.title}</span>
-                  <ChevronDown
-                    className={cn(
-                      "h-3 w-3 transition-transform",
-                      openSections[section.title] && "rotate-180",
-                    )}
-                  />
-                </CollapsibleTrigger>
-              ) : (
-                <div className="px-3 py-1.5" />
-              )}
-
-              <CollapsibleContent>
-                <div className="space-y-1">
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    const href =
-                      item.href ||
-                      `${detectedBasePath}${item.path ? `/${item.path}` : ""}`;
-                    const active = isItemActive(
-                      { ...item, href },
-                      detectedBasePath,
-                    );
-                    const hasChildren =
-                      item.children && item.children.length > 0;
-
-                    if (hasChildren && isOpen) {
-                      return (
-                        <Collapsible
-                          key={href}
-                          open={openSections[item.label] ?? false}
-                          onOpenChange={() => toggleSection(item.label)}
-                        >
-                          <CollapsibleTrigger
-                            className={cn(
-                              "w-full flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                              active
-                                ? "bg-muted text-foreground"
-                                : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                            )}
-                          >
-                            <Icon className="h-4 w-4 shrink-0" />
-                            <span className="flex-1 text-left">
-                              {item.label}
-                            </span>
-                            <ChevronDown
-                              className={cn(
-                                "h-4 w-4 shrink-0 transition-transform",
-                                openSections[item.label] && "rotate-180",
-                              )}
-                            />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="pl-4 mt-1 space-y-1">
-                            {item.children?.map((child) => {
-                              const childHref =
-                                child.href ||
-                                `${detectedBasePath}${child.path ? `/${child.path}` : ""}`;
-                              return (
-                                <Link
-                                  key={childHref}
-                                  href={childHref}
-                                  className={cn(
-                                    "flex items-center gap-3 px-3 py-1.5 text-sm rounded-md transition-colors",
-                                    isItemActive(
-                                      { ...child, href: childHref },
-                                      detectedBasePath,
-                                    )
-                                      ? "text-foreground font-medium"
-                                      : "text-muted-foreground hover:text-foreground",
-                                  )}
-                                  onClick={(e) => {
-                                    // Only close sidebar on mobile, never change state on desktop
-                                    if (isMobile) {
-                                      onToggle();
-                                    }
-                                    // Stop propagation to prevent Collapsible from responding
-                                    e.stopPropagation();
-                                  }}
-                                >
-                                  <span className="h-1 w-1 rounded-full bg-current" />
-                                  <span>{child.label}</span>
-                                </Link>
-                              );
-                            })}
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    }
-
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        className={cn(
-                          "flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors",
-                          active
-                            ? "bg-muted text-foreground"
-                            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                        )}
-                        onClick={(e) => {
-                          // Only close sidebar on mobile, never change state on desktop
-                          if (isMobile) {
-                            onToggle();
-                          }
-                          // Stop propagation to prevent Collapsible from responding
-                          e.stopPropagation();
-                        }}
-                      >
-                        <Icon className="h-4 w-4 shrink-0" />
-                        {isOpen && <span>{item.label}</span>}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </CollapsibleContent>
-            </div>
-          </Collapsible>
+            section={section}
+            basePath={detectedBasePath}
+            pathname={pathname}
+            isExpanded={isOpen}
+            openSections={openSections}
+            onToggleSection={toggleSection}
+            onItemClick={handleItemClick}
+            isCollapsed={!isOpen}
+          />
         ))}
       </nav>
-    </>
+    </TooltipProvider>
   );
 
-  // Mobile: Use Sheet drawer
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={onToggle}>
@@ -647,17 +796,22 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     );
   }
 
-  // Desktop: Regular sidebar (resizable when open)
   return (
     <aside
       className={cn(
-        "relative flex flex-col border-r border-border bg-background shrink-0",
-        !isOpen && "transition-all duration-300",
+        "relative flex flex-col border-r border-border bg-background shrink-0 transition-[width] duration-250 ease-in-out",
+        isOpen ? "w-[var(--sidebar-computed-width)]" : "w-[72px]",
       )}
-      style={isOpen ? { width: sidebarWidth } : { width: 80 }}
+      style={
+        isOpen
+          ? ({
+              "--sidebar-computed-width": `${sidebarWidth}px`,
+            } as React.CSSProperties)
+          : undefined
+      }
     >
       {sidebarContent}
-      {!isMobile && isOpen && (
+      {isOpen && (
         <button
           type="button"
           aria-label="Resize sidebar"

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { DealDetail } from "@/views/crm/deals/DealDetail";
+import { DealDetail } from "@/features/crm";
 
 export default function DealDetailPage() {
   const params = useParams();
