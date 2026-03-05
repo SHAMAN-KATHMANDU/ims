@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/useToast";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -26,6 +27,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Pencil, Plus, Trash2, GitBranch, Tag, Route } from "lucide-react";
 import {
@@ -93,12 +104,17 @@ export default function CrmSettingsPage() {
 // ── Pipeline Settings ─────────────────────────────────────────────────────────
 
 function PipelineSettings() {
+  const { toast } = useToast();
   const { data, isLoading } = usePipelines();
   const createMutation = useCreatePipeline();
   const updateMutation = useUpdatePipeline();
   const deleteMutation = useDeletePipeline();
 
   const [showCreate, setShowCreate] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
   const [editPipeline, setEditPipeline] = useState<{
     id: string;
     name: string;
@@ -121,6 +137,7 @@ function PipelineSettings() {
       { name: newName.trim(), stages },
       {
         onSuccess: () => {
+          toast({ title: "Pipeline created successfully" });
           setShowCreate(false);
           setNewName("");
           setStagesText("");
@@ -143,6 +160,7 @@ function PipelineSettings() {
       },
       {
         onSuccess: () => {
+          toast({ title: "Pipeline updated successfully" });
           setEditPipeline(null);
           setNewName("");
           setStagesText("");
@@ -246,7 +264,9 @@ function PipelineSettings() {
                           size="icon"
                           variant="ghost"
                           className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => deleteMutation.mutate(p.id)}
+                          onClick={() =>
+                            setDeleteConfirm({ id: p.id, name: p.name })
+                          }
                           disabled={p.isDefault || deleteMutation.isPending}
                           title={
                             p.isDefault
@@ -350,6 +370,46 @@ function PipelineSettings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete pipeline</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteConfirm) {
+                  deleteMutation.mutate(deleteConfirm.id, {
+                    onSuccess: () => {
+                      toast({ title: "Pipeline deleted successfully" });
+                      setDeleteConfirm(null);
+                    },
+                    onError: () => {
+                      toast({
+                        title: "Failed to delete pipeline",
+                        variant: "destructive",
+                      });
+                    },
+                  });
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
@@ -392,6 +452,12 @@ function ListSettings({
     null,
   );
   const [editName, setEditName] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+
+  const itemLabel = title.replace(/s$/, "");
 
   const handleAdd = () => {
     if (!newName.trim()) return;
@@ -467,7 +533,9 @@ function ListSettings({
                     size="icon"
                     variant="ghost"
                     className="h-7 w-7 text-destructive hover:text-destructive"
-                    onClick={() => onDelete(item.id)}
+                    onClick={() =>
+                      setDeleteConfirm({ id: item.id, name: item.name })
+                    }
                     disabled={isDeleting}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
@@ -511,6 +579,36 @@ function ListSettings({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete confirmation */}
+      <AlertDialog
+        open={!!deleteConfirm}
+        onOpenChange={(open) => !open && setDeleteConfirm(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {itemLabel}</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete &quot;{deleteConfirm?.name}&quot;?
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={() => {
+                if (deleteConfirm) {
+                  onDelete(deleteConfirm.id);
+                  setDeleteConfirm(null);
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }
@@ -518,6 +616,7 @@ function ListSettings({
 // ── Source Settings ───────────────────────────────────────────────────────────
 
 function SourceSettings() {
+  const { toast } = useToast();
   const { data, isLoading } = useCrmSources();
   const createMutation = useCreateCrmSource();
   const updateMutation = useUpdateCrmSource();
@@ -537,9 +636,24 @@ function SourceSettings() {
       isCreating={createMutation.isPending}
       isUpdating={updateMutation.isPending}
       isDeleting={deleteMutation.isPending}
-      onAdd={(name) => createMutation.mutate(name)}
-      onUpdate={(id, name) => updateMutation.mutate({ id, name })}
-      onDelete={(id) => deleteMutation.mutate(id)}
+      onAdd={(name) =>
+        createMutation.mutate(name, {
+          onSuccess: () => toast({ title: "Source added successfully" }),
+        })
+      }
+      onUpdate={(id, name) =>
+        updateMutation.mutate(
+          { id, name },
+          { onSuccess: () => toast({ title: "Source updated successfully" }) },
+        )
+      }
+      onDelete={(id) =>
+        deleteMutation.mutate(id, {
+          onSuccess: () => toast({ title: "Source deleted successfully" }),
+          onError: () =>
+            toast({ title: "Failed to delete source", variant: "destructive" }),
+        })
+      }
     />
   );
 }
@@ -547,6 +661,7 @@ function SourceSettings() {
 // ── Journey Type Settings ─────────────────────────────────────────────────────
 
 function JourneyTypeSettings() {
+  const { toast } = useToast();
   const { data, isLoading } = useCrmJourneyTypes();
   const createMutation = useCreateCrmJourneyType();
   const updateMutation = useUpdateCrmJourneyType();
@@ -566,9 +681,31 @@ function JourneyTypeSettings() {
       isCreating={createMutation.isPending}
       isUpdating={updateMutation.isPending}
       isDeleting={deleteMutation.isPending}
-      onAdd={(name) => createMutation.mutate(name)}
-      onUpdate={(id, name) => updateMutation.mutate({ id, name })}
-      onDelete={(id) => deleteMutation.mutate(id)}
+      onAdd={(name) =>
+        createMutation.mutate(name, {
+          onSuccess: () => toast({ title: "Journey type added successfully" }),
+        })
+      }
+      onUpdate={(id, name) =>
+        updateMutation.mutate(
+          { id, name },
+          {
+            onSuccess: () =>
+              toast({ title: "Journey type updated successfully" }),
+          },
+        )
+      }
+      onDelete={(id) =>
+        deleteMutation.mutate(id, {
+          onSuccess: () =>
+            toast({ title: "Journey type deleted successfully" }),
+          onError: () =>
+            toast({
+              title: "Failed to delete journey type",
+              variant: "destructive",
+            }),
+        })
+      }
     />
   );
 }

@@ -20,6 +20,14 @@ describe("CreatePipelineSchema", () => {
     expect(result.isDefault).toBe(true);
   });
 
+  it("accepts stages without probability (defaults to 0)", () => {
+    const stages = [{ id: "1", name: "Stage 1", order: 0 }];
+    const result = CreatePipelineSchema.parse({ name: "Sales", stages });
+    expect(result.stages).toEqual([
+      { id: "1", name: "Stage 1", order: 0, probability: 0 },
+    ]);
+  });
+
   it("rejects empty name", () => {
     expect(() => CreatePipelineSchema.parse({ name: "" })).toThrow();
   });

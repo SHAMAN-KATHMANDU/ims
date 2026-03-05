@@ -60,13 +60,13 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
           {onEdit ? (
             <Button onClick={onEdit}>Edit</Button>
           ) : (
-            <Link href={`${basePath}/crm/deals/${dealId}/edit`}>
-              <Button>Edit</Button>
-            </Link>
+            <Button asChild>
+              <Link href={`${basePath}/crm/deals/${dealId}/edit`}>Edit</Link>
+            </Button>
           )}
-          <Link href={`${basePath}/crm/deals`}>
-            <Button variant="outline">Back to Deals</Button>
-          </Link>
+          <Button variant="outline" asChild>
+            <Link href={`${basePath}/crm/deals`}>Back to Deals</Link>
+          </Button>
         </div>
       </div>
 

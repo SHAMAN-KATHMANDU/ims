@@ -2,9 +2,9 @@ import { z } from "zod";
 
 const StageSchema = z.object({
   id: z.string(),
-  name: z.string(),
+  name: z.string().min(1, "Stage name is required"),
   order: z.number(),
-  probability: z.number(),
+  probability: z.number().optional().default(0),
 });
 
 export const CreatePipelineSchema = z.object({
