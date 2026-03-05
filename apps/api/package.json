@@ -42,6 +42,7 @@
     "node-cron": "^4.2.1",
     "prisma": "^5.22.0",
     "swagger-jsdoc": "^6.2.8",
+    "swagger-themes": "^1.4.3",
     "swagger-ui-express": "^5.0.1",
     "tsconfig-paths": "^4.2.0",
     "zod": "3.25.76"
@@ -55,10 +56,10 @@
     "@types/node-cron": "^3.0.11",
     "@types/swagger-jsdoc": "^6.0.4",
     "@types/swagger-ui-express": "^4.1.8",
+    "@vitest/coverage-v8": "^4.0.18",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",
-    "@vitest/coverage-v8": "^4.0.18",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { SwaggerTheme, SwaggerThemeNameEnum } from "swagger-themes";
 import router from "@/config/router.config";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "@/config/swagger.config";
@@ -67,12 +68,18 @@ app.get("/health", async (req, res) => {
 });
 
 // Swagger Documentation
+const theme = new SwaggerTheme();
 app.use(
   "/api-docs",
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec, {
-    customCss: ".swagger-ui .topbar { display: none }",
+    customCss: theme.getBuffer(SwaggerThemeNameEnum.MATERIAL),
     customSiteTitle: "IMS API Documentation",
+    swaggerOptions: {
+      displayRequestDuration: true,
+      docExpansion: "list",
+      filter: true,
+    },
   }),
 );
 
