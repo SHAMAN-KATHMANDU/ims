@@ -465,6 +465,7 @@ export function DealsKanbanPage() {
         {drawerMode === "new" && (
           <DealForm
             mode="create"
+            initialPipelineId={pipelineId || currentPipeline?.id}
             onSubmit={handleCreateDeal}
             onCancel={closeDrawer}
             isLoading={createDealMutation.isPending}

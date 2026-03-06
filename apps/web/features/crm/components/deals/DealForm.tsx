@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -33,6 +34,7 @@ const createSchema = z.object({
     .min(0, "Probability must be at least 0")
     .max(100, "Probability must be between 0 and 100")
     .optional(),
+  pipelineId: z.string().optional(),
   expectedCloseDate: z.string().optional(),
   contactId: z.string().optional(),
   companyId: z.string().optional(),
@@ -54,6 +56,7 @@ type EditFormValues = z.infer<typeof editSchema>;
 
 interface DealFormCreateProps {
   mode: "create";
+  initialPipelineId?: string;
   onSubmit: (data: CreateDealData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
@@ -88,7 +91,10 @@ export function DealForm(props: DealFormProps) {
   const { data: companiesData } = useCompaniesForSelect();
   const { data: usersResult } = useUsers({ limit: 500 });
 
-  const pipelines = pipelinesData?.pipelines ?? [];
+  const pipelines = useMemo(
+    () => pipelinesData?.pipelines ?? [],
+    [pipelinesData?.pipelines],
+  );
   const defaultPipeline = pipelines.find((p) => p.isDefault) ?? pipelines[0];
   const contacts = contactsData?.data ?? [];
   const companies = companiesData?.companies ?? [];
@@ -110,12 +116,35 @@ export function DealForm(props: DealFormProps) {
           companyId: props.defaultValues.companyId ?? "",
           assignedToId: props.defaultValues.assignedToId,
         }
-      : { name: "", value: 0, probability: 0 },
+      : {
+          name: "",
+          value: 0,
+          probability: 0,
+          pipelineId:
+            (props.mode === "create" && "initialPipelineId" in props
+              ? props.initialPipelineId
+              : undefined) ??
+            defaultPipeline?.id ??
+            "",
+        },
   });
 
   const stageNames = isEdit
     ? props.defaultValues.stageNames
     : (defaultPipeline?.stages?.map((s) => s.name) ?? []);
+
+  const initialPipelineId =
+    props.mode === "create" && "initialPipelineId" in props
+      ? props.initialPipelineId
+      : undefined;
+
+  useEffect(() => {
+    if (isEdit || pipelines.length === 0) return;
+    const current = form.getValues("pipelineId");
+    if (current) return;
+    const fallback = defaultPipeline?.id ?? pipelines[0]?.id ?? "";
+    form.setValue("pipelineId", initialPipelineId ?? fallback);
+  }, [isEdit, pipelines, defaultPipeline?.id, initialPipelineId, form]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     if (props.mode === "create") {
@@ -128,7 +157,7 @@ export function DealForm(props: DealFormProps) {
         contactId: values.contactId || undefined,
         companyId: values.companyId || undefined,
         assignedToId: values.assignedToId || undefined,
-        pipelineId: defaultPipeline?.id,
+        pipelineId: values.pipelineId || defaultPipeline?.id || undefined,
       });
     } else {
       await props.onSubmit({
@@ -217,6 +246,28 @@ export function DealForm(props: DealFormProps) {
               </SelectContent>
             </Select>
           </div>
+        </div>
+      )}
+
+      {!isEdit && pipelines.length > 0 && (
+        <div>
+          <Label>Pipeline</Label>
+          <Select
+            value={form.watch("pipelineId") || ""}
+            onValueChange={(v) => form.setValue("pipelineId", v || undefined)}
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select pipeline" />
+            </SelectTrigger>
+            <SelectContent>
+              {pipelines.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.name}
+                  {p.isDefault ? " (default)" : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
 
