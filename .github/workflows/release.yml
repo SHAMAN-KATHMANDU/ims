@@ -196,10 +196,11 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ needs['resolve-tag'].outputs.resolved_tag }}
-      - name: Create environment file for Web
+      - name: Parse PROD_UI env vars into build args
+        id: prod_ui
         run: |
-          mkdir -p apps/web
-          printf '%s\n' "${{ vars.PROD_UI }}" > apps/web/.env
+          API_URL=$(printf '%s\n' "${{ vars.PROD_UI }}" | grep '^NEXT_PUBLIC_API_URL=' | cut -d'=' -f2-)
+          echo "next_public_api_url=${API_URL}" >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to Docker Hub
@@ -224,6 +225,8 @@ jobs:
           file: ./apps/web/Dockerfile
           push: true
           tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.prod_ui.outputs.next_public_api_url }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
