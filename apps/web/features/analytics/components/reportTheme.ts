@@ -138,6 +138,7 @@ export const tooltipStyle: React.CSSProperties = {
   borderRadius: 8,
   fontSize: 12,
   padding: "10px 14px",
+  color: C.text,
 };
 
 /** Recharts axis tick */
