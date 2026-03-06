@@ -7,13 +7,6 @@ const vendorRouter = Router();
 
 /**
  * @swagger
- * tags:
- *   name: Vendors
- *   description: Vendor management
- */
-
-/**
- * @swagger
  * /vendors:
  *   post:
  *     summary: Create a new vendor
