@@ -27,7 +27,18 @@ const nextConfig = {
     ],
   },
 
-  // Note: We're using direct API calls - no rewrites needed
+  // In development, proxy /api/v1 to the API server so login and API calls work without setting NEXT_PUBLIC_API_URL.
+  // When NEXT_PUBLIC_API_URL is set (e.g. production), the frontend calls that URL directly; no rewrite used.
+  ...(process.env.NODE_ENV === "development" && {
+    async rewrites() {
+      return [
+        {
+          source: "/api/v1/:path*",
+          destination: "http://localhost:4000/api/v1/:path*",
+        },
+      ];
+    },
+  }),
 };
 
 export default nextConfig;

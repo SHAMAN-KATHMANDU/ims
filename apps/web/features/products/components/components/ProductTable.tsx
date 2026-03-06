@@ -435,10 +435,7 @@ export function ProductTable({
                           </TableCell>
                         )}
                         <TableCell className="font-mono">
-                          {variation
-                            ? ((variation as { imsCode?: string }).imsCode ??
-                              "—")
-                            : "—"}
+                          {(product as { imsCode?: string }).imsCode ?? "—"}
                         </TableCell>
                         <TableCell className="font-medium">
                           {product.name}

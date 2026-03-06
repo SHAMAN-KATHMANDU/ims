@@ -159,6 +159,38 @@ productRouter.get(
 
 /**
  * @swagger
+ * /products/by-ims:
+ *   get:
+ *     summary: Get product by IMS code (barcode) for POS – returns product with variations and optional location stock
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: imsCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: locationId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional; when provided, variations include quantity at this location
+ *     responses:
+ *       200:
+ *         description: Product with variations (and location stock when locationId provided)
+ *       404:
+ *         description: Product not found
+ */
+productRouter.get(
+  "/by-ims",
+  authorizeRoles("admin", "user", "superAdmin"),
+  asyncHandler(productController.getProductByIms),
+);
+
+/**
+ * @swagger
  * /products/categories/list:
  *   get:
  *     summary: Get all categories (helper endpoint)

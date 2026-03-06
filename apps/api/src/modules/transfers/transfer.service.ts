@@ -73,13 +73,13 @@ export class TransferService {
       const hasSubVariants = (variation.subVariations?.length ?? 0) > 0;
       if (hasSubVariants && !subVariationId) {
         throw createError(
-          `Variation ${variation.imsCode} has sub-variants; specify subVariationId for each item`,
+          `Product ${variation.product.name} has sub-variants; specify subVariationId for each item`,
           400,
         );
       }
       if (!hasSubVariants && subVariationId) {
         throw createError(
-          `Variation ${variation.imsCode} has no sub-variants; do not send subVariationId`,
+          `Product ${variation.product.name} has no sub-variants; do not send subVariationId`,
           400,
         );
       }
@@ -104,7 +104,7 @@ export class TransferService {
       if (availableQuantity < item.quantity) {
         insufficientStock.push({
           product: variation.product.name,
-          imsCode: variation.imsCode,
+          imsCode: variation.product.imsCode,
           subVariationId: subVariationId ?? undefined,
           requested: item.quantity,
           available: availableQuantity,
@@ -261,7 +261,7 @@ export class TransferService {
       if (availableQuantity < item.quantity) {
         insufficientStock.push({
           product: item.variation.product.name,
-          imsCode: item.variation.imsCode,
+          imsCode: item.variation.product.imsCode,
           subVariationId: item.subVariationId ?? undefined,
           requested: item.quantity,
           available: availableQuantity,

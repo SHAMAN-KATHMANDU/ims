@@ -16,7 +16,7 @@
     }
   },
   "include": ["src/**/*", "prisma/**/*"],
-  "exclude": ["node_modules", "dist", "src/**/*.test.ts"],
+  "exclude": ["node_modules", "dist"],
   "ts-node": {
     "files": true,
     "transpileOnly": true,

@@ -136,11 +136,7 @@ export class VendorRepository {
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
-        {
-          variations: {
-            some: { imsCode: { contains: search, mode: "insensitive" } },
-          },
-        },
+        { imsCode: { contains: search, mode: "insensitive" } },
       ];
     }
 

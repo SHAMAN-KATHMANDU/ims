@@ -252,7 +252,7 @@ export function SaleDetail({
                                 </div>
                               )}
                             <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                              {item.variation.imsCode}
+                              {item.variation.product?.imsCode ?? "—"}
                             </div>
                           </div>
                         </TableCell>
