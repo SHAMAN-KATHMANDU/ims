@@ -43,19 +43,25 @@ const authRouter = Router();
  *                 tenant:
  *                   type: object
  *                   properties:
- *                     id: { type: string, format: uuid }
- *                     slug: { type: string }
- *                     name: { type: string }
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     slug:
+ *                       type: string
+ *                     name:
+ *                       type: string
  *       400:
  *         description: Username and password required
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Invalid credentials
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
  */
@@ -83,7 +89,8 @@ authRouter.post("/login", asyncHandler(authController.logIn));
  *         description: Unauthorized
  *         content:
  *           application/json:
- *             schema: { $ref: '#/components/schemas/Error' }
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       500:
  *         description: Server error
  */
@@ -105,7 +112,8 @@ authRouter.get("/me", verifyToken, asyncHandler(authController.getCurrentUser));
  *             schema:
  *               type: object
  *               properties:
- *                 message: { type: string }
+ *                 message:
+ *                   type: string
  *       401:
  *         description: Unauthorized
  *       500:

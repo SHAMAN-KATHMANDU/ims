@@ -8,13 +8,6 @@ const promoRouter = Router();
 
 /**
  * @swagger
- * tags:
- *   name: Promos
- *   description: Promo code management
- */
-
-/**
- * @swagger
  * /promos:
  *   post:
  *     summary: Create a new promo code
