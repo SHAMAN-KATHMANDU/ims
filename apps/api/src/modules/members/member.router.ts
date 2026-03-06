@@ -61,12 +61,10 @@ memberRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10 }
  *       - in: query
  *         name: search
  *         schema:
@@ -87,6 +85,10 @@ memberRouter.post(
  *     responses:
  *       200:
  *         description: Members retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedMembersResponse'
  */
 memberRouter.get(
   "/",
@@ -221,12 +223,47 @@ memberRouter.post(
   asyncHandler(memberController.bulkUploadMembers),
 );
 
+/**
+ * @swagger
+ * /members/download/template:
+ *   get:
+ *     summary: Download member bulk upload template
+ *     tags: [Members]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Template file (Excel) }
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
+ */
 memberRouter.get(
   "/download/template",
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(memberController.downloadBulkUploadTemplate),
 );
 
+/**
+ * @swagger
+ * /members/download/export:
+ *   get:
+ *     summary: Export members to Excel or CSV
+ *     tags: [Members]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: format
+ *         schema: { type: string, enum: [excel, csv] }
+ *         description: Export format (default excel)
+ *       - in: query
+ *         name: ids
+ *         schema: { type: string }
+ *         description: Comma-separated member IDs. Omit to export all.
+ *     responses:
+ *       200: { description: Export file }
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
+ */
 memberRouter.get(
   "/download/export",
   authorizeRoles("admin", "superAdmin"),

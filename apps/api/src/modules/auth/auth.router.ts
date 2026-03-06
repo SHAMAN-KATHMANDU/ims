@@ -11,6 +11,14 @@ const authRouter = Router();
  *   post:
  *     summary: User login
  *     tags: [Authentication]
+ *     parameters:
+ *       - in: header
+ *         name: X-Tenant-Slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: demo
+ *         description: Tenant slug (e.g. demo, acme). Identifies which organization to authenticate against.
  *     requestBody:
  *       required: true
  *       content:
@@ -37,10 +45,33 @@ const authRouter = Router();
  *               properties:
  *                 token:
  *                   type: string
+ *                   description: JWT token
  *                 user:
  *                   $ref: '#/components/schemas/User'
+ *                 tenant:
+ *                   type: object
+ *                   properties:
+ *                     id:
+ *                       type: string
+ *                       format: uuid
+ *                     slug:
+ *                       type: string
+ *                     name:
+ *                       type: string
+ *       400:
+ *         description: Username and password required
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  *       401:
  *         description: Invalid credentials
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: No tenant configured. Please contact support. (Missing X-Tenant-Slug header)
  *         content:
  *           application/json:
  *             schema:
@@ -68,6 +99,12 @@ authRouter.post("/login", asyncHandler(authController.logIn));
  *                   $ref: '#/components/schemas/User'
  *       401:
  *         description: Unauthorized
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
+ *       500:
+ *         description: Server error
  */
 authRouter.get("/me", verifyToken, asyncHandler(authController.getCurrentUser));
 
@@ -82,6 +119,17 @@ authRouter.get("/me", verifyToken, asyncHandler(authController.getCurrentUser));
  *     responses:
  *       200:
  *         description: Logout successful
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Server error
  */
 authRouter.post("/logout", verifyToken, asyncHandler(authController.logOut));
 

@@ -1,6 +1,8 @@
+import path from "path";
 import swaggerJsdoc from "swagger-jsdoc";
 import { SwaggerDefinition } from "swagger-jsdoc";
 import { getVersion } from "@/config/version";
+import { env } from "@/config/env";
 
 const swaggerDefinition: SwaggerDefinition = {
   openapi: "3.0.0",
@@ -14,11 +16,46 @@ const swaggerDefinition: SwaggerDefinition = {
   },
   servers: [
     {
-      url: "http://localhost:4000/api/v1",
-      description: "Development server",
+      url: "/api/v1",
+      description: env.isDev
+        ? "Current host (development)"
+        : "Current host (staging/production)",
     },
   ],
   components: {
+    parameters: {
+      PaginationPage: {
+        in: "query",
+        name: "page",
+        schema: { type: "integer", default: 1, minimum: 1 },
+        description: "Page number (1-based)",
+      },
+      PaginationLimit: {
+        in: "query",
+        name: "limit",
+        schema: { type: "integer", default: 10, minimum: 1, maximum: 100 },
+        description: "Items per page",
+      },
+      SortOrder: {
+        in: "query",
+        name: "sortOrder",
+        schema: { type: "string", enum: ["asc", "desc"] },
+        description: "Sort direction",
+      },
+      Search: {
+        in: "query",
+        name: "search",
+        schema: { type: "string" },
+        description: "Search term",
+      },
+      XTenantSlug: {
+        in: "header",
+        name: "X-Tenant-Slug",
+        required: true,
+        schema: { type: "string", example: "demo" },
+        description: "Tenant slug (e.g. demo, acme)",
+      },
+    },
     securitySchemes: {
       bearerAuth: {
         type: "http",
@@ -37,136 +74,674 @@ const swaggerDefinition: SwaggerDefinition = {
           },
         },
       },
-      User: {
+      Pagination: {
         type: "object",
         properties: {
-          id: {
-            type: "string",
-            format: "uuid",
+          currentPage: {
+            type: "integer",
+            description: "Current page (1-based)",
           },
-          username: {
-            type: "string",
+          totalPages: { type: "integer", description: "Total page count" },
+          totalItems: { type: "integer", description: "Total item count" },
+          itemsPerPage: { type: "integer", description: "Items per page" },
+          hasNextPage: {
+            type: "boolean",
+            description: "Whether another page exists",
           },
+          hasPrevPage: {
+            type: "boolean",
+            description: "Whether a previous page exists",
+          },
+        },
+      },
+      ApiSuccessResponse: {
+        type: "object",
+        properties: {
+          success: { type: "boolean", enum: [true] },
+          data: { type: "object", description: "Response payload" },
+        },
+        description:
+          "Standard success response. Some endpoints also return { message, ... } directly.",
+      },
+      ApiErrorResponse: {
+        type: "object",
+        properties: {
+          success: { type: "boolean", enum: [false] },
+          message: { type: "string", description: "Error message" },
+        },
+        description: "Standard error response",
+      },
+      User: {
+        type: "object",
+        description: "User in auth context (login, me) - includes tenant info",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          username: { type: "string" },
           role: {
             type: "string",
-            enum: ["superAdmin", "admin", "user"],
+            enum: ["platformAdmin", "superAdmin", "admin", "user"],
           },
-          createdAt: {
+          tenantId: { type: "string", format: "uuid", nullable: true },
+          tenantSlug: { type: "string", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      UserPublic: {
+        type: "object",
+        description: "User in users-module responses - public fields only",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          username: { type: "string" },
+          role: {
             type: "string",
-            format: "date-time",
+            enum: ["platformAdmin", "superAdmin", "admin", "user"],
           },
-          updatedAt: {
-            type: "string",
-            format: "date-time",
-          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
         },
       },
       Category: {
         type: "object",
         properties: {
-          id: {
-            type: "string",
-            format: "uuid",
-          },
-          name: {
-            type: "string",
-          },
-          description: {
-            type: "string",
-            nullable: true,
-          },
-          createdAt: {
-            type: "string",
-            format: "date-time",
-          },
-          updatedAt: {
-            type: "string",
-            format: "date-time",
-          },
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          description: { type: "string", nullable: true },
+          tenantId: { type: "string", format: "uuid" },
+          deletedAt: { type: "string", format: "date-time", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
         },
       },
       Product: {
         type: "object",
         properties: {
-          id: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          categoryId: { type: "string", format: "uuid" },
+          subCategory: { type: "string", nullable: true },
+          subCategoryId: { type: "string", format: "uuid", nullable: true },
+          description: { type: "string", nullable: true },
+          length: { type: "number", nullable: true },
+          breadth: { type: "number", nullable: true },
+          height: { type: "number", nullable: true },
+          weight: { type: "number", nullable: true },
+          costPrice: { type: "number" },
+          mrp: { type: "number" },
+          finalSp: { type: "number" },
+          vendorId: { type: "string", format: "uuid", nullable: true },
+          createdById: { type: "string", format: "uuid" },
+          dateCreated: { type: "string", format: "date-time" },
+          dateModified: { type: "string", format: "date-time" },
+          deletedAt: { type: "string", format: "date-time", nullable: true },
+        },
+      },
+      ProductVariation: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          productId: { type: "string", format: "uuid" },
+          imsCode: { type: "string" },
+          costPriceOverride: { type: "number", nullable: true },
+          mrpOverride: { type: "number", nullable: true },
+          finalSpOverride: { type: "number", nullable: true },
+          isActive: { type: "boolean" },
+          stockQuantity: { type: "integer" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Vendor: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          contact: { type: "string", nullable: true },
+          phone: { type: "string", nullable: true },
+          address: { type: "string", nullable: true },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Location: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          type: { type: "string", enum: ["WAREHOUSE", "SHOWROOM"] },
+          address: { type: "string", nullable: true },
+          isDefaultWarehouse: { type: "boolean" },
+          isActive: { type: "boolean" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Member: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          phone: { type: "string" },
+          name: { type: "string", nullable: true },
+          email: { type: "string", nullable: true },
+          notes: { type: "string", nullable: true },
+          isActive: { type: "boolean" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Sale: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          saleCode: { type: "string" },
+          locationId: { type: "string", format: "uuid" },
+          total: { type: "number" },
+          subtotal: { type: "number" },
+          discount: { type: "number" },
+          type: { type: "string", enum: ["GENERAL", "MEMBER"] },
+          isCreditSale: { type: "boolean" },
+          tenantId: { type: "string", format: "uuid" },
+          createdById: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Promo: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          code: { type: "string" },
+          description: { type: "string", nullable: true },
+          valueType: { type: "string", enum: ["PERCENTAGE", "FLAT"] },
+          value: { type: "number" },
+          eligibility: {
             type: "string",
-            format: "uuid",
+            enum: ["ALL", "MEMBER", "NON_MEMBER", "WHOLESALE"],
           },
-          imsCode: {
+          validFrom: { type: "string", format: "date-time", nullable: true },
+          validTo: { type: "string", format: "date-time", nullable: true },
+          isActive: { type: "boolean" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Transfer: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          transferCode: { type: "string" },
+          status: {
             type: "string",
+            enum: [
+              "PENDING",
+              "APPROVED",
+              "IN_TRANSIT",
+              "COMPLETED",
+              "CANCELLED",
+            ],
           },
-          name: {
+          fromLocationId: { type: "string", format: "uuid" },
+          toLocationId: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      InventoryItem: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          locationId: { type: "string", format: "uuid" },
+          variationId: { type: "string", format: "uuid" },
+          subVariationId: { type: "string", format: "uuid", nullable: true },
+          quantity: { type: "integer" },
+        },
+      },
+      AttributeType: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          code: { type: "string" },
+          displayOrder: { type: "integer" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      AttributeValue: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          value: { type: "string" },
+          code: { type: "string", nullable: true },
+          displayOrder: { type: "integer" },
+          attributeTypeId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Company: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Contact: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          email: { type: "string", nullable: true },
+          phone: { type: "string", nullable: true },
+          companyId: { type: "string", format: "uuid", nullable: true },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Lead: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          email: { type: "string", nullable: true },
+          phone: { type: "string", nullable: true },
+          status: { type: "string" },
+          sourceId: { type: "string", format: "uuid", nullable: true },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Pipeline: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Deal: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          title: { type: "string" },
+          value: { type: "number" },
+          stageId: { type: "string", format: "uuid" },
+          pipelineId: { type: "string", format: "uuid" },
+          contactId: { type: "string", format: "uuid", nullable: true },
+          leadId: { type: "string", format: "uuid", nullable: true },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Task: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          title: { type: "string" },
+          dealId: { type: "string", format: "uuid", nullable: true },
+          dueDate: { type: "string", format: "date-time", nullable: true },
+          isCompleted: { type: "boolean" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Activity: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          type: { type: "string" },
+          subject: { type: "string" },
+          dealId: { type: "string", format: "uuid", nullable: true },
+          contactId: { type: "string", format: "uuid", nullable: true },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      Notification: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          title: { type: "string" },
+          body: { type: "string", nullable: true },
+          isRead: { type: "boolean" },
+          userId: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      Tenant: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          slug: { type: "string" },
+          name: { type: "string" },
+          isActive: { type: "boolean" },
+          planTier: { type: "string" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      PaginatedUsersResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/UserPublic" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedCategoriesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Category" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedProductsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Product" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedVendorsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Vendor" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedLocationsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Location" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedMembersResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Member" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedSalesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: { type: "array", items: { $ref: "#/components/schemas/Sale" } },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedPromosResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Promo" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedTransfersResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Transfer" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedCompaniesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Company" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedContactsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Contact" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedLeadsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: { type: "array", items: { $ref: "#/components/schemas/Lead" } },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedPipelinesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Pipeline" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedDealsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: { type: "array", items: { $ref: "#/components/schemas/Deal" } },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedTasksResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: { type: "array", items: { $ref: "#/components/schemas/Task" } },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedActivitiesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Activity" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedInventoryResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/InventoryItem" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedNotificationsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Notification" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      AuditLog: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid", nullable: true },
+          userId: { type: "string", format: "uuid" },
+          action: { type: "string" },
+          resource: { type: "string", nullable: true },
+          resourceId: { type: "string", nullable: true },
+          details: { type: "object", nullable: true },
+          ip: { type: "string", nullable: true },
+          userAgent: { type: "string", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      ErrorReport: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid", nullable: true },
+          userId: { type: "string", format: "uuid" },
+          title: { type: "string" },
+          description: { type: "string", nullable: true },
+          pageUrl: { type: "string", nullable: true },
+          status: { type: "string", enum: ["OPEN", "REVIEWED", "RESOLVED"] },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      TrashItem: {
+        type: "object",
+        properties: {
+          type: {
             type: "string",
+            description: "Entity type (e.g. contact, deal)",
           },
-          categoryId: {
-            type: "string",
-            format: "uuid",
+          id: { type: "string", format: "uuid" },
+          deletedAt: { type: "string", format: "date-time" },
+        },
+      },
+      PaginatedAuditResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/AuditLog" },
           },
-          description: {
-            type: "string",
-            nullable: true,
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedErrorReportsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ErrorReport" },
           },
-          length: {
-            type: "number",
-            nullable: true,
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedTrashResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/TrashItem" },
           },
-          breadth: {
-            type: "number",
-            nullable: true,
-          },
-          height: {
-            type: "number",
-            nullable: true,
-          },
-          weight: {
-            type: "number",
-            nullable: true,
-          },
-          costPrice: {
-            type: "number",
-          },
-          mrp: {
-            type: "number",
-          },
-          createdById: {
-            type: "string",
-            format: "uuid",
-          },
-          dateCreated: {
-            type: "string",
-            format: "date-time",
-          },
-          dateModified: {
-            type: "string",
-            format: "date-time",
-          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
         },
       },
     },
   },
   tags: [
+    { name: "Authentication", description: "Login, logout, and current user" },
+    { name: "Users", description: "User management (superAdmin)" },
+    { name: "Products", description: "Product catalog and variations" },
+    { name: "Categories", description: "Category and subcategory management" },
     {
-      name: "Authentication",
-      description: "Authentication endpoints",
+      name: "AttributeTypes",
+      description: "Attribute types and values (e.g. size, color)",
     },
-    {
-      name: "Users",
-      description: "User management endpoints (superAdmin only)",
-    },
-    {
-      name: "Categories",
-      description: "Category management endpoints",
-    },
-    {
-      name: "Products",
-      description: "Product management endpoints",
-    },
+    { name: "Vendors", description: "Vendor/supplier management" },
+    { name: "Locations", description: "Warehouses and showrooms" },
+    { name: "Inventory", description: "Stock levels and transfers" },
+    { name: "Transfers", description: "Stock transfer requests" },
+    { name: "Members", description: "Member/customer management" },
+    { name: "Sales", description: "Sales and receipts" },
+    { name: "Promos", description: "Promotions and discount codes" },
+    { name: "Audit", description: "Audit logs (superAdmin)" },
+    { name: "ErrorReports", description: "Client-side error reports" },
+    { name: "Analytics", description: "Analytics and reports" },
+    { name: "Dashboard", description: "Dashboard summaries" },
+    { name: "Bulk", description: "Bulk upload and download" },
+    { name: "Platform", description: "Platform admin (tenants, plans)" },
+    { name: "Companies", description: "Company/organization management" },
+    { name: "Contacts", description: "Contact management" },
+    { name: "Leads", description: "Lead management" },
+    { name: "Pipelines", description: "Sales pipeline stages" },
+    { name: "Deals", description: "Deal/opportunity management" },
+    { name: "Tasks", description: "Task management" },
+    { name: "Activities", description: "Activity log" },
+    { name: "Notifications", description: "User notifications" },
+    { name: "CRM", description: "CRM dashboard and reports" },
+    { name: "CRMSettings", description: "CRM sources and journey types" },
+    { name: "Trash", description: "Soft-deleted items restore" },
   ],
 };
 
+const modulesDir = path.join(__dirname, "../modules");
 const options = {
   definition: swaggerDefinition,
-  apis: ["./src/modules/**/*.router.ts", "./src/modules/**/*.controller.ts"], // Paths to files containing OpenAPI definitions
+  apis: [
+    path.join(modulesDir, "**/*.router.{ts,js}"),
+    path.join(modulesDir, "**/*.controller.{ts,js}"),
+  ],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
