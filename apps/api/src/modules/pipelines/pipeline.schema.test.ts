@@ -39,4 +39,12 @@ describe("UpdatePipelineSchema", () => {
     const result = UpdatePipelineSchema.parse({});
     expect(result).toEqual({});
   });
+
+  it("accepts stages without probability (defaults to 0)", () => {
+    const stages = [{ id: "1", name: "Stage 1", order: 1 }];
+    const result = UpdatePipelineSchema.parse({ stages });
+    expect(result.stages).toEqual([
+      { id: "1", name: "Stage 1", order: 1, probability: 0 },
+    ]);
+  });
 });
