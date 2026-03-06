@@ -99,6 +99,7 @@ export function enforcePlanLimits(resource: PlanLimitResource) {
           auditLogs: row.auditLogs,
           apiAccess: row.apiAccess,
           salesPipeline: row.salesPipeline,
+          messaging: (row as any).messaging ?? false,
         };
       } else {
         limits = DEFAULT_PLAN_LIMITS[plan] ?? DEFAULT_PLAN_LIMITS.STARTER;
@@ -166,7 +167,8 @@ export type PlanFeature =
   | "promoManagement"
   | "auditLogs"
   | "apiAccess"
-  | "salesPipeline";
+  | "salesPipeline"
+  | "messaging";
 
 const FEATURE_MESSAGE: Record<PlanFeature, string> = {
   bulkUpload:
@@ -180,6 +182,8 @@ const FEATURE_MESSAGE: Record<PlanFeature, string> = {
   apiAccess: "API access is not available on your plan. Upgrade to Enterprise.",
   salesPipeline:
     "Sales pipeline is not available on your plan. Upgrade to Professional or higher.",
+  messaging:
+    "Messaging is not available on your plan. Upgrade to Professional or higher.",
 };
 
 /**
@@ -219,6 +223,7 @@ export function enforcePlanFeature(feature: PlanFeature) {
           auditLogs: row.auditLogs,
           apiAccess: row.apiAccess,
           salesPipeline: row.salesPipeline,
+          messaging: (row as any).messaging ?? false,
         };
       } else {
         limits = DEFAULT_PLAN_LIMITS[plan] ?? DEFAULT_PLAN_LIMITS.STARTER;

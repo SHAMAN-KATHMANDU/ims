@@ -38,6 +38,8 @@ const TENANT_SCOPED_MODELS = new Set([
   "PromoCode",
   "AuditLog",
   "ErrorReport",
+  "MessagingChannel",
+  "Conversation",
 ]);
 
 /**

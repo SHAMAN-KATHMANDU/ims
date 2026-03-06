@@ -78,6 +78,17 @@ if (!isDev && !apiPublicUrlEnv) {
 }
 const publicApiUrl = apiPublicUrlEnv ?? "http://localhost:4000/api/v1";
 
+// Redis (required for messaging queues and Socket.IO adapter)
+const redisUrl = process.env.REDIS_URL?.trim() ?? "redis://localhost:6379";
+
+// Meta / Facebook Messenger integration
+const metaAppId = process.env.META_APP_ID?.trim() ?? "";
+const metaAppSecret = process.env.META_APP_SECRET?.trim() ?? "";
+
+// Credential encryption key (32-byte hex string for AES-256-GCM)
+const credentialEncryptionKey =
+  process.env.CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "";
+
 // Feature availability is resolved here; do NOT add feature checks in controllers beyond reading env.features.
 // New features must be explicitly enabled per environment; default is OFF for staging and production.
 const features = {
@@ -96,4 +107,8 @@ export const env = Object.freeze({
   corsOrigin,
   publicApiUrl,
   features,
+  redisUrl,
+  metaAppId,
+  metaAppSecret,
+  credentialEncryptionKey,
 });
