@@ -39,6 +39,8 @@ import {
   selectSetSidebarWidth,
 } from "@/store/sidebar-store";
 import type { UserRole } from "@/utils/auth";
+import { usePlanFeatures } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import { Badge } from "../ui/badge";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -65,6 +67,8 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: UserRole[];
+  /** When set, item is only shown when this plan feature is enabled for the tenant. */
+  feature?: Feature;
   children?: NavItem[];
   href?: string;
 }
@@ -130,6 +134,7 @@ const navSections: NavSection[] = [
         label: "Deals",
         icon: Handshake,
         roles: ["user", "admin", "superAdmin"],
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "crm/tasks",
@@ -188,6 +193,7 @@ const navSections: NavSection[] = [
         label: "Promo Codes",
         icon: Percent,
         roles: ["user", "admin", "superAdmin"],
+        feature: Feature.PROMO_MANAGEMENT,
       },
       {
         path: "transfers/new",
@@ -246,6 +252,7 @@ const navSections: NavSection[] = [
         label: "Promo Codes",
         icon: Percent,
         roles: ["admin", "superAdmin"],
+        feature: Feature.PROMO_MANAGEMENT,
       },
     ],
   },
@@ -257,42 +264,49 @@ const navSections: NavSection[] = [
         label: "Analytics",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/sales",
         label: "Sales & Revenue",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/inventory",
         label: "Inventory & Operations",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/customers",
         label: "Customers & Promotions",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/trends",
         label: "Trends",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/financial",
         label: "Financial",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/crm",
         label: "CRM Reports",
         icon: BarChart3,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
     ],
   },
@@ -322,6 +336,7 @@ const navSections: NavSection[] = [
         label: "User Logs",
         icon: BarChart3,
         roles: ["superAdmin"],
+        feature: Feature.AUDIT_LOGS,
       },
       {
         path: "settings/error-reports",
@@ -552,7 +567,9 @@ function SidebarSection({
       <div className="space-y-2">
         <CollapsibleTrigger
           className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-expanded={(openSections[section.title] ?? true) ? "true" : "false"}
+          aria-expanded={
+            (openSections[section.title] ?? true) ? "true" : "false"
+          }
           onKeyDown={(e) =>
             handleKeyDown(e, () => onToggleSection(section.title))
           }
@@ -647,6 +664,8 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     return getWorkspaceRoot();
   }, [pathname, basePath]);
 
+  const planFeatures = usePlanFeatures();
+
   const filteredSections = useMemo(() => {
     if (!userRole) return [];
     return navSections
@@ -654,13 +673,16 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
         ...section,
         items: section.items
           .filter((item) => item.roles.includes(userRole))
+          .filter(
+            (item) => !item.feature || planFeatures[item.feature] === true,
+          )
           .map((item) => ({
             ...item,
             href: `${detectedBasePath}${item.path ? `/${item.path}` : ""}`,
           })),
       }))
       .filter((section) => section.items.length > 0);
-  }, [userRole, detectedBasePath]);
+  }, [userRole, detectedBasePath, planFeatures]);
 
   const toggleSection = useCallback(
     (sectionTitle: string) => {

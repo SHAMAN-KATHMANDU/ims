@@ -35,6 +35,8 @@ import { VariationDeleteDialog } from "./components/dialogs/VariationDeleteDialo
 import { getVariationAttributeDisplay } from "./utils/helpers";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./components/BulkUploadDialog";
+import { FeatureGuard } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import { LocationSelector } from "@/components/ui/location-selector";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -289,7 +291,8 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const validateProduct = (values: ProductFormValues) => {
     const errors: Record<string, string> = {};
 
-    if (!(values.imsCode ?? "").trim()) errors.imsCode = "IMS code (barcode) is required";
+    if (!(values.imsCode ?? "").trim())
+      errors.imsCode = "IMS code (barcode) is required";
     if (!values.name?.trim()) errors.name = "Product name is required";
     if (!values.categoryId) errors.categoryId = "Category is required";
 
@@ -860,22 +863,24 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            {isMobile ? (
-              <Button variant="outline" asChild>
-                <Link href={`${basePath}/product/bulk-upload`}>
+            <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
+              {isMobile ? (
+                <Button variant="outline" asChild>
+                  <Link href={`${basePath}/product/bulk-upload`}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Bulk Upload
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setBulkUploadDialog(true)}
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Bulk Upload
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => setBulkUploadDialog(true)}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Bulk Upload
-              </Button>
-            )}
+                </Button>
+              )}
+            </FeatureGuard>
             {isMobile ? (
               <Button asChild>
                 <Link href={`${basePath}/product/new`} className="gap-2">
