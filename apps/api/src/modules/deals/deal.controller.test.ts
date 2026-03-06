@@ -20,7 +20,7 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 import dealController from "./deal.controller";
 import * as dealServiceModule from "./deal.service";
 
-const mockService = dealServiceModule.default as Record<
+const mockService = dealServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

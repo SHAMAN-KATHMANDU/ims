@@ -2,9 +2,11 @@ export * from "./hooks/use-products";
 export * from "./hooks/use-attribute-types";
 export {
   getProductDiscounts,
+  getProductByImsCode,
   downloadProducts,
   downloadBulkUploadTemplate,
   type CreateProductData,
+  type Product,
 } from "./services/product.service";
 
 export { ProductPage } from "./components/index";

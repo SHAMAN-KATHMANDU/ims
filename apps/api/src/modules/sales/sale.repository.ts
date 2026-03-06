@@ -313,7 +313,7 @@ const SALE_INCLUDE_FULL = {
     include: {
       variation: {
         include: {
-          product: { select: { id: true, name: true } },
+          product: { select: { id: true, name: true, imsCode: true } },
           attributes: {
             include: {
               attributeType: { select: { name: true } },
@@ -709,9 +709,8 @@ export async function findVariationsByTenant(tenantId: string) {
     where: { tenantId },
     select: {
       id: true,
-      imsCode: true,
       productId: true,
-      product: { select: { id: true, name: true } },
+      product: { select: { id: true, name: true, imsCode: true } },
     },
   });
 }

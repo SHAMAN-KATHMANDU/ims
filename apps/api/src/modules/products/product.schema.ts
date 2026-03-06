@@ -80,7 +80,13 @@ export const GetProductDiscountsListQuerySchema = GetListQuerySchema.extend({
   discountTypeId: z.string().uuid().optional(),
 });
 
+export const GetProductByImsQuerySchema = z.object({
+  imsCode: z.string().min(1, "imsCode is required").transform((v) => v.trim()),
+  locationId: z.string().uuid().optional(),
+});
+
 export type GetAllProductsQueryDto = z.infer<typeof GetAllProductsQuerySchema>;
+export type GetProductByImsQueryDto = z.infer<typeof GetProductByImsQuerySchema>;
 export type DownloadProductsQueryDto = z.infer<
   typeof DownloadProductsQuerySchema
 >;
@@ -97,16 +103,13 @@ export {
   productBulkFields,
   productBulkHeaderMappings,
   productBulkRequiredColumns,
+  KNOWN_HEADER_FIELDS,
 } from "./bulkUpload.validation";
 export type { ExcelProductRow } from "./bulkUpload.validation";
 
 // ─── Variation schema (used in create/update product) ────────────────────────
 const VariationSchema = z.object({
   id: z.string().uuid().optional(),
-  imsCode: z
-    .string({ required_error: "Each variation must have an IMS code" })
-    .min(1, "Each variation must have an IMS code")
-    .transform((v) => v.trim()),
   stockQuantity: z.coerce.number().min(0).default(0),
   costPriceOverride: z.coerce.number().nullish(),
   mrpOverride: z.coerce.number().nullish(),
@@ -149,6 +152,11 @@ const DiscountSchema = z.object({
 });
 
 export const CreateProductSchema = z.object({
+  imsCode: z
+    .string({ required_error: "Product IMS code (barcode) is required" })
+    .min(1, "Product IMS code is required")
+    .max(100, "IMS code must be at most 100 characters")
+    .transform((v) => v.trim()),
   name: z
     .string({ required_error: "Product name is required" })
     .min(1, "Product name is required"),
@@ -168,18 +176,17 @@ export const CreateProductSchema = z.object({
   attributeTypeIds: z.array(z.string().uuid()).optional(),
   variations: z
     .array(VariationSchema)
-    .min(1, "At least one variation is required")
-    .refine(
-      (vars) => {
-        const codes = vars.map((v) => v.imsCode);
-        return new Set(codes).size === codes.length;
-      },
-      { message: "Duplicate IMS codes in variations" },
-    ),
+    .min(1, "At least one variation is required"),
   discounts: z.array(DiscountSchema).optional(),
 });
 
 export const UpdateProductSchema = z.object({
+  imsCode: z
+    .string()
+    .min(1, "IMS code cannot be empty")
+    .max(100)
+    .transform((v) => v.trim())
+    .optional(),
   name: z.string().min(1).optional(),
   categoryId: z.string().uuid().optional(),
   description: z.string().nullish(),

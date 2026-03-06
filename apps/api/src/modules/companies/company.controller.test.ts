@@ -20,7 +20,7 @@ import companyController from "./company.controller";
 import * as companyServiceModule from "./company.service";
 import { sendControllerError } from "@/utils/controllerError";
 
-const mockService = companyServiceModule.default as Record<
+const mockService = companyServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

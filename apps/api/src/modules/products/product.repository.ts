@@ -10,7 +10,6 @@ import type { Prisma } from "@prisma/client";
 
 export interface ProductCreateVariationInput {
   tenantId: string;
-  imsCode: string;
   stockQuantity: number;
   costPriceOverride: number | null;
   mrpOverride: number | null;
@@ -35,6 +34,7 @@ export interface ProductCreateDiscountInput {
 
 export interface ProductCreateData {
   tenantId: string;
+  imsCode: string;
   name: string;
   categoryId: string;
   description: string | null;
@@ -135,17 +135,51 @@ export class ProductRepository {
     });
   }
 
-  // ProductVariation - IMS code checks
-  findVariationsByImsCodes(tenantId: string, imsCodes: string[]) {
-    return prisma.productVariation.findMany({
-      where: { tenantId, imsCode: { in: imsCodes } },
-      select: { imsCode: true },
+  findProductIdByTenantAndImsCode(tenantId: string, imsCode: string) {
+    return prisma.product.findFirst({
+      where: { tenantId, imsCode: imsCode.trim(), deletedAt: null },
+      select: { id: true },
     });
   }
 
-  findVariationByImsCode(tenantId: string, imsCode: string) {
-    return prisma.productVariation.findFirst({
-      where: { tenantId, imsCode },
+  // Product - lookup by IMS code (product-level barcode for POS)
+  findByTenantAndImsCode(
+    tenantId: string,
+    imsCode: string,
+    options?: { locationId?: string },
+  ) {
+    return prisma.product.findFirst({
+      where: { tenantId, imsCode: imsCode.trim(), deletedAt: null },
+      include: {
+        category: { select: { id: true, name: true } },
+        variations: {
+          where: { isActive: true },
+          include: {
+            attributes: {
+              include: {
+                attributeType: { select: { id: true, name: true, code: true } },
+                attributeValue: {
+                  select: { id: true, value: true, code: true },
+                },
+              },
+            },
+            subVariations: { select: { id: true, name: true } },
+            photos: { where: { isPrimary: true }, take: 1 },
+            ...(options?.locationId
+              ? {
+                  locationInventory: {
+                    where: { locationId: options.locationId },
+                    select: {
+                      quantity: true,
+                      subVariationId: true,
+                      subVariation: { select: { id: true, name: true } },
+                    },
+                  },
+                }
+              : {}),
+          },
+        },
+      },
     });
   }
 
@@ -180,6 +214,7 @@ export class ProductRepository {
     return prisma.product.create({
       data: {
         tenantId: data.tenantId,
+        imsCode: data.imsCode,
         name: data.name,
         categoryId: data.categoryId,
         description: data.description,
@@ -699,6 +734,13 @@ export class ProductRepository {
     });
   }
 
+  createVendorForTenant(tenantId: string, name: string) {
+    return prisma.vendor.create({
+      data: { tenantId, name: name.trim() },
+      select: { id: true, name: true },
+    });
+  }
+
   findCategoryByName(name: string) {
     return prisma.category.findFirst({
       where: { name },
@@ -725,7 +767,7 @@ export class ProductRepository {
     return prisma.product.findFirst({
       where: {
         tenantId,
-        OR: [{ variations: { some: { imsCode } } }, { name: name.trim() }],
+        OR: [{ imsCode: imsCode.trim() }, { name: name.trim() }],
       },
       include: { variations: true },
     });

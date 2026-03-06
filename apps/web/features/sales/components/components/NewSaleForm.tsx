@@ -12,7 +12,11 @@ import {
   type LocationInventoryItem,
 } from "@/features/analytics";
 import { searchPromoByCode } from "@/features/promos";
-import { getProductDiscounts } from "@/features/products";
+import {
+  getProductDiscounts,
+  getProductByImsCode,
+  type Product,
+} from "@/features/products";
 import { type Location } from "@/features/locations";
 import {
   type CreateSaleData,
@@ -278,6 +282,8 @@ export function NewSaleForm({
   const [inventory, setInventory] = useState<LocationInventoryItem[]>([]);
   const [inventoryLoading, setInventoryLoading] = useState(false);
   const [productSearch, setProductSearch] = useState("");
+  const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [scanLoading, setScanLoading] = useState(false);
 
   // Member check
   const debouncedPhone = useDebounce(memberPhone, 500);
@@ -360,7 +366,10 @@ export function NewSaleForm({
         variationId: i.variationId,
         subVariationId: i.subVariationId ?? undefined,
         quantity: i.quantity,
-        discountId: i.selectedDiscountId ?? undefined,
+        discountId:
+          i.selectedDiscountId && i.selectedDiscountId !== "none"
+            ? i.selectedDiscountId
+            : undefined,
         promoCode: i.promoCode?.trim() || undefined,
       })),
     })
@@ -394,7 +403,7 @@ export function NewSaleForm({
 
     return inventory.filter((item) => {
       const productName = item.variation.product.name.toLowerCase();
-      const imsCode = (item.variation.imsCode ?? "").toLowerCase();
+      const imsCode = (item.variation.product.imsCode ?? "").toLowerCase();
       const subVariationName = item.subVariation?.name?.toLowerCase() || "";
       const categoryName =
         item.variation.product.category?.name?.toLowerCase() || "";
@@ -462,7 +471,7 @@ export function NewSaleForm({
         subVariationId: inventoryItem.subVariationId ?? undefined,
         subVariationName: inventoryItem.subVariation?.name,
         productName: inventoryItem.variation.product.name,
-        imsCode: inventoryItem.variation.imsCode ?? "",
+        imsCode: inventoryItem.variation.product.imsCode ?? "",
         attributeLabel: attrLabel,
         unitPrice: Number(inventoryItem.variation.product.mrp),
         quantity: 1,
@@ -472,6 +481,102 @@ export function NewSaleForm({
       },
     ]);
     setProductSearch(""); // Clear search after adding
+  };
+
+  // Barcode scan: GET /products/by-ims → show product + variations, add by variation
+  const handleBarcodeScan = async () => {
+    const term = productSearch.trim();
+    if (!locationId || !term || term.includes(" ")) return;
+    setScanLoading(true);
+    setScannedProduct(null);
+    try {
+      const product = await getProductByImsCode(term, { locationId });
+      setScannedProduct(product);
+      setProductSearch("");
+    } catch {
+      // 404 or error: leave scannedProduct null; filtered list still shows results
+    } finally {
+      setScanLoading(false);
+    }
+  };
+
+  type ProductVariationItem = NonNullable<Product["variations"]>[number];
+
+  const getVariationLabel = (v: ProductVariationItem | undefined): string => {
+    if (!v) return "—";
+    const attrs = (
+      v as { attributes?: Array<{ attributeValue?: { value: string } }> }
+    ).attributes
+      ?.map((a) => a.attributeValue?.value)
+      .filter(Boolean);
+    return attrs?.length ? attrs.join(" / ") : "—";
+  };
+
+  const getVariationQuantityAtLocation = (
+    v: ProductVariationItem | undefined,
+  ): number => {
+    if (!v) return 0;
+    const locInv = (
+      v as {
+        locationInventory?: Array<{
+          quantity: number;
+          location?: { id: string };
+        }>;
+      }
+    ).locationInventory;
+    if (!locInv?.length)
+      return (v as { stockQuantity?: number }).stockQuantity ?? 0;
+    const atLocation = locInv.filter((i) => i.location?.id === locationId);
+    return atLocation.reduce((s, i) => s + i.quantity, 0);
+  };
+
+  const handleAddVariationFromScan = async (
+    product: Product,
+    variation: ProductVariationItem,
+  ) => {
+    const existingIndex = items.findIndex(
+      (item) =>
+        item.variationId === variation.id &&
+        (item.subVariationId ?? null) === null,
+    );
+    const maxQty = getVariationQuantityAtLocation(variation);
+    if (existingIndex !== -1) {
+      const existingItem = items[existingIndex];
+      if (existingItem && existingItem.quantity < maxQty) {
+        const newItems = [...items];
+        const itemToUpdate = newItems[existingIndex];
+        if (itemToUpdate) {
+          itemToUpdate.quantity += 1;
+          itemToUpdate.maxQuantity = maxQty;
+          setItems(newItems);
+        }
+      }
+      return;
+    }
+    const discounts = await getProductDiscounts(product.id);
+    const memberDiscount = discounts.find(
+      (d) => d.discountType?.toLowerCase() === "member",
+    );
+    const defaultDiscountId =
+      memberCheck?.isMember && memberDiscount ? memberDiscount.id : "none";
+    const attrLabel = getVariationLabel(variation);
+    setItems([
+      ...items,
+      {
+        variationId: variation.id,
+        subVariationId: undefined,
+        subVariationName: undefined,
+        productName: product.name,
+        imsCode: product.imsCode ?? "",
+        attributeLabel: attrLabel !== "—" ? attrLabel : undefined,
+        unitPrice: Number(product.mrp),
+        quantity: 1,
+        maxQuantity: maxQty,
+        selectedDiscountId: defaultDiscountId,
+        availableDiscounts: discounts,
+      },
+    ]);
+    setScannedProduct(null);
   };
 
   // Update item quantity
@@ -596,7 +701,10 @@ export function NewSaleForm({
         variationId: item.variationId,
         subVariationId: item.subVariationId ?? undefined,
         quantity: item.quantity,
-        discountId: item.selectedDiscountId ?? undefined,
+        discountId:
+          item.selectedDiscountId && item.selectedDiscountId !== "none"
+            ? item.selectedDiscountId
+            : undefined,
         promoCode: item.promoCode?.trim() || undefined,
       })),
       notes: notes.trim() || undefined,
@@ -978,11 +1086,81 @@ export function NewSaleForm({
                           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
                             value={productSearch}
-                            onChange={(e) => setProductSearch(e.target.value)}
-                            placeholder="Search by product name, IMS code, category..."
+                            onChange={(e) => {
+                              setProductSearch(e.target.value);
+                              if (scannedProduct) setScannedProduct(null);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleBarcodeScan();
+                              }
+                            }}
+                            placeholder="Search by product name, IMS code (barcode), category..."
                             className="pl-9"
                           />
                         </div>
+                        {scanLoading && (
+                          <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Looking up barcode…
+                          </div>
+                        )}
+                        {scannedProduct && (
+                          <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-sm">
+                                Scanned: {scannedProduct.name}
+                              </span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 text-xs"
+                                onClick={() => setScannedProduct(null)}
+                              >
+                                <X className="h-3 w-3 mr-1" />
+                                Clear
+                              </Button>
+                            </div>
+                            <div className="text-xs text-muted-foreground font-mono">
+                              {scannedProduct.imsCode}
+                            </div>
+                            <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                              {(scannedProduct.variations ?? []).map((v) => {
+                                const label = getVariationLabel(v);
+                                const qty = getVariationQuantityAtLocation(v);
+                                return (
+                                  <div
+                                    key={v.id}
+                                    className="flex items-center justify-between py-1.5 px-2 rounded bg-background border text-sm"
+                                  >
+                                    <span>
+                                      {label !== "—" ? label : "Default"}
+                                      <span className="text-muted-foreground text-xs ml-2">
+                                        Stock: {qty}
+                                      </span>
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      size="sm"
+                                      disabled={qty < 1}
+                                      onClick={() =>
+                                        handleAddVariationFromScan(
+                                          scannedProduct,
+                                          v,
+                                        )
+                                      }
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Add
+                                    </Button>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
                         {inventoryLoading ? (
                           <div className="flex justify-center py-4">
                             <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
@@ -1029,7 +1207,7 @@ export function NewSaleForm({
                                       )}
                                     </div>
                                     <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                                      {inv.variation.imsCode}
+                                      {inv.variation.product.imsCode}
                                       {inv.variation.product.category?.name && (
                                         <span className="ml-2">
                                           •{" "}

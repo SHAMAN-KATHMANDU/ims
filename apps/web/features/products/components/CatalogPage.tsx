@@ -32,6 +32,7 @@ import { ProductForm } from "./components/ProductForm";
 import { ProductTable } from "./components/ProductTable";
 import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
 import { VariationDeleteDialog } from "./components/dialogs/VariationDeleteDialog";
+import { getVariationAttributeDisplay } from "./utils/helpers";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./components/BulkUploadDialog";
 import { LocationSelector } from "@/components/ui/location-selector";
@@ -288,6 +289,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const validateProduct = (values: ProductFormValues) => {
     const errors: Record<string, string> = {};
 
+    if (!(values.imsCode ?? "").trim()) errors.imsCode = "IMS code (barcode) is required";
     if (!values.name?.trim()) errors.name = "Product name is required";
     if (!values.categoryId) errors.categoryId = "Category is required";
 
@@ -315,10 +317,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       errors._form = "At least one variation is required";
     } else {
       productVariations.forEach((variation, index) => {
-        if (!(variation.imsCode ?? "").trim()) {
-          errors[`variation_${index}_imsCode`] = "IMS code is required";
-        }
-        // Variant name is auto-derived from EAV attributes
         const stockQuantity = Number(variation.stockQuantity);
         if (
           variation.stockQuantity === undefined ||
@@ -334,16 +332,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             "Stock quantity cannot be negative";
         }
       });
-      // Duplicate variation: same IMS code as another variation in the list
-      const imsCodes = productVariations
-        .map((v) => (v.imsCode ?? "").trim())
-        .filter(Boolean);
-      const duplicateIms = imsCodes.some(
-        (code, i) => imsCodes.indexOf(code) !== i,
-      );
-      if (duplicateIms) {
-        errors._form = "This product already exists.";
-      }
     }
 
     return Object.keys(errors).length > 0 ? errors : null;
@@ -352,6 +340,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   // Product form
   const productForm = useForm<ProductFormValues>({
     initialValues: {
+      imsCode: "",
       name: "",
       categoryId: "",
       subCategory: "",
@@ -419,6 +408,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         const isEditing = !!editingProduct;
 
         const data: CreateProductData = {
+          imsCode: (values.imsCode ?? "").trim(),
           name: values.name,
           categoryId: values.categoryId,
           description: values.description,
@@ -436,7 +426,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           data.variations = productVariations.map((v) => ({
             id: v.id,
             stockQuantity: Number(v.stockQuantity) || 0,
-            imsCode: (v.imsCode ?? "").trim(),
             subVariants:
               v.subVariants && v.subVariants.length > 0
                 ? v.subVariants.filter(Boolean)
@@ -465,7 +454,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           if (productVariations.length > 0) {
             data.variations = productVariations.map((v) => ({
               stockQuantity: Number(v.stockQuantity) || 0,
-              imsCode: (v.imsCode ?? "").trim(),
               subVariants:
                 v.subVariants && v.subVariants.length > 0
                   ? v.subVariants.filter(Boolean)
@@ -551,6 +539,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
     setEditingProduct(product);
     productForm.setValues({
+      imsCode: product.imsCode ?? "",
       name: product.name,
       categoryId: product.categoryId,
       subCategory: product.subCategory || "",
@@ -578,7 +567,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           return {
             id: v.id,
             stockQuantity: stock.toString(),
-            imsCode: (v as { imsCode?: string }).imsCode ?? "",
             subVariants: (v.subVariations || []).map((s) => s.name),
             photos: (v.photos || []).map((p) => ({
               photoUrl: p.photoUrl,
@@ -639,7 +627,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       ...prev,
       {
         stockQuantity: "0",
-        imsCode: "",
         subVariants: [],
         photos: [],
         attributes: [],
@@ -653,7 +640,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
   const updateVariationInForm = (
     index: number,
-    field: "stockQuantity" | "imsCode" | "attributes",
+    field: "stockQuantity" | "attributes",
     value:
       | string
       | Array<{ attributeTypeId: string; attributeValueId: string }>,
@@ -666,8 +653,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         ...prevVar,
         stockQuantity:
           field === "stockQuantity" ? (value as string) : prevVar.stockQuantity,
-        imsCode:
-          field === "imsCode" ? (value as string) : (prevVar.imsCode ?? ""),
         attributes:
           field === "attributes"
             ? (value as Array<{
@@ -700,7 +685,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     const isPrimary = photos.length === 0;
     updated[variationIndex] = {
       stockQuantity: variation.stockQuantity || "0",
-      imsCode: variation.imsCode ?? "",
       subVariants: variation.subVariants ?? [],
       photos: [...photos, { photoUrl, isPrimary }],
     };
@@ -722,7 +706,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     }
     updated[variationIndex] = {
       stockQuantity: variation.stockQuantity || "0",
-      imsCode: variation.imsCode ?? "",
       subVariants: variation.subVariants ?? [],
       photos: newPhotos,
     };
@@ -740,7 +723,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     });
     updated[variationIndex] = {
       stockQuantity: variation.stockQuantity || "0",
-      imsCode: variation.imsCode ?? "",
       subVariants: variation.subVariants ?? [],
       photos: photos,
     };
@@ -1126,9 +1108,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         productName={variationToDelete?.product.name ?? null}
         variationImsCode={
           variationToDelete
-            ? (variationToDelete.product.variations?.find(
-                (v) => v.id === variationToDelete.variationId,
-              )?.imsCode ?? variationToDelete.variationId)
+            ? getVariationAttributeDisplay(
+                variationToDelete.product.variations?.find(
+                  (v) => v.id === variationToDelete.variationId,
+                ) ?? {},
+              ) || variationToDelete.variationId
             : null
         }
         onClose={() => setVariationToDelete(null)}

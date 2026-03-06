@@ -94,9 +94,15 @@ export async function processSaleBulkRows(
   const userMap = new Map(
     allUsers.map((u) => [u.username.toLowerCase(), u.id]),
   );
-  const variationMapByIms = new Map(
-    allVariations.map((v) => [v.imsCode.toLowerCase(), v]),
-  );
+  const variationsByProductIms = new Map<string, (typeof allVariations)[number][]>();
+  for (const v of allVariations) {
+    const code = (v.product as { imsCode?: string }).imsCode?.toLowerCase();
+    if (code) {
+      const list = variationsByProductIms.get(code) ?? [];
+      list.push(v);
+      variationsByProductIms.set(code, list);
+    }
+  }
   const productMapByName = new Map(
     allProducts.map((p) => [p.name.toLowerCase(), p]),
   );
@@ -200,16 +206,17 @@ export async function processSaleBulkRows(
         const imsCodeLower = itemRow.productImsCode.toLowerCase();
         const nameLower = itemRow.productName.toLowerCase();
 
-        let variation = variationMapByIms.get(imsCodeLower);
-        if (!variation) {
-          const product = productMapByName.get(nameLower);
-          if (product) {
-            variation =
-              allVariations.find(
-                (v) =>
-                  v.productId === product.id &&
-                  v.imsCode.toLowerCase() === imsCodeLower,
-              ) ?? undefined;
+        const variationList = variationsByProductIms.get(imsCodeLower);
+        let variation: (typeof allVariations)[number] | undefined;
+        if (variationList?.length === 1) {
+          variation = variationList[0];
+        } else if (variationList && variationList.length > 1) {
+          const variationId = (itemRow as { variationId?: string }).variationId;
+          if (variationId) {
+            variation = variationList.find((v) => v.id === variationId);
+          }
+          if (!variation) {
+            variation = variationList[0];
           }
         }
 
@@ -217,7 +224,7 @@ export async function processSaleBulkRows(
           errors.push({
             row: rows.indexOf(itemRow) + 2,
             field: "productImsCode",
-            message: `Variation with IMS code "${itemRow.productImsCode}" not found for product "${itemRow.productName}"`,
+            message: `Product with IMS code "${itemRow.productImsCode}" not found for "${itemRow.productName}"`,
             value: itemRow.productImsCode,
           });
           continue;

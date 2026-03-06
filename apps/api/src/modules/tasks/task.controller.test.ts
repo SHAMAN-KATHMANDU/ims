@@ -19,7 +19,7 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 import taskController from "./task.controller";
 import * as taskServiceModule from "./task.service";
 
-const mockService = taskServiceModule.default as Record<
+const mockService = taskServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

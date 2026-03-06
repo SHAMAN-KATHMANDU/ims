@@ -97,9 +97,7 @@ export function PromoForm({
     return productsBase.filter(
       (p) =>
         p.name.toLowerCase().includes(term) ||
-        (p as { variations?: Array<{ imsCode?: string }> }).variations?.some(
-          (v) => v.imsCode?.toLowerCase().includes(term),
-        ),
+        (p as { imsCode?: string }).imsCode?.toLowerCase().includes(term),
     );
   }, [productsResponse, productSearch]);
 
@@ -464,13 +462,7 @@ export function PromoForm({
                       <span className="truncate">
                         {product.name}{" "}
                         <span className="text-xs text-muted-foreground">
-                          (
-                          {(
-                            product as {
-                              variations?: Array<{ imsCode?: string }>;
-                            }
-                          ).variations?.[0]?.imsCode ?? "—"}
-                          )
+                          ({(product as { imsCode?: string }).imsCode ?? "—"})
                         </span>
                       </span>
                       {isSelected && (

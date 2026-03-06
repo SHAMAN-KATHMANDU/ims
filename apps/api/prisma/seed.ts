@@ -233,9 +233,12 @@ async function seedTestTenant(
   });
 
   // 7. Products with variations and inventory
+  // Schema: Product.imsCode is required (product-level, unique per tenant); ProductVariation no longer has imsCode.
+  const pre = slug.toUpperCase();
   const product1 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P001`,
       name: "Wooden Sofa",
       categoryId: cat1.id,
       subCategory: "Sofas",
@@ -251,6 +254,7 @@ async function seedTestTenant(
   const product2 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P002`,
       name: "Dining Table",
       categoryId: cat1.id,
       subCategory: "Tables",
@@ -265,6 +269,7 @@ async function seedTestTenant(
   const product3 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P003`,
       name: "LED Lamp",
       categoryId: cat2.id,
       subCategory: "Accessories",
@@ -278,6 +283,7 @@ async function seedTestTenant(
   const product4 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P004`,
       name: "Bookshelf",
       categoryId: cat1.id,
       subCategory: "Tables",
@@ -291,6 +297,7 @@ async function seedTestTenant(
   const product5 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P005`,
       name: "Wireless Earbuds",
       categoryId: cat2.id,
       subCategory: "Accessories",
@@ -304,6 +311,7 @@ async function seedTestTenant(
   const product6 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P006`,
       name: "Cotton T-Shirt",
       categoryId: cat3.id,
       subCategory: "Men",
@@ -317,6 +325,7 @@ async function seedTestTenant(
   const product7 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P007`,
       name: "Non-Stick Pan",
       categoryId: cat4.id,
       subCategory: "Cookware",
@@ -330,6 +339,7 @@ async function seedTestTenant(
   const product8 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P008`,
       name: "Wall Clock",
       categoryId: cat4.id,
       subCategory: "Decor",
@@ -343,6 +353,7 @@ async function seedTestTenant(
   const product9 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P009`,
       name: "Desk Chair",
       categoryId: cat1.id,
       subCategory: "Sofas",
@@ -356,6 +367,7 @@ async function seedTestTenant(
   const product10 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P010`,
       name: "Power Bank",
       categoryId: cat2.id,
       subCategory: "Accessories",
@@ -367,11 +379,9 @@ async function seedTestTenant(
     },
   });
 
-  const pre = slug.toUpperCase();
   const var1p1 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P001-Brown`,
       productId: product1.id,
       stockQuantity: 10,
     },
@@ -379,7 +389,6 @@ async function seedTestTenant(
   const var2p1 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P001-White`,
       productId: product1.id,
       stockQuantity: 5,
     },
@@ -387,7 +396,6 @@ async function seedTestTenant(
   const var1p2 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P002-Natural`,
       productId: product2.id,
       stockQuantity: 8,
     },
@@ -395,7 +403,6 @@ async function seedTestTenant(
   const var1p3 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P003-White`,
       productId: product3.id,
       stockQuantity: 50,
     },
@@ -403,7 +410,6 @@ async function seedTestTenant(
   const var1p4 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P004-Oak`,
       productId: product4.id,
       stockQuantity: 12,
     },
@@ -411,7 +417,6 @@ async function seedTestTenant(
   const var2p4 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P004-Walnut`,
       productId: product4.id,
       stockQuantity: 8,
     },
@@ -419,7 +424,6 @@ async function seedTestTenant(
   const var1p5 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P005-Black`,
       productId: product5.id,
       stockQuantity: 40,
     },
@@ -427,7 +431,6 @@ async function seedTestTenant(
   const var2p5 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P005-White`,
       productId: product5.id,
       stockQuantity: 35,
     },
@@ -435,7 +438,6 @@ async function seedTestTenant(
   const var1p6 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P006-Navy`,
       productId: product6.id,
       stockQuantity: 100,
     },
@@ -443,7 +445,6 @@ async function seedTestTenant(
   const var2p6 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P006-Black`,
       productId: product6.id,
       stockQuantity: 80,
     },
@@ -451,7 +452,6 @@ async function seedTestTenant(
   const var1p7 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P007-Silver`,
       productId: product7.id,
       stockQuantity: 25,
     },
@@ -459,7 +459,6 @@ async function seedTestTenant(
   const var1p8 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P008-Black`,
       productId: product8.id,
       stockQuantity: 30,
     },
@@ -467,7 +466,6 @@ async function seedTestTenant(
   const var1p9 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P009-Grey`,
       productId: product9.id,
       stockQuantity: 15,
     },
@@ -475,7 +473,6 @@ async function seedTestTenant(
   const var1p10 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P010-Black`,
       productId: product10.id,
       stockQuantity: 45,
     },
@@ -1372,10 +1369,11 @@ async function seedDemoTenant() {
     data: { attributeTypeId: attrSize.id, value: "L", displayOrder: 2 },
   });
 
-  // Products
+  // Products (Product.imsCode required at product level per schema)
   const product1 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P001`,
       name: "Wooden Sofa",
       categoryId: cat1.id,
       subCategory: "Sofas",
@@ -1391,6 +1389,7 @@ async function seedDemoTenant() {
   const product2 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P002`,
       name: "Dining Table",
       categoryId: cat1.id,
       subCategory: "Tables",
@@ -1405,6 +1404,7 @@ async function seedDemoTenant() {
   const product3 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P003`,
       name: "LED Lamp",
       categoryId: cat2.id,
       subCategory: "Accessories",
@@ -1419,6 +1419,7 @@ async function seedDemoTenant() {
   const product4 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P004`,
       name: "Bookshelf",
       categoryId: cat1.id,
       subCategory: "Tables",
@@ -1433,6 +1434,7 @@ async function seedDemoTenant() {
   const product5 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P005`,
       name: "Wireless Earbuds",
       categoryId: cat2.id,
       subCategory: "Accessories",
@@ -1447,6 +1449,7 @@ async function seedDemoTenant() {
   const product6 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P006`,
       name: "Cotton T-Shirt",
       categoryId: cat3.id,
       subCategory: "Men",
@@ -1461,6 +1464,7 @@ async function seedDemoTenant() {
   const product7 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P007`,
       name: "Non-Stick Pan",
       categoryId: cat4.id,
       subCategory: "Cookware",
@@ -1475,6 +1479,7 @@ async function seedDemoTenant() {
   const product8 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P008`,
       name: "Wall Clock",
       categoryId: cat4.id,
       subCategory: "Decor",
@@ -1489,6 +1494,7 @@ async function seedDemoTenant() {
   const product9 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P009`,
       name: "Desk Chair",
       categoryId: cat1.id,
       subCategory: "Sofas",
@@ -1503,6 +1509,7 @@ async function seedDemoTenant() {
   const product10 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
+      imsCode: `${pre}-P010`,
       name: "Power Bank",
       categoryId: cat2.id,
       subCategory: "Accessories",
@@ -1536,7 +1543,6 @@ async function seedDemoTenant() {
   const var1p1 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P001-Brown`,
       productId: product1.id,
       stockQuantity: 10,
     },
@@ -1544,7 +1550,6 @@ async function seedDemoTenant() {
   const var2p1 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P001-White`,
       productId: product1.id,
       stockQuantity: 5,
     },
@@ -1552,7 +1557,6 @@ async function seedDemoTenant() {
   const var1p2 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P002-Natural`,
       productId: product2.id,
       stockQuantity: 8,
     },
@@ -1560,7 +1564,6 @@ async function seedDemoTenant() {
   const var1p3 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P003-White`,
       productId: product3.id,
       stockQuantity: 50,
     },
@@ -1568,7 +1571,6 @@ async function seedDemoTenant() {
   const var1p4 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P004-Oak`,
       productId: product4.id,
       stockQuantity: 12,
     },
@@ -1576,7 +1578,6 @@ async function seedDemoTenant() {
   const var2p4 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P004-Walnut`,
       productId: product4.id,
       stockQuantity: 8,
     },
@@ -1584,7 +1585,6 @@ async function seedDemoTenant() {
   const var1p5 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P005-Black`,
       productId: product5.id,
       stockQuantity: 40,
     },
@@ -1592,7 +1592,6 @@ async function seedDemoTenant() {
   const var2p5 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P005-White`,
       productId: product5.id,
       stockQuantity: 35,
     },
@@ -1600,7 +1599,6 @@ async function seedDemoTenant() {
   const var1p6 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P006-Navy`,
       productId: product6.id,
       stockQuantity: 100,
     },
@@ -1608,7 +1606,6 @@ async function seedDemoTenant() {
   const var2p6 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P006-Black`,
       productId: product6.id,
       stockQuantity: 80,
     },
@@ -1616,7 +1613,6 @@ async function seedDemoTenant() {
   const var1p7 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P007-Silver`,
       productId: product7.id,
       stockQuantity: 25,
     },
@@ -1624,7 +1620,6 @@ async function seedDemoTenant() {
   const var1p8 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P008-Black`,
       productId: product8.id,
       stockQuantity: 30,
     },
@@ -1632,7 +1627,6 @@ async function seedDemoTenant() {
   const var1p9 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P009-Grey`,
       productId: product9.id,
       stockQuantity: 15,
     },
@@ -1640,7 +1634,6 @@ async function seedDemoTenant() {
   const var1p10 = await prisma.productVariation.create({
     data: {
       tenantId: tenant.id,
-      imsCode: `${pre}-P010-Black`,
       productId: product10.id,
       stockQuantity: 45,
     },

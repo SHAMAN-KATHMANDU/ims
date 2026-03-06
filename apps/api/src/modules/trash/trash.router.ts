@@ -25,7 +25,7 @@ trashRouter.use(authorizeRoles("admin", "superAdmin"));
  *       - in: query
  *         name: entityType
  *         schema: { type: string }
- *         description: Filter by entity type. Valid values: Product, Category, SubCategory, Vendor, Member, Location, PromoCode, Company, Contact, Lead, Deal, Task, Activity, Pipeline
+ *         description: "Filter by entity type. Valid values: Product, Category, SubCategory, Vendor, Member, Location, PromoCode, Company, Contact, Lead, Deal, Task, Activity, Pipeline"
  *     responses:
  *       200:
  *         description: Trash items list

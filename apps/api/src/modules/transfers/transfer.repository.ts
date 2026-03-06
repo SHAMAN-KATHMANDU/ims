@@ -28,6 +28,7 @@ const transferDetailInclude = {
             select: {
               id: true,
               name: true,
+              imsCode: true,
               category: true,
             },
           },
@@ -59,7 +60,7 @@ const transferWithItemsInclude = {
     include: {
       variation: {
         include: {
-          product: { select: { id: true, name: true } },
+          product: { select: { id: true, name: true, imsCode: true } },
           attributes: {
             include: {
               attributeType: { select: { name: true } },
@@ -98,7 +99,7 @@ export class TransferRepository {
       where: { id },
       include: {
         subVariations: { select: { id: true, name: true } },
-        product: { select: { id: true, name: true } },
+        product: { select: { id: true, name: true, imsCode: true } },
       },
     });
   }
@@ -189,7 +190,7 @@ export class TransferRepository {
           include: {
             variation: {
               include: {
-                product: { select: { name: true } },
+                product: { select: { name: true, imsCode: true } },
               },
             },
           },

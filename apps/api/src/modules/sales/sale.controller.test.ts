@@ -127,7 +127,9 @@ describe("SaleController", () => {
         saleCode: "SL-20250303-ABCD",
         total: 100,
       };
-      mockCreateSale.mockResolvedValue(sale);
+      mockCreateSale.mockResolvedValue(
+        sale as unknown as Awaited<ReturnType<typeof mockCreateSale>>,
+      );
 
       const req = makeReq({
         body: {
@@ -229,6 +231,7 @@ describe("SaleController", () => {
   describe("previewSale", () => {
     it("returns 200 with subtotal, discount, total", async () => {
       mockPreviewSale.mockResolvedValue({
+        processedItems: [],
         subtotal: 100,
         totalDiscount: 10,
         total: 90,
@@ -264,7 +267,7 @@ describe("SaleController", () => {
     it("returns 200 with paginated sales", async () => {
       const sales = [{ id: "s1", saleCode: "SL-001" }];
       mockGetAllSales.mockResolvedValue({
-        sales,
+        sales: sales as Awaited<ReturnType<typeof mockGetAllSales>>["sales"],
         totalItems: 1,
         page: 1,
         limit: 10,
@@ -288,7 +291,9 @@ describe("SaleController", () => {
   describe("getSaleById", () => {
     it("returns 200 with sale on success", async () => {
       const sale = { id: "s1", saleCode: "SL-001" };
-      mockGetSaleById.mockResolvedValue(sale);
+      mockGetSaleById.mockResolvedValue(
+        sale as Awaited<ReturnType<typeof mockGetSaleById>>,
+      );
 
       const req = makeReq({ params: { id: "s1" } });
       const res = mockRes() as Response;
@@ -321,7 +326,9 @@ describe("SaleController", () => {
     it("returns 201 with sale and payment on success", async () => {
       const sale = { id: "s1" };
       const payment = { id: "p1", amount: 500 };
-      mockAddPayment.mockResolvedValue({ sale, payment });
+      mockAddPayment.mockResolvedValue({ sale, payment } as unknown as Awaited<
+        ReturnType<typeof mockAddPayment>
+      >);
 
       const req = makeReq({
         params: { id: "s1" },
@@ -360,7 +367,9 @@ describe("SaleController", () => {
   describe("getSalesSinceLastLogin", () => {
     it("returns 200 with paginated sales", async () => {
       mockGetSalesSinceLastLogin.mockResolvedValue({
-        sales: [{ id: "s1" }],
+        sales: [{ id: "s1" }] as Awaited<
+          ReturnType<typeof mockGetSalesSinceLastLogin>
+        >["sales"],
         totalItems: 1,
         page: 1,
         limit: 10,
@@ -383,6 +392,7 @@ describe("SaleController", () => {
       mockGetSalesSummary.mockResolvedValue({
         totalSales: 10,
         totalRevenue: 5000,
+        totalDiscount: 0,
         generalSales: { count: 6, revenue: 3000 },
         memberSales: { count: 4, revenue: 2000 },
       });

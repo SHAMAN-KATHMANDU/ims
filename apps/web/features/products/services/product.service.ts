@@ -35,7 +35,6 @@ export interface ProductVariation {
   id: string;
   productId: string;
   stockQuantity: number;
-  imsCode: string;
   createdAt?: string;
   /** Sub-variants (e.g. S, M, L); when present, stock is per sub-variant per location */
   subVariations?: ProductSubVariation[];
@@ -62,6 +61,7 @@ export interface ProductVariation {
 
 export interface Product {
   id: string;
+  imsCode: string;
   name: string;
   categoryId: string;
   subCategory?: string;
@@ -130,6 +130,7 @@ export interface PaginatedProductsResponse {
 }
 
 export interface CreateProductData {
+  imsCode: string;
   name: string;
   categoryId: string;
   description?: string;
@@ -146,7 +147,6 @@ export interface CreateProductData {
   /** EAV: attribute type IDs to apply to this product (e.g. Color, Size). */
   attributeTypeIds?: string[];
   variations?: Array<{
-    imsCode: string;
     stockQuantity?: number;
     attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
     subVariants?: string[];
@@ -165,6 +165,7 @@ export interface CreateProductData {
 }
 
 export interface UpdateProductData {
+  imsCode?: string;
   name?: string;
   categoryId?: string;
   description?: string;
@@ -178,7 +179,6 @@ export interface UpdateProductData {
   vendorId?: string;
   attributeTypeIds?: string[];
   variations?: Array<{
-    imsCode?: string;
     stockQuantity?: number;
     attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
     subVariants?: string[];
@@ -337,21 +337,34 @@ export async function getProductById(id: string): Promise<Product> {
 }
 
 /**
+ * Get product by IMS code (barcode) for POS – returns product with variations and optional location stock
+ */
+export async function getProductByImsCode(
+  imsCode: string,
+  options?: { locationId?: string },
+): Promise<Product> {
+  if (!imsCode?.trim()) {
+    throw new Error("IMS code is required");
+  }
+  const params = new URLSearchParams({ imsCode: imsCode.trim() });
+  if (options?.locationId) params.set("locationId", options.locationId);
+  const response = await api.get<ProductResponse>(`/products/by-ims?${params.toString()}`);
+  return response.data.product;
+}
+
+/**
  * Create a new product
  */
 export async function createProduct(data: CreateProductData): Promise<Product> {
   // Validation
-  if (!data.name?.trim()) {
-    throw new Error("Product IMS code is required");
+  if (!(data.imsCode ?? "").trim()) {
+    throw new Error("Product IMS code (barcode) is required");
   }
   if (!data.name?.trim()) {
     throw new Error("Product name is required");
   }
-  if (
-    !data.variations?.length ||
-    data.variations.some((v) => !(v.imsCode ?? "")?.trim())
-  ) {
-    throw new Error("Each variation must have an IMS code");
+  if (!data.variations?.length) {
+    throw new Error("At least one variation is required");
   }
   if (typeof data.costPrice !== "number" || data.costPrice < 0) {
     throw new Error("Valid cost price is required");

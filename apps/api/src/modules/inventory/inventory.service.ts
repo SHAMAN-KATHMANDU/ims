@@ -63,7 +63,7 @@ export class InventoryService {
         }
         acc[locId].variations.push({
           variationId: item.variation.id,
-          imsCode: item.variation.imsCode,
+          imsCode: item.variation.product?.imsCode ?? "",
           subVariationId: item.subVariationId ?? undefined,
           subVariation: item.subVariation
             ? { id: item.subVariation.id, name: item.subVariation.name }
@@ -81,7 +81,7 @@ export class InventoryService {
     return {
       product: {
         id: product.id,
-        imsCode: product.variations?.[0]?.imsCode ?? "",
+        imsCode: product.imsCode ?? "",
         name: product.name,
         category: product.category,
       },
@@ -159,7 +159,7 @@ export class InventoryService {
       locationId: data.locationId,
       locationName: location.name,
       product: variation.product,
-      imsCode: variation.imsCode,
+      imsCode: variation.product.imsCode,
       subVariationId: inventory.subVariationId ?? undefined,
       previousQuantity,
       adjustmentAmount: data.quantity,
@@ -205,7 +205,7 @@ export class InventoryService {
       locationId: data.locationId,
       locationName: location.name,
       product: variation.product,
-      imsCode: variation.imsCode,
+      imsCode: variation.product.imsCode,
       subVariationId: inventory.subVariationId ?? undefined,
       quantity: inventory.quantity,
     };

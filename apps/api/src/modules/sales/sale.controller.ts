@@ -495,12 +495,13 @@ class SaleController {
                     (a) => `${a.attributeType.name}: ${a.attributeValue.value}`,
                   )
                   .join(", ") || "";
+              const productImsCode = item.variation.product?.imsCode ?? "";
               const variationDisplay = attrLabel
-                ? `${item.variation.imsCode} (${attrLabel})`
-                : item.variation.imsCode;
+                ? `${productImsCode} (${attrLabel})`
+                : productImsCode;
               rows.push({
                 ...saleContext,
-                productImsCode: item.variation.imsCode,
+                productImsCode,
                 productName: product.name,
                 category: product.category?.name ?? "",
                 variation: variationDisplay,

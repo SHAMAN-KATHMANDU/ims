@@ -23,7 +23,7 @@ import vendorController from "./vendor.controller";
 import * as vendorServiceModule from "./vendor.service";
 import { sendControllerError } from "@/utils/controllerError";
 
-const mockService = vendorServiceModule.default as Record<
+const mockService = vendorServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

@@ -55,9 +55,9 @@ interface InventoryItem {
   quantity: number;
   variation: {
     id: string;
-    imsCode: string;
     product: {
       id: string;
+      imsCode: string;
       name: string;
     };
     attributes?: Array<{
@@ -167,7 +167,7 @@ export function TransferForm({
           subVariationId: inventoryItem.subVariationId ?? undefined,
           subVariationName: inventoryItem.subVariation?.name,
           productName: inventoryItem.variation.product.name,
-          imsCode: inventoryItem.variation.imsCode,
+          imsCode: inventoryItem.variation.product.imsCode,
           attributeLabel: attrLabel,
           quantity: parsedQuantity,
           availableQuantity: inventoryItem.quantity,
@@ -341,7 +341,7 @@ export function TransferForm({
                         {inv.variation.attributes?.length
                           ? ` — ${inv.variation.attributes.map((a) => a.attributeValue.value).join(" / ")}`
                           : ""}{" "}
-                        [{inv.variation.imsCode}]
+                        [{inv.variation.product.imsCode}]
                         {inv.subVariation?.name
                           ? ` / ${inv.subVariation.name}`
                           : ""}{" "}

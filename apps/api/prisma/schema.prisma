@@ -272,6 +272,8 @@ model SubCategory {
 model Product {
   id            String   @id @default(uuid()) @map("product_id")
   tenantId      String   @map("tenant_id")
+  /// Unique per-tenant product barcode / IMS code (scanned at POS to fetch product and choose variation).
+  imsCode       String   @map("ims_code") @db.VarChar(100)
   name          String   @map("product_name") @db.VarChar(255)
   categoryId    String   @map("category_id")
   /// Optional sub-category label for further grouping within a category (denormalized name)
@@ -306,6 +308,7 @@ model Product {
   promoCodes           PromoCodeProduct[]
   productAttributeTypes ProductAttributeType[]
 
+  @@unique([tenantId, imsCode])
   @@map("products")
 }
 
@@ -364,8 +367,6 @@ model ProductVariation {
   id                String   @id @default(uuid()) @map("variation_id")
   tenantId          String   @map("tenant_id")
   productId         String   @map("product_id")
-  /// Unique per-tenant variation identifier (IMS code at variation level).
-  imsCode           String   @map("ims_code") @db.VarChar(100)
   /// Optional overrides; when null, product base price is used
   costPriceOverride Decimal? @map("cost_price_override") @db.Decimal(10, 2)
   mrpOverride       Decimal? @map("mrp_override") @db.Decimal(10, 2)
@@ -384,7 +385,6 @@ model ProductVariation {
   transferItems     TransferItem[]
   saleItems         SaleItem[]
 
-  @@unique([tenantId, imsCode])
   @@map("product_variations")
 }
 
