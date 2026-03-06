@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -141,10 +141,12 @@ export function DealForm(props: DealFormProps) {
   useEffect(() => {
     if (isEdit || pipelines.length === 0) return;
     const current = form.getValues("pipelineId");
-    if (current) return;
-    const fallback = defaultPipeline?.id ?? pipelines[0]?.id ?? "";
-    form.setValue("pipelineId", initialPipelineId ?? fallback);
-  }, [isEdit, pipelines, defaultPipeline?.id, initialPipelineId, form]);
+    if (current && pipelines.some((p) => p.id === current)) return;
+    const fallback =
+      initialPipelineId ?? defaultPipeline?.id ?? pipelines[0]?.id ?? "";
+    if (fallback) form.setValue("pipelineId", fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- form is stable; omit to avoid overwriting user selection on identity change
+  }, [isEdit, pipelines, defaultPipeline?.id, initialPipelineId]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     if (props.mode === "create") {
@@ -157,7 +159,8 @@ export function DealForm(props: DealFormProps) {
         contactId: values.contactId || undefined,
         companyId: values.companyId || undefined,
         assignedToId: values.assignedToId || undefined,
-        pipelineId: values.pipelineId || defaultPipeline?.id || undefined,
+        pipelineId:
+          values.pipelineId?.trim() || defaultPipeline?.id || undefined,
       });
     } else {
       await props.onSubmit({
@@ -252,22 +255,28 @@ export function DealForm(props: DealFormProps) {
       {!isEdit && pipelines.length > 0 && (
         <div>
           <Label>Pipeline</Label>
-          <Select
-            value={form.watch("pipelineId") || ""}
-            onValueChange={(v) => form.setValue("pipelineId", v || undefined)}
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue placeholder="Select pipeline" />
-            </SelectTrigger>
-            <SelectContent>
-              {pipelines.map((p) => (
-                <SelectItem key={p.id} value={p.id}>
-                  {p.name}
-                  {p.isDefault ? " (default)" : ""}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <Controller
+            name="pipelineId"
+            control={form.control}
+            render={({ field }) => (
+              <Select
+                value={field.value ?? ""}
+                onValueChange={(v) => field.onChange(v || undefined)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select pipeline" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                      {p.isDefault ? " (default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
       )}
 
