@@ -350,6 +350,7 @@ export class PlatformRepository {
     promoManagement?: boolean;
     auditLogs?: boolean;
     apiAccess?: boolean;
+    salesPipeline?: boolean;
   }) {
     return basePrisma.planLimit.upsert({
       where: { tier: data.tier },
@@ -372,6 +373,9 @@ export class PlatformRepository {
         }),
         ...(data.auditLogs !== undefined && { auditLogs: data.auditLogs }),
         ...(data.apiAccess !== undefined && { apiAccess: data.apiAccess }),
+        ...(data.salesPipeline !== undefined && {
+          salesPipeline: data.salesPipeline,
+        }),
       },
       create: {
         tier: data.tier,
@@ -385,6 +389,7 @@ export class PlatformRepository {
         promoManagement: data.promoManagement ?? false,
         auditLogs: data.auditLogs ?? false,
         apiAccess: data.apiAccess ?? false,
+        salesPipeline: data.salesPipeline ?? false,
       },
     });
   }
