@@ -7,9 +7,6 @@ description: >
   adding/removing endpoints.
 globs:
   - "apps/api/**/*.ts"
-  - "apps/api/**/*.router.ts"
-  - "apps/api/**/*.controller.ts"
-  - "apps/api/**/*.service.ts"
 alwaysApply: false
 ---
 
