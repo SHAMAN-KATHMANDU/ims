@@ -233,6 +233,7 @@ async function seedTestTenant(
   });
 
   // 7. Products with variations and inventory
+  // Schema: Product.imsCode is required (product-level, unique per tenant); ProductVariation no longer has imsCode.
   const pre = slug.toUpperCase();
   const product1 = await prisma.product.create({
     data: {
@@ -1368,7 +1369,7 @@ async function seedDemoTenant() {
     data: { attributeTypeId: attrSize.id, value: "L", displayOrder: 2 },
   });
 
-  // Products
+  // Products (Product.imsCode required at product level per schema)
   const product1 = await prisma.product.create({
     data: {
       tenantId: tenant.id,
