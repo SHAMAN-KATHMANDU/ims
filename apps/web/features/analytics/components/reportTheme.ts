@@ -158,7 +158,7 @@ export const ANALYTICS_GLOBAL_CSS = `
   [data-analytics] .recharts-text{fill:${C.tm}!important;font-size:11px!important}
   [data-analytics] select:focus{border-color:${C.accent}}
   [data-analytics] select option{background:${C.card};color:${C.text}}
-  .analytics-tooltip{background:#1c2333;border:1px solid ${C.border};border-radius:8px;font-size:12px;padding:10px 14px}
+  .analytics-tooltip{background:#1c2333;border:1px solid ${C.border};border-radius:8px;font-size:12px;padding:10px 14px;color:${C.text}}
   .analytics-tooltip-label{font-weight:600;color:${C.text};margin-bottom:6px}
   .analytics-tooltip-row{margin-bottom:2px}
   .analytics-tooltip-row[data-color="accent"]{color:${C.accent}}

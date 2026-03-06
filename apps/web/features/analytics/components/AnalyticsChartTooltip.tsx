@@ -13,9 +13,13 @@ export function AnalyticsChartTooltip({
   label,
 }: ChartTooltipProps) {
   if (!active || !payload) return null;
+  // Pie charts often pass undefined label; use first payload name as fallback
+  const displayLabel = label ?? payload[0]?.name;
   return (
     <div className="analytics-tooltip">
-      <div className="analytics-tooltip-label">{label}</div>
+      {displayLabel && (
+        <div className="analytics-tooltip-label">{displayLabel}</div>
+      )}
       {payload.map((p: ChartTooltipPayloadItem, i: number) => (
         <div
           key={i}
