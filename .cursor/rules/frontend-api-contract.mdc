@@ -1,5 +1,9 @@
 ---
 description: Enforces frontend service/hook alignment whenever API response shapes, endpoints, or schemas change
+globs:
+  - "apps/api/**/*.ts"
+  - "apps/web/**/*.ts"
+  - "apps/web/**/*.tsx"
 alwaysApply: true
 ---
 

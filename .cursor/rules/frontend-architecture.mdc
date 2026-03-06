@@ -779,7 +779,257 @@ it("submits form with correct values", async () => {
 
 ---
 
-## 10. Auth Feature — Full Example
+## 10. Feature Flag Governance
+
+### Philosophy
+
+Feature flags allow safe deployment of incomplete or experimental features without exposing them to users.
+
+All experimental, beta, staged rollout, or environment-specific features **must** be controlled by feature flags.
+
+Feature flags prevent:
+
+- Incomplete UI appearing in production
+- Accidental feature exposure
+- Unsafe deployments
+- Risky releases
+
+Feature flags are a **deployment safety mechanism**, not a long-term configuration system. Flags must be removed once the feature becomes stable.
+
+---
+
+### Feature Flag Location
+
+All feature flags must be centralized. Create a single configuration module:
+
+```
+apps/web/constants/feature-flags.ts
+```
+
+No other location may define flags.
+
+Example structure:
+
+```ts
+export const FEATURE_FLAGS = {
+  NEW_DASHBOARD: false,
+  AI_RECOMMENDATIONS: false,
+  ADVANCED_ANALYTICS: false,
+  SALES_PREDICTIONS: false,
+  EXPERIMENTAL_CHECKOUT: false,
+} as const;
+
+export type FeatureFlag = keyof typeof FEATURE_FLAGS;
+```
+
+---
+
+### Feature Flag Helper
+
+Feature flags must never be accessed directly. Create a helper utility:
+
+```
+apps/web/lib/feature-flags.ts
+```
+
+Example:
+
+```ts
+import { FEATURE_FLAGS, FeatureFlag } from "@/constants/feature-flags";
+
+export function isFeatureEnabled(flag: FeatureFlag): boolean {
+  return FEATURE_FLAGS[flag] === true;
+}
+```
+
+Usage must always go through this helper. Direct access like `FEATURE_FLAGS.NEW_DASHBOARD` is forbidden.
+
+---
+
+### Component Usage
+
+Components must conditionally render features using `isFeatureEnabled`.
+
+Example:
+
+```tsx
+if (!isFeatureEnabled("AI_RECOMMENDATIONS")) {
+  return null;
+}
+```
+
+Or:
+
+```tsx
+{isFeatureEnabled("AI_RECOMMENDATIONS") && <AiRecommendationPanel />}
+```
+
+Rules:
+
+- Do not render hidden UI
+- Do not render disabled buttons
+- Do not show placeholders for disabled features
+
+Disabled features should behave as if they **do not exist**.
+
+---
+
+### Page-Level Feature Flags
+
+Entire pages may be gated.
+
+Example:
+
+```tsx
+if (!isFeatureEnabled("ADVANCED_ANALYTICS")) {
+  notFound();
+}
+```
+
+This ensures that unfinished routes are not exposed.
+
+---
+
+### Feature Flags in Hooks
+
+Hooks may check flags to disable logic.
+
+Example:
+
+```ts
+export function useSalesPrediction() {
+  if (!isFeatureEnabled("SALES_PREDICTIONS")) {
+    return { data: null, isDisabled: true };
+  }
+
+  return useQuery({
+    queryKey: ["salesPrediction"],
+    queryFn: fetchPrediction,
+  });
+}
+```
+
+Rules:
+
+- Hooks must return a stable interface even when disabled
+- Avoid conditional hook execution when possible
+
+---
+
+### Feature Flags in Navigation
+
+Sidebar, menus, and navigation items must respect feature flags.
+
+Example:
+
+```tsx
+const items = [
+  { label: "Dashboard", href: routes.dashboard },
+  ...(isFeatureEnabled("ADVANCED_ANALYTICS")
+    ? [{ label: "Analytics", href: routes.analytics }]
+    : []),
+];
+```
+
+Disabled features must **not** appear in navigation.
+
+---
+
+### Feature Flags for API Usage
+
+Frontend must not call backend APIs for disabled features.
+
+Example:
+
+```ts
+if (!isFeatureEnabled("AI_RECOMMENDATIONS")) {
+  return;
+}
+```
+
+Services should only be called when the feature is enabled.
+
+---
+
+### Environment-Based Flags
+
+Flags may vary by environment.
+
+Example:
+
+- `development` — many experimental features enabled
+- `staging` — selected beta features
+- `production` — stable features only
+
+Environment overrides must live in:
+
+```
+apps/web/constants/feature-flags.env.ts
+```
+
+Example:
+
+```ts
+export const ENV_FEATURE_FLAGS = {
+  development: {
+    AI_RECOMMENDATIONS: true,
+  },
+};
+```
+
+---
+
+### Feature Flag Metadata
+
+Each feature flag must include metadata comments:
+
+```
+NEW_DASHBOARD
+description: redesigned dashboard UI
+owner: frontend-team
+created: 2026-03-01
+removal_target: 2026-05-01
+```
+
+The AI should encourage removing flags when the removal date passes.
+
+---
+
+### Testing Requirements
+
+Tests must verify behavior for both flag states.
+
+Example:
+
+```ts
+describe("AI recommendations", () => {
+  it("does not render when flag disabled", () => {});
+  it("renders when flag enabled", () => {});
+});
+```
+
+---
+
+### Forbidden Patterns
+
+The following are strictly forbidden:
+
+- Direct `process.env` checks inside components
+- Defining feature flags inside components
+- Defining feature flags inside features
+- Scattered feature flag definitions
+- Rendering hidden experimental UI
+- API calls for disabled features
+
+---
+
+### Golden Rule
+
+Every experimental feature must be protected by a feature flag. No incomplete feature should be visible in production. Feature flags must be centralized, typed, and temporary.
+
+---
+
+## 11. Auth Feature — Full Example
 
 This is the canonical reference implementation. All other features follow this pattern.
 
@@ -1026,7 +1276,7 @@ export type { AuthUser, LoginFormValues } from "./types";
 
 ---
 
-## 11. Anti-Patterns to Avoid
+## 12. Anti-Patterns to Avoid
 
 ### Fat Components
 
@@ -1175,7 +1425,7 @@ const handleResponse = (data: any) => { ... };
 
 ---
 
-## 12. Scalability Guidelines
+## 13. Scalability Guidelines
 
 ### Phase 1 — Small Team (1–5 developers, 1–5 features)
 
@@ -1239,7 +1489,7 @@ Do not introduce this prematurely. The Phase 1/2 structure handles most producti
 
 ### Feature Flag Integration
 
-When features need to be toggled per tenant or environment, add a `flags/` module:
+Base feature flag governance is defined in **Section 10**. When features need to be toggled per tenant or fetched from an API (Phase 2), add a `flags/` module:
 
 ```
 features/
@@ -1292,3 +1542,6 @@ Before approving any PR touching `apps/web/`, verify:
 - [ ] All new files follow the naming conventions in Section 7
 - [ ] `npx tsc --noEmit` passes with zero errors
 - [ ] Tests exist for the service and hook layers of new features
+- [ ] Experimental features are protected by feature flags (Section 10)
+- [ ] Feature flags are defined in `constants/feature-flags.ts` — not scattered
+- [ ] Tests cover both flag states (enabled and disabled) when a feature flag is used
