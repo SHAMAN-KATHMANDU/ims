@@ -24,7 +24,7 @@ import locationController from "./location.controller";
 import * as locationServiceModule from "./location.service";
 import { sendControllerError } from "@/utils/controllerError";
 
-const mockService = locationServiceModule.default as Record<
+const mockService = locationServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

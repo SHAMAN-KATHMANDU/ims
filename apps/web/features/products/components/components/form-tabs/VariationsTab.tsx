@@ -45,7 +45,7 @@ export function VariationsTab({
   onAdd,
   onRemove,
   onUpdate,
-  onUpdateSubVariants,
+  onUpdateSubVariants: _onUpdateSubVariants,
   onAddPhoto,
   onRemovePhoto,
   onSetPrimaryPhoto,

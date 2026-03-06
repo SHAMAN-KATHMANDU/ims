@@ -16,7 +16,7 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 import crmController from "./crm.controller";
 import * as crmServiceModule from "./crm.service";
 
-const mockService = crmServiceModule.default as Record<
+const mockService = crmServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

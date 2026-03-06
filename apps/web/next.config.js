@@ -1,3 +1,4 @@
+/* eslint-env node */
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -29,6 +30,7 @@ const nextConfig = {
 
   // In development, proxy /api/v1 to the API server so login and API calls work without setting NEXT_PUBLIC_API_URL.
   // When NEXT_PUBLIC_API_URL is set (e.g. production), the frontend calls that URL directly; no rewrite used.
+  // eslint-disable-next-line no-undef -- process is a Node.js global in config files
   ...(process.env.NODE_ENV === "development" && {
     async rewrites() {
       return [

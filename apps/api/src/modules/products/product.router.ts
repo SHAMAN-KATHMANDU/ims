@@ -23,12 +23,18 @@ const productRouter = Router();
  *           schema:
  *             type: object
  *             required:
+ *               - imsCode
  *               - name
  *               - categoryId
  *               - costPrice
  *               - mrp
  *               - variations
  *             properties:
+ *               imsCode:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Product-level IMS code (barcode); unique per tenant
+ *                 example: "PRD-001"
  *               name:
  *                 type: string
  *                 example: Smartphone XYZ Pro
@@ -547,6 +553,10 @@ productRouter.get(
  *           schema:
  *             type: object
  *             properties:
+ *               imsCode:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Product-level IMS code (barcode); unique per tenant
  *               name:
  *                 type: string
  *               description:
