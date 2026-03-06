@@ -58,6 +58,10 @@ inventoryRouter.get(
  *     responses:
  *       200:
  *         description: Location inventory retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedInventoryResponse'
  *       404:
  *         description: Location not found
  */

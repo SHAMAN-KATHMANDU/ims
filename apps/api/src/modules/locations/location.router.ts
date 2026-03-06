@@ -81,6 +81,10 @@ locationRouter.post(
  *     responses:
  *       200:
  *         description: Locations retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedLocationsResponse'
  */
 locationRouter.get(
   "/",
@@ -145,6 +149,10 @@ locationRouter.get(
  *     responses:
  *       200:
  *         description: Location inventory retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedInventoryResponse'
  *       404:
  *         description: Location not found
  */

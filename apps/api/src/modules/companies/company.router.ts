@@ -65,7 +65,12 @@ companyRouter.post(
  *         name: search
  *         schema: { type: string }
  *     responses:
- *       200: { description: Companies list }
+ *       200:
+ *         description: Companies list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedCompaniesResponse'
  */
 companyRouter.get("/", asyncHandler(companyController.getAll));
 

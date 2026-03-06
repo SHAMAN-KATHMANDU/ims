@@ -51,7 +51,12 @@ leadRouter.post("/", asyncHandler(leadController.create));
  *         name: search
  *         schema: { type: string }
  *     responses:
- *       200: { description: Leads list }
+ *       200:
+ *         description: Leads list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedLeadsResponse'
  */
 leadRouter.get("/", asyncHandler(leadController.getAll));
 

@@ -69,16 +69,7 @@ categoryRouter.post(
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 categories:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Category'
- *                 count:
- *                   type: number
+ *               $ref: '#/components/schemas/PaginatedCategoriesResponse'
  */
 categoryRouter.get(
   "/",

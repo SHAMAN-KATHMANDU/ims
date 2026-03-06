@@ -99,6 +99,10 @@ promoRouter.post(
  *     responses:
  *       200:
  *         description: Promo codes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedPromosResponse'
  */
 promoRouter.get(
   "/",

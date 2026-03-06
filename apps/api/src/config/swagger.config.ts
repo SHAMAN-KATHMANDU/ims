@@ -16,10 +16,10 @@ const swaggerDefinition: SwaggerDefinition = {
   },
   servers: [
     {
-      url: env.publicApiUrl,
+      url: "/api/v1",
       description: env.isDev
-        ? "Development server"
-        : "API server (staging/production)",
+        ? "Current host (development)"
+        : "Current host (staging/production)",
     },
   ],
   components: {
@@ -44,10 +44,21 @@ const swaggerDefinition: SwaggerDefinition = {
       Pagination: {
         type: "object",
         properties: {
-          page: { type: "integer", description: "Current page (1-based)" },
-          limit: { type: "integer", description: "Items per page" },
-          totalItems: { type: "integer", description: "Total item count" },
+          currentPage: {
+            type: "integer",
+            description: "Current page (1-based)",
+          },
           totalPages: { type: "integer", description: "Total page count" },
+          totalItems: { type: "integer", description: "Total item count" },
+          itemsPerPage: { type: "integer", description: "Items per page" },
+          hasNextPage: {
+            type: "boolean",
+            description: "Whether another page exists",
+          },
+          hasPrevPage: {
+            type: "boolean",
+            description: "Whether a previous page exists",
+          },
         },
       },
       ApiSuccessResponse: {
@@ -69,6 +80,7 @@ const swaggerDefinition: SwaggerDefinition = {
       },
       User: {
         type: "object",
+        description: "User in auth context (login, me) - includes tenant info",
         properties: {
           id: { type: "string", format: "uuid" },
           username: { type: "string" },
@@ -82,85 +94,70 @@ const swaggerDefinition: SwaggerDefinition = {
           updatedAt: { type: "string", format: "date-time" },
         },
       },
+      UserPublic: {
+        type: "object",
+        description: "User in users-module responses - public fields only",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          username: { type: "string" },
+          role: {
+            type: "string",
+            enum: ["platformAdmin", "superAdmin", "admin", "user"],
+          },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
+        },
+      },
       Category: {
         type: "object",
         properties: {
-          id: {
-            type: "string",
-            format: "uuid",
-          },
-          name: {
-            type: "string",
-          },
-          description: {
-            type: "string",
-            nullable: true,
-          },
-          createdAt: {
-            type: "string",
-            format: "date-time",
-          },
-          updatedAt: {
-            type: "string",
-            format: "date-time",
-          },
+          id: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          description: { type: "string", nullable: true },
+          tenantId: { type: "string", format: "uuid" },
+          deletedAt: { type: "string", format: "date-time", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
         },
       },
       Product: {
         type: "object",
         properties: {
-          id: {
-            type: "string",
-            format: "uuid",
-          },
-          imsCode: {
-            type: "string",
-          },
-          name: {
-            type: "string",
-          },
-          categoryId: {
-            type: "string",
-            format: "uuid",
-          },
-          description: {
-            type: "string",
-            nullable: true,
-          },
-          length: {
-            type: "number",
-            nullable: true,
-          },
-          breadth: {
-            type: "number",
-            nullable: true,
-          },
-          height: {
-            type: "number",
-            nullable: true,
-          },
-          weight: {
-            type: "number",
-            nullable: true,
-          },
-          costPrice: {
-            type: "number",
-          },
-          mrp: {
-            type: "number",
-          },
-          createdById: {
-            type: "string",
-            format: "uuid",
-          },
-          dateCreated: {
-            type: "string",
-            format: "date-time",
-          },
-          dateModified: {
-            type: "string",
-            format: "date-time",
-          },
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          categoryId: { type: "string", format: "uuid" },
+          subCategory: { type: "string", nullable: true },
+          subCategoryId: { type: "string", format: "uuid", nullable: true },
+          description: { type: "string", nullable: true },
+          length: { type: "number", nullable: true },
+          breadth: { type: "number", nullable: true },
+          height: { type: "number", nullable: true },
+          weight: { type: "number", nullable: true },
+          costPrice: { type: "number" },
+          mrp: { type: "number" },
+          finalSp: { type: "number" },
+          vendorId: { type: "string", format: "uuid", nullable: true },
+          createdById: { type: "string", format: "uuid" },
+          dateCreated: { type: "string", format: "date-time" },
+          dateModified: { type: "string", format: "date-time" },
+          deletedAt: { type: "string", format: "date-time", nullable: true },
+        },
+      },
+      ProductVariation: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          productId: { type: "string", format: "uuid" },
+          imsCode: { type: "string" },
+          costPriceOverride: { type: "number", nullable: true },
+          mrpOverride: { type: "number", nullable: true },
+          finalSpOverride: { type: "number", nullable: true },
+          isActive: { type: "boolean" },
+          stockQuantity: { type: "integer" },
+          createdAt: { type: "string", format: "date-time" },
+          updatedAt: { type: "string", format: "date-time" },
         },
       },
       Vendor: {
@@ -278,7 +275,7 @@ const swaggerDefinition: SwaggerDefinition = {
         properties: {
           id: { type: "string", format: "uuid" },
           name: { type: "string" },
-          code: { type: "string", nullable: true },
+          code: { type: "string" },
           displayOrder: { type: "integer" },
           tenantId: { type: "string", format: "uuid" },
           createdAt: { type: "string", format: "date-time" },
@@ -293,7 +290,6 @@ const swaggerDefinition: SwaggerDefinition = {
           code: { type: "string", nullable: true },
           displayOrder: { type: "integer" },
           attributeTypeId: { type: "string", format: "uuid" },
-          tenantId: { type: "string", format: "uuid" },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
         },
@@ -408,6 +404,264 @@ const swaggerDefinition: SwaggerDefinition = {
           planTier: { type: "string" },
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
+        },
+      },
+      PaginatedUsersResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/UserPublic" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedCategoriesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Category" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedProductsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Product" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedVendorsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Vendor" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedLocationsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Location" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedMembersResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Member" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedSalesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: { type: "array", items: { $ref: "#/components/schemas/Sale" } },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedPromosResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Promo" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedTransfersResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Transfer" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedCompaniesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Company" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedContactsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Contact" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedLeadsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: { type: "array", items: { $ref: "#/components/schemas/Lead" } },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedPipelinesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Pipeline" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedDealsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: { type: "array", items: { $ref: "#/components/schemas/Deal" } },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedTasksResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: { type: "array", items: { $ref: "#/components/schemas/Task" } },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedActivitiesResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Activity" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedInventoryResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/InventoryItem" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedNotificationsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/Notification" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      AuditLog: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid", nullable: true },
+          userId: { type: "string", format: "uuid" },
+          action: { type: "string" },
+          resource: { type: "string", nullable: true },
+          resourceId: { type: "string", nullable: true },
+          details: { type: "object", nullable: true },
+          ip: { type: "string", nullable: true },
+          userAgent: { type: "string", nullable: true },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      ErrorReport: {
+        type: "object",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid", nullable: true },
+          userId: { type: "string", format: "uuid" },
+          title: { type: "string" },
+          description: { type: "string", nullable: true },
+          pageUrl: { type: "string", nullable: true },
+          status: { type: "string", enum: ["OPEN", "REVIEWED", "RESOLVED"] },
+          createdAt: { type: "string", format: "date-time" },
+        },
+      },
+      TrashItem: {
+        type: "object",
+        properties: {
+          type: {
+            type: "string",
+            description: "Entity type (e.g. contact, deal)",
+          },
+          id: { type: "string", format: "uuid" },
+          deletedAt: { type: "string", format: "date-time" },
+        },
+      },
+      PaginatedAuditResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/AuditLog" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedErrorReportsResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/ErrorReport" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
+        },
+      },
+      PaginatedTrashResponse: {
+        type: "object",
+        properties: {
+          message: { type: "string" },
+          data: {
+            type: "array",
+            items: { $ref: "#/components/schemas/TrashItem" },
+          },
+          pagination: { $ref: "#/components/schemas/Pagination" },
         },
       },
     },

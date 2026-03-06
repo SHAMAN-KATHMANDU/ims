@@ -26,7 +26,12 @@ notificationRouter.use(authorizeRoles("user", "admin", "superAdmin"));
  *         name: unreadOnly
  *         schema: { type: boolean }
  *     responses:
- *       200: { description: Notifications list }
+ *       200:
+ *         description: Notifications list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedNotificationsResponse'
  */
 notificationRouter.get("/", asyncHandler(notificationController.getAll));
 

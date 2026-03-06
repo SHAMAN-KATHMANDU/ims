@@ -46,7 +46,12 @@ activityRouter.post("/", asyncHandler(activityController.create));
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
- *       200: { description: Activities list }
+ *       200:
+ *         description: Activities list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedActivitiesResponse'
  */
 activityRouter.get(
   "/contact/:contactId",
@@ -67,7 +72,12 @@ activityRouter.get(
  *         required: true
  *         schema: { type: string, format: uuid }
  *     responses:
- *       200: { description: Activities list }
+ *       200:
+ *         description: Activities list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedActivitiesResponse'
  */
 activityRouter.get("/deal/:dealId", asyncHandler(activityController.getByDeal));
 

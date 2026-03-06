@@ -48,7 +48,12 @@ taskRouter.post("/", asyncHandler(taskController.create));
  *         name: isCompleted
  *         schema: { type: boolean }
  *     responses:
- *       200: { description: Tasks list }
+ *       200:
+ *         description: Tasks list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedTasksResponse'
  */
 taskRouter.get("/", asyncHandler(taskController.getAll));
 

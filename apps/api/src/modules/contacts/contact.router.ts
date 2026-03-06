@@ -95,7 +95,12 @@ contactRouter.post(
  *         name: search
  *         schema: { type: string }
  *     responses:
- *       200: { description: Contacts list }
+ *       200:
+ *         description: Contacts list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedContactsResponse'
  */
 contactRouter.get("/", asyncHandler(contactController.getAll));
 

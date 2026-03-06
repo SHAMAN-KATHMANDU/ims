@@ -26,7 +26,12 @@ trashRouter.use(authorizeRoles("admin", "superAdmin"));
  *         name: limit
  *         schema: { type: integer }
  *     responses:
- *       200: { description: Trash items list }
+ *       200:
+ *         description: Trash items list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedTrashResponse'
  */
 trashRouter.get("/", asyncHandler(trashController.listTrash));
 
