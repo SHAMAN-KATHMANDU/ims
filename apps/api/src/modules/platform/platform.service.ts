@@ -106,6 +106,7 @@ export class PlatformService {
           promoManagement: row.promoManagement,
           auditLogs: row.auditLogs,
           apiAccess: row.apiAccess,
+          salesPipeline: row.salesPipeline,
         };
       }
     } catch {
@@ -266,6 +267,7 @@ export class PlatformService {
           promoManagement: row.promoManagement,
           auditLogs: row.auditLogs,
           apiAccess: row.apiAccess,
+          salesPipeline: row.salesPipeline,
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
         };
@@ -284,6 +286,7 @@ export class PlatformService {
         promoManagement: defaults.promoManagement,
         auditLogs: defaults.auditLogs,
         apiAccess: defaults.apiAccess,
+        salesPipeline: defaults.salesPipeline,
         createdAt: "",
         updatedAt: "",
       };

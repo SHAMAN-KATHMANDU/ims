@@ -97,6 +97,7 @@ model PlanLimit {
   promoManagement Boolean  @default(false) @map("promo_management")
   auditLogs       Boolean  @default(false) @map("audit_logs")
   apiAccess       Boolean  @default(false) @map("api_access")
+  salesPipeline   Boolean  @default(false) @map("sales_pipeline")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 

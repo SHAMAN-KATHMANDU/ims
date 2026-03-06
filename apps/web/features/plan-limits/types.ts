@@ -13,6 +13,7 @@ export interface PlanLimit {
   promoManagement: boolean;
   auditLogs: boolean;
   apiAccess: boolean;
+  salesPipeline: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -28,4 +29,5 @@ export interface UpsertPlanLimitData {
   promoManagement?: boolean;
   auditLogs?: boolean;
   apiAccess?: boolean;
+  salesPipeline?: boolean;
 }

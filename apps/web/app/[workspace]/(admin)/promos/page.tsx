@@ -1,17 +1,21 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
+import { FeaturePageGuard } from "@/features/flags";
 import { PromoPage } from "@/features/promos";
+import { Feature } from "@repo/shared";
 
 export const metadata = { title: "Promo Codes" };
 
 /** Promo Codes (full management) – admin/superAdmin only. */
 export default function Promos() {
   return (
-    <AuthGuard
-      roles={["admin", "superAdmin"]}
-      unauthorizedPath={WORKSPACE_ROOT}
-    >
-      <PromoPage />
-    </AuthGuard>
+    <FeaturePageGuard feature={Feature.PROMO_MANAGEMENT}>
+      <AuthGuard
+        roles={["admin", "superAdmin"]}
+        unauthorizedPath={WORKSPACE_ROOT}
+      >
+        <PromoPage />
+      </AuthGuard>
+    </FeaturePageGuard>
   );
 }
