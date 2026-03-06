@@ -1,3 +1,4 @@
+import path from "path";
 import swaggerJsdoc from "swagger-jsdoc";
 import { SwaggerDefinition } from "swagger-jsdoc";
 import { getVersion } from "@/config/version";
@@ -447,9 +448,13 @@ const swaggerDefinition: SwaggerDefinition = {
   ],
 };
 
+const modulesDir = path.join(__dirname, "../modules");
 const options = {
   definition: swaggerDefinition,
-  apis: ["./src/modules/**/*.router.ts", "./src/modules/**/*.controller.ts"], // Paths to files containing OpenAPI definitions
+  apis: [
+    path.join(modulesDir, "**/*.router.{ts,js}"),
+    path.join(modulesDir, "**/*.controller.{ts,js}"),
+  ],
 };
 
 export const swaggerSpec = swaggerJsdoc(options);
