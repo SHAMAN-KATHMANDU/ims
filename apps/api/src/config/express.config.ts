@@ -1,6 +1,7 @@
 import express from "express";
+import fs from "fs";
+import path from "path";
 import cors from "cors";
-import { SwaggerTheme, SwaggerThemeNameEnum } from "swagger-themes";
 import router from "@/config/router.config";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "@/config/swagger.config";
@@ -67,17 +68,24 @@ app.get("/health", async (req, res) => {
   }
 });
 
-// Swagger Documentation
-const theme = new SwaggerTheme();
+// Swagger Documentation — 3.x Outline theme (ostranme/swagger-ui-themes)
+const themePath = path.join(
+  path.dirname(require.resolve("swagger-ui-themes/package.json")),
+  "themes",
+  "3.x",
+  "theme-outline.css",
+);
+const outlineThemeCss = fs.readFileSync(themePath, "utf-8");
+
 app.use(
   "/api-docs",
   swaggerUi.serve,
   swaggerUi.setup(swaggerSpec, {
-    customCss: theme.getBuffer(SwaggerThemeNameEnum.MATERIAL),
+    customCss: outlineThemeCss,
     customSiteTitle: "IMS API Documentation",
     swaggerOptions: {
       displayRequestDuration: true,
-      docExpansion: "list",
+      docExpansion: "none",
       filter: true,
     },
   }),
