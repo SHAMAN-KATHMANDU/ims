@@ -67,34 +67,41 @@ transferRouter.post(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number (1-based)
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, minimum: 1, maximum: 100 }
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Search by transfer code
+ *       - in: query
  *         name: status
  *         schema:
  *           type: string
  *           enum: [PENDING, APPROVED, IN_TRANSIT, COMPLETED, CANCELLED]
  *       - in: query
  *         name: fromLocationId
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *       - in: query
  *         name: toLocationId
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *       - in: query
  *         name: locationId
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *         description: Filter by either from or to location
  *       - in: query
- *         name: page
+ *         name: sortBy
  *         schema:
- *           type: integer
+ *           type: string
+ *           enum: [id, transferCode, status, createdAt, approvedAt, completedAt]
+ *         description: Sort field (default createdAt)
  *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
  *     responses:
  *       200:
  *         description: Transfers retrieved successfully

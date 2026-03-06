@@ -87,10 +87,10 @@ contactRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 10 }
  *       - in: query
  *         name: search
  *         schema: { type: string }

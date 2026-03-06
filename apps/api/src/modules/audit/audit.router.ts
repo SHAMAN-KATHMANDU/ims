@@ -18,27 +18,27 @@ const auditRouter = Router();
  *       - in: query
  *         name: page
  *         schema: { type: integer, default: 1 }
+ *         description: Page number (1-based)
  *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 20 }
+ *         schema: { type: integer, default: 10, maximum: 100 }
+ *         description: Items per page
  *       - in: query
- *         name: search
- *         schema: { type: string }
+ *         name: userId
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by user ID
  *       - in: query
  *         name: action
  *         schema: { type: string }
+ *         description: Filter by action (e.g. LOGIN)
  *       - in: query
- *         name: resource
- *         schema: { type: string }
+ *         name: from
+ *         schema: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+ *         description: Filter from date (YYYY-MM-DD)
  *       - in: query
- *         name: tenantId
- *         schema: { type: string, format: uuid }
- *       - in: query
- *         name: startDate
- *         schema: { type: string, format: date }
- *       - in: query
- *         name: endDate
- *         schema: { type: string, format: date }
+ *         name: to
+ *         schema: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+ *         description: Filter to date (YYYY-MM-DD)
  *     responses:
  *       200:
  *         description: Audit logs retrieved successfully

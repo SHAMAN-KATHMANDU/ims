@@ -100,36 +100,13 @@ saleRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
- *       - in: query
- *         name: locationId
- *         schema:
- *           type: string
- *           format: uuid
- *       - in: query
- *         name: type
- *         schema:
- *           type: string
- *           enum: [GENERAL, MEMBER]
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
+ *         schema: { type: integer, default: 10, maximum: 100 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -138,10 +115,27 @@ saleRouter.post(
  *         description: Sort field. createdAt = date added, total = total cost.
  *       - in: query
  *         name: sortOrder
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *         description: Sort direction (ascending or descending).
+ *         schema: { type: string, enum: [asc, desc] }
+ *       - in: query
+ *         name: locationId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: createdById
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by user who created the sale
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: isCreditSale
+ *         schema: { type: string, enum: [true, false] }
+ *         description: Filter credit sales only
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
  *     responses:
  *       200:
  *         description: Sales retrieved successfully
@@ -262,9 +256,8 @@ saleRouter.get(
  *           format: uuid
  *       - in: query
  *         name: days
- *         schema:
- *           type: integer
- *         description: Number of days (default 30)
+ *         schema: { type: integer, default: 30, minimum: 1, maximum: 365 }
+ *         description: Number of days for the chart
  *     responses:
  *       200:
  *         description: Daily sales data retrieved successfully

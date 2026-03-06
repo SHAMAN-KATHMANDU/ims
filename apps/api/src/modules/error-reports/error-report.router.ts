@@ -19,12 +19,20 @@ const errorReportRouter = Router();
  *         application/json:
  *           schema:
  *             type: object
- *             required: [message, stack]
+ *             required: [title]
  *             properties:
- *               message: { type: string }
- *               stack: { type: string }
- *               url: { type: string }
- *               userAgent: { type: string }
+ *               title:
+ *                 type: string
+ *                 maxLength: 255
+ *                 description: Short title describing the error
+ *               description:
+ *                 type: string
+ *                 maxLength: 5000
+ *                 nullable: true
+ *               pageUrl:
+ *                 type: string
+ *                 maxLength: 500
+ *                 nullable: true
  *     responses:
  *       201:
  *         description: Error report submitted
@@ -48,13 +56,28 @@ errorReportRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number (1-based)
  *       - in: query
  *         name: limit
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 10 }
+ *         description: Items per page
  *       - in: query
  *         name: status
- *         schema: { type: string, enum: [open, acknowledged, resolved] }
+ *         schema: { type: string, enum: [OPEN, REVIEWED, RESOLVED] }
+ *         description: Filter by status
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by user ID
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+ *         description: Filter from date (YYYY-MM-DD)
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, pattern: '^\\d{4}-\\d{2}-\\d{2}$' }
+ *         description: Filter to date (YYYY-MM-DD)
  *     responses:
  *       200:
  *         description: Error reports list
@@ -90,7 +113,7 @@ errorReportRouter.get(
  *           schema:
  *             type: object
  *             properties:
- *               status: { type: string, enum: [open, acknowledged, resolved] }
+ *               status: { type: string, enum: [OPEN, REVIEWED, RESOLVED] }
  *     responses:
  *       200:
  *         description: Error report updated

@@ -23,6 +23,39 @@ const swaggerDefinition: SwaggerDefinition = {
     },
   ],
   components: {
+    parameters: {
+      PaginationPage: {
+        in: "query",
+        name: "page",
+        schema: { type: "integer", default: 1, minimum: 1 },
+        description: "Page number (1-based)",
+      },
+      PaginationLimit: {
+        in: "query",
+        name: "limit",
+        schema: { type: "integer", default: 10, minimum: 1, maximum: 100 },
+        description: "Items per page",
+      },
+      SortOrder: {
+        in: "query",
+        name: "sortOrder",
+        schema: { type: "string", enum: ["asc", "desc"] },
+        description: "Sort direction",
+      },
+      Search: {
+        in: "query",
+        name: "search",
+        schema: { type: "string" },
+        description: "Search term",
+      },
+      XTenantSlug: {
+        in: "header",
+        name: "X-Tenant-Slug",
+        required: true,
+        schema: { type: "string", example: "demo" },
+        description: "Tenant slug (e.g. demo, acme)",
+      },
+    },
     securitySchemes: {
       bearerAuth: {
         type: "http",

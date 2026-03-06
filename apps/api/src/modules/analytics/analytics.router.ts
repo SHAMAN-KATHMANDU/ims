@@ -19,11 +19,32 @@ analyticsRouter.use(enforcePlanFeature("analytics"));
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
- *         schema: { type: string, format: date }
+ *         name: dateFrom
+ *         schema: { type: string }
+ *         description: Filter from date (YYYY-MM-DD or ISO)
  *       - in: query
- *         name: endDate
- *         schema: { type: string, format: date }
+ *         name: dateTo
+ *         schema: { type: string }
+ *         description: Filter to date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Overview metrics
@@ -46,11 +67,30 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
- *         schema: { type: string, format: date }
+ *         name: dateFrom
+ *         schema: { type: string }
  *       - in: query
- *         name: endDate
- *         schema: { type: string, format: date }
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Sales revenue metrics
@@ -72,10 +112,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -98,10 +157,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -124,10 +202,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -150,10 +247,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -176,10 +292,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -202,10 +337,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -228,10 +382,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -254,10 +427,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -280,10 +472,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -306,10 +517,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -332,10 +562,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -358,10 +607,29 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: startDate
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:
@@ -384,16 +652,36 @@ analyticsRouter.get(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
+ *         name: type
+ *         schema: { type: string }
+ *         description: Report type to export
+ *       - in: query
  *         name: format
  *         schema: { type: string, enum: [csv, excel] }
  *       - in: query
- *         name: type
+ *         name: dateFrom
  *         schema: { type: string }
  *       - in: query
- *         name: startDate
+ *         name: dateTo
  *         schema: { type: string }
  *       - in: query
- *         name: endDate
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
  *         schema: { type: string }
  *     responses:
  *       200:

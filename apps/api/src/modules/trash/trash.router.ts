@@ -17,14 +17,15 @@ trashRouter.use(authorizeRoles("admin", "superAdmin"));
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: entityType
- *         schema: { type: string }
- *       - in: query
  *         name: page
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: entityType
+ *         schema: { type: string }
+ *         description: Filter by entity type. Valid values: Product, Category, SubCategory, Vendor, Member, Location, PromoCode, Company, Contact, Lead, Deal, Task, Activity, Pipeline
  *     responses:
  *       200:
  *         description: Trash items list
