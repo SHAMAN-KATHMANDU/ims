@@ -1276,7 +1276,413 @@ export type { AuthUser, LoginFormValues } from "./types";
 
 ---
 
-## 12. Anti-Patterns to Avoid
+## 12. Feature Flag Control Plane Architecture
+
+This section defines a **centralized feature flag control plane** used to manage feature rollout across the entire platform.
+
+The architecture must support:
+
+- central dashboard management
+- edge distribution
+- server-side and client-side flag evaluation
+- multi-tenant flags
+- region-specific rollout
+- user cohort rollout
+- percentage rollouts
+- kill switches
+- experiment tracking
+
+This system should follow production-grade practices used by companies like Shopify, Vercel, and Stripe.
+
+---
+
+### Architecture Overview
+
+The feature flag system must consist of four layers:
+
+1. Feature Flag Control Plane (dashboard + API)
+2. Edge Distribution Layer
+3. Backend Flag Evaluation
+4. Frontend Flag Consumption
+
+---
+
+### 1. Feature Flag Control Plane
+
+Feature flags must be managed from a central dashboard.
+
+The dashboard allows engineers and product managers to:
+
+- create feature flags
+- toggle flags
+- define rollout rules
+- define percentage rollouts
+- target tenants
+- target regions
+- target user cohorts
+- enable kill switches
+
+Dashboard API example:
+
+```
+GET /api/feature-flags
+POST /api/feature-flags
+PATCH /api/feature-flags/:flag
+```
+
+Example response:
+
+```json
+{
+  "flags": {
+    "NEW_DASHBOARD": {
+      "enabled": true,
+      "rollout": 50,
+      "regions": ["us", "eu"],
+      "tenants": ["enterprise"],
+      "type": "release"
+    },
+    "CHECKOUT_VARIANT_B": {
+      "enabled": true,
+      "type": "experiment"
+    },
+    "DISABLE_AI_SYSTEM": {
+      "enabled": false,
+      "type": "ops"
+    }
+  }
+}
+```
+
+---
+
+### 2. Edge Distribution Layer
+
+Feature flags must be cached at the edge.
+
+Edge middleware fetches flags and injects them into requests.
+
+Location:
+
+```
+middleware.ts
+```
+
+Example logic:
+
+```
+1. request arrives
+2. edge middleware fetches feature flags
+3. flags cached in edge cache
+4. flags injected into request headers
+```
+
+Example header:
+
+```
+x-feature-flags: {...}
+```
+
+This allows:
+
+- extremely fast flag evaluation
+- global rollout control
+- region-based flags
+
+Edge caching TTL example:
+
+```
+30 seconds
+```
+
+---
+
+### 3. Backend Flag Evaluation
+
+Backend services must evaluate flags using context.
+
+Context includes:
+
+```
+userId
+tenantId
+region
+role
+subscription plan
+```
+
+Evaluation example:
+
+```
+isFeatureEnabled("NEW_DASHBOARD", {
+  userId,
+  tenantId,
+  region
+})
+```
+
+Evaluation priority:
+
+```
+Kill Switch
+↓
+Tenant Override
+↓
+Region Rule
+↓
+User Cohort
+↓
+Percentage Rollout
+↓
+Default Flag
+```
+
+---
+
+### 4. Frontend Flag Consumption
+
+Frontend must consume flags through hooks.
+
+Example hook:
+
+```
+hooks/use-feature-flag.ts
+```
+
+Example implementation:
+
+```ts
+export function useFeatureFlag(flag: FeatureFlag) {
+  const context = useAuth()
+
+  return evaluateFeatureFlag(flag, {
+    userId: context.user?.id,
+    tenantId: context.tenant?.id
+  })
+}
+```
+
+Example usage:
+
+```tsx
+const showDashboard = useFeatureFlag("NEW_DASHBOARD")
+```
+
+Components must not access flags directly.
+
+---
+
+### Server-Side Flags
+
+Flags must also be available in:
+
+- Server Components
+- Route Handlers
+- Middleware
+
+Example:
+
+```ts
+import { getFeatureFlag } from "@/lib/feature-flags/server"
+
+const showFeature = await getFeatureFlag("NEW_DASHBOARD")
+```
+
+---
+
+### Edge Middleware Integration
+
+Edge middleware must attach flags to request context.
+
+Example:
+
+```
+request.headers.set("x-feature-flags", JSON.stringify(flags))
+```
+
+Server code can then read flags from headers.
+
+---
+
+### Cohort-Based Rollouts
+
+Feature flags must support cohorts.
+
+Example:
+
+```
+cohorts:
+  - beta-testers
+  - internal-users
+  - enterprise-customers
+```
+
+Example evaluation:
+
+```
+if user.cohort == "beta-testers"
+  enable feature
+```
+
+---
+
+### Region-Based Rollouts
+
+Features may roll out by region.
+
+Example:
+
+```
+regions: ["us", "eu"]
+```
+
+Evaluation:
+
+```
+if request.region in allowed regions
+  enable feature
+```
+
+---
+
+### Percentage Rollouts
+
+Gradual rollout must use deterministic hashing.
+
+Example:
+
+```
+rollout: 25
+```
+
+Meaning 25% of users see the feature.
+
+Implementation:
+
+```
+hash(flag + userId) % 100 < rollout
+```
+
+---
+
+### Experiment Flags
+
+Experiments must support multiple variants.
+
+Example:
+
+```
+CHECKOUT_EXPERIMENT:
+  variants: ["A", "B"]
+```
+
+Variant assignment:
+
+```
+variant = hash(userId) % numberOfVariants
+```
+
+Experiments must emit analytics events.
+
+Example:
+
+```
+experiment_exposed
+```
+
+Payload:
+
+```
+flag
+variant
+userId
+timestamp
+```
+
+---
+
+### Kill Switch Flags
+
+Critical features must support kill switches.
+
+Example flags:
+
+```
+DISABLE_AI_SYSTEM
+DISABLE_PAYMENT_GATEWAY
+DISABLE_RECOMMENDATIONS
+```
+
+Kill switches override all other rules.
+
+---
+
+### Observability
+
+Feature flag evaluations must optionally emit telemetry.
+
+Example event:
+
+```
+feature_flag_exposed
+```
+
+Metadata:
+
+```
+flag
+userId
+tenantId
+region
+variant
+timestamp
+```
+
+This allows monitoring feature adoption.
+
+---
+
+### Security Rules
+
+Feature flags must never expose internal flags to the client.
+
+Flags must be filtered before sending to the browser.
+
+Internal flags example:
+
+```
+INTERNAL_DEBUG_MODE
+ADMIN_EXPERIMENT
+```
+
+These must remain server-only.
+
+---
+
+### Lifecycle Rules
+
+Each flag must contain metadata:
+
+```
+owner
+created
+type
+removal_target
+```
+
+Flags must be removed once the rollout completes.
+
+---
+
+### Golden Rule
+
+Feature flags are part of the deployment infrastructure.
+
+Every experimental or staged feature must go through the feature flag control plane.
+
+---
+
+## 13. Anti-Patterns to Avoid
 
 ### Fat Components
 
@@ -1425,7 +1831,7 @@ const handleResponse = (data: any) => { ... };
 
 ---
 
-## 13. Scalability Guidelines
+## 14. Scalability Guidelines
 
 ### Phase 1 — Small Team (1–5 developers, 1–5 features)
 
@@ -1489,7 +1895,7 @@ Do not introduce this prematurely. The Phase 1/2 structure handles most producti
 
 ### Feature Flag Integration
 
-Base feature flag governance is defined in **Section 10**. When features need to be toggled per tenant or fetched from an API (Phase 2), add a `flags/` module:
+Base feature flag governance is defined in **Section 10**. The centralized control plane (dashboard, edge, multi-tenant) is defined in **Section 12**. When features need to be toggled per tenant or fetched from an API (Phase 2), add a `flags/` module:
 
 ```
 features/
@@ -1542,6 +1948,6 @@ Before approving any PR touching `apps/web/`, verify:
 - [ ] All new files follow the naming conventions in Section 7
 - [ ] `npx tsc --noEmit` passes with zero errors
 - [ ] Tests exist for the service and hook layers of new features
-- [ ] Experimental features are protected by feature flags (Section 10)
+- [ ] Experimental features are protected by feature flags (Section 10) or the control plane (Section 12) when implemented
 - [ ] Feature flags are defined in `constants/feature-flags.ts` — not scattered
 - [ ] Tests cover both flag states (enabled and disabled) when a feature flag is used
