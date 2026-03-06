@@ -30,8 +30,9 @@ crmRouter.get("/dashboard", asyncHandler(crmController.getDashboard));
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: type
+ *         name: year
  *         schema: { type: string }
+ *         description: Year for reports (e.g. "2024"). Defaults to current year.
  *     responses:
  *       200: { description: Reports data }
  */
@@ -41,16 +42,17 @@ crmRouter.get("/reports", asyncHandler(crmController.getReports));
  * @swagger
  * /crm/reports/export:
  *   get:
- *     summary: Export CRM reports CSV
+ *     summary: Export CRM reports (Excel)
  *     tags: [CRM]
  *     security:
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
- *         name: type
+ *         name: year
  *         schema: { type: string }
+ *         description: Year for export (e.g. "2024"). Defaults to current year.
  *     responses:
- *       200: { description: CSV file }
+ *       200: { description: Excel file }
  */
 crmRouter.get("/reports/export", asyncHandler(crmController.exportReportsCsv));
 

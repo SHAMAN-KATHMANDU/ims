@@ -70,13 +70,11 @@ locationRouter.post(
  *         description: Filter only active locations
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *         description: Page number
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10 }
  *         description: Items per page
  *     responses:
  *       200:
@@ -146,6 +144,12 @@ locationRouter.get(
  *         name: search
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by category
  *     responses:
  *       200:
  *         description: Location inventory retrieved successfully

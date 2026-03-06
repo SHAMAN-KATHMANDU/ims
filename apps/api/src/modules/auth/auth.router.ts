@@ -11,6 +11,14 @@ const authRouter = Router();
  *   post:
  *     summary: User login
  *     tags: [Authentication]
+ *     parameters:
+ *       - in: header
+ *         name: X-Tenant-Slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *           example: demo
+ *         description: Tenant slug (e.g. demo, acme). Identifies which organization to authenticate against.
  *     requestBody:
  *       required: true
  *       content:
@@ -63,7 +71,11 @@ const authRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  *       500:
- *         description: Server error
+ *         description: No tenant configured. Please contact support. (Missing X-Tenant-Slug header)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Error'
  */
 authRouter.post("/login", asyncHandler(authController.logIn));
 

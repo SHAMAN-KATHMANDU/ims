@@ -43,7 +43,24 @@ bulkRouter.post(
 );
 
 /**
- * GET /bulk/template?type=products|members|sales
+ * @swagger
+ * /bulk/template:
+ *   get:
+ *     summary: Download bulk upload template
+ *     tags: [Bulk]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         required: true
+ *         schema: { type: string, enum: [products, members, sales] }
+ *         description: Entity type for the template
+ *     responses:
+ *       200:
+ *         description: Template file (Excel)
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
  */
 bulkRouter.get(
   "/template",
@@ -68,10 +85,11 @@ bulkRouter.get(
  *       - in: query
  *         name: format
  *         schema: { type: string, enum: [excel, csv] }
+ *         description: Export format (excel/xlsx or csv)
  *       - in: query
  *         name: ids
  *         schema: { type: string }
- *         description: Comma-separated IDs to export
+ *         description: Comma-separated IDs to export. Omit to export all.
  *     responses:
  *       200:
  *         description: Export file

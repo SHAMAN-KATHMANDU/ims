@@ -165,16 +165,13 @@ productRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10, minimum: 1, maximum: 100 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -183,10 +180,34 @@ productRouter.post(
  *         description: Sort field. dateCreated = date added. Use vendorName for vendor name (relation sort).
  *       - in: query
  *         name: sortOrder
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *         description: Sort direction (ascending or descending).
+ *         schema: { type: string, enum: [asc, desc] }
+ *       - in: query
+ *         name: locationId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: subCategoryId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: subCategory
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *         description: Filter from date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *         description: Filter to date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: lowStock
+ *         schema: { type: string, enum: ['true', 'false', '1', '0'] }
+ *         description: Filter products with low stock only
  *     responses:
  *       200:
  *         description: Products retrieved successfully
@@ -209,6 +230,22 @@ productRouter.get(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, maximum: 100 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
  *     responses:
  *       200:
  *         description: Categories retrieved successfully
@@ -227,6 +264,22 @@ productRouter.get(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, maximum: 100 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
  *     responses:
  *       200:
  *         description: Discount types retrieved successfully

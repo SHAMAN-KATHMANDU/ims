@@ -517,6 +517,11 @@ router.delete(
  *       - in: query
  *         name: tenantId
  *         schema: { type: string, format: uuid }
+ *         description: Filter by tenant
+ *       - in: query
+ *         name: subscriptionId
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by subscription
  *     responses:
  *       200: { description: Payments list }
  */

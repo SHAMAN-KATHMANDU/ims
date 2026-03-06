@@ -82,20 +82,17 @@ promoRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: isActive
- *         schema:
- *           type: boolean
+ *         schema: { type: boolean }
+ *         description: Filter by active status (true/false)
  *     responses:
  *       200:
  *         description: Promo codes retrieved successfully

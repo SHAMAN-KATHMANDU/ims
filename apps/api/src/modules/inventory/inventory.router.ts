@@ -40,21 +40,16 @@ inventoryRouter.get(
  *           format: uuid
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: categoryId
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *     responses:
  *       200:
  *         description: Location inventory retrieved successfully

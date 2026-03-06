@@ -18,13 +18,14 @@ notificationRouter.use(authorizeRoles("user", "admin", "superAdmin"));
  *     parameters:
  *       - in: query
  *         name: page
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema: { type: integer }
+ *         schema: { type: integer, default: 10 }
  *       - in: query
  *         name: unreadOnly
  *         schema: { type: boolean }
+ *         description: Filter unread notifications only
  *     responses:
  *       200:
  *         description: Notifications list
