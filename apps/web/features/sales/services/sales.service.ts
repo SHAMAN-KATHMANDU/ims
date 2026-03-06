@@ -208,8 +208,10 @@ export async function previewSale(
     contactId: data.contactId ?? undefined,
     items: data.items.map((i) => ({
       variationId: i.variationId,
+      subVariationId: i.subVariationId ?? undefined,
       quantity: i.quantity,
-      discountId: i.discountId ?? undefined,
+      discountId:
+        i.discountId && i.discountId !== "none" ? i.discountId : undefined,
       promoCode: i.promoCode,
     })),
   });
