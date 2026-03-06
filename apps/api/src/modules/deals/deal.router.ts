@@ -74,7 +74,12 @@ dealRouter.get("/kanban", asyncHandler(dealController.getByPipeline));
  *         name: stageId
  *         schema: { type: string, format: uuid }
  *     responses:
- *       200: { description: Deals list }
+ *       200:
+ *         description: Deals list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedDealsResponse'
  */
 dealRouter.get("/", asyncHandler(dealController.getAll));
 

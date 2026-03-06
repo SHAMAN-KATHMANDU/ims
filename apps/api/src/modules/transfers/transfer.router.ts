@@ -98,6 +98,10 @@ transferRouter.post(
  *     responses:
  *       200:
  *         description: Transfers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedTransfersResponse'
  */
 transferRouter.get(
   "/",

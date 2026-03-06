@@ -72,6 +72,10 @@ vendorRouter.post(
  *     responses:
  *       200:
  *         description: Vendors retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedVendorsResponse'
  */
 vendorRouter.get(
   "/",
@@ -109,6 +113,10 @@ vendorRouter.get(
  *     responses:
  *       200:
  *         description: Vendor products retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedProductsResponse'
  *       404:
  *         description: Vendor not found
  */

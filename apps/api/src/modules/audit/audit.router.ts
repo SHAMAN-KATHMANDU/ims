@@ -42,6 +42,10 @@ const auditRouter = Router();
  *     responses:
  *       200:
  *         description: Audit logs retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedAuditResponse'
  *       401: { description: Unauthorized }
  *       403: { description: Forbidden }
  */

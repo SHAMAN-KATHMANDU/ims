@@ -87,6 +87,10 @@ memberRouter.post(
  *     responses:
  *       200:
  *         description: Members retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedMembersResponse'
  */
 memberRouter.get(
   "/",

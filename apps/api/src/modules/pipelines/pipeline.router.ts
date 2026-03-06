@@ -43,7 +43,12 @@ pipelineRouter.post(
  *     security:
  *       - bearerAuth: []
  *     responses:
- *       200: { description: Pipelines list }
+ *       200:
+ *         description: Pipelines list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedPipelinesResponse'
  */
 pipelineRouter.get("/", asyncHandler(pipelineController.getAll));
 

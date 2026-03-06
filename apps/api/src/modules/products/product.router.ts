@@ -23,27 +23,21 @@ const productRouter = Router();
  *           schema:
  *             type: object
  *             required:
- *               - imsCode
  *               - name
  *               - categoryId
  *               - costPrice
  *               - mrp
+ *               - variations
  *             properties:
- *               imsCode:
- *                 type: string
- *                 example: IMS-PHONE-001
  *               name:
  *                 type: string
  *                 example: Smartphone XYZ Pro
  *               categoryId:
  *                 type: string
- *                 example: Electronics
- *                 description: Can be UUID or category name
- *               categoryName:
- *                 type: string
- *                 example: Electronics
- *                 description: Alternative to categoryId
+ *                 format: uuid
  *               description:
+ *                 type: string
+ *               subCategory:
  *                 type: string
  *               length:
  *                 type: number
@@ -57,13 +51,57 @@ const productRouter = Router();
  *                 type: number
  *               mrp:
  *                 type: number
- *               variations:
+ *               vendorId:
+ *                 type: string
+ *                 format: uuid
+ *               defaultLocationId:
+ *                 type: string
+ *                 format: uuid
+ *               attributeTypeIds:
  *                 type: array
  *                 items:
+ *                   type: string
+ *                   format: uuid
+ *               variations:
+ *                 type: array
+ *                 minItems: 1
+ *                 items:
  *                   type: object
+ *                   required:
+ *                     - imsCode
  *                   properties:
+ *                     imsCode:
+ *                       type: string
+ *                       example: IMS-PHONE-001
  *                     stockQuantity:
  *                       type: number
+ *                       default: 0
+ *                     costPriceOverride:
+ *                       type: number
+ *                     mrpOverride:
+ *                       type: number
+ *                     finalSpOverride:
+ *                       type: number
+ *                     attributes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           attributeTypeId:
+ *                             type: string
+ *                             format: uuid
+ *                           attributeValueId:
+ *                             type: string
+ *                             format: uuid
+ *                     subVariants:
+ *                       type: array
+ *                       items:
+ *                         oneOf:
+ *                           - type: string
+ *                           - type: object
+ *                             properties:
+ *                               name:
+ *                                 type: string
  *                     photos:
  *                       type: array
  *                       items:
@@ -71,18 +109,33 @@ const productRouter = Router();
  *                         properties:
  *                           photoUrl:
  *                             type: string
+ *                             format: uri
  *                           isPrimary:
  *                             type: boolean
  *               discounts:
  *                 type: array
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - discountTypeId
+ *                     - discountPercentage
  *                   properties:
- *                     discountTypeName:
+ *                     discountTypeId:
  *                       type: string
- *                       example: Normal
+ *                       format: uuid
  *                     discountPercentage:
  *                       type: number
+ *                       minimum: 0
+ *                       maximum: 100
+ *                     valueType:
+ *                       type: string
+ *                       enum: [PERCENTAGE, FLAT]
+ *                     value:
+ *                       type: number
+ *                     startDate:
+ *                       type: string
+ *                     endDate:
+ *                       type: string
  *                     isActive:
  *                       type: boolean
  *     responses:
@@ -140,16 +193,7 @@ productRouter.post(
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 products:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Product'
- *                 count:
- *                   type: number
+ *               $ref: '#/components/schemas/PaginatedProductsResponse'
  */
 productRouter.get(
   "/",

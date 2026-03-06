@@ -58,6 +58,10 @@ errorReportRouter.post(
  *     responses:
  *       200:
  *         description: Error reports list
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedErrorReportsResponse'
  *       401: { description: Unauthorized }
  *       403: { description: Forbidden }
  */
