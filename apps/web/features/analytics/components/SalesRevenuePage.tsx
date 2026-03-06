@@ -492,6 +492,8 @@ export function SalesRevenuePage() {
                       <Tooltip
                         content={<AnalyticsChartTooltip />}
                         formatter={(v: number) => fN(v)}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -647,6 +649,8 @@ export function SalesRevenuePage() {
                       <Tooltip
                         content={<AnalyticsChartTooltip />}
                         formatter={(v: number) => fN(v)}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
                       />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                     </PieChart>
