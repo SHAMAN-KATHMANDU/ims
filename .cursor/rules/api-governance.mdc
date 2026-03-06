@@ -1,0 +1,322 @@
+---
+name: api-governance
+description: >
+  Enforce API documentation synchronization (Swagger/OpenAPI), structured feature flag
+  governance, observability, and input validation. Treat as senior backend engineer
+  architectural review. Applies when modifying API controllers, routers, services, or
+  adding/removing endpoints.
+globs:
+  - "apps/api/**/*.ts"
+  - "apps/api/**/*.router.ts"
+  - "apps/api/**/*.controller.ts"
+  - "apps/api/**/*.service.ts"
+alwaysApply: false
+---
+
+# API Governance
+
+The AI assistant must behave like a **senior backend engineer performing architectural review**. This rule enforces API documentation synchronization, structured feature flag governance, observability, and input validation.
+
+---
+
+## 1. Rule Objective
+
+1. Ensure **every API change automatically updates Swagger/OpenAPI documentation**.
+2. Enforce **structured feature flagging for experimental or staged features**.
+3. Prevent undocumented APIs and uncontrolled feature releases.
+4. Guarantee **production observability** and **input validation**.
+
+---
+
+## 2. Swagger / OpenAPI Enforcement
+
+Whenever backend API-related files are modified, added, or deleted, the AI **must** ensure Swagger/OpenAPI documentation is updated in the same change.
+
+### API-Related Files
+
+- Controllers (`*.controller.ts`)
+- Routes and routers (`*.router.ts`)
+- Handlers
+- API modules under `apps/api/src/modules/`
+- Service files containing HTTP endpoint logic
+
+### Trigger Conditions
+
+The AI **must** update Swagger when any of the following occur:
+
+- A new endpoint is added
+- An endpoint is removed
+- Request body schema changes
+- Response schema changes
+- Query parameters change
+- Path parameters change
+- Authentication requirements change
+- Response codes change
+
+### Required Actions
+
+When any of the above occur, the AI **must**:
+
+1. Update the OpenAPI/Swagger specification
+2. Update request body schemas (in JSDoc or `swagger.config.ts` components)
+3. Update response schemas
+4. Update parameters (query, path, headers)
+5. Update response examples
+6. Update error responses
+7. Ensure endpoint tags and summaries exist
+
+### Required Per-Endpoint Fields
+
+Each endpoint **must** include:
+
+- `summary`
+- `description`
+- `tags`
+- `operationId`
+- `parameters` (query, path, headers)
+- `requestBody` (if applicable)
+- `responses` (success + error responses)
+- `security` (when auth required)
+
+### Reference Implementation
+
+- Swagger spec: `apps/api/src/config/swagger.config.ts`
+- JSDoc pattern: `apps/api/src/modules/auth/auth.router.ts`
+- Shared schemas: `components.schemas`, `components.parameters` in swagger.config.ts
+
+### Golden Rule
+
+**Undocumented endpoints are a blocking issue.** If API logic changes but Swagger documentation is not updated, the AI must flag the issue and suggest documentation updates.
+
+---
+
+## 3. Feature Flag Governance
+
+All experimental, incomplete, beta, or rollout-based features **must** be protected using feature flags.
+
+### Central Configuration
+
+Feature flags **must** be centralized. Define them in:
+
+```
+apps/api/src/config/featureFlags.ts
+```
+
+Feature flags **must** follow this structure:
+
+- Uppercase names
+- Descriptive identifiers
+- Boolean values
+
+Example naming pattern:
+
+```ts
+NEW_DASHBOARD
+AI_RECOMMENDATIONS
+SMART_SEARCH
+EXPERIMENTAL_EDITOR
+```
+
+### Access Pattern
+
+- No experimental feature may be exposed without a feature flag
+- **Never** implement feature flag logic using direct environment variable checks
+- Feature flags **must** be accessed through a helper function such as `isFeatureEnabled()`
+
+Example:
+
+```ts
+if (isFeatureEnabled("AI_RECOMMENDATIONS")) {
+  runRecommendationEngine();
+}
+```
+
+### API Behavior When Disabled
+
+Backend APIs controlled by feature flags **must** return appropriate responses when disabled:
+
+- HTTP 404 (Not Found)
+- HTTP 403 (Forbidden)
+- A standardized "feature disabled" error response
+
+### Feature Flag Metadata
+
+Each feature flag **must** include metadata comments:
+
+```
+AI_RECOMMENDATIONS
+description: AI suggestions for search results
+owner: AI Team
+created: 2026-01-15
+removal_target: 2026-04-01
+```
+
+The AI should encourage removal of flags once features become stable.
+
+---
+
+## 4. Observability & Logging
+
+Every system must be **debuggable in production**. All APIs must include structured logging, tracing, and error monitoring.
+
+### Required Logging Levels
+
+- INFO
+- WARN
+- ERROR
+- DEBUG
+
+### Required Logging Fields
+
+Every log **must** include (where available):
+
+- `timestamp`
+- `request_id`
+- `user_id` (if available)
+- `endpoint`
+- `method`
+- `status_code`
+- `duration_ms`
+
+### Example Structured Log
+
+```json
+{
+  "level": "info",
+  "request_id": "abc123",
+  "endpoint": "/api/v1/users",
+  "method": "GET",
+  "status_code": 200,
+  "duration_ms": 45
+}
+```
+
+### Request ID Middleware
+
+Every request **must** generate or propagate a request ID. Use:
+
+```ts
+app.use(requestIdMiddleware);
+```
+
+Reference: `apps/api/src/middlewares/requestId.ts`
+
+### Error Logging
+
+All errors **must** include:
+
+- Stack trace
+- Request ID
+- User ID (if available)
+- Endpoint
+
+Example:
+
+```ts
+logger.error("Operation failed", requestId, {
+  error,
+  endpoint: req.path,
+  userId: req.user?.id,
+});
+```
+
+Reference: `apps/api/src/config/logger.ts`, `apps/api/src/utils/controllerError.ts`
+
+### Metrics Collection
+
+Every API should track:
+
+- `request_count`
+- `request_duration`
+- `error_rate`
+
+Recommended tools: Prometheus, OpenTelemetry, Grafana.
+
+### Monitoring Integrations
+
+Allowed tools:
+
+- Sentry
+- OpenTelemetry
+- Datadog
+- Grafana Loki
+
+### Enforcement
+
+When an API endpoint is created, ensure:
+
+1. Logging is added
+2. Errors are captured
+3. Metrics hooks exist
+4. Request ID middleware is used
+
+---
+
+## 5. API Validation Enforcement
+
+Every API input **must** be validated using Zod (or yup, class-validator, joi).
+
+**Never trust request input.**
+
+The project uses **Zod** — schemas live in `*.schema.ts` per the api-architecture rule. All `req.body`, `req.query`, and `req.params` must be validated before use.
+
+Example:
+
+```ts
+const schema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+const body = schema.parse(req.body);
+```
+
+---
+
+## 6. Testing Requirements
+
+If a feature flag exists, tests **must** cover both states:
+
+- Flag **enabled**
+- Flag **disabled**
+
+Example:
+
+```ts
+describe("AI recommendations endpoint", () => {
+  it("returns recommendations when flag enabled", async () => { ... });
+  it("returns 404 when flag disabled", async () => { ... });
+});
+```
+
+---
+
+## 7. Pull Request Review Behavior
+
+When reviewing or generating code changes, the AI **must** verify:
+
+- Swagger documentation is updated for API changes
+- Request and response schemas are documented
+- New experimental features are protected by feature flags
+- Feature flags are defined centrally in `apps/api/src/config/featureFlags.ts`
+- Tests exist for both flag states (enabled and disabled)
+- Input validation is applied (Zod)
+- Logging and error capture are present
+
+---
+
+## 8. Golden Rules
+
+1. **No undocumented API endpoints.** Every endpoint must have complete Swagger/OpenAPI documentation.
+2. **No experimental feature released without a feature flag.** All beta, staged, or incomplete features must be gated.
+
+The AI must actively enforce these rules whenever generating, modifying, or reviewing backend or API code.
+
+---
+
+## 9. Golden Engineering Standard
+
+Every backend system must guarantee:
+
+- **Stable APIs** — documented, validated, consistent
+- **Clean architecture** — controller → service → repository, shared utilities
+- **Production observability** — structured logs, request IDs, metrics, error monitoring
