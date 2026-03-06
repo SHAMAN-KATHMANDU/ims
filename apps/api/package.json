@@ -42,8 +42,8 @@
     "node-cron": "^4.2.1",
     "prisma": "^5.22.0",
     "swagger-jsdoc": "^6.2.8",
-    "swagger-themes": "^1.4.3",
     "swagger-ui-express": "^5.0.1",
+    "swagger-ui-themes": "^3.0.1",
     "tsconfig-paths": "^4.2.0",
     "zod": "3.25.76"
   },
