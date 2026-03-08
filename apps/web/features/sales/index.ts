@@ -1,6 +1,7 @@
 export * from "./hooks/use-sales";
 export {
   downloadSales,
+  downloadReceiptPdf,
   downloadBulkUploadTemplate,
   previewSale,
   bulkUploadSales,

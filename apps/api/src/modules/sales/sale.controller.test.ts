@@ -1,6 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { Request, Response } from "express";
 
+vi.mock("./receipt-pdf.service", () => ({
+  generateReceiptPdf: vi.fn(),
+}));
+
 vi.mock("./sale.service", () => ({
   SaleCalculationError: class SaleCalculationError extends Error {
     status: number;
@@ -67,7 +71,10 @@ vi.mock("@/utils/pagination", () => ({
 
 import saleController from "./sale.controller";
 import saleService from "./sale.service";
+import { generateReceiptPdf } from "./receipt-pdf.service";
 import { sendControllerError } from "@/utils/controllerError";
+
+const mockGenerateReceiptPdf = vi.mocked(generateReceiptPdf);
 import { CreateSaleSchema } from "./sale.schema";
 
 const mockCreateSale = vi.mocked(saleService.createSale);
@@ -319,6 +326,56 @@ describe("SaleController", () => {
       await saleController.getSaleById(req, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe("getReceiptPdf", () => {
+    it("returns 200 with application/pdf and Content-Disposition on success", async () => {
+      const sale = {
+        id: "s1",
+        saleCode: "SL-001",
+        location: { name: "Store A" },
+        member: null,
+        createdBy: { username: "user1" },
+        items: [],
+        payments: [],
+      };
+      mockGetSaleById.mockResolvedValue(
+        sale as Awaited<ReturnType<typeof mockGetSaleById>>,
+      );
+      const pdfBuffer = Buffer.from("%PDF-1.4 fake pdf content");
+      mockGenerateReceiptPdf.mockResolvedValue(pdfBuffer);
+
+      const req = makeReq({ params: { id: "s1" } });
+      const res = mockRes() as Response;
+
+      await saleController.getReceiptPdf(req, res);
+
+      expect(mockGetSaleById).toHaveBeenCalledWith("s1");
+      expect(mockGenerateReceiptPdf).toHaveBeenCalledWith(sale);
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Content-Type",
+        "application/pdf",
+      );
+      expect(res.setHeader).toHaveBeenCalledWith(
+        "Content-Disposition",
+        'attachment; filename="receipt-SL-001.pdf"',
+      );
+      expect(res.send).toHaveBeenCalledWith(pdfBuffer);
+    });
+
+    it("returns 404 when sale not found", async () => {
+      mockGetSaleById.mockRejectedValue(
+        Object.assign(new Error("Sale not found"), { statusCode: 404 }),
+      );
+
+      const req = makeReq({ params: { id: "s1" } });
+      const res = mockRes() as Response;
+
+      await saleController.getReceiptPdf(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(mockGenerateReceiptPdf).not.toHaveBeenCalled();
     });
   });
 
