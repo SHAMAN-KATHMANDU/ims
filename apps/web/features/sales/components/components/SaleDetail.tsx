@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import {
   Dialog,
@@ -74,7 +74,6 @@ export function SaleDetail({
   isLoading,
 }: SaleDetailProps) {
   const { toast } = useToast();
-  const receiptRef = useRef<HTMLDivElement>(null);
   const addPaymentMutation = useAddPaymentToSale();
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(false);
