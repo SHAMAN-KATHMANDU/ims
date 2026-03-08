@@ -5,7 +5,11 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuthStore, selectIsAuthenticated } from "@/store/auth-store";
+import {
+  useAuthStore,
+  selectIsAuthenticated,
+  selectUserRole,
+} from "@/store/auth-store";
 import {
   getLocations,
   getActiveLocations,
@@ -80,16 +84,17 @@ export function useLocationsPaginated(params: LocationListParams = {}) {
 
 /**
  * Hook for fetching all active locations.
- * Only fetches when authenticated to avoid 401 errors from premature requests
- * (e.g. during login redirect or when location is called twice in quick succession).
+ * Only fetches when authenticated and user is NOT platformAdmin (locations API
+ * returns 403 for platformAdmin role).
  */
 export function useActiveLocations() {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const userRole = useAuthStore(selectUserRole);
   return useQuery({
     queryKey: locationKeys.active(),
     queryFn: getActiveLocations,
     staleTime: 5 * 60 * 1000, // 5 minutes
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && userRole !== "platformAdmin",
   });
 }
 
