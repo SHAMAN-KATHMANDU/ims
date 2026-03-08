@@ -29,7 +29,8 @@ export const ITEMS_TABLE_COLUMNS: TableColumn[] = [
 ];
 
 const ROW_PADDING = 1;
-const HEADER_ROW_HEIGHT = 11;
+const HEADER_ROW_HEIGHT = 10;
+const TEXT_OPTS = { lineGap: 0 };
 
 function computeColumnLayout(
   ctx: ReceiptContext,
@@ -60,19 +61,20 @@ export function drawTableHeader(
     doc.text(col.label, x, startY, {
       width: width - 4,
       align,
+      ...TEXT_OPTS,
     });
   }
   maxY = startY + HEADER_ROW_HEIGHT;
 
   doc
     .lineWidth(DIVIDER_LINE_WIDTH)
-    .moveTo(ctx.margin, maxY + SPACE.xs)
-    .lineTo(ctx.tableRight, maxY + SPACE.xs)
+    .moveTo(ctx.margin, maxY + SPACE.xxs)
+    .lineTo(ctx.tableRight, maxY + SPACE.xxs)
     .strokeColor(COLORS.divider)
     .stroke()
     .lineWidth(1);
 
-  return maxY + SPACE.xs + SPACE.sm;
+  return maxY + SPACE.xxs + SPACE.xs;
 }
 
 export function drawTableRow(
@@ -95,6 +97,7 @@ export function drawTableRow(
   doc.text(productText, productLayout.x, startY, {
     width: productWidth,
     align: "left",
+    ...TEXT_OPTS,
   });
   maxY = Math.max(maxY, startY + productHeight);
 
@@ -106,6 +109,7 @@ export function drawTableRow(
     doc.text(text, x, rowBaseY, {
       width: width - 4,
       align,
+      ...TEXT_OPTS,
     });
   }
 

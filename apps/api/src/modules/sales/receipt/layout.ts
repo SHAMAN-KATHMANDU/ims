@@ -23,9 +23,12 @@ export function drawDivider(doc: Doc, ctx: ReceiptContext, y?: number): void {
     .stroke()
     .lineWidth(1);
   if (y === undefined) {
-    doc.y = lineY + SPACE.xs;
+    doc.y = lineY + SPACE.xxs;
   }
 }
+
+/** Tighter line spacing for receipt text */
+const TEXT_OPTS = { lineGap: 0 };
 
 /**
  * Draw a section title (e.g. "Customer", "Payment").
@@ -35,8 +38,8 @@ export function drawSectionTitle(doc: Doc, text: string): void {
     .font(getFontBold())
     .fontSize(TYPE.section)
     .fillColor(COLORS.text)
-    .text(text);
-  doc.moveDown(SPACE.xs);
+    .text(text, { ...TEXT_OPTS });
+  doc.moveDown(SPACE.xxs);
 }
 
 const VALUE_COLUMN_WIDTH = 58;
@@ -59,6 +62,7 @@ export function drawKeyValueRow(
   doc.text(value, ctx.totX, doc.y, {
     width: VALUE_COLUMN_WIDTH,
     align: "right",
+    ...TEXT_OPTS,
   });
-  doc.moveDown(SPACE.xs);
+  doc.moveDown(SPACE.xxs);
 }

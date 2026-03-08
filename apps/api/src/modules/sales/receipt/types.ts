@@ -62,4 +62,6 @@ export interface ReceiptContext {
   tableRight: number;
   totX: number;
   midX: number;
+  /** When true, keep receipt on single page (≤10 items) */
+  singlePageMode: boolean;
 }
