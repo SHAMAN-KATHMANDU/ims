@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useActiveLocations } from "@/features/locations";
 import {
   useAuthStore,
@@ -89,6 +90,7 @@ export function SalesPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [typeFilter, setTypeFilter] = useState<SaleType | "ALL">("ALL");
   const [creditFilter, setCreditFilter] = useState<
     "ALL" | "credit" | "non-credit"
@@ -151,7 +153,7 @@ export function SalesPage() {
   const { data: salesResponse, isLoading: salesLoading } = useSalesPaginated({
     page,
     limit: pageSize,
-    search,
+    search: debouncedSearch,
     type: typeFilter === "ALL" ? undefined : typeFilter,
     isCreditSale:
       creditFilter === "credit"

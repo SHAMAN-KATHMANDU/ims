@@ -597,18 +597,6 @@ export function ProductPage() {
                 ? v.attributes
                 : undefined,
           }));
-
-          data.discounts = productDiscounts.map((d) => ({
-            discountTypeId: d.discountTypeId,
-            discountPercentage: Number(d.discountPercentage) || 0,
-            startDate:
-              d.startDate && d.startDate.trim() !== ""
-                ? d.startDate
-                : undefined,
-            endDate:
-              d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-            isActive: d.isActive,
-          }));
         } else {
           if (productVariations.length > 0) {
             data.variations = productVariations.map((v) => ({
@@ -628,20 +616,6 @@ export function ProductPage() {
                 v.attributes && v.attributes.length > 0
                   ? v.attributes
                   : undefined,
-            }));
-          }
-
-          if (productDiscounts.length > 0) {
-            data.discounts = productDiscounts.map((d) => ({
-              discountTypeId: d.discountTypeId,
-              discountPercentage: Number(d.discountPercentage) || 0,
-              startDate:
-                d.startDate && d.startDate.trim() !== ""
-                  ? d.startDate
-                  : undefined,
-              endDate:
-                d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-              isActive: d.isActive,
             }));
           }
         }
@@ -897,60 +871,6 @@ export function ProductPage() {
     setProductVariations(updated);
   };
 
-  // Discount handlers
-  const addDiscountToForm = () => {
-    setProductDiscounts([
-      ...productDiscounts,
-      {
-        discountTypeId: "",
-        discountPercentage: "0",
-        startDate: "",
-        endDate: "",
-        isActive: true,
-      },
-    ]);
-  };
-
-  const removeDiscountFromForm = (index: number) => {
-    setProductDiscounts(productDiscounts.filter((_, i) => i !== index));
-  };
-
-  const updateDiscountInForm = (
-    index: number,
-    field:
-      | "discountTypeId"
-      | "discountPercentage"
-      | "startDate"
-      | "endDate"
-      | "isActive",
-    value: string | boolean,
-  ) => {
-    const updated = [...productDiscounts];
-    updated[index] = {
-      discountTypeId:
-        field === "discountTypeId"
-          ? (value as string)
-          : updated[index]?.discountTypeId || "",
-      discountPercentage:
-        field === "discountPercentage"
-          ? (value as string)
-          : updated[index]?.discountPercentage || "0",
-      startDate:
-        field === "startDate"
-          ? (value as string)
-          : updated[index]?.startDate || "",
-      endDate:
-        field === "endDate" ? (value as string) : updated[index]?.endDate || "",
-      isActive:
-        field === "isActive"
-          ? (value as boolean)
-          : updated[index]?.isActive !== undefined
-            ? updated[index].isActive
-            : true,
-    };
-    setProductDiscounts(updated);
-  };
-
   // Export handlers
   const handleExport = useCallback(
     async (format: "excel" | "csv") => {
@@ -1078,9 +998,6 @@ export function ProductPage() {
                     onAddPhoto={addPhotoToVariation}
                     onRemovePhoto={removePhotoFromVariation}
                     onSetPrimaryPhoto={setPrimaryPhoto}
-                    onAddDiscount={addDiscountToForm}
-                    onRemoveDiscount={removeDiscountFromForm}
-                    onUpdateDiscount={updateDiscountInForm}
                     onShowError={(title, message) =>
                       setErrorDialog({ open: true, title, message })
                     }

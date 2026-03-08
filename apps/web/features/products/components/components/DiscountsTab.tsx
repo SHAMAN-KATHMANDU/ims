@@ -2,7 +2,8 @@
 
 /**
  * Product discounts list page content (table, filters, pagination).
- * Not the form tab – see form-tabs/DiscountsTab.tsx for product form discount rows.
+ * Full CRUD for product discounts - Add, Edit, Delete.
+ * Not the form tab – see form-tabs/DiscountsTab.tsx for product form discount rows (view-only).
  */
 
 import { useState, useCallback } from "react";
@@ -37,19 +38,89 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Switch } from "@/components/ui/switch";
+import {
   useProductDiscountsList,
   useCategories,
   useDiscountTypes,
   useProductsPaginated,
+  useUpdateProduct,
+  getProductById,
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
   type ProductDiscountListItem,
   type ProductDiscountListParams,
 } from "@/features/products";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { Search, Loader2, Filter } from "lucide-react";
+import { useToast } from "@/hooks/useToast";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Search, Loader2, Filter, Plus, Pencil, Trash2 } from "lucide-react";
+
+type DiscountFormData = {
+  productId: string;
+  discountTypeId: string;
+  discountPercentage: string;
+  startDate: string;
+  endDate: string;
+  isActive: boolean;
+};
+
+const emptyForm: DiscountFormData = {
+  productId: "",
+  discountTypeId: "",
+  discountPercentage: "0",
+  startDate: "",
+  endDate: "",
+  isActive: true,
+};
+
+function toUpdateDiscounts(
+  discounts: Array<{
+    id?: string;
+    discountTypeId: string;
+    discountPercentage: number;
+    startDate?: string | null;
+    endDate?: string | null;
+    isActive: boolean;
+  }>,
+) {
+  return discounts.map((d) => ({
+    discountTypeId: d.discountTypeId,
+    discountPercentage: Number(d.discountPercentage) || 0,
+    startDate:
+      d.startDate && String(d.startDate).trim() !== ""
+        ? String(d.startDate).split("T")[0]
+        : undefined,
+    endDate:
+      d.endDate && String(d.endDate).trim() !== ""
+        ? String(d.endDate).split("T")[0]
+        : undefined,
+    isActive: d.isActive,
+  }));
+}
 
 export function DiscountsTab() {
+  const { toast } = useToast();
+  const updateProductMutation = useUpdateProduct();
+
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 300);
   const [params, setParams] = useState<ProductDiscountListParams>({
     page: DEFAULT_PAGE,
     limit: DEFAULT_LIMIT,
@@ -62,12 +133,26 @@ export function DiscountsTab() {
     sortOrder: "desc",
   });
 
-  const { data, isLoading } = useProductDiscountsList(params);
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [editState, setEditState] = useState<{
+    open: boolean;
+    discount: ProductDiscountListItem | null;
+  }>({ open: false, discount: null });
+  const [deleteState, setDeleteState] = useState<{
+    open: boolean;
+    discount: ProductDiscountListItem | null;
+  }>({ open: false, discount: null });
+  const [formData, setFormData] = useState<DiscountFormData>(emptyForm);
+
+  const { data, isLoading } = useProductDiscountsList({
+    ...params,
+    search: debouncedSearch || undefined,
+  });
   const { data: categories = [] } = useCategories();
   const { data: discountTypes = [] } = useDiscountTypes();
   const { data: productsResponse } = useProductsPaginated({
     page: 1,
-    limit: 200,
+    limit: 500,
   });
   const products = productsResponse?.data ?? [];
 
@@ -75,11 +160,8 @@ export function DiscountsTab() {
   const pagination = data?.pagination;
 
   const handleSearchChange = useCallback((value: string) => {
-    setParams((prev) => ({
-      ...prev,
-      page: DEFAULT_PAGE,
-      search: value || undefined,
-    }));
+    setSearchInput(value);
+    setParams((prev) => ({ ...prev, page: DEFAULT_PAGE }));
   }, []);
 
   const handleFilterChange = useCallback(
@@ -117,6 +199,167 @@ export function DiscountsTab() {
     }));
   }, []);
 
+  const openAddDialog = () => {
+    setFormData(emptyForm);
+    setAddDialogOpen(true);
+  };
+
+  const openEditDialog = (discount: ProductDiscountListItem) => {
+    setEditState({ open: true, discount });
+    setFormData({
+      productId: discount.productId,
+      discountTypeId: discount.discountTypeId,
+      discountPercentage: String(discount.discountPercentage),
+      startDate: discount.startDate
+        ? (new Date(discount.startDate).toISOString().split("T")[0] ?? "")
+        : "",
+      endDate: discount.endDate
+        ? (new Date(discount.endDate).toISOString().split("T")[0] ?? "")
+        : "",
+      isActive: discount.isActive,
+    });
+  };
+
+  const openDeleteDialog = (discount: ProductDiscountListItem) => {
+    setDeleteState({ open: true, discount });
+  };
+
+  const handleAddSubmit = async () => {
+    if (!formData.productId || !formData.discountTypeId) {
+      toast({
+        title: "Validation error",
+        description: "Product and discount type are required",
+        variant: "destructive",
+      });
+      return;
+    }
+    const pct = Number(formData.discountPercentage);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      toast({
+        title: "Validation error",
+        description: "Discount percentage must be between 0 and 100",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const product = await getProductById(formData.productId);
+      const existing = product.discounts ?? [];
+      const newDiscount = {
+        discountTypeId: formData.discountTypeId,
+        discountPercentage: pct,
+        startDate:
+          formData.startDate.trim() !== "" ? formData.startDate : undefined,
+        endDate: formData.endDate.trim() !== "" ? formData.endDate : undefined,
+        isActive: formData.isActive,
+      };
+      const duplicate = existing.some(
+        (d) => d.discountTypeId === formData.discountTypeId,
+      );
+      if (duplicate) {
+        toast({
+          title: "Duplicate discount",
+          description:
+            "This product already has a discount of this type. Edit or remove it first.",
+          variant: "destructive",
+        });
+        return;
+      }
+      const updatedDiscounts = toUpdateDiscounts([
+        ...existing.map((d) => ({
+          discountTypeId: d.discountTypeId,
+          discountPercentage: d.discountPercentage,
+          startDate: d.startDate,
+          endDate: d.endDate,
+          isActive: d.isActive,
+        })),
+        newDiscount,
+      ]);
+      await updateProductMutation.mutateAsync({
+        id: formData.productId,
+        data: { discounts: updatedDiscounts },
+      });
+      toast({ title: "Discount added" });
+      setAddDialogOpen(false);
+      setFormData(emptyForm);
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Failed to add discount";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    }
+  };
+
+  const handleEditSubmit = async () => {
+    const discount = editState.discount;
+    if (!discount || !formData.discountTypeId) return;
+    const pct = Number(formData.discountPercentage);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      toast({
+        title: "Validation error",
+        description: "Discount percentage must be between 0 and 100",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const product = await getProductById(discount.productId);
+      const existing = product.discounts ?? [];
+      const updated = existing.map((d) => {
+        if (d.id === discount.id) {
+          return {
+            ...d,
+            discountTypeId: formData.discountTypeId,
+            discountPercentage: pct,
+            startDate:
+              formData.startDate.trim() !== "" ? formData.startDate : undefined,
+            endDate:
+              formData.endDate.trim() !== "" ? formData.endDate : undefined,
+            isActive: formData.isActive,
+          };
+        }
+        return d;
+      });
+      await updateProductMutation.mutateAsync({
+        id: discount.productId,
+        data: { discounts: toUpdateDiscounts(updated) },
+      });
+      toast({ title: "Discount updated" });
+      setEditState({ open: false, discount: null });
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Failed to update discount";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    const discount = deleteState.discount;
+    if (!discount) return;
+    try {
+      const product = await getProductById(discount.productId);
+      const existing = product.discounts ?? [];
+      const filtered = existing
+        .filter((d) => d.id !== discount.id)
+        .map((d) => ({
+          discountTypeId: d.discountTypeId,
+          discountPercentage: d.discountPercentage,
+          startDate: d.startDate,
+          endDate: d.endDate,
+          isActive: d.isActive,
+        }));
+      await updateProductMutation.mutateAsync({
+        id: discount.productId,
+        data: { discounts: toUpdateDiscounts(filtered) },
+      });
+      toast({ title: "Discount removed" });
+      setDeleteState({ open: false, discount: null });
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Failed to remove discount";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    }
+  };
+
   const formatValue = (d: ProductDiscountListItem) => {
     if (d.valueType === "PERCENTAGE") {
       return `${Number(d.value)}%`;
@@ -126,21 +369,27 @@ export function DiscountsTab() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-semibold">All Discounts</h2>
-        <p className="text-sm text-muted-foreground">
-          View and filter product discounts. To add or edit discounts, edit the
-          product.
-        </p>
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-xl font-semibold">All Discounts</h2>
+          <p className="text-sm text-muted-foreground">
+            Add, edit, or remove product discounts. Discount types are managed
+            above.
+          </p>
+        </div>
+        <Button onClick={openAddDialog} size="sm" className="gap-1.5 shrink-0">
+          <Plus className="h-4 w-4" />
+          Add Product Discount
+        </Button>
       </div>
 
-      {/* Minimal filter bar – same style as product catalog */}
+      {/* Minimal filter bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
         <div className="relative flex-1 min-w-[180px] max-w-[280px]">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
             placeholder="Search product or type..."
-            value={params.search ?? ""}
+            value={searchInput}
             onChange={(e) => handleSearchChange(e.target.value)}
             className="h-8 pl-8 text-sm"
           />
@@ -171,7 +420,8 @@ export function DiscountsTab() {
                       <SelectItem value="all">All</SelectItem>
                       {products.map((p) => (
                         <SelectItem key={p.id} value={p.id}>
-                          {p.name} ({(p as { imsCode?: string }).imsCode ?? "—"})
+                          {p.name} ({(p as { imsCode?: string }).imsCode ?? "—"}
+                          )
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -287,16 +537,17 @@ export function DiscountsTab() {
                     <TableHead>Status</TableHead>
                     <TableHead>Start Date</TableHead>
                     <TableHead>End Date</TableHead>
+                    <TableHead className="w-[80px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {discounts.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="text-center text-muted-foreground py-8"
                       >
-                        No discounts found.
+                        No discounts found. Add one above.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -305,8 +556,8 @@ export function DiscountsTab() {
                         <TableCell className="font-medium">
                           {discount.product.name}
                           <span className="text-muted-foreground text-xs block">
-                            {(discount.product as { imsCode?: string }).imsCode ??
-                              discount.product.name}
+                            {(discount.product as { imsCode?: string })
+                              .imsCode ?? discount.product.name}
                           </span>
                         </TableCell>
                         <TableCell>
@@ -342,6 +593,26 @@ export function DiscountsTab() {
                             ? new Date(discount.endDate).toLocaleDateString()
                             : "-"}
                         </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8"
+                              onClick={() => openEditDialog(discount)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => openDeleteDialog(discount)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
                       </TableRow>
                     ))
                   )}
@@ -365,6 +636,282 @@ export function DiscountsTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* Add dialog */}
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Product Discount</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Product</Label>
+              <Select
+                value={formData.productId}
+                onValueChange={(v) =>
+                  setFormData((prev) => ({ ...prev, productId: v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select product" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name} ({(p as { imsCode?: string }).imsCode ?? "—"})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Discount Type</Label>
+              <Select
+                value={formData.discountTypeId}
+                onValueChange={(v) =>
+                  setFormData((prev) => ({ ...prev, discountTypeId: v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {discountTypes.map((dt) => (
+                    <SelectItem key={dt.id} value={dt.id}>
+                      {dt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Discount % (0–100)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={formData.discountPercentage}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    discountPercentage: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date (optional)</Label>
+                <Input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      startDate: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date (optional)</Label>
+                <Input
+                  type="date"
+                  value={formData.endDate}
+                  min={formData.startDate || undefined}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="add-active"
+                checked={formData.isActive}
+                onCheckedChange={(v) =>
+                  setFormData((prev) => ({ ...prev, isActive: v }))
+                }
+              />
+              <Label htmlFor="add-active">Active</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddSubmit}
+              disabled={
+                updateProductMutation.isPending ||
+                !formData.productId ||
+                !formData.discountTypeId
+              }
+            >
+              {updateProductMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Add"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit dialog */}
+      <Dialog
+        open={editState.open}
+        onOpenChange={(open) =>
+          !open && setEditState({ open: false, discount: null })
+        }
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Product Discount</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Product</Label>
+              <p className="text-sm font-medium">
+                {editState.discount?.product.name ?? "-"}
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label>Discount Type</Label>
+              <Select
+                value={formData.discountTypeId}
+                onValueChange={(v) =>
+                  setFormData((prev) => ({ ...prev, discountTypeId: v }))
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  {discountTypes.map((dt) => (
+                    <SelectItem key={dt.id} value={dt.id}>
+                      {dt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Discount % (0–100)</Label>
+              <Input
+                type="number"
+                min={0}
+                max={100}
+                step={0.5}
+                value={formData.discountPercentage}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    discountPercentage: e.target.value,
+                  }))
+                }
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Start Date (optional)</Label>
+                <Input
+                  type="date"
+                  value={formData.startDate}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      startDate: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>End Date (optional)</Label>
+                <Input
+                  type="date"
+                  value={formData.endDate}
+                  min={formData.startDate || undefined}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      endDate: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="edit-active"
+                checked={formData.isActive}
+                onCheckedChange={(v) =>
+                  setFormData((prev) => ({ ...prev, isActive: v }))
+                }
+              />
+              <Label htmlFor="edit-active">Active</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditState({ open: false, discount: null })}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleEditSubmit}
+              disabled={
+                updateProductMutation.isPending || !formData.discountTypeId
+              }
+            >
+              {updateProductMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Save"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirm */}
+      <AlertDialog
+        open={deleteState.open}
+        onOpenChange={(open) =>
+          !open && setDeleteState({ open: false, discount: null })
+        }
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove this discount?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove the{" "}
+              {deleteState.discount?.discountType?.name ?? "discount"} from{" "}
+              {deleteState.discount?.product.name ?? "this product"}. This
+              action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={updateProductMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {updateProductMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Remove"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
