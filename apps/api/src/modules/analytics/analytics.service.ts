@@ -1048,6 +1048,7 @@ export class AnalyticsService {
 
     let retentionRate = 0;
     let churnRate = 0;
+    let hasMeaningfulChurn = false;
     if (dateFrom && dateTo) {
       const periodMs = dateTo.getTime() - dateFrom.getTime();
       const prevStart = new Date(dateFrom.getTime() - periodMs);
@@ -1071,6 +1072,7 @@ export class AnalyticsService {
           )
           .map((m) => m.id),
       );
+      hasMeaningfulChurn = prevPeriodMembers.size > 0;
       const retained = [...prevPeriodMembers].filter((id) =>
         currentPeriodMembers.has(id),
       ).length;
@@ -1078,7 +1080,7 @@ export class AnalyticsService {
         prevPeriodMembers.size > 0
           ? +((retained / prevPeriodMembers.size) * 100).toFixed(1)
           : 0;
-      churnRate = +(100 - retentionRate).toFixed(1);
+      churnRate = hasMeaningfulChurn ? +(100 - retentionRate).toFixed(1) : 0;
     }
 
     const newVsReturningMap: Record<
@@ -1118,6 +1120,7 @@ export class AnalyticsService {
       avgClv,
       retentionRate,
       churnRate,
+      hasMeaningfulChurn,
       rfmSegments: Object.entries(rfmSegments).map(([segment, v]) => ({
         segment,
         ...v,

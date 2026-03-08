@@ -138,7 +138,7 @@ export function ProductPage() {
     }
   }, [searchParams]);
 
-  // Open product dialog from URL (e.g. mobile redirect from /product/new or /product/[id]/edit)
+  // Open product dialog from URL (e.g. mobile redirect from /products/new or /products/[id]/edit)
   const addParam = searchParams.get("add");
   const editIdFromUrl = searchParams.get("edit");
   const { data: productToEditFromUrl } = useProduct(editIdFromUrl || "");
@@ -151,7 +151,7 @@ export function ProductPage() {
       setProductAttributeTypeIds([]);
       productForm.reset();
       setProductDialog(true);
-      router.replace(`${basePath}/product`, { scroll: false });
+      router.replace(`${basePath}/products`, { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addParam, basePath, router]);
@@ -231,7 +231,7 @@ export function ProductPage() {
       setProductDiscounts([]);
     }
     setProductDialog(true);
-    router.replace(`${basePath}/product`, { scroll: false });
+    router.replace(`${basePath}/products`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editIdFromUrl, productToEditFromUrl, basePath, router]);
 
@@ -702,7 +702,7 @@ export function ProductPage() {
   // Handlers
   const handleEditProduct = (product: Product) => {
     if (isMobile) {
-      router.push(`${basePath}/product/${product.id}/edit`);
+      router.push(`${basePath}/products/${product.id}/edit`);
       return;
     }
     if (!product || !product.id) {
@@ -989,7 +989,7 @@ export function ProductPage() {
                 <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
                   {isMobile ? (
                     <Button variant="outline" asChild>
-                      <Link href={`${basePath}/product/bulk-upload`}>
+                      <Link href={`${basePath}/products/bulk-upload`}>
                         <Upload className="h-4 w-4 mr-2" />
                         Bulk Upload
                       </Link>
@@ -1006,7 +1006,7 @@ export function ProductPage() {
                 </FeatureGuard>
                 {isMobile ? (
                   <Button asChild>
-                    <Link href={`${basePath}/product/new`} className="gap-2">
+                    <Link href={`${basePath}/products/new`} className="gap-2">
                       <Plus className="h-4 w-4" />
                       Add Product
                     </Link>

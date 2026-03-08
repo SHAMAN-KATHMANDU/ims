@@ -16,9 +16,9 @@ export function ProductEditPage() {
 
   useEffect(() => {
     if (id) {
-      router.replace(`${basePath}/product?edit=${id}`);
+      router.replace(`${basePath}/products?edit=${id}`);
     } else {
-      router.replace(`${basePath}/product`);
+      router.replace(`${basePath}/products`);
     }
   }, [router, basePath, id]);
 

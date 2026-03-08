@@ -49,6 +49,7 @@ import {
   getStockForVariationAtLocation,
 } from "../utils/helpers";
 import type { Product, ProductVariation, Category } from "@/features/products";
+import { formatCurrency } from "@/lib/format";
 
 /** One table row: either one variation of a product, or the product with no variations */
 type ProductTableRow = {
@@ -453,17 +454,22 @@ export function ProductTable({
                           )}
                         </TableCell>
                         {canSeeCostPrice && (
-                          <TableCell>Rs. {product.costPrice}</TableCell>
+                          <TableCell>
+                            {formatCurrency(Number(product.costPrice))}
+                          </TableCell>
                         )}
-                        <TableCell>Rs. {product.mrp}</TableCell>
+                        <TableCell>
+                          {formatCurrency(Number(product.mrp))}
+                        </TableCell>
                         {!canSeeCostPrice && (
                           <>
                             <TableCell>
                               {discountedPrices.normal ? (
                                 <div>
                                   <div className="font-medium">
-                                    Rs.{" "}
-                                    {discountedPrices.normal.price.toFixed(2)}
+                                    {formatCurrency(
+                                      Number(discountedPrices.normal.price),
+                                    )}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     ({discountedPrices.normal.percentage}% off)
@@ -477,8 +483,9 @@ export function ProductTable({
                               {discountedPrices.special ? (
                                 <div>
                                   <div className="font-medium">
-                                    Rs.{" "}
-                                    {discountedPrices.special.price.toFixed(2)}
+                                    {formatCurrency(
+                                      Number(discountedPrices.special.price),
+                                    )}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     ({discountedPrices.special.percentage}% off)
@@ -492,8 +499,9 @@ export function ProductTable({
                               {discountedPrices.member ? (
                                 <div>
                                   <div className="font-medium">
-                                    Rs.{" "}
-                                    {discountedPrices.member.price.toFixed(2)}
+                                    {formatCurrency(
+                                      Number(discountedPrices.member.price),
+                                    )}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
                                     ({discountedPrices.member.percentage}% off)
@@ -507,9 +515,8 @@ export function ProductTable({
                               {discountedPrices.wholesale ? (
                                 <div>
                                   <div className="font-medium">
-                                    Rs.{" "}
-                                    {discountedPrices.wholesale.price.toFixed(
-                                      2,
+                                    {formatCurrency(
+                                      Number(discountedPrices.wholesale.price),
                                     )}
                                   </div>
                                   <div className="text-xs text-muted-foreground">
@@ -610,7 +617,10 @@ export function ProductTable({
                                             </div>
                                             <div className="text-xs text-muted-foreground">
                                               {discount.discountPercentage}% off
-                                              - Rs. {discountPrice.toFixed(2)}
+                                              -{" "}
+                                              {formatCurrency(
+                                                Number(discountPrice),
+                                              )}
                                             </div>
                                           </div>
                                         );

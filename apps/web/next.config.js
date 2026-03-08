@@ -17,6 +17,22 @@ const nextConfig = {
   // This creates a minimal production bundle with only necessary files
   output: "standalone",
 
+  // Redirect legacy /product paths to /products for backwards compatibility
+  async redirects() {
+    return [
+      {
+        source: "/:slug/product",
+        destination: "/:slug/products",
+        permanent: true,
+      },
+      {
+        source: "/:slug/product/:path*",
+        destination: "/:slug/products/:path*",
+        permanent: true,
+      },
+    ];
+  },
+
   // Allow next/image for variation photos (e.g. seed data from picsum.photos)
   images: {
     remotePatterns: [

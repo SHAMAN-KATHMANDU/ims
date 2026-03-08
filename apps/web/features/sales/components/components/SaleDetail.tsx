@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { format } from "date-fns";
 import {
   Dialog,
@@ -47,6 +47,8 @@ import {
   Hash,
   CreditCard,
   Contact,
+  Printer,
+  FileDown,
 } from "lucide-react";
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -71,8 +73,10 @@ export function SaleDetail({
   isLoading,
 }: SaleDetailProps) {
   const { toast } = useToast();
+  const receiptRef = useRef<HTMLDivElement>(null);
   const addPaymentMutation = useAddPaymentToSale();
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [pdfLoading, setPdfLoading] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("CASH");
 
@@ -113,14 +117,75 @@ export function SaleDetail({
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!receiptRef.current || !sale) return;
+    setPdfLoading(true);
+    try {
+      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+        import("html2canvas"),
+        import("jspdf"),
+      ]);
+      const canvas = await html2canvas(receiptRef.current, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+      });
+      const imgData = canvas.toDataURL("image/png");
+      const pdf = new jsPDF({ format: "a4", unit: "mm" });
+      const pdfW = pdf.internal.pageSize.getWidth();
+      const pdfH = pdf.internal.pageSize.getHeight();
+      const imgW = canvas.width;
+      const imgH = canvas.height;
+      const ratio = Math.min(pdfW / imgW, pdfH / imgH) * 0.95;
+      const x = (pdfW - imgW * ratio) / 2;
+      pdf.addImage(imgData, "PNG", x, 10, imgW * ratio, imgH * ratio);
+      pdf.save(`receipt-${sale.saleCode}.pdf`);
+      toast({ title: "PDF downloaded" });
+    } catch {
+      toast({
+        title: "Failed to generate PDF",
+        variant: "destructive",
+      });
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
             Sale Details
           </DialogTitle>
+          {sale && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrint}
+                className="gap-1.5"
+              >
+                <Printer className="h-4 w-4" />
+                Print
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleDownloadPdf}
+                disabled={pdfLoading}
+                className="gap-1.5"
+              >
+                <FileDown className="h-4 w-4" />
+                {pdfLoading ? "..." : "PDF"}
+              </Button>
+            </div>
+          )}
         </DialogHeader>
 
         {isLoading ? (
@@ -132,7 +197,7 @@ export function SaleDetail({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : sale ? (
-          <div className="space-y-4">
+          <div ref={receiptRef} className="receipt-print-area space-y-4">
             {/* Header Info */}
             <div className="flex items-start justify-between">
               <div>
@@ -155,7 +220,7 @@ export function SaleDetail({
             <Separator />
 
             {/* Location & Customer */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <MapPin className="h-4 w-4" />
@@ -224,8 +289,8 @@ export function SaleDetail({
             {/* Items */}
             <div>
               <h4 className="font-medium mb-2">Items</h4>
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[320px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Product</TableHead>

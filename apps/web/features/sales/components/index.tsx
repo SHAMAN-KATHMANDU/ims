@@ -367,15 +367,15 @@ export function SalesPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       <div>
-        <h1 className="text-3xl font-bold">Sales</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl font-bold sm:text-3xl">Sales</h1>
+        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Track and manage sales from showrooms
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
         <SalesFilterBar
           search={search}
           onSearchChange={handleSearchChange}
@@ -408,7 +408,7 @@ export function SalesPage() {
           today={today}
         />
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {canManageSales && (
             <>
               <DropdownMenu>
