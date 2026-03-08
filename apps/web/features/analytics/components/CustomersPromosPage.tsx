@@ -159,14 +159,20 @@ export function CustomersPromosPage() {
           },
           {
             label: "Retention Rate",
-            value: fP(custData.retentionRate),
-            sub: "Period over period",
+            value: custData.hasMeaningfulChurn
+              ? fP(custData.retentionRate)
+              : "—",
+            sub: custData.hasMeaningfulChurn
+              ? "Period over period"
+              : "Add members & sales to see",
             icon: "📈",
           },
           {
             label: "Churn Rate",
-            value: fP(custData.churnRate),
-            sub: "Lost customers",
+            value: custData.hasMeaningfulChurn ? fP(custData.churnRate) : "—",
+            sub: custData.hasMeaningfulChurn
+              ? "Lost customers"
+              : "Needs prior period data",
             icon: "📉",
           },
           {
@@ -221,6 +227,18 @@ export function CustomersPromosPage() {
           {exporting ? "..." : "Export CSV"}
         </Button>
       </div>
+
+      {!loading && custData && !custData.hasMeaningfulChurn && (
+        <Card className="border-dashed bg-muted/30">
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground">
+              Add members and record sales in at least two different time
+              periods to see retention and churn insights. New accounts show
+              placeholder values until enough data is available.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       {!loading && kpis.length > 0 && (
         <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">

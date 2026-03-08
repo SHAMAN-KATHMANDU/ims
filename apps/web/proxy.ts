@@ -56,7 +56,13 @@ export function proxy(request: NextRequest) {
   }
 
   // Bare paths (no workspace prefix): redirect to /{tenant}/{path} when logged in
-  const BARE_PATHS = ["/onboarding", "/sales", "/crm", "/product", "/settings"];
+  const BARE_PATHS = [
+    "/onboarding",
+    "/sales",
+    "/crm",
+    "/products",
+    "/settings",
+  ];
   if (hasToken && BARE_PATHS.includes(pathname)) {
     try {
       const parsed = authStorage?.value ? JSON.parse(authStorage.value) : null;

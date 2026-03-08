@@ -14,7 +14,7 @@ export function ProductNewPage() {
   const basePath = `/${workspace}`;
 
   useEffect(() => {
-    router.replace(`${basePath}/product?add=1`);
+    router.replace(`${basePath}/products?add=1`);
   }, [router, basePath]);
 
   return (
