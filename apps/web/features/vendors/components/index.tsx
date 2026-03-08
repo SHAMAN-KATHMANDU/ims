@@ -28,6 +28,7 @@ import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
+  AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
   AlertDialogFooter,
@@ -56,6 +57,7 @@ import {
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useDebounce } from "@/hooks/useDebounce";
 import { VendorForm } from "./components/VendorForm";
 
 export function VendorPage() {
@@ -69,6 +71,7 @@ export function VendorPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState<string>("name");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
@@ -77,11 +80,14 @@ export function VendorPage() {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [activeVendorId, setActiveVendorId] = useState<string | null>(null);
   const [productSearch, setProductSearch] = useState("");
+  const debouncedProductSearch = useDebounce(productSearch, 300);
   const [productPage, setProductPage] = useState(DEFAULT_PAGE);
   const productLimit = 10;
   const [deleteBlockedVendor, setDeleteBlockedVendor] = useState<Vendor | null>(
     null,
   );
+  const [deleteVendorToConfirm, setDeleteVendorToConfirm] =
+    useState<Vendor | null>(null);
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(
     null,
   );
@@ -89,7 +95,7 @@ export function VendorPage() {
   const { data: vendorsResponse, isLoading } = useVendorsPaginated({
     page,
     limit: pageSize,
-    search,
+    search: debouncedSearch,
     sortBy,
     sortOrder,
   });
@@ -102,7 +108,7 @@ export function VendorPage() {
     useVendorProducts(activeVendorId || "", {
       page: productPage,
       limit: productLimit,
-      search: productSearch,
+      search: debouncedProductSearch,
     });
   const vendorProducts = vendorProductsResponse?.data ?? [];
   const vendorProductsPagination = vendorProductsResponse?.pagination;
@@ -167,21 +173,25 @@ export function VendorPage() {
     }
   };
 
-  const handleDelete = async (vendor: Vendor) => {
+  const handleDelete = (vendor: Vendor) => {
     const productCount = vendor._count?.products ?? 0;
     if (productCount > 0) {
       setDeleteBlockedVendor(vendor);
       return;
     }
-    if (!confirm(`Are you sure you want to delete vendor "${vendor.name}"?`)) {
-      return;
-    }
+    setDeleteVendorToConfirm(vendor);
+  };
+
+  const confirmDeleteVendor = async () => {
+    const vendor = deleteVendorToConfirm;
+    if (!vendor) return;
     try {
       await deleteMutation.mutateAsync(vendor.id);
       toast({
         title: "Vendor deleted",
         description: `Vendor "${vendor.name}" has been deleted.`,
       });
+      setDeleteVendorToConfirm(null);
     } catch (error: unknown) {
       const message =
         error instanceof Error
@@ -193,6 +203,7 @@ export function VendorPage() {
         description: message,
         variant: "destructive",
       });
+      setDeleteVendorToConfirm(null);
     }
   };
 
@@ -248,6 +259,32 @@ export function VendorPage() {
           <AlertDialogFooter>
             <AlertDialogAction onClick={() => setDeleteBlockedVendor(null)}>
               OK
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Confirm delete vendor */}
+      <AlertDialog
+        open={!!deleteVendorToConfirm}
+        onOpenChange={(open) => !open && setDeleteVendorToConfirm(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete vendor?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete vendor &quot;
+              {deleteVendorToConfirm?.name}&quot;? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteVendor}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

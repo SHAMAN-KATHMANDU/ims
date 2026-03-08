@@ -183,12 +183,6 @@ const navSections: NavSection[] = [
         roles: ["user", "admin", "superAdmin"],
       },
       {
-        path: "product/discounts",
-        label: "Discounts",
-        icon: Percent,
-        roles: ["user", "admin", "superAdmin"],
-      },
-      {
         path: "product/promos",
         label: "Promo Codes",
         icon: Percent,
@@ -242,14 +236,15 @@ const navSections: NavSection[] = [
         icon: ArrowLeftRight,
         roles: ["admin", "superAdmin"],
       },
-    ],
-  },
-  {
-    title: "PROMOTIONS",
-    items: [
+      {
+        path: "product/discounts",
+        label: "Discounts",
+        icon: Percent,
+        roles: ["admin", "superAdmin"],
+      },
       {
         path: "promos",
-        label: "Promo Codes",
+        label: "Promotions",
         icon: Percent,
         roles: ["admin", "superAdmin"],
         feature: Feature.PROMO_MANAGEMENT,
@@ -645,7 +640,6 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     SALES: true,
     PRODUCTS: true,
     INVENTORY: true,
-    PROMOTIONS: true,
     REPORTS: true,
     SETTINGS: true,
   });
