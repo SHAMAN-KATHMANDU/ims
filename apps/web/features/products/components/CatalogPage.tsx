@@ -507,7 +507,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   // Handlers
   const handleEditProduct = (product: Product) => {
     if (isMobile) {
-      router.push(`${basePath}/product/${product.id}/edit`);
+      router.push(`${basePath}/products/${product.id}/edit`);
       return;
     }
     if (!product || !product.id) {
@@ -792,7 +792,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
               {isMobile ? (
                 <Button variant="outline" asChild>
-                  <Link href={`${basePath}/product/bulk-upload`}>
+                  <Link href={`${basePath}/products/bulk-upload`}>
                     <Upload className="h-4 w-4 mr-2" />
                     Bulk Upload
                   </Link>
@@ -809,7 +809,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             </FeatureGuard>
             {isMobile ? (
               <Button asChild>
-                <Link href={`${basePath}/product/new`} className="gap-2">
+                <Link href={`${basePath}/products/new`} className="gap-2">
                   <Plus className="h-4 w-4" />
                   Add Product
                 </Link>

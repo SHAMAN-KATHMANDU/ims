@@ -95,8 +95,8 @@ export function SalesTable({
 
   if (isLoading) {
     return (
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead>S.N.</TableHead>
@@ -164,8 +164,8 @@ export function SalesTable({
 
   if (sales.length === 0) {
     return (
-      <div className="rounded-md border">
-        <Table>
+      <div className="rounded-md border overflow-x-auto">
+        <Table className="min-w-[640px]">
           <TableHeader>
             <TableRow>
               <TableHead>S.N.</TableHead>
@@ -198,8 +198,8 @@ export function SalesTable({
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
+    <div className="rounded-md border overflow-x-auto">
+      <Table className="min-w-[640px]">
         <TableHeader>
           <TableRow>
             <TableHead>S.N.</TableHead>

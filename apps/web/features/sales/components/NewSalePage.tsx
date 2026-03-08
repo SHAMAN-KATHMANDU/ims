@@ -43,7 +43,7 @@ export function NewSalePage() {
   }, [router, basePath]);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full max-w-full">
       <Button variant="ghost" size="sm" asChild>
         <Link
           href={`${basePath}/sales`}

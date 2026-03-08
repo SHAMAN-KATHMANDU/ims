@@ -67,6 +67,7 @@ import {
   type ProductDiscountListItem,
   type ProductDiscountListParams,
 } from "@/features/products";
+import { formatCurrency } from "@/lib/format";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useToast } from "@/hooks/useToast";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -364,7 +365,7 @@ export function DiscountsTab() {
     if (d.valueType === "PERCENTAGE") {
       return `${Number(d.value)}%`;
     }
-    return `₹${Number(d.value).toFixed(2)}`;
+    return formatCurrency(Number(d.value));
   };
 
   return (

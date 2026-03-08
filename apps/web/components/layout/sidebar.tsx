@@ -188,13 +188,13 @@ const navSections: NavSection[] = [
     title: "PRODUCTS",
     items: [
       {
-        path: "product/catalog",
+        path: "products/catalog",
         label: "Catalog",
         icon: Package,
         roles: ["user", "admin", "superAdmin"],
       },
       {
-        path: "product/promos",
+        path: "products/promos",
         label: "Promo Codes",
         icon: Ticket,
         roles: ["user", "admin", "superAdmin"],
@@ -212,19 +212,19 @@ const navSections: NavSection[] = [
     title: "INVENTORY",
     items: [
       {
-        path: "product",
+        path: "products",
         label: "Products",
         icon: Boxes,
         roles: ["admin", "superAdmin"],
       },
       {
-        path: "product/categories",
+        path: "products/categories",
         label: "Categories",
         icon: Tags,
         roles: ["admin", "superAdmin"],
       },
       {
-        path: "product/attribute-types",
+        path: "products/attribute-types",
         label: "Attribute Types",
         icon: Layers,
         roles: ["admin", "superAdmin"],
@@ -248,7 +248,7 @@ const navSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
       },
       {
-        path: "product/discounts",
+        path: "products/discounts",
         label: "Discounts",
         icon: Percent,
         roles: ["admin", "superAdmin"],
