@@ -40,6 +40,7 @@
     "libphonenumber-js": "^1.12.38",
     "multer": "^2.1.1",
     "node-cron": "^4.2.1",
+    "pdfkit": "^0.17.2",
     "prisma": "^5.22.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",

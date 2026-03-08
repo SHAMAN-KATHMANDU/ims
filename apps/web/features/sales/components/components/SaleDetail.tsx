@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { format } from "date-fns";
 import {
   Dialog,
@@ -38,6 +38,7 @@ import {
   formatCurrency,
   useAddPaymentToSale,
 } from "../../hooks/use-sales";
+import { downloadReceiptPdf } from "../../services/sales.service";
 import { useToast } from "@/hooks/useToast";
 import {
   MapPin,
@@ -73,10 +74,9 @@ export function SaleDetail({
   isLoading,
 }: SaleDetailProps) {
   const { toast } = useToast();
-  const receiptRef = useRef<HTMLDivElement>(null);
   const addPaymentMutation = useAddPaymentToSale();
   const [payDialogOpen, setPayDialogOpen] = useState(false);
-  const [pdfLoading, setPdfLoading] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("CASH");
 
@@ -117,41 +117,19 @@ export function SaleDetail({
     }
   };
 
-  const handlePrint = () => {
-    window.print();
-  };
-
-  const handleDownloadPdf = async () => {
-    if (!receiptRef.current || !sale) return;
-    setPdfLoading(true);
+  const handlePrintOrPdf = async () => {
+    if (!sale) return;
+    setReceiptLoading(true);
     try {
-      const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
-        import("html2canvas"),
-        import("jspdf"),
-      ]);
-      const canvas = await html2canvas(receiptRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-      });
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF({ format: "a4", unit: "mm" });
-      const pdfW = pdf.internal.pageSize.getWidth();
-      const pdfH = pdf.internal.pageSize.getHeight();
-      const imgW = canvas.width;
-      const imgH = canvas.height;
-      const ratio = Math.min(pdfW / imgW, pdfH / imgH) * 0.95;
-      const x = (pdfW - imgW * ratio) / 2;
-      pdf.addImage(imgData, "PNG", x, 10, imgW * ratio, imgH * ratio);
-      pdf.save(`receipt-${sale.saleCode}.pdf`);
-      toast({ title: "PDF downloaded" });
+      await downloadReceiptPdf(sale.id);
+      toast({ title: "Receipt downloaded" });
     } catch {
       toast({
-        title: "Failed to generate PDF",
+        title: "Failed to download receipt",
         variant: "destructive",
       });
     } finally {
-      setPdfLoading(false);
+      setReceiptLoading(false);
     }
   };
 
@@ -168,21 +146,22 @@ export function SaleDetail({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handlePrint}
+                onClick={handlePrintOrPdf}
+                disabled={receiptLoading}
                 className="gap-1.5"
               >
                 <Printer className="h-4 w-4" />
-                Print
+                {receiptLoading ? "..." : "Print"}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleDownloadPdf}
-                disabled={pdfLoading}
+                onClick={handlePrintOrPdf}
+                disabled={receiptLoading}
                 className="gap-1.5"
               >
                 <FileDown className="h-4 w-4" />
-                {pdfLoading ? "..." : "PDF"}
+                {receiptLoading ? "..." : "PDF"}
               </Button>
             </div>
           )}
@@ -197,7 +176,7 @@ export function SaleDetail({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : sale ? (
-          <div ref={receiptRef} className="receipt-print-area space-y-4">
+          <div className="receipt-print-area space-y-4">
             {/* Header Info */}
             <div className="flex items-start justify-between">
               <div>

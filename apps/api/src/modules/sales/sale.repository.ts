@@ -487,6 +487,15 @@ export async function countSalesForUserSince(userId: string, since: Date) {
 const SALE_DETAIL_INCLUDE = {
   location: true,
   member: true,
+  contact: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+    },
+  },
   createdBy: { select: { id: true, username: true, role: true } },
   payments: {
     select: { id: true, method: true, amount: true, createdAt: true },
