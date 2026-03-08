@@ -22,6 +22,7 @@ import saleService, {
   type SaleItemInput,
   SaleCalculationError,
 } from "./sale.service";
+import { generateReceiptPdf } from "./receipt-pdf.service";
 import { sendControllerError } from "@/utils/controllerError";
 import {
   CreateSaleSchema,
@@ -237,6 +238,23 @@ class SaleController {
       });
     } catch (error) {
       return handleServiceError(req, res, error, "Get sale by ID error");
+    }
+  };
+
+  getReceiptPdf = async (req: Request, res: Response) => {
+    try {
+      const id = getParam(req, "id");
+      const sale = await saleService.getSaleById(id);
+      const buffer = await generateReceiptPdf(sale);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="receipt-${sale.saleCode}.pdf"`,
+      );
+      return res.send(buffer);
+    } catch (error) {
+      return handleServiceError(req, res, error, "Receipt PDF error");
     }
   };
 
