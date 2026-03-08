@@ -8,6 +8,7 @@ const mockSale = {
   discount: 10,
   total: 90,
   notes: null,
+  tenant: { name: "Test Org" },
   location: { id: "loc1", name: "Store A" },
   member: { id: "m1", phone: "9876543210", name: "John" },
   createdBy: { id: "u1", username: "cashier1", role: "user" },

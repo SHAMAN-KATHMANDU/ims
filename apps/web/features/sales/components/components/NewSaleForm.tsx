@@ -464,6 +464,10 @@ export function NewSaleForm({
       inventoryItem.variation.attributes
         ?.map((a) => a.attributeValue.value)
         .join(" / ") || "";
+    const validPromo =
+      !promoCodeError && debouncedPromoCode.trim()
+        ? debouncedPromoCode.trim()
+        : undefined;
     setItems([
       ...items,
       {
@@ -478,6 +482,7 @@ export function NewSaleForm({
         maxQuantity: inventoryItem.quantity,
         selectedDiscountId: defaultDiscountId,
         availableDiscounts: discounts,
+        promoCode: validPromo,
       },
     ]);
     setProductSearch(""); // Clear search after adding
@@ -560,6 +565,10 @@ export function NewSaleForm({
     const defaultDiscountId =
       memberCheck?.isMember && memberDiscount ? memberDiscount.id : "none";
     const attrLabel = getVariationLabel(variation);
+    const validPromo =
+      !promoCodeError && debouncedPromoCode.trim()
+        ? debouncedPromoCode.trim()
+        : undefined;
     setItems([
       ...items,
       {
@@ -574,6 +583,7 @@ export function NewSaleForm({
         maxQuantity: maxQty,
         selectedDiscountId: defaultDiscountId,
         availableDiscounts: discounts,
+        promoCode: validPromo,
       },
     ]);
     setScannedProduct(null);
