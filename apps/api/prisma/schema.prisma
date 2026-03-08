@@ -662,20 +662,21 @@ enum MemberStatus {
 }
 
 model Sale {
-  id           String   @id @default(uuid()) @map("sale_id")
-  tenantId     String   @map("tenant_id")
-  saleCode     String   @map("sale_code") @db.VarChar(50)
-  type         SaleType @default(GENERAL)
-  isCreditSale Boolean  @default(false) @map("is_credit_sale")
-  locationId   String   @map("location_id")
-  memberId     String?  @map("member_id")
-  contactId    String?  @map("contact_id")
-  subtotal     Decimal  @db.Decimal(12, 2)
-  discount     Decimal  @default(0) @db.Decimal(12, 2)
-  total        Decimal  @db.Decimal(12, 2)
-  notes        String?  @db.Text
-  createdById  String   @map("created_by_id")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid()) @map("sale_id")
+  tenantId         String   @map("tenant_id")
+  saleCode         String   @map("sale_code") @db.VarChar(50)
+  type             SaleType @default(GENERAL)
+  isCreditSale     Boolean  @default(false) @map("is_credit_sale")
+  locationId       String   @map("location_id")
+  memberId         String?  @map("member_id")
+  contactId        String?  @map("contact_id")
+  subtotal         Decimal  @db.Decimal(12, 2)
+  discount         Decimal  @default(0) @db.Decimal(12, 2)
+  total            Decimal  @db.Decimal(12, 2)
+  notes            String?  @db.Text
+  promoCodesUsed   Json?    @map("promo_codes_used")
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   location  Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)

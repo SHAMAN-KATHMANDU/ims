@@ -482,6 +482,8 @@ export async function createSale(
     discount: totalDiscount,
     total,
     notes: dto.notes ?? null,
+    promoCodesUsed:
+      promoCodesUsed.size > 0 ? Array.from(promoCodesUsed) : undefined,
     items: processedItems.map((item) => ({
       variationId: item.variationId,
       subVariationId: item.subVariationId,
