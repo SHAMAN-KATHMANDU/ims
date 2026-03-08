@@ -1,12 +1,12 @@
 /**
  * Spacing scale for receipt layout.
- * All layout spacing should use this scale instead of hardcoded values.
+ * Tuned for A5 receipt paper — compact but readable.
  */
 export const SPACE = {
-  xs: 4,
-  sm: 8,
-  md: 12,
-  lg: 16,
-  xl: 24,
-  xxl: 32,
+  xs: 2,
+  sm: 4,
+  md: 6,
+  lg: 8,
+  xl: 12,
+  xxl: 18,
 } as const;

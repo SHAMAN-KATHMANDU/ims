@@ -2,7 +2,7 @@
  * Reusable layout helpers for receipt PDF.
  */
 import type PDFDocument from "pdfkit";
-import { COLORS } from "./constants";
+import { COLORS, DIVIDER_LINE_WIDTH } from "./constants";
 import { SPACE } from "./spacing";
 import { TYPE } from "./typography";
 import { getFontRegular, getFontBold } from "./typography";
@@ -16,12 +16,14 @@ type Doc = InstanceType<typeof PDFDocument>;
 export function drawDivider(doc: Doc, ctx: ReceiptContext, y?: number): void {
   const lineY = y ?? doc.y;
   doc
+    .lineWidth(DIVIDER_LINE_WIDTH)
     .moveTo(ctx.margin, lineY)
     .lineTo(ctx.tableRight, lineY)
     .strokeColor(COLORS.divider)
-    .stroke();
+    .stroke()
+    .lineWidth(1);
   if (y === undefined) {
-    doc.y = lineY + SPACE.sm;
+    doc.y = lineY + SPACE.xs;
   }
 }
 
@@ -34,10 +36,10 @@ export function drawSectionTitle(doc: Doc, text: string): void {
     .fontSize(TYPE.section)
     .fillColor(COLORS.text)
     .text(text);
-  doc.moveDown(SPACE.xs / 8);
+  doc.moveDown(SPACE.xs);
 }
 
-const VALUE_COLUMN_WIDTH = 70;
+const VALUE_COLUMN_WIDTH = 58;
 
 /**
  * Draw a key-value row with label on left, value right-aligned.
@@ -58,5 +60,5 @@ export function drawKeyValueRow(
     width: VALUE_COLUMN_WIDTH,
     align: "right",
   });
-  doc.moveDown(SPACE.xs / 8);
+  doc.moveDown(SPACE.xs);
 }

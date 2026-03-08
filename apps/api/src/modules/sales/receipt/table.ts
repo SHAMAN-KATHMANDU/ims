@@ -4,9 +4,9 @@
 import type PDFDocument from "pdfkit";
 import { SPACE } from "./spacing";
 import { TYPE } from "./typography";
-import { COLORS } from "./constants";
+import { COLORS, DIVIDER_LINE_WIDTH } from "./constants";
 import { getFontRegular, getFontBold } from "./typography";
-import { ensureSpace, type PageContext } from "./pagination";
+import { ensureSpace } from "./pagination";
 import type { ReceiptContext } from "./types";
 
 type Doc = InstanceType<typeof PDFDocument>;
@@ -18,17 +18,18 @@ export interface TableColumn {
   align: "left" | "right";
 }
 
+/** Column widths tuned for A5 — product gets most space for long names */
 export const ITEMS_TABLE_COLUMNS: TableColumn[] = [
-  { key: "product", label: "Product", width: 0.4, align: "left" },
-  { key: "price", label: "Price", width: 0.15, align: "right" },
-  { key: "qty", label: "Qty", width: 0.1, align: "right" },
-  { key: "discountPct", label: "Disc %", width: 0.12, align: "right" },
-  { key: "discountAmt", label: "Disc Amt", width: 0.13, align: "right" },
-  { key: "total", label: "Total", width: 0.2, align: "right" },
+  { key: "product", label: "Product", width: 0.42, align: "left" },
+  { key: "price", label: "Price", width: 0.14, align: "right" },
+  { key: "qty", label: "Qty", width: 0.08, align: "right" },
+  { key: "discountPct", label: "Disc%", width: 0.1, align: "right" },
+  { key: "discountAmt", label: "Disc", width: 0.12, align: "right" },
+  { key: "total", label: "Total", width: 0.14, align: "right" },
 ];
 
-const ROW_PADDING = 2;
-const HEADER_ROW_HEIGHT = 14;
+const ROW_PADDING = 1;
+const HEADER_ROW_HEIGHT = 11;
 
 function computeColumnLayout(
   ctx: ReceiptContext,
@@ -64,10 +65,12 @@ export function drawTableHeader(
   maxY = startY + HEADER_ROW_HEIGHT;
 
   doc
+    .lineWidth(DIVIDER_LINE_WIDTH)
     .moveTo(ctx.margin, maxY + SPACE.xs)
     .lineTo(ctx.tableRight, maxY + SPACE.xs)
     .strokeColor(COLORS.divider)
-    .stroke();
+    .stroke()
+    .lineWidth(1);
 
   return maxY + SPACE.xs + SPACE.sm;
 }

@@ -25,14 +25,14 @@ export function drawHeader(
     width: ctx.usableWidth,
     align: "center",
   });
-  doc.moveDown(SPACE.xs / 8);
+  doc.moveDown(SPACE.xs);
 
   doc.font(getFontRegular()).fontSize(TYPE.subtitle);
   doc.text(`Receipt #${saleCode}`, ctx.margin, doc.y, {
     width: ctx.usableWidth,
     align: "center",
   });
-  doc.moveDown(SPACE.xs / 8);
+  doc.moveDown(SPACE.xs);
 
   doc.fontSize(TYPE.body);
   doc.text(`Location: ${locationName}`, ctx.margin, doc.y, {
@@ -41,11 +41,11 @@ export function drawHeader(
 
   if (locationAddress) {
     doc.fontSize(TYPE.small).fillColor(COLORS.textMuted);
-    doc.text(locationAddress, ctx.margin, doc.y + 2, {
+    doc.text(locationAddress, ctx.margin, doc.y + 1, {
       width: ctx.usableWidth,
     });
     doc.fillColor(COLORS.text);
   }
 
-  doc.y += SPACE.lg;
+  doc.y += SPACE.md;
 }

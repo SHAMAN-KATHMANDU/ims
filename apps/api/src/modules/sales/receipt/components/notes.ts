@@ -21,7 +21,7 @@ export function drawNotes(
   if (!sale.notes) return;
 
   const pageCtx = createPageContext(ctx);
-  const estimatedHeight = 50;
+  const estimatedHeight = 38;
   ensureSpace(doc, estimatedHeight, pageCtx);
 
   drawSectionTitle(doc, "Notes");
@@ -29,5 +29,5 @@ export function drawNotes(
   doc.text(sale.notes, ctx.margin, doc.y, {
     width: ctx.usableWidth,
   });
-  doc.moveDown(SPACE.md);
+  doc.moveDown(SPACE.sm);
 }

@@ -20,7 +20,7 @@ export function drawPayments(
   ctx: ReceiptContext,
 ): void {
   const pageCtx = createPageContext(ctx);
-  const estimatedHeight = 80;
+  const estimatedHeight = 50;
   ensureSpace(doc, estimatedHeight, pageCtx);
 
   drawSectionTitle(doc, "Payment");
@@ -33,7 +33,7 @@ export function drawPayments(
 
     doc.font(getFontRegular()).fontSize(TYPE.body).fillColor(COLORS.text);
     doc.text("Credit Sale", ctx.margin);
-    doc.moveDown(SPACE.xs / 8);
+    doc.moveDown(SPACE.xs);
     drawKeyValueRow(doc, "Amount Paid", fmtCurrency(amountPaid), ctx);
     drawKeyValueRow(doc, "Balance Due", fmtCurrency(balanceDue), ctx);
     doc.moveDown(SPACE.sm);
@@ -47,5 +47,5 @@ export function drawPayments(
     }
   }
 
-  doc.moveDown(SPACE.md);
+  doc.moveDown(SPACE.sm);
 }

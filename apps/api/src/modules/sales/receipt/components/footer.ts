@@ -10,6 +10,8 @@ import type { ReceiptContext } from "../types";
 
 type Doc = InstanceType<typeof PDFDocument>;
 
+const FOOTER_LINE_HEIGHT = 7;
+
 export function drawFooter(
   doc: Doc,
   createdDate: string,
@@ -27,19 +29,24 @@ export function drawFooter(
   });
 
   doc.font(getFontBold()).fontSize(TYPE.small);
-  doc.text(`Processed by ${processedBy}`, ctx.margin, y + 10, {
+  doc.text(`Processed by ${processedBy}`, ctx.margin, y + FOOTER_LINE_HEIGHT, {
     width: ctx.usableWidth,
     align: "center",
   });
 
   doc.font(getFontRegular()).fontSize(TYPE.tiny);
-  doc.text("Shamanyantra POS", ctx.margin, y + 20, {
+  doc.text("Shamanyantra POS", ctx.margin, y + FOOTER_LINE_HEIGHT * 2, {
     width: ctx.usableWidth,
     align: "center",
   });
 
-  doc.text(`Page ${pageIndex + 1} / ${totalPages}`, ctx.margin, y + 28, {
-    width: ctx.usableWidth,
-    align: "center",
-  });
+  doc.text(
+    `Page ${pageIndex + 1} / ${totalPages}`,
+    ctx.margin,
+    y + FOOTER_LINE_HEIGHT * 3,
+    {
+      width: ctx.usableWidth,
+      align: "center",
+    },
+  );
 }

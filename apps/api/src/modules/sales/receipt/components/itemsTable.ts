@@ -63,10 +63,9 @@ export function drawItemsTable(
       total: fmtCurrency(item.lineTotal),
     };
 
+    const productColWidth = (ctx.tableRight - ctx.margin) * 0.42 - 4;
     const rowHeight =
-      doc.heightOfString(product, {
-        width: (ctx.tableRight - ctx.margin) * 0.4 - 4,
-      }) + 8;
+      doc.heightOfString(product, { width: productColWidth }) + 4;
 
     ensureSpace(doc, rowHeight, pageCtx, { repeatHeader });
 
@@ -77,5 +76,5 @@ export function drawItemsTable(
 
   doc.moveDown(SPACE.sm);
   drawDivider(doc, ctx);
-  doc.moveDown(SPACE.xs / 8);
+  doc.moveDown(SPACE.xs);
 }

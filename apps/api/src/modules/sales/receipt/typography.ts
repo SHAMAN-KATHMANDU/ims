@@ -5,13 +5,14 @@ import path from "path";
 import fs from "fs";
 import type PDFDocument from "pdfkit";
 
+/** Typography scale tuned for A5 receipt paper */
 export const TYPE = {
-  title: 20,
-  subtitle: 14,
-  section: 11,
-  body: 9,
-  small: 8,
-  tiny: 7,
+  title: 16,
+  subtitle: 12,
+  section: 10,
+  body: 8,
+  small: 7,
+  tiny: 6,
 } as const;
 
 const FONT_REGULAR = "Helvetica";
