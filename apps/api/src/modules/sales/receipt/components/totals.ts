@@ -35,11 +35,11 @@ export function drawTotals(
     drawKeyValueRow(doc, "Promo Applied", promoCodes.join(", "), ctx);
   }
 
-  doc.moveDown(SPACE.xs);
+  doc.moveDown(SPACE.xxs);
   drawDivider(doc, ctx);
-  doc.moveDown(SPACE.xs);
+  doc.moveDown(SPACE.xxs);
 
   drawKeyValueRow(doc, "TOTAL", fmtCurrency(sale.total), ctx, { bold: true });
   doc.fontSize(TYPE.body);
-  doc.moveDown(SPACE.sm);
+  doc.moveDown(SPACE.xs);
 }

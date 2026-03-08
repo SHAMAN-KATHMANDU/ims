@@ -32,11 +32,11 @@ export function drawPayments(
       Math.round((Number(sale.total) - amountPaid) * 100) / 100;
 
     doc.font(getFontRegular()).fontSize(TYPE.body).fillColor(COLORS.text);
-    doc.text("Credit Sale", ctx.margin);
-    doc.moveDown(SPACE.xs);
+    doc.text("Credit Sale", ctx.margin, doc.y, { lineGap: 0 });
+    doc.moveDown(SPACE.xxs);
     drawKeyValueRow(doc, "Amount Paid", fmtCurrency(amountPaid), ctx);
     drawKeyValueRow(doc, "Balance Due", fmtCurrency(balanceDue), ctx);
-    doc.moveDown(SPACE.sm);
+    doc.moveDown(SPACE.xs);
     return;
   }
 
@@ -47,5 +47,5 @@ export function drawPayments(
     }
   }
 
-  doc.moveDown(SPACE.sm);
+  doc.moveDown(SPACE.xs);
 }

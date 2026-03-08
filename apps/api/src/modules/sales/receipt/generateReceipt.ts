@@ -4,12 +4,12 @@
 import PDFDocument from "pdfkit";
 import {
   MARGIN,
-  PAGE_BOTTOM,
   FOOTER_TOP,
   TABLE_RIGHT,
   TOT_X,
   MID_X,
   USABLE_WIDTH,
+  getPageBottom,
 } from "./constants";
 import { fmtDate } from "./utils";
 import { registerFonts } from "./typography";
@@ -23,15 +23,17 @@ import { drawNotes } from "./components/notes";
 import { drawSignatureBlock } from "./components/signature";
 import { drawFooter } from "./components/footer";
 
-function createContext(): ReceiptContext {
+function createContext(itemCount: number): ReceiptContext {
+  const singlePageMode = itemCount <= 10;
   return {
     margin: MARGIN,
     usableWidth: USABLE_WIDTH,
-    pageBottom: PAGE_BOTTOM,
+    pageBottom: getPageBottom(singlePageMode),
     footerTop: FOOTER_TOP,
     tableRight: TABLE_RIGHT,
     totX: TOT_X,
     midX: MID_X,
+    singlePageMode,
   };
 }
 
@@ -74,7 +76,8 @@ export async function generateReceiptPdf(
     doc.on("error", reject);
 
     registerFonts(doc);
-    const ctx = createContext();
+    const itemCount = sale.items?.length ?? 0;
+    const ctx = createContext(itemCount);
 
     const orgName = sale.tenant?.name ?? "—";
     const saleCode = sale.saleCode;

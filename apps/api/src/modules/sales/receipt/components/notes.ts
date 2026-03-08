@@ -28,6 +28,7 @@ export function drawNotes(
   doc.font(getFontRegular()).fontSize(TYPE.small).fillColor(COLORS.text);
   doc.text(sale.notes, ctx.margin, doc.y, {
     width: ctx.usableWidth,
+    lineGap: 0,
   });
-  doc.moveDown(SPACE.sm);
+  doc.moveDown(SPACE.xs);
 }

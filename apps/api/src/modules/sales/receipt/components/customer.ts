@@ -19,32 +19,34 @@ export function drawCustomer(
   ctx: ReceiptContext,
 ): void {
   const pageCtx = createPageContext(ctx);
-  const estimatedHeight = 45;
+  const estimatedHeight = 35;
   ensureSpace(doc, estimatedHeight, pageCtx);
 
   drawSectionTitle(doc, "Customer");
 
   doc.font(getFontRegular()).fontSize(TYPE.body);
 
+  const textOpts = { lineGap: 0 };
   if (!customerName && !customerPhone) {
-    doc.text("Walk-in Customer", ctx.margin);
+    doc.text("Walk-in Customer", ctx.margin, doc.y, textOpts);
   } else {
     if (customerName && customerName !== "Walk-in Customer") {
-      doc.text(customerName, ctx.margin);
-      doc.moveDown(SPACE.xs);
+      doc.text(customerName, ctx.margin, doc.y, textOpts);
+      doc.moveDown(SPACE.xxs);
     }
     if (customerPhone) {
-      doc.text(customerPhone, ctx.margin);
-      doc.moveDown(SPACE.xs);
+      doc.text(customerPhone, ctx.margin, doc.y, textOpts);
+      doc.moveDown(SPACE.xxs);
     }
   }
 
   if (customerAddress) {
     doc.text(customerAddress, ctx.margin, doc.y, {
       width: ctx.usableWidth,
+      ...textOpts,
     });
-    doc.moveDown(SPACE.xs);
+    doc.moveDown(SPACE.xxs);
   }
 
-  doc.moveDown(SPACE.sm);
+  doc.moveDown(SPACE.xs);
 }

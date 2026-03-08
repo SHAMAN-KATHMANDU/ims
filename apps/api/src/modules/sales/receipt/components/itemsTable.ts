@@ -74,7 +74,7 @@ export function drawItemsTable(
     doc.y = y;
   }
 
-  doc.moveDown(SPACE.sm);
-  drawDivider(doc, ctx);
   doc.moveDown(SPACE.xs);
+  drawDivider(doc, ctx);
+  doc.moveDown(SPACE.xxs);
 }

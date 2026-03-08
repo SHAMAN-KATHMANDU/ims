@@ -20,32 +20,37 @@ export function drawHeader(
 ): void {
   doc.fillColor(COLORS.text);
 
+  const textOpts = { lineGap: 0 };
   doc.font(getFontBold()).fontSize(TYPE.title);
   doc.text(orgName, ctx.margin, doc.y, {
     width: ctx.usableWidth,
     align: "center",
+    ...textOpts,
   });
-  doc.moveDown(SPACE.xs);
+  doc.moveDown(SPACE.xxs);
 
   doc.font(getFontRegular()).fontSize(TYPE.subtitle);
   doc.text(`Receipt #${saleCode}`, ctx.margin, doc.y, {
     width: ctx.usableWidth,
     align: "center",
+    ...textOpts,
   });
-  doc.moveDown(SPACE.xs);
+  doc.moveDown(SPACE.xxs);
 
   doc.fontSize(TYPE.body);
   doc.text(`Location: ${locationName}`, ctx.margin, doc.y, {
     width: ctx.usableWidth,
+    ...textOpts,
   });
 
   if (locationAddress) {
     doc.fontSize(TYPE.small).fillColor(COLORS.textMuted);
     doc.text(locationAddress, ctx.margin, doc.y + 1, {
       width: ctx.usableWidth,
+      ...textOpts,
     });
     doc.fillColor(COLORS.text);
   }
 
-  doc.y += SPACE.md;
+  doc.y += SPACE.sm;
 }

@@ -35,7 +35,7 @@ export function drawFooter(
   });
 
   doc.font(getFontRegular()).fontSize(TYPE.tiny);
-  doc.text("Shamanyantra POS", ctx.margin, y + FOOTER_LINE_HEIGHT * 2, {
+  doc.text("Shamanyantra System", ctx.margin, y + FOOTER_LINE_HEIGHT * 2, {
     width: ctx.usableWidth,
     align: "center",
   });

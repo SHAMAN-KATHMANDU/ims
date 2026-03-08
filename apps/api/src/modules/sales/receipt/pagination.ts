@@ -3,17 +3,19 @@
  */
 import type PDFDocument from "pdfkit";
 import { SPACE } from "./spacing";
-import { MARGIN, PAGE_BOTTOM } from "./constants";
+import { MARGIN } from "./constants";
 import type { ReceiptContext } from "./types";
 
 export interface PageContext {
   pageBottom: number;
   margin: number;
+  singlePageMode: boolean;
 }
 
 /**
  * Ensure sufficient space remains on the current page.
- * If not, add a new page, reset cursor, and optionally redraw headers.
+ * In single-page mode (≤10 items), never add a new page.
+ * Otherwise, add a new page and optionally redraw headers.
  */
 export function ensureSpace(
   doc: InstanceType<typeof PDFDocument>,
@@ -21,6 +23,7 @@ export function ensureSpace(
   ctx: PageContext,
   options?: { repeatHeader?: () => void },
 ): void {
+  if (ctx.singlePageMode) return;
   const y = doc.y;
   if (y + heightNeeded > ctx.pageBottom) {
     doc.addPage({ size: "A5", margin: MARGIN });
@@ -33,5 +36,6 @@ export function createPageContext(ctx: ReceiptContext): PageContext {
   return {
     pageBottom: ctx.pageBottom,
     margin: ctx.margin,
+    singlePageMode: ctx.singlePageMode,
   };
 }

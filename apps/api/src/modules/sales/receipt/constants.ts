@@ -19,6 +19,11 @@ export const FOOTER_TOP = A5_HEIGHT - MARGIN - FOOTER_HEIGHT;
 /** Content must end above this line (reserves space above footer) */
 export const PAGE_BOTTOM = FOOTER_TOP - SPACE.xl;
 
+/** Single-page mode: extend content area to fit ≤10 items on one page */
+export function getPageBottom(singlePageMode: boolean): number {
+  return singlePageMode ? FOOTER_TOP - 5 : PAGE_BOTTOM;
+}
+
 /** Right edge of table / totals area */
 export const TABLE_RIGHT = A5_WIDTH - MARGIN;
 
