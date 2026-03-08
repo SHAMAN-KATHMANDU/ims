@@ -87,9 +87,9 @@ type DealFormProps = DealFormCreateProps | DealFormEditProps;
 
 export function DealForm(props: DealFormProps) {
   const { data: pipelinesData } = usePipelines();
-  const { data: contactsData } = useContactsPaginated({ limit: 200 });
+  const { data: contactsData } = useContactsPaginated({ limit: 10 });
   const { data: companiesData } = useCompaniesForSelect();
-  const { data: usersResult } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 10 });
 
   const pipelines = useMemo(
     () => pipelinesData?.pipelines ?? [],
