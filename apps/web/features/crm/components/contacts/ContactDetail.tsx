@@ -34,6 +34,16 @@ import { useUsers, type User } from "@/features/users";
 import { LogActivityForm } from "../components/LogActivityForm";
 import { useToast } from "@/hooks/useToast";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Trash2,
   Plus,
   Paperclip,
@@ -81,6 +91,10 @@ export function ContactDetail({
   const [dealName, setDealName] = useState("");
   const [dealValue, setDealValue] = useState("");
   const [dealAssignedToId, setDealAssignedToId] = useState("");
+  const [deleteNoteId, setDeleteNoteId] = useState<string | null>(null);
+  const [deleteAttachmentId, setDeleteAttachmentId] = useState<string | null>(
+    null,
+  );
 
   const addNoteMutation = useAddContactNote(contactId);
   const deleteNoteMutation = useDeleteContactNote(contactId);
@@ -107,13 +121,19 @@ export function ContactDetail({
     }
   };
 
-  const handleDeleteNote = async (noteId: string) => {
-    if (!confirm("Delete this note?")) return;
+  const handleDeleteNote = (noteId: string) => {
+    setDeleteNoteId(noteId);
+  };
+
+  const confirmDeleteNote = async () => {
+    if (!deleteNoteId) return;
     try {
-      await deleteNoteMutation.mutateAsync(noteId);
+      await deleteNoteMutation.mutateAsync(deleteNoteId);
       toast({ title: "Note deleted" });
+      setDeleteNoteId(null);
     } catch {
       toast({ title: "Failed to delete note", variant: "destructive" });
+      setDeleteNoteId(null);
     }
   };
 
@@ -145,13 +165,19 @@ export function ContactDetail({
     }
   };
 
-  const handleDeleteAttachment = async (attachmentId: string) => {
-    if (!confirm("Delete this attachment?")) return;
+  const handleDeleteAttachment = (attachmentId: string) => {
+    setDeleteAttachmentId(attachmentId);
+  };
+
+  const confirmDeleteAttachment = async () => {
+    if (!deleteAttachmentId) return;
     try {
-      await deleteAttachmentMutation.mutateAsync(attachmentId);
+      await deleteAttachmentMutation.mutateAsync(deleteAttachmentId);
       toast({ title: "Attachment deleted" });
+      setDeleteAttachmentId(null);
     } catch {
       toast({ title: "Failed to delete attachment", variant: "destructive" });
+      setDeleteAttachmentId(null);
     }
   };
 
@@ -914,6 +940,54 @@ export function ContactDetail({
           </div>
         </Tabs>
       </div>
+
+      <AlertDialog
+        open={!!deleteNoteId}
+        onOpenChange={(o) => !o && setDeleteNoteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this note?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteNote}
+              disabled={deleteNoteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog
+        open={!!deleteAttachmentId}
+        onOpenChange={(o) => !o && setDeleteAttachmentId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this attachment?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteAttachment}
+              disabled={deleteAttachmentMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

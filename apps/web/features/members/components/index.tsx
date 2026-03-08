@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useMemberSelectionStore,
   selectSelectedMemberIds,
@@ -80,6 +81,7 @@ export function MembersPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState<
     "createdAt" | "updatedAt" | "name" | "id"
   >("createdAt");
@@ -106,7 +108,7 @@ export function MembersPage() {
     useMembersPaginated({
       page,
       limit: pageSize,
-      search,
+      search: debouncedSearch,
       sortBy,
       sortOrder,
     });
