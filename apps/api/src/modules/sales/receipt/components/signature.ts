@@ -12,7 +12,7 @@ type Doc = InstanceType<typeof PDFDocument>;
 
 export function drawSignatureBlock(doc: Doc, ctx: ReceiptContext): void {
   const pageCtx = createPageContext(ctx);
-  const estimatedHeight = 30;
+  const estimatedHeight = 22;
   ensureSpace(doc, estimatedHeight, pageCtx);
 
   doc.font(getFontRegular()).fontSize(TYPE.body);
@@ -23,5 +23,5 @@ export function drawSignatureBlock(doc: Doc, ctx: ReceiptContext): void {
   doc.text("Received By ___________________", ctx.midX, sigY, {
     width: ctx.tableRight - ctx.midX - SPACE.sm,
   });
-  doc.y = sigY + 18;
+  doc.y = sigY + 14;
 }

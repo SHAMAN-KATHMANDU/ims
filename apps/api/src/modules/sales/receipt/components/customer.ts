@@ -19,7 +19,7 @@ export function drawCustomer(
   ctx: ReceiptContext,
 ): void {
   const pageCtx = createPageContext(ctx);
-  const estimatedHeight = 60;
+  const estimatedHeight = 45;
   ensureSpace(doc, estimatedHeight, pageCtx);
 
   drawSectionTitle(doc, "Customer");
@@ -31,11 +31,11 @@ export function drawCustomer(
   } else {
     if (customerName && customerName !== "Walk-in Customer") {
       doc.text(customerName, ctx.margin);
-      doc.moveDown(SPACE.xs / 8);
+      doc.moveDown(SPACE.xs);
     }
     if (customerPhone) {
       doc.text(customerPhone, ctx.margin);
-      doc.moveDown(SPACE.xs / 8);
+      doc.moveDown(SPACE.xs);
     }
   }
 
@@ -43,7 +43,7 @@ export function drawCustomer(
     doc.text(customerAddress, ctx.margin, doc.y, {
       width: ctx.usableWidth,
     });
-    doc.moveDown(SPACE.xs / 8);
+    doc.moveDown(SPACE.xs);
   }
 
   doc.moveDown(SPACE.sm);

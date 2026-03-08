@@ -18,7 +18,7 @@ export function drawTotals(
   ctx: ReceiptContext,
 ): void {
   const pageCtx = createPageContext(ctx);
-  const estimatedHeight = 80;
+  const estimatedHeight = 55;
   ensureSpace(doc, estimatedHeight, pageCtx);
 
   drawKeyValueRow(doc, "Subtotal", fmtCurrency(sale.subtotal), ctx);
@@ -35,11 +35,11 @@ export function drawTotals(
     drawKeyValueRow(doc, "Promo Applied", promoCodes.join(", "), ctx);
   }
 
-  doc.moveDown(SPACE.xs / 8);
+  doc.moveDown(SPACE.xs);
   drawDivider(doc, ctx);
-  doc.moveDown(SPACE.xs / 8);
+  doc.moveDown(SPACE.xs);
 
   drawKeyValueRow(doc, "TOTAL", fmtCurrency(sale.total), ctx, { bold: true });
   doc.fontSize(TYPE.body);
-  doc.moveDown(SPACE.md);
+  doc.moveDown(SPACE.sm);
 }
