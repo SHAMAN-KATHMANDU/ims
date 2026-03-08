@@ -16,7 +16,7 @@ export const redisConnection = {
 /**
  * Inbound messaging queue - processes incoming messages from external channels.
  */
-export const inboundQueue = new Queue("messaging:inbound", {
+export const inboundQueue = new Queue("messaging-inbound", {
   connection: redisConnection,
   defaultJobOptions: {
     attempts: 3,
@@ -36,7 +36,7 @@ export const inboundQueue = new Queue("messaging:inbound", {
 /**
  * Outbound messaging queue - processes messages to be sent to external channels.
  */
-export const outboundQueue = new Queue("messaging:outbound", {
+export const outboundQueue = new Queue("messaging-outbound", {
   connection: redisConnection,
   defaultJobOptions: {
     attempts: 5,
@@ -56,7 +56,7 @@ export const outboundQueue = new Queue("messaging:outbound", {
 /**
  * Status queue - processes delivery status updates and read receipts.
  */
-export const statusQueue = new Queue("messaging:status", {
+export const statusQueue = new Queue("messaging-status", {
   connection: redisConnection,
   defaultJobOptions: {
     attempts: 3,

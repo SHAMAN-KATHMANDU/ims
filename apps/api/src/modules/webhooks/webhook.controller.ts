@@ -7,6 +7,7 @@ import { MessagingProvider } from "@prisma/client";
 
 const PROVIDER_MAP: Record<string, MessagingProvider> = {
   messenger: "FACEBOOK_MESSENGER",
+  FACEBOOK_MESSENGER: "FACEBOOK_MESSENGER",
 };
 
 export async function verify(req: Request, res: Response) {

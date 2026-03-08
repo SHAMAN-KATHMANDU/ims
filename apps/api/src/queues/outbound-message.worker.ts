@@ -13,7 +13,7 @@ interface OutboundJobData {
 }
 
 const outboundWorker = new Worker<OutboundJobData>(
-  "messaging:outbound",
+  "messaging-outbound",
   async (job: Job<OutboundJobData>) => {
     const { messageId, conversationId, channelId } = job.data;
 

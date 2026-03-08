@@ -16,7 +16,7 @@ interface InboundJobData {
 }
 
 const inboundWorker = new Worker<InboundJobData>(
-  "messaging:inbound",
+  "messaging-inbound",
   async (job: Job<InboundJobData>) => {
     const { provider, event } = job.data;
 
@@ -63,10 +63,28 @@ const inboundWorker = new Worker<InboundJobData>(
           where: { channelId: channel.id, participantId: event.participantId },
         });
 
-        const messageText =
+        const rawText =
           event.eventType === "postback"
             ? event.postback?.title
             : event.message?.text;
+
+        // Generate a preview for media messages when there's no text
+        const previewContentType = event.message?.contentType;
+        const mediaLabel: Record<string, string> = {
+          IMAGE: "Sent a photo",
+          VIDEO: "Sent a video",
+          AUDIO: "Sent an audio message",
+          FILE: "Sent a file",
+          STICKER: "Sent a sticker",
+          LOCATION: "Sent a location",
+        };
+        const messageText =
+          rawText ||
+          (previewContentType ? mediaLabel[previewContentType] : null) ||
+          null;
+        logger.log(
+          `[InboundWorker] Preview: rawText=${rawText}, contentType=${previewContentType}, messageText=${messageText}`,
+        );
 
         if (!conversation) {
           // Fetch participant profile if available
@@ -104,8 +122,7 @@ const inboundWorker = new Worker<InboundJobData>(
             where: { id: conversation.id },
             data: {
               lastMessageAt: new Date(event.timestamp),
-              lastMessageText:
-                messageText?.substring(0, 500) || conversation.lastMessageText,
+              lastMessageText: messageText?.substring(0, 500) || "New message",
               unreadCount: { increment: 1 },
               status: "OPEN",
             },

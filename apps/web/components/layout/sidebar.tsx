@@ -9,6 +9,7 @@ import {
   Home,
   Package,
   BarChart3,
+  MessageSquare,
   ChevronLeft,
   ChevronDown,
   Warehouse,
@@ -153,6 +154,18 @@ const navSections: NavSection[] = [
         label: "CRM Settings",
         icon: Settings,
         roles: ["admin", "superAdmin"],
+      },
+    ],
+  },
+  {
+    title: "MESSAGING",
+    items: [
+      {
+        path: "messaging",
+        label: "Inbox",
+        icon: MessageSquare,
+        roles: ["user", "admin", "superAdmin"],
+        feature: Feature.MESSAGING,
       },
     ],
   },

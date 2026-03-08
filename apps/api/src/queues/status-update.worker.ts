@@ -12,7 +12,7 @@ interface StatusJobData {
 }
 
 const statusWorker = new Worker<StatusJobData>(
-  "messaging:status",
+  "messaging-status",
   async (job: Job<StatusJobData>) => {
     const { event } = job.data;
 

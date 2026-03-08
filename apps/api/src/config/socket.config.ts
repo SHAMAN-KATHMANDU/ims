@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "./env";
 import { createAdapter } from "@socket.io/redis-adapter";
 import IORedis from "ioredis";
+import { logger } from "./logger";
 
 let io: SocketServer | null = null;
 
@@ -49,6 +50,10 @@ export function setupSocketIO(httpServer: any): SocketServer {
   io.on("connection", (socket) => {
     const { tenantId, id: userId } = socket.data.user ?? {};
 
+    logger.log(
+      `[Socket] Client connected: ${socket.id}, tenant: ${tenantId}, user: ${userId}`,
+    );
+
     if (tenantId) {
       socket.join(`tenant:${tenantId}`);
     }
@@ -56,6 +61,12 @@ export function setupSocketIO(httpServer: any): SocketServer {
     if (userId) {
       socket.join(`user:${userId}`);
     }
+
+    socket.on("disconnect", (reason) => {
+      logger.log(
+        `[Socket] Client disconnected: ${socket.id}, reason: ${reason}`,
+      );
+    });
   });
 
   return io;
