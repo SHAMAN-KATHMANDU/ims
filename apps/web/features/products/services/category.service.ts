@@ -107,7 +107,7 @@ export async function getAllCategories(): Promise<Category[]> {
   try {
     const response = await api.get<PaginatedCategoriesApiResponse>(
       "/categories",
-      { params: { limit: 1000 } },
+      { params: { limit: 10 } },
     );
     return response.data.data || [];
   } catch (error) {

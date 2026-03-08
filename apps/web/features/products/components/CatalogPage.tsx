@@ -116,7 +116,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const { data: categories = [] } = useCategories();
   const { data: vendorsResponse } = useVendorsPaginated({
     page: 1,
-    limit: 200,
+    limit: 10,
   });
   const vendors = vendorsResponse?.data ?? [];
   const { data: subcategories = [] } = useCategorySubcategories(

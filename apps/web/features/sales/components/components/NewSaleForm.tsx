@@ -368,7 +368,7 @@ export function NewSaleForm({
     if (locationId) {
       setInventoryLoading(true);
       setItems([]); // Clear items when location changes
-      getLocationInventory(locationId, { limit: 1000 })
+      getLocationInventory(locationId, { limit: 10 })
         .then((res) => {
           setInventory(res.data.filter((item) => item.quantity > 0));
         })

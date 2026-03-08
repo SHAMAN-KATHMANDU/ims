@@ -48,10 +48,10 @@ export function AnalyticsFilterBar() {
   } = useAnalyticsFilters();
   const isAdmin = useAuthStore(selectIsAdmin);
   const { data: locations = [] } = useActiveLocations();
-  const { data: usersResult } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 10 });
   const users = usersResult?.users ?? [];
   const { data: categories = [] } = useCategories();
-  const { data: vendorsData } = useVendorsPaginated({ limit: 500 });
+  const { data: vendorsData } = useVendorsPaginated({ limit: 10 });
   const vendors = vendorsData?.data ?? [];
   const allLocations = locations;
 
