@@ -106,7 +106,7 @@ export function ContactDetail({
 
   const { data: activitiesData } = useActivitiesByContact(contactId);
   const activities = activitiesData?.activities ?? [];
-  const { data: usersResult } = useUsers({ limit: 200 });
+  const { data: usersResult } = useUsers({ limit: 10 });
   const users: User[] = usersResult?.users ?? [];
 
   const handleAddNote = async (e: React.FormEvent) => {

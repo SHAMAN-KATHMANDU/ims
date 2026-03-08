@@ -153,7 +153,7 @@ export function DiscountsTab() {
   const { data: discountTypes = [] } = useDiscountTypes();
   const { data: productsResponse } = useProductsPaginated({
     page: 1,
-    limit: 500,
+    limit: 10,
   });
   const products = productsResponse?.data ?? [];
 

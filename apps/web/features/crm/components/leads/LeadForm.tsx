@@ -46,7 +46,7 @@ export function LeadForm({
   onCancel,
   isLoading,
 }: LeadFormProps) {
-  const { data: usersResult } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 10 });
   const users = usersResult?.users ?? [];
 
   const form = useForm<FormValues>({

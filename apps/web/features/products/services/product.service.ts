@@ -313,7 +313,7 @@ export async function getProducts(
 export async function getAllProducts(): Promise<Product[]> {
   try {
     // Fetch with a large limit to get all products
-    const response = await api.get<ProductsApiResponse>("/products?limit=1000");
+    const response = await api.get<ProductsApiResponse>("/products?limit=10");
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch products");
@@ -348,7 +348,9 @@ export async function getProductByImsCode(
   }
   const params = new URLSearchParams({ imsCode: imsCode.trim() });
   if (options?.locationId) params.set("locationId", options.locationId);
-  const response = await api.get<ProductResponse>(`/products/by-ims?${params.toString()}`);
+  const response = await api.get<ProductResponse>(
+    `/products/by-ims?${params.toString()}`,
+  );
   return response.data.product;
 }
 
