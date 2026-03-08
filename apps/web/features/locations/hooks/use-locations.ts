@@ -84,8 +84,8 @@ export function useLocationsPaginated(params: LocationListParams = {}) {
 
 /**
  * Hook for fetching all active locations.
- * Only fetches when authenticated and user is NOT platformAdmin (locations API
- * returns 403 for platformAdmin role).
+ * Only fetches when authenticated and user is NOT platformAdmin (platform admins
+ * have no tenant locations and the API returns 403 for them).
  */
 export function useActiveLocations() {
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
