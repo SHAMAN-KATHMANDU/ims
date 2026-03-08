@@ -443,12 +443,12 @@ export async function createSale(
 
   const promoCodesUsed = new Set<string>();
   for (const item of dto.items) {
-    if (item.promoCode && !promoCodesUsed.has(item.promoCode)) {
-      const promo = await findPromoByCode(ctx.tenantId, item.promoCode);
-      if (promo) {
-        await incrementPromoUsage(promo.id);
-        promoCodesUsed.add(item.promoCode);
-      }
+    const code = item.promoCode?.trim();
+    if (!code || promoCodesUsed.has(code)) continue;
+    promoCodesUsed.add(code);
+    const promo = await findPromoByCode(ctx.tenantId, code);
+    if (promo) {
+      await incrementPromoUsage(promo.id);
     }
   }
 
