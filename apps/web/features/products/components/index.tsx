@@ -598,17 +598,22 @@ export function ProductPage() {
                 : undefined,
           }));
 
-          data.discounts = productDiscounts.map((d) => ({
-            discountTypeId: d.discountTypeId,
-            discountPercentage: Number(d.discountPercentage) || 0,
-            startDate:
-              d.startDate && d.startDate.trim() !== ""
-                ? d.startDate
-                : undefined,
-            endDate:
-              d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-            isActive: d.isActive,
-          }));
+          data.discounts = productDiscounts
+            .filter((d) => d.discountTypeId?.trim())
+            .map((d) => ({
+              discountTypeId: d.discountTypeId,
+              discountPercentage: Math.min(
+                100,
+                Math.max(0, Number(d.discountPercentage) || 0),
+              ),
+              startDate:
+                d.startDate && d.startDate.trim() !== ""
+                  ? d.startDate
+                  : undefined,
+              endDate:
+                d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
+              isActive: d.isActive,
+            }));
         } else {
           if (productVariations.length > 0) {
             data.variations = productVariations.map((v) => ({
@@ -632,17 +637,22 @@ export function ProductPage() {
           }
 
           if (productDiscounts.length > 0) {
-            data.discounts = productDiscounts.map((d) => ({
-              discountTypeId: d.discountTypeId,
-              discountPercentage: Number(d.discountPercentage) || 0,
-              startDate:
-                d.startDate && d.startDate.trim() !== ""
-                  ? d.startDate
-                  : undefined,
-              endDate:
-                d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-              isActive: d.isActive,
-            }));
+            data.discounts = productDiscounts
+              .filter((d) => d.discountTypeId?.trim())
+              .map((d) => ({
+                discountTypeId: d.discountTypeId,
+                discountPercentage: Math.min(
+                  100,
+                  Math.max(0, Number(d.discountPercentage) || 0),
+                ),
+                startDate:
+                  d.startDate && d.startDate.trim() !== ""
+                    ? d.startDate
+                    : undefined,
+                endDate:
+                  d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
+                isActive: d.isActive,
+              }));
           }
         }
 

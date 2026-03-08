@@ -81,12 +81,17 @@ export const GetProductDiscountsListQuerySchema = GetListQuerySchema.extend({
 });
 
 export const GetProductByImsQuerySchema = z.object({
-  imsCode: z.string().min(1, "imsCode is required").transform((v) => v.trim()),
+  imsCode: z
+    .string()
+    .min(1, "imsCode is required")
+    .transform((v) => v.trim()),
   locationId: z.string().uuid().optional(),
 });
 
 export type GetAllProductsQueryDto = z.infer<typeof GetAllProductsQuerySchema>;
-export type GetProductByImsQueryDto = z.infer<typeof GetProductByImsQuerySchema>;
+export type GetProductByImsQueryDto = z.infer<
+  typeof GetProductByImsQuerySchema
+>;
 export type DownloadProductsQueryDto = z.infer<
   typeof DownloadProductsQuerySchema
 >;
@@ -136,14 +141,23 @@ const VariationSchema = z.object({
 });
 
 // Discount schema (used in create/update product)
+// Use preprocess to handle empty string, null, undefined, NaN - prevents false
+// "number must be less than or equal to 100" when field is empty or mid-edit
 const DiscountSchema = z.object({
   discountTypeId: z
     .string({ required_error: "Discount type ID is required" })
     .uuid("Discount type ID must be a valid UUID"),
-  discountPercentage: z.coerce
-    .number()
-    .min(0, "Discount must be at least 0")
-    .max(100, "Discount percentage must be between 0 and 100"),
+  discountPercentage: z.preprocess(
+    (val) => {
+      if (val === "" || val === null || val === undefined) return 0;
+      const num = Number(val);
+      return Number.isFinite(num) ? num : 0;
+    },
+    z
+      .number()
+      .min(0, "Discount must be at least 0")
+      .max(100, "Discount percentage must be between 0 and 100"),
+  ),
   valueType: z.enum(["PERCENTAGE", "FLAT"]).default("PERCENTAGE"),
   value: z.coerce.number().optional(),
   startDate: z.string().optional(),
