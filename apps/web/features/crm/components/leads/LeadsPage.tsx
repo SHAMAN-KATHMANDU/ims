@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import {
   useLeadsPaginated,
@@ -49,6 +50,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { Lead, LeadStatus } from "../../services/lead.service";
 
 const STATUS_OPTIONS: LeadStatus[] = [
@@ -81,15 +92,17 @@ export function LeadsPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [status, setStatus] = useState<string>("__all__");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [convertLeadId, setConvertLeadId] = useState<string | null>(null);
+  const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
 
   const { data, isLoading } = useLeadsPaginated({
     page,
     limit: pageSize,
-    search,
+    search: debouncedSearch,
     status: status === "__all__" ? undefined : (status as LeadStatus),
   });
 
@@ -109,6 +122,21 @@ export function LeadsPage() {
         hasPrevPage: data.pagination.hasPrevPage,
       } as PaginationState)
     : null;
+
+  const confirmDeleteLead = () => {
+    if (!deleteLeadId) return;
+    deleteMutation.mutate(deleteLeadId, {
+      onSuccess: () => {
+        toast({ title: "Lead deleted" });
+        if (selectedId === deleteLeadId) setSelectedId(null);
+        setDeleteLeadId(null);
+      },
+      onError: () => {
+        toast({ title: "Delete failed", variant: "destructive" });
+        setDeleteLeadId(null);
+      },
+    });
+  };
 
   const openView = (id: string) => {
     if (isDesktop) {
@@ -261,19 +289,7 @@ export function LeadsPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs text-destructive hover:text-destructive"
-                  onClick={() => {
-                    if (confirm("Delete this lead?")) {
-                      deleteMutation.mutate(lead.id, {
-                        onSuccess: () => toast({ title: "Lead deleted" }),
-                        onError: () =>
-                          toast({
-                            title: "Delete failed",
-                            variant: "destructive",
-                          }),
-                      });
-                      if (selectedId === lead.id) setSelectedId(null);
-                    }
-                  }}
+                  onClick={() => setDeleteLeadId(lead.id)}
                 >
                   Delete
                 </Button>
@@ -365,19 +381,7 @@ export function LeadsPage() {
                       variant="ghost"
                       size="sm"
                       className="text-destructive"
-                      onClick={() => {
-                        if (confirm("Delete this lead?")) {
-                          deleteMutation.mutate(lead.id, {
-                            onSuccess: () => toast({ title: "Lead deleted" }),
-                            onError: () =>
-                              toast({
-                                title: "Delete failed",
-                                variant: "destructive",
-                              }),
-                          });
-                          if (selectedId === lead.id) setSelectedId(null);
-                        }
-                      }}
+                      onClick={() => setDeleteLeadId(lead.id)}
                     >
                       Delete
                     </Button>
@@ -471,6 +475,30 @@ export function LeadsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={!!deleteLeadId}
+        onOpenChange={(o) => !o && setDeleteLeadId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteLead}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

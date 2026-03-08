@@ -207,6 +207,7 @@ export function useUpdateProduct() {
       queryClient.invalidateQueries({
         queryKey: productKeys.detail(variables.id),
       });
+      queryClient.invalidateQueries({ queryKey: productDiscountKeys.all });
     },
   });
 }

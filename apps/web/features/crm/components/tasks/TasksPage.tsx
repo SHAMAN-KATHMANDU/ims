@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useTasksPaginated,
   useCompleteTask,
@@ -41,6 +42,16 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/useToast";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { TaskForm } from "./TaskForm";
 import type {
   CreateTaskData,
@@ -61,10 +72,12 @@ export function TasksPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [taskTab, setTaskTab] = useState<TaskFilterTab>("all");
   const [dueToday, setDueToday] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
 
   const completedFilter =
     taskTab === "incomplete"
@@ -76,7 +89,7 @@ export function TasksPage() {
   const { data, isLoading } = useTasksPaginated({
     page,
     limit: pageSize,
-    search,
+    search: debouncedSearch,
     completed: completedFilter,
     dueToday,
   });
@@ -115,6 +128,18 @@ export function TasksPage() {
     } else {
       router.push(`${basePath}/crm/tasks/${id}/edit`);
     }
+  };
+
+  const confirmDeleteTask = () => {
+    if (!deleteTaskId) return;
+    deleteMutation.mutate(deleteTaskId, {
+      onSuccess: () => {
+        toast({ title: "Task deleted" });
+        if (selectedId === deleteTaskId) closeDrawer();
+        setDeleteTaskId(null);
+      },
+      onError: () => setDeleteTaskId(null),
+    });
   };
 
   const closeDrawer = () => {
@@ -277,13 +302,7 @@ export function TasksPage() {
                   variant="outline"
                   size="sm"
                   className="h-7 text-xs text-destructive hover:text-destructive"
-                  onClick={() => {
-                    if (confirm("Delete this task?")) {
-                      deleteMutation.mutate(task.id, {
-                        onSuccess: () => toast({ title: "Task deleted" }),
-                      });
-                    }
-                  }}
+                  onClick={() => setDeleteTaskId(task.id)}
                 >
                   <Trash2 className="h-3 w-3" />
                 </Button>
@@ -413,13 +432,7 @@ export function TasksPage() {
                         variant="ghost"
                         size="sm"
                         className="text-destructive"
-                        onClick={() => {
-                          if (confirm("Delete this task?")) {
-                            deleteMutation.mutate(task.id, {
-                              onSuccess: () => toast({ title: "Task deleted" }),
-                            });
-                          }
-                        }}
+                        onClick={() => setDeleteTaskId(task.id)}
                       >
                         Delete
                       </Button>
@@ -476,6 +489,30 @@ export function TasksPage() {
           />
         )}
       </ResponsiveDrawer>
+
+      <AlertDialog
+        open={!!deleteTaskId}
+        onOpenChange={(o) => !o && setDeleteTaskId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this task?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteTask}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

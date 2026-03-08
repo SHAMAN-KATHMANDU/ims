@@ -907,60 +907,6 @@ export function ProductPage() {
     setProductVariations(updated);
   };
 
-  // Discount handlers
-  const addDiscountToForm = () => {
-    setProductDiscounts([
-      ...productDiscounts,
-      {
-        discountTypeId: "",
-        discountPercentage: "0",
-        startDate: "",
-        endDate: "",
-        isActive: true,
-      },
-    ]);
-  };
-
-  const removeDiscountFromForm = (index: number) => {
-    setProductDiscounts(productDiscounts.filter((_, i) => i !== index));
-  };
-
-  const updateDiscountInForm = (
-    index: number,
-    field:
-      | "discountTypeId"
-      | "discountPercentage"
-      | "startDate"
-      | "endDate"
-      | "isActive",
-    value: string | boolean,
-  ) => {
-    const updated = [...productDiscounts];
-    updated[index] = {
-      discountTypeId:
-        field === "discountTypeId"
-          ? (value as string)
-          : updated[index]?.discountTypeId || "",
-      discountPercentage:
-        field === "discountPercentage"
-          ? (value as string)
-          : updated[index]?.discountPercentage || "0",
-      startDate:
-        field === "startDate"
-          ? (value as string)
-          : updated[index]?.startDate || "",
-      endDate:
-        field === "endDate" ? (value as string) : updated[index]?.endDate || "",
-      isActive:
-        field === "isActive"
-          ? (value as boolean)
-          : updated[index]?.isActive !== undefined
-            ? updated[index].isActive
-            : true,
-    };
-    setProductDiscounts(updated);
-  };
-
   // Export handlers
   const handleExport = useCallback(
     async (format: "excel" | "csv") => {
@@ -1088,9 +1034,6 @@ export function ProductPage() {
                     onAddPhoto={addPhotoToVariation}
                     onRemovePhoto={removePhotoFromVariation}
                     onSetPrimaryPhoto={setPrimaryPhoto}
-                    onAddDiscount={addDiscountToForm}
-                    onRemoveDiscount={removeDiscountFromForm}
-                    onUpdateDiscount={updateDiscountInForm}
                     onShowError={(title, message) =>
                       setErrorDialog({ open: true, title, message })
                     }
