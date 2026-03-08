@@ -404,6 +404,11 @@ export async function createSaleWithItemsAndDeductInventory(
         where: { id: inv.id },
         data: { quantity: { decrement: item.quantity } },
       });
+      // Keep ProductVariation.stockQuantity in sync so views using it reflect sales (#259)
+      await tx.productVariation.update({
+        where: { id: item.variationId },
+        data: { stockQuantity: { decrement: item.quantity } },
+      });
     }
 
     return newSale;

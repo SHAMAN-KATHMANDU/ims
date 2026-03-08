@@ -77,6 +77,65 @@ const formatDiscountLabel = (discount: ProductDiscount): string => {
   return `${discount.discountType} - ${discount.value}%`;
 };
 
+/** Addable row from scanned product: (variation, subVariation?) with stock at location */
+type AddableRow = {
+  variation: NonNullable<Product["variations"]>[number];
+  subVariation: { id: string; name: string } | null;
+  quantity: number;
+};
+
+/**
+ * Flatten product into addable rows for barcode scan.
+ * For variations WITH sub-variations: one row per sub-variant that has stock.
+ * For variations WITHOUT sub-variations: one row per variation.
+ */
+function getAddableRowsFromProduct(
+  product: Product,
+  _locationId: string,
+): AddableRow[] {
+  const rows: AddableRow[] = [];
+  for (const v of product.variations ?? []) {
+    const locInv =
+      (
+        v as {
+          locationInventory?: Array<{
+            quantity: number;
+            subVariationId?: string | null;
+            subVariation?: { id: string; name: string };
+            location?: { id: string };
+          }>;
+        }
+      ).locationInventory ?? [];
+    // API already filters locationInventory by locationId; entries may not include location object
+    const atLocation = locInv;
+    const hasSubVariants =
+      ((v as { subVariations?: unknown[] }).subVariations?.length ?? 0) > 0;
+
+    if (hasSubVariants) {
+      for (const inv of atLocation) {
+        if (inv.quantity > 0 && inv.subVariation) {
+          rows.push({
+            variation: v,
+            subVariation: inv.subVariation,
+            quantity: inv.quantity,
+          });
+        }
+      }
+    } else {
+      const qty =
+        atLocation
+          .filter((i) => !i.subVariationId)
+          .reduce((s, i) => s + i.quantity, 0) ||
+        (v as { stockQuantity?: number }).stockQuantity ||
+        0;
+      if (qty > 0) {
+        rows.push({ variation: v, subVariation: null, quantity: qty });
+      }
+    }
+  }
+  return rows;
+}
+
 /**
  * Pick the best discount for a member sale (matches backend logic):
  * eligible = types containing "member" or "non-member"; sort by Special first, then highest value.
@@ -517,34 +576,17 @@ export function NewSaleForm({
     return attrs?.length ? attrs.join(" / ") : "—";
   };
 
-  const getVariationQuantityAtLocation = (
-    v: ProductVariationItem | undefined,
-  ): number => {
-    if (!v) return 0;
-    const locInv = (
-      v as {
-        locationInventory?: Array<{
-          quantity: number;
-          location?: { id: string };
-        }>;
-      }
-    ).locationInventory;
-    if (!locInv?.length)
-      return (v as { stockQuantity?: number }).stockQuantity ?? 0;
-    const atLocation = locInv.filter((i) => i.location?.id === locationId);
-    return atLocation.reduce((s, i) => s + i.quantity, 0);
-  };
-
   const handleAddVariationFromScan = async (
     product: Product,
     variation: ProductVariationItem,
+    subVariation: { id: string; name: string } | null,
+    maxQty: number,
   ) => {
     const existingIndex = items.findIndex(
       (item) =>
         item.variationId === variation.id &&
-        (item.subVariationId ?? null) === null,
+        (item.subVariationId ?? null) === (subVariation?.id ?? null),
     );
-    const maxQty = getVariationQuantityAtLocation(variation);
     if (existingIndex !== -1) {
       const existingItem = items[existingIndex];
       if (existingItem && existingItem.quantity < maxQty) {
@@ -565,6 +607,10 @@ export function NewSaleForm({
     const defaultDiscountId =
       memberCheck?.isMember && memberDiscount ? memberDiscount.id : "none";
     const attrLabel = getVariationLabel(variation);
+    const subLabel = subVariation?.name;
+    const displayLabel = [attrLabel !== "—" ? attrLabel : null, subLabel]
+      .filter(Boolean)
+      .join(" / ");
     const validPromo =
       !promoCodeError && debouncedPromoCode.trim()
         ? debouncedPromoCode.trim()
@@ -573,11 +619,11 @@ export function NewSaleForm({
       ...items,
       {
         variationId: variation.id,
-        subVariationId: undefined,
-        subVariationName: undefined,
+        subVariationId: subVariation?.id ?? undefined,
+        subVariationName: subVariation?.name,
         productName: product.name,
         imsCode: product.imsCode ?? "",
-        attributeLabel: attrLabel !== "—" ? attrLabel : undefined,
+        attributeLabel: displayLabel || undefined,
         unitPrice: Number(product.mrp),
         quantity: 1,
         maxQuantity: maxQty,
@@ -862,7 +908,7 @@ export function NewSaleForm({
                       </div>
 
                       {/* CRM Contact (primary customer selection) */}
-                      <div className="space-y-2 -ml-4">
+                      <div className="space-y-2">
                         <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
                           <UserRound className="h-3 w-3" />
                           Customer (Contact)
@@ -941,87 +987,6 @@ export function NewSaleForm({
                           </div>
                         )}
                       </div>
-                    </div>
-
-                    {/* CRM Contact (primary customer selection) */}
-                    <div className="space-y-2 -ml-4">
-                      <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                        <UserRound className="h-3 w-3" />
-                        Customer (Contact)
-                      </Label>
-                      {contactId ? (
-                        <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/40 text-sm">
-                          <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <span className="flex-1 truncate">
-                            {contactOptions.find((c) => c.id === contactId)
-                              ? `${contactOptions.find((c) => c.id === contactId)!.firstName}${contactOptions.find((c) => c.id === contactId)!.lastName ? ` ${contactOptions.find((c) => c.id === contactId)!.lastName}` : ""}`
-                              : "Contact linked"}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setContactId(null);
-                              setContactSearch("");
-                            }}
-                            aria-label="Remove contact"
-                            className="text-muted-foreground hover:text-foreground"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                          <Input
-                            value={contactSearch}
-                            onChange={(e) => {
-                              setContactSearch(e.target.value);
-                              setShowContactDropdown(true);
-                            }}
-                            onFocus={() => setShowContactDropdown(true)}
-                            onBlur={() =>
-                              setTimeout(
-                                () => setShowContactDropdown(false),
-                                200,
-                              )
-                            }
-                            placeholder="Search contacts by name, email, phone..."
-                            className="pl-9 bg-surface border-border/50"
-                          />
-                          {showContactDropdown && (
-                            <div className="absolute z-50 top-full mt-1 w-full bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
-                              {contactOptions.length === 0 ? (
-                                <div className="p-3 text-sm text-muted-foreground text-center">
-                                  No contacts found
-                                </div>
-                              ) : (
-                                contactOptions.map((c) => (
-                                  <button
-                                    key={c.id}
-                                    type="button"
-                                    className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
-                                    onMouseDown={() => {
-                                      setContactId(c.id);
-                                      setContactSearch("");
-                                      setShowContactDropdown(false);
-                                    }}
-                                  >
-                                    <span className="font-medium">
-                                      {c.firstName}
-                                      {c.lastName ? ` ${c.lastName}` : ""}
-                                    </span>
-                                    {(c.email || c.phone) && (
-                                      <span className="text-xs text-muted-foreground">
-                                        {c.email ?? c.phone}
-                                      </span>
-                                    )}
-                                  </button>
-                                ))
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
                     </div>
 
                     {/* Phone (walk-in or from contact) */}
@@ -1137,37 +1102,61 @@ export function NewSaleForm({
                               {scannedProduct.imsCode}
                             </div>
                             <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                              {(scannedProduct.variations ?? []).map((v) => {
-                                const label = getVariationLabel(v);
-                                const qty = getVariationQuantityAtLocation(v);
-                                return (
-                                  <div
-                                    key={v.id}
-                                    className="flex items-center justify-between py-1.5 px-2 rounded bg-background border text-sm"
-                                  >
-                                    <span>
-                                      {label !== "—" ? label : "Default"}
-                                      <span className="text-muted-foreground text-xs ml-2">
-                                        Stock: {qty}
-                                      </span>
-                                    </span>
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      disabled={qty < 1}
-                                      onClick={() =>
-                                        handleAddVariationFromScan(
-                                          scannedProduct,
-                                          v,
-                                        )
-                                      }
-                                    >
-                                      <Plus className="h-3 w-3 mr-1" />
-                                      Add
-                                    </Button>
-                                  </div>
+                              {(() => {
+                                const addableRows = getAddableRowsFromProduct(
+                                  scannedProduct,
+                                  locationId,
                                 );
-                              })}
+                                if (addableRows.length === 0) {
+                                  return (
+                                    <p className="text-sm text-muted-foreground py-2">
+                                      No stock at this location
+                                    </p>
+                                  );
+                                }
+                                return addableRows.map((row, idx) => {
+                                  const label = getVariationLabel(
+                                    row.variation,
+                                  );
+                                  const subLabel = row.subVariation?.name;
+                                  const displayLabel =
+                                    [
+                                      label !== "—" ? label : "Default",
+                                      subLabel,
+                                    ]
+                                      .filter(Boolean)
+                                      .join(" / ") || "Default";
+                                  return (
+                                    <div
+                                      key={`${row.variation.id}-${row.subVariation?.id ?? "v"}-${idx}`}
+                                      className="flex items-center justify-between py-1.5 px-2 rounded bg-background border text-sm"
+                                    >
+                                      <span>
+                                        {displayLabel}
+                                        <span className="text-muted-foreground text-xs ml-2">
+                                          Stock: {row.quantity}
+                                        </span>
+                                      </span>
+                                      <Button
+                                        type="button"
+                                        size="sm"
+                                        disabled={row.quantity < 1}
+                                        onClick={() =>
+                                          handleAddVariationFromScan(
+                                            scannedProduct,
+                                            row.variation,
+                                            row.subVariation,
+                                            row.quantity,
+                                          )
+                                        }
+                                      >
+                                        <Plus className="h-3 w-3 mr-1" />
+                                        Add
+                                      </Button>
+                                    </div>
+                                  );
+                                });
+                              })()}
                             </div>
                           </div>
                         )}
@@ -1460,229 +1449,242 @@ export function NewSaleForm({
                 </div>
               </div>
 
-              {/* Right Panel: Payment, Summary */}
-              {items.length > 0 && (
-                <div className="space-y-6">
-                  <div className="form-panel flex flex-col">
-                    {/* Promo Code */}
-                    <FormSection title="Promo Code">
-                      <div className="relative">
-                        <Input
-                          value={promoCode}
-                          onChange={(e) =>
-                            setPromoCode(e.target.value.toUpperCase())
-                          }
-                          placeholder="Enter promo code..."
-                          className="uppercase"
-                          disabled={promoCodeValidating}
-                        />
-                        {promoCodeValidating && (
-                          <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                        )}
-                        {promoCode &&
-                          !promoCodeError &&
-                          !promoCodeValidating && (
-                            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-green-600">
-                              Applied
-                            </span>
+              {/* Right Panel: Summary, Promo, Payment — always visible to prevent layout shift */}
+              <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
+                <div className="form-panel flex flex-col">
+                  {/* Order Summary — placeholder when empty */}
+                  <FormSection title="Order Summary">
+                    {items.length === 0 ? (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        Add products to see total
+                      </p>
+                    ) : (
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Subtotal
+                          </span>
+                          <span className="font-mono font-semibold">
+                            {formatCurrency(subtotal)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between text-sm">
+                          <span className="text-muted-foreground">
+                            Discount
+                          </span>
+                          <span className="font-mono font-semibold text-green-600">
+                            -{formatCurrency(totalDiscount)}
+                          </span>
+                        </div>
+                        {previewResult?.promoDiscount != null &&
+                          previewResult.promoDiscount > 0 && (
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                Promo
+                              </span>
+                              <span className="font-mono font-semibold text-green-600">
+                                -{formatCurrency(previewResult.promoDiscount)}
+                              </span>
+                            </div>
                           )}
+                        <div className="flex justify-between items-center pt-2 border-t">
+                          <span className="font-semibold">Total</span>
+                          <span className="text-xl font-bold font-mono">
+                            {previewLoading ? (
+                              <Loader2 className="h-5 w-5 animate-spin" />
+                            ) : (
+                              formatCurrency(expectedTotal)
+                            )}
+                          </span>
+                        </div>
                       </div>
-                      {promoCodeError && (
-                        <p className="text-xs text-destructive mt-2">
-                          {promoCodeError}
-                        </p>
-                      )}
-                    </FormSection>
+                    )}
+                  </FormSection>
 
-                    {/* Payment */}
-                    <FormSection title="Payment">
-                      <div className="flex gap-2">
-                        <Select
-                          value={selectedPaymentMethod}
-                          onValueChange={(v) =>
-                            setSelectedPaymentMethod(v as PaymentMethod)
-                          }
-                        >
-                          <SelectTrigger className="w-[120px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="CASH">Cash</SelectItem>
-                            <SelectItem value="CARD">Card</SelectItem>
-                            <SelectItem value="CHEQUE">Cheque</SelectItem>
-                            <SelectItem value="FONEPAY">Fonepay</SelectItem>
-                            <SelectItem value="QR">QR</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={paymentAmount}
-                          onChange={(e) => setPaymentAmount(e.target.value)}
-                          placeholder={
-                            remainingAmount > 0
-                              ? `Remaining: ${formatCurrency(remainingAmount)}`
-                              : "Amount..."
-                          }
-                          className="flex-1"
-                          onKeyDown={(e) =>
-                            e.key === "Enter" &&
-                            (e.preventDefault(), handleAddPayment())
-                          }
-                        />
-                        <Button
-                          type="button"
-                          variant="secondary"
-                          size="sm"
-                          onClick={handleAddPayment}
-                          disabled={
-                            !paymentAmount || Number(paymentAmount) <= 0
-                          }
-                        >
-                          Add
-                        </Button>
-                        {remainingAmount > 0.01 && (
+                  {items.length > 0 && (
+                    <>
+                      {/* Promo Code */}
+                      <FormSection title="Promo Code">
+                        <div className="relative">
+                          <Input
+                            value={promoCode}
+                            onChange={(e) =>
+                              setPromoCode(e.target.value.toUpperCase())
+                            }
+                            placeholder="Enter promo code..."
+                            className="uppercase"
+                            disabled={promoCodeValidating}
+                          />
+                          {promoCodeValidating && (
+                            <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                          )}
+                          {promoCode &&
+                            !promoCodeError &&
+                            !promoCodeValidating && (
+                              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-green-600">
+                                Applied
+                              </span>
+                            )}
+                        </div>
+                        {promoCodeError && (
+                          <p className="text-xs text-destructive mt-2">
+                            {promoCodeError}
+                          </p>
+                        )}
+                      </FormSection>
+
+                      {/* Payment */}
+                      <FormSection title="Payment">
+                        <div className="flex gap-2">
+                          <Select
+                            value={selectedPaymentMethod}
+                            onValueChange={(v) =>
+                              setSelectedPaymentMethod(v as PaymentMethod)
+                            }
+                          >
+                            <SelectTrigger className="w-[120px]">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="CASH">Cash</SelectItem>
+                              <SelectItem value="CARD">Card</SelectItem>
+                              <SelectItem value="CHEQUE">Cheque</SelectItem>
+                              <SelectItem value="FONEPAY">Fonepay</SelectItem>
+                              <SelectItem value="QR">QR</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            type="number"
+                            min={0}
+                            step={0.01}
+                            value={paymentAmount}
+                            onChange={(e) => setPaymentAmount(e.target.value)}
+                            placeholder={
+                              remainingAmount > 0
+                                ? `Remaining: ${formatCurrency(remainingAmount)}`
+                                : "Amount..."
+                            }
+                            className="flex-1"
+                            onKeyDown={(e) =>
+                              e.key === "Enter" &&
+                              (e.preventDefault(), handleAddPayment())
+                            }
+                          />
                           <Button
                             type="button"
+                            variant="secondary"
                             size="sm"
-                            onClick={handleAddRemaining}
+                            onClick={handleAddPayment}
+                            disabled={
+                              !paymentAmount || Number(paymentAmount) <= 0
+                            }
                           >
-                            Pay Full
+                            Add
                           </Button>
-                        )}
-                      </div>
-                      {payments.length > 0 && (
-                        <div className="mt-3 space-y-2 max-h-[150px] overflow-y-auto">
-                          {payments.map((p) => (
-                            <div
-                              key={p.id}
-                              className="flex items-center justify-between p-2 bg-muted rounded border"
+                          {remainingAmount > 0.01 && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              onClick={handleAddRemaining}
                             >
-                              <Badge variant="outline" className="text-xs">
-                                {p.method}
-                              </Badge>
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold font-mono">
-                                  {formatCurrency(p.amount)}
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                  onClick={() => handleRemovePayment(p.id)}
-                                >
-                                  <Trash2 className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            </div>
-                          ))}
+                              Pay Full
+                            </Button>
+                          )}
                         </div>
-                      )}
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Total:{" "}
-                        <span className="font-semibold font-mono">
-                          {formatCurrency(totalPayment)}
-                        </span>
-                        {Math.abs(expectedTotal - totalPayment) > 0.01 && (
-                          <span className="text-warning ml-1">
-                            · Must match {formatCurrency(expectedTotal)}
-                          </span>
-                        )}
-                      </p>
-                    </FormSection>
-
-                    {/* Order Summary: Subtotal, Discount, Total */}
-                    <div className="bg-muted/50 border rounded-lg p-4 mt-6 space-y-2">
-                      <h4 className="text-sm font-semibold mb-2">
-                        Order Summary
-                      </h4>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Subtotal</span>
-                        <span className="font-mono font-semibold">
-                          {formatCurrency(subtotal)}
-                        </span>
-                      </div>
-                      <div className="flex justify-between text-sm">
-                        <span className="text-muted-foreground">Discount</span>
-                        <span className="font-mono font-semibold text-green-600">
-                          -{formatCurrency(totalDiscount)}
-                        </span>
-                      </div>
-                      {previewResult?.promoDiscount != null &&
-                        previewResult.promoDiscount > 0 && (
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">Promo</span>
-                            <span className="font-mono font-semibold text-green-600">
-                              -{formatCurrency(previewResult.promoDiscount)}
-                            </span>
+                        {payments.length > 0 && (
+                          <div className="mt-3 space-y-2 max-h-[150px] overflow-y-auto">
+                            {payments.map((p) => (
+                              <div
+                                key={p.id}
+                                className="flex items-center justify-between p-2 bg-muted rounded border"
+                              >
+                                <Badge variant="outline" className="text-xs">
+                                  {p.method}
+                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold font-mono">
+                                    {formatCurrency(p.amount)}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleRemovePayment(p.id)}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
-                      <div className="flex justify-between items-center pt-2 border-t">
-                        <span className="font-semibold">Total</span>
-                        <span className="text-xl font-bold font-mono">
-                          {previewLoading ? (
-                            <Loader2 className="h-5 w-5 animate-spin" />
-                          ) : (
-                            formatCurrency(expectedTotal)
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Total:{" "}
+                          <span className="font-semibold font-mono">
+                            {formatCurrency(totalPayment)}
+                          </span>
+                          {Math.abs(expectedTotal - totalPayment) > 0.01 && (
+                            <span className="text-warning ml-1">
+                              · Must match {formatCurrency(expectedTotal)}
+                            </span>
                           )}
-                        </span>
-                      </div>
-                    </div>
+                        </p>
+                      </FormSection>
 
-                    {/* Notes */}
-                    <FormSection title="Notes" className="mt-6">
-                      <Textarea
-                        value={notes}
-                        onChange={(e) => setNotes(e.target.value)}
-                        placeholder="Add notes for this sale..."
-                        rows={3}
-                        className="resize-none"
-                      />
-                    </FormSection>
+                      {/* Notes */}
+                      <FormSection title="Notes" className="mt-4">
+                        <Textarea
+                          value={notes}
+                          onChange={(e) => setNotes(e.target.value)}
+                          placeholder="Add notes for this sale..."
+                          rows={3}
+                          className="resize-none"
+                        />
+                      </FormSection>
 
-                    {/* Validation Error */}
-                    {Math.abs(expectedTotal - totalPayment) > 0.01 &&
-                      !isCreditSale && (
-                        <div className="bg-destructive/10 border border-destructive rounded-lg p-3 text-sm text-destructive mt-4">
-                          Payment mismatch: {formatCurrency(totalPayment)} paid,{" "}
-                          {formatCurrency(expectedTotal)} required
-                        </div>
-                      )}
+                      {/* Validation Error */}
+                      {Math.abs(expectedTotal - totalPayment) > 0.01 &&
+                        !isCreditSale && (
+                          <div className="bg-destructive/10 border border-destructive rounded-lg p-3 text-sm text-destructive mt-4">
+                            Payment mismatch: {formatCurrency(totalPayment)}{" "}
+                            paid, {formatCurrency(expectedTotal)} required
+                          </div>
+                        )}
 
-                    {/* Complete Sale Button */}
-                    <Button
-                      type="button"
-                      disabled={
-                        isLoading ||
-                        !locationId ||
-                        items.length === 0 ||
-                        (!isCreditSale &&
-                          (totalPayment <= 0 ||
-                            Math.abs(totalPayment - expectedTotal) > 0.01))
-                      }
-                      className="w-full mt-6 font-semibold h-11"
-                      onClick={() => {
-                        completeSaleClickedRef.current = true;
-                        formRef.current?.requestSubmit();
-                      }}
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>
-                          <ShoppingCart className="mr-2 h-4 w-4" />
-                          Complete Sale
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                      {/* Complete Sale Button */}
+                      <Button
+                        type="button"
+                        disabled={
+                          isLoading ||
+                          !locationId ||
+                          items.length === 0 ||
+                          (!isCreditSale &&
+                            (totalPayment <= 0 ||
+                              Math.abs(totalPayment - expectedTotal) > 0.01))
+                        }
+                        className="w-full mt-6 font-semibold h-11"
+                        onClick={() => {
+                          completeSaleClickedRef.current = true;
+                          formRef.current?.requestSubmit();
+                        }}
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingCart className="mr-2 h-4 w-4" />
+                            Complete Sale
+                          </>
+                        )}
+                      </Button>
+                    </>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           </div>
         </div>

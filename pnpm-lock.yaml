@@ -59,6 +59,9 @@ importers:
 
   apps/api:
     dependencies:
+      "@fontsource/roboto":
+        specifier: ^5.2.10
+        version: 5.2.10
       "@prisma/client":
         specifier: ^5.22.0
         version: 5.22.0(prisma@5.22.0)
@@ -1186,6 +1189,12 @@ packages:
     resolution:
       {
         integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==,
+      }
+
+  "@fontsource/roboto@5.2.10":
+    resolution:
+      {
+        integrity: sha512-8HlA5FtSfz//oFSr2eL7GFXAiE7eIkcGOtx7tjsLKq+as702x9+GU7K95iDeWFapHC4M2hv9RrpXKRTGGBI8Zg==,
       }
 
   "@hookform/resolvers@3.10.0":
@@ -10613,6 +10622,8 @@ snapshots:
       react-dom: 19.2.0(react@19.2.0)
 
   "@floating-ui/utils@0.2.10": {}
+
+  "@fontsource/roboto@5.2.10": {}
 
   "@hookform/resolvers@3.10.0(react-hook-form@7.70.0(react@19.2.0))":
     dependencies:
