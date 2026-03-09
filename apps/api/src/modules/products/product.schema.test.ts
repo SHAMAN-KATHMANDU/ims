@@ -56,6 +56,34 @@ describe("CreateProductSchema", () => {
     expect(result.discounts).toHaveLength(1);
   });
 
+  it("accepts discount with empty string discountPercentage (coerced to 0)", () => {
+    const result = CreateProductSchema.parse({
+      ...minimalValidProduct,
+      discounts: [
+        {
+          discountTypeId: "550e8400-e29b-41d4-a716-446655440004",
+          discountPercentage: "",
+        },
+      ],
+    });
+    expect(result.discounts).toHaveLength(1);
+    expect(result.discounts![0].discountPercentage).toBe(0);
+  });
+
+  it("rejects discount with discountPercentage > 100", () => {
+    expect(() =>
+      CreateProductSchema.parse({
+        ...minimalValidProduct,
+        discounts: [
+          {
+            discountTypeId: "550e8400-e29b-41d4-a716-446655440004",
+            discountPercentage: 150,
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
   it("rejects missing name", () => {
     expect(() =>
       CreateProductSchema.parse({

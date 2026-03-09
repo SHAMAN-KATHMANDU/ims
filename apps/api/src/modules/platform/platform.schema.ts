@@ -120,6 +120,7 @@ export const UpsertPlanLimitSchema = z.object({
   promoManagement: z.boolean().optional(),
   auditLogs: z.boolean().optional(),
   apiAccess: z.boolean().optional(),
+  salesPipeline: z.boolean().optional(),
 });
 
 /** Create pricing plan. */

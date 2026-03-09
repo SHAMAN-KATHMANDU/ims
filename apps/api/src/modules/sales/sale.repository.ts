@@ -289,6 +289,7 @@ export interface CreateSaleWithItemsInput {
   discount: number;
   total: number;
   notes: string | null;
+  promoCodesUsed?: string[] | null;
   items: Array<{
     variationId: string;
     subVariationId: string | null;
@@ -345,6 +346,10 @@ export async function createSaleWithItemsAndDeductInventory(
         discount: input.discount,
         total: input.total,
         notes: input.notes,
+        promoCodesUsed:
+          input.promoCodesUsed && input.promoCodesUsed.length > 0
+            ? input.promoCodesUsed
+            : undefined,
         createdById: input.createdById,
         items: {
           create: input.items.map((item) => ({
@@ -398,6 +403,11 @@ export async function createSaleWithItemsAndDeductInventory(
       await tx.locationInventory.update({
         where: { id: inv.id },
         data: { quantity: { decrement: item.quantity } },
+      });
+      // Keep ProductVariation.stockQuantity in sync so views using it reflect sales (#259)
+      await tx.productVariation.update({
+        where: { id: item.variationId },
+        data: { stockQuantity: { decrement: item.quantity } },
       });
     }
 
@@ -485,8 +495,18 @@ export async function countSalesForUserSince(userId: string, since: Date) {
 }
 
 const SALE_DETAIL_INCLUDE = {
-  location: true,
-  member: true,
+  tenant: { select: { name: true } },
+  location: { select: { id: true, name: true, address: true } },
+  member: { select: { id: true, phone: true, name: true, address: true } },
+  contact: {
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      phone: true,
+    },
+  },
   createdBy: { select: { id: true, username: true, role: true } },
   payments: {
     select: { id: true, method: true, amount: true, createdAt: true },

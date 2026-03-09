@@ -33,6 +33,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Sheet,
@@ -52,6 +58,7 @@ import {
 import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import { useSalesPaginated, useSale } from "@/features/sales";
 import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
+import { ChartInfoButton } from "./components/ChartInfoButton";
 import { SalesTable, SaleDetail } from "@/features/sales";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
@@ -63,6 +70,7 @@ import {
 } from "@/components/ui/pagination";
 import { exportAnalytics } from "@/features/analytics";
 import { downloadBlobFromResponse } from "@/lib/downloadBlob";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import {
   C,
   getChartColor,
@@ -74,6 +82,7 @@ import {
   colorToDataKey,
   snapWidthPercent,
   tooltipStyle,
+  tooltipCursor,
 } from "./reportTheme";
 import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
 import type { Sale } from "@/features/sales";
@@ -236,7 +245,7 @@ export function SalesRevenuePage() {
           {
             label: "Total Revenue",
             value: fN(data.kpis.totalRevenue),
-            sub: `${data.kpis.salesCount} sales`,
+            sub: `Gross · ${data.kpis.salesCount} sales`,
             icon: "💰",
           },
           {
@@ -303,24 +312,30 @@ export function SalesRevenuePage() {
         <div className="min-w-0 flex-1">
           <AnalyticsFilterBar />
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport("excel")}
-            disabled={exporting}
-          >
-            {exporting ? "..." : "Export Excel"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport("csv")}
-            disabled={exporting}
-          >
-            {exporting ? "..." : "Export CSV"}
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={exporting}>
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? "..." : "Download"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => handleExport("excel")}
+              disabled={exporting}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Download as Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleExport("csv")}
+              disabled={exporting}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Download as CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {!loading && kpis.length > 0 && (
@@ -353,9 +368,12 @@ export function SalesRevenuePage() {
           <TabsContent value="overview" className="space-y-6 mt-6">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Revenue Trend</CardTitle>
-                  <CardDescription>Monthly aggregates</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Revenue Trend</CardTitle>
+                    <CardDescription>Monthly aggregates</CardDescription>
+                  </div>
+                  <ChartInfoButton content="Shows net revenue per month for the selected date range and filters. Use this to spot trends and compare months." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
@@ -377,7 +395,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="month" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Area
                         type="monotone"
                         dataKey="net"
@@ -397,9 +420,12 @@ export function SalesRevenuePage() {
                 </CardContent>
               </Card>
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Growth Rate</CardTitle>
-                  <CardDescription>Month-over-month change</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Growth Rate</CardTitle>
+                    <CardDescription>Month-over-month change</CardDescription>
+                  </div>
+                  <ChartInfoButton content="Month-over-month percentage change in revenue. Positive (green) means revenue increased vs the previous month; negative (red) means it decreased." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
@@ -408,8 +434,17 @@ export function SalesRevenuePage() {
                       <XAxis dataKey="month" tick={axisTick} />
                       <YAxis tick={axisTick} tickFormatter={(v) => `${v}%`} />
                       <Tooltip
-                        formatter={(v: number) => `${v}%`}
+                        content={(props) => (
+                          <AnalyticsChartTooltip
+                            {...props}
+                            formatter={(v) =>
+                              typeof v === "number" ? `${v}%` : String(v ?? "")
+                            }
+                          />
+                        )}
+                        wrapperStyle={tooltipStyle}
                         contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
                       />
                       <Bar
                         dataKey="growthPct"
@@ -437,9 +472,12 @@ export function SalesRevenuePage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Location Performance</CardTitle>
-                  <CardDescription>Revenue by location</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Location Performance</CardTitle>
+                    <CardDescription>Revenue by location</CardDescription>
+                  </div>
+                  <ChartInfoButton content="Total revenue and number of sales per location. Lets you compare performance across stores or warehouses." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={270}>
@@ -447,7 +485,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="locationName" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Bar
                         dataKey="revenue"
                         radius={[4, 4, 0, 0]}
@@ -462,8 +505,9 @@ export function SalesRevenuePage() {
                 </CardContent>
               </Card>
               <Card className="min-w-0">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle>Revenue Share</CardTitle>
+                  <ChartInfoButton content="Revenue split by sale type (e.g. General vs Member). Shows what share of revenue comes from each type." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
@@ -490,8 +534,17 @@ export function SalesRevenuePage() {
                           ))}
                       </Pie>
                       <Tooltip
-                        formatter={(v: number) => fN(v)}
+                        content={(props) => (
+                          <AnalyticsChartTooltip
+                            {...props}
+                            formatter={(v) =>
+                              typeof v === "number" ? fN(v) : String(v ?? "")
+                            }
+                          />
+                        )}
+                        wrapperStyle={tooltipStyle}
                         contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
                       />
                     </PieChart>
                   </ResponsiveContainer>
@@ -521,11 +574,14 @@ export function SalesRevenuePage() {
             </div>
 
             <Card className="min-w-0">
-              <CardHeader>
-                <CardTitle>Revenue Over Time</CardTitle>
-                <CardDescription>
-                  Gross revenue, net revenue, and discount by day
-                </CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Revenue Over Time</CardTitle>
+                  <CardDescription>
+                    Gross revenue, net revenue, and discount by day
+                  </CardDescription>
+                </div>
+                <ChartInfoButton content="Daily breakdown of gross revenue (before discount), net revenue (after discount), and total discount. Helps you see day-by-day performance." />
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
@@ -533,7 +589,12 @@ export function SalesRevenuePage() {
                     <CartesianGrid {...gridProps} />
                     <XAxis dataKey="date" tick={axisTick} />
                     <YAxis tickFormatter={fS} tick={axisTick} />
-                    <Tooltip content={<AnalyticsChartTooltip />} />
+                    <Tooltip
+                      content={<AnalyticsChartTooltip />}
+                      wrapperStyle={tooltipStyle}
+                      contentStyle={tooltipStyle}
+                      cursor={tooltipCursor}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Line
                       type="monotone"
@@ -567,9 +628,12 @@ export function SalesRevenuePage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Sales by Day of Week</CardTitle>
-                  <CardDescription>Revenue distribution</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Sales by Day of Week</CardTitle>
+                    <CardDescription>Revenue distribution</CardDescription>
+                  </div>
+                  <ChartInfoButton content="Revenue and sales count for each day of the week. Use this to see which days are busiest and plan staffing or promotions." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>
@@ -577,7 +641,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="day" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Bar
                         dataKey="revenue"
                         radius={[4, 4, 0, 0]}
@@ -592,9 +661,12 @@ export function SalesRevenuePage() {
                 </CardContent>
               </Card>
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Sales by Hour of Day</CardTitle>
-                  <CardDescription>Revenue by hour</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Sales by Hour of Day</CardTitle>
+                    <CardDescription>Revenue by hour</CardDescription>
+                  </div>
+                  <ChartInfoButton content="Revenue by hour of day (0–23). Helps identify peak hours for staffing and operations." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>
@@ -602,7 +674,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="hour" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Bar
                         dataKey="revenue"
                         radius={[2, 2, 0, 0]}
@@ -617,8 +694,9 @@ export function SalesRevenuePage() {
 
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle>Payment Method Share</CardTitle>
+                  <ChartInfoButton content="Share of revenue paid by each payment method (e.g. cash, card, credit). Shows how customers prefer to pay." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
@@ -645,8 +723,17 @@ export function SalesRevenuePage() {
                           ))}
                       </Pie>
                       <Tooltip
-                        formatter={(v: number) => fN(v)}
+                        content={(props) => (
+                          <AnalyticsChartTooltip
+                            {...props}
+                            formatter={(v) =>
+                              typeof v === "number" ? fN(v) : String(v ?? "")
+                            }
+                          />
+                        )}
+                        wrapperStyle={tooltipStyle}
                         contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
                       />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                     </PieChart>
@@ -654,11 +741,14 @@ export function SalesRevenuePage() {
                 </CardContent>
               </Card>
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Payment Trends</CardTitle>
-                  <CardDescription>
-                    Daily totals by payment method
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Payment Trends</CardTitle>
+                    <CardDescription>
+                      Daily totals by payment method
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Daily revenue broken down by payment method over time. Shows how payment mix changes day to day." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
@@ -666,7 +756,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="date" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       {paymentMethodSeries.map((s) => (
                         <Line
@@ -687,11 +782,14 @@ export function SalesRevenuePage() {
 
             {discountData && (
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Discount Analytics</CardTitle>
-                  <CardDescription>
-                    Discount over time, by user, and by location
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Discount Analytics</CardTitle>
+                    <CardDescription>
+                      Discount over time, by user, and by location
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Total discount given over time (daily). Use filters to see discount by location or user in the other charts in this tab." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={200}>
@@ -713,7 +811,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="date" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Area
                         type="monotone"
                         dataKey="discount"
@@ -732,10 +835,13 @@ export function SalesRevenuePage() {
           <TabsContent value="locations" className="space-y-6 mt-6">
             <Card className="min-w-0">
               <CardHeader>
-                <CardTitle>Location Comparison</CardTitle>
-                <CardDescription>
-                  Revenue, sales count, and discount per location
-                </CardDescription>
+                <div>
+                  <CardTitle>Location Comparison</CardTitle>
+                  <CardDescription>
+                    Revenue, sales count, and discount per location
+                  </CardDescription>
+                </div>
+                <ChartInfoButton content="Side-by-side comparison of each location: revenue, number of sales, and total discount. Lets you rank locations by performance." />
               </CardHeader>
               <CardContent>
                 {(() => {
@@ -870,8 +976,9 @@ export function SalesRevenuePage() {
 
             {discountData && discountData.byLocation.length > 0 && (
               <Card className="min-w-0">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle>Discount by Location</CardTitle>
+                  <ChartInfoButton content="Total discount given at each location. Helps compare how much discount is used per store or warehouse." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
@@ -879,7 +986,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="locationName" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Bar
                         dataKey="discount"
                         radius={[4, 4, 0, 0]}
@@ -899,9 +1011,12 @@ export function SalesRevenuePage() {
           <TabsContent value="credit" className="space-y-6 mt-6">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Credit Issued vs Paid</CardTitle>
-                  <CardDescription>Over time</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Credit Issued vs Paid</CardTitle>
+                    <CardDescription>Over time</CardDescription>
+                  </div>
+                  <ChartInfoButton content="For credit sales: how much credit was issued (sold) vs how much was paid back each day. Helps track credit recovery over time." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
@@ -909,7 +1024,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="date" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Line
                         type="monotone"
@@ -932,9 +1052,14 @@ export function SalesRevenuePage() {
                 </CardContent>
               </Card>
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Credit Aging</CardTitle>
-                  <CardDescription>Outstanding by days overdue</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Credit Aging</CardTitle>
+                    <CardDescription>
+                      Outstanding by days overdue
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Outstanding credit (unpaid balance) grouped by age: 0–7 days, 8–30 days, and 30+ days. Helps prioritize collection and manage risk." />
                 </CardHeader>
                 <CardContent>
                   {data?.credit.aging && (
@@ -988,13 +1113,16 @@ export function SalesRevenuePage() {
 
           <TabsContent value="users" className="space-y-6 mt-6">
             <Card className="min-w-0">
-              <CardHeader>
-                <CardTitle>User Performance</CardTitle>
-                <CardDescription>
-                  {isUserRole
-                    ? "Your performance"
-                    : "Revenue, sales count, and avg discount per user"}
-                </CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>User Performance</CardTitle>
+                  <CardDescription>
+                    {isUserRole
+                      ? "Your performance"
+                      : "Revenue, sales count, and avg discount per user"}
+                  </CardDescription>
+                </div>
+                <ChartInfoButton content="Revenue, number of sales, and average discount per staff user. Admins see all users; staff see only their own performance." />
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
@@ -1002,7 +1130,12 @@ export function SalesRevenuePage() {
                     <CartesianGrid {...gridProps} />
                     <XAxis dataKey="username" tick={axisTick} />
                     <YAxis tickFormatter={fS} tick={axisTick} />
-                    <Tooltip content={<AnalyticsChartTooltip />} />
+                    <Tooltip
+                      content={<AnalyticsChartTooltip />}
+                      wrapperStyle={tooltipStyle}
+                      contentStyle={tooltipStyle}
+                      cursor={tooltipCursor}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Bar
                       dataKey="revenue"
@@ -1038,8 +1171,9 @@ export function SalesRevenuePage() {
 
             {discountData && discountData.byUser.length > 0 && (
               <Card className="min-w-0">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle>Discount by User</CardTitle>
+                  <ChartInfoButton content="Total discount given by each user. Helps see who is applying the most discount and align with policy." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
@@ -1047,7 +1181,12 @@ export function SalesRevenuePage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="username" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Bar
                         dataKey="discount"
                         radius={[4, 4, 0, 0]}

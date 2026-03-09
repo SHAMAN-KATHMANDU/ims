@@ -1,5 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
 import { getPaginationParams } from "@/utils/pagination";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import categoryRepository, { CategoryRepository } from "./category.repository";
 import type {
   CreateCategoryDto,
@@ -60,7 +61,11 @@ export class CategoryService {
     return this.repo.update(id, updateData);
   }
 
-  async delete(id: string, tenantId: string) {
+  async delete(
+    id: string,
+    tenantId: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await this.repo.findByIdWithProductCount(id, tenantId);
     if (!existing) throw createError("Category not found", 404);
 
@@ -73,7 +78,19 @@ export class CategoryService {
       throw err;
     }
 
-    await this.repo.softDelete(id);
+    await this.repo.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Category",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 
   async getSubcategories(categoryId: string) {
@@ -106,7 +123,12 @@ export class CategoryService {
     return this.repo.createSubcategory(categoryId, trimmedName);
   }
 
-  async deleteSubcategory(categoryId: string, data: DeleteSubcategoryDto) {
+  async deleteSubcategory(
+    categoryId: string,
+    tenantId: string,
+    data: DeleteSubcategoryDto,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const trimmedName = data.name.trim();
     const subCategory = await this.repo.findSubcategoryByName(
       categoryId,
@@ -124,7 +146,19 @@ export class CategoryService {
       );
     }
 
-    await this.repo.softDeleteSubcategory(subCategory.id);
+    await this.repo.softDeleteSubcategory(subCategory.id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "SubCategory",
+      resourceId: subCategory.id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 }
 

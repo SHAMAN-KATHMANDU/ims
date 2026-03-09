@@ -40,10 +40,24 @@ ALWAYS write tests first, then implement code to make tests pass.
 
 #### Integration Tests
 
-- API endpoints
+- API endpoints (Supertest + Express)
 - Database operations
 - Service interactions
 - External API calls
+- See: `.cursor/skills/integration-testing/SKILL.md`
+
+#### Security Tests
+
+- Auth bypass (401 on protected routes)
+- IDOR prevention (tenantId from JWT)
+- Cross-tenant isolation
+- See: `.cursor/skills/security-testing/SKILL.md`
+
+#### Concurrency Tests
+
+- Inventory/sale/transfer races
+- Transaction atomicity
+- See: `.cursor/skills/concurrency-testing/SKILL.md`
 
 #### E2E Tests (Playwright)
 

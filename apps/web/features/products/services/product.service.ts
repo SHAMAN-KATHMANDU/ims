@@ -313,7 +313,7 @@ export async function getProducts(
 export async function getAllProducts(): Promise<Product[]> {
   try {
     // Fetch with a large limit to get all products
-    const response = await api.get<ProductsApiResponse>("/products?limit=1000");
+    const response = await api.get<ProductsApiResponse>("/products?limit=10");
     return response.data.data || [];
   } catch (error) {
     handleApiError(error, "fetch products");
@@ -348,7 +348,9 @@ export async function getProductByImsCode(
   }
   const params = new URLSearchParams({ imsCode: imsCode.trim() });
   if (options?.locationId) params.set("locationId", options.locationId);
-  const response = await api.get<ProductResponse>(`/products/by-ims?${params.toString()}`);
+  const response = await api.get<ProductResponse>(
+    `/products/by-ims?${params.toString()}`,
+  );
   return response.data.product;
 }
 
@@ -407,15 +409,20 @@ export async function updateProduct(
 }
 
 /**
- * Delete a product
+ * Delete a product (soft delete to platform trash)
  */
-export async function deleteProduct(id: string): Promise<void> {
+export async function deleteProduct(
+  id: string,
+  reason?: string,
+): Promise<void> {
   if (!id?.trim()) {
     throw new Error("Product ID is required");
   }
 
   try {
-    await api.delete(`/products/${id}`);
+    await api.delete(`/products/${id}`, {
+      data: reason ? { reason } : undefined,
+    });
   } catch (error) {
     handleApiError(error, `delete product "${id}"`);
   }
