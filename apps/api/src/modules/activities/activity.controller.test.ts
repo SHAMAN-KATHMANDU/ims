@@ -18,7 +18,7 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 import activityController from "./activity.controller";
 import * as activityServiceModule from "./activity.service";
 
-const mockService = activityServiceModule.default as Record<
+const mockService = activityServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

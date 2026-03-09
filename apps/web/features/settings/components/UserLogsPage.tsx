@@ -45,7 +45,7 @@ export function UserLogsPage() {
   const [dateFrom, setDateFrom] = useState<Date | undefined>();
   const [dateTo, setDateTo] = useState<Date | undefined>();
 
-  const { data: usersResult } = useUsers({ page: 1, limit: 200 });
+  const { data: usersResult } = useUsers({ page: 1, limit: 10 });
   const users = usersResult?.users ?? [];
 
   const { data, isLoading } = useAuditLogs({

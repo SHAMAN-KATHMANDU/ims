@@ -21,7 +21,7 @@ import leadController from "./lead.controller";
 import * as leadServiceModule from "./lead.service";
 import { sendControllerError } from "@/utils/controllerError";
 
-const mockService = leadServiceModule.default as Record<
+const mockService = leadServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

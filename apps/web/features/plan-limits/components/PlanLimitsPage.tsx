@@ -64,6 +64,7 @@ export function PlanLimitsPage() {
         promoManagement: pl.promoManagement,
         auditLogs: pl.auditLogs,
         apiAccess: pl.apiAccess,
+        salesPipeline: pl.salesPipeline,
       };
     }
     setEditing(next);
@@ -114,6 +115,7 @@ export function PlanLimitsPage() {
           promoManagement: data.promoManagement,
           auditLogs: data.auditLogs,
           apiAccess: data.apiAccess,
+          salesPipeline: data.salesPipeline,
         },
       });
       toast({ title: `${tier} plan limits saved` });
@@ -185,6 +187,7 @@ export function PlanLimitsPage() {
                   "promoManagement",
                   "auditLogs",
                   "apiAccess",
+                  "salesPipeline",
                 ] as const
               ).map((key) => (
                 <div key={key} className="flex items-center justify-between">

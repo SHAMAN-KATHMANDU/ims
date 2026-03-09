@@ -17,6 +17,7 @@ import {
   type CategoryListParams,
 } from "@/features/products";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
+import { useDebounce } from "@/hooks/useDebounce";
 import { CategoryForm } from "./components/CategoryForm";
 import { CategoryTable } from "./components/CategoryTable";
 import { CategoryDeleteDialog } from "./components/dialogs/CategoryDeleteDialog";
@@ -42,9 +43,13 @@ export function CategoriesPage() {
     limit: DEFAULT_LIMIT,
     search: "",
   });
+  const [searchInput, setSearchInput] = useState("");
+  const debouncedSearch = useDebounce(searchInput, 300);
 
-  const { data: categoriesResponse, isFetching } =
-    useCategoriesPaginated(listParams);
+  const { data: categoriesResponse, isFetching } = useCategoriesPaginated({
+    ...listParams,
+    search: debouncedSearch,
+  });
   const categories = categoriesResponse?.data ?? [];
   const pagination = categoriesResponse?.pagination ?? {
     currentPage: 1,
@@ -61,16 +66,6 @@ export function CategoriesPage() {
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
   const canManageProducts = isAdmin;
-
-  const [searchInput, setSearchInput] = useState("");
-
-  const handleSearchSubmit = useCallback(() => {
-    setListParams((prev) => ({
-      ...prev,
-      page: DEFAULT_PAGE,
-      search: searchInput.trim(),
-    }));
-  }, [searchInput]);
 
   const handlePageChange = useCallback((page: number) => {
     setListParams((prev) => ({ ...prev, page }));
@@ -221,12 +216,13 @@ export function CategoriesPage() {
     });
   };
 
-  const handleConfirmDeleteSubcategory = async () => {
+  const handleConfirmDeleteSubcategory = async (reason?: string) => {
     if (!selectedCategory || !subcategoryToDelete) return;
 
     await deleteSubcategoryMutation.mutateAsync({
       categoryId: selectedCategory.id,
       name: subcategoryToDelete.name,
+      reason,
     });
     await refetchSelectedSubs();
     setSubcategoryToDelete(null);
@@ -261,13 +257,10 @@ export function CategoriesPage() {
             placeholder="Search categories..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") handleSearchSubmit();
-            }}
             className="pl-9"
           />
         </div>
-        {listParams.search && (
+        {searchInput && (
           <Button
             variant="ghost"
             size="sm"
@@ -276,7 +269,6 @@ export function CategoriesPage() {
               setListParams((prev) => ({
                 ...prev,
                 page: DEFAULT_PAGE,
-                search: "",
               }));
             }}
           >
@@ -375,7 +367,9 @@ export function CategoriesPage() {
       <CategoryDeleteDialog
         category={categoryToDelete}
         onClose={() => setCategoryToDelete(null)}
-        onDelete={deleteCategoryMutation.mutateAsync}
+        onDelete={(id, reason) =>
+          deleteCategoryMutation.mutateAsync({ id, reason })
+        }
       />
 
       <SubcategoryDeleteDialog

@@ -98,7 +98,8 @@ describe("ProductController", () => {
           categoryId: "550e8400-e29b-41d4-a716-446655440000",
           costPrice: 100,
           mrp: 150,
-          variations: [{ imsCode: "IMS-001", stockQuantity: 0 }],
+          imsCode: "IMS-001",
+          variations: [{ stockQuantity: 0 }],
         },
       });
       const res = mockRes() as Response;
@@ -132,7 +133,8 @@ describe("ProductController", () => {
           categoryId: "550e8400-e29b-41d4-a716-446655440000",
           costPrice: 100,
           mrp: 150,
-          variations: [{ imsCode: "IMS-001", stockQuantity: 0 }],
+          imsCode: "IMS-001",
+          variations: [{ stockQuantity: 0 }],
         },
       });
       const res = mockRes() as Response;
@@ -154,7 +156,8 @@ describe("ProductController", () => {
           categoryId: "550e8400-e29b-41d4-a716-446655440000",
           costPrice: 100,
           mrp: 150,
-          variations: [{ imsCode: "IMS-001", stockQuantity: 0 }],
+          imsCode: "IMS-001",
+          variations: [{ stockQuantity: 0 }],
         },
       });
       const res = mockRes() as Response;
@@ -172,7 +175,8 @@ describe("ProductController", () => {
           categoryId: "550e8400-e29b-41d4-a716-446655440000",
           costPrice: 100,
           mrp: 150,
-          variations: [{ imsCode: "IMS-001", stockQuantity: 0 }],
+          imsCode: "IMS-001",
+          variations: [{ stockQuantity: 0 }],
         },
       });
       const res = mockRes() as Response;
@@ -504,8 +508,9 @@ describe("ProductController", () => {
       const products = [
         {
           id: "p1",
+          imsCode: "IMS-001",
           name: "Prod",
-          variations: [{ imsCode: "IMS-001", stockQuantity: 10 }],
+          variations: [{ stockQuantity: 10 }],
           category: { name: "Cat" },
           discounts: [],
         },

@@ -106,6 +106,7 @@ export class PlatformService {
           promoManagement: row.promoManagement,
           auditLogs: row.auditLogs,
           apiAccess: row.apiAccess,
+          salesPipeline: row.salesPipeline,
         };
       }
     } catch {
@@ -180,6 +181,12 @@ export class PlatformService {
       }
     }
 
+    if (data.isActive === false && existing.slug === "system") {
+      throw Object.assign(new Error("Cannot deactivate the system tenant."), {
+        statusCode: 403,
+      });
+    }
+
     const repoData: UpdateTenantRepoData = {};
     if (data.name !== undefined) repoData.name = data.name;
     if (data.slug !== undefined) repoData.slug = data.slug;
@@ -222,6 +229,11 @@ export class PlatformService {
     const existing = await this.repo.findTenantById(id);
     if (!existing) {
       throw Object.assign(new Error("Tenant not found"), { statusCode: 404 });
+    }
+    if (existing.slug === "system") {
+      throw Object.assign(new Error("Cannot deactivate the system tenant."), {
+        statusCode: 403,
+      });
     }
     return this.repo.deactivateTenant(id);
   }
@@ -266,6 +278,7 @@ export class PlatformService {
           promoManagement: row.promoManagement,
           auditLogs: row.auditLogs,
           apiAccess: row.apiAccess,
+          salesPipeline: row.salesPipeline,
           createdAt: row.createdAt.toISOString(),
           updatedAt: row.updatedAt.toISOString(),
         };
@@ -284,6 +297,7 @@ export class PlatformService {
         promoManagement: defaults.promoManagement,
         auditLogs: defaults.auditLogs,
         apiAccess: defaults.apiAccess,
+        salesPipeline: defaults.salesPipeline,
         createdAt: "",
         updatedAt: "",
       };

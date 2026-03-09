@@ -362,7 +362,10 @@ describe("MemberController", () => {
       };
       mockService.bulkUpload.mockResolvedValue(result);
       const req = makeReq({
-        file: { path: "/tmp/file.xlsx", originalname: "file.xlsx" },
+        file: {
+          path: "/tmp/file.xlsx",
+          originalname: "file.xlsx",
+        } as Express.Multer.File,
       });
       const res = mockRes() as Response;
 

@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useContactsPaginated,
   useContact,
@@ -36,6 +37,16 @@ import { ContactDetail } from "./ContactDetail";
 import { ContactForm } from "./ContactForm";
 import { ContactImportDialog } from "./ContactImportDialog";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import type { CreateContactData } from "../../services/contact.service";
 
 type DrawerMode = "view" | "new" | "edit" | null;
@@ -51,6 +62,7 @@ export function ContactsPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [sortBy] = useState("createdAt");
   const [sortOrder] = useState<"asc" | "desc">("desc");
   const [companyId, setCompanyId] = useState<string>("");
@@ -58,11 +70,12 @@ export function ContactsPage() {
   const [importOpen, setImportOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useContactsPaginated({
     page,
     limit: pageSize,
-    search,
+    search: debouncedSearch,
     sortBy,
     sortOrder,
     companyId: companyId || undefined,
@@ -144,6 +157,21 @@ export function ContactsPage() {
   const closeDrawer = () => {
     setDrawerMode(null);
     setSelectedId(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteId) return;
+    deleteMutation.mutate(deleteId, {
+      onSuccess: () => {
+        toast({ title: "Contact deleted" });
+        if (selectedId === deleteId) closeDrawer();
+        setDeleteId(null);
+      },
+      onError: () => {
+        toast({ title: "Delete failed", variant: "destructive" });
+        setDeleteId(null);
+      },
+    });
   };
 
   const handleCreateContact = async (data: CreateContactData) => {
@@ -248,18 +276,7 @@ export function ContactsPage() {
         basePath={basePath}
         onView={openView}
         onEdit={openEdit}
-        onDelete={(id) => {
-          if (confirm("Delete this contact?")) {
-            deleteMutation.mutate(id, {
-              onSuccess: () => {
-                toast({ title: "Contact deleted" });
-                if (selectedId === id) closeDrawer();
-              },
-              onError: () =>
-                toast({ title: "Delete failed", variant: "destructive" }),
-            });
-          }
-        }}
+        onDelete={(id) => setDeleteId(id)}
       />
 
       {pagination && (
@@ -338,6 +355,30 @@ export function ContactsPage() {
         onSuccess={handleImportSuccess}
         mutation={importMutation}
       />
+
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(o) => !o && setDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this contact?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

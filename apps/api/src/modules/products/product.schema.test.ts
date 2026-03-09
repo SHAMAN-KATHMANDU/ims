@@ -12,27 +12,24 @@ import {
 } from "./product.schema";
 
 const minimalValidProduct = {
+  imsCode: "IMS-001",
   name: "Test Product",
   categoryId: "550e8400-e29b-41d4-a716-446655440000",
   costPrice: 100,
   mrp: 150,
-  variations: [
-    {
-      imsCode: "IMS-001",
-      stockQuantity: 10,
-    },
-  ],
+  variations: [{ stockQuantity: 10 }],
 };
 
 describe("CreateProductSchema", () => {
   it("accepts valid product with minimal required fields", () => {
     const result = CreateProductSchema.parse(minimalValidProduct);
+    expect(result.imsCode).toBe("IMS-001");
     expect(result.name).toBe("Test Product");
     expect(result.categoryId).toBe("550e8400-e29b-41d4-a716-446655440000");
     expect(result.costPrice).toBe(100);
     expect(result.mrp).toBe(150);
     expect(result.variations).toHaveLength(1);
-    expect(result.variations[0].imsCode).toBe("IMS-001");
+    expect(result.variations[0].stockQuantity).toBe(10);
   });
 
   it("accepts product with optional fields", () => {
@@ -57,6 +54,34 @@ describe("CreateProductSchema", () => {
     expect(result.description).toBe("A product");
     expect(result.vendorId).toBe("550e8400-e29b-41d4-a716-446655440001");
     expect(result.discounts).toHaveLength(1);
+  });
+
+  it("accepts discount with empty string discountPercentage (coerced to 0)", () => {
+    const result = CreateProductSchema.parse({
+      ...minimalValidProduct,
+      discounts: [
+        {
+          discountTypeId: "550e8400-e29b-41d4-a716-446655440004",
+          discountPercentage: "",
+        },
+      ],
+    });
+    expect(result.discounts).toHaveLength(1);
+    expect(result.discounts![0].discountPercentage).toBe(0);
+  });
+
+  it("rejects discount with discountPercentage > 100", () => {
+    expect(() =>
+      CreateProductSchema.parse({
+        ...minimalValidProduct,
+        discounts: [
+          {
+            discountTypeId: "550e8400-e29b-41d4-a716-446655440004",
+            discountPercentage: 150,
+          },
+        ],
+      }),
+    ).toThrow();
   });
 
   it("rejects missing name", () => {
@@ -95,24 +120,12 @@ describe("CreateProductSchema", () => {
     ).toThrow();
   });
 
-  it("rejects duplicate IMS codes in variations", () => {
-    expect(() =>
-      CreateProductSchema.parse({
-        ...minimalValidProduct,
-        variations: [
-          { imsCode: "IMS-001", stockQuantity: 0 },
-          { imsCode: "IMS-001", stockQuantity: 0 },
-        ],
-      }),
-    ).toThrow();
-  });
-
-  it("trims imsCode", () => {
+  it("trims product imsCode", () => {
     const result = CreateProductSchema.parse({
       ...minimalValidProduct,
-      variations: [{ imsCode: "  IMS-001  ", stockQuantity: 0 }],
+      imsCode: "  IMS-001  ",
     });
-    expect(result.variations[0].imsCode).toBe("IMS-001");
+    expect(result.imsCode).toBe("IMS-001");
   });
 });
 
@@ -129,10 +142,10 @@ describe("UpdateProductSchema", () => {
 
   it("accepts partial update with variations", () => {
     const result = UpdateProductSchema.parse({
-      variations: [{ imsCode: "IMS-NEW", stockQuantity: 5 }],
+      variations: [{ stockQuantity: 5 }],
     });
     expect(result.variations).toHaveLength(1);
-    expect(result.variations![0].imsCode).toBe("IMS-NEW");
+    expect(result.variations![0].stockQuantity).toBe(5);
   });
 
   it("rejects empty string name", () => {
@@ -305,8 +318,6 @@ describe("excelProductRowSchema (bulk upload)", () => {
       location: "Warehouse A",
       category: "Electronics",
       name: "Product Name",
-      attributes: "color, size",
-      values: "red, M",
       costPrice: 100,
       finalSP: 150,
     });
@@ -314,26 +325,23 @@ describe("excelProductRowSchema (bulk upload)", () => {
     expect(result.location).toBe("Warehouse A");
     expect(result.category).toBe("Electronics");
     expect(result.name).toBe("Product Name");
-    expect(result.attributes).toBe("color, size");
-    expect(result.values).toBe("red, M");
     expect(result.costPrice).toBe(100);
     expect(result.finalSP).toBe(150);
     expect(result.quantity).toBe(0);
+    expect(result.dynamicAttributes).toEqual({});
   });
 
-  it("rejects when attributes and values length mismatch", () => {
-    expect(() =>
-      excelProductRowSchema.parse({
-        imsCode: "IMS-001",
-        location: "A",
-        category: "Cat",
-        name: "Prod",
-        attributes: "color, size",
-        values: "red",
-        costPrice: 10,
-        finalSP: 20,
-      }),
-    ).toThrow();
+  it("accepts dynamic attributes", () => {
+    const result = excelProductRowSchema.parse({
+      imsCode: "IMS-001",
+      location: "A",
+      category: "Cat",
+      name: "Prod",
+      costPrice: 10,
+      finalSP: 20,
+      dynamicAttributes: { Color: "Red", Size: "L" },
+    });
+    expect(result.dynamicAttributes).toEqual({ Color: "Red", Size: "L" });
   });
 
   it("rejects missing IMS code", () => {
@@ -343,8 +351,6 @@ describe("excelProductRowSchema (bulk upload)", () => {
         location: "A",
         category: "Cat",
         name: "Prod",
-        attributes: "a",
-        values: "b",
         costPrice: 10,
         finalSP: 20,
       }),
@@ -357,8 +363,6 @@ describe("excelProductRowSchema (bulk upload)", () => {
       location: "A",
       category: "Cat",
       name: "Prod",
-      attributes: "a",
-      values: "b",
       quantity: "5.7",
       costPrice: 10,
       finalSP: 20,

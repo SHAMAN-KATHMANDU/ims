@@ -7,14 +7,21 @@ import { useCreateDeal } from "@/features/crm";
 import { Button } from "@/components/ui/button";
 import { DealForm } from "@/features/crm";
 import type { CreateDealData } from "@/features/crm";
+import { useFeatureFlag } from "@/features/flags";
+import { Feature } from "@repo/shared";
+import { notFound } from "next/navigation";
 
 export default function NewDealPage() {
+  const allowed = useFeatureFlag(Feature.SALES_PIPELINE);
   const params = useParams();
   const router = useRouter();
-  const workspace = (params?.workspace as string) ?? "admin";
-  const basePath = `/${workspace}`;
   const { toast } = useToast();
   const createMutation = useCreateDeal();
+
+  const workspace = (params?.workspace as string) ?? "admin";
+  const basePath = `/${workspace}`;
+
+  if (!allowed) notFound();
 
   const handleSubmit = async (data: CreateDealData) => {
     await createMutation.mutateAsync(data);

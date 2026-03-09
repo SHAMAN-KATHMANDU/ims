@@ -17,6 +17,7 @@ import {
   DEFAULT_LIMIT,
 } from "../hooks/use-locations";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useDebounce } from "@/hooks/useDebounce";
 import { LocationForm } from "./components/LocationForm";
 import { LocationTable } from "./components/LocationTable";
 import {
@@ -54,6 +55,7 @@ export function LocationsPage() {
   // Pagination and filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [typeFilter, setTypeFilter] = useState<LocationType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<LocationStatusFilter>("all");
   const [sortBy, setSortBy] = useState<string>("name");
@@ -74,7 +76,7 @@ export function LocationsPage() {
   } = useLocationsPaginated({
     page,
     limit: DEFAULT_LIMIT,
-    search,
+    search: debouncedSearch,
     type: typeFilter === "all" ? undefined : typeFilter,
     status: statusFilter,
     sortBy,

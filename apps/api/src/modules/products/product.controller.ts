@@ -8,12 +8,14 @@ import {
   buildProductBulkTemplate,
 } from "./product.bulk.service";
 import productService from "./product.service";
+import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
   CreateProductSchema,
   UpdateProductSchema,
   CreateDiscountTypeSchema,
   UpdateDiscountTypeSchema,
   GetAllProductsQuerySchema,
+  GetProductByImsQuerySchema,
   DownloadProductsQuerySchema,
   GetListQuerySchema,
   GetProductDiscountsListQuerySchema,
@@ -141,6 +143,37 @@ class ProductController {
     }
   };
 
+  getProductByIms = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const query = GetProductByImsQuerySchema.parse(req.query);
+      const product = await this.service.getByImsCode(tenantId, {
+        imsCode: query.imsCode,
+        locationId: query.locationId,
+      });
+      return res.status(200).json({
+        message: "Product fetched successfully",
+        product,
+      });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      const appErr = error as AppError;
+      if (appErr.statusCode === 404) {
+        return res.status(404).json({ message: appErr.message });
+      }
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get product by IMS code error",
+      );
+    }
+  };
+
   updateProduct = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)
@@ -193,7 +226,18 @@ class ProductController {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-      await this.service.delete(id);
+      const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
+      const body = DeleteBodySchema.parse(req.body ?? {});
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
+      await this.service.delete(id, {
+        userId,
+        tenantId,
+        reason: body.reason,
+        ip,
+        userAgent,
+      });
       return res.status(200).json({ message: "Product deleted successfully" });
     } catch (error: unknown) {
       const appErr = error as AppError;
@@ -556,7 +600,7 @@ class ProductController {
         const variationsStr =
           product.variations.length > 0
             ? product.variations
-                .map((v) => `${v.imsCode} (${v.stockQuantity})`)
+                .map((v, i) => `Variation ${i + 1} (${v.stockQuantity})`)
                 .join("; ")
             : "No variations";
         const discountsStr =
@@ -570,7 +614,7 @@ class ProductController {
                 .join("; ")
             : "No discounts";
         return {
-          imsCode: product.variations?.map((v) => v.imsCode).join(", ") ?? "",
+          imsCode: product.imsCode ?? "",
           name: product.name,
           category: product.category?.name || "N/A",
           description: product.description || "N/A",

@@ -45,10 +45,11 @@ import {
 } from "@/features/products";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 
-function toNumber(v: unknown): number | null {
-  if (v == null) return null;
+function formatPercentage(v: unknown): string {
+  if (v == null) return "—";
   const n = Number(v);
-  return Number.isFinite(n) ? n : null;
+  if (!Number.isFinite(n)) return "—";
+  return n % 1 === 0 ? `${n}%` : `${Number(n).toFixed(1)}%`;
 }
 
 export function DiscountTypesCard() {
@@ -219,9 +220,7 @@ export function DiscountTypesCard() {
                     <TableRow key={dt.id}>
                       <TableCell className="font-medium">{dt.name}</TableCell>
                       <TableCell className="text-right">
-                        {toNumber(dt.defaultPercentage) != null
-                          ? `${toNumber(dt.defaultPercentage)}%`
-                          : "—"}
+                        {formatPercentage(dt.defaultPercentage)}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {dt.description ?? "—"}

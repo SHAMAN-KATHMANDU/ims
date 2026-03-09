@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useMemberSelectionStore,
   selectSelectedMemberIds,
@@ -27,6 +28,8 @@ import { MemberTable } from "./components/MemberTable";
 import { MemberForm } from "./components/MemberForm";
 import { MemberDetail } from "./components/MemberDetail";
 import { MemberBulkUploadDialog } from "./components/MemberBulkUploadDialog";
+import { FeatureGuard } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -78,6 +81,7 @@ export function MembersPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [sortBy, setSortBy] = useState<
     "createdAt" | "updatedAt" | "name" | "id"
   >("createdAt");
@@ -104,7 +108,7 @@ export function MembersPage() {
     useMembersPaginated({
       page,
       limit: pageSize,
-      search,
+      search: debouncedSearch,
       sortBy,
       sortOrder,
     });
@@ -348,23 +352,26 @@ export function MembersPage() {
               </DropdownMenuContent>
             </DropdownMenu>
           )}
-          {canManageMembers &&
-            (isMobile ? (
-              <Button variant="outline" asChild>
-                <Link href={`${basePath}/members/bulk-upload`}>
+          {canManageMembers && (
+            <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
+              {isMobile ? (
+                <Button variant="outline" asChild>
+                  <Link href={`${basePath}/members/bulk-upload`}>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Bulk Upload
+                  </Link>
+                </Button>
+              ) : (
+                <Button
+                  variant="outline"
+                  onClick={() => setBulkUploadDialog(true)}
+                >
                   <Upload className="h-4 w-4 mr-2" />
                   Bulk Upload
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                variant="outline"
-                onClick={() => setBulkUploadDialog(true)}
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                Bulk Upload
-              </Button>
-            ))}
+                </Button>
+              )}
+            </FeatureGuard>
+          )}
           {canManageMembers &&
             (isMobile ? (
               <Button asChild>

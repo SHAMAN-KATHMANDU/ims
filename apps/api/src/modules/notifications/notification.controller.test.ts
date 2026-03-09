@@ -18,7 +18,7 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 import notificationController from "./notification.controller";
 import * as notificationServiceModule from "./notification.service";
 
-const mockService = notificationServiceModule.default as Record<
+const mockService = notificationServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

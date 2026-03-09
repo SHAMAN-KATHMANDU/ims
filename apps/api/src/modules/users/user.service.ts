@@ -66,6 +66,10 @@ export class UserService {
       throw createError("You cannot delete your own account", 400);
     }
 
+    if (existing.role === "platformAdmin") {
+      throw createError("Cannot delete the platform admin.", 403);
+    }
+
     await this.repo.delete(id);
   }
 }

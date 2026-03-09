@@ -29,18 +29,60 @@ const saleRouter = Router();
  *               memberPhone:
  *                 type: string
  *                 description: Optional phone for member sale
+ *               memberName:
+ *                 type: string
+ *                 description: Optional member name
+ *               contactId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 description: Optional CRM contact ID
+ *               isCreditSale:
+ *                 type: boolean
+ *                 description: If true, sale is recorded as credit (payments can be added later)
  *               items:
  *                 type: array
+ *                 minItems: 1
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - variationId
+ *                     - quantity
  *                   properties:
  *                     variationId:
  *                       type: string
  *                       format: uuid
+ *                     subVariationId:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                       description: Optional sub-variation (e.g. size) for this line
  *                     quantity:
  *                       type: integer
+ *                       minimum: 1
+ *                     discountId:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                       description: Optional discount type to apply to this line
+ *                     promoCode:
+ *                       type: string
+ *                       description: Optional promo code for this line
  *               notes:
  *                 type: string
+ *               payments:
+ *                 type: array
+ *                 description: Optional initial payments (for non-credit or partial payment)
+ *                 items:
+ *                   type: object
+ *                   required: [method, amount]
+ *                   properties:
+ *                     method:
+ *                       type: string
+ *                       enum: [CASH, CARD, CHEQUE, FONEPAY, QR]
+ *                     amount:
+ *                       type: number
+ *                       minimum: 0
  *     responses:
  *       201:
  *         description: Sale created successfully
@@ -62,26 +104,51 @@ saleRouter.post(
  *     security:
  *       - bearerAuth: []
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
  *             required: [locationId, items]
  *             properties:
- *               locationId: { type: string, format: uuid }
- *               memberPhone: { type: string }
- *               memberName: { type: string }
+ *               locationId:
+ *                 type: string
+ *                 format: uuid
+ *               memberPhone:
+ *                 type: string
+ *               memberName:
+ *                 type: string
+ *               contactId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 description: Optional CRM contact ID
  *               items:
  *                 type: array
+ *                 minItems: 1
  *                 items:
  *                   type: object
+ *                   required: [variationId, quantity]
  *                   properties:
- *                     variationId: { type: string, format: uuid }
- *                     quantity: { type: integer }
- *                     promoCode: { type: string }
+ *                     variationId:
+ *                       type: string
+ *                       format: uuid
+ *                     subVariationId:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                     quantity:
+ *                       type: integer
+ *                       minimum: 1
+ *                     discountId:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                     promoCode:
+ *                       type: string
  *     responses:
  *       200:
- *         description: Returns subtotal, discount, total
+ *         description: Returns subtotal, discount, total, promoDiscount
  */
 saleRouter.post(
   "/preview",
@@ -308,6 +375,38 @@ saleRouter.post(
   "/:id/payments",
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.addPayment),
+);
+
+/**
+ * @swagger
+ * /sales/{id}/receipt:
+ *   get:
+ *     summary: Download sale receipt as PDF
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: PDF receipt
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Sale not found
+ */
+saleRouter.get(
+  "/:id/receipt",
+  authorizeRoles("user", "admin", "superAdmin"),
+  asyncHandler(saleController.getReceiptPdf),
 );
 
 /**
