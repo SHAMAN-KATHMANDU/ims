@@ -52,18 +52,6 @@ interface ProductFormProps {
   onAddPhoto: (variationIndex: number, photoUrl: string) => void;
   onRemovePhoto: (variationIndex: number, photoIndex: number) => void;
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
-  onAddDiscount: () => void;
-  onRemoveDiscount: (index: number) => void;
-  onUpdateDiscount: (
-    index: number,
-    field:
-      | "discountTypeId"
-      | "discountPercentage"
-      | "startDate"
-      | "endDate"
-      | "isActive",
-    value: string | boolean,
-  ) => void;
   onShowError: (title: string, message: string) => void;
   validateProduct: (values: ProductFormValues) => Record<string, string> | null;
   /** When true, render form only (no Dialog/trigger). For use on dedicated pages (e.g. mobile). */
@@ -94,9 +82,6 @@ export function ProductForm({
   onAddPhoto,
   onRemovePhoto,
   onSetPrimaryPhoto,
-  onAddDiscount,
-  onRemoveDiscount,
-  onUpdateDiscount,
   onShowError,
   validateProduct,
   inline = false,
@@ -253,13 +238,7 @@ export function ProductForm({
           </TabsContent>
 
           <TabsContent value="discounts" className="space-y-4 mt-4">
-            <DiscountsTab
-              discounts={discounts}
-              discountTypes={discountTypes}
-              onAdd={onAddDiscount}
-              onRemove={onRemoveDiscount}
-              onUpdate={onUpdateDiscount}
-            />
+            <DiscountsTab discounts={discounts} discountTypes={discountTypes} />
           </TabsContent>
         </Tabs>
       </div>

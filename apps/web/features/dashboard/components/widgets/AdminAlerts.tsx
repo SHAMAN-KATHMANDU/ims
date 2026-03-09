@@ -69,7 +69,7 @@ export function AdminAlerts({ basePath }: AdminAlertsProps) {
             {(alerts.lowStockCount ?? 0) > 0 && (
               <li>
                 <Link
-                  href={`${basePath}/product?lowStock=1`}
+                  href={`${basePath}/products?lowStock=1`}
                   className="text-sm font-medium text-primary hover:underline inline-flex items-center gap-2"
                 >
                   <Package className="h-4 w-4" />

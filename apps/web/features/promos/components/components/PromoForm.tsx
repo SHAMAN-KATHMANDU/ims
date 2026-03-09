@@ -77,7 +77,7 @@ export function PromoForm({
 
   const { data: productsResponse } = useProductsPaginated({
     page: 1,
-    limit: 200,
+    limit: 10,
   });
   const { data: allProducts = [] } = useProducts();
   const { data: categories = [] } = useCategories();

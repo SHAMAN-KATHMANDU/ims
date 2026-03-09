@@ -97,22 +97,34 @@ export interface TrashItem {
   id: string;
   name: string;
   deletedAt: string;
+  deletedBy: string | null;
+  deleteReason: string | null;
+  tenantId: string;
+  tenantName: string;
 }
 
 /** Minimal delegate interface for typed model access. */
 interface TrashDelegate {
   findMany: (args: {
     where: Record<string, unknown>;
-    select: Record<string, boolean>;
+    select?: Record<string, boolean | object>;
+    include?: Record<string, unknown>;
   }) => Promise<
-    Array<{ id: string; deletedAt: Date | null; [k: string]: unknown }>
+    Array<{
+      id: string;
+      deletedAt: Date | null;
+      deletedBy?: string | null;
+      deleteReason?: string | null;
+      tenantId?: string;
+      [k: string]: unknown;
+    }>
   >;
   findFirst: (args: {
     where: Record<string, unknown>;
   }) => Promise<{ id: string } | null>;
   update: (args: {
     where: { id: string };
-    data: { deletedAt: null };
+    data: { deletedAt: null; deletedBy?: null; deleteReason?: null };
   }) => Promise<unknown>;
   delete: (args: { where: { id: string } }) => Promise<unknown>;
 }
@@ -124,10 +136,10 @@ function getDelegate(model: TrashModelKey): TrashDelegate | undefined {
 }
 
 export class TrashRepository {
-  /** List all trashed items for the given entities, optionally filtered by entity type. */
+  /** List trashed items across all tenants (platform scope). Optional tenantId filter. */
   async findTrashed(
-    tenantId: string,
     entityTypes: TrashEntityConfig[],
+    filterTenantId?: string,
   ): Promise<TrashItem[]> {
     const allItems: TrashItem[] = [];
 
@@ -138,18 +150,34 @@ export class TrashRepository {
       const where: Record<string, unknown> = {
         deletedAt: { not: null },
       };
-      if (config.tenantScope === "category") {
-        where.category = { tenantId };
-      } else {
-        where.tenantId = tenantId;
+      if (filterTenantId) {
+        if (config.tenantScope === "category") {
+          where.category = { tenantId: filterTenantId };
+        } else {
+          where.tenantId = filterTenantId;
+        }
       }
 
-      const select: Record<string, boolean> = {
+      const select: Record<string, boolean | object> = {
         id: true,
         [config.nameField]: true,
         deletedAt: true,
+        deletedBy: true,
+        deleteReason: true,
       };
-      if (config.type === "Contact") select.lastName = true;
+      if (config.type === "Contact")
+        (select as Record<string, unknown>).lastName = true;
+
+      if (config.tenantScope === "category") {
+        (select as Record<string, unknown>).category = {
+          select: { tenantId: true, tenant: { select: { name: true } } },
+        };
+      } else {
+        (select as Record<string, unknown>).tenantId = true;
+        (select as Record<string, unknown>).tenant = {
+          select: { name: true },
+        };
+      }
 
       const rows = await delegate.findMany({ where, select });
 
@@ -162,11 +190,30 @@ export class TrashRepository {
                 .join(" ")
                 .trim() || "—"
             : String(nameVal ?? "—");
+
+        let tenantId = "";
+        let tenantName = "";
+        if (config.tenantScope === "category") {
+          const cat = row.category as
+            | { tenantId?: string; tenant?: { name: string } }
+            | undefined;
+          tenantId = cat?.tenantId ?? "";
+          tenantName = cat?.tenant?.name ?? "";
+        } else {
+          tenantId = (row.tenantId as string) ?? "";
+          const t = row.tenant as { name?: string } | undefined;
+          tenantName = t?.name ?? "";
+        }
+
         allItems.push({
           entityType: config.type,
           id: row.id,
           name,
           deletedAt: row.deletedAt?.toISOString() ?? "",
+          deletedBy: (row.deletedBy as string) ?? null,
+          deleteReason: (row.deleteReason as string) ?? null,
+          tenantId,
+          tenantName,
         });
       }
     }
@@ -178,12 +225,8 @@ export class TrashRepository {
     return allItems;
   }
 
-  /** Restore a trashed item (set deletedAt to null). Returns true if found and restored. */
-  async restore(
-    tenantId: string,
-    id: string,
-    config: TrashEntityConfig,
-  ): Promise<boolean> {
+  /** Restore a trashed item (set deletedAt to null). Platform scope — no tenant filter. */
+  async restore(id: string, config: TrashEntityConfig): Promise<boolean> {
     const delegate = getDelegate(config.model);
     if (!delegate) return false;
 
@@ -191,11 +234,6 @@ export class TrashRepository {
       id,
       deletedAt: { not: null },
     };
-    if (config.tenantScope === "category") {
-      where.category = { tenantId };
-    } else {
-      where.tenantId = tenantId;
-    }
 
     const existing = await delegate.findFirst({ where });
     if (!existing) return false;
@@ -207,9 +245,8 @@ export class TrashRepository {
     return true;
   }
 
-  /** Permanently delete a trashed item. Returns true if found and deleted. */
+  /** Permanently delete a trashed item. Platform scope — no tenant filter. */
   async permanentlyDelete(
-    tenantId: string,
     id: string,
     config: TrashEntityConfig,
   ): Promise<boolean> {
@@ -220,11 +257,6 @@ export class TrashRepository {
       id,
       deletedAt: { not: null },
     };
-    if (config.tenantScope === "category") {
-      where.category = { tenantId };
-    } else {
-      where.tenantId = tenantId;
-    }
 
     const existing = await delegate.findFirst({ where });
     if (!existing) return false;

@@ -6,6 +6,7 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import platformController from "./platform.controller";
+import trashRouter from "@/modules/trash/trash.router";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const router = Router();
@@ -631,5 +632,8 @@ router.delete(
  *       200: { description: Platform stats }
  */
 router.get("/stats", asyncHandler(platformController.getStats));
+
+/** Platform trash — list, restore, permanently delete (platformAdmin only). */
+router.use("/trash", trashRouter);
 
 export default router;

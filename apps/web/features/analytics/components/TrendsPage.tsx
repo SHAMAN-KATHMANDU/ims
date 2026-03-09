@@ -24,8 +24,10 @@ import {
   useSalesRevenueAnalytics,
 } from "@/features/analytics";
 import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
+import { ChartInfoButton } from "./components/ChartInfoButton";
 import { exportAnalytics } from "@/features/analytics";
 import { downloadBlobFromResponse } from "@/lib/downloadBlob";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -34,9 +36,22 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
-import { C, fS, tooltipStyle, axisTick, gridProps } from "./reportTheme";
+import {
+  C,
+  fS,
+  tooltipStyle,
+  tooltipCursor,
+  axisTick,
+  gridProps,
+} from "./reportTheme";
 import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
 
 export function TrendsPage() {
@@ -115,22 +130,30 @@ export function TrendsPage() {
         <div className="min-w-0 flex-1">
           <AnalyticsFilterBar />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleExport("excel")}
-          disabled={exporting}
-        >
-          {exporting ? "..." : "Export Excel"}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleExport("csv")}
-          disabled={exporting}
-        >
-          {exporting ? "..." : "Export CSV"}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={exporting}>
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? "..." : "Download"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => handleExport("excel")}
+              disabled={exporting}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Download as Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleExport("csv")}
+              disabled={exporting}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Download as CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {isLoading && <Skeleton className="h-64 w-full" />}
@@ -147,11 +170,14 @@ export function TrendsPage() {
           <TabsContent value="growth" className="space-y-6 mt-6">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>MoM Growth Rates</CardTitle>
-                  <CardDescription>
-                    Month-over-month revenue change
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>MoM Growth Rates</CardTitle>
+                    <CardDescription>
+                      Month-over-month revenue change
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Percentage change in revenue from one month to the next. Green = growth, red = decline. Helps spot turning points." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
@@ -160,8 +186,17 @@ export function TrendsPage() {
                       <XAxis dataKey="month" tick={axisTick} />
                       <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} />
                       <Tooltip
-                        formatter={(v: number) => `${v}%`}
+                        content={(props) => (
+                          <AnalyticsChartTooltip
+                            {...props}
+                            formatter={(v) =>
+                              typeof v === "number" ? `${v}%` : String(v ?? "")
+                            }
+                          />
+                        )}
+                        wrapperStyle={tooltipStyle}
                         contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
                       />
                       <Bar
                         dataKey="momGrowth"
@@ -186,11 +221,14 @@ export function TrendsPage() {
                 </CardContent>
               </Card>
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Monthly Totals</CardTitle>
-                  <CardDescription>
-                    Monthly revenue and transaction count
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Monthly Totals</CardTitle>
+                    <CardDescription>
+                      Monthly revenue and transaction count
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Total revenue and number of transactions per month. Use this to compare monthly performance." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={250}>
@@ -198,7 +236,12 @@ export function TrendsPage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="month" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar
                         dataKey="revenue"
@@ -214,11 +257,14 @@ export function TrendsPage() {
 
             {movingAvgData.length > 0 && (
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Moving Averages</CardTitle>
-                  <CardDescription>
-                    Daily net revenue with 7-day and 30-day moving averages
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Moving Averages</CardTitle>
+                    <CardDescription>
+                      Daily net revenue with 7-day and 30-day moving averages
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Daily net revenue plus 7-day and 30-day moving averages. Smooths out noise to show the underlying trend." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={280}>
@@ -226,7 +272,12 @@ export function TrendsPage() {
                       <CartesianGrid {...gridProps} />
                       <XAxis dataKey="date" tick={axisTick} />
                       <YAxis tickFormatter={fS} tick={axisTick} />
-                      <Tooltip content={<AnalyticsChartTooltip />} />
+                      <Tooltip
+                        content={<AnalyticsChartTooltip />}
+                        wrapperStyle={tooltipStyle}
+                        contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
+                      />
                       <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Line
                         type="monotone"
@@ -261,11 +312,14 @@ export function TrendsPage() {
 
           <TabsContent value="seasonality" className="space-y-6 mt-6">
             <Card className="min-w-0">
-              <CardHeader>
-                <CardTitle>Seasonality Index</CardTitle>
-                <CardDescription>
-                  Month avg / overall avg × 100 (100 = average)
-                </CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Seasonality Index</CardTitle>
+                  <CardDescription>
+                    Month avg / overall avg × 100 (100 = average)
+                  </CardDescription>
+                </div>
+                <ChartInfoButton content="How each month compares to the average: 100 = average month, above 100 = stronger, below 100 = weaker. Helps plan for seasonal demand." />
               </CardHeader>
               <CardContent>
                 <ResponsiveContainer width="100%" height={280}>
@@ -274,8 +328,15 @@ export function TrendsPage() {
                     <XAxis dataKey="month" tick={axisTick} />
                     <YAxis tick={axisTick} domain={[0, "auto"]} />
                     <Tooltip
+                      content={(props) => (
+                        <AnalyticsChartTooltip
+                          {...props}
+                          formatter={(v) => String(v ?? "")}
+                        />
+                      )}
+                      wrapperStyle={tooltipStyle}
                       contentStyle={tooltipStyle}
-                      formatter={(v: number) => `${v}`}
+                      cursor={tooltipCursor}
                     />
                     <Bar
                       dataKey="index"
@@ -301,12 +362,15 @@ export function TrendsPage() {
 
           <TabsContent value="cohort" className="space-y-6 mt-6">
             <Card className="min-w-0">
-              <CardHeader>
-                <CardTitle>Cohort Retention Matrix</CardTitle>
-                <CardDescription>
-                  Members grouped by first purchase month; % that returned in
-                  subsequent months
-                </CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Cohort Retention Matrix</CardTitle>
+                  <CardDescription>
+                    Members grouped by first purchase month; % that returned in
+                    subsequent months
+                  </CardDescription>
+                </div>
+                <ChartInfoButton content="Each row is a cohort (members who first bought in that month). Columns show what % of that cohort made a purchase in later months. Measures retention." />
               </CardHeader>
               <CardContent>
                 {data.cohortRetention.length === 0 ? (
@@ -399,11 +463,14 @@ export function TrendsPage() {
 
           <TabsContent value="peak" className="space-y-6 mt-6">
             <Card className="min-w-0">
-              <CardHeader>
-                <CardTitle>Peak Hours Heatmap</CardTitle>
-                <CardDescription>
-                  Revenue by day of week and hour of day
-                </CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>Peak Hours Heatmap</CardTitle>
+                  <CardDescription>
+                    Revenue by day of week and hour of day
+                  </CardDescription>
+                </div>
+                <ChartInfoButton content="Revenue by day of week (rows) and hour of day (columns). Darker cells = more revenue. Use this to plan staffing and promotions." />
               </CardHeader>
               <CardContent>
                 {data.peakHours.length === 0 ? (

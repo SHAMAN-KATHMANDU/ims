@@ -21,28 +21,12 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 import promoController from "./promo.controller";
 import * as promoServiceModule from "./promo.service";
 import { sendControllerError } from "@/utils/controllerError";
+import { mockRes, makeReq } from "@tests/helpers/controller";
 
 const mockService = promoServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;
-
-function mockRes(): Partial<Response> {
-  return {
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn().mockReturnThis(),
-  };
-}
-
-function makeReq(overrides: Partial<Request> = {}): Request {
-  return {
-    user: { id: "u1", tenantId: "t1", role: "admin", tenantSlug: "acme" },
-    params: {},
-    body: {},
-    query: {},
-    ...overrides,
-  } as unknown as Request;
-}
 
 describe("PromoController", () => {
   beforeEach(() => {
@@ -248,7 +232,11 @@ describe("PromoController", () => {
 
       await promoController.deletePromo(req, res);
 
-      expect(mockService.delete).toHaveBeenCalledWith("t1", "p1");
+      expect(mockService.delete).toHaveBeenCalledWith(
+        "t1",
+        "p1",
+        expect.objectContaining({ userId: "u1" }),
+      );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         message: "Promo code deactivated successfully",

@@ -10,16 +10,15 @@ All routes live under `/[workspace]` (e.g. `/admin`). Route groups `(admin)` and
 | `sales`                       | user, admin, superAdmin | `(admin)/sales/page.tsx`                       |                                |
 | `sales/user-report`           | user, admin, superAdmin | `(admin)/sales/user-report/page.tsx`           |                                |
 | `members`                     | user, admin, superAdmin | `(admin)/members/page.tsx`                     |                                |
-| `product`                     | admin, superAdmin       | `(admin)/product/page.tsx`                     | Products (inventory); guarded  |
-| `product/catalog`             | user, admin, superAdmin | `(admin)/product/catalog/page.tsx`             | Read-only catalog              |
-| `product/categories`          | user, admin, superAdmin | `(admin)/product/categories/page.tsx`          |                                |
-| `product/discounts`           | user, admin, superAdmin | `(admin)/product/discounts/page.tsx`           |                                |
-| `product/promos`              | user, admin, superAdmin | `(admin)/product/promos/page.tsx`              | Read-only promo codes          |
+| `products`                    | admin, superAdmin       | `(admin)/products/page.tsx`                    | Products (inventory); guarded  |
+| `products/catalog`            | user, admin, superAdmin | `(admin)/products/catalog/page.tsx`            | Read-only catalog              |
+| `products/categories`         | user, admin, superAdmin | `(admin)/products/categories/page.tsx`         |                                |
+| `products/discounts`          | user, admin, superAdmin | `(admin)/products/discounts/page.tsx`          |                                |
+| `products/promos`             | user, admin, superAdmin | `(admin)/products/promos/page.tsx`             | Read-only promo codes          |
 | `promos`                      | admin, superAdmin       | `(admin)/promos/page.tsx`                      | Full promo management; guarded |
 | `transfers`                   | user, admin, superAdmin | `(admin)/transfers/page.tsx`                   | Create + list by role in view  |
 | `locations`                   | admin, superAdmin       | `(admin)/locations/page.tsx`                   | Guarded                        |
 | `vendors`                     | admin, superAdmin       | `(admin)/vendors/page.tsx`                     | Guarded                        |
-| `reports/analytics`           | admin, superAdmin       | `(admin)/reports/analytics/page.tsx`           | Analytics index; guarded       |
 | `reports/analytics/sales`     | admin, superAdmin       | `(admin)/reports/analytics/sales/page.tsx`     | Sales & Revenue; guarded       |
 | `reports/analytics/inventory` | admin, superAdmin       | `(admin)/reports/analytics/inventory/page.tsx` | Inventory & Ops; guarded       |
 | `reports/analytics/customers` | admin, superAdmin       | `(admin)/reports/analytics/customers/page.tsx` | Customers & Promos; guarded    |

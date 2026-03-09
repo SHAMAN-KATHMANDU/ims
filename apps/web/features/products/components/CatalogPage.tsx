@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
@@ -116,7 +116,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const { data: categories = [] } = useCategories();
   const { data: vendorsResponse } = useVendorsPaginated({
     page: 1,
-    limit: 200,
+    limit: 10,
   });
   const vendors = vendorsResponse?.data ?? [];
   const { data: subcategories = [] } = useCategorySubcategories(
@@ -256,36 +256,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
   // Fetch discount types
   const { data: discountTypes = [] } = useDiscountTypes();
-
-  // Initialize default discounts when opening product dialog for new products
-  useEffect(() => {
-    if (
-      productDialog &&
-      productDiscounts.length === 0 &&
-      !editingProduct &&
-      discountTypes.length > 0
-    ) {
-      const idByName = new Map(discountTypes.map((dt) => [dt.name, dt.id]));
-      const defaults: Array<{ name: string; pct: string }> = [
-        { name: "Non-Member", pct: "10" },
-        { name: "Special", pct: "15" },
-        { name: "Member", pct: "20" },
-        { name: "Wholesale", pct: "40" },
-      ];
-      const defaultDiscounts = defaults
-        .filter((d) => idByName.has(d.name))
-        .map((d) => ({
-          discountTypeId: idByName.get(d.name)!,
-          discountPercentage: d.pct,
-          startDate: "",
-          endDate: "",
-          isActive: true,
-        }));
-      if (defaultDiscounts.length > 0) {
-        setProductDiscounts(defaultDiscounts);
-      }
-    }
-  }, [productDialog, editingProduct, productDiscounts.length, discountTypes]);
 
   // Validation functions
   const validateProduct = (values: ProductFormValues) => {
@@ -442,17 +412,22 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 : undefined,
           }));
 
-          data.discounts = productDiscounts.map((d) => ({
-            discountTypeId: d.discountTypeId,
-            discountPercentage: Number(d.discountPercentage) || 0,
-            startDate:
-              d.startDate && d.startDate.trim() !== ""
-                ? d.startDate
-                : undefined,
-            endDate:
-              d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-            isActive: d.isActive,
-          }));
+          data.discounts = productDiscounts
+            .filter((d) => d.discountTypeId?.trim())
+            .map((d) => ({
+              discountTypeId: d.discountTypeId,
+              discountPercentage: Math.min(
+                100,
+                Math.max(0, Number(d.discountPercentage) || 0),
+              ),
+              startDate:
+                d.startDate && d.startDate.trim() !== ""
+                  ? d.startDate
+                  : undefined,
+              endDate:
+                d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
+              isActive: d.isActive,
+            }));
         } else {
           if (productVariations.length > 0) {
             data.variations = productVariations.map((v) => ({
@@ -472,17 +447,22 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           }
 
           if (productDiscounts.length > 0) {
-            data.discounts = productDiscounts.map((d) => ({
-              discountTypeId: d.discountTypeId,
-              discountPercentage: Number(d.discountPercentage) || 0,
-              startDate:
-                d.startDate && d.startDate.trim() !== ""
-                  ? d.startDate
-                  : undefined,
-              endDate:
-                d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-              isActive: d.isActive,
-            }));
+            data.discounts = productDiscounts
+              .filter((d) => d.discountTypeId?.trim())
+              .map((d) => ({
+                discountTypeId: d.discountTypeId,
+                discountPercentage: Math.min(
+                  100,
+                  Math.max(0, Number(d.discountPercentage) || 0),
+                ),
+                startDate:
+                  d.startDate && d.startDate.trim() !== ""
+                    ? d.startDate
+                    : undefined,
+                endDate:
+                  d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
+                isActive: d.isActive,
+              }));
           }
         }
 
@@ -527,7 +507,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   // Handlers
   const handleEditProduct = (product: Product) => {
     if (isMobile) {
-      router.push(`${basePath}/product/${product.id}/edit`);
+      router.push(`${basePath}/products/${product.id}/edit`);
       return;
     }
     if (!product || !product.id) {
@@ -732,60 +712,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     setProductVariations(updated);
   };
 
-  // Discount handlers
-  const addDiscountToForm = () => {
-    setProductDiscounts([
-      ...productDiscounts,
-      {
-        discountTypeId: "",
-        discountPercentage: "0",
-        startDate: "",
-        endDate: "",
-        isActive: true,
-      },
-    ]);
-  };
-
-  const removeDiscountFromForm = (index: number) => {
-    setProductDiscounts(productDiscounts.filter((_, i) => i !== index));
-  };
-
-  const updateDiscountInForm = (
-    index: number,
-    field:
-      | "discountTypeId"
-      | "discountPercentage"
-      | "startDate"
-      | "endDate"
-      | "isActive",
-    value: string | boolean,
-  ) => {
-    const updated = [...productDiscounts];
-    updated[index] = {
-      discountTypeId:
-        field === "discountTypeId"
-          ? (value as string)
-          : updated[index]?.discountTypeId || "",
-      discountPercentage:
-        field === "discountPercentage"
-          ? (value as string)
-          : updated[index]?.discountPercentage || "0",
-      startDate:
-        field === "startDate"
-          ? (value as string)
-          : updated[index]?.startDate || "",
-      endDate:
-        field === "endDate" ? (value as string) : updated[index]?.endDate || "",
-      isActive:
-        field === "isActive"
-          ? (value as boolean)
-          : updated[index]?.isActive !== undefined
-            ? updated[index].isActive
-            : true,
-    };
-    setProductDiscounts(updated);
-  };
-
   // Export handlers
   const handleExport = useCallback(
     async (format: "excel" | "csv") => {
@@ -866,7 +792,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
               {isMobile ? (
                 <Button variant="outline" asChild>
-                  <Link href={`${basePath}/product/bulk-upload`}>
+                  <Link href={`${basePath}/products/bulk-upload`}>
                     <Upload className="h-4 w-4 mr-2" />
                     Bulk Upload
                   </Link>
@@ -883,7 +809,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
             </FeatureGuard>
             {isMobile ? (
               <Button asChild>
-                <Link href={`${basePath}/product/new`} className="gap-2">
+                <Link href={`${basePath}/products/new`} className="gap-2">
                   <Plus className="h-4 w-4" />
                   Add Product
                 </Link>
@@ -906,9 +832,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 onAddPhoto={addPhotoToVariation}
                 onRemovePhoto={removePhotoFromVariation}
                 onSetPrimaryPhoto={setPrimaryPhoto}
-                onAddDiscount={addDiscountToForm}
-                onRemoveDiscount={removeDiscountFromForm}
-                onUpdateDiscount={updateDiscountInForm}
                 onShowError={(title, message) =>
                   setErrorDialog({ open: true, title, message })
                 }
@@ -1106,7 +1029,9 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       <ProductDeleteDialog
         product={productToDelete}
         onClose={() => setProductToDelete(null)}
-        onDelete={deleteProductMutation.mutateAsync}
+        onDelete={(id, reason) =>
+          deleteProductMutation.mutateAsync({ id, reason })
+        }
       />
 
       <VariationDeleteDialog

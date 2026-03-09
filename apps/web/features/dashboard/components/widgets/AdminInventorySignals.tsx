@@ -56,7 +56,7 @@ export function AdminInventorySignals({
           Inventory signals
         </CardTitle>
         <Link
-          href={`${basePath}/product?lowStock=1`}
+          href={`${basePath}/products?lowStock=1`}
           className="text-xs font-medium text-primary hover:underline inline-flex items-center"
         >
           View low stock
@@ -66,7 +66,7 @@ export function AdminInventorySignals({
       <CardContent>
         <CardDescription className="mb-1">Low stock items</CardDescription>
         <Link
-          href={`${basePath}/product?lowStock=1`}
+          href={`${basePath}/products?lowStock=1`}
           className="text-2xl font-bold hover:underline text-primary"
         >
           {lowStock}

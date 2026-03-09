@@ -653,15 +653,38 @@ const swaggerDefinition: SwaggerDefinition = {
           createdAt: { type: "string", format: "date-time" },
         },
       },
+      DeleteBody: {
+        type: "object",
+        properties: {
+          reason: {
+            type: "string",
+            maxLength: 500,
+            description: "Optional reason for delete (logged for audit)",
+          },
+        },
+      },
       TrashItem: {
         type: "object",
         properties: {
-          type: {
+          entityType: {
             type: "string",
-            description: "Entity type (e.g. contact, deal)",
+            description: "Entity type (e.g. Product, Category)",
           },
           id: { type: "string", format: "uuid" },
+          name: { type: "string" },
           deletedAt: { type: "string", format: "date-time" },
+          deletedBy: {
+            type: "string",
+            nullable: true,
+            description: "UserId of user who deleted",
+          },
+          deleteReason: {
+            type: "string",
+            nullable: true,
+            description: "Optional reason provided at delete",
+          },
+          tenantId: { type: "string", format: "uuid" },
+          tenantName: { type: "string" },
         },
       },
       PaginatedAuditResponse: {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import {
   useCompaniesPaginated,
@@ -38,6 +39,16 @@ import {
   Trash2,
 } from "lucide-react";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { CompanyForm } from "./CompanyForm";
 import type { CreateCompanyData } from "../../services/company.service";
 
@@ -54,13 +65,15 @@ export function CompaniesPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data, isLoading } = useCompaniesPaginated({
     page,
     limit: pageSize,
-    search,
+    search: debouncedSearch,
   });
   const { data: selectedCompanyData } = useCompany(selectedId ?? "");
   const createMutation = useCreateCompany();
@@ -121,14 +134,21 @@ export function CompaniesPage() {
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm("Delete this company?")) return;
-    deleteMutation.mutate(id, {
+    setDeleteId(id);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteId) return;
+    deleteMutation.mutate(deleteId, {
       onSuccess: () => {
         toast({ title: "Company deleted" });
-        if (selectedId === id) closeDrawer();
+        if (selectedId === deleteId) closeDrawer();
+        setDeleteId(null);
       },
-      onError: () =>
-        toast({ title: "Failed to delete company", variant: "destructive" }),
+      onError: () => {
+        toast({ title: "Failed to delete company", variant: "destructive" });
+        setDeleteId(null);
+      },
     });
   };
 
@@ -447,6 +467,31 @@ export function CompaniesPage() {
           />
         )}
       </ResponsiveDrawer>
+
+      <AlertDialog
+        open={!!deleteId}
+        onOpenChange={(o) => !o && setDeleteId(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this company?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. All related contacts and deals may
+              be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

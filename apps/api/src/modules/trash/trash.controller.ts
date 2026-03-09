@@ -12,13 +12,12 @@ import {
 class TrashController {
   listTrash = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
       const parsed = ListTrashQuerySchema.safeParse(req.query);
       if (!parsed.success) {
         const msg = parsed.error.errors[0]?.message ?? "Validation error";
         return res.status(400).json({ message: msg });
       }
-      const result = await trashService.list(tenantId, parsed.data);
+      const result = await trashService.list(parsed.data);
       return res.status(200).json(result);
     } catch (error: unknown) {
       if ((error as AppError).statusCode) {
@@ -32,14 +31,13 @@ class TrashController {
 
   restoreItem = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
       const parsed = RestoreItemParamsSchema.safeParse(req.params);
       if (!parsed.success) {
         const msg = parsed.error.errors[0]?.message ?? "Validation error";
         return res.status(400).json({ message: msg });
       }
       const { entityType, id } = parsed.data;
-      const { type } = await trashService.restore(tenantId, entityType, id);
+      const { type } = await trashService.restore(entityType, id);
       return res.status(200).json({
         message: `${type} restored successfully`,
       });
@@ -59,18 +57,13 @@ class TrashController {
 
   permanentlyDeleteItem = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
       const parsed = PermanentlyDeleteParamsSchema.safeParse(req.params);
       if (!parsed.success) {
         const msg = parsed.error.errors[0]?.message ?? "Validation error";
         return res.status(400).json({ message: msg });
       }
       const { entityType, id } = parsed.data;
-      const { type } = await trashService.permanentlyDelete(
-        tenantId,
-        entityType,
-        id,
-      );
+      const { type } = await trashService.permanentlyDelete(entityType, id);
       return res.status(200).json({
         message: `${type} permanently deleted`,
       });

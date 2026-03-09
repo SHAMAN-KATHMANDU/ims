@@ -379,6 +379,38 @@ saleRouter.post(
 
 /**
  * @swagger
+ * /sales/{id}/receipt:
+ *   get:
+ *     summary: Download sale receipt as PDF
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: PDF receipt
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Sale not found
+ */
+saleRouter.get(
+  "/:id/receipt",
+  authorizeRoles("user", "admin", "superAdmin"),
+  asyncHandler(saleController.getReceiptPdf),
+);
+
+/**
+ * @swagger
  * /sales/{id}:
  *   get:
  *     summary: Get sale details by ID

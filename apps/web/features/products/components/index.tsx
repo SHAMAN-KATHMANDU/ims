@@ -138,7 +138,7 @@ export function ProductPage() {
     }
   }, [searchParams]);
 
-  // Open product dialog from URL (e.g. mobile redirect from /product/new or /product/[id]/edit)
+  // Open product dialog from URL (e.g. mobile redirect from /products/new or /products/[id]/edit)
   const addParam = searchParams.get("add");
   const editIdFromUrl = searchParams.get("edit");
   const { data: productToEditFromUrl } = useProduct(editIdFromUrl || "");
@@ -151,7 +151,7 @@ export function ProductPage() {
       setProductAttributeTypeIds([]);
       productForm.reset();
       setProductDialog(true);
-      router.replace(`${basePath}/product`, { scroll: false });
+      router.replace(`${basePath}/products`, { scroll: false });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [addParam, basePath, router]);
@@ -231,7 +231,7 @@ export function ProductPage() {
       setProductDiscounts([]);
     }
     setProductDialog(true);
-    router.replace(`${basePath}/product`, { scroll: false });
+    router.replace(`${basePath}/products`, { scroll: false });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [editIdFromUrl, productToEditFromUrl, basePath, router]);
 
@@ -249,7 +249,7 @@ export function ProductPage() {
   const { data: categories = [] } = useCategories();
   const { data: vendorsResponse } = useVendorsPaginated({
     page: 1,
-    limit: 200,
+    limit: 10,
   });
   const vendors = vendorsResponse?.data ?? [];
   const { data: subcategories = [] } = useCategorySubcategories(
@@ -598,17 +598,22 @@ export function ProductPage() {
                 : undefined,
           }));
 
-          data.discounts = productDiscounts.map((d) => ({
-            discountTypeId: d.discountTypeId,
-            discountPercentage: Number(d.discountPercentage) || 0,
-            startDate:
-              d.startDate && d.startDate.trim() !== ""
-                ? d.startDate
-                : undefined,
-            endDate:
-              d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-            isActive: d.isActive,
-          }));
+          data.discounts = productDiscounts
+            .filter((d) => d.discountTypeId?.trim())
+            .map((d) => ({
+              discountTypeId: d.discountTypeId,
+              discountPercentage: Math.min(
+                100,
+                Math.max(0, Number(d.discountPercentage) || 0),
+              ),
+              startDate:
+                d.startDate && d.startDate.trim() !== ""
+                  ? d.startDate
+                  : undefined,
+              endDate:
+                d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
+              isActive: d.isActive,
+            }));
         } else {
           if (productVariations.length > 0) {
             data.variations = productVariations.map((v) => ({
@@ -632,17 +637,22 @@ export function ProductPage() {
           }
 
           if (productDiscounts.length > 0) {
-            data.discounts = productDiscounts.map((d) => ({
-              discountTypeId: d.discountTypeId,
-              discountPercentage: Number(d.discountPercentage) || 0,
-              startDate:
-                d.startDate && d.startDate.trim() !== ""
-                  ? d.startDate
-                  : undefined,
-              endDate:
-                d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
-              isActive: d.isActive,
-            }));
+            data.discounts = productDiscounts
+              .filter((d) => d.discountTypeId?.trim())
+              .map((d) => ({
+                discountTypeId: d.discountTypeId,
+                discountPercentage: Math.min(
+                  100,
+                  Math.max(0, Number(d.discountPercentage) || 0),
+                ),
+                startDate:
+                  d.startDate && d.startDate.trim() !== ""
+                    ? d.startDate
+                    : undefined,
+                endDate:
+                  d.endDate && d.endDate.trim() !== "" ? d.endDate : undefined,
+                isActive: d.isActive,
+              }));
           }
         }
 
@@ -692,7 +702,7 @@ export function ProductPage() {
   // Handlers
   const handleEditProduct = (product: Product) => {
     if (isMobile) {
-      router.push(`${basePath}/product/${product.id}/edit`);
+      router.push(`${basePath}/products/${product.id}/edit`);
       return;
     }
     if (!product || !product.id) {
@@ -897,60 +907,6 @@ export function ProductPage() {
     setProductVariations(updated);
   };
 
-  // Discount handlers
-  const addDiscountToForm = () => {
-    setProductDiscounts([
-      ...productDiscounts,
-      {
-        discountTypeId: "",
-        discountPercentage: "0",
-        startDate: "",
-        endDate: "",
-        isActive: true,
-      },
-    ]);
-  };
-
-  const removeDiscountFromForm = (index: number) => {
-    setProductDiscounts(productDiscounts.filter((_, i) => i !== index));
-  };
-
-  const updateDiscountInForm = (
-    index: number,
-    field:
-      | "discountTypeId"
-      | "discountPercentage"
-      | "startDate"
-      | "endDate"
-      | "isActive",
-    value: string | boolean,
-  ) => {
-    const updated = [...productDiscounts];
-    updated[index] = {
-      discountTypeId:
-        field === "discountTypeId"
-          ? (value as string)
-          : updated[index]?.discountTypeId || "",
-      discountPercentage:
-        field === "discountPercentage"
-          ? (value as string)
-          : updated[index]?.discountPercentage || "0",
-      startDate:
-        field === "startDate"
-          ? (value as string)
-          : updated[index]?.startDate || "",
-      endDate:
-        field === "endDate" ? (value as string) : updated[index]?.endDate || "",
-      isActive:
-        field === "isActive"
-          ? (value as boolean)
-          : updated[index]?.isActive !== undefined
-            ? updated[index].isActive
-            : true,
-    };
-    setProductDiscounts(updated);
-  };
-
   // Export handlers
   const handleExport = useCallback(
     async (format: "excel" | "csv") => {
@@ -1033,7 +989,7 @@ export function ProductPage() {
                 <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
                   {isMobile ? (
                     <Button variant="outline" asChild>
-                      <Link href={`${basePath}/product/bulk-upload`}>
+                      <Link href={`${basePath}/products/bulk-upload`}>
                         <Upload className="h-4 w-4 mr-2" />
                         Bulk Upload
                       </Link>
@@ -1050,7 +1006,7 @@ export function ProductPage() {
                 </FeatureGuard>
                 {isMobile ? (
                   <Button asChild>
-                    <Link href={`${basePath}/product/new`} className="gap-2">
+                    <Link href={`${basePath}/products/new`} className="gap-2">
                       <Plus className="h-4 w-4" />
                       Add Product
                     </Link>
@@ -1078,9 +1034,6 @@ export function ProductPage() {
                     onAddPhoto={addPhotoToVariation}
                     onRemovePhoto={removePhotoFromVariation}
                     onSetPrimaryPhoto={setPrimaryPhoto}
-                    onAddDiscount={addDiscountToForm}
-                    onRemoveDiscount={removeDiscountFromForm}
-                    onUpdateDiscount={updateDiscountInForm}
                     onShowError={(title, message) =>
                       setErrorDialog({ open: true, title, message })
                     }
@@ -1311,7 +1264,9 @@ export function ProductPage() {
       <ProductDeleteDialog
         product={productToDelete}
         onClose={() => setProductToDelete(null)}
-        onDelete={deleteProductMutation.mutateAsync}
+        onDelete={(id, reason) =>
+          deleteProductMutation.mutateAsync({ id, reason })
+        }
       />
 
       <VariationDeleteDialog
