@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import activityRepository from "./activity.repository";
 import type { CreateActivityDto } from "./activity.schema";
 
@@ -33,10 +34,26 @@ export class ActivityService {
     return activity;
   }
 
-  async delete(tenantId: string, id: string) {
+  async delete(
+    tenantId: string,
+    id: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await activityRepository.findById(tenantId, id);
     if (!existing) throw createError("Activity not found", 404);
-    await activityRepository.softDelete(id);
+    await activityRepository.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Activity",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 }
 

@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import {
   Home,
   Package,
-  BarChart3,
   ChevronLeft,
   ChevronDown,
   Warehouse,
@@ -104,6 +103,12 @@ const navSections: NavSection[] = [
         path: "platform/plan-limits",
         label: "Plan limits",
         icon: SlidersHorizontal,
+        roles: ["platformAdmin"],
+      },
+      {
+        path: "platform/trash",
+        label: "Trash",
+        icon: Trash2,
         roles: ["platformAdmin"],
       },
     ],
@@ -266,13 +271,6 @@ const navSections: NavSection[] = [
     title: "REPORTS",
     items: [
       {
-        path: "reports/analytics",
-        label: "Analytics",
-        icon: BarChart3,
-        roles: ["admin", "superAdmin"],
-        feature: Feature.ANALYTICS_ADVANCED,
-      },
-      {
         path: "reports/analytics/sales",
         label: "Sales & Revenue",
         icon: TrendingUp,
@@ -319,12 +317,6 @@ const navSections: NavSection[] = [
   {
     title: "SETTINGS",
     items: [
-      {
-        path: "trash",
-        label: "Trash",
-        icon: Trash2,
-        roles: ["admin", "superAdmin"],
-      },
       {
         path: "settings",
         label: "Settings",

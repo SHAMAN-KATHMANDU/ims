@@ -5,12 +5,17 @@ export interface TrashItem {
   id: string;
   name: string;
   deletedAt: string;
+  deletedBy: string | null;
+  deleteReason: string | null;
+  tenantId: string;
+  tenantName: string;
 }
 
 export interface TrashListParams {
   page?: number;
   limit?: number;
   entityType?: string;
+  tenantId?: string;
 }
 
 export interface TrashListResponse {

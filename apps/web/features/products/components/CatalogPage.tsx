@@ -1029,7 +1029,9 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       <ProductDeleteDialog
         product={productToDelete}
         onClose={() => setProductToDelete(null)}
-        onDelete={deleteProductMutation.mutateAsync}
+        onDelete={(id, reason) =>
+          deleteProductMutation.mutateAsync({ id, reason })
+        }
       />
 
       <VariationDeleteDialog

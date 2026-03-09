@@ -19,25 +19,12 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 import companyController from "./company.controller";
 import * as companyServiceModule from "./company.service";
 import { sendControllerError } from "@/utils/controllerError";
+import { mockRes, makeReq } from "@tests/helpers/controller";
 
 const mockService = companyServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;
-
-function mockRes(): Partial<Response> {
-  return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
-}
-
-function makeReq(overrides: Partial<Request> = {}): Request {
-  return {
-    user: { id: "u1", tenantId: "t1", role: "admin", tenantSlug: "acme" },
-    params: {},
-    body: {},
-    query: {},
-    ...overrides,
-  } as unknown as Request;
-}
 
 describe("CompanyController", () => {
   beforeEach(() => {

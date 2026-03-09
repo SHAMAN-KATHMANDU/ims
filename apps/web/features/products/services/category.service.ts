@@ -188,15 +188,20 @@ export async function updateCategory(
 }
 
 /**
- * Delete a category
+ * Delete a category (soft delete to platform trash)
  */
-export async function deleteCategory(id: string): Promise<void> {
+export async function deleteCategory(
+  id: string,
+  reason?: string,
+): Promise<void> {
   if (!id?.trim()) {
     throw new Error("Category ID is required");
   }
 
   try {
-    await api.delete(`/categories/${id}`);
+    await api.delete(`/categories/${id}`, {
+      data: reason ? { reason } : undefined,
+    });
   } catch (error) {
     handleApiError(error, `delete category "${id}"`);
   }
@@ -223,6 +228,7 @@ export async function createSubcategory(
 export async function deleteSubcategory(
   categoryId: string,
   name: string,
+  reason?: string,
 ): Promise<void> {
   if (!categoryId?.trim()) {
     throw new Error("Category ID is required");
@@ -233,7 +239,7 @@ export async function deleteSubcategory(
 
   try {
     await api.delete(`/categories/${categoryId}/subcategories`, {
-      data: { name },
+      data: { name, ...(reason && { reason }) },
     });
   } catch (error) {
     handleApiError(error, "delete subcategory");

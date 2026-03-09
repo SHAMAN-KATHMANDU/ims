@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getSalesRevenue, getInventoryOps } from "./analytics.service";
+import {
+  getSalesRevenue,
+  getInventoryOps,
+  getFinancial,
+} from "./analytics.service";
 
 const mockGet = vi.fn();
 
@@ -44,6 +48,35 @@ describe("analytics.service", () => {
       expect(mockGet).toHaveBeenCalledWith(
         expect.stringContaining("/analytics/sales-revenue"),
       );
+      const url = mockGet.mock.calls[0]?.[0] as string | undefined;
+      expect(url).toBeDefined();
+      expect(url as string).toMatch(/dateFrom=2025-01-01/);
+      expect(url as string).toMatch(/dateTo=2025-01-31/);
+    });
+  });
+
+  describe("getFinancial", () => {
+    it("calls GET /analytics/financial with apiParams in query string", async () => {
+      mockGet.mockResolvedValue({
+        data: {
+          data: {
+            grossProfitTimeSeries: [],
+            cogsByCategory: [],
+            cogsByLocation: [],
+            marginByCategory: [],
+          },
+        },
+      });
+
+      await getFinancial({ dateFrom: "2024-06-01", dateTo: "2024-06-30" });
+
+      expect(mockGet).toHaveBeenCalledWith(
+        expect.stringContaining("/analytics/financial"),
+      );
+      const url = mockGet.mock.calls[0]?.[0] as string | undefined;
+      expect(url).toBeDefined();
+      expect(url as string).toMatch(/dateFrom=2024-06-01/);
+      expect(url as string).toMatch(/dateTo=2024-06-30/);
     });
   });
 

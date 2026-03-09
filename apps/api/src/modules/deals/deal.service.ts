@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import dealRepository from "./deal.repository";
 import type {
   CreateDealDto,
@@ -81,10 +82,26 @@ export class DealService {
     return deal;
   }
 
-  async delete(tenantId: string, id: string) {
+  async delete(
+    tenantId: string,
+    id: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
-    await dealRepository.softDelete(id);
+    await dealRepository.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Deal",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 }
 

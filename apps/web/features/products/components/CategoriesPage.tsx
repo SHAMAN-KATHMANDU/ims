@@ -216,12 +216,13 @@ export function CategoriesPage() {
     });
   };
 
-  const handleConfirmDeleteSubcategory = async () => {
+  const handleConfirmDeleteSubcategory = async (reason?: string) => {
     if (!selectedCategory || !subcategoryToDelete) return;
 
     await deleteSubcategoryMutation.mutateAsync({
       categoryId: selectedCategory.id,
       name: subcategoryToDelete.name,
+      reason,
     });
     await refetchSelectedSubs();
     setSubcategoryToDelete(null);
@@ -366,7 +367,9 @@ export function CategoriesPage() {
       <CategoryDeleteDialog
         category={categoryToDelete}
         onClose={() => setCategoryToDelete(null)}
-        onDelete={deleteCategoryMutation.mutateAsync}
+        onDelete={(id, reason) =>
+          deleteCategoryMutation.mutateAsync({ id, reason })
+        }
       />
 
       <SubcategoryDeleteDialog
