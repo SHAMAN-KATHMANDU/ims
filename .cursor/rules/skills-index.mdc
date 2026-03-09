@@ -62,6 +62,12 @@ Then follow the patterns and guidelines it contains.
 
 | Trigger Context | Skill File |
 |----------------|------------|
+| Unit, integration, security, concurrency test architecture and patterns | `.cursor/rules/testing-architecture.mdc` |
+| Integration tests, DB-backed tests, Supertest | `.cursor/skills/integration-testing/SKILL.md` |
+| Security tests (auth-bypass, IDOR, cross-tenant) | `.cursor/skills/security-testing/SKILL.md` |
+| Concurrency/race tests, oversell prevention | `.cursor/skills/concurrency-testing/SKILL.md` |
+| Property-based/fuzz tests, schema invariants | `.cursor/skills/property-based-testing/SKILL.md` |
+| Test factories, helpers, DB rollback | `.cursor/skills/test-infrastructure/SKILL.md` |
 | Playwright E2E tests, Page Object Model, critical user flows, CI test integration | `.cursor/skills/e2e-testing/SKILL.md` |
 | LLM/AI feature evaluation, capability evals, regression evals, pass@k metrics | `.cursor/skills/eval-harness/SKILL.md` |
 
@@ -104,6 +110,11 @@ security-scan           → .cursor/ config audit
 
 frontend-patterns       → React, Next.js, hooks
 
+integration-testing     → API + DB integration tests
+security-testing        → auth-bypass, IDOR, cross-tenant
+concurrency-testing     → inventory/sale races
+property-based-testing  → schema fuzz
+test-infrastructure     → factories, helpers, mocks
 e2e-testing             → Playwright tests
 eval-harness            → LLM feature evals
 

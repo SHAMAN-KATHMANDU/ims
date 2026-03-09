@@ -65,7 +65,7 @@ type TaskFormProps = TaskFormCreateProps | TaskFormEditProps;
 export function TaskForm(props: TaskFormProps) {
   const { data: contactsData } = useContactsPaginated({ limit: 100 });
   const { data: dealsData } = useDealsPaginated({ limit: 100 });
-  const { data: usersResult } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 10 });
 
   const contacts = contactsData?.data ?? [];
   const deals = dealsData?.data ?? [];

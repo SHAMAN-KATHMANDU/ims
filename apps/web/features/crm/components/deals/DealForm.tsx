@@ -1,6 +1,7 @@
 "use client";
 
-import { useForm } from "react-hook-form";
+import { useEffect, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ const createSchema = z.object({
     .min(0, "Probability must be at least 0")
     .max(100, "Probability must be between 0 and 100")
     .optional(),
+  pipelineId: z.string().optional(),
   expectedCloseDate: z.string().optional(),
   contactId: z.string().optional(),
   companyId: z.string().optional(),
@@ -54,6 +56,7 @@ type EditFormValues = z.infer<typeof editSchema>;
 
 interface DealFormCreateProps {
   mode: "create";
+  initialPipelineId?: string;
   onSubmit: (data: CreateDealData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
@@ -84,11 +87,14 @@ type DealFormProps = DealFormCreateProps | DealFormEditProps;
 
 export function DealForm(props: DealFormProps) {
   const { data: pipelinesData } = usePipelines();
-  const { data: contactsData } = useContactsPaginated({ limit: 200 });
+  const { data: contactsData } = useContactsPaginated({ limit: 10 });
   const { data: companiesData } = useCompaniesForSelect();
-  const { data: usersResult } = useUsers({ limit: 500 });
+  const { data: usersResult } = useUsers({ limit: 10 });
 
-  const pipelines = pipelinesData?.pipelines ?? [];
+  const pipelines = useMemo(
+    () => pipelinesData?.pipelines ?? [],
+    [pipelinesData?.pipelines],
+  );
   const defaultPipeline = pipelines.find((p) => p.isDefault) ?? pipelines[0];
   const contacts = contactsData?.data ?? [];
   const companies = companiesData?.companies ?? [];
@@ -110,12 +116,37 @@ export function DealForm(props: DealFormProps) {
           companyId: props.defaultValues.companyId ?? "",
           assignedToId: props.defaultValues.assignedToId,
         }
-      : { name: "", value: 0, probability: 0 },
+      : {
+          name: "",
+          value: 0,
+          probability: 0,
+          pipelineId:
+            (props.mode === "create" && "initialPipelineId" in props
+              ? props.initialPipelineId
+              : undefined) ??
+            defaultPipeline?.id ??
+            "",
+        },
   });
 
   const stageNames = isEdit
     ? props.defaultValues.stageNames
     : (defaultPipeline?.stages?.map((s) => s.name) ?? []);
+
+  const initialPipelineId =
+    props.mode === "create" && "initialPipelineId" in props
+      ? props.initialPipelineId
+      : undefined;
+
+  useEffect(() => {
+    if (isEdit || pipelines.length === 0) return;
+    const current = form.getValues("pipelineId");
+    if (current && pipelines.some((p) => p.id === current)) return;
+    const fallback =
+      initialPipelineId ?? defaultPipeline?.id ?? pipelines[0]?.id ?? "";
+    if (fallback) form.setValue("pipelineId", fallback);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- form is stable; omit to avoid overwriting user selection on identity change
+  }, [isEdit, pipelines, defaultPipeline?.id, initialPipelineId]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     if (props.mode === "create") {
@@ -128,7 +159,8 @@ export function DealForm(props: DealFormProps) {
         contactId: values.contactId || undefined,
         companyId: values.companyId || undefined,
         assignedToId: values.assignedToId || undefined,
-        pipelineId: defaultPipeline?.id,
+        pipelineId:
+          values.pipelineId?.trim() || defaultPipeline?.id || undefined,
       });
     } else {
       await props.onSubmit({
@@ -217,6 +249,34 @@ export function DealForm(props: DealFormProps) {
               </SelectContent>
             </Select>
           </div>
+        </div>
+      )}
+
+      {!isEdit && pipelines.length > 0 && (
+        <div>
+          <Label>Pipeline</Label>
+          <Controller
+            name="pipelineId"
+            control={form.control}
+            render={({ field }) => (
+              <Select
+                value={field.value ?? ""}
+                onValueChange={(v) => field.onChange(v || undefined)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select pipeline" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                      {p.isDefault ? " (default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
       )}
 

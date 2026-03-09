@@ -18,6 +18,7 @@ export interface ListTrashParams {
   page?: number;
   limit?: number;
   entityType?: string;
+  tenantId?: string;
 }
 
 export interface ListTrashResult extends PaginationResult<TrashItem> {
@@ -27,11 +28,8 @@ export interface ListTrashResult extends PaginationResult<TrashItem> {
 export class TrashService {
   constructor(private repo: typeof trashRepository) {}
 
-  /** List trashed items with pagination. Optionally filter by entityType. */
-  async list(
-    tenantId: string,
-    params: ListTrashParams,
-  ): Promise<ListTrashResult> {
+  /** List trashed items across all tenants (platform scope). Optionally filter by entityType and tenantId. */
+  async list(params: ListTrashParams): Promise<ListTrashResult> {
     const { page, limit } = getPaginationParams(
       params as Record<string, unknown>,
     );
@@ -50,7 +48,10 @@ export class TrashService {
       );
     }
 
-    const allItems = await this.repo.findTrashed(tenantId, entitiesToQuery);
+    const allItems = await this.repo.findTrashed(
+      entitiesToQuery,
+      params.tenantId,
+    );
     const totalItems = allItems.length;
     const skip = (page - 1) * limit;
     const paginatedItems = allItems.slice(skip, skip + limit);
@@ -68,28 +69,23 @@ export class TrashService {
     };
   }
 
-  /** Restore a trashed item. Throws if not found or invalid entity type. */
-  async restore(
-    tenantId: string,
-    entityType: string,
-    id: string,
-  ): Promise<{ type: string }> {
+  /** Restore a trashed item (platform admin only). Throws if not found or invalid entity type. */
+  async restore(entityType: string, id: string): Promise<{ type: string }> {
     const config = this.getEntityConfig(entityType);
-    const restored = await this.repo.restore(tenantId, id, config);
+    const restored = await this.repo.restore(id, config);
     if (!restored) {
       throw createError("Item not found or not in trash", 404);
     }
     return { type: config.type };
   }
 
-  /** Permanently delete a trashed item. Throws if not found or invalid entity type. */
+  /** Permanently delete a trashed item (platform admin only). Throws if not found or invalid entity type. */
   async permanentlyDelete(
-    tenantId: string,
     entityType: string,
     id: string,
   ): Promise<{ type: string }> {
     const config = this.getEntityConfig(entityType);
-    const deleted = await this.repo.permanentlyDelete(tenantId, id, config);
+    const deleted = await this.repo.permanentlyDelete(id, config);
     if (!deleted) {
       throw createError("Item not found or not in trash", 404);
     }

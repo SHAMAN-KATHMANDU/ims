@@ -1,6 +1,7 @@
 ---
 description: Enforces standardized ok()/fail() response helpers from shared/response/ in all API controllers
-globs: apps/api/**/*.ts
+globs:
+  - "apps/api/**/*.ts"
 alwaysApply: false
 ---
 

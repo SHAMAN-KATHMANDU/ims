@@ -12,7 +12,6 @@ export const calculateDiscountedPrice = (
 
 /** Variation with optional EAV attributes (attributeValue.value) for display */
 type VariationWithAttributes = {
-  imsCode?: string;
   attributes?: Array<{
     attributeType?: { name?: string; code?: string };
     attributeValue?: { value: string };
@@ -20,7 +19,7 @@ type VariationWithAttributes = {
 };
 
 /**
- * Get a single variation's attribute values as a display string, e.g. "Red M"
+ * Get a single variation's display label from attributes, e.g. "Red M", or "—" if none
  */
 export function getVariationAttributeDisplay(
   variation: VariationWithAttributes,
@@ -32,9 +31,9 @@ export function getVariationAttributeDisplay(
   if (attrs?.length) {
     return attrs
       .map((a) => (a.attributeValue as { value: string }).value.trim())
-      .join(" ");
+      .join(" / ");
   }
-  return variation.imsCode || "—";
+  return "—";
 }
 
 /**
@@ -158,9 +157,7 @@ export const filterProducts = (
     ).toLowerCase();
 
     return (
-      (
-        product as { variations?: Array<{ imsCode?: string }> }
-      ).variations?.some((v) => v.imsCode?.toLowerCase().includes(query)) ||
+      (product as { imsCode?: string }).imsCode?.toLowerCase().includes(query) ||
       product.name?.toLowerCase().includes(query) ||
       categoryName.includes(query) ||
       product.description?.toLowerCase().includes(query) ||

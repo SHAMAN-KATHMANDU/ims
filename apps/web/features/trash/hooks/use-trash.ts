@@ -22,6 +22,7 @@ export function useTrashItems(params: TrashListParams = {}) {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
     entityType: params.entityType,
+    tenantId: params.tenantId,
   };
 
   return useQuery({

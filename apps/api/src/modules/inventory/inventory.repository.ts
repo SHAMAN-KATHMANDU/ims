@@ -38,7 +38,6 @@ export class InventoryRepository {
         variations: {
           select: {
             id: true,
-            imsCode: true,
             stockQuantity: true,
           },
         },
@@ -51,7 +50,7 @@ export class InventoryRepository {
       where: { id: variationId },
       include: {
         product: {
-          select: { id: true, name: true },
+          select: { id: true, name: true, imsCode: true },
         },
       },
     });
@@ -73,10 +72,12 @@ export class InventoryRepository {
 
     if (search) {
       variationWhere.OR = [
-        { imsCode: { contains: search, mode: "insensitive" } },
         {
           product: {
-            name: { contains: search, mode: "insensitive" },
+            OR: [
+              { imsCode: { contains: search, mode: "insensitive" } },
+              { name: { contains: search, mode: "insensitive" } },
+            ],
           },
         },
       ];
@@ -156,14 +157,17 @@ export class InventoryRepository {
           select: { id: true, name: true, type: true },
         },
         variation: {
-          select: { id: true, imsCode: true },
+          select: { id: true },
+          include: {
+            product: { select: { imsCode: true } },
+          },
         },
         subVariation: { select: { id: true, name: true } },
       },
       orderBy: [
         { location: { type: "asc" } },
         { location: { name: "asc" } },
-        { variation: { imsCode: "asc" } },
+        { variation: { id: "asc" } },
       ],
     });
   }

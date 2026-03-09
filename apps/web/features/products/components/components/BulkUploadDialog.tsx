@@ -97,12 +97,14 @@ export function BulkUploadDialog({
           <DialogTitle>Bulk Upload Products</DialogTitle>
           <DialogDescription>
             Upload an Excel or CSV file to create or update products with
-            location-based stock. Include <strong>Attributes</strong>{" "}
-            (comma-separated names, e.g. color, size) and{" "}
-            <strong>Values</strong> (comma-separated values, e.g. red, M). Each
-            row is one variant with its own IMS code and stock. Include the{" "}
-            <strong>Location</strong> column (showroom/warehouse name or ID).
-            Download the template for required columns.
+            location-based stock. Each row is one variant with its own IMS code
+            and stock. Add attribute columns (e.g.{" "}
+            <strong>Color</strong>, <strong>Size</strong>,{" "}
+            <strong>Material</strong>) directly as headers — any column not
+            matching a predefined field is automatically treated as a product
+            attribute. Include the <strong>Location</strong> column
+            (showroom/warehouse name or ID). Download the template for required
+            columns.
           </DialogDescription>
         </DialogHeader>
       )}
@@ -111,10 +113,11 @@ export function BulkUploadDialog({
           <h2 className="text-2xl font-semibold">Bulk Upload Products</h2>
           <p className="text-muted-foreground text-sm">
             Upload an Excel or CSV file to create or update products with
-            location-based stock. Use Attributes (e.g. color, size) and Values
-            (e.g. red, M). Each row is one variant with its own IMS code.
-            Include the Location column. Download the template for required
-            columns.
+            location-based stock. Each row is one variant with its own IMS code.
+            Add attribute columns (e.g. Color, Size, Material) directly as
+            headers — any column not matching a predefined field is
+            automatically treated as a product attribute. Include the Location
+            column. Download the template for required columns.
           </p>
         </div>
       )}
@@ -308,11 +311,8 @@ export function BulkUploadDialog({
                       >
                         <CheckCircle2 className="h-3 w-3" />
                         <span>
-                          {(
-                            product as {
-                              variations?: Array<{ imsCode?: string }>;
-                            }
-                          ).variations?.[0]?.imsCode ?? product.name}{" "}
+                          {(product as { imsCode?: string }).imsCode ??
+                            product.name}{" "}
                           - {product.name} ({product.variationsCount} variation
                           {product.variationsCount !== 1 ? "s" : ""})
                         </span>
@@ -338,11 +338,8 @@ export function BulkUploadDialog({
                       >
                         <CheckCircle2 className="h-3 w-3" />
                         <span>
-                          {(
-                            product as {
-                              variations?: Array<{ imsCode?: string }>;
-                            }
-                          ).variations?.[0]?.imsCode ?? product.name}{" "}
+                          {(product as { imsCode?: string }).imsCode ??
+                            product.name}{" "}
                           - {product.name} at{" "}
                           {product.locations?.join(", ") ?? "—"} (
                           {product.inventoryRowsUpdated} row
@@ -371,11 +368,8 @@ export function BulkUploadDialog({
                         <AlertCircle className="h-3 w-3 mt-0.5" />
                         <span>
                           <span className="font-medium">
-                            {(
-                              product as {
-                                variations?: Array<{ imsCode?: string }>;
-                              }
-                            ).variations?.[0]?.imsCode ?? product.name}{" "}
+                            {(product as { imsCode?: string }).imsCode ??
+                              product.name}{" "}
                             - {product.name}
                           </span>
                           : {product.reason}

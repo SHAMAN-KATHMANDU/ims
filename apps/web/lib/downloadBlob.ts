@@ -28,9 +28,12 @@ export function downloadBlobFromResponse(
   const contentDisposition = response.headers["content-disposition"];
   let filename = defaultFilename;
   if (contentDisposition) {
-    const match = contentDisposition.match(/filename="?(.+)"?/i);
+    // Quoted: filename="name.xlsx" → capture [^"]+ ; unquoted: filename=name.xlsx → capture [^;\s]+
+    const match = contentDisposition.match(/filename=(?:"([^"]+)"|([^;\s]+))/i);
     if (match?.[1]) {
       filename = match[1];
+    } else if (match?.[2]) {
+      filename = match[2];
     }
   }
   const url = URL.createObjectURL(response.data);

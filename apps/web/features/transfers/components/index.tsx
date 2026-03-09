@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useTransfersPaginated,
   useTransfer,
@@ -59,6 +60,7 @@ export function TransfersPage() {
   // Filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState<TransferStatus | "ALL">(
     "ALL",
   );
@@ -79,7 +81,7 @@ export function TransfersPage() {
     useTransfersPaginated({
       page,
       limit: DEFAULT_LIMIT,
-      search,
+      search: debouncedSearch,
       status: statusFilter === "ALL" ? undefined : statusFilter,
       sortBy,
       sortOrder,

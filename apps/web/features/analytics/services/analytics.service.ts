@@ -545,6 +545,8 @@ export interface CustomerInsightsData {
   avgClv: number;
   retentionRate: number;
   churnRate: number;
+  /** True when prior period had customers; churn/retention are meaningful only then. */
+  hasMeaningfulChurn: boolean;
   rfmSegments: RfmSegment[];
   avgOrderFrequencyDays: number;
   memberGrowth: MemberGrowthPoint[];

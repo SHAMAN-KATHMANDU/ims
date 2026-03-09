@@ -29,11 +29,12 @@ const entityTypeEnum = z
     },
   );
 
-/** Query params for listing trash items. */
+/** Query params for listing trash items (platform admin only). */
 export const ListTrashQuerySchema = z.object({
   page: z.coerce.number().int().min(1).default(1),
   limit: z.coerce.number().int().min(1).max(100).default(10),
   entityType: entityTypeEnum.optional(),
+  tenantId: z.string().uuid().optional(),
 });
 
 export type ListTrashQuery = z.infer<typeof ListTrashQuerySchema>;

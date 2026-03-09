@@ -164,11 +164,11 @@ export function TransferDetail({
                                   )}
                                 </p>
                                 <p className="text-xs text-muted-foreground font-mono">
-                                  {item.variation.imsCode}
+                                  {item.variation.product?.imsCode ?? "—"}
                                 </p>
                               </div>
                             </TableCell>
-                            <TableCell>{item.variation.imsCode}</TableCell>
+                            <TableCell>{item.variation.product?.imsCode ?? "—"}</TableCell>
                             <TableCell className="text-right font-medium">
                               {item.quantity}
                             </TableCell>

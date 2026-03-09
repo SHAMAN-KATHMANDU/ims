@@ -11,6 +11,7 @@ import productRepository, {
   type ProductCreateData,
   type ProductListWhere,
 } from "./product.repository";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import type {
   CreateProductDto,
   UpdateProductDto,
@@ -141,18 +142,12 @@ export class ProductService {
       }
     }
 
-    const variationImsCodes = data.variations.map((v) => v.imsCode);
-    const existingVariationIms = await this.repo.findVariationsByImsCodes(
+    const existingProduct = await this.repo.findProductIdByTenantAndImsCode(
       tenantId,
-      variationImsCodes,
+      data.imsCode,
     );
-    if (existingVariationIms.length > 0) {
-      const err = createError(
-        "One or more IMS codes already exist for this tenant",
-        409,
-      ) as Error & { existing?: string[] };
-      err.existing = existingVariationIms.map((v) => v.imsCode);
-      throw err;
+    if (existingProduct) {
+      throw createError("Product with this IMS code already exists", 409);
     }
 
     let warehouseLocation: { id: string } | null = null;
@@ -184,7 +179,6 @@ export class ProductService {
     const variationsCreate: Prisma.ProductVariationCreateWithoutProductInput[] =
       data.variations.map((v) => ({
         tenant: { connect: { id: tenantId } },
-        imsCode: v.imsCode,
         stockQuantity: v.stockQuantity ?? 0,
         costPriceOverride:
           v.costPriceOverride != null ? Number(v.costPriceOverride) : null,
@@ -223,6 +217,7 @@ export class ProductService {
 
     const createData: ProductCreateData = {
       tenantId,
+      imsCode: data.imsCode,
       name: data.name,
       categoryId: category.id,
       description: data.description ?? null,
@@ -317,7 +312,7 @@ export class ProductService {
         resourceId: product.id,
         details: {
           name: product.name,
-          variationImsCodes: product.variations?.map((v) => v.imsCode) ?? [],
+          imsCode: product.imsCode,
         },
         ip,
         userAgent,
@@ -360,11 +355,7 @@ export class ProductService {
     const where: ProductListWhere = {};
     if (search) {
       where.OR = [
-        {
-          variations: {
-            some: { imsCode: { contains: search, mode: "insensitive" } },
-          },
-        },
+        { imsCode: { contains: search, mode: "insensitive" } },
         { name: { contains: search, mode: "insensitive" } },
         { description: { contains: search, mode: "insensitive" } },
         {
@@ -453,6 +444,21 @@ export class ProductService {
     return product;
   }
 
+  async getByImsCode(
+    tenantId: string,
+    params: { imsCode: string; locationId?: string },
+  ) {
+    const product = await this.repo.findByTenantAndImsCode(
+      tenantId,
+      params.imsCode,
+      {
+        locationId: params.locationId,
+      },
+    );
+    if (!product) throw createError("Product not found", 404);
+    return product;
+  }
+
   async update(
     id: string,
     data: UpdateProductDto,
@@ -488,7 +494,18 @@ export class ProductService {
       }
     }
 
+    if (data.imsCode !== undefined) {
+      const other = await this.repo.findProductIdByTenantAndImsCode(
+        tenantId,
+        data.imsCode,
+      );
+      if (other && other.id !== id) {
+        throw createError("Another product already uses this IMS code", 409);
+      }
+    }
+
     const updateData: Prisma.ProductUncheckedUpdateInput = {};
+    if (data.imsCode !== undefined) updateData.imsCode = data.imsCode;
     if (data.name !== undefined) updateData.name = data.name;
     if (data.categoryId !== undefined) updateData.categoryId = data.categoryId;
     if (data.description !== undefined)
@@ -597,24 +614,11 @@ export class ProductService {
 
       for (const variation of incomingVariations) {
         if (variation.id && existingIdSet.has(variation.id)) continue;
-        const imsCode = (
-          variation.imsCode ??
-          (variation as { sku?: string }).sku ??
-          ""
-        ).trim();
-        if (!imsCode) continue;
-
-        const conflict = await this.repo.findVariationByImsCode(
-          tenantId,
-          imsCode,
-        );
-        if (conflict) continue;
 
         const newVariation = await this.repo.createProductVariation(
           {
             tenantId,
             productId: id,
-            imsCode,
             stockQuantity: variation.stockQuantity ?? 0,
             costPriceOverride:
               variation.costPriceOverride != null
@@ -778,10 +782,31 @@ export class ProductService {
     return updatedProduct;
   }
 
-  async delete(id: string) {
+  async delete(
+    id: string,
+    ctx: {
+      userId: string;
+      tenantId: string;
+      reason?: string;
+      ip?: string;
+      userAgent?: string;
+    },
+  ) {
     const existing = await this.repo.findProductForUpdate(id);
     if (!existing) throw createError("Product not found", 404);
-    await this.repo.softDeleteProduct(id);
+    await this.repo.softDeleteProduct(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      resource: "Product",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 
   async deleteVariation(
@@ -961,9 +986,7 @@ export class ProductService {
         { product: { name: { contains: search, mode: "insensitive" } } },
         {
           product: {
-            variations: {
-              some: { imsCode: { contains: search, mode: "insensitive" } },
-            },
+            imsCode: { contains: search, mode: "insensitive" },
           },
         },
         {
