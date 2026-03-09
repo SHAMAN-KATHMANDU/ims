@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import taskRepository from "./task.repository";
 import type { CreateTaskDto, UpdateTaskDto } from "./task.schema";
 
@@ -40,10 +41,26 @@ export class TaskService {
     return taskRepository.complete(id);
   }
 
-  async delete(tenantId: string, id: string) {
+  async delete(
+    tenantId: string,
+    id: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await taskRepository.findById(tenantId, id);
     if (!existing) throw createError("Task not found", 404);
-    await taskRepository.softDelete(id);
+    await taskRepository.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Task",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 }
 

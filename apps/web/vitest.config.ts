@@ -8,6 +8,8 @@ export default defineConfig({
     include: ["**/*.test.{ts,tsx}"],
     exclude: ["node_modules", ".next"],
     setupFiles: ["./vitest.setup.ts"],
+    // Use threads pool to avoid ERR_REQUIRE_ESM with jsdom/html-encoding-sniffer in forks
+    pool: "threads",
   },
   resolve: {
     alias: {

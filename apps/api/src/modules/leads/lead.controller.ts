@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
   CreateLeadSchema,
   UpdateLeadSchema,
@@ -91,8 +92,17 @@ class LeadController {
   delete = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
       const { id } = req.params;
-      await leadService.delete(tenantId, id);
+      const deleteBody = DeleteBodySchema.parse(req.body ?? {});
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
+      await leadService.delete(tenantId, id, {
+        userId,
+        reason: deleteBody.reason,
+        ip,
+        userAgent,
+      });
       return res.status(200).json({ message: "Lead deleted successfully" });
     } catch (error: unknown) {
       return (

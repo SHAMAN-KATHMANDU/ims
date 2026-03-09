@@ -1,16 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { useToast } from "@/hooks/useToast";
 import { ErrorDialog } from "./ErrorDialog";
 
@@ -18,7 +9,7 @@ interface SubcategoryDeleteDialogProps {
   subcategoryName: string | null;
   categoryName: string | null;
   onClose: () => void;
-  onDelete: () => Promise<void>;
+  onDelete: (reason?: string) => Promise<void>;
 }
 
 export function SubcategoryDeleteDialog({
@@ -37,11 +28,11 @@ export function SubcategoryDeleteDialog({
   });
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async () => {
+  const handleConfirm = async (reason?: string) => {
     if (!subcategoryName) return;
     setIsDeleting(true);
     try {
-      await onDelete();
+      await onDelete(reason);
       toast({ title: "Subcategory deleted successfully" });
       onClose();
     } catch (error: unknown) {
@@ -57,44 +48,37 @@ export function SubcategoryDeleteDialog({
         open: true,
         message: errorMessage,
       });
+      throw error;
     } finally {
       setIsDeleting(false);
     }
   };
 
+  const description =
+    subcategoryName && categoryName
+      ? `This will move "${subcategoryName}" from category "${categoryName}" to trash. You can restore it within 30 days.`
+      : subcategoryName
+        ? `This will move "${subcategoryName}" to trash. You can restore it within 30 days.`
+        : undefined;
+
   return (
     <>
-      <AlertDialog
+      <DeleteConfirmDialog
         open={!!subcategoryName && !errorDialog.open}
         onOpenChange={(open) => !open && onClose()}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the subcategory &quot;
-              {subcategoryName}&quot;
-              {categoryName && ` from category "${categoryName}"`}. This action
-              cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        itemName={subcategoryName ?? undefined}
+        title="Are you sure?"
+        description={description}
+        showReasonField={true}
+        onConfirm={handleConfirm}
+        onCancel={onClose}
+        isLoading={isDeleting}
+      />
 
       <ErrorDialog
         open={errorDialog.open}
         onOpenChange={(open) => {
-          setErrorDialog({ ...errorDialog, open });
+          setErrorDialog((prev) => ({ ...prev, open }));
           if (!open) {
             onClose();
           }

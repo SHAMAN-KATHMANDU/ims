@@ -216,7 +216,8 @@ export function useDeleteProduct() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => deleteProduct(id),
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      deleteProduct(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: productKeys.all });
       queryClient.refetchQueries({ queryKey: productKeys.all });
@@ -456,8 +457,15 @@ export function useDeleteSubcategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: ({ categoryId, name }: { categoryId: string; name: string }) =>
-      deleteSubcategory(categoryId, name),
+    mutationFn: ({
+      categoryId,
+      name,
+      reason,
+    }: {
+      categoryId: string;
+      name: string;
+      reason?: string;
+    }) => deleteSubcategory(categoryId, name, reason),
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: categoryKeys.detail(`${variables.categoryId}-subcategories`),
@@ -497,7 +505,8 @@ export function useDeleteCategory() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (id: string) => deleteCategory(id),
+    mutationFn: ({ id, reason }: { id: string; reason?: string }) =>
+      deleteCategory(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
     },

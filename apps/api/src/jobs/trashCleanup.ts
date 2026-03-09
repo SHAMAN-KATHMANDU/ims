@@ -26,13 +26,13 @@ const TRASHED_MODELS = [
   "pipeline",
 ] as const;
 
-function getCutoffDate(): Date {
+export function getCutoffDate(): Date {
   const d = new Date();
   d.setDate(d.getDate() - TRASH_RETENTION_DAYS);
   return d;
 }
 
-async function runTrashCleanup(): Promise<void> {
+export async function runTrashCleanup(): Promise<void> {
   const cutoff = getCutoffDate();
   logger.log(
     `[TrashCleanup] Running cleanup for items deleted before ${cutoff.toISOString()}`,

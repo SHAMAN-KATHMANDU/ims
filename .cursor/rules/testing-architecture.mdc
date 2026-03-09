@@ -1,0 +1,117 @@
+---
+description: Production-grade testing architecture — unit, integration, security, concurrency, E2E. Apply when writing or modifying tests.
+globs:
+  - "apps/api/**/*.test.ts"
+  - "apps/api/tests/**/*.ts"
+  - "apps/web/**/*.test.{ts,tsx}"
+  - "apps/web/e2e/**/*.spec.ts"
+alwaysApply: false
+---
+
+# Testing Architecture
+
+This project follows a production-grade testing pyramid. Every new controller, service, repository, or schema must have corresponding tests. Critical flows must have integration, security, and concurrency coverage.
+
+## Test Pyramid
+
+```
+E2E (Playwright)     ← Critical user flows: login, sale, trash
+Integration (API)    ← Supertest + DB: auth, sale, trash, plan limits
+Unit                 ← Controllers, services, repositories, schemas
+```
+
+## Test Locations
+
+| Type | Location |
+|------|----------|
+| **Unit (API)** | Co-located: `apps/api/src/modules/<name>/*.test.ts` |
+| **Unit (Web)** | Co-located: `apps/web/features/<name>/**/*.test.{ts,tsx}` |
+| **Integration** | `apps/api/tests/integration/api/*.integration.test.ts` |
+| **DB / Tenant** | `apps/api/tests/integration/db/*.test.ts` |
+| **Security** | `apps/api/tests/security/*.test.ts` |
+| **Concurrency** | `apps/api/tests/concurrency/*.test.ts` |
+| **Failure** | `apps/api/tests/failure/*.test.ts` |
+| **Jobs** | `apps/api/tests/jobs/*.test.ts` |
+| **Property** | `apps/api/tests/property/*.test.ts` |
+| **E2E** | `apps/web/e2e/*.spec.ts` |
+
+## File Naming
+
+| Convention | Example |
+|------------|---------|
+| Unit | `*.test.ts`, `*.test.tsx` |
+| Integration | `*.integration.test.ts` |
+| E2E | `*.spec.ts` |
+
+## Required Tests Per Module (API)
+
+- **Controller:** `*.controller.test.ts` — happy path, validation errors, not-found, unexpected errors (`sendControllerError`)
+- **Schema:** `*.schema.test.ts` — valid input, invalid input, edge cases, normalization
+- **Service:** `*.service.test.ts` — business logic, error handling (critical modules: auth, sale, inventory, platform)
+- **Repository:** `*.repository.test.ts` — Prisma calls, transaction behavior (critical: inventory, transfer, trash, sale)
+
+## Controller Test Pattern
+
+```typescript
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Request, Response } from "express";
+import { mockRes, makeReq } from "@tests/helpers/controller";
+
+vi.mock("./service", () => ({ default: { create: vi.fn(), ... } }));
+vi.mock("@/utils/controllerError", () => ({ sendControllerError: vi.fn() }));
+
+import myController from "./my.controller";
+
+describe("MyController", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 201 with created resource on success", async () => {
+    const req = makeReq({ body: { name: "Foo" } });
+    const res = mockRes() as Response;
+    await myController.create(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("calls sendControllerError on unexpected error", async () => {
+    mockService.create.mockRejectedValue(new Error("DB down"));
+    await myController.create(req, res);
+    expect(sendControllerError).toHaveBeenCalled();
+  });
+});
+```
+
+## Repository Test Pattern
+
+Mock Prisma via `vi.mock("@/config/prisma")`. Use `$transaction` callback pattern for multi-step operations. Assert correct `where`/`data` passed to Prisma.
+
+## Required Cross-Cutting Tests
+
+- **IDOR:** User A cannot access User B's resources by changing IDs
+- **Cross-tenant:** Tenant A cannot access Tenant B's data
+- **Auth bypass:** Unauthenticated requests to protected routes return 401
+- **Concurrency:** Inventory/sale/transfer — no oversell, idempotency
+- **Trash cleanup job:** `runTrashCleanup()` deletes items older than 30 days
+
+## Quality Requirements
+
+- **Deterministic:** No time-dependent flakiness; mock dates when needed
+- **Isolated:** Each test independent; no shared mutable state; `vi.clearAllMocks()` in `beforeEach`
+- **Readable:** Clear describe/it names; one assertion focus per test where possible
+- **Maintainable:** Factories over inline data; shared helpers in `tests/helpers/`
+
+## Golden Rules
+
+1. Every new controller **must** have `*.controller.test.ts`
+2. Every new module **must** have `*.schema.test.ts`
+3. Critical flows (auth, sale, trash) **must** have integration and security tests
+4. Inventory/sale/transfer **must** have concurrency tests
+5. Use `makeReq` and `mockRes` from `@tests/helpers/controller` — never duplicate inline
+
+## Exemplars
+
+- Controller: `apps/api/src/modules/trash/trash.controller.test.ts`
+- Repository: `apps/api/src/modules/sales/sale.repository.test.ts`
+- Service: `apps/api/src/modules/trash/trash.service.test.ts`
+- Shared utils: `apps/api/src/utils/controllerError.test.ts`, `apps/api/src/shared/audit/createDeleteAuditLog.test.ts`
+- Factories: `apps/api/tests/factories/`
+- Helpers: `apps/api/tests/helpers/controller.ts`, `apps/api/tests/helpers/api.ts`, `apps/api/tests/helpers/db.ts`, `apps/api/tests/helpers/mocks.ts`

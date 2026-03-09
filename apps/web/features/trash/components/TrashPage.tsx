@@ -43,6 +43,7 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Trash2, RotateCcw } from "lucide-react";
 import { format } from "date-fns";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+import { useTenants } from "@/features/tenants/hooks/use-tenants";
 
 const ENTITY_TYPE_OPTIONS = [
   { value: "all", label: "All types" },
@@ -68,16 +69,20 @@ export function TrashPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [entityType, setEntityType] = useState<string>("all");
+  const [tenantFilter, setTenantFilter] = useState<string>("all");
   const [permanentlyDeleteTarget, setPermanentlyDeleteTarget] = useState<{
     entityType: string;
     id: string;
     name: string;
   } | null>(null);
 
+  const { data: tenants = [] } = useTenants();
+
   const { data: trashResponse, isLoading } = useTrashItems({
     page,
     limit: pageSize,
     entityType: entityType === "all" ? undefined : entityType,
+    tenantId: tenantFilter === "all" ? undefined : tenantFilter,
   });
 
   const items = trashResponse?.data ?? [];
@@ -143,8 +148,8 @@ export function TrashPage() {
         <CardHeader>
           <CardTitle>Trash</CardTitle>
           <CardDescription>
-            Deleted items are kept for 30 days, then automatically permanently
-            deleted. You can restore or permanently delete items from here.
+            Platform trash — items deleted by tenant admins. Kept for 30 days,
+            then permanently deleted. Restore or permanently delete from here.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -167,6 +172,25 @@ export function TrashPage() {
                 ))}
               </SelectContent>
             </Select>
+            <Select
+              value={tenantFilter}
+              onValueChange={(v) => {
+                setTenantFilter(v);
+                setPage(DEFAULT_PAGE);
+              }}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filter by tenant" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All tenants</SelectItem>
+                {tenants.map((t: { id: string; name: string }) => (
+                  <SelectItem key={t.id} value={t.id}>
+                    {t.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {isLoading ? (
@@ -185,7 +209,10 @@ export function TrashPage() {
                   <TableRow>
                     <TableHead>Type</TableHead>
                     <TableHead>Name</TableHead>
+                    <TableHead>Tenant</TableHead>
+                    <TableHead>Deleted by</TableHead>
                     <TableHead>Deleted</TableHead>
+                    <TableHead>Reason</TableHead>
                     <TableHead className="w-[140px] text-right">
                       Actions
                     </TableHead>
@@ -199,12 +226,24 @@ export function TrashPage() {
                       </TableCell>
                       <TableCell>{item.name}</TableCell>
                       <TableCell className="text-muted-foreground">
+                        {item.tenantName || item.tenantId || "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {item.deletedBy ?? "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
                         {item.deletedAt
                           ? format(
                               new Date(item.deletedAt),
                               "MMM d, yyyy HH:mm",
                             )
                           : "—"}
+                      </TableCell>
+                      <TableCell
+                        className="text-muted-foreground max-w-[200px] truncate"
+                        title={item.deleteReason ?? undefined}
+                      >
+                        {item.deleteReason ?? "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

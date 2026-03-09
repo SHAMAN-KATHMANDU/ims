@@ -17,8 +17,10 @@ export async function getTrashItems(
     if (params?.limit) searchParams.set("limit", String(params.limit));
     if (params?.entityType) searchParams.set("entityType", params.entityType);
 
+    if (params?.tenantId) searchParams.set("tenantId", params.tenantId);
+
     const query = searchParams.toString();
-    const url = query ? `/trash?${query}` : "/trash";
+    const url = query ? `/platform/trash?${query}` : "/platform/trash";
     const { data } = await api.get<TrashListResponse>(url);
     return data;
   } catch (error) {
@@ -32,7 +34,7 @@ export async function restoreTrashItem(
   id: string,
 ): Promise<void> {
   try {
-    await api.post(`/trash/${entityType.toLowerCase()}/${id}/restore`);
+    await api.post(`/platform/trash/${entityType.toLowerCase()}/${id}/restore`);
   } catch (error) {
     handleApiError(error, `restore ${entityType}`);
     throw error;
@@ -44,7 +46,7 @@ export async function permanentlyDeleteTrashItem(
   id: string,
 ): Promise<void> {
   try {
-    await api.delete(`/trash/${entityType.toLowerCase()}/${id}`);
+    await api.delete(`/platform/trash/${entityType.toLowerCase()}/${id}`);
   } catch (error) {
     handleApiError(error, `permanently delete ${entityType}`);
     throw error;

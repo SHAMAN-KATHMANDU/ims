@@ -49,4 +49,5 @@ infra/terraform.tfvars
 
 .cursor/plans/*
 apps/web/test-results/
+apps/web/playwright-report/
 scripts/docker-push-staging.sh

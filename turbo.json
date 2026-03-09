@@ -10,7 +10,8 @@
     },
     "lint": {
       "inputs": ["$TURBO_DEFAULT$"],
-      "outputs": []
+      "outputs": [],
+      "env": ["CI", "BASE_URL"]
     },
     "prisma:generate": {
       "inputs": ["$TURBO_DEFAULT$"],

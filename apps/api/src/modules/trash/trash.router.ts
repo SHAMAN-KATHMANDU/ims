@@ -5,13 +5,14 @@ import trashController from "./trash.controller";
 
 const trashRouter = Router();
 
-trashRouter.use(authorizeRoles("admin", "superAdmin"));
+/** Platform trash — platformAdmin only. No tenant trash. */
+trashRouter.use(authorizeRoles("platformAdmin"));
 
 /**
  * @swagger
- * /trash:
+ * /platform/trash:
  *   get:
- *     summary: List soft-deleted items
+ *     summary: List soft-deleted items (platform admin only)
  *     tags: [Trash]
  *     security:
  *       - bearerAuth: []
@@ -25,7 +26,11 @@ trashRouter.use(authorizeRoles("admin", "superAdmin"));
  *       - in: query
  *         name: entityType
  *         schema: { type: string }
- *         description: "Filter by entity type. Valid values: Product, Category, SubCategory, Vendor, Member, Location, PromoCode, Company, Contact, Lead, Deal, Task, Activity, Pipeline"
+ *         description: "Filter by entity type. Valid values: product, category, subcategory, vendor, member, location, promocode, company, contact, lead, deal, task, activity, pipeline"
+ *       - in: query
+ *         name: tenantId
+ *         schema: { type: string, format: uuid }
+ *         description: "Filter by tenant"
  *     responses:
  *       200:
  *         description: Trash items list
@@ -38,7 +43,7 @@ trashRouter.get("/", asyncHandler(trashController.listTrash));
 
 /**
  * @swagger
- * /trash/{entityType}/{id}/restore:
+ * /platform/trash/{entityType}/{id}/restore:
  *   post:
  *     summary: Restore soft-deleted item
  *     tags: [Trash]
@@ -64,7 +69,7 @@ trashRouter.post(
 
 /**
  * @swagger
- * /trash/{entityType}/{id}:
+ * /platform/trash/{entityType}/{id}:
  *   delete:
  *     summary: Permanently delete item from trash
  *     tags: [Trash]
