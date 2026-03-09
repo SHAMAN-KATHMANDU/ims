@@ -28,6 +28,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -45,8 +51,10 @@ import {
   useProductInsightsAnalytics,
 } from "@/features/analytics";
 import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
+import { ChartInfoButton } from "./components/ChartInfoButton";
 import { exportAnalytics } from "@/features/analytics";
 import { downloadBlobFromResponse } from "@/lib/downloadBlob";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import {
   C,
   getChartColor,
@@ -54,30 +62,12 @@ import {
   fS,
   fP,
   tooltipStyle,
+  tooltipCursor,
   axisTick,
   gridProps,
   colorToDataKey,
-  type ChartTooltipProps,
-  type ChartTooltipPayloadItem,
 } from "./reportTheme";
-
-const DarkTooltip = ({ active, payload, label }: ChartTooltipProps) => {
-  if (!active || !payload) return null;
-  return (
-    <div className="analytics-tooltip">
-      <div className="analytics-tooltip-label">{label}</div>
-      {payload.map((p: ChartTooltipPayloadItem, i: number) => (
-        <div
-          key={i}
-          className="analytics-tooltip-row"
-          data-color={colorToDataKey(p.color)}
-        >
-          {p.name}: {typeof p.value === "number" ? fN(p.value) : p.value}
-        </div>
-      ))}
-    </div>
-  );
-};
+import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
 
 const RFM_COLORS: Record<string, string> = {
   Champions: C.gongabu,
@@ -210,22 +200,30 @@ export function CustomersPromosPage() {
         <div className="min-w-0 flex-1">
           <AnalyticsFilterBar />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleExport("excel")}
-          disabled={exporting}
-        >
-          {exporting ? "..." : "Export Excel"}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleExport("csv")}
-          disabled={exporting}
-        >
-          {exporting ? "..." : "Export CSV"}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={exporting}>
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? "..." : "Download"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => handleExport("excel")}
+              disabled={exporting}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Download as Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleExport("csv")}
+              disabled={exporting}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Download as CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {!loading && custData && !custData.hasMeaningfulChurn && (
@@ -271,11 +269,14 @@ export function CustomersPromosPage() {
               <>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Card className="min-w-0">
-                    <CardHeader>
-                      <CardTitle>RFM Segmentation</CardTitle>
-                      <CardDescription>
-                        Recency × Frequency × Monetary scoring
-                      </CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle>RFM Segmentation</CardTitle>
+                        <CardDescription>
+                          Recency × Frequency × Monetary scoring
+                        </CardDescription>
+                      </div>
+                      <ChartInfoButton content="Members grouped by RFM score: Recency (last purchase), Frequency (how often they buy), Monetary (total spend). Helps target campaigns (e.g. Champions, At Risk)." />
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={250}>
@@ -287,7 +288,12 @@ export function CustomersPromosPage() {
                           <CartesianGrid {...gridProps} />
                           <XAxis dataKey="segment" tick={axisTick} />
                           <YAxis tick={axisTick} />
-                          <Tooltip content={<DarkTooltip />} />
+                          <Tooltip
+                            content={<AnalyticsChartTooltip />}
+                            wrapperStyle={tooltipStyle}
+                            contentStyle={tooltipStyle}
+                            cursor={tooltipCursor}
+                          />
                           <Bar
                             dataKey="count"
                             radius={[4, 4, 0, 0]}
@@ -309,11 +315,14 @@ export function CustomersPromosPage() {
                     </CardContent>
                   </Card>
                   <Card className="min-w-0">
-                    <CardHeader>
-                      <CardTitle>CLV Distribution</CardTitle>
-                      <CardDescription>
-                        Distribution of member lifetime values
-                      </CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle>CLV Distribution</CardTitle>
+                        <CardDescription>
+                          Distribution of member lifetime values
+                        </CardDescription>
+                      </div>
+                      <ChartInfoButton content="Number of members in each Customer Lifetime Value (CLV) range. Shows how many high-value vs low-value members you have." />
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={250}>
@@ -321,7 +330,12 @@ export function CustomersPromosPage() {
                           <CartesianGrid {...gridProps} />
                           <XAxis dataKey="range" tick={axisTick} />
                           <YAxis tick={axisTick} />
-                          <Tooltip contentStyle={tooltipStyle} />
+                          <Tooltip
+                            content={<AnalyticsChartTooltip />}
+                            wrapperStyle={tooltipStyle}
+                            contentStyle={tooltipStyle}
+                            cursor={tooltipCursor}
+                          />
                           <Bar
                             dataKey="count"
                             fill={C.teal}
@@ -336,9 +350,12 @@ export function CustomersPromosPage() {
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <Card className="min-w-0">
-                    <CardHeader>
-                      <CardTitle>Member Growth</CardTitle>
-                      <CardDescription>New members by month</CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle>Member Growth</CardTitle>
+                        <CardDescription>New members by month</CardDescription>
+                      </div>
+                      <ChartInfoButton content="Number of new members added each month. Tracks membership growth over time." />
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={200}>
@@ -360,7 +377,12 @@ export function CustomersPromosPage() {
                           <CartesianGrid {...gridProps} />
                           <XAxis dataKey="month" tick={axisTick} />
                           <YAxis tick={axisTick} />
-                          <Tooltip contentStyle={tooltipStyle} />
+                          <Tooltip
+                            content={<AnalyticsChartTooltip />}
+                            wrapperStyle={tooltipStyle}
+                            contentStyle={tooltipStyle}
+                            cursor={tooltipCursor}
+                          />
                           <Area
                             type="monotone"
                             dataKey="count"
@@ -374,11 +396,14 @@ export function CustomersPromosPage() {
                     </CardContent>
                   </Card>
                   <Card className="min-w-0">
-                    <CardHeader>
-                      <CardTitle>New vs Returning Revenue</CardTitle>
-                      <CardDescription>
-                        Revenue from new vs returning customers
-                      </CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle>New vs Returning Revenue</CardTitle>
+                        <CardDescription>
+                          Revenue from new vs returning customers
+                        </CardDescription>
+                      </div>
+                      <ChartInfoButton content="Revenue split by new customers (first purchase in period) vs returning. Shows how much comes from repeat business." />
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={200}>
@@ -386,7 +411,12 @@ export function CustomersPromosPage() {
                           <CartesianGrid {...gridProps} />
                           <XAxis dataKey="month" tick={axisTick} />
                           <YAxis tickFormatter={fS} tick={axisTick} />
-                          <Tooltip content={<DarkTooltip />} />
+                          <Tooltip
+                            content={<AnalyticsChartTooltip />}
+                            wrapperStyle={tooltipStyle}
+                            contentStyle={tooltipStyle}
+                            cursor={tooltipCursor}
+                          />
                           <Legend wrapperStyle={{ fontSize: 11 }} />
                           <Bar
                             dataKey="newRevenue"
@@ -408,8 +438,9 @@ export function CustomersPromosPage() {
                 </div>
 
                 <Card className="min-w-0">
-                  <CardHeader>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle>RFM Segment Details</CardTitle>
+                    <ChartInfoButton content="Table of each RFM segment with member count and total revenue. Use this to see value and size of each segment." />
                   </CardHeader>
                   <CardContent className="overflow-x-auto">
                     {(() => {
@@ -534,11 +565,14 @@ export function CustomersPromosPage() {
               <>
                 <div className="grid gap-4 md:grid-cols-2">
                   <Card className="min-w-0">
-                    <CardHeader>
-                      <CardTitle>ABC Classification</CardTitle>
-                      <CardDescription>
-                        A = top 80% revenue, B = next 15%, C = rest
-                      </CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle>ABC Classification</CardTitle>
+                        <CardDescription>
+                          A = top 80% revenue, B = next 15%, C = rest
+                        </CardDescription>
+                      </div>
+                      <ChartInfoButton content="Products ranked by revenue contribution: A = top 80% of revenue, B = next 15%, C = rest. Focus inventory and marketing on A items." />
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={250}>
@@ -555,7 +589,12 @@ export function CustomersPromosPage() {
                             height={60}
                           />
                           <YAxis tickFormatter={fS} tick={axisTick} />
-                          <Tooltip content={<DarkTooltip />} />
+                          <Tooltip
+                            content={<AnalyticsChartTooltip />}
+                            wrapperStyle={tooltipStyle}
+                            contentStyle={tooltipStyle}
+                            cursor={tooltipCursor}
+                          />
                           <Bar
                             dataKey="revenue"
                             radius={[4, 4, 0, 0]}
@@ -601,11 +640,14 @@ export function CustomersPromosPage() {
                     </CardContent>
                   </Card>
                   <Card className="min-w-0">
-                    <CardHeader>
-                      <CardTitle>Revenue by Category</CardTitle>
-                      <CardDescription>
-                        Revenue and margin by product category
-                      </CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle>Revenue by Category</CardTitle>
+                        <CardDescription>
+                          Revenue and margin by product category
+                        </CardDescription>
+                      </div>
+                      <ChartInfoButton content="Share of revenue and margin by product category. Shows which categories drive the most revenue and profit." />
                     </CardHeader>
                     <CardContent>
                       <ResponsiveContainer width="100%" height={250}>
@@ -631,8 +673,19 @@ export function CustomersPromosPage() {
                             ))}
                           </Pie>
                           <Tooltip
-                            formatter={(v: number) => fN(v)}
+                            content={(props) => (
+                              <AnalyticsChartTooltip
+                                {...props}
+                                formatter={(v) =>
+                                  typeof v === "number"
+                                    ? fN(v)
+                                    : String(v ?? "")
+                                }
+                              />
+                            )}
+                            wrapperStyle={tooltipStyle}
                             contentStyle={tooltipStyle}
+                            cursor={tooltipCursor}
                           />
                           <Legend wrapperStyle={{ fontSize: 11 }} />
                         </PieChart>
@@ -643,11 +696,14 @@ export function CustomersPromosPage() {
 
                 {prodData.coPurchasePairs.length > 0 && (
                   <Card className="min-w-0">
-                    <CardHeader>
-                      <CardTitle>Co-Purchase Analysis</CardTitle>
-                      <CardDescription>
-                        Products frequently bought together
-                      </CardDescription>
+                    <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                      <div>
+                        <CardTitle>Co-Purchase Analysis</CardTitle>
+                        <CardDescription>
+                          Products frequently bought together
+                        </CardDescription>
+                      </div>
+                      <ChartInfoButton content="Pairs of products often sold in the same transaction. Use this for bundling, cross-sell, or placement." />
                     </CardHeader>
                     <CardContent className="overflow-x-auto">
                       {(() => {
@@ -745,11 +801,14 @@ export function CustomersPromosPage() {
                 {data?.productPerformance &&
                   data.productPerformance.length > 0 && (
                     <Card className="min-w-0">
-                      <CardHeader>
-                        <CardTitle>Product Performance</CardTitle>
-                        <CardDescription>
-                          Revenue, quantity, and margin per product
-                        </CardDescription>
+                      <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                        <div>
+                          <CardTitle>Product Performance</CardTitle>
+                          <CardDescription>
+                            Revenue, quantity, and margin per product
+                          </CardDescription>
+                        </div>
+                        <ChartInfoButton content="Table of each product’s revenue, quantity sold, and margin in the selected period. Sorted by revenue by default." />
                       </CardHeader>
                       <CardContent className="overflow-x-auto">
                         {(() => {
@@ -860,11 +919,14 @@ export function CustomersPromosPage() {
           <TabsContent value="promos" className="space-y-6 mt-6">
             {data && (
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Promotion Effectiveness</CardTitle>
-                  <CardDescription>
-                    Active promo codes and their usage
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Promotion Effectiveness</CardTitle>
+                    <CardDescription>
+                      Active promo codes and their usage
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Each promo code’s usage count and total discount value. Shows which promotions are used most and their cost." />
                 </CardHeader>
                 <CardContent>
                   {data.promoEffectiveness.promos.length === 0 ? (

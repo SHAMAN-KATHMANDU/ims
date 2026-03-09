@@ -138,4 +138,95 @@ describe("AnalyticsController", () => {
       expect(sendControllerError).toHaveBeenCalled();
     });
   });
+
+  describe("getFinancial", () => {
+    it("returns 200 with financial data and passes tenantId to service", async () => {
+      const data = {
+        grossProfitTimeSeries: [],
+        cogsByCategory: [],
+        cogsByLocation: [],
+        marginByCategory: [],
+      };
+      mockService.getFinancial.mockResolvedValue(data);
+      const req = makeReq({ query: { dateFrom: "2024-01-01" } });
+      const res = mockRes() as Response;
+
+      await analyticsController.getFinancial(req, res);
+
+      expect(mockService.getFinancial).toHaveBeenCalledWith(
+        { dateFrom: "2024-01-01" },
+        "admin",
+        "u1",
+        "t1",
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Financial analytics fetched",
+        data,
+      });
+    });
+  });
+
+  describe("getInventoryOps", () => {
+    it("returns 200 with inventory ops data and passes tenantId to service", async () => {
+      const data = {
+        kpis: {
+          totalStockValueCost: 0,
+          totalStockValueMrp: 0,
+          lowStockCount: 0,
+          outOfStockCount: 0,
+          deadStockValue: 0,
+        },
+        heatmap: [],
+        aging: { "0-30": 0, "31-60": 0, "61-90": 0, "90+": 0 },
+        transferFunnel: {
+          PENDING: 0,
+          APPROVED: 0,
+          IN_TRANSIT: 0,
+          COMPLETED: 0,
+        },
+        avgTransferCompletionDays: 0,
+      };
+      mockService.getInventoryOps.mockResolvedValue(data);
+      const req = makeReq();
+      const res = mockRes() as Response;
+
+      await analyticsController.getInventoryOps(req, res);
+
+      expect(mockService.getInventoryOps).toHaveBeenCalledWith({}, "t1");
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Inventory ops analytics fetched",
+        data,
+      });
+    });
+  });
+
+  describe("getTrends", () => {
+    it("returns 200 with trends data and passes tenantId to service", async () => {
+      const data = {
+        monthlyTotals: [],
+        seasonalityIndex: [],
+        cohortRetention: [],
+        peakHours: [],
+      };
+      mockService.getTrends.mockResolvedValue(data);
+      const req = makeReq({ query: { dateTo: "2024-12-31" } });
+      const res = mockRes() as Response;
+
+      await analyticsController.getTrends(req, res);
+
+      expect(mockService.getTrends).toHaveBeenCalledWith(
+        { dateTo: "2024-12-31" },
+        "admin",
+        "u1",
+        "t1",
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Trends analytics fetched",
+        data,
+      });
+    });
+  });
 });
