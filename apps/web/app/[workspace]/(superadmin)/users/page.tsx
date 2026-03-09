@@ -1,6 +1,8 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { UsersPage } from "@/views/users";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { UsersPage } from "@/features/users";
+
+export const metadata = { title: "Users" };
 
 /** Users management – superAdmin only. */
 export default function UsersManagementPage() {

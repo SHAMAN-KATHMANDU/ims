@@ -3,7 +3,7 @@
 import type React from "react";
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/hooks/useAuth";
+import { useAuth } from "@/features/auth";
 import { LoadingPage } from "../layout/loading-page";
 import type { UserRole } from "@/utils/auth";
 
@@ -37,7 +37,7 @@ interface AuthGuardProps {
  * - Optionally checks roles (redirects to unauthorizedPath if not authorized)
  * - Shows loading state during hydration
  *
- * Note: Server-side protection is handled by middleware.ts
+ * Note: Server-side protection is handled by proxy.ts
  * This component handles client-side state and loading UI.
  *
  * @example
@@ -62,8 +62,8 @@ export function AuthGuard({
   const { user, isAuthenticated, isLoading, isHydrated } = useAuth();
 
   useEffect(() => {
-    // Wait for hydration
-    if (!isHydrated) return;
+    // Wait for hydration and for the auth query to finish loading
+    if (!isHydrated || isLoading) return;
 
     // Not authenticated - redirect to login (slug-based path when in tenant URL)
     if (!isAuthenticated) {
@@ -78,6 +78,7 @@ export function AuthGuard({
   }, [
     isAuthenticated,
     isHydrated,
+    isLoading,
     user,
     roles,
     unauthorizedPath,

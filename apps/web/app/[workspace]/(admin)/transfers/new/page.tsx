@@ -1,4 +1,4 @@
-import { CreateTransferPage } from "@/views/transfers/CreateTransferPage";
+import { CreateTransferPage } from "@/features/transfers";
 
 export default function NewTransferPage() {
   return <CreateTransferPage />;

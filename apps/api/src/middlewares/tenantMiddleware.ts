@@ -6,8 +6,6 @@
  * tenant context for Prisma auto-scoping.
  *
  * Must run AFTER verifyToken middleware.
- *
- * Platform admins bypass tenant resolution — they operate cross-tenant.
  */
 
 import { Request, Response, NextFunction } from "express";
@@ -17,7 +15,6 @@ import { sendControllerError } from "@/utils/controllerError";
 
 /**
  * Resolve tenant from JWT and set up tenant context.
- * For platform admins, bypasses tenant scoping.
  */
 const resolveTenant = async (
   req: Request,
@@ -25,11 +22,6 @@ const resolveTenant = async (
   next: NextFunction,
 ) => {
   try {
-    // Platform admins bypass tenant resolution
-    if (req.user?.role === "platformAdmin") {
-      return runWithTenant("", () => next(), true /* bypassScoping */);
-    }
-
     const tenantId = req.user?.tenantId;
 
     if (!tenantId) {

@@ -1,5 +1,5 @@
 import { RoleGuard } from "@/components/auth/role-guard";
-import { NewUserPage } from "@/views/users/NewUserPage";
+import { NewUserPage } from "@/features/users";
 
 export default function NewUserRoute() {
   return (

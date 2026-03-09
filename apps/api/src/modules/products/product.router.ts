@@ -1,7 +1,9 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { validate } from "@/middlewares/validate";
+import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import productController from "@/modules/products/product.controller";
+import { CreateProductSchema, UpdateProductSchema } from "./product.schema";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const productRouter = Router();
@@ -26,22 +28,22 @@ const productRouter = Router();
  *               - categoryId
  *               - costPrice
  *               - mrp
+ *               - variations
  *             properties:
  *               imsCode:
  *                 type: string
- *                 example: IMS-PHONE-001
+ *                 maxLength: 100
+ *                 description: Product-level IMS code (barcode); unique per tenant
+ *                 example: "PRD-001"
  *               name:
  *                 type: string
  *                 example: Smartphone XYZ Pro
  *               categoryId:
  *                 type: string
- *                 example: Electronics
- *                 description: Can be UUID or category name
- *               categoryName:
- *                 type: string
- *                 example: Electronics
- *                 description: Alternative to categoryId
+ *                 format: uuid
  *               description:
+ *                 type: string
+ *               subCategory:
  *                 type: string
  *               length:
  *                 type: number
@@ -55,15 +57,57 @@ const productRouter = Router();
  *                 type: number
  *               mrp:
  *                 type: number
- *               variations:
+ *               vendorId:
+ *                 type: string
+ *                 format: uuid
+ *               defaultLocationId:
+ *                 type: string
+ *                 format: uuid
+ *               attributeTypeIds:
  *                 type: array
  *                 items:
+ *                   type: string
+ *                   format: uuid
+ *               variations:
+ *                 type: array
+ *                 minItems: 1
+ *                 items:
  *                   type: object
+ *                   required:
+ *                     - imsCode
  *                   properties:
- *                     color:
+ *                     imsCode:
  *                       type: string
+ *                       example: IMS-PHONE-001
  *                     stockQuantity:
  *                       type: number
+ *                       default: 0
+ *                     costPriceOverride:
+ *                       type: number
+ *                     mrpOverride:
+ *                       type: number
+ *                     finalSpOverride:
+ *                       type: number
+ *                     attributes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           attributeTypeId:
+ *                             type: string
+ *                             format: uuid
+ *                           attributeValueId:
+ *                             type: string
+ *                             format: uuid
+ *                     subVariants:
+ *                       type: array
+ *                       items:
+ *                         oneOf:
+ *                           - type: string
+ *                           - type: object
+ *                             properties:
+ *                               name:
+ *                                 type: string
  *                     photos:
  *                       type: array
  *                       items:
@@ -71,18 +115,33 @@ const productRouter = Router();
  *                         properties:
  *                           photoUrl:
  *                             type: string
+ *                             format: uri
  *                           isPrimary:
  *                             type: boolean
  *               discounts:
  *                 type: array
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - discountTypeId
+ *                     - discountPercentage
  *                   properties:
- *                     discountTypeName:
+ *                     discountTypeId:
  *                       type: string
- *                       example: Normal
+ *                       format: uuid
  *                     discountPercentage:
  *                       type: number
+ *                       minimum: 0
+ *                       maximum: 100
+ *                     valueType:
+ *                       type: string
+ *                       enum: [PERCENTAGE, FLAT]
+ *                     value:
+ *                       type: number
+ *                     startDate:
+ *                       type: string
+ *                     endDate:
+ *                       type: string
  *                     isActive:
  *                       type: boolean
  *     responses:
@@ -95,8 +154,9 @@ const productRouter = Router();
  */
 productRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanLimits("products"),
+  validate(CreateProductSchema),
   asyncHandler(productController.createProduct),
 );
 
@@ -111,16 +171,13 @@ productRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10, minimum: 1, maximum: 100 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -129,32 +186,78 @@ productRouter.post(
  *         description: Sort field. dateCreated = date added. Use vendorName for vendor name (relation sort).
  *       - in: query
  *         name: sortOrder
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *         description: Sort direction (ascending or descending).
+ *         schema: { type: string, enum: [asc, desc] }
+ *       - in: query
+ *         name: locationId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: subCategoryId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: subCategory
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *         description: Filter from date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *         description: Filter to date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: lowStock
+ *         schema: { type: string, enum: ['true', 'false', '1', '0'] }
+ *         description: Filter products with low stock only
  *     responses:
  *       200:
  *         description: Products retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 products:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Product'
- *                 count:
- *                   type: number
+ *               $ref: '#/components/schemas/PaginatedProductsResponse'
  */
 productRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllProducts),
+);
+
+/**
+ * @swagger
+ * /products/by-ims:
+ *   get:
+ *     summary: Get product by IMS code (barcode) for POS – returns product with variations and optional location stock
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: imsCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: locationId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional; when provided, variations include quantity at this location
+ *     responses:
+ *       200:
+ *         description: Product with variations (and location stock when locationId provided)
+ *       404:
+ *         description: Product not found
+ */
+productRouter.get(
+  "/by-ims",
+  authorizeRoles("admin", "user", "superAdmin"),
+  asyncHandler(productController.getProductByIms),
 );
 
 /**
@@ -165,13 +268,28 @@ productRouter.get(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, maximum: 100 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
  *     responses:
  *       200:
  *         description: Categories retrieved successfully
  */
 productRouter.get(
   "/categories/list",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllCategories),
 );
@@ -184,15 +302,85 @@ productRouter.get(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, maximum: 100 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
  *     responses:
  *       200:
  *         description: Discount types retrieved successfully
  */
 productRouter.get(
   "/discount-types/list",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllDiscountTypes),
+);
+
+/**
+ * @swagger
+ * /products/discount-types:
+ *   post:
+ *     summary: Create a discount type (name + optional default percentage)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [name]
+ *             properties:
+ *               name: { type: string }
+ *               description: { type: string }
+ *               defaultPercentage: { type: number, minimum: 0, maximum: 100 }
+ *     responses:
+ *       201:
+ *         description: Discount type created
+ *       409:
+ *         description: Name already exists
+ */
+productRouter.post(
+  "/discount-types",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(productController.createDiscountType),
+);
+
+/**
+ * @swagger
+ * /products/discount-types/{id}:
+ *   put:
+ *     summary: Update a discount type
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *   delete:
+ *     summary: Delete a discount type (fails if in use by products)
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ */
+productRouter.put(
+  "/discount-types/:id",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(productController.updateDiscountType),
+);
+productRouter.delete(
+  "/discount-types/:id",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(productController.deleteDiscountType),
 );
 
 /**
@@ -254,7 +442,6 @@ productRouter.get(
  */
 productRouter.get(
   "/discounts/list",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllProductDiscounts),
 );
@@ -314,7 +501,6 @@ productRouter.get(
  */
 productRouter.get(
   "/:id/discounts",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getProductDiscounts),
 );
@@ -342,7 +528,6 @@ productRouter.get(
  */
 productRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getProductById),
 );
@@ -368,6 +553,10 @@ productRouter.get(
  *           schema:
  *             type: object
  *             properties:
+ *               imsCode:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Product-level IMS code (barcode); unique per tenant
  *               name:
  *                 type: string
  *               description:
@@ -384,8 +573,8 @@ productRouter.get(
  */
 productRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  validate(UpdateProductSchema),
   asyncHandler(productController.updateProduct),
 );
 
@@ -412,9 +601,43 @@ productRouter.put(
  */
 productRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(productController.deleteProduct),
+);
+
+/**
+ * @swagger
+ * /products/{productId}/variations/{variationId}:
+ *   delete:
+ *     summary: Delete a single variation from a product
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: productId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: variationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Variation deleted successfully
+ *       400:
+ *         description: Cannot delete the last variation
+ *       404:
+ *         description: Variation not found
+ *       409:
+ *         description: Variation has dependent sales or transfers
+ */
+productRouter.delete(
+  "/:productId/variations/:variationId",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(productController.deleteVariation),
 );
 
 export default productRouter;

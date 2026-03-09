@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import saleController from "@/modules/sales/sale.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -30,18 +29,60 @@ const saleRouter = Router();
  *               memberPhone:
  *                 type: string
  *                 description: Optional phone for member sale
+ *               memberName:
+ *                 type: string
+ *                 description: Optional member name
+ *               contactId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 description: Optional CRM contact ID
+ *               isCreditSale:
+ *                 type: boolean
+ *                 description: If true, sale is recorded as credit (payments can be added later)
  *               items:
  *                 type: array
+ *                 minItems: 1
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - variationId
+ *                     - quantity
  *                   properties:
  *                     variationId:
  *                       type: string
  *                       format: uuid
+ *                     subVariationId:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                       description: Optional sub-variation (e.g. size) for this line
  *                     quantity:
  *                       type: integer
+ *                       minimum: 1
+ *                     discountId:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                       description: Optional discount type to apply to this line
+ *                     promoCode:
+ *                       type: string
+ *                       description: Optional promo code for this line
  *               notes:
  *                 type: string
+ *               payments:
+ *                 type: array
+ *                 description: Optional initial payments (for non-credit or partial payment)
+ *                 items:
+ *                   type: object
+ *                   required: [method, amount]
+ *                   properties:
+ *                     method:
+ *                       type: string
+ *                       enum: [CASH, CARD, CHEQUE, FONEPAY, QR]
+ *                     amount:
+ *                       type: number
+ *                       minimum: 0
  *     responses:
  *       201:
  *         description: Sale created successfully
@@ -50,7 +91,6 @@ const saleRouter = Router();
  */
 saleRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.createSale),
 );
@@ -64,30 +104,54 @@ saleRouter.post(
  *     security:
  *       - bearerAuth: []
  *     requestBody:
+ *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
  *             required: [locationId, items]
  *             properties:
- *               locationId: { type: string, format: uuid }
- *               memberPhone: { type: string }
- *               memberName: { type: string }
+ *               locationId:
+ *                 type: string
+ *                 format: uuid
+ *               memberPhone:
+ *                 type: string
+ *               memberName:
+ *                 type: string
+ *               contactId:
+ *                 type: string
+ *                 format: uuid
+ *                 nullable: true
+ *                 description: Optional CRM contact ID
  *               items:
  *                 type: array
+ *                 minItems: 1
  *                 items:
  *                   type: object
+ *                   required: [variationId, quantity]
  *                   properties:
- *                     variationId: { type: string, format: uuid }
- *                     quantity: { type: integer }
- *                     promoCode: { type: string }
+ *                     variationId:
+ *                       type: string
+ *                       format: uuid
+ *                     subVariationId:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                     quantity:
+ *                       type: integer
+ *                       minimum: 1
+ *                     discountId:
+ *                       type: string
+ *                       format: uuid
+ *                       nullable: true
+ *                     promoCode:
+ *                       type: string
  *     responses:
  *       200:
- *         description: Returns subtotal, discount, total
+ *         description: Returns subtotal, discount, total, promoDiscount
  */
 saleRouter.post(
   "/preview",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.previewSale),
 );
@@ -103,36 +167,13 @@ saleRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
- *       - in: query
- *         name: locationId
- *         schema:
- *           type: string
- *           format: uuid
- *       - in: query
- *         name: type
- *         schema:
- *           type: string
- *           enum: [GENERAL, MEMBER]
- *       - in: query
- *         name: startDate
- *         schema:
- *           type: string
- *           format: date
- *       - in: query
- *         name: endDate
- *         schema:
- *           type: string
- *           format: date
+ *         schema: { type: integer, default: 10, maximum: 100 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -141,17 +182,37 @@ saleRouter.post(
  *         description: Sort field. createdAt = date added, total = total cost.
  *       - in: query
  *         name: sortOrder
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *         description: Sort direction (ascending or descending).
+ *         schema: { type: string, enum: [asc, desc] }
+ *       - in: query
+ *         name: locationId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: createdById
+ *         schema: { type: string, format: uuid }
+ *         description: Filter by user who created the sale
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: isCreditSale
+ *         schema: { type: string, enum: [true, false] }
+ *         description: Filter credit sales only
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
  *     responses:
  *       200:
  *         description: Sales retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedSalesResponse'
  */
 saleRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getAllSales),
 );
@@ -179,7 +240,6 @@ saleRouter.get(
  */
 saleRouter.get(
   "/me/since-last-login",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getSalesSinceLastLogin),
 );
@@ -214,7 +274,6 @@ saleRouter.get(
  */
 saleRouter.get(
   "/analytics/summary",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getSalesSummary),
 );
@@ -244,7 +303,6 @@ saleRouter.get(
  */
 saleRouter.get(
   "/analytics/by-location",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(saleController.getSalesByLocation),
 );
@@ -265,16 +323,14 @@ saleRouter.get(
  *           format: uuid
  *       - in: query
  *         name: days
- *         schema:
- *           type: integer
- *         description: Number of days (default 30)
+ *         schema: { type: integer, default: 30, minimum: 1, maximum: 365 }
+ *         description: Number of days for the chart
  *     responses:
  *       200:
  *         description: Daily sales data retrieved successfully
  */
 saleRouter.get(
   "/analytics/daily",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getDailySales),
 );
@@ -317,9 +373,40 @@ saleRouter.get(
  */
 saleRouter.post(
   "/:id/payments",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.addPayment),
+);
+
+/**
+ * @swagger
+ * /sales/{id}/receipt:
+ *   get:
+ *     summary: Download sale receipt as PDF
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: PDF receipt
+ *         content:
+ *           application/pdf:
+ *             schema:
+ *               type: string
+ *               format: binary
+ *       404:
+ *         description: Sale not found
+ */
+saleRouter.get(
+  "/:id/receipt",
+  authorizeRoles("user", "admin", "superAdmin"),
+  asyncHandler(saleController.getReceiptPdf),
 );
 
 /**
@@ -345,7 +432,6 @@ saleRouter.post(
  */
 saleRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getSaleById),
 );

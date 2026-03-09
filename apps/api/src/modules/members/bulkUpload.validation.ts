@@ -115,10 +115,3 @@ export const excelMemberRowSchema = z.object({
 });
 
 export type ExcelMemberRow = z.infer<typeof excelMemberRowSchema>;
-
-export interface ValidationError {
-  row: number;
-  field?: string;
-  message: string;
-  value?: unknown;
-}

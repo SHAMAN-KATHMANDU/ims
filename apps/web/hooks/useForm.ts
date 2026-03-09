@@ -34,6 +34,8 @@ export interface UseFormReturn<T> {
   handleChange: (name: keyof T, value: string) => void;
   handleSubmit: (e: FormEvent<HTMLFormElement>) => Promise<void>;
   reset: () => void;
+  /** Set multiple form values at once (e.g. when loading a product for edit). Triggers re-render. */
+  setValues: (values: Partial<T> | T) => void;
 }
 
 /**
@@ -104,6 +106,10 @@ export function useForm<T extends object>({
     setIsLoading(false);
   }, [initialValues]);
 
+  const setFormValues = useCallback((next: Partial<T> | T) => {
+    setValues((prev) => ({ ...prev, ...next }) as T);
+  }, []);
+
   return {
     values,
     errors: { ...errors, _form: formError }, // Merge formError into errors object
@@ -111,5 +117,6 @@ export function useForm<T extends object>({
     handleChange,
     handleSubmit,
     reset,
+    setValues: setFormValues,
   };
 }

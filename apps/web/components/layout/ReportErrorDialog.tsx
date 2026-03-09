@@ -14,7 +14,7 @@ import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Label } from "../ui/label";
 import { Textarea } from "../ui/textarea";
-import { createErrorReport } from "@/services/errorReportService";
+import { useCreateErrorReport } from "@/features/settings/hooks/use-settings";
 import { useToast } from "@/hooks/useToast";
 import { Loader2, Bug } from "lucide-react";
 
@@ -29,10 +29,10 @@ export function ReportErrorDialog({
 }: ReportErrorDialogProps) {
   const pathname = usePathname();
   const { toast } = useToast();
+  const createReport = useCreateErrorReport();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [pageUrl, setPageUrl] = useState("");
-  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (open && typeof window !== "undefined") {
@@ -46,9 +46,8 @@ export function ReportErrorDialog({
       toast({ title: "Title is required", variant: "destructive" });
       return;
     }
-    setSubmitting(true);
     try {
-      await createErrorReport({
+      await createReport.mutateAsync({
         title: title.trim(),
         description: description.trim() || undefined,
         pageUrl: pageUrl.trim() || undefined,
@@ -63,8 +62,6 @@ export function ReportErrorDialog({
         description: error instanceof Error ? error.message : undefined,
         variant: "destructive",
       });
-    } finally {
-      setSubmitting(false);
     }
   };
 
@@ -89,7 +86,7 @@ export function ReportErrorDialog({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Checkout failed"
               maxLength={255}
-              disabled={submitting}
+              disabled={createReport.isPending}
             />
           </div>
           <div className="space-y-2">
@@ -100,7 +97,7 @@ export function ReportErrorDialog({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What were you doing when the error occurred?"
               rows={3}
-              disabled={submitting}
+              disabled={createReport.isPending}
             />
           </div>
           <div className="space-y-2">
@@ -110,7 +107,7 @@ export function ReportErrorDialog({
               value={pageUrl}
               onChange={(e) => setPageUrl(e.target.value)}
               placeholder="Auto-filled with current page"
-              disabled={submitting}
+              disabled={createReport.isPending}
             />
           </div>
           <DialogFooter>
@@ -118,12 +115,12 @@ export function ReportErrorDialog({
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={submitting}
+              disabled={createReport.isPending}
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={submitting}>
-              {submitting ? (
+            <Button type="submit" disabled={createReport.isPending}>
+              {createReport.isPending ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Submitting...

@@ -1,4 +1,6 @@
-import { CrmDashboardPage } from "@/views/crm/CrmDashboardPage";
+import { CrmDashboardPage } from "@/features/crm";
+
+export const metadata = { title: "CRM" };
 
 export default function CrmDashboard() {
   return <CrmDashboardPage />;

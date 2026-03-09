@@ -1,12 +1,33 @@
 import { z } from "zod";
+import type { BulkParseOptions } from "@/utils/bulkParse";
 
 /**
- * Zod schema for Excel/CSV row data validation
- * Maps columns to product fields
- * Users are expected to provide correct numeric values without units or percentage signs
+ * Known (predefined) Excel headers that map to specific database fields.
+ * Any header NOT in this set is treated as a dynamic product attribute.
+ */
+export const KNOWN_HEADER_FIELDS = [
+  "imsCode",
+  "location",
+  "category",
+  "subCategory",
+  "name",
+  "description",
+  "length",
+  "breadth",
+  "height",
+  "weight",
+  "vendor",
+  "quantity",
+  "costPrice",
+  "finalSP",
+] as const;
+
+/**
+ * Zod schema for the known (predefined) columns of a product bulk upload row.
+ * Dynamic attribute columns are handled separately by the parser and
+ * attached as `dynamicAttributes` on each row.
  */
 export const excelProductRowSchema = z.object({
-  // Column A: IMS CODE
   imsCode: z
     .union([z.string(), z.number()])
     .transform((val) => String(val).trim())
@@ -14,7 +35,6 @@ export const excelProductRowSchema = z.object({
       message: "IMS CODE is required",
     }),
 
-  // Column B: Location (showroom/warehouse name or ID)
   location: z
     .union([z.string(), z.number()])
     .transform((val) => String(val).trim())
@@ -22,7 +42,6 @@ export const excelProductRowSchema = z.object({
       message: "Location is required (use location name or ID)",
     }),
 
-  // Column C: Category
   category: z
     .union([z.string(), z.number()])
     .transform((val) => String(val).trim())
@@ -30,7 +49,6 @@ export const excelProductRowSchema = z.object({
       message: "Category is required",
     }),
 
-  // Column D: SUB-CATEGORY (optional)
   subCategory: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -40,7 +58,6 @@ export const excelProductRowSchema = z.object({
       return str === "" || str === "-" ? null : str;
     }),
 
-  // Column E: Name of Product
   name: z
     .union([z.string(), z.number()])
     .transform((val) => String(val).trim())
@@ -48,16 +65,7 @@ export const excelProductRowSchema = z.object({
       message: "Name of Product is required",
     }),
 
-  // Column F: Variations (Designs/Colors)
-  variation: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val).trim())
-    .refine((val) => val !== "" && val !== "-", {
-      message: "Variations (Designs/Colors) is required",
-    }),
-
-  // Column G: MATERIAL
-  material: z
+  description: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
     .transform((val) => {
@@ -66,7 +74,6 @@ export const excelProductRowSchema = z.object({
       return str === "" || str === "-" ? null : str;
     }),
 
-  // Column H: Length
   length: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -77,7 +84,6 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column I: Breadth
   breadth: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -88,7 +94,6 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column J: Height
   height: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -99,7 +104,6 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column K: Weight
   weight: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -110,7 +114,6 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? null : num;
     }),
 
-  // Column L: VENDOR
   vendor: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -120,7 +123,6 @@ export const excelProductRowSchema = z.object({
       return str === "" || str === "-" ? null : str;
     }),
 
-  // Column M: QTY
   quantity: z
     .union([z.string(), z.number(), z.null(), z.undefined()])
     .optional()
@@ -131,7 +133,6 @@ export const excelProductRowSchema = z.object({
       return isNaN(num) ? 0 : Math.floor(num);
     }),
 
-  // Column N: Cost Price
   costPrice: z
     .union([z.string(), z.number()])
     .transform((val) => {
@@ -143,7 +144,6 @@ export const excelProductRowSchema = z.object({
       message: "Cost Price must be greater than or equal to 0",
     }),
 
-  // Column O: Final SP (Selling Price / MRP)
   finalSP: z
     .union([z.string(), z.number()])
     .transform((val) => {
@@ -155,48 +155,60 @@ export const excelProductRowSchema = z.object({
       message: "Final SP must be greater than or equal to 0",
     }),
 
-  // Column P: NON MEMBER DISCOUNT
-  nonMemberDiscount: z
-    .union([z.string(), z.number(), z.null(), z.undefined()])
+  /**
+   * Dynamic attribute columns detected at parse time.
+   * Map of original header name → cell value (trimmed string).
+   * e.g. { "Color": "Red", "Size": "L", "Material": "Cotton" }
+   */
+  dynamicAttributes: z
+    .record(z.string(), z.string())
     .optional()
-    .transform((val) => {
-      if (val === null || val === undefined) return null;
-      if (typeof val === "number") return val;
-      const num = parseFloat(String(val));
-      return isNaN(num) ? null : num;
-    }),
-
-  // Column Q: MEMBER DISCOUNT
-  memberDiscount: z
-    .union([z.string(), z.number(), z.null(), z.undefined()])
-    .optional()
-    .transform((val) => {
-      if (val === null || val === undefined) return null;
-      if (typeof val === "number") return val;
-      const num = parseFloat(String(val));
-      return isNaN(num) ? null : num;
-    }),
-
-  // Column R: WHOLESALE DISCOUNT
-  wholesaleDiscount: z
-    .union([z.string(), z.number(), z.null(), z.undefined()])
-    .optional()
-    .transform((val) => {
-      if (val === null || val === undefined) return null;
-      if (typeof val === "number") return val;
-      const num = parseFloat(String(val));
-      return isNaN(num) ? null : num;
-    }),
+    .default({}),
 });
 
 export type ExcelProductRow = z.infer<typeof excelProductRowSchema>;
 
-/**
- * Validation error with row number and field details
- */
-export interface ValidationError {
-  row: number;
-  field?: string;
-  message: string;
-  value?: unknown;
+/** Field names for product bulk parse (known column mapping keys). */
+export const productBulkFields = [...KNOWN_HEADER_FIELDS] as string[];
+
+/** Header mappings for product bulk file (Excel/CSV). */
+export const productBulkHeaderMappings: Record<string, string[]> = {
+  imsCode: ["imscode", "ims_code", "ims"],
+  location: ["location", "locationname", "location_id", "locationid"],
+  category: ["category"],
+  subCategory: ["subcategory", "sub-category", "sub_category"],
+  name: ["nameofproduct", "name", "productname", "product_name"],
+  description: ["description", "desc"],
+  length: ["length"],
+  breadth: ["breadth", "bredth", "width"],
+  height: ["height"],
+  weight: ["weight"],
+  vendor: ["vendor"],
+  quantity: ["qty", "quantity"],
+  costPrice: ["costprice", "cost_price", "cost"],
+  finalSP: ["finalsp", "final_sp", "sellingprice", "mrp", "price"],
+};
+
+/** Required columns for product bulk upload. */
+export const productBulkRequiredColumns = [
+  "imsCode",
+  "location",
+  "category",
+  "name",
+  "costPrice",
+  "finalSP",
+];
+
+/** Options for parseBulkFile when parsing product bulk uploads. */
+export function getProductBulkParseOptions(): BulkParseOptions<ExcelProductRow> {
+  return {
+    headerMappings: productBulkHeaderMappings,
+    requiredColumns: productBulkRequiredColumns,
+    schema: excelProductRowSchema,
+    fields: [...productBulkFields],
+    skipExcelRows: 2,
+    collectDynamicAttributes: true,
+    missingColumnsHint:
+      "Please ensure your file has headers: IMS Code, Location, Category, Name of Product, Cost Price, Final SP. Any extra columns (e.g. Color, Size, Material) will be treated as product attributes.",
+  };
 }

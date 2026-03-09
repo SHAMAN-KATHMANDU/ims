@@ -36,6 +36,9 @@ export enum Feature {
 
   // Team management
   MULTIPLE_LOCATIONS = "MULTIPLE_LOCATIONS",
+
+  // CRM / Sales
+  SALES_PIPELINE = "SALES_PIPELINE",
 }
 
 export interface FeatureDefinition {
@@ -101,6 +104,12 @@ export const FEATURE_REGISTRY: Record<Feature, FeatureDefinition> = {
     minimumPlan: PlanTier.STARTER,
     upgradeMessage: "", // Available on all plans (with location count limits)
   },
+  [Feature.SALES_PIPELINE]: {
+    label: "Sales Pipeline",
+    description: "Pipelines and deals (kanban) for CRM",
+    minimumPlan: PlanTier.PROFESSIONAL,
+    upgradeMessage: "Upgrade to Professional to use sales pipelines and deals.",
+  },
 };
 
 /**
@@ -151,11 +160,13 @@ export interface PlanLimits {
   maxProducts: number;
   maxLocations: number;
   maxMembers: number;
+  maxCustomers: number; // -1 = unlimited (CRM contacts)
   bulkUpload: boolean;
   analytics: boolean;
   promoManagement: boolean;
   auditLogs: boolean;
   apiAccess: boolean;
+  salesPipeline: boolean;
 }
 
 /**
@@ -168,32 +179,38 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     maxProducts: 100,
     maxLocations: 2,
     maxMembers: 500,
+    maxCustomers: 100,
     bulkUpload: false,
     analytics: false,
     promoManagement: false,
     auditLogs: false,
     apiAccess: false,
+    salesPipeline: false,
   },
   [PlanTier.PROFESSIONAL]: {
     maxUsers: 10,
     maxProducts: 1000,
     maxLocations: 10,
     maxMembers: 5000,
+    maxCustomers: 1000,
     bulkUpload: true,
     analytics: true,
     promoManagement: true,
     auditLogs: false,
     apiAccess: false,
+    salesPipeline: true,
   },
   [PlanTier.ENTERPRISE]: {
     maxUsers: -1,
     maxProducts: -1,
     maxLocations: -1,
     maxMembers: -1,
+    maxCustomers: -1,
     bulkUpload: true,
     analytics: true,
     promoManagement: true,
     auditLogs: true,
     apiAccess: true,
+    salesPipeline: true,
   },
 };

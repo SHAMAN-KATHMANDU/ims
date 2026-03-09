@@ -1,17 +1,23 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { FinancialPage } from "@/views/analytics/FinancialPage";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { FeaturePageGuard } from "@/features/flags";
+import { FinancialPage } from "@/features/analytics";
+import { Feature } from "@repo/shared";
+
+export const metadata = { title: "Financial Analytics" };
 
 /**
  * Financial Analytics: gross profit, COGS breakdown, margin by category.
  */
 export default function ReportsAnalyticsFinancialPage() {
   return (
-    <AuthGuard
-      roles={["admin", "superAdmin"]}
-      unauthorizedPath={WORKSPACE_ROOT}
-    >
-      <FinancialPage />
-    </AuthGuard>
+    <FeaturePageGuard feature={Feature.ANALYTICS_ADVANCED}>
+      <AuthGuard
+        roles={["admin", "superAdmin"]}
+        unauthorizedPath={WORKSPACE_ROOT}
+      >
+        <FinancialPage />
+      </AuthGuard>
+    </FeaturePageGuard>
   );
 }

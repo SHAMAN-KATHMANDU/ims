@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import { type ReactNode } from "react";
+import { usePathname } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -45,13 +48,17 @@ export function ErrorScreen({
 }
 
 export function ErrorPage() {
+  const pathname = usePathname();
+  const slug = pathname?.split("/")[1];
+  const loginHref = slug ? `/${slug}/login` : "/";
+
   return (
     <ErrorScreen
       title="Unauthorized Access"
       description="You don't have permission to access this page. Please log in to continue."
       actions={
         <Button asChild className="w-full">
-          <Link href="/login">Go to Login</Link>
+          <Link href={loginHref}>Go to Login</Link>
         </Button>
       }
     />

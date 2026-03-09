@@ -6,6 +6,7 @@
  */
 
 import { formatCurrency } from "@/lib/format";
+import { heatmapIntensity } from "@/lib/chart-utils";
 
 export interface HeatmapRow {
   category: string;
@@ -27,13 +28,6 @@ function getLocationKeys(rows: HeatmapRow[]): string[] {
     }
   }
   return [...keys];
-}
-
-function getColorForValue(value: number, max: number): string {
-  if (max <= 0) return "hsl(var(--muted))";
-  const pct = value / max;
-  const hue = 120 - pct * 120;
-  return `hsl(${hue}, 70%, 45%)`;
 }
 
 export function HeatmapTable({
@@ -78,12 +72,12 @@ export function HeatmapTable({
               <td className="p-2 font-medium">{row.category}</td>
               {locationKeys.map((loc) => {
                 const val = Number(row[loc] ?? 0);
-                const color = getColorForValue(val, maxVal);
+                const intensity = heatmapIntensity(val, maxVal);
                 return (
                   <td
                     key={loc}
-                    className="text-right p-2"
-                    style={{ backgroundColor: color, color: "#fff" }}
+                    className="text-right p-2 heatmap-cell"
+                    data-intensity={intensity}
                   >
                     {formatValue(val)}
                   </td>

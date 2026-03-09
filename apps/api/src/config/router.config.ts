@@ -1,10 +1,12 @@
 /**
  * Route registration is the single source of truth; do not maintain a separate list of paths here.
  *
- * Middleware chain for tenant-scoped routes:
+ * Middleware chain (applied globally to all routes below /auth):
  *   verifyToken → resolveTenant → checkSubscription → [route handler]
  *
- * Platform admin routes have their own auth chain (no tenant scoping).
+ * Only /auth routes are exempt (they manage their own auth).
+ * Platform admin routes go through the same chain but checkSubscription
+ * bypasses enforcement for the platformAdmin role.
  */
 
 import { Request, Response, Router } from "express";
@@ -15,6 +17,7 @@ import authRouter from "@/modules/auth/auth.router";
 import userRouter from "@/modules/users/user.router";
 import productRouter from "@/modules/products/product.router";
 import categoryRouter from "@/modules/categories/category.router";
+import attributeTypeRouter from "@/modules/attribute-types/attribute-type.router";
 import vendorRouter from "@/modules/vendors/vendor.router";
 import locationRouter from "@/modules/locations/location.router";
 import inventoryRouter from "@/modules/inventory/inventory.router";
@@ -38,7 +41,7 @@ import taskRouter from "@/modules/tasks/task.router";
 import activityRouter from "@/modules/activities/activity.router";
 import notificationRouter from "@/modules/notifications/notification.router";
 import crmRouter from "@/modules/crm/crm.router";
-import trashRouter from "@/modules/trash/trash.router";
+import crmSettingsRouter from "@/modules/crm-settings/crm-settings.router";
 
 const router = Router();
 
@@ -55,19 +58,16 @@ router.get("/", (req: Request, res: Response) => {
 router.use("/auth", authRouter);
 
 // ============================================
-// Platform admin routes (platformAdmin role only, no tenant scoping)
-// ============================================
-router.use("/platform", platformRouter);
-
-// ============================================
 // Tenant-scoped routes
 // All routes below require: auth → tenant resolution → subscription check
 // ============================================
 router.use(verifyToken, resolveTenant, checkSubscription);
 
+router.use("/platform", platformRouter);
 router.use("/users", userRouter);
 router.use("/products", productRouter);
 router.use("/categories", categoryRouter);
+router.use("/attribute-types", attributeTypeRouter);
 router.use("/vendors", vendorRouter);
 router.use("/locations", locationRouter);
 router.use("/inventory", inventoryRouter);
@@ -89,6 +89,6 @@ router.use("/tasks", taskRouter);
 router.use("/activities", activityRouter);
 router.use("/notifications", notificationRouter);
 router.use("/crm", crmRouter);
-router.use("/trash", trashRouter);
+router.use("/crm-settings", crmSettingsRouter);
 
 export default router;

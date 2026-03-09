@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import categoryController from "@/modules/categories/category.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -52,7 +51,6 @@ const categoryRouter = Router();
  */
 categoryRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(categoryController.createCategory),
 );
@@ -71,20 +69,10 @@ categoryRouter.post(
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 categories:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Category'
- *                 count:
- *                   type: number
+ *               $ref: '#/components/schemas/PaginatedCategoriesResponse'
  */
 categoryRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(categoryController.getAllCategories),
 );
@@ -113,7 +101,6 @@ categoryRouter.get(
  */
 categoryRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(categoryController.getCategoryById),
 );
@@ -121,7 +108,6 @@ categoryRouter.get(
 // Get distinct subcategories for a category
 categoryRouter.get(
   "/:id/subcategories",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(categoryController.getCategorySubcategories),
 );
@@ -129,7 +115,6 @@ categoryRouter.get(
 // Create subcategory for a category
 categoryRouter.post(
   "/:id/subcategories",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(categoryController.createSubcategory),
 );
@@ -137,7 +122,6 @@ categoryRouter.post(
 // Delete subcategory for a category
 categoryRouter.delete(
   "/:id/subcategories",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(categoryController.deleteSubcategory),
 );
@@ -179,7 +163,6 @@ categoryRouter.delete(
  */
 categoryRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(categoryController.updateCategory),
 );
@@ -209,7 +192,6 @@ categoryRouter.put(
  */
 categoryRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(categoryController.deleteCategory),
 );

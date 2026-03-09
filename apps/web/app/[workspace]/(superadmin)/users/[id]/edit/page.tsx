@@ -1,5 +1,5 @@
 import { RoleGuard } from "@/components/auth/role-guard";
-import { EditUserPage } from "@/views/users/EditUserPage";
+import { EditUserPage } from "@/features/users";
 
 export default function EditUserRoute() {
   return (

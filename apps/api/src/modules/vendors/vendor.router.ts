@@ -1,17 +1,9 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import vendorController from "@/modules/vendors/vendor.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const vendorRouter = Router();
-
-/**
- * @swagger
- * tags:
- *   name: Vendors
- *   description: Vendor management
- */
 
 /**
  * @swagger
@@ -52,7 +44,6 @@ const vendorRouter = Router();
  */
 vendorRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(vendorController.createVendor),
 );
@@ -68,23 +59,23 @@ vendorRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Vendors retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedVendorsResponse'
  */
 vendorRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(vendorController.getAllVendors),
 );
@@ -106,25 +97,25 @@ vendorRouter.get(
  *           format: uuid
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Vendor products retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedProductsResponse'
  *       404:
  *         description: Vendor not found
  */
 vendorRouter.get(
   "/:id/products",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(vendorController.getVendorProducts),
 );
@@ -152,7 +143,6 @@ vendorRouter.get(
  */
 vendorRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(vendorController.getVendorById),
 );
@@ -198,7 +188,6 @@ vendorRouter.get(
  */
 vendorRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(vendorController.updateVendor),
 );
@@ -228,7 +217,6 @@ vendorRouter.put(
  */
 vendorRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(vendorController.deleteVendor),
 );

@@ -1,17 +1,10 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import promoController from "@/modules/promos/promo.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const promoRouter = Router();
-
-/**
- * @swagger
- * tags:
- *   name: Promos
- *   description: Promo code management
- */
 
 /**
  * @swagger
@@ -73,8 +66,8 @@ const promoRouter = Router();
  */
 promoRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.createPromo),
 );
 
@@ -89,27 +82,27 @@ promoRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: isActive
- *         schema:
- *           type: boolean
+ *         schema: { type: boolean }
+ *         description: Filter by active status (true/false)
  *     responses:
  *       200:
  *         description: Promo codes retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedPromosResponse'
  */
 promoRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(promoController.getAllPromos),
 );
@@ -137,7 +130,6 @@ promoRouter.get(
  */
 promoRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(promoController.getPromoById),
 );
@@ -203,8 +195,8 @@ promoRouter.get(
  */
 promoRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.updatePromo),
 );
 
@@ -231,8 +223,8 @@ promoRouter.put(
  */
 promoRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanFeature("promoManagement"),
   asyncHandler(promoController.deletePromo),
 );
 

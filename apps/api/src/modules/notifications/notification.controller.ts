@@ -1,104 +1,80 @@
 import { Request, Response } from "express";
-import prisma from "@/config/prisma";
+import { NotificationListQuerySchema } from "./notification.schema";
+import notificationService from "./notification.service";
 import { sendControllerError } from "@/utils/controllerError";
+import type { AppError } from "@/middlewares/errorHandler";
 
-function getUserId(req: Request): string | null {
-  return (req as any).user?.id ?? null;
-}
+const handleAppError = (res: Response, error: unknown): Response | null => {
+  if ((error as AppError).statusCode) {
+    return res
+      .status((error as AppError).statusCode!)
+      .json({ message: (error as AppError).message });
+  }
+  return null;
+};
 
 class NotificationController {
-  async getAll(req: Request, res: Response) {
+  getAll = async (req: Request, res: Response) => {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
-
-      const limit = Math.min(
-        100,
-        Math.max(1, parseInt(req.query.limit as string) || 20),
-      );
-      const unreadOnly = req.query.unreadOnly === "true";
-
-      const where: { userId: string; readAt?: null } = { userId };
-      if (unreadOnly) {
-        where.readAt = null;
-      }
-
-      const notifications = await prisma.notification.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        take: limit,
-      });
-
-      res.status(200).json({ message: "OK", notifications });
+      const userId = req.user!.id;
+      const query = NotificationListQuerySchema.parse(req.query);
+      const notifications = await notificationService.getAll(userId, query);
+      return res.status(200).json({ message: "OK", notifications });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get notifications error");
     }
-  }
+  };
 
-  async getUnreadCount(req: Request, res: Response) {
+  getUnreadCount = async (req: Request, res: Response) => {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
-
-      const count = await prisma.notification.count({
-        where: { userId, readAt: null },
-      });
-
-      res.status(200).json({ message: "OK", count });
+      const userId = req.user!.id;
+      const count = await notificationService.getUnreadCount(userId);
+      return res.status(200).json({ message: "OK", count });
     } catch (error: unknown) {
-      console.error("Get unread count error:", error);
-      res.status(500).json({
-        message: "Error fetching unread count",
-        error: error instanceof Error ? error.message : String(error),
-      });
+      return sendControllerError(req, res, error, "Get unread count error");
     }
-  }
+  };
 
-  async markRead(req: Request, res: Response) {
+  markRead = async (req: Request, res: Response) => {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
-
+      const userId = req.user!.id;
       const { id } = req.params;
-
-      const notification = await prisma.notification.findFirst({
-        where: { id, userId },
-      });
-
-      if (!notification) {
-        return res.status(404).json({ message: "Notification not found" });
-      }
-
-      await prisma.notification.update({
-        where: { id },
-        data: { readAt: new Date() },
-      });
-
-      res.status(200).json({ message: "Notification marked as read" });
+      await notificationService.markRead(userId, id);
+      return res.status(200).json({ message: "Notification marked as read" });
     } catch (error: unknown) {
-      return sendControllerError(req, res, error, "Mark read error");
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Mark read error")
+      );
     }
-  }
+  };
 
-  async markAllRead(req: Request, res: Response) {
+  markAllRead = async (req: Request, res: Response) => {
     try {
-      const userId = getUserId(req);
-      if (!userId)
-        return res.status(401).json({ message: "Not authenticated" });
-
-      await prisma.notification.updateMany({
-        where: { userId, readAt: null },
-        data: { readAt: new Date() },
-      });
-
-      res.status(200).json({ message: "All notifications marked as read" });
+      const userId = req.user!.id;
+      await notificationService.markAllRead(userId);
+      return res
+        .status(200)
+        .json({ message: "All notifications marked as read" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Mark all read error");
     }
-  }
+  };
+
+  deleteAll = async (req: Request, res: Response) => {
+    try {
+      const userId = req.user!.id;
+      await notificationService.deleteAll(userId);
+      return res.status(200).json({ message: "All notifications cleared" });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Delete all notifications error",
+      );
+    }
+  };
 }
 
 export default new NotificationController();

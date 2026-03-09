@@ -14,6 +14,10 @@ out
 .env
 .env.local
 .env.*.local
+!.env.example
+!*.env.example
+# Exception: web build needs apps/web/.env for NEXT_PUBLIC_* at build time
+!apps/web/.env
 
 # Logs
 *.log

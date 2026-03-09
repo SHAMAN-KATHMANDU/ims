@@ -1,6 +1,6 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import locationController from "@/modules/locations/location.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -43,8 +43,8 @@ const locationRouter = Router();
  */
 locationRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
+  enforcePlanLimits("locations"),
   asyncHandler(locationController.createLocation),
 );
 
@@ -70,21 +70,22 @@ locationRouter.post(
  *         description: Filter only active locations
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *         description: Page number
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10 }
  *         description: Items per page
  *     responses:
  *       200:
  *         description: Locations retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedLocationsResponse'
  */
 locationRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(locationController.getAllLocations),
 );
@@ -112,7 +113,6 @@ locationRouter.get(
  */
 locationRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(locationController.getLocationById),
 );
@@ -144,15 +144,24 @@ locationRouter.get(
  *         name: search
  *         schema:
  *           type: string
+ *       - in: query
+ *         name: categoryId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Filter by category
  *     responses:
  *       200:
  *         description: Location inventory retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedInventoryResponse'
  *       404:
  *         description: Location not found
  */
 locationRouter.get(
   "/:id/inventory",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(locationController.getLocationInventory),
 );
@@ -195,7 +204,6 @@ locationRouter.get(
  */
 locationRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(locationController.updateLocation),
 );
@@ -225,7 +233,6 @@ locationRouter.put(
  */
 locationRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(locationController.deleteLocation),
 );

@@ -21,8 +21,9 @@ COPY packages/typescript-config/package.json ./packages/typescript-config/
 COPY packages/shared/package.json ./packages/shared/
 
 # Install dependencies (frozen lockfile for reproducibility)
-# --ignore-scripts skips prepare script (husky) which isn't needed in Docker
-RUN pnpm install --frozen-lockfile --ignore-scripts
+# Note: --ignore-scripts is intentionally omitted so pnpm properly links
+# workspace packages (e.g. next binary in apps/web/node_modules)
+RUN pnpm install --frozen-lockfile
 
 # ============================================
 # Stage 2: Builder
@@ -34,17 +35,21 @@ WORKDIR /app
 # Enable pnpm
 RUN corepack enable && corepack prepare pnpm@9.0.0 --activate
 
-# Copy dependencies from deps stage
+# Copy source code first, then overlay node_modules from deps stage so the
+# COPY . . (which excludes node_modules via .dockerignore) does not wipe them.
+COPY . .
 COPY --from=deps /app/node_modules ./node_modules
 COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-COPY --from=deps /app/packages ./packages
-
-# Copy source code
-COPY . .
+COPY --from=deps /app/packages/shared/node_modules ./packages/shared/node_modules
 
 # Set environment variables for build
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
+
+# Accept NEXT_PUBLIC_API_URL as a build arg so it gets baked into the JS bundle.
+# Pass via: docker build --build-arg NEXT_PUBLIC_API_URL=https://...
+ARG NEXT_PUBLIC_API_URL
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 
 # Build the shared package first (web depends on it)
 RUN pnpm --filter @repo/shared build

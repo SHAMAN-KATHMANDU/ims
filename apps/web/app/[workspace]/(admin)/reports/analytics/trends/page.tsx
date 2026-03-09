@@ -1,17 +1,23 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { TrendsPage } from "@/views/analytics/TrendsPage";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { FeaturePageGuard } from "@/features/flags";
+import { TrendsPage } from "@/features/analytics";
+import { Feature } from "@repo/shared";
+
+export const metadata = { title: "Trends & Patterns Analytics" };
 
 /**
  * Trends & Patterns Analytics: MoM growth, seasonality, cohort retention, peak hours.
  */
 export default function ReportsAnalyticsTrendsPage() {
   return (
-    <AuthGuard
-      roles={["admin", "superAdmin"]}
-      unauthorizedPath={WORKSPACE_ROOT}
-    >
-      <TrendsPage />
-    </AuthGuard>
+    <FeaturePageGuard feature={Feature.ANALYTICS_ADVANCED}>
+      <AuthGuard
+        roles={["admin", "superAdmin"]}
+        unauthorizedPath={WORKSPACE_ROOT}
+      >
+        <TrendsPage />
+      </AuthGuard>
+    </FeaturePageGuard>
   );
 }

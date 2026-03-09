@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import Link from "next/link";
-import { getWorkspaceRoot } from "@/config/routes";
+import { getWorkspaceRoot } from "@/constants/routes";
 import { Button } from "../ui/button";
 import {
   DropdownMenu,
@@ -14,28 +13,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import {
-  Moon,
-  Sun,
-  LogOut,
-  Menu,
-  Settings,
-  Bug,
-  Building2,
-  Bell,
-} from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { LogOut, Menu, Settings, Bug, Building2, Bell } from "lucide-react";
+import { useAuth } from "@/features/auth";
 import { useToast } from "@/hooks/useToast";
 import { ReportErrorDialog } from "./ReportErrorDialog";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   useNotifications,
   useUnreadNotificationCount,
-} from "@/hooks/useNotifications";
+  useDeleteAllNotifications,
+} from "@/features/crm";
+import { Trash2 } from "lucide-react";
 
 function NotificationsBell({ basePath }: { basePath: string }) {
   const { data: countData } = useUnreadNotificationCount();
   const { data: notifData } = useNotifications({ limit: 5, unreadOnly: false });
+  const deleteAll = useDeleteAllNotifications();
   const unreadCount = countData?.count ?? 0;
   const notifications = notifData?.notifications ?? [];
 
@@ -57,13 +51,27 @@ function NotificationsBell({ basePath }: { basePath: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-80">
-        <div className="flex items-center justify-between px-2 py-1.5">
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5">
           <span className="font-semibold">Notifications</span>
-          <Link href={`${basePath}/crm/notifications`}>
-            <Button variant="ghost" size="sm" className="h-auto py-1 text-xs">
-              View all
-            </Button>
-          </Link>
+          <div className="flex items-center gap-1">
+            {notifications.length > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-auto py-1 text-xs"
+                onClick={() => deleteAll.mutate()}
+                disabled={deleteAll.isPending}
+              >
+                <Trash2 className="h-3.5 w-3.5 mr-1" />
+                Clear all
+              </Button>
+            )}
+            <Link href={`${basePath}/crm/notifications`}>
+              <Button variant="ghost" size="sm" className="h-auto py-1 text-xs">
+                View all
+              </Button>
+            </Link>
+          </div>
         </div>
         <DropdownMenuSeparator />
         {notifications.length === 0 ? (
@@ -101,7 +109,6 @@ interface TopBarProps {
 
 export function TopBar({ onMenuClick }: TopBarProps) {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
   const { user, tenant, logout, isLoggingOut } = useAuth();
   const { toast } = useToast();
   const isMobile = useIsMobile();
@@ -150,16 +157,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
         {user?.role !== "platformAdmin" && (
           <NotificationsBell basePath={basePath} />
         )}
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="h-9 w-9 md:h-10 md:w-10 transition-colors hover:bg-accent"
-        >
-          <Sun className="h-4 w-4 md:h-5 md:w-5 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
-          <Moon className="absolute h-4 w-4 md:h-5 md:w-5 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
-          <span className="sr-only">Toggle theme</span>
-        </Button>
+        <ThemeToggle />
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button

@@ -1,142 +1,698 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import analyticsController from "@/modules/analytics/analytics.controller";
 import { analyticsCacheMiddleware } from "@/modules/analytics/analyticsCacheMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const analyticsRouter = Router();
 
-analyticsRouter.use(verifyToken);
+analyticsRouter.use(enforcePlanFeature("analytics"));
 
-// Overview (admin and superAdmin only)
+/**
+ * @swagger
+ * /analytics/overview:
+ *   get:
+ *     summary: Get analytics overview
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *         description: Filter from date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *         description: Filter to date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Overview metrics
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
+ */
 analyticsRouter.get(
   "/overview",
   authorizeRoles("admin", "superAdmin"),
-  asyncHandler(analyticsController.getOverview.bind(analyticsController)),
+  asyncHandler(analyticsController.getOverview),
 );
 
-// Sales & Revenue analytics: user sees own data only (enforced in controller via filter/role)
+/**
+ * @swagger
+ * /analytics/sales-revenue:
+ *   get:
+ *     summary: Sales and revenue analytics
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Sales revenue metrics
+ */
 analyticsRouter.get(
   "/sales-revenue",
   authorizeRoles("user", "admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(analyticsController.getSalesRevenue.bind(analyticsController)),
+  asyncHandler(analyticsController.getSalesRevenue),
 );
 
-// Inventory & Operations: admin/superAdmin only (workspace-level data)
+/**
+ * @swagger
+ * /analytics/inventory-ops:
+ *   get:
+ *     summary: Inventory and operations analytics
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Inventory ops metrics
+ */
 analyticsRouter.get(
   "/inventory-ops",
   authorizeRoles("admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(analyticsController.getInventoryOps.bind(analyticsController)),
+  asyncHandler(analyticsController.getInventoryOps),
 );
 
-// Customers, Products & Promotions: admin/superAdmin only (user sees own sales in composition)
+/**
+ * @swagger
+ * /analytics/customers-promos:
+ *   get:
+ *     summary: Customers and promos analytics
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Customers and promos metrics
+ */
 analyticsRouter.get(
   "/customers-promos",
   authorizeRoles("admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(
-    analyticsController.getCustomersPromos.bind(analyticsController),
-  ),
+  asyncHandler(analyticsController.getCustomersPromos),
 );
 
-// Discount analytics: user sees own only (backend enforces)
+/**
+ * @swagger
+ * /analytics/discount:
+ *   get:
+ *     summary: Discount analytics
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Discount metrics
+ */
 analyticsRouter.get(
   "/discount",
   authorizeRoles("user", "admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(
-    analyticsController.getDiscountAnalytics.bind(analyticsController),
-  ),
+  asyncHandler(analyticsController.getDiscountAnalytics),
 );
 
-// Payment method trends over time
+/**
+ * @swagger
+ * /analytics/payment-trends:
+ *   get:
+ *     summary: Payment method trends
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Payment trends
+ */
 analyticsRouter.get(
   "/payment-trends",
   authorizeRoles("user", "admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(analyticsController.getPaymentTrends.bind(analyticsController)),
+  asyncHandler(analyticsController.getPaymentTrends),
 );
 
-// Location comparison
+/**
+ * @swagger
+ * /analytics/location-comparison:
+ *   get:
+ *     summary: Location comparison
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Location comparison metrics
+ */
 analyticsRouter.get(
   "/location-comparison",
   authorizeRoles("user", "admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(
-    analyticsController.getLocationComparison.bind(analyticsController),
-  ),
+  asyncHandler(analyticsController.getLocationComparison),
 );
 
-// Member cohort (new vs repeat)
+/**
+ * @swagger
+ * /analytics/member-cohort:
+ *   get:
+ *     summary: Member cohort (new vs repeat)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Member cohort metrics
+ */
 analyticsRouter.get(
   "/member-cohort",
   authorizeRoles("admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(analyticsController.getMemberCohort.bind(analyticsController)),
+  asyncHandler(analyticsController.getMemberCohort),
 );
 
-// Sales Extended (growth, basket size, peak hours, gross profit)
+/**
+ * @swagger
+ * /analytics/sales-extended:
+ *   get:
+ *     summary: Sales extended (growth, basket size, peak hours)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Extended sales metrics
+ */
 analyticsRouter.get(
   "/sales-extended",
   authorizeRoles("user", "admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(analyticsController.getSalesExtended.bind(analyticsController)),
+  asyncHandler(analyticsController.getSalesExtended),
 );
 
-// Product Insights (ABC, sell-through, co-purchase, category revenue)
+/**
+ * @swagger
+ * /analytics/product-insights:
+ *   get:
+ *     summary: Product insights (ABC, sell-through, co-purchase)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Product insights
+ */
 analyticsRouter.get(
   "/product-insights",
   authorizeRoles("admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(
-    analyticsController.getProductInsights.bind(analyticsController),
-  ),
+  asyncHandler(analyticsController.getProductInsights),
 );
 
-// Inventory Extended (turnover, DOH, stock-to-sales, dead stock, sell-through by location)
+/**
+ * @swagger
+ * /analytics/inventory-extended:
+ *   get:
+ *     summary: Inventory extended (turnover, DOH, dead stock)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Extended inventory metrics
+ */
 analyticsRouter.get(
   "/inventory-extended",
   authorizeRoles("admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(
-    analyticsController.getInventoryExtended.bind(analyticsController),
-  ),
+  asyncHandler(analyticsController.getInventoryExtended),
 );
 
-// Customer Insights (CLV, retention, churn, RFM, frequency, member growth)
+/**
+ * @swagger
+ * /analytics/customer-insights:
+ *   get:
+ *     summary: Customer insights (CLV, retention, RFM)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Customer insights
+ */
 analyticsRouter.get(
   "/customer-insights",
   authorizeRoles("admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(
-    analyticsController.getCustomerInsights.bind(analyticsController),
-  ),
+  asyncHandler(analyticsController.getCustomerInsights),
 );
 
-// Trends (monthly totals, seasonality, cohort retention, peak hours)
+/**
+ * @swagger
+ * /analytics/trends:
+ *   get:
+ *     summary: Trends (monthly, seasonality, peak hours)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Trend metrics
+ */
 analyticsRouter.get(
   "/trends",
   authorizeRoles("user", "admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(analyticsController.getTrends.bind(analyticsController)),
+  asyncHandler(analyticsController.getTrends),
 );
 
-// Financial (gross profit, COGS, margins)
+/**
+ * @swagger
+ * /analytics/financial:
+ *   get:
+ *     summary: Financial (gross profit, COGS, margins)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Financial metrics
+ */
 analyticsRouter.get(
   "/financial",
   authorizeRoles("admin", "superAdmin"),
   analyticsCacheMiddleware,
-  asyncHandler(analyticsController.getFinancial.bind(analyticsController)),
+  asyncHandler(analyticsController.getFinancial),
 );
 
-// Export analytics (CSV or Excel)
+/**
+ * @swagger
+ * /analytics/export:
+ *   get:
+ *     summary: Export analytics (CSV or Excel)
+ *     tags: [Analytics]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: type
+ *         schema: { type: string }
+ *         description: Report type to export
+ *       - in: query
+ *         name: format
+ *         schema: { type: string, enum: [csv, excel] }
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *       - in: query
+ *         name: locationIds
+ *         schema: { type: string }
+ *         description: Comma-separated location UUIDs
+ *       - in: query
+ *         name: saleType
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: creditStatus
+ *         schema: { type: string, enum: [credit, non-credit] }
+ *       - in: query
+ *         name: userId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Export file
+ *       401: { description: Unauthorized }
+ *       403: { description: Forbidden }
+ */
 analyticsRouter.get(
   "/export",
   authorizeRoles("user", "admin", "superAdmin"),
-  asyncHandler(analyticsController.exportAnalytics.bind(analyticsController)),
+  asyncHandler(analyticsController.exportAnalytics),
 );
 
 export default analyticsRouter;

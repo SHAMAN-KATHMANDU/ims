@@ -1,5 +1,4 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import transferController from "@/modules/transfers/transfer.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -54,7 +53,6 @@ const transferRouter = Router();
  */
 transferRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.createTransfer),
 );
@@ -69,41 +67,51 @@ transferRouter.post(
  *       - bearerAuth: []
  *     parameters:
  *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number (1-based)
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, minimum: 1, maximum: 100 }
+ *         description: Items per page
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Search by transfer code
+ *       - in: query
  *         name: status
  *         schema:
  *           type: string
  *           enum: [PENDING, APPROVED, IN_TRANSIT, COMPLETED, CANCELLED]
  *       - in: query
  *         name: fromLocationId
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *       - in: query
  *         name: toLocationId
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *       - in: query
  *         name: locationId
- *         schema:
- *           type: string
- *           format: uuid
+ *         schema: { type: string, format: uuid }
  *         description: Filter by either from or to location
  *       - in: query
- *         name: page
+ *         name: sortBy
  *         schema:
- *           type: integer
+ *           type: string
+ *           enum: [id, transferCode, status, createdAt, approvedAt, completedAt]
+ *         description: Sort field (default createdAt)
  *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
  *     responses:
  *       200:
  *         description: Transfers retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedTransfersResponse'
  */
 transferRouter.get(
   "/",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(transferController.getAllTransfers),
 );
@@ -131,7 +139,6 @@ transferRouter.get(
  */
 transferRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(transferController.getTransferById),
 );
@@ -159,7 +166,6 @@ transferRouter.get(
  */
 transferRouter.get(
   "/:id/logs",
-  verifyToken,
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(transferController.getTransferLogs),
 );
@@ -189,7 +195,6 @@ transferRouter.get(
  */
 transferRouter.put(
   "/:id/approve",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.approveTransfer),
 );
@@ -219,7 +224,6 @@ transferRouter.put(
  */
 transferRouter.put(
   "/:id/transit",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.startTransit),
 );
@@ -249,7 +253,6 @@ transferRouter.put(
  */
 transferRouter.put(
   "/:id/complete",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.completeTransfer),
 );
@@ -287,7 +290,6 @@ transferRouter.put(
  */
 transferRouter.put(
   "/:id/cancel",
-  verifyToken,
   authorizeRoles("admin", "superAdmin"),
   asyncHandler(transferController.cancelTransfer),
 );

@@ -46,8 +46,13 @@ export function ReportsQuadrantChart({
   if (data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-muted-foreground text-sm"
-        style={{ width, height }}
+        className="flex items-center justify-center text-muted-foreground text-sm w-[var(--chart-width)] h-[var(--chart-height)]"
+        style={
+          {
+            "--chart-width": `${width}px`,
+            "--chart-height": `${height}px`,
+          } as React.CSSProperties
+        }
         aria-label={ariaLabel}
       >
         No data

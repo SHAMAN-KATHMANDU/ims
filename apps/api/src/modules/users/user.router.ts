@@ -1,6 +1,6 @@
 import { Router } from "express";
-import verifyToken from "@/middlewares/authMiddleware";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import userController from "@/modules/users/user.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -46,7 +46,7 @@ const userRouter = Router();
  *                 message:
  *                   type: string
  *                 user:
- *                   $ref: '#/components/schemas/User'
+ *                   $ref: '#/components/schemas/UserPublic'
  *       400:
  *         description: Bad request or validation error
  *       401:
@@ -58,8 +58,8 @@ const userRouter = Router();
  */
 userRouter.post(
   "/",
-  verifyToken,
   authorizeRoles("superAdmin"),
+  enforcePlanLimits("users"),
   asyncHandler(userController.createUser),
 );
 
@@ -77,14 +77,7 @@ userRouter.post(
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 users:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/User'
+ *               $ref: '#/components/schemas/PaginatedUsersResponse'
  *       401:
  *         description: Unauthorized
  *       403:
@@ -92,8 +85,7 @@ userRouter.post(
  */
 userRouter.get(
   "/",
-  verifyToken,
-  authorizeRoles("admin", "superAdmin"),
+  authorizeRoles("superAdmin", "admin"),
   asyncHandler(userController.getAllUsers),
 );
 
@@ -124,7 +116,7 @@ userRouter.get(
  *                 message:
  *                   type: string
  *                 user:
- *                   $ref: '#/components/schemas/User'
+ *                   $ref: '#/components/schemas/UserPublic'
  *       401:
  *         description: Unauthorized
  *       403:
@@ -134,7 +126,6 @@ userRouter.get(
  */
 userRouter.get(
   "/:id",
-  verifyToken,
   authorizeRoles("superAdmin"),
   asyncHandler(userController.getUserById),
 );
@@ -179,7 +170,7 @@ userRouter.get(
  *                 message:
  *                   type: string
  *                 user:
- *                   $ref: '#/components/schemas/User'
+ *                   $ref: '#/components/schemas/UserPublic'
  *       400:
  *         description: Bad request
  *       401:
@@ -193,7 +184,6 @@ userRouter.get(
  */
 userRouter.put(
   "/:id",
-  verifyToken,
   authorizeRoles("superAdmin"),
   asyncHandler(userController.updateUser),
 );
@@ -233,7 +223,6 @@ userRouter.put(
  */
 userRouter.delete(
   "/:id",
-  verifyToken,
   authorizeRoles("superAdmin"),
   asyncHandler(userController.deleteUser),
 );

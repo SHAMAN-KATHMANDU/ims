@@ -6,7 +6,7 @@ import { useEffect } from "react";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
 import { useIsMobile } from "@/hooks/useMobile";
-import { useSidebarStore } from "@/stores/sidebar-store";
+import { useSidebarStore } from "@/store/sidebar-store";
 
 export function DashboardLayout({ children }: { children: React.ReactNode }) {
   const isMobile = useIsMobile();

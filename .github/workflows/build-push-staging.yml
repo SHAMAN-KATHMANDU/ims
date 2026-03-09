@@ -1,6 +1,13 @@
 # Build and push Docker images for staging. Tags: dev, dev-{commit_sha}.
-# Triggered by push to main, merged PRs into main, or manual dispatch.
+# Triggered by push to main or manual dispatch. Push to main fires when PRs are merged.
 # Watchtower on staging EC2 pulls :dev and restarts. No deployment or SSH.
+#
+# Manual trigger (Actions → Run workflow):
+#   stage = "api"  → builds API only (always, regardless of file changes)
+#   stage = "web"  → builds Web only (always, regardless of file changes)
+#   stage = "all"  → builds both    (always, regardless of file changes)
+#
+# Push to main: only builds what changed (apps/api, apps/web, packages).
 
 name: Build and Push (Staging)
 
@@ -8,56 +15,47 @@ on:
   push:
     branches:
       - main
-  pull_request:
-    types: [closed]
-    branches:
-      - main
   workflow_dispatch:
     inputs:
-      deploy_api:
-        description: "Build and push API image"
-        required: false
-        type: boolean
-        default: true
-      deploy_web:
-        description: "Build and push Web image"
-        required: false
-        type: boolean
-        default: true
-      force_deploy:
-        description: "Build all images regardless of changes"
-        required: false
-        type: boolean
-        default: false
+      stage:
+        description: "Which stage to build and push"
+        required: true
+        type: choice
+        default: "all"
+        options:
+          - all
+          - api
+          - web
 
 permissions:
   contents: read
-  pull-requests: read
 
 concurrency:
   group: build-staging-${{ github.ref }}
   cancel-in-progress: false
 
 env:
-  COMMIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+  COMMIT_SHA: ${{ github.sha }}
 
 jobs:
+  # Only runs on push — detects which paths changed.
+  # Skipped entirely on workflow_dispatch (manual builds always run unconditionally).
   changes:
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
     outputs:
-      api: ${{ steps.changes_filter.outputs.api || steps.fork_outputs.outputs.api }}
-      web: ${{ steps.changes_filter.outputs.web || steps.fork_outputs.outputs.web }}
-      shared: ${{ steps.changes_filter.outputs.shared || steps.fork_outputs.outputs.shared }}
+      api: ${{ steps.changes_filter.outputs.api }}
+      web: ${{ steps.changes_filter.outputs.web }}
+      shared: ${{ steps.changes_filter.outputs.shared }}
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
+          fetch-depth: 2
       - name: Detect changed paths
         id: changes_filter
-        if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
         uses: dorny/paths-filter@v3
         with:
-          base: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before || 'HEAD~1' }}
           filters: |
             api:
               - "apps/api/**"
@@ -65,22 +63,19 @@ jobs:
               - "apps/web/**"
             shared:
               - "packages/**"
-      - name: Set all changes for fork PR
-        id: fork_outputs
-        if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository
-        run: |
-          echo "api=true" >> "$GITHUB_OUTPUT"
-          echo "web=true" >> "$GITHUB_OUTPUT"
-          echo "shared=true" >> "$GITHUB_OUTPUT"
 
   build-api:
     name: Build API (staging)
     runs-on: ubuntu-latest
     needs: [changes]
+    # On manual dispatch: always run when stage is 'api' or 'all'.
+    # On push: run when the changes job detected api or shared file changes.
+    # needs.[changes] is skipped on dispatch so always() lets this job proceed.
     if: |
-      (github.event_name == 'workflow_dispatch' && (inputs.deploy_api || inputs.force_deploy)) ||
-      (github.event_name == 'push' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true')) ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'))
+      always() && (
+        (github.event_name == 'workflow_dispatch' && (inputs.stage == 'api' || inputs.stage == 'all')) ||
+        (github.event_name == 'push' && needs.changes.result == 'success' && (needs.changes.outputs.api == 'true' || needs.changes.outputs.shared == 'true'))
+      )
     permissions:
       contents: read
       packages: write
@@ -88,7 +83,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.sha }}
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to Docker Hub
@@ -118,10 +113,13 @@ jobs:
     name: Build Web (staging)
     runs-on: ubuntu-latest
     needs: [changes]
+    # On manual dispatch: always run when stage is 'web' or 'all'.
+    # On push: run when the changes job detected web or shared file changes.
     if: |
-      (github.event_name == 'workflow_dispatch' && (inputs.deploy_web || inputs.force_deploy)) ||
-      (github.event_name == 'push' && (needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true')) ||
-      (github.event_name == 'pull_request' && github.event.pull_request.merged == true && (needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'))
+      always() && (
+        (github.event_name == 'workflow_dispatch' && (inputs.stage == 'web' || inputs.stage == 'all')) ||
+        (github.event_name == 'push' && needs.changes.result == 'success' && (needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'))
+      )
     permissions:
       contents: read
       packages: write
@@ -129,11 +127,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.merge_commit_sha || github.sha }}
-      - name: Create environment file for Web
+          ref: ${{ github.sha }}
+      - name: Parse DEV_UI env vars into build args
+        id: dev_ui
         run: |
-          mkdir -p apps/web
-          printf '%s\n' "${{ vars.DEV_UI }}" > apps/web/.env
+          # Extract NEXT_PUBLIC_API_URL from the DEV_UI GitHub variable
+          API_URL=$(printf '%s\n' "${{ vars.DEV_UI }}" | grep '^NEXT_PUBLIC_API_URL=' | cut -d'=' -f2-)
+          echo "next_public_api_url=${API_URL}" >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Log in to Docker Hub
@@ -156,5 +156,7 @@ jobs:
           file: ./apps/web/Dockerfile
           push: true
           tags: ${{ steps.tags.outputs.tags }}
+          build-args: |
+            NEXT_PUBLIC_API_URL=${{ steps.dev_ui.outputs.next_public_api_url }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
