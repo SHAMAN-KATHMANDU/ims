@@ -3,6 +3,7 @@ import csvParser from "csv-parser";
 import ExcelJS from "exceljs";
 import { normalizePhoneOptional } from "@/utils/phone";
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import contactRepository from "./contact.repository";
 import type {
   CreateContactDto,
@@ -61,10 +62,26 @@ export class ContactService {
     return contactRepository.getAfterUpdate(id);
   }
 
-  async delete(tenantId: string, id: string) {
+  async delete(
+    tenantId: string,
+    id: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await contactRepository.findById(tenantId, id);
     if (!existing) throw createError("Contact not found", 404);
-    await contactRepository.softDelete(id);
+    await contactRepository.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Contact",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 
   async getTags(tenantId: string) {

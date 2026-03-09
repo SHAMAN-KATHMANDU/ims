@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { getPaginationParams } from "@/utils/pagination";
 import locationRepository, { LocationRepository } from "./location.repository";
 import type { CreateLocationDto, UpdateLocationDto } from "./location.schema";
@@ -92,7 +93,11 @@ export class LocationService {
     return this.repo.update(id, updateData);
   }
 
-  async delete(id: string, tenantId?: string) {
+  async delete(
+    id: string,
+    tenantId: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await this.repo.findByIdWithTransferCounts(id, tenantId);
     if (!existing) throw createError("Location not found", 404);
 
@@ -113,7 +118,19 @@ export class LocationService {
       }
     }
 
-    await this.repo.softDelete(id);
+    await this.repo.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Location",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 
   async getInventory(locationId: string, rawQuery: Record<string, unknown>) {

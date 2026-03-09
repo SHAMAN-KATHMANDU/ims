@@ -1,16 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { useToast } from "@/hooks/useToast";
 import { ErrorDialog } from "./ErrorDialog";
 import type { Product } from "@/features/products";
@@ -18,7 +9,7 @@ import type { Product } from "@/features/products";
 interface ProductDeleteDialogProps {
   product: Product | null;
   onClose: () => void;
-  onDelete: (id: string) => Promise<void>;
+  onDelete: (id: string, reason?: string) => Promise<void>;
 }
 
 export function ProductDeleteDialog({
@@ -36,11 +27,11 @@ export function ProductDeleteDialog({
   });
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleDelete = async () => {
+  const handleConfirm = async (reason?: string) => {
     if (!product) return;
     setIsDeleting(true);
     try {
-      await onDelete(product.id);
+      await onDelete(product.id, reason);
       toast({ title: "Product deleted successfully" });
       onClose();
     } catch (error: unknown) {
@@ -56,6 +47,7 @@ export function ProductDeleteDialog({
         open: true,
         message: errorMessage,
       });
+      throw error;
     } finally {
       setIsDeleting(false);
     }
@@ -63,35 +55,21 @@ export function ProductDeleteDialog({
 
   return (
     <>
-      <AlertDialog
+      <DeleteConfirmDialog
         open={!!product && !errorDialog.open}
         onOpenChange={(open) => !open && onClose()}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete &quot;{product?.name}&quot;. This
-              action cannot be undone.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDelete}
-              disabled={isDeleting}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-            >
-              {isDeleting ? "Deleting..." : "Delete"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+        itemName={product?.name}
+        description={`This will move "${product?.name}" to trash. You can restore it within 30 days.`}
+        showReasonField={true}
+        onConfirm={handleConfirm}
+        onCancel={onClose}
+        isLoading={isDeleting}
+      />
 
       <ErrorDialog
         open={errorDialog.open}
         onOpenChange={(open) => {
-          setErrorDialog({ ...errorDialog, open });
+          setErrorDialog((prev) => ({ ...prev, open }));
           if (!open) {
             onClose();
           }

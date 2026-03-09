@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ZodError } from "zod";
 import type { AppError } from "@/middlewares/errorHandler";
 import { sendControllerError } from "@/utils/controllerError";
+import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import promoService, { PromoService } from "./promo.service";
 import { CreatePromoSchema, UpdatePromoSchema } from "./promo.schema";
 
@@ -105,9 +106,18 @@ class PromoController {
   deletePromo = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
       const id = getParam(req, "id");
+      const deleteBody = DeleteBodySchema.parse(req.body ?? {});
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
 
-      const result = await this.service.delete(tenantId, id);
+      const result = await this.service.delete(tenantId, id, {
+        userId,
+        reason: deleteBody.reason,
+        ip,
+        userAgent,
+      });
 
       if (!result) {
         return res.status(404).json({ message: "Promo code not found" });

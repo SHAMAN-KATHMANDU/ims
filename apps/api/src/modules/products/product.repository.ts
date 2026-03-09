@@ -485,10 +485,17 @@ export class ProductRepository {
   }
 
   // Product - soft delete
-  softDeleteProduct(id: string) {
+  softDeleteProduct(
+    id: string,
+    data: { deletedBy: string; deleteReason?: string | null },
+  ) {
     return prisma.product.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        deletedBy: data.deletedBy,
+        deleteReason: data.deleteReason ?? undefined,
+      },
     });
   }
 

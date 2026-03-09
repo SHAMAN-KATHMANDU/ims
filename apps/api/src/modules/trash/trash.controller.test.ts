@@ -16,28 +16,12 @@ vi.mock("@/utils/controllerError", () => ({
 import trashController from "./trash.controller";
 import * as trashServiceModule from "./trash.service";
 import { sendControllerError } from "@/utils/controllerError";
+import { mockRes, makeReq } from "@tests/helpers/controller";
 
 const mockService = trashServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;
-
-function mockRes(): Partial<Response> {
-  return {
-    status: vi.fn().mockReturnThis(),
-    json: vi.fn().mockReturnThis(),
-  };
-}
-
-function makeReq(overrides: Partial<Request> = {}): Request {
-  return {
-    user: { id: "u1", tenantId: "t1", role: "admin", tenantSlug: "acme" },
-    params: {},
-    body: {},
-    query: {},
-    ...overrides,
-  } as unknown as Request;
-}
 
 describe("TrashController", () => {
   beforeEach(() => {
@@ -48,7 +32,18 @@ describe("TrashController", () => {
     it("returns 200 with paginated trash items on success", async () => {
       const result = {
         message: "Trash items retrieved",
-        data: [{ entityType: "Product", id: "1", name: "Item", deletedAt: "" }],
+        data: [
+          {
+            entityType: "Product",
+            id: "1",
+            name: "Item",
+            deletedAt: "",
+            deletedBy: null,
+            deleteReason: null,
+            tenantId: "t1",
+            tenantName: "Acme",
+          },
+        ],
         pagination: { currentPage: 1, totalPages: 1, totalItems: 1 },
       };
       mockService.list.mockResolvedValue(result);
@@ -57,7 +52,7 @@ describe("TrashController", () => {
 
       await trashController.listTrash(req, res);
 
-      expect(mockService.list).toHaveBeenCalledWith("t1", expect.any(Object));
+      expect(mockService.list).toHaveBeenCalledWith(expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(result);
     });
@@ -117,7 +112,6 @@ describe("TrashController", () => {
       await trashController.restoreItem(req, res);
 
       expect(mockService.restore).toHaveBeenCalledWith(
-        "t1",
         "product",
         "550e8400-e29b-41d4-a716-446655440000",
       );
@@ -191,7 +185,6 @@ describe("TrashController", () => {
       await trashController.permanentlyDeleteItem(req, res);
 
       expect(mockService.permanentlyDelete).toHaveBeenCalledWith(
-        "t1",
         "product",
         "550e8400-e29b-41d4-a716-446655440000",
       );

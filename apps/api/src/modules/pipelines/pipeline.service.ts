@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import pipelineRepository from "./pipeline.repository";
 import type { CreatePipelineDto, UpdatePipelineDto } from "./pipeline.schema";
 
@@ -64,7 +65,11 @@ export class PipelineService {
     return pipelineRepository.update(id, updateData);
   }
 
-  async delete(tenantId: string, id: string) {
+  async delete(
+    tenantId: string,
+    id: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await pipelineRepository.findById(tenantId, id);
     if (!existing) throw createError("Pipeline not found", 404);
 
@@ -79,7 +84,19 @@ export class PipelineService {
       );
     }
 
-    await pipelineRepository.softDelete(id);
+    await pipelineRepository.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Pipeline",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 }
 

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import { CreatePipelineSchema, UpdatePipelineSchema } from "./pipeline.schema";
 import pipelineService from "./pipeline.service";
 import { sendControllerError } from "@/utils/controllerError";
@@ -85,8 +86,17 @@ class PipelineController {
   delete = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
       const { id } = req.params;
-      await pipelineService.delete(tenantId, id);
+      const deleteBody = DeleteBodySchema.parse(req.body ?? {});
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
+      await pipelineService.delete(tenantId, id, {
+        userId,
+        reason: deleteBody.reason,
+        ip,
+        userAgent,
+      });
       return res.status(200).json({ message: "Pipeline deleted successfully" });
     } catch (error: unknown) {
       return (

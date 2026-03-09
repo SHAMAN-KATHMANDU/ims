@@ -111,10 +111,17 @@ export class VendorRepository {
     return prisma.vendor.update({ where: { id }, data });
   }
 
-  async softDelete(id: string) {
+  async softDelete(
+    id: string,
+    data: { deletedBy: string; deleteReason?: string | null },
+  ) {
     return prisma.vendor.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        deletedBy: data.deletedBy,
+        deleteReason: data.deleteReason ?? undefined,
+      },
     });
   }
 

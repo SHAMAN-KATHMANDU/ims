@@ -11,6 +11,7 @@ import productRepository, {
   type ProductCreateData,
   type ProductListWhere,
 } from "./product.repository";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import type {
   CreateProductDto,
   UpdateProductDto,
@@ -447,9 +448,13 @@ export class ProductService {
     tenantId: string,
     params: { imsCode: string; locationId?: string },
   ) {
-    const product = await this.repo.findByTenantAndImsCode(tenantId, params.imsCode, {
-      locationId: params.locationId,
-    });
+    const product = await this.repo.findByTenantAndImsCode(
+      tenantId,
+      params.imsCode,
+      {
+        locationId: params.locationId,
+      },
+    );
     if (!product) throw createError("Product not found", 404);
     return product;
   }
@@ -777,10 +782,31 @@ export class ProductService {
     return updatedProduct;
   }
 
-  async delete(id: string) {
+  async delete(
+    id: string,
+    ctx: {
+      userId: string;
+      tenantId: string;
+      reason?: string;
+      ip?: string;
+      userAgent?: string;
+    },
+  ) {
     const existing = await this.repo.findProductForUpdate(id);
     if (!existing) throw createError("Product not found", 404);
-    await this.repo.softDeleteProduct(id);
+    await this.repo.softDeleteProduct(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId: ctx.tenantId,
+      resource: "Product",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 
   async deleteVariation(
