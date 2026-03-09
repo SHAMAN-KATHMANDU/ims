@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 import {
   Home,
   Package,
-  BarChart3,
   ChevronLeft,
   ChevronDown,
   Warehouse,
@@ -265,13 +264,6 @@ const navSections: NavSection[] = [
   {
     title: "REPORTS",
     items: [
-      {
-        path: "reports/analytics",
-        label: "Analytics",
-        icon: BarChart3,
-        roles: ["admin", "superAdmin"],
-        feature: Feature.ANALYTICS_ADVANCED,
-      },
       {
         path: "reports/analytics/sales",
         label: "Sales & Revenue",

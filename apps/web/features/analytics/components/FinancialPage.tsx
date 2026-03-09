@@ -25,8 +25,10 @@ import {
 import { useAnalyticsFilters } from "@/features/analytics";
 import { useFinancialAnalytics } from "@/features/analytics";
 import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
+import { ChartInfoButton } from "./components/ChartInfoButton";
 import { exportAnalytics } from "@/features/analytics";
 import { downloadBlobFromResponse } from "@/lib/downloadBlob";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -35,6 +37,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   C,
@@ -45,6 +53,7 @@ import {
   axisTick,
   gridProps,
   tooltipStyle,
+  tooltipCursor,
 } from "./reportTheme";
 import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
 
@@ -100,9 +109,9 @@ export function FinancialPage() {
   const kpis = totals
     ? [
         {
-          label: "Total Revenue",
+          label: "Net Revenue",
           value: fN(totals.totalRevenue),
-          sub: "Gross sales",
+          sub: "After discount",
           icon: "💰",
         },
         {
@@ -144,22 +153,30 @@ export function FinancialPage() {
         <div className="min-w-0 flex-1">
           <AnalyticsFilterBar />
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleExport("excel")}
-          disabled={exporting}
-        >
-          {exporting ? "..." : "Export Excel"}
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => handleExport("csv")}
-          disabled={exporting}
-        >
-          {exporting ? "..." : "Export CSV"}
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={exporting}>
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? "..." : "Download"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => handleExport("excel")}
+              disabled={exporting}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Download as Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleExport("csv")}
+              disabled={exporting}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Download as CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {!isLoading && kpis.length > 0 && (
@@ -183,11 +200,14 @@ export function FinancialPage() {
       {!isLoading && data && (
         <>
           <Card className="min-w-0">
-            <CardHeader>
-              <CardTitle>Gross Profit Over Time</CardTitle>
-              <CardDescription>
-                Revenue, COGS, and gross profit per day
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle>Gross Profit Over Time</CardTitle>
+                <CardDescription>
+                  Revenue, COGS, and gross profit per day
+                </CardDescription>
+              </div>
+              <ChartInfoButton content="Daily revenue, cost of goods sold (COGS), and gross profit (revenue minus COGS). Shows how profitability evolves over time." />
             </CardHeader>
             <CardContent>
               <div className="min-h-[280px] w-full">
@@ -214,7 +234,12 @@ export function FinancialPage() {
                     <CartesianGrid {...gridProps} />
                     <XAxis dataKey="date" tick={axisTick} />
                     <YAxis tickFormatter={fS} tick={axisTick} />
-                    <Tooltip content={<AnalyticsChartTooltip />} />
+                    <Tooltip
+                      content={<AnalyticsChartTooltip />}
+                      wrapperStyle={tooltipStyle}
+                      contentStyle={tooltipStyle}
+                      cursor={tooltipCursor}
+                    />
                     <Legend wrapperStyle={{ fontSize: 11 }} />
                     <Area
                       type="monotone"
@@ -240,11 +265,14 @@ export function FinancialPage() {
 
           <div className="grid gap-4 md:grid-cols-2">
             <Card className="min-w-0">
-              <CardHeader>
-                <CardTitle>COGS by Category</CardTitle>
-                <CardDescription>
-                  Cost breakdown by product category
-                </CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>COGS by Category</CardTitle>
+                  <CardDescription>
+                    Cost breakdown by product category
+                  </CardDescription>
+                </div>
+                <ChartInfoButton content="Cost of goods sold (COGS) by product category. Shows which categories have the highest cost base." />
               </CardHeader>
               <CardContent>
                 <div className="min-h-[250px] w-full">
@@ -273,8 +301,17 @@ export function FinancialPage() {
                           ))}
                         </Pie>
                         <Tooltip
-                          formatter={(v: number) => fN(v)}
+                          content={(props) => (
+                            <AnalyticsChartTooltip
+                              {...props}
+                              formatter={(v) =>
+                                typeof v === "number" ? fN(v) : String(v ?? "")
+                              }
+                            />
+                          )}
+                          wrapperStyle={tooltipStyle}
                           contentStyle={tooltipStyle}
+                          cursor={tooltipCursor}
                         />
                         <Legend wrapperStyle={{ fontSize: 11 }} />
                       </PieChart>
@@ -288,9 +325,12 @@ export function FinancialPage() {
               </CardContent>
             </Card>
             <Card className="min-w-0">
-              <CardHeader>
-                <CardTitle>COGS by Location</CardTitle>
-                <CardDescription>Cost breakdown by location</CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                <div>
+                  <CardTitle>COGS by Location</CardTitle>
+                  <CardDescription>Cost breakdown by location</CardDescription>
+                </div>
+                <ChartInfoButton content="Cost of goods sold (COGS) by location. Compares cost base across stores or warehouses." />
               </CardHeader>
               <CardContent>
                 <div className="min-h-[250px] w-full">
@@ -300,7 +340,12 @@ export function FinancialPage() {
                         <CartesianGrid {...gridProps} />
                         <XAxis dataKey="locationName" tick={axisTick} />
                         <YAxis tickFormatter={fS} tick={axisTick} />
-                        <Tooltip content={<AnalyticsChartTooltip />} />
+                        <Tooltip
+                          content={<AnalyticsChartTooltip />}
+                          wrapperStyle={tooltipStyle}
+                          contentStyle={tooltipStyle}
+                          cursor={tooltipCursor}
+                        />
                         <Bar dataKey="cogs" radius={[4, 4, 0, 0]} name="COGS">
                           {data.cogsByLocation.map((_, i) => (
                             <Cell key={i} fill={getChartColor(i)} />
@@ -319,11 +364,14 @@ export function FinancialPage() {
           </div>
 
           <Card className="min-w-0">
-            <CardHeader>
-              <CardTitle>Discount Ratio Trend</CardTitle>
-              <CardDescription>
-                Discount as % of subtotal over time
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle>Discount Ratio Trend</CardTitle>
+                <CardDescription>
+                  Discount as % of subtotal over time
+                </CardDescription>
+              </div>
+              <ChartInfoButton content="Discount as a percentage of subtotal for each day. Tracks how much you are discounting over time." />
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={200}>
@@ -332,8 +380,17 @@ export function FinancialPage() {
                   <XAxis dataKey="date" tick={axisTick} />
                   <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} />
                   <Tooltip
-                    formatter={(v: number) => `${v}%`}
+                    content={(props) => (
+                      <AnalyticsChartTooltip
+                        {...props}
+                        formatter={(v) =>
+                          typeof v === "number" ? `${v}%` : String(v ?? "")
+                        }
+                      />
+                    )}
+                    wrapperStyle={tooltipStyle}
                     contentStyle={tooltipStyle}
+                    cursor={tooltipCursor}
                   />
                   <Line
                     type="monotone"
@@ -349,11 +406,14 @@ export function FinancialPage() {
           </Card>
 
           <Card className="min-w-0">
-            <CardHeader>
-              <CardTitle>Margin by Category</CardTitle>
-              <CardDescription>
-                Profit margin percentage by product category
-              </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+              <div>
+                <CardTitle>Margin by Category</CardTitle>
+                <CardDescription>
+                  Profit margin percentage by product category
+                </CardDescription>
+              </div>
+              <ChartInfoButton content="Profit margin (%) by product category: (revenue − COGS) / revenue. Shows which categories are most profitable." />
             </CardHeader>
             <CardContent>
               <ResponsiveContainer
@@ -374,8 +434,17 @@ export function FinancialPage() {
                     width={120}
                   />
                   <Tooltip
-                    formatter={(v: number) => `${v}%`}
+                    content={(props) => (
+                      <AnalyticsChartTooltip
+                        {...props}
+                        formatter={(v) =>
+                          typeof v === "number" ? `${v}%` : String(v ?? "")
+                        }
+                      />
+                    )}
+                    wrapperStyle={tooltipStyle}
                     contentStyle={tooltipStyle}
+                    cursor={tooltipCursor}
                   />
                   <Bar
                     dataKey="marginPct"
