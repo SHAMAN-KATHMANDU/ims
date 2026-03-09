@@ -105,6 +105,12 @@ const navSections: NavSection[] = [
         icon: SlidersHorizontal,
         roles: ["platformAdmin"],
       },
+      {
+        path: "platform/trash",
+        label: "Trash",
+        icon: Trash2,
+        roles: ["platformAdmin"],
+      },
     ],
   },
   {
@@ -311,12 +317,6 @@ const navSections: NavSection[] = [
   {
     title: "SETTINGS",
     items: [
-      {
-        path: "trash",
-        label: "Trash",
-        icon: Trash2,
-        roles: ["admin", "superAdmin"],
-      },
       {
         path: "settings",
         label: "Settings",

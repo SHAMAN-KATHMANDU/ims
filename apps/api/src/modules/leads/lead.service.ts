@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { normalizePhoneOptional } from "@/utils/phone";
 import leadRepository from "./lead.repository";
 import type {
@@ -86,10 +87,26 @@ export class LeadService {
     return leadRepository.update(id, updateData);
   }
 
-  async delete(tenantId: string, id: string) {
+  async delete(
+    tenantId: string,
+    id: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await leadRepository.findById(tenantId, id);
     if (!existing) throw createError("Lead not found", 404);
-    await leadRepository.softDelete(id);
+    await leadRepository.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Lead",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 
   async convert(

@@ -77,9 +77,10 @@ export class PlatformRepository {
     });
   }
 
-  /** List all tenants with summary stats. */
+  /** List all tenants with summary stats. Excludes system tenant. */
   async findAllTenants() {
     return basePrisma.tenant.findMany({
+      where: { slug: { not: "system" } },
       orderBy: { createdAt: "desc" },
       include: {
         _count: {

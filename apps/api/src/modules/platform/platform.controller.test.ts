@@ -335,6 +335,27 @@ describe("PlatformController", () => {
       expect(res.status).toHaveBeenCalledWith(400);
       expect(mockService.updateTenant).not.toHaveBeenCalled();
     });
+
+    it("returns 403 when setting isActive false on system tenant", async () => {
+      mockService.updateTenant.mockRejectedValue(
+        Object.assign(new Error("Cannot deactivate the system tenant."), {
+          statusCode: 403,
+        }),
+      );
+
+      const req = makeReq({
+        params: { id: "sys-tenant-id" },
+        body: { isActive: false },
+      });
+      const res = mockRes() as Response;
+
+      await platformController.updateTenant(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Cannot deactivate the system tenant.",
+      });
+    });
   });
 
   describe("deactivateTenant", () => {
@@ -366,6 +387,24 @@ describe("PlatformController", () => {
       await platformController.deactivateTenant(req, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it("returns 403 when deactivating system tenant", async () => {
+      mockService.deactivateTenant.mockRejectedValue(
+        Object.assign(new Error("Cannot deactivate the system tenant."), {
+          statusCode: 403,
+        }),
+      );
+
+      const req = makeReq({ params: { id: "sys-tenant-id" } });
+      const res = mockRes() as Response;
+
+      await platformController.deactivateTenant(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Cannot deactivate the system tenant.",
+      });
     });
   });
 

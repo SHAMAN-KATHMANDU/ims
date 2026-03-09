@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { normalizePhoneOptional } from "@/utils/phone";
 import { getPaginationParams } from "@/utils/pagination";
 import vendorRepository, { VendorRepository } from "./vendor.repository";
@@ -96,7 +97,11 @@ export class VendorService {
     return this.repo.update(id, updateData);
   }
 
-  async delete(id: string, tenantId: string): Promise<void> {
+  async delete(
+    id: string,
+    tenantId: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ): Promise<void> {
     const existing = await this.repo.findByIdWithProductCount(id, tenantId);
     if (!existing) throw createError("Vendor not found", 404);
 
@@ -110,7 +115,19 @@ export class VendorService {
       throw err;
     }
 
-    await this.repo.softDelete(id);
+    await this.repo.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Vendor",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 }
 

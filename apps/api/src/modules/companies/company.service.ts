@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { normalizePhoneOptional } from "@/utils/phone";
 import companyRepository from "./company.repository";
 import type { CreateCompanyDto, UpdateCompanyDto } from "./company.schema";
@@ -70,10 +71,26 @@ export class CompanyService {
     return companyRepository.update(id, tenantId, updateData);
   }
 
-  async delete(tenantId: string, id: string) {
+  async delete(
+    tenantId: string,
+    id: string,
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
     const existing = await companyRepository.findById(tenantId, id);
     if (!existing) throw createError("Company not found", 404);
-    await companyRepository.softDelete(id);
+    await companyRepository.softDelete(id, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    await createDeleteAuditLog({
+      userId: ctx.userId,
+      tenantId,
+      resource: "Company",
+      resourceId: id,
+      deleteReason: ctx.reason ?? undefined,
+      ip: ctx.ip,
+      userAgent: ctx.userAgent,
+    });
   }
 
   async listForSelect(tenantId: string) {

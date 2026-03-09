@@ -148,10 +148,18 @@ export class LocationRepository {
     });
   }
 
-  async softDelete(id: string) {
+  async softDelete(
+    id: string,
+    data: { deletedBy: string; deleteReason?: string | null },
+  ) {
     return prisma.location.update({
       where: { id },
-      data: { isActive: false, deletedAt: new Date() },
+      data: {
+        isActive: false,
+        deletedAt: new Date(),
+        deletedBy: data.deletedBy,
+        deleteReason: data.deleteReason ?? undefined,
+      },
     });
   }
 

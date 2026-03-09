@@ -8,6 +8,7 @@ import {
   buildProductBulkTemplate,
 } from "./product.bulk.service";
 import productService from "./product.service";
+import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
   CreateProductSchema,
   UpdateProductSchema,
@@ -164,7 +165,12 @@ class ProductController {
       if (appErr.statusCode === 404) {
         return res.status(404).json({ message: appErr.message });
       }
-      return sendControllerError(req, res, error, "Get product by IMS code error");
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get product by IMS code error",
+      );
     }
   };
 
@@ -220,7 +226,18 @@ class ProductController {
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
-      await this.service.delete(id);
+      const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
+      const body = DeleteBodySchema.parse(req.body ?? {});
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
+      await this.service.delete(id, {
+        userId,
+        tenantId,
+        reason: body.reason,
+        ip,
+        userAgent,
+      });
       return res.status(200).json({ message: "Product deleted successfully" });
     } catch (error: unknown) {
       const appErr = error as AppError;

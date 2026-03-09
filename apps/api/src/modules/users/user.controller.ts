@@ -102,6 +102,9 @@ class UserController {
       if (appErr.statusCode === 400) {
         return res.status(400).json({ message: appErr.message });
       }
+      if (appErr.statusCode === 403) {
+        return res.status(403).json({ message: appErr.message });
+      }
       return sendControllerError(req, res, error, "Delete user error");
     }
   };

@@ -118,10 +118,17 @@ export class CategoryRepository {
     return prisma.category.update({ where: { id }, data });
   }
 
-  async softDelete(id: string) {
+  async softDelete(
+    id: string,
+    data: { deletedBy: string; deleteReason?: string | null },
+  ) {
     return prisma.category.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        deletedBy: data.deletedBy,
+        deleteReason: data.deleteReason ?? undefined,
+      },
     });
   }
 
@@ -145,10 +152,17 @@ export class CategoryRepository {
     return prisma.product.count({ where: { subCategoryId } });
   }
 
-  async softDeleteSubcategory(id: string) {
+  async softDeleteSubcategory(
+    id: string,
+    data: { deletedBy: string; deleteReason?: string | null },
+  ) {
     return prisma.subCategory.update({
       where: { id },
-      data: { deletedAt: new Date() },
+      data: {
+        deletedAt: new Date(),
+        deletedBy: data.deletedBy,
+        deleteReason: data.deleteReason ?? undefined,
+      },
     });
   }
 }

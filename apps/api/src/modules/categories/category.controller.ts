@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
+import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
   CreateCategorySchema,
   UpdateCategorySchema,
@@ -104,7 +105,16 @@ class CategoryController {
         ? req.params.id[0]
         : req.params.id;
       const tenantId = req.user!.tenantId;
-      await this.service.delete(id, tenantId);
+      const userId = req.user!.id;
+      const deleteBody = DeleteBodySchema.parse(req.body ?? {});
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
+      await this.service.delete(id, tenantId, {
+        userId,
+        reason: deleteBody.reason,
+        ip,
+        userAgent,
+      });
       return res.status(200).json({ message: "Category deleted successfully" });
     } catch (error: unknown) {
       const appErr = error as AppError;
@@ -183,8 +193,18 @@ class CategoryController {
       const categoryId = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
+      const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
       const body = DeleteSubcategorySchema.parse(req.body);
-      await this.service.deleteSubcategory(categoryId, body);
+      const deleteBody = DeleteBodySchema.parse(req.body ?? {});
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
+      await this.service.deleteSubcategory(categoryId, tenantId, body, {
+        userId,
+        reason: deleteBody.reason,
+        ip,
+        userAgent,
+      });
       return res
         .status(200)
         .json({ message: "Subcategory deleted successfully" });
