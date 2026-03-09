@@ -98,11 +98,12 @@ class AnalyticsController {
 
   getDiscountAnalytics = async (req: Request, res: Response) => {
     try {
-      const { role, currentUserId } = getAuthFromReq(req);
+      const { role, currentUserId, tenantId } = getAuthFromReq(req);
       const data = await this.service.getDiscountAnalytics(
         req.query as Record<string, unknown>,
         role,
         currentUserId,
+        tenantId,
       );
       return res.status(200).json({
         message: "Discount analytics fetched",
@@ -138,11 +139,12 @@ class AnalyticsController {
 
   getLocationComparison = async (req: Request, res: Response) => {
     try {
-      const { role, currentUserId } = getAuthFromReq(req);
+      const { role, currentUserId, tenantId } = getAuthFromReq(req);
       const data = await this.service.getLocationComparison(
         req.query as Record<string, unknown>,
         role,
         currentUserId,
+        tenantId,
       );
       return res.status(200).json({
         message: "Location comparison fetched",
@@ -160,11 +162,12 @@ class AnalyticsController {
 
   getSalesExtended = async (req: Request, res: Response) => {
     try {
-      const { role, currentUserId } = getAuthFromReq(req);
+      const { role, currentUserId, tenantId } = getAuthFromReq(req);
       const data = await this.service.getSalesExtended(
         req.query as Record<string, unknown>,
         role,
         currentUserId,
+        tenantId,
       );
       return res.status(200).json({
         message: "Sales extended analytics fetched",
@@ -218,11 +221,12 @@ class AnalyticsController {
 
   getCustomerInsights = async (req: Request, res: Response) => {
     try {
-      const { role, currentUserId } = getAuthFromReq(req);
+      const { role, currentUserId, tenantId } = getAuthFromReq(req);
       const data = await this.service.getCustomerInsights(
         req.query as Record<string, unknown>,
         role,
         currentUserId,
+        tenantId,
       );
       return res.status(200).json({
         message: "Customer insights fetched",
@@ -240,11 +244,12 @@ class AnalyticsController {
 
   getTrends = async (req: Request, res: Response) => {
     try {
-      const { role, currentUserId } = getAuthFromReq(req);
+      const { role, currentUserId, tenantId } = getAuthFromReq(req);
       const data = await this.service.getTrends(
         req.query as Record<string, unknown>,
         role,
         currentUserId,
+        tenantId,
       );
       return res.status(200).json({
         message: "Trends analytics fetched",
@@ -275,11 +280,12 @@ class AnalyticsController {
 
   getMemberCohort = async (req: Request, res: Response) => {
     try {
-      const { role, currentUserId } = getAuthFromReq(req);
+      const { role, currentUserId, tenantId } = getAuthFromReq(req);
       const data = await this.service.getMemberCohort(
         req.query as Record<string, unknown>,
         role,
         currentUserId,
+        tenantId,
       );
       return res.status(200).json({
         message: "Member cohort fetched",

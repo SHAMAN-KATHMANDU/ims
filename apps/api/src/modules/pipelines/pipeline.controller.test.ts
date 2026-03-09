@@ -18,7 +18,7 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 import pipelineController from "./pipeline.controller";
 import * as pipelineServiceModule from "./pipeline.service";
 
-const mockService = pipelineServiceModule.default as Record<
+const mockService = pipelineServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

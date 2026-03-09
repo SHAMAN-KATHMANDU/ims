@@ -197,7 +197,7 @@ export function PivotPage() {
   const { data: locationData } = useLocationComparisonAnalytics(apiParams);
   const { data: customersData } = useCustomersPromosAnalytics(apiParams);
   const { data: inventoryData } = useInventoryOpsAnalytics(apiParams);
-  const { data: productsResponse } = useProductsPaginated({ limit: 1000 });
+  const { data: productsResponse } = useProductsPaginated({ limit: 10 });
   const products = useMemo(
     () => productsResponse?.data ?? [],
     [productsResponse?.data],

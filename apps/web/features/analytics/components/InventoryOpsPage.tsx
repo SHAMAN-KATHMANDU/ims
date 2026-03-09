@@ -23,6 +23,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -38,9 +44,12 @@ import {
   useInventoryExtendedAnalytics,
 } from "@/features/analytics";
 import { AnalyticsFilterBar } from "./components/AnalyticsFilterBar";
+import { AnalyticsChartTooltip } from "./AnalyticsChartTooltip";
+import { ChartInfoButton } from "./components/ChartInfoButton";
 import { HeatmapTable } from "@/components/charts";
 import { exportAnalytics } from "@/features/analytics";
 import { downloadBlobFromResponse } from "@/lib/downloadBlob";
+import { Download, FileSpreadsheet, FileText } from "lucide-react";
 import {
   C,
   getChartColor,
@@ -50,6 +59,7 @@ import {
   axisTick,
   gridProps,
   tooltipStyle,
+  tooltipCursor,
 } from "./reportTheme";
 
 function ProgressBar({
@@ -177,24 +187,30 @@ export function InventoryOpsPage() {
         <div className="min-w-0 flex-1">
           <AnalyticsFilterBar />
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport("excel")}
-            disabled={exporting}
-          >
-            {exporting ? "..." : "Export Excel"}
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handleExport("csv")}
-            disabled={exporting}
-          >
-            {exporting ? "..." : "Export CSV"}
-          </Button>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" disabled={exporting}>
+              <Download className="h-4 w-4 mr-2" />
+              {exporting ? "..." : "Download"}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem
+              onClick={() => handleExport("excel")}
+              disabled={exporting}
+            >
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Download as Excel
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => handleExport("csv")}
+              disabled={exporting}
+            >
+              <FileText className="h-4 w-4 mr-2" />
+              Download as CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       {!loading && kpis.length > 0 && (
@@ -226,9 +242,12 @@ export function InventoryOpsPage() {
           <TabsContent value="overview" className="space-y-6 mt-6">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Inventory Aging</CardTitle>
-                  <CardDescription>Stock value by age bucket</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Inventory Aging</CardTitle>
+                    <CardDescription>Stock value by age bucket</CardDescription>
+                  </div>
+                  <ChartInfoButton content="Total stock value (at MRP) grouped by how long items have been in inventory: 0–30, 31–60, 61–90, and 90+ days. Helps identify slow-moving stock." />
                 </CardHeader>
                 <CardContent>
                   {data?.aging && (
@@ -284,9 +303,12 @@ export function InventoryOpsPage() {
                 </CardContent>
               </Card>
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Transfer Funnel</CardTitle>
-                  <CardDescription>Pending → Completed</CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Transfer Funnel</CardTitle>
+                    <CardDescription>Pending → Completed</CardDescription>
+                  </div>
+                  <ChartInfoButton content="Number of stock transfers in each stage: Pending, Approved, In Transit, Completed. Shows pipeline of movement between locations." />
                 </CardHeader>
                 <CardContent>
                   {data?.transferFunnel && (
@@ -345,11 +367,14 @@ export function InventoryOpsPage() {
 
             {extData && extData.sellThroughByLocation.length > 0 && (
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Sell-Through by Location</CardTitle>
-                  <CardDescription>
-                    Units sold / (sold + stock) per location
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Sell-Through by Location</CardTitle>
+                    <CardDescription>
+                      Units sold / (sold + stock) per location
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Sell-through rate per location: units sold divided by (units sold + current stock). Higher % means inventory is turning faster at that location." />
                 </CardHeader>
                 <CardContent>
                   <ResponsiveContainer width="100%" height={220}>
@@ -358,8 +383,17 @@ export function InventoryOpsPage() {
                       <XAxis dataKey="locationName" tick={axisTick} />
                       <YAxis tickFormatter={(v) => `${v}%`} tick={axisTick} />
                       <Tooltip
-                        formatter={(v: number) => `${v}%`}
+                        content={(props) => (
+                          <AnalyticsChartTooltip
+                            {...props}
+                            formatter={(v) =>
+                              typeof v === "number" ? `${v}%` : String(v ?? "")
+                            }
+                          />
+                        )}
+                        wrapperStyle={tooltipStyle}
                         contentStyle={tooltipStyle}
+                        cursor={tooltipCursor}
                       />
                       <Bar
                         dataKey="sellThroughRate"
@@ -378,11 +412,14 @@ export function InventoryOpsPage() {
 
             {data?.heatmap && data.heatmap.length > 0 && (
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Stock Heatmap</CardTitle>
-                  <CardDescription>
-                    Categories × locations (stock value)
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Stock Heatmap</CardTitle>
+                    <CardDescription>
+                      Categories × locations (stock value)
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Stock value (at MRP) by product category and location. Rows are categories, columns are locations. Helps see where each category is held." />
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
                   <HeatmapTable
@@ -400,11 +437,14 @@ export function InventoryOpsPage() {
           <TabsContent value="doh" className="space-y-6 mt-6">
             {extData && (
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Days of Inventory on Hand</CardTitle>
-                  <CardDescription>
-                    Slowest moving products by days on hand
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Days of Inventory on Hand</CardTitle>
+                    <CardDescription>
+                      Slowest moving products by days on hand
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Estimated days until stock runs out at current sell rate. Lists products with the most days on hand (slowest moving) first." />
                 </CardHeader>
                 <CardContent className="overflow-x-auto">
                   {(() => {
@@ -518,11 +558,14 @@ export function InventoryOpsPage() {
           <TabsContent value="deadstock" className="space-y-6 mt-6">
             {extData && (
               <Card className="min-w-0">
-                <CardHeader>
-                  <CardTitle>Dead Stock</CardTitle>
-                  <CardDescription>
-                    Products with stock but zero sales in selected period
-                  </CardDescription>
+                <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
+                  <div>
+                    <CardTitle>Dead Stock</CardTitle>
+                    <CardDescription>
+                      Products with stock but zero sales in selected period
+                    </CardDescription>
+                  </div>
+                  <ChartInfoButton content="Products that have inventory on hand but no sales in the selected period. Candidates for markdown or clearance." />
                 </CardHeader>
                 <CardContent>
                   {extData.deadStock.length === 0 ? (

@@ -38,6 +38,7 @@ import {
   formatCurrency,
   useAddPaymentToSale,
 } from "../../hooks/use-sales";
+import { downloadReceiptPdf } from "../../services/sales.service";
 import { useToast } from "@/hooks/useToast";
 import {
   MapPin,
@@ -47,6 +48,8 @@ import {
   Hash,
   CreditCard,
   Contact,
+  Printer,
+  FileDown,
 } from "lucide-react";
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
@@ -73,6 +76,7 @@ export function SaleDetail({
   const { toast } = useToast();
   const addPaymentMutation = useAddPaymentToSale();
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [receiptLoading, setReceiptLoading] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("CASH");
 
@@ -113,14 +117,54 @@ export function SaleDetail({
     }
   };
 
+  const handlePrintOrPdf = async () => {
+    if (!sale) return;
+    setReceiptLoading(true);
+    try {
+      await downloadReceiptPdf(sale.id);
+      toast({ title: "Receipt downloaded" });
+    } catch {
+      toast({
+        title: "Failed to download receipt",
+        variant: "destructive",
+      });
+    } finally {
+      setReceiptLoading(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
             Sale Details
           </DialogTitle>
+          {sale && (
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrintOrPdf}
+                disabled={receiptLoading}
+                className="gap-1.5"
+              >
+                <Printer className="h-4 w-4" />
+                {receiptLoading ? "..." : "Print"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrintOrPdf}
+                disabled={receiptLoading}
+                className="gap-1.5"
+              >
+                <FileDown className="h-4 w-4" />
+                {receiptLoading ? "..." : "PDF"}
+              </Button>
+            </div>
+          )}
         </DialogHeader>
 
         {isLoading ? (
@@ -132,7 +176,7 @@ export function SaleDetail({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : sale ? (
-          <div className="space-y-4">
+          <div className="receipt-print-area space-y-4">
             {/* Header Info */}
             <div className="flex items-start justify-between">
               <div>
@@ -155,7 +199,7 @@ export function SaleDetail({
             <Separator />
 
             {/* Location & Customer */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                   <MapPin className="h-4 w-4" />
@@ -224,8 +268,8 @@ export function SaleDetail({
             {/* Items */}
             <div>
               <h4 className="font-medium mb-2">Items</h4>
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="min-w-[320px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Product</TableHead>
@@ -252,7 +296,7 @@ export function SaleDetail({
                                 </div>
                               )}
                             <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                              {item.variation.imsCode}
+                              {item.variation.product?.imsCode ?? "—"}
                             </div>
                           </div>
                         </TableCell>

@@ -4,7 +4,7 @@ const StageSchema = z.object({
   id: z.string(),
   name: z.string(),
   order: z.number(),
-  probability: z.number(),
+  probability: z.number().optional().default(0),
 });
 
 export const CreatePipelineSchema = z.object({

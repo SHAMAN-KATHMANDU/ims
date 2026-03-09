@@ -1,5 +1,7 @@
 ---
 description: Enforces the 3-layer Controller → Service → Repository architecture for all API modules
+globs:
+  - "apps/api/**/*.ts"
 alwaysApply: true
 ---
 

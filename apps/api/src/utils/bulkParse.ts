@@ -22,6 +22,12 @@ export interface BulkParseOptions<T> {
   skipExcelRows?: number;
   /** Hint message shown when required columns are missing. */
   missingColumnsHint?: string;
+  /**
+   * When true, headers that don't match any entry in `headerMappings` are
+   * collected into a `dynamicAttributes` record on each row.
+   * The key is the original header text (trimmed), the value is the cell value as a string.
+   */
+  collectDynamicAttributes?: boolean;
 }
 
 export interface BulkParseResult<T> {
@@ -139,6 +145,7 @@ export async function parseBulkFile<T>(
     fields,
     skipExcelRows = 1,
     missingColumnsHint,
+    collectDynamicAttributes = false,
   } = options;
 
   const fileExt = path.extname(originalName).toLowerCase();
@@ -169,6 +176,7 @@ export async function parseBulkFile<T>(
     const csvHeaders = Object.keys(csvRows[0] || {});
     const csvColumnMap: Record<string, string> = {};
     const mapped = new Set<string>();
+    const dynamicCsvHeaders: string[] = [];
 
     for (const csvHeader of csvHeaders) {
       const normalized = normalizeHeader(csvHeader);
@@ -176,6 +184,9 @@ export async function parseBulkFile<T>(
       if (fieldName) {
         csvColumnMap[fieldName] = csvHeader;
         mapped.add(fieldName);
+      } else if (collectDynamicAttributes) {
+        const trimmed = csvHeader.trim();
+        if (trimmed) dynamicCsvHeaders.push(trimmed);
       }
     }
 
@@ -202,6 +213,17 @@ export async function parseBulkFile<T>(
       };
 
       const rowData = buildRowData(fields, getCellValue);
+
+      if (collectDynamicAttributes && dynamicCsvHeaders.length > 0) {
+        const dynAttrs: Record<string, string> = {};
+        for (const header of dynamicCsvHeaders) {
+          const raw = csvRow[header];
+          const val = raw != null ? String(raw).trim() : "";
+          if (val && val !== "-") dynAttrs[header] = val;
+        }
+        rowData.dynamicAttributes = dynAttrs;
+      }
+
       const validated = validateRow(rowData, schema, rowIndex + 2, errors);
       if (validated) rows.push(validated);
     });
@@ -224,14 +246,18 @@ export async function parseBulkFile<T>(
     const excelColumnMap: Record<string, number> = {};
     const mapped = new Set<string>();
     const headerRow = worksheet.getRow(1);
+    const dynamicExcelColumns: Array<{ header: string; colNumber: number }> = [];
 
     headerRow.eachCell((cell, colNumber) => {
       if (cell.value) {
-        const normalized = normalizeHeader(String(cell.value).trim());
+        const rawHeader = String(cell.value).trim();
+        const normalized = normalizeHeader(rawHeader);
         const fieldName = matchHeader(normalized, headerMappings, mapped);
         if (fieldName) {
           excelColumnMap[fieldName] = colNumber;
           mapped.add(fieldName);
+        } else if (collectDynamicAttributes && rawHeader) {
+          dynamicExcelColumns.push({ header: rawHeader, colNumber });
         }
       }
     });
@@ -261,6 +287,17 @@ export async function parseBulkFile<T>(
       };
 
       const rowData = buildRowData(fields, getCellValue);
+
+      if (collectDynamicAttributes && dynamicExcelColumns.length > 0) {
+        const dynAttrs: Record<string, string> = {};
+        for (const { header, colNumber } of dynamicExcelColumns) {
+          const raw = row.getCell(colNumber).value;
+          const val = raw != null ? String(raw).trim() : "";
+          if (val && val !== "-") dynAttrs[header] = val;
+        }
+        rowData.dynamicAttributes = dynAttrs;
+      }
+
       const validated = validateRow(rowData, schema, rowIndex, errors);
       if (validated) rows.push(validated);
     });

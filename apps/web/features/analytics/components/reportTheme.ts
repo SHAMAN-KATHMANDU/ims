@@ -118,8 +118,9 @@ export function fP(v: number): string {
 /* ─── TOOLTIP TYPES (Recharts) ─── */
 
 export interface ChartTooltipPayloadItem {
-  name?: string;
-  value?: number | string;
+  name?: string | number;
+  /** Recharts may pass scalar or array; we normalize when formatting. */
+  value?: number | string | (number | string)[];
   color?: string;
 }
 
@@ -131,14 +132,23 @@ export interface ChartTooltipProps {
 
 /* ─── CHART STYLE OBJECTS ─── */
 
-/** Recharts tooltip container style */
+/** Recharts tooltip container style — matches AnalyticsChartTooltip for wrapper/content. */
 export const tooltipStyle: React.CSSProperties = {
   background: "#1c2333",
   border: `1px solid ${C.border}`,
   borderRadius: 8,
   fontSize: 12,
   padding: "10px 14px",
+  color: C.text,
+  boxShadow: "0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.06)",
 };
+
+/** Tooltip cursor: thin stroke instead of default filled block, so hover shows a clear crosshair rather than a shadow. */
+export const tooltipCursor = {
+  stroke: C.border,
+  strokeWidth: 1,
+  fill: "transparent",
+} as const;
 
 /** Recharts axis tick */
 export const axisTick = { fill: C.tm, fontSize: 11 } as const;
@@ -157,7 +167,7 @@ export const ANALYTICS_GLOBAL_CSS = `
   [data-analytics] .recharts-text{fill:${C.tm}!important;font-size:11px!important}
   [data-analytics] select:focus{border-color:${C.accent}}
   [data-analytics] select option{background:${C.card};color:${C.text}}
-  .analytics-tooltip{background:#1c2333;border:1px solid ${C.border};border-radius:8px;font-size:12px;padding:10px 14px}
+  .analytics-tooltip{background:#1c2333;border:1px solid ${C.border};border-radius:8px;font-size:12px;padding:10px 14px;color:${C.text}}
   .analytics-tooltip-label{font-weight:600;color:${C.text};margin-bottom:6px}
   .analytics-tooltip-row{margin-bottom:2px}
   .analytics-tooltip-row[data-color="accent"]{color:${C.accent}}

@@ -124,13 +124,13 @@ export async function calculateSaleItems(
     if (hasSubVariants && !subVariationId) {
       throw new SaleCalculationError(
         400,
-        `Variation ${variation.imsCode} has sub-variants; please specify subVariationId`,
+        `Product ${variation.product.name} has sub-variants; please specify subVariationId`,
       );
     }
     if (!hasSubVariants && subVariationId) {
       throw new SaleCalculationError(
         400,
-        `Variation ${variation.imsCode} has no sub-variants; do not send subVariationId`,
+        `Product ${variation.product.name} has no sub-variants; do not send subVariationId`,
       );
     }
     if (subVariationId) {
@@ -157,7 +157,7 @@ export async function calculateSaleItems(
     if (availableStock < item.quantity) {
       throw new SaleCalculationError(
         400,
-        `Insufficient stock for ${variation.product.name} (${variation.imsCode}${subVariationId ? " / sub-variant" : ""})`,
+        `Insufficient stock for ${variation.product.name} (${variation.product.imsCode}${subVariationId ? " / sub-variant" : ""})`,
         { available: availableStock, requested: item.quantity },
       );
     }
@@ -443,12 +443,12 @@ export async function createSale(
 
   const promoCodesUsed = new Set<string>();
   for (const item of dto.items) {
-    if (item.promoCode && !promoCodesUsed.has(item.promoCode)) {
-      const promo = await findPromoByCode(ctx.tenantId, item.promoCode);
-      if (promo) {
-        await incrementPromoUsage(promo.id);
-        promoCodesUsed.add(item.promoCode);
-      }
+    const code = item.promoCode?.trim();
+    if (!code || promoCodesUsed.has(code)) continue;
+    promoCodesUsed.add(code);
+    const promo = await findPromoByCode(ctx.tenantId, code);
+    if (promo) {
+      await incrementPromoUsage(promo.id);
     }
   }
 
@@ -482,6 +482,8 @@ export async function createSale(
     discount: totalDiscount,
     total,
     notes: dto.notes ?? null,
+    promoCodesUsed:
+      promoCodesUsed.size > 0 ? Array.from(promoCodesUsed) : undefined,
     items: processedItems.map((item) => ({
       variationId: item.variationId,
       subVariationId: item.subVariationId,

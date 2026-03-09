@@ -28,7 +28,7 @@ import contactController from "./contact.controller";
 import * as contactServiceModule from "./contact.service";
 import { sendControllerError } from "@/utils/controllerError";
 
-const mockService = contactServiceModule.default as Record<
+const mockService = contactServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

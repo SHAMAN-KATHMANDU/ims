@@ -22,9 +22,9 @@ export interface SaleItem {
   lineTotal: number;
   variation: {
     id: string;
-    imsCode: string;
     product: {
       id: string;
+      imsCode: string;
       name: string;
       category?: {
         id: string;

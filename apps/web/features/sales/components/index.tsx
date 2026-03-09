@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useIsMobile } from "@/hooks/useMobile";
+import { useDebounce } from "@/hooks/useDebounce";
 import { useActiveLocations } from "@/features/locations";
 import {
   useAuthStore,
@@ -36,6 +37,8 @@ import { NewSaleForm } from "./components/NewSaleForm";
 import { SaleDetail } from "./components/SaleDetail";
 import { SaleBulkUploadDialog } from "./components/SaleBulkUploadDialog";
 import { SalesFilterBar } from "./components/SalesFilterBar";
+import { FeatureGuard } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import { Button } from "@/components/ui/button";
 import {
   Download,
@@ -87,6 +90,7 @@ export function SalesPage() {
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [typeFilter, setTypeFilter] = useState<SaleType | "ALL">("ALL");
   const [creditFilter, setCreditFilter] = useState<
     "ALL" | "credit" | "non-credit"
@@ -149,7 +153,7 @@ export function SalesPage() {
   const { data: salesResponse, isLoading: salesLoading } = useSalesPaginated({
     page,
     limit: pageSize,
-    search,
+    search: debouncedSearch,
     type: typeFilter === "ALL" ? undefined : typeFilter,
     isCreditSale:
       creditFilter === "credit"
@@ -363,15 +367,15 @@ export function SalesPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 min-w-0 w-full">
       <div>
-        <h1 className="text-3xl font-bold">Sales</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl font-bold sm:text-3xl">Sales</h1>
+        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Track and manage sales from showrooms
         </p>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between min-w-0">
         <SalesFilterBar
           search={search}
           onSearchChange={handleSearchChange}
@@ -404,7 +408,7 @@ export function SalesPage() {
           today={today}
         />
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
           {canManageSales && (
             <>
               <DropdownMenu>
@@ -436,22 +440,24 @@ export function SalesPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              {isMobile ? (
-                <Button variant="outline" asChild>
-                  <Link href={`${basePath}/sales/bulk-upload`}>
+              <FeatureGuard feature={Feature.BULK_UPLOAD_SALES}>
+                {isMobile ? (
+                  <Button variant="outline" asChild>
+                    <Link href={`${basePath}/sales/bulk-upload`}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Bulk Upload
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkUploadDialog(true)}
+                  >
                     <Upload className="h-4 w-4 mr-2" />
                     Bulk Upload
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setBulkUploadDialog(true)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Bulk Upload
-                </Button>
-              )}
+                  </Button>
+                )}
+              </FeatureGuard>
             </>
           )}
           {canManageSales &&

@@ -1,6 +1,7 @@
 ---
 description: Documents the shared/ directory contracts — errors, auth context, types, and response helpers for the API
-globs: apps/api/**/*.ts
+globs:
+  - "apps/api/**/*.ts"
 alwaysApply: false
 ---
 

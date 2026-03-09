@@ -779,7 +779,257 @@ it("submits form with correct values", async () => {
 
 ---
 
-## 10. Auth Feature — Full Example
+## 10. Feature Flag Governance
+
+### Philosophy
+
+Feature flags allow safe deployment of incomplete or experimental features without exposing them to users.
+
+All experimental, beta, staged rollout, or environment-specific features **must** be controlled by feature flags.
+
+Feature flags prevent:
+
+- Incomplete UI appearing in production
+- Accidental feature exposure
+- Unsafe deployments
+- Risky releases
+
+Feature flags are a **deployment safety mechanism**, not a long-term configuration system. Flags must be removed once the feature becomes stable.
+
+---
+
+### Feature Flag Location
+
+All feature flags must be centralized. Create a single configuration module:
+
+```
+apps/web/constants/feature-flags.ts
+```
+
+No other location may define flags.
+
+Example structure:
+
+```ts
+export const FEATURE_FLAGS = {
+  NEW_DASHBOARD: false,
+  AI_RECOMMENDATIONS: false,
+  ADVANCED_ANALYTICS: false,
+  SALES_PREDICTIONS: false,
+  EXPERIMENTAL_CHECKOUT: false,
+} as const;
+
+export type FeatureFlag = keyof typeof FEATURE_FLAGS;
+```
+
+---
+
+### Feature Flag Helper
+
+Feature flags must never be accessed directly. Create a helper utility:
+
+```
+apps/web/lib/feature-flags.ts
+```
+
+Example:
+
+```ts
+import { FEATURE_FLAGS, FeatureFlag } from "@/constants/feature-flags";
+
+export function isFeatureEnabled(flag: FeatureFlag): boolean {
+  return FEATURE_FLAGS[flag] === true;
+}
+```
+
+Usage must always go through this helper. Direct access like `FEATURE_FLAGS.NEW_DASHBOARD` is forbidden.
+
+---
+
+### Component Usage
+
+Components must conditionally render features using `isFeatureEnabled`.
+
+Example:
+
+```tsx
+if (!isFeatureEnabled("AI_RECOMMENDATIONS")) {
+  return null;
+}
+```
+
+Or:
+
+```tsx
+{isFeatureEnabled("AI_RECOMMENDATIONS") && <AiRecommendationPanel />}
+```
+
+Rules:
+
+- Do not render hidden UI
+- Do not render disabled buttons
+- Do not show placeholders for disabled features
+
+Disabled features should behave as if they **do not exist**.
+
+---
+
+### Page-Level Feature Flags
+
+Entire pages may be gated.
+
+Example:
+
+```tsx
+if (!isFeatureEnabled("ADVANCED_ANALYTICS")) {
+  notFound();
+}
+```
+
+This ensures that unfinished routes are not exposed.
+
+---
+
+### Feature Flags in Hooks
+
+Hooks may check flags to disable logic.
+
+Example:
+
+```ts
+export function useSalesPrediction() {
+  if (!isFeatureEnabled("SALES_PREDICTIONS")) {
+    return { data: null, isDisabled: true };
+  }
+
+  return useQuery({
+    queryKey: ["salesPrediction"],
+    queryFn: fetchPrediction,
+  });
+}
+```
+
+Rules:
+
+- Hooks must return a stable interface even when disabled
+- Avoid conditional hook execution when possible
+
+---
+
+### Feature Flags in Navigation
+
+Sidebar, menus, and navigation items must respect feature flags.
+
+Example:
+
+```tsx
+const items = [
+  { label: "Dashboard", href: routes.dashboard },
+  ...(isFeatureEnabled("ADVANCED_ANALYTICS")
+    ? [{ label: "Analytics", href: routes.analytics }]
+    : []),
+];
+```
+
+Disabled features must **not** appear in navigation.
+
+---
+
+### Feature Flags for API Usage
+
+Frontend must not call backend APIs for disabled features.
+
+Example:
+
+```ts
+if (!isFeatureEnabled("AI_RECOMMENDATIONS")) {
+  return;
+}
+```
+
+Services should only be called when the feature is enabled.
+
+---
+
+### Environment-Based Flags
+
+Flags may vary by environment.
+
+Example:
+
+- `development` — many experimental features enabled
+- `staging` — selected beta features
+- `production` — stable features only
+
+Environment overrides must live in:
+
+```
+apps/web/constants/feature-flags.env.ts
+```
+
+Example:
+
+```ts
+export const ENV_FEATURE_FLAGS = {
+  development: {
+    AI_RECOMMENDATIONS: true,
+  },
+};
+```
+
+---
+
+### Feature Flag Metadata
+
+Each feature flag must include metadata comments:
+
+```
+NEW_DASHBOARD
+description: redesigned dashboard UI
+owner: frontend-team
+created: 2026-03-01
+removal_target: 2026-05-01
+```
+
+The AI should encourage removing flags when the removal date passes.
+
+---
+
+### Testing Requirements
+
+Tests must verify behavior for both flag states.
+
+Example:
+
+```ts
+describe("AI recommendations", () => {
+  it("does not render when flag disabled", () => {});
+  it("renders when flag enabled", () => {});
+});
+```
+
+---
+
+### Forbidden Patterns
+
+The following are strictly forbidden:
+
+- Direct `process.env` checks inside components
+- Defining feature flags inside components
+- Defining feature flags inside features
+- Scattered feature flag definitions
+- Rendering hidden experimental UI
+- API calls for disabled features
+
+---
+
+### Golden Rule
+
+Every experimental feature must be protected by a feature flag. No incomplete feature should be visible in production. Feature flags must be centralized, typed, and temporary.
+
+---
+
+## 11. Auth Feature — Full Example
 
 This is the canonical reference implementation. All other features follow this pattern.
 
@@ -1026,7 +1276,413 @@ export type { AuthUser, LoginFormValues } from "./types";
 
 ---
 
-## 11. Anti-Patterns to Avoid
+## 12. Feature Flag Control Plane Architecture
+
+This section defines a **centralized feature flag control plane** used to manage feature rollout across the entire platform.
+
+The architecture must support:
+
+- central dashboard management
+- edge distribution
+- server-side and client-side flag evaluation
+- multi-tenant flags
+- region-specific rollout
+- user cohort rollout
+- percentage rollouts
+- kill switches
+- experiment tracking
+
+This system should follow production-grade practices used by companies like Shopify, Vercel, and Stripe.
+
+---
+
+### Architecture Overview
+
+The feature flag system must consist of four layers:
+
+1. Feature Flag Control Plane (dashboard + API)
+2. Edge Distribution Layer
+3. Backend Flag Evaluation
+4. Frontend Flag Consumption
+
+---
+
+### 1. Feature Flag Control Plane
+
+Feature flags must be managed from a central dashboard.
+
+The dashboard allows engineers and product managers to:
+
+- create feature flags
+- toggle flags
+- define rollout rules
+- define percentage rollouts
+- target tenants
+- target regions
+- target user cohorts
+- enable kill switches
+
+Dashboard API example:
+
+```
+GET /api/feature-flags
+POST /api/feature-flags
+PATCH /api/feature-flags/:flag
+```
+
+Example response:
+
+```json
+{
+  "flags": {
+    "NEW_DASHBOARD": {
+      "enabled": true,
+      "rollout": 50,
+      "regions": ["us", "eu"],
+      "tenants": ["enterprise"],
+      "type": "release"
+    },
+    "CHECKOUT_VARIANT_B": {
+      "enabled": true,
+      "type": "experiment"
+    },
+    "DISABLE_AI_SYSTEM": {
+      "enabled": false,
+      "type": "ops"
+    }
+  }
+}
+```
+
+---
+
+### 2. Edge Distribution Layer
+
+Feature flags must be cached at the edge.
+
+Edge middleware fetches flags and injects them into requests.
+
+Location:
+
+```
+middleware.ts
+```
+
+Example logic:
+
+```
+1. request arrives
+2. edge middleware fetches feature flags
+3. flags cached in edge cache
+4. flags injected into request headers
+```
+
+Example header:
+
+```
+x-feature-flags: {...}
+```
+
+This allows:
+
+- extremely fast flag evaluation
+- global rollout control
+- region-based flags
+
+Edge caching TTL example:
+
+```
+30 seconds
+```
+
+---
+
+### 3. Backend Flag Evaluation
+
+Backend services must evaluate flags using context.
+
+Context includes:
+
+```
+userId
+tenantId
+region
+role
+subscription plan
+```
+
+Evaluation example:
+
+```
+isFeatureEnabled("NEW_DASHBOARD", {
+  userId,
+  tenantId,
+  region
+})
+```
+
+Evaluation priority:
+
+```
+Kill Switch
+↓
+Tenant Override
+↓
+Region Rule
+↓
+User Cohort
+↓
+Percentage Rollout
+↓
+Default Flag
+```
+
+---
+
+### 4. Frontend Flag Consumption
+
+Frontend must consume flags through hooks.
+
+Example hook:
+
+```
+hooks/use-feature-flag.ts
+```
+
+Example implementation:
+
+```ts
+export function useFeatureFlag(flag: FeatureFlag) {
+  const context = useAuth()
+
+  return evaluateFeatureFlag(flag, {
+    userId: context.user?.id,
+    tenantId: context.tenant?.id
+  })
+}
+```
+
+Example usage:
+
+```tsx
+const showDashboard = useFeatureFlag("NEW_DASHBOARD")
+```
+
+Components must not access flags directly.
+
+---
+
+### Server-Side Flags
+
+Flags must also be available in:
+
+- Server Components
+- Route Handlers
+- Middleware
+
+Example:
+
+```ts
+import { getFeatureFlag } from "@/lib/feature-flags/server"
+
+const showFeature = await getFeatureFlag("NEW_DASHBOARD")
+```
+
+---
+
+### Edge Middleware Integration
+
+Edge middleware must attach flags to request context.
+
+Example:
+
+```
+request.headers.set("x-feature-flags", JSON.stringify(flags))
+```
+
+Server code can then read flags from headers.
+
+---
+
+### Cohort-Based Rollouts
+
+Feature flags must support cohorts.
+
+Example:
+
+```
+cohorts:
+  - beta-testers
+  - internal-users
+  - enterprise-customers
+```
+
+Example evaluation:
+
+```
+if user.cohort == "beta-testers"
+  enable feature
+```
+
+---
+
+### Region-Based Rollouts
+
+Features may roll out by region.
+
+Example:
+
+```
+regions: ["us", "eu"]
+```
+
+Evaluation:
+
+```
+if request.region in allowed regions
+  enable feature
+```
+
+---
+
+### Percentage Rollouts
+
+Gradual rollout must use deterministic hashing.
+
+Example:
+
+```
+rollout: 25
+```
+
+Meaning 25% of users see the feature.
+
+Implementation:
+
+```
+hash(flag + userId) % 100 < rollout
+```
+
+---
+
+### Experiment Flags
+
+Experiments must support multiple variants.
+
+Example:
+
+```
+CHECKOUT_EXPERIMENT:
+  variants: ["A", "B"]
+```
+
+Variant assignment:
+
+```
+variant = hash(userId) % numberOfVariants
+```
+
+Experiments must emit analytics events.
+
+Example:
+
+```
+experiment_exposed
+```
+
+Payload:
+
+```
+flag
+variant
+userId
+timestamp
+```
+
+---
+
+### Kill Switch Flags
+
+Critical features must support kill switches.
+
+Example flags:
+
+```
+DISABLE_AI_SYSTEM
+DISABLE_PAYMENT_GATEWAY
+DISABLE_RECOMMENDATIONS
+```
+
+Kill switches override all other rules.
+
+---
+
+### Observability
+
+Feature flag evaluations must optionally emit telemetry.
+
+Example event:
+
+```
+feature_flag_exposed
+```
+
+Metadata:
+
+```
+flag
+userId
+tenantId
+region
+variant
+timestamp
+```
+
+This allows monitoring feature adoption.
+
+---
+
+### Security Rules
+
+Feature flags must never expose internal flags to the client.
+
+Flags must be filtered before sending to the browser.
+
+Internal flags example:
+
+```
+INTERNAL_DEBUG_MODE
+ADMIN_EXPERIMENT
+```
+
+These must remain server-only.
+
+---
+
+### Lifecycle Rules
+
+Each flag must contain metadata:
+
+```
+owner
+created
+type
+removal_target
+```
+
+Flags must be removed once the rollout completes.
+
+---
+
+### Golden Rule
+
+Feature flags are part of the deployment infrastructure.
+
+Every experimental or staged feature must go through the feature flag control plane.
+
+---
+
+## 13. Anti-Patterns to Avoid
 
 ### Fat Components
 
@@ -1175,7 +1831,7 @@ const handleResponse = (data: any) => { ... };
 
 ---
 
-## 12. Scalability Guidelines
+## 14. Scalability Guidelines
 
 ### Phase 1 — Small Team (1–5 developers, 1–5 features)
 
@@ -1239,7 +1895,7 @@ Do not introduce this prematurely. The Phase 1/2 structure handles most producti
 
 ### Feature Flag Integration
 
-When features need to be toggled per tenant or environment, add a `flags/` module:
+Base feature flag governance is defined in **Section 10**. The centralized control plane (dashboard, edge, multi-tenant) is defined in **Section 12**. When features need to be toggled per tenant or fetched from an API (Phase 2), add a `flags/` module:
 
 ```
 features/
@@ -1292,3 +1948,6 @@ Before approving any PR touching `apps/web/`, verify:
 - [ ] All new files follow the naming conventions in Section 7
 - [ ] `npx tsc --noEmit` passes with zero errors
 - [ ] Tests exist for the service and hook layers of new features
+- [ ] Experimental features are protected by feature flags (Section 10) or the control plane (Section 12) when implemented
+- [ ] Feature flags are defined in `constants/feature-flags.ts` — not scattered
+- [ ] Tests cover both flag states (enabled and disabled) when a feature flag is used

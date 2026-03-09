@@ -12,7 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Plus, ListOrdered } from "lucide-react";
+import { Trash2, Plus } from "lucide-react";
 import type { ProductVariationForm } from "../../types";
 import type { UseFormReturn } from "@/hooks/useForm";
 import type { ProductFormValues } from "../../types";
@@ -25,7 +25,7 @@ interface VariationsTabProps {
   onRemove: (index: number) => void;
   onUpdate: (
     index: number,
-    field: "stockQuantity" | "imsCode" | "attributes",
+    field: "stockQuantity" | "attributes",
     value:
       | string
       | Array<{ attributeTypeId: string; attributeValueId: string }>,
@@ -45,7 +45,7 @@ export function VariationsTab({
   onAdd,
   onRemove,
   onUpdate,
-  onUpdateSubVariants,
+  onUpdateSubVariants: _onUpdateSubVariants,
   onAddPhoto,
   onRemovePhoto,
   onSetPrimaryPhoto,
@@ -82,36 +82,6 @@ export function VariationsTab({
     onUpdate(index, "attributes", next);
   };
 
-  const handleBulkAddSubVariants = (index: number) => {
-    const raw = prompt(
-      "Enter sub-variant names (e.g. S, M, L). Separate by comma or new line:",
-      (variations[index]?.subVariants ?? []).join(", "),
-    );
-    if (raw == null) return;
-    const names = raw
-      .split(/[\n,]+/)
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (names.length > 0) {
-      onUpdateSubVariants(index, names);
-    }
-  };
-
-  const addOneSubVariant = (index: number) => {
-    const name = prompt("Sub-variant name (e.g. S, M, L):");
-    if (name == null || !name.trim()) return;
-    const current = variations[index]?.subVariants ?? [];
-    if (current.includes(name.trim())) return;
-    onUpdateSubVariants(index, [...current, name.trim()]);
-  };
-
-  const removeSubVariant = (index: number, subIndex: number) => {
-    const current = variations[index]?.subVariants ?? [];
-    onUpdateSubVariants(
-      index,
-      current.filter((_, i) => i !== subIndex),
-    );
-  };
   return (
     <div className="space-y-4">
       {attributeTypes.length > 0 && onProductAttributeTypeIdsChange && (
@@ -174,22 +144,6 @@ export function VariationsTab({
                 </div>
               )}
               <div className="flex gap-2 items-end flex-wrap">
-                <div className="min-w-[120px] space-y-1">
-                  <Label htmlFor={`var-imscode-${index}`} className="text-xs">
-                    IMS code <span className="text-destructive">*</span>
-                  </Label>
-                  <Input
-                    id={`var-imscode-${index}`}
-                    placeholder="e.g. SHIRT-RED-M"
-                    value={variation.imsCode ?? ""}
-                    onChange={(e) => onUpdate(index, "imsCode", e.target.value)}
-                  />
-                  {form.errors[`variation_${index}_imsCode`] && (
-                    <p className="text-xs text-destructive">
-                      {form.errors[`variation_${index}_imsCode`]}
-                    </p>
-                  )}
-                </div>
                 <div className="flex-1 min-w-[80px] space-y-1">
                   <Label htmlFor={`var-stock-${index}`} className="text-xs">
                     Default stock
@@ -255,57 +209,6 @@ export function VariationsTab({
                   ))}
                 </div>
               )}
-
-              {/* Sub-variants (e.g. S, M, L) — optional */}
-              <div className="space-y-2">
-                <div className="flex justify-between items-center">
-                  <Label className="text-xs">Sub-variants (optional)</Label>
-                  <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => addOneSubVariant(index)}
-                      className="h-7 text-xs gap-1"
-                    >
-                      <Plus className="h-3 w-3" /> Add
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleBulkAddSubVariants(index)}
-                      className="h-7 text-xs gap-1"
-                    >
-                      <ListOrdered className="h-3 w-3" /> Bulk add
-                    </Button>
-                  </div>
-                </div>
-                {(variation.subVariants?.length ?? 0) > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {(variation.subVariants ?? []).map((name, subIndex) => (
-                      <span
-                        key={subIndex}
-                        className="inline-flex items-center gap-1 rounded-md bg-muted px-2 py-1 text-xs"
-                      >
-                        {name}
-                        <button
-                          type="button"
-                          onClick={() => removeSubVariant(index, subIndex)}
-                          className="rounded hover:bg-muted-foreground/20 p-0.5"
-                          aria-label={`Remove ${name}`}
-                        >
-                          <Trash2 className="h-3 w-3 text-destructive" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    e.g. S, M, L — stock will be per location per sub-variant.
-                  </p>
-                )}
-              </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
@@ -379,10 +282,8 @@ export function VariationsTab({
         </div>
       )}
       <p className="text-xs text-muted-foreground">
-        Add at least one variation (default stock required). Variant name is
-        optional and can be auto-filled from attribute values. Optional
-        sub-variants (e.g. S, M, L) allow stock per size per location. The first
-        variation is the default.
+        Add at least one variation (default stock required). Variant name can be
+        auto-filled from attribute values. The first variation is the default.
       </p>
     </div>
   );

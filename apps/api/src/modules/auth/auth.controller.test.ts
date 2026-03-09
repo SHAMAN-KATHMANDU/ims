@@ -26,7 +26,7 @@ import { createError } from "@/middlewares/errorHandler";
 import authController from "./auth.controller";
 import * as authServiceModule from "./auth.service";
 
-const mockService = authServiceModule.default as Record<
+const mockService = authServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;

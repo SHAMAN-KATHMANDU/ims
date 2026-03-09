@@ -28,6 +28,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "@fontsource/roboto": "^5.2.10",
     "@prisma/client": "^5.22.0",
     "@repo/shared": "workspace:*",
     "bcryptjs": "^3.0.3",
@@ -38,11 +39,13 @@
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "libphonenumber-js": "^1.12.38",
-    "multer": "^2.0.2",
+    "multer": "^2.1.1",
     "node-cron": "^4.2.1",
+    "pdfkit": "^0.17.2",
     "prisma": "^5.22.0",
     "swagger-jsdoc": "^6.2.8",
     "swagger-ui-express": "^5.0.1",
+    "swagger-ui-themes": "^3.0.1",
     "tsconfig-paths": "^4.2.0",
     "zod": "3.25.76"
   },
@@ -54,11 +57,13 @@
     "@types/multer": "^2.0.0",
     "@types/node-cron": "^3.0.11",
     "@types/swagger-jsdoc": "^6.0.4",
+    "@types/supertest": "^6.0.2",
     "@types/swagger-ui-express": "^4.1.8",
+    "@vitest/coverage-v8": "^4.0.18",
     "nodemon": "^3.1.11",
     "ts-node": "^10.9.2",
     "tsc-alias": "^1.8.16",
-    "@vitest/coverage-v8": "^4.0.18",
+    "supertest": "^7.0.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
   }

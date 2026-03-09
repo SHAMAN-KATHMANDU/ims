@@ -172,6 +172,19 @@ export async function addPaymentToSale(
   }
 }
 
+export async function downloadReceiptPdf(saleId: string): Promise<void> {
+  if (!saleId?.trim()) throw new Error("Sale ID is required");
+  try {
+    const response = await api.get<Blob>(`/sales/${saleId}/receipt`, {
+      responseType: "blob",
+    });
+    downloadBlobFromResponse(response, "receipt.pdf");
+  } catch (error) {
+    handleApiError(error, "download receipt");
+    throw error;
+  }
+}
+
 export async function getSalesSinceLastLogin(
   params: { page?: number; limit?: number } = {},
 ): Promise<PaginatedSalesResponse> {
@@ -208,8 +221,10 @@ export async function previewSale(
     contactId: data.contactId ?? undefined,
     items: data.items.map((i) => ({
       variationId: i.variationId,
+      subVariationId: i.subVariationId ?? undefined,
       quantity: i.quantity,
-      discountId: i.discountId ?? undefined,
+      discountId:
+        i.discountId && i.discountId !== "none" ? i.discountId : undefined,
       promoCode: i.promoCode,
     })),
   });

@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
+import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
   CreateContactSchema,
   UpdateContactSchema,
@@ -94,7 +95,19 @@ class ContactController {
   delete = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      await contactService.delete(tenantId, req.params.id);
+      const userId = req.user!.id;
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const deleteBody = DeleteBodySchema.parse(req.body ?? {});
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
+      await contactService.delete(tenantId, id, {
+        userId,
+        reason: deleteBody.reason,
+        ip,
+        userAgent,
+      });
       return res.status(200).json({ message: "Contact deleted successfully" });
     } catch (error: unknown) {
       if ((error as AppError).statusCode) {

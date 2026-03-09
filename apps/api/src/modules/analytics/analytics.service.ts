@@ -88,7 +88,7 @@ export class AnalyticsService {
     const saleWhereForChildren = saleWhereWithTenant(where, tenantId);
 
     const raw = await analyticsRepository.getSalesRevenueData(
-      where,
+      saleWhereForChildren,
       saleWhereForChildren,
     );
 
@@ -367,7 +367,7 @@ export class AnalyticsService {
       : null;
 
     const raw = await analyticsRepository.getCustomersPromosData(
-      salesWhere,
+      saleWhereForChildren,
       saleWhereForChildren,
       dateFrom,
       dateTo,
@@ -420,9 +420,12 @@ export class AnalyticsService {
     query: Record<string, unknown>,
     role: string | undefined,
     currentUserId: string | undefined,
+    tenantId: string | null,
   ) {
     const { where } = getSalesWhereForAnalytics(query, role, currentUserId);
-    const raw = await analyticsRepository.getDiscountAnalyticsData(where);
+    const saleWhereForChildren = saleWhereWithTenant(where, tenantId);
+    const raw =
+      await analyticsRepository.getDiscountAnalyticsData(saleWhereForChildren);
 
     const dailyMap: Record<string, number> = {};
     for (const s of raw.salesForTimeSeries) {
@@ -487,10 +490,12 @@ export class AnalyticsService {
     query: Record<string, unknown>,
     role: string | undefined,
     currentUserId: string | undefined,
+    tenantId: string | null,
   ) {
     const { where } = getSalesWhereForAnalytics(query, role, currentUserId);
+    const saleWhereForChildren = saleWhereWithTenant(where, tenantId);
     const { byLocation, locations } =
-      await analyticsRepository.getLocationComparisonData(where);
+      await analyticsRepository.getLocationComparisonData(saleWhereForChildren);
 
     const locationMap = Object.fromEntries(
       locations.map((l) => [l.id, l.name]),
@@ -509,10 +514,12 @@ export class AnalyticsService {
     query: Record<string, unknown>,
     role: string | undefined,
     currentUserId: string | undefined,
+    tenantId: string | null,
   ) {
     const { where } = getSalesWhereForAnalytics(query, role, currentUserId);
+    const saleWhereForChildren = saleWhereWithTenant(where, tenantId);
     const { salesWithItems, memberSalesAgg } =
-      await analyticsRepository.getSalesExtendedData(where);
+      await analyticsRepository.getSalesExtendedData(saleWhereForChildren);
 
     const dayNames = [
       "Sunday",
@@ -928,15 +935,17 @@ export class AnalyticsService {
     query: Record<string, unknown>,
     role: string | undefined,
     currentUserId: string | undefined,
+    tenantId: string | null,
   ) {
     const { filters, where } = getSalesWhereForAnalytics(
       query,
       role,
       currentUserId,
     );
+    const saleWhereForChildren = saleWhereWithTenant(where, tenantId);
 
     const { membersWithSales, allMembers } =
-      await analyticsRepository.getCustomerInsightsData(where);
+      await analyticsRepository.getCustomerInsightsData(saleWhereForChildren);
 
     const now = new Date();
     const clvValues = membersWithSales
@@ -1048,6 +1057,7 @@ export class AnalyticsService {
 
     let retentionRate = 0;
     let churnRate = 0;
+    let hasMeaningfulChurn = false;
     if (dateFrom && dateTo) {
       const periodMs = dateTo.getTime() - dateFrom.getTime();
       const prevStart = new Date(dateFrom.getTime() - periodMs);
@@ -1071,6 +1081,7 @@ export class AnalyticsService {
           )
           .map((m) => m.id),
       );
+      hasMeaningfulChurn = prevPeriodMembers.size > 0;
       const retained = [...prevPeriodMembers].filter((id) =>
         currentPeriodMembers.has(id),
       ).length;
@@ -1078,7 +1089,7 @@ export class AnalyticsService {
         prevPeriodMembers.size > 0
           ? +((retained / prevPeriodMembers.size) * 100).toFixed(1)
           : 0;
-      churnRate = +(100 - retentionRate).toFixed(1);
+      churnRate = hasMeaningfulChurn ? +(100 - retentionRate).toFixed(1) : 0;
     }
 
     const newVsReturningMap: Record<
@@ -1118,6 +1129,7 @@ export class AnalyticsService {
       avgClv,
       retentionRate,
       churnRate,
+      hasMeaningfulChurn,
       rfmSegments: Object.entries(rfmSegments).map(([segment, v]) => ({
         segment,
         ...v,
@@ -1132,10 +1144,12 @@ export class AnalyticsService {
     query: Record<string, unknown>,
     role: string | undefined,
     currentUserId: string | undefined,
+    tenantId: string | null,
   ) {
     const { where } = getSalesWhereForAnalytics(query, role, currentUserId);
+    const saleWhereForChildren = saleWhereWithTenant(where, tenantId);
     const { sales, membersWithSales } =
-      await analyticsRepository.getTrendsData(where);
+      await analyticsRepository.getTrendsData(saleWhereForChildren);
 
     const monthlyMap: Record<
       string,
@@ -1245,17 +1259,16 @@ export class AnalyticsService {
         .slice(0, 10);
       const cost =
         item.quantity * Number(item.variation.product.costPrice ?? 0);
-      const revenue = Number(item.lineTotal);
+      const lineRevenue = Number(item.lineTotal);
       const catName = item.variation.product.category?.name ?? "Other";
       const lid = (item.sale as { locationId: string }).locationId;
 
       if (!dailyMap[d])
         dailyMap[d] = { revenue: 0, cogs: 0, discount: 0, subtotal: 0 };
-      dailyMap[d].revenue += revenue;
       dailyMap[d].cogs += cost;
 
       if (!categoryMap[catName]) categoryMap[catName] = { revenue: 0, cogs: 0 };
-      categoryMap[catName].revenue += revenue;
+      categoryMap[catName].revenue += lineRevenue;
       categoryMap[catName].cogs += cost;
       locationCogsMap[lid] = (locationCogsMap[lid] ?? 0) + cost;
     }
@@ -1274,6 +1287,7 @@ export class AnalyticsService {
       processedSaleIds.add(saleId);
       const d = sale.createdAt.toISOString().slice(0, 10);
       if (dailyMap[d]) {
+        dailyMap[d].revenue += Number(sale.total);
         dailyMap[d].discount += Number(sale.discount);
         dailyMap[d].subtotal += Number(sale.subtotal);
       }
@@ -1332,9 +1346,12 @@ export class AnalyticsService {
     query: Record<string, unknown>,
     role: string | undefined,
     currentUserId: string | undefined,
+    tenantId: string | null,
   ) {
     const { where } = getSalesWhereForAnalytics(query, role, currentUserId);
-    const byMember = await analyticsRepository.getMemberCohortData(where);
+    const saleWhereForChildren = saleWhereWithTenant(where, tenantId);
+    const byMember =
+      await analyticsRepository.getMemberCohortData(saleWhereForChildren);
 
     let newCount = 0;
     let repeatCount = 0;
@@ -1385,7 +1402,8 @@ export class AnalyticsService {
     const invWhere = locationInventoryWhereWithTenant({}, tenantId);
 
     if (exportType === "sales-revenue" || exportType === "sales-extended") {
-      const sales = await analyticsRepository.getSalesForExport(where);
+      const sales =
+        await analyticsRepository.getSalesForExport(saleWhereForChildren);
       const ws = workbook.addWorksheet("Sales Revenue");
       ws.columns = [
         { header: "Date", key: "date", width: 12 },
@@ -1451,7 +1469,7 @@ export class AnalyticsService {
           })()
         : null;
       const raw = await analyticsRepository.getCustomersPromosForExport(
-        where,
+        saleWhereForChildren,
         saleWhereForChildren,
         dateFrom,
         dateTo,
@@ -1510,7 +1528,7 @@ export class AnalyticsService {
       );
     } else if (exportType === "trends") {
       const { sales, membersWithSales } =
-        await analyticsRepository.getTrendsForExport(where);
+        await analyticsRepository.getTrendsForExport(saleWhereForChildren);
 
       const monthlyMap: Record<
         string,
@@ -1641,16 +1659,15 @@ export class AnalyticsService {
           .slice(0, 10);
         const cost =
           item.quantity * Number(item.variation.product.costPrice ?? 0);
-        const revenue = Number(item.lineTotal);
+        const lineRevenue = Number(item.lineTotal);
         const catName = item.variation.product.category?.name ?? "Other";
         const lid = (item.sale as { locationId: string }).locationId;
         if (!dailyMap[d])
           dailyMap[d] = { revenue: 0, cogs: 0, discount: 0, subtotal: 0 };
-        dailyMap[d].revenue += revenue;
         dailyMap[d].cogs += cost;
         if (!categoryMap[catName])
           categoryMap[catName] = { revenue: 0, cogs: 0 };
-        categoryMap[catName].revenue += revenue;
+        categoryMap[catName].revenue += lineRevenue;
         categoryMap[catName].cogs += cost;
         locationCogsMap[lid] = (locationCogsMap[lid] ?? 0) + cost;
       }
@@ -1667,6 +1684,7 @@ export class AnalyticsService {
         processedSaleIds.add(sale.id);
         const d = sale.createdAt.toISOString().slice(0, 10);
         if (dailyMap[d]) {
+          dailyMap[d].revenue += Number(sale.total);
           dailyMap[d].discount += Number(sale.discount);
           dailyMap[d].subtotal += Number(sale.subtotal);
         }

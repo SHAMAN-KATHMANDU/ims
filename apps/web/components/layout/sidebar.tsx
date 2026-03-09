@@ -8,12 +8,10 @@ import { cn } from "@/lib/utils";
 import {
   Home,
   Package,
-  BarChart3,
   ChevronLeft,
   ChevronDown,
   Warehouse,
   ArrowLeftRight,
-  Settings,
   UserCog,
   Users,
   Receipt,
@@ -30,6 +28,18 @@ import {
   CheckSquare,
   Bell,
   Trash2,
+  FileText,
+  Ticket,
+  Boxes,
+  TrendingUp,
+  LineChart,
+  DollarSign,
+  PieChart,
+  SlidersHorizontal,
+  Server,
+  Truck,
+  PackageCheck,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthStore, selectUserRole, selectTenant } from "@/store/auth-store";
@@ -39,6 +49,8 @@ import {
   selectSetSidebarWidth,
 } from "@/store/sidebar-store";
 import type { UserRole } from "@/utils/auth";
+import { usePlanFeatures } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import { Badge } from "../ui/badge";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -65,6 +77,8 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: UserRole[];
+  /** When set, item is only shown when this plan feature is enabled for the tenant. */
+  feature?: Feature;
   children?: NavItem[];
   href?: string;
 }
@@ -88,7 +102,13 @@ const navSections: NavSection[] = [
       {
         path: "platform/plan-limits",
         label: "Plan limits",
-        icon: Settings,
+        icon: SlidersHorizontal,
+        roles: ["platformAdmin"],
+      },
+      {
+        path: "platform/trash",
+        label: "Trash",
+        icon: Trash2,
         roles: ["platformAdmin"],
       },
     ],
@@ -130,6 +150,7 @@ const navSections: NavSection[] = [
         label: "Deals",
         icon: Handshake,
         roles: ["user", "admin", "superAdmin"],
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "crm/tasks",
@@ -146,7 +167,7 @@ const navSections: NavSection[] = [
       {
         path: "crm/settings",
         label: "CRM Settings",
-        icon: Settings,
+        icon: SlidersHorizontal,
         roles: ["admin", "superAdmin"],
       },
     ],
@@ -163,7 +184,7 @@ const navSections: NavSection[] = [
       {
         path: "sales/user-report",
         label: "User Sales Report",
-        icon: Receipt,
+        icon: ListChecks,
         roles: ["user", "admin", "superAdmin"],
       },
     ],
@@ -172,22 +193,17 @@ const navSections: NavSection[] = [
     title: "PRODUCTS",
     items: [
       {
-        path: "product/catalog",
+        path: "products/catalog",
         label: "Catalog",
         icon: Package,
         roles: ["user", "admin", "superAdmin"],
       },
       {
-        path: "product/discounts",
-        label: "Discounts",
-        icon: Percent,
-        roles: ["user", "admin", "superAdmin"],
-      },
-      {
-        path: "product/promos",
+        path: "products/promos",
         label: "Promo Codes",
-        icon: Percent,
+        icon: Ticket,
         roles: ["user", "admin", "superAdmin"],
+        feature: Feature.PROMO_MANAGEMENT,
       },
       {
         path: "transfers/new",
@@ -201,19 +217,19 @@ const navSections: NavSection[] = [
     title: "INVENTORY",
     items: [
       {
-        path: "product",
+        path: "products",
         label: "Products",
-        icon: Package,
+        icon: Boxes,
         roles: ["admin", "superAdmin"],
       },
       {
-        path: "product/categories",
+        path: "products/categories",
         label: "Categories",
         icon: Tags,
         roles: ["admin", "superAdmin"],
       },
       {
-        path: "product/attribute-types",
+        path: "products/attribute-types",
         label: "Attribute Types",
         icon: Layers,
         roles: ["admin", "superAdmin"],
@@ -227,25 +243,27 @@ const navSections: NavSection[] = [
       {
         path: "vendors",
         label: "Vendors",
-        icon: Factory,
+        icon: Truck,
         roles: ["admin", "superAdmin"],
       },
       {
         path: "transfers",
         label: "Transfers",
-        icon: ArrowLeftRight,
+        icon: PackageCheck,
         roles: ["admin", "superAdmin"],
       },
-    ],
-  },
-  {
-    title: "PROMOTIONS",
-    items: [
       {
-        path: "promos",
-        label: "Promo Codes",
+        path: "products/discounts",
+        label: "Discounts",
         icon: Percent,
         roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "promos",
+        label: "Promotions",
+        icon: Ticket,
+        roles: ["admin", "superAdmin"],
+        feature: Feature.PROMO_MANAGEMENT,
       },
     ],
   },
@@ -253,58 +271,52 @@ const navSections: NavSection[] = [
     title: "REPORTS",
     items: [
       {
-        path: "reports/analytics",
-        label: "Analytics",
-        icon: BarChart3,
-        roles: ["admin", "superAdmin"],
-      },
-      {
         path: "reports/analytics/sales",
         label: "Sales & Revenue",
-        icon: BarChart3,
+        icon: TrendingUp,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/inventory",
         label: "Inventory & Operations",
-        icon: BarChart3,
+        icon: Package,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/customers",
         label: "Customers & Promotions",
-        icon: BarChart3,
+        icon: Users,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/trends",
         label: "Trends",
-        icon: BarChart3,
+        icon: LineChart,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/analytics/financial",
         label: "Financial",
-        icon: BarChart3,
+        icon: DollarSign,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
       {
         path: "reports/crm",
         label: "CRM Reports",
-        icon: BarChart3,
+        icon: PieChart,
         roles: ["admin", "superAdmin"],
+        feature: Feature.ANALYTICS_ADVANCED,
       },
     ],
   },
   {
     title: "SETTINGS",
     items: [
-      {
-        path: "trash",
-        label: "Trash",
-        icon: Trash2,
-        roles: ["admin", "superAdmin"],
-      },
       {
         path: "settings",
         label: "Settings",
@@ -320,8 +332,9 @@ const navSections: NavSection[] = [
       {
         path: "settings/logs",
         label: "User Logs",
-        icon: BarChart3,
+        icon: FileText,
         roles: ["superAdmin"],
+        feature: Feature.AUDIT_LOGS,
       },
       {
         path: "settings/error-reports",
@@ -332,7 +345,7 @@ const navSections: NavSection[] = [
       {
         path: "admin-controls",
         label: "System",
-        icon: Settings,
+        icon: Server,
         roles: ["superAdmin"],
       },
     ],
@@ -552,7 +565,9 @@ function SidebarSection({
       <div className="space-y-2">
         <CollapsibleTrigger
           className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors rounded-md focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-          aria-expanded={(openSections[section.title] ?? true) ? "true" : "false"}
+          aria-expanded={
+            (openSections[section.title] ?? true) ? "true" : "false"
+          }
           onKeyDown={(e) =>
             handleKeyDown(e, () => onToggleSection(section.title))
           }
@@ -628,7 +643,6 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     SALES: true,
     PRODUCTS: true,
     INVENTORY: true,
-    PROMOTIONS: true,
     REPORTS: true,
     SETTINGS: true,
   });
@@ -647,6 +661,8 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     return getWorkspaceRoot();
   }, [pathname, basePath]);
 
+  const planFeatures = usePlanFeatures();
+
   const filteredSections = useMemo(() => {
     if (!userRole) return [];
     return navSections
@@ -654,13 +670,16 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
         ...section,
         items: section.items
           .filter((item) => item.roles.includes(userRole))
+          .filter(
+            (item) => !item.feature || planFeatures[item.feature] === true,
+          )
           .map((item) => ({
             ...item,
             href: `${detectedBasePath}${item.path ? `/${item.path}` : ""}`,
           })),
       }))
       .filter((section) => section.items.length > 0);
-  }, [userRole, detectedBasePath]);
+  }, [userRole, detectedBasePath, planFeatures]);
 
   const toggleSection = useCallback(
     (sectionTitle: string) => {

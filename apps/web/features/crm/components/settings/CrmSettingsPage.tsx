@@ -116,7 +116,12 @@ function PipelineSettings() {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean)
-      .map((name, i) => ({ id: crypto.randomUUID(), name, order: i }));
+      .map((name, i) => ({
+        id: crypto.randomUUID(),
+        name,
+        order: i,
+        probability: 0,
+      }));
     createMutation.mutate(
       { name: newName.trim(), stages },
       {
@@ -135,7 +140,12 @@ function PipelineSettings() {
       .split(",")
       .map((s) => s.trim())
       .filter(Boolean)
-      .map((name, i) => ({ id: crypto.randomUUID(), name, order: i }));
+      .map((name, i) => ({
+        id: crypto.randomUUID(),
+        name,
+        order: i,
+        probability: 0,
+      }));
     updateMutation.mutate(
       {
         id: editPipeline.id,
