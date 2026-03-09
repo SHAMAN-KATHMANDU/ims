@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { BarChart3, Package, FileText, ArrowRight } from "lucide-react";
+import { BarChart3, Package, ArrowRight } from "lucide-react";
 
 export const WIDGET_ID = "admin-shortcuts";
 export const REQUIRED_ROLES = ["admin", "superAdmin"] as const;
@@ -27,16 +27,11 @@ interface AdminShortcutsProps {
 export function AdminShortcuts({ basePath }: AdminShortcutsProps) {
   const links = [
     {
-      href: `${basePath}/reports/analytics`,
+      href: `${basePath}/reports/analytics/sales`,
       label: "Analytics",
       icon: BarChart3,
     },
     { href: `${basePath}/locations`, label: "Manage inventory", icon: Package },
-    {
-      href: `${basePath}/reports/analytics`,
-      label: "View reports",
-      icon: FileText,
-    },
   ];
 
   return (
