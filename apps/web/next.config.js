@@ -1,3 +1,4 @@
+/* eslint-env node */
 import path from "path";
 import { fileURLToPath } from "url";
 
@@ -16,6 +17,22 @@ const nextConfig = {
   // This creates a minimal production bundle with only necessary files
   output: "standalone",
 
+  // Redirect legacy /product paths to /products for backwards compatibility
+  async redirects() {
+    return [
+      {
+        source: "/:slug/product",
+        destination: "/:slug/products",
+        permanent: true,
+      },
+      {
+        source: "/:slug/product/:path*",
+        destination: "/:slug/products/:path*",
+        permanent: true,
+      },
+    ];
+  },
+
   // Allow next/image for variation photos (e.g. seed data from picsum.photos)
   images: {
     remotePatterns: [
@@ -27,7 +44,19 @@ const nextConfig = {
     ],
   },
 
-  // Note: We're using direct API calls - no rewrites needed
+  // In development, proxy /api/v1 to the API server so login and API calls work without setting NEXT_PUBLIC_API_URL.
+  // When NEXT_PUBLIC_API_URL is set (e.g. production), the frontend calls that URL directly; no rewrite used.
+  // eslint-disable-next-line no-undef -- process is a Node.js global in config files
+  ...(process.env.NODE_ENV === "development" && {
+    async rewrites() {
+      return [
+        {
+          source: "/api/v1/:path*",
+          destination: "http://localhost:4000/api/v1/:path*",
+        },
+      ];
+    },
+  }),
 };
 
 export default nextConfig;

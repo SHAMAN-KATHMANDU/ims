@@ -1,136 +1,31 @@
 import { Request, Response } from "express";
-import prisma from "@/config/prisma";
-import { getTenantId } from "@/config/tenantContext";
-import {
-  getPaginationParams,
-  createPaginationResult,
-} from "@/utils/pagination";
 import { sendControllerError } from "@/utils/controllerError";
+import type { AppError } from "@/middlewares/errorHandler";
+import { AdjustInventorySchema, SetInventorySchema } from "./inventory.schema";
+import inventoryService from "./inventory.service";
 
-function locationInventoryTenantWhere(
-  existingWhere: Record<string, unknown> = {},
-): Record<string, unknown> {
-  const tenantId = getTenantId();
-  if (!tenantId) return existingWhere;
-  return {
-    ...existingWhere,
-    location: {
-      ...((existingWhere.location as Record<string, unknown>) ?? {}),
-      tenantId,
-    },
-  };
+function getParam(req: Request, key: string): string {
+  const val = req.params[key];
+  return Array.isArray(val) ? val[0] : val;
 }
 
 class InventoryController {
-  // Get inventory for a specific location
-  async getLocationInventory(req: Request, res: Response) {
+  getLocationInventory = async (req: Request, res: Response) => {
     try {
-      const locationId = Array.isArray(req.params.locationId)
-        ? req.params.locationId[0]
-        : req.params.locationId;
-
-      const { page, limit, search } = getPaginationParams(req.query);
-      const categoryId = req.query.categoryId as string | undefined;
-
-      // Check if location exists
-      const location = await prisma.location.findUnique({
-        where: { id: locationId },
-      });
-
-      if (!location) {
-        return res.status(404).json({ message: "Location not found" });
-      }
-
-      // Build filter
-      const where: any = {
+      const locationId = getParam(req, "locationId");
+      const result = await inventoryService.getLocationInventory(
         locationId,
-        quantity: { gt: 0 }, // Only show items with stock
-      };
-
-      if (search) {
-        where.variation = {
-          OR: [
-            { imsCode: { contains: search, mode: "insensitive" } },
-            {
-              product: {
-                name: { contains: search, mode: "insensitive" },
-              },
-            },
-          ],
-        };
-      }
-
-      if (categoryId) {
-        where.variation = {
-          ...where.variation,
-          product: {
-            ...where.variation?.product,
-            categoryId,
-          },
-        };
-      }
-
-      const skip = (page - 1) * limit;
-
-      const [totalItems, inventory] = await Promise.all([
-        prisma.locationInventory.count({ where }),
-        prisma.locationInventory.findMany({
-          where,
-          skip,
-          take: limit,
-          include: {
-            variation: {
-              include: {
-                product: {
-                  select: {
-                    id: true,
-                    name: true,
-                    costPrice: true,
-                    mrp: true,
-                    category: {
-                      select: {
-                        id: true,
-                        name: true,
-                      },
-                    },
-                  },
-                },
-                attributes: {
-                  include: {
-                    attributeType: { select: { name: true } },
-                    attributeValue: { select: { value: true } },
-                  },
-                },
-                photos: {
-                  where: { isPrimary: true },
-                  take: 1,
-                },
-              },
-            },
-            subVariation: { select: { id: true, name: true } },
-          },
-          orderBy: {
-            variation: {
-              product: {
-                name: "asc",
-              },
-            },
-          },
-        }),
-      ]);
-
-      const result = createPaginationResult(inventory, totalItems, page, limit);
-
-      res.status(200).json({
+        req.query as Record<string, unknown>,
+      );
+      return res.status(200).json({
         message: "Location inventory fetched successfully",
-        location: {
-          id: location.id,
-          name: location.name,
-          type: location.type,
-        },
         ...result,
       });
     } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (typeof appErr.statusCode === "number") {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
       return sendControllerError(
         req,
         res,
@@ -138,389 +33,89 @@ class InventoryController {
         "Get location inventory error",
       );
     }
-  }
+  };
 
-  // Get stock for a specific product across all locations
-  async getProductStock(req: Request, res: Response) {
+  getProductStock = async (req: Request, res: Response) => {
     try {
-      const productId = Array.isArray(req.params.productId)
-        ? req.params.productId[0]
-        : req.params.productId;
-
-      // Check if product exists
-      const product = await prisma.product.findUnique({
-        where: { id: productId },
-        include: {
-          category: true,
-          variations: {
-            select: {
-              id: true,
-              imsCode: true,
-              stockQuantity: true,
-            },
-          },
-        },
-      });
-
-      if (!product) {
-        return res.status(404).json({ message: "Product not found" });
-      }
-
-      // Get inventory for all variations across all locations (tenant-scoped)
-      const inventory = await prisma.locationInventory.findMany({
-        where: locationInventoryTenantWhere({
-          variation: { productId },
-        }) as any,
-        include: {
-          location: {
-            select: {
-              id: true,
-              name: true,
-              type: true,
-            },
-          },
-          variation: {
-            select: {
-              id: true,
-              imsCode: true,
-            },
-          },
-          subVariation: { select: { id: true, name: true } },
-        },
-        orderBy: [
-          { location: { type: "asc" } },
-          { location: { name: "asc" } },
-          { variation: { imsCode: "asc" } },
-        ],
-      });
-
-      // Group inventory by location
-      const inventoryByLocation = inventory.reduce(
-        (acc: Record<string, any>, item) => {
-          const locationId = item.location.id;
-          if (!acc[locationId]) {
-            acc[locationId] = {
-              location: item.location,
-              variations: [],
-              totalQuantity: 0,
-            };
-          }
-          acc[locationId].variations.push({
-            variationId: item.variation.id,
-            imsCode: item.variation.imsCode,
-            subVariationId: item.subVariationId ?? undefined,
-            subVariation: item.subVariation
-              ? { id: item.subVariation.id, name: item.subVariation.name }
-              : undefined,
-            quantity: item.quantity,
-          });
-          acc[locationId].totalQuantity += item.quantity;
-          return acc;
-        },
-        {},
-      );
-
-      // Calculate total stock across all locations
-      const totalStock = inventory.reduce(
-        (sum, item) => sum + item.quantity,
-        0,
-      );
-
-      res.status(200).json({
+      const productId = getParam(req, "productId");
+      const result = await inventoryService.getProductStock(productId);
+      return res.status(200).json({
         message: "Product stock fetched successfully",
-        product: {
-          id: product.id,
-          imsCode: product.variations?.[0]?.imsCode ?? "",
-          name: product.name,
-          category: product.category,
-        },
-        totalStock,
-        inventoryByLocation: Object.values(inventoryByLocation),
+        ...result,
       });
     } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (typeof appErr.statusCode === "number") {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
       return sendControllerError(req, res, error, "Get product stock error");
     }
-  }
+  };
 
-  // Adjust inventory manually (admin/superAdmin)
-  async adjustInventory(req: Request, res: Response) {
+  adjustInventory = async (req: Request, res: Response) => {
     try {
-      const { locationId, variationId, subVariationId, quantity, reason } =
-        req.body;
-
-      // Validate required fields
-      if (!locationId) {
-        return res.status(400).json({ message: "Location ID is required" });
-      }
-      if (!variationId) {
-        return res.status(400).json({ message: "Variation ID is required" });
-      }
-      if (quantity === undefined || quantity === null) {
-        return res.status(400).json({ message: "Quantity is required" });
+      const parsed = AdjustInventorySchema.safeParse(req.body);
+      if (!parsed.success) {
+        const msg = parsed.error.errors[0]?.message ?? "Invalid request body";
+        return res.status(400).json({ message: msg });
       }
 
-      const adjustedQuantity = parseInt(quantity);
-      if (isNaN(adjustedQuantity)) {
-        return res.status(400).json({ message: "Quantity must be a number" });
-      }
-
-      // Check if location exists
-      const location = await prisma.location.findUnique({
-        where: { id: locationId },
-      });
-
-      if (!location) {
-        return res.status(404).json({ message: "Location not found" });
-      }
-
-      // Check if variation exists
-      const variation = await prisma.productVariation.findUnique({
-        where: { id: variationId },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      });
-
-      if (!variation) {
-        return res.status(404).json({ message: "Product variation not found" });
-      }
-
-      if (subVariationId) {
-        const subVar = await prisma.productSubVariation.findFirst({
-          where: { id: subVariationId, variationId },
-        });
-        if (!subVar) {
-          return res.status(404).json({
-            message:
-              "Sub-variation not found or does not belong to this variation",
-          });
-        }
-      }
-
-      const uniqueKey = {
-        locationId_variationId_subVariationId: {
-          locationId,
-          variationId,
-          subVariationId: subVariationId || null,
-        },
-      };
-
-      // Get or create inventory record
-      const existingInventory = await prisma.locationInventory.findUnique({
-        where: uniqueKey,
-      });
-
-      let inventory;
-      let previousQuantity = 0;
-
-      if (existingInventory) {
-        previousQuantity = existingInventory.quantity;
-
-        // Check if resulting quantity would be negative
-        const newQuantity = existingInventory.quantity + adjustedQuantity;
-        if (newQuantity < 0) {
-          return res.status(400).json({
-            message: "Adjustment would result in negative inventory",
-            currentQuantity: existingInventory.quantity,
-            adjustmentAmount: adjustedQuantity,
-          });
-        }
-
-        inventory = await prisma.locationInventory.update({
-          where: { id: existingInventory.id },
-          data: { quantity: newQuantity },
-        });
-      } else {
-        // Create new inventory record
-        if (adjustedQuantity < 0) {
-          return res.status(400).json({
-            message: "Cannot create inventory with negative quantity",
-          });
-        }
-
-        inventory = await prisma.locationInventory.create({
-          data: {
-            locationId,
-            variationId,
-            subVariationId: subVariationId || null,
-            quantity: adjustedQuantity,
-          },
-        });
-      }
-
-      res.status(200).json({
+      const adjustment = await inventoryService.adjustInventory(parsed.data);
+      return res.status(200).json({
         message: "Inventory adjusted successfully",
-        adjustment: {
-          locationId,
-          locationName: location.name,
-          product: variation.product,
-          imsCode: variation.imsCode,
-          subVariationId: inventory.subVariationId ?? undefined,
-          previousQuantity,
-          adjustmentAmount: adjustedQuantity,
-          newQuantity: inventory.quantity,
-          reason: reason || "Manual adjustment",
-        },
+        adjustment,
       });
     } catch (error: unknown) {
+      const appErr = error as AppError & {
+        currentQuantity?: number;
+        adjustmentAmount?: number;
+      };
+      if (typeof appErr.statusCode === "number") {
+        const body: Record<string, unknown> = { message: appErr.message };
+        if (typeof appErr.currentQuantity === "number") {
+          body.currentQuantity = appErr.currentQuantity;
+          body.adjustmentAmount = appErr.adjustmentAmount;
+        }
+        return res.status(appErr.statusCode).json(body);
+      }
       return sendControllerError(req, res, error, "Adjust inventory error");
     }
-  }
+  };
 
-  // Set inventory quantity (admin/superAdmin) - absolute value
-  async setInventory(req: Request, res: Response) {
+  setInventory = async (req: Request, res: Response) => {
     try {
-      const { locationId, variationId, subVariationId, quantity } = req.body;
-
-      // Validate required fields
-      if (!locationId) {
-        return res.status(400).json({ message: "Location ID is required" });
-      }
-      if (!variationId) {
-        return res.status(400).json({ message: "Variation ID is required" });
-      }
-      if (quantity === undefined || quantity === null) {
-        return res.status(400).json({ message: "Quantity is required" });
+      const parsed = SetInventorySchema.safeParse(req.body);
+      if (!parsed.success) {
+        const msg = parsed.error.errors[0]?.message ?? "Invalid request body";
+        return res.status(400).json({ message: msg });
       }
 
-      const newQuantity = parseInt(quantity);
-      if (isNaN(newQuantity) || newQuantity < 0) {
-        return res
-          .status(400)
-          .json({ message: "Quantity must be a non-negative number" });
-      }
-
-      // Check if location exists
-      const location = await prisma.location.findUnique({
-        where: { id: locationId },
-      });
-
-      if (!location) {
-        return res.status(404).json({ message: "Location not found" });
-      }
-
-      // Check if variation exists
-      const variation = await prisma.productVariation.findUnique({
-        where: { id: variationId },
-        include: {
-          product: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      });
-
-      if (!variation) {
-        return res.status(404).json({ message: "Product variation not found" });
-      }
-
-      if (subVariationId) {
-        const subVar = await prisma.productSubVariation.findFirst({
-          where: { id: subVariationId, variationId },
-        });
-        if (!subVar) {
-          return res.status(404).json({
-            message:
-              "Sub-variation not found or does not belong to this variation",
-          });
-        }
-      }
-
-      // Upsert inventory record
-      const inventory = await prisma.locationInventory.upsert({
-        where: {
-          locationId_variationId_subVariationId: {
-            locationId,
-            variationId,
-            subVariationId: subVariationId || null,
-          },
-        },
-        update: { quantity: newQuantity },
-        create: {
-          locationId,
-          variationId,
-          subVariationId: subVariationId || null,
-          quantity: newQuantity,
-        },
-      });
-
-      res.status(200).json({
+      const inventory = await inventoryService.setInventory(parsed.data);
+      return res.status(200).json({
         message: "Inventory set successfully",
-        inventory: {
-          id: inventory.id,
-          locationId,
-          locationName: location.name,
-          product: variation.product,
-          imsCode: variation.imsCode,
-          subVariationId: inventory.subVariationId ?? undefined,
-          quantity: inventory.quantity,
-        },
+        inventory,
       });
     } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (typeof appErr.statusCode === "number") {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
       return sendControllerError(req, res, error, "Set inventory error");
     }
-  }
+  };
 
-  // Get inventory summary across all locations
-  async getInventorySummary(req: Request, res: Response) {
+  getInventorySummary = async (req: Request, res: Response) => {
     try {
-      // Get all locations with inventory counts
-      const locations = await prisma.location.findMany({
-        where: { isActive: true },
-        include: {
-          _count: {
-            select: {
-              inventory: true,
-            },
-          },
-        },
-        orderBy: [{ type: "asc" }, { name: "asc" }],
-      });
-
-      // Get total quantities per location
-      const locationStats = await Promise.all(
-        locations.map(async (location) => {
-          const stats = await prisma.locationInventory.aggregate({
-            where: { locationId: location.id },
-            _sum: { quantity: true },
-            _count: true,
-          });
-
-          return {
-            id: location.id,
-            name: location.name,
-            type: location.type,
-            totalItems: stats._count,
-            totalQuantity: stats._sum.quantity || 0,
-          };
-        }),
-      );
-
-      // Calculate overall totals
-      const overallTotal = locationStats.reduce(
-        (acc, loc) => ({
-          totalItems: acc.totalItems + loc.totalItems,
-          totalQuantity: acc.totalQuantity + loc.totalQuantity,
-        }),
-        { totalItems: 0, totalQuantity: 0 },
-      );
-
-      res.status(200).json({
+      const result = await inventoryService.getInventorySummary();
+      return res.status(200).json({
         message: "Inventory summary fetched successfully",
-        summary: {
-          totalLocations: locations.length,
-          ...overallTotal,
-        },
-        locationStats,
+        ...result,
       });
     } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (typeof appErr.statusCode === "number") {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
       return sendControllerError(
         req,
         res,
@@ -528,7 +123,7 @@ class InventoryController {
         "Get inventory summary error",
       );
     }
-  }
+  };
 }
 
 export default new InventoryController();

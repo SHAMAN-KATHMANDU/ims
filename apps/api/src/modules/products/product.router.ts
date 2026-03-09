@@ -3,7 +3,7 @@ import authorizeRoles from "@/middlewares/roleMiddleware";
 import { validate } from "@/middlewares/validate";
 import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
 import productController from "@/modules/products/product.controller";
-import { createProductSchema, updateProductSchema } from "./product.validation";
+import { CreateProductSchema, UpdateProductSchema } from "./product.schema";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const productRouter = Router();
@@ -28,22 +28,22 @@ const productRouter = Router();
  *               - categoryId
  *               - costPrice
  *               - mrp
+ *               - variations
  *             properties:
  *               imsCode:
  *                 type: string
- *                 example: IMS-PHONE-001
+ *                 maxLength: 100
+ *                 description: Product-level IMS code (barcode); unique per tenant
+ *                 example: "PRD-001"
  *               name:
  *                 type: string
  *                 example: Smartphone XYZ Pro
  *               categoryId:
  *                 type: string
- *                 example: Electronics
- *                 description: Can be UUID or category name
- *               categoryName:
- *                 type: string
- *                 example: Electronics
- *                 description: Alternative to categoryId
+ *                 format: uuid
  *               description:
+ *                 type: string
+ *               subCategory:
  *                 type: string
  *               length:
  *                 type: number
@@ -57,13 +57,57 @@ const productRouter = Router();
  *                 type: number
  *               mrp:
  *                 type: number
- *               variations:
+ *               vendorId:
+ *                 type: string
+ *                 format: uuid
+ *               defaultLocationId:
+ *                 type: string
+ *                 format: uuid
+ *               attributeTypeIds:
  *                 type: array
  *                 items:
+ *                   type: string
+ *                   format: uuid
+ *               variations:
+ *                 type: array
+ *                 minItems: 1
+ *                 items:
  *                   type: object
+ *                   required:
+ *                     - imsCode
  *                   properties:
+ *                     imsCode:
+ *                       type: string
+ *                       example: IMS-PHONE-001
  *                     stockQuantity:
  *                       type: number
+ *                       default: 0
+ *                     costPriceOverride:
+ *                       type: number
+ *                     mrpOverride:
+ *                       type: number
+ *                     finalSpOverride:
+ *                       type: number
+ *                     attributes:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           attributeTypeId:
+ *                             type: string
+ *                             format: uuid
+ *                           attributeValueId:
+ *                             type: string
+ *                             format: uuid
+ *                     subVariants:
+ *                       type: array
+ *                       items:
+ *                         oneOf:
+ *                           - type: string
+ *                           - type: object
+ *                             properties:
+ *                               name:
+ *                                 type: string
  *                     photos:
  *                       type: array
  *                       items:
@@ -71,18 +115,33 @@ const productRouter = Router();
  *                         properties:
  *                           photoUrl:
  *                             type: string
+ *                             format: uri
  *                           isPrimary:
  *                             type: boolean
  *               discounts:
  *                 type: array
  *                 items:
  *                   type: object
+ *                   required:
+ *                     - discountTypeId
+ *                     - discountPercentage
  *                   properties:
- *                     discountTypeName:
+ *                     discountTypeId:
  *                       type: string
- *                       example: Normal
+ *                       format: uuid
  *                     discountPercentage:
  *                       type: number
+ *                       minimum: 0
+ *                       maximum: 100
+ *                     valueType:
+ *                       type: string
+ *                       enum: [PERCENTAGE, FLAT]
+ *                     value:
+ *                       type: number
+ *                     startDate:
+ *                       type: string
+ *                     endDate:
+ *                       type: string
  *                     isActive:
  *                       type: boolean
  *     responses:
@@ -97,7 +156,7 @@ productRouter.post(
   "/",
   authorizeRoles("admin", "superAdmin"),
   enforcePlanLimits("products"),
-  validate(createProductSchema),
+  validate(CreateProductSchema),
   asyncHandler(productController.createProduct),
 );
 
@@ -112,16 +171,13 @@ productRouter.post(
  *     parameters:
  *       - in: query
  *         name: page
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema:
- *           type: integer
+ *         schema: { type: integer, default: 10, minimum: 1, maximum: 100 }
  *       - in: query
  *         name: search
- *         schema:
- *           type: string
+ *         schema: { type: string }
  *       - in: query
  *         name: sortBy
  *         schema:
@@ -130,31 +186,78 @@ productRouter.post(
  *         description: Sort field. dateCreated = date added. Use vendorName for vendor name (relation sort).
  *       - in: query
  *         name: sortOrder
- *         schema:
- *           type: string
- *           enum: [asc, desc]
- *         description: Sort direction (ascending or descending).
+ *         schema: { type: string, enum: [asc, desc] }
+ *       - in: query
+ *         name: locationId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: categoryId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: subCategoryId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: subCategory
+ *         schema: { type: string }
+ *       - in: query
+ *         name: vendorId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: dateFrom
+ *         schema: { type: string }
+ *         description: Filter from date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: dateTo
+ *         schema: { type: string }
+ *         description: Filter to date (YYYY-MM-DD or ISO)
+ *       - in: query
+ *         name: lowStock
+ *         schema: { type: string, enum: ['true', 'false', '1', '0'] }
+ *         description: Filter products with low stock only
  *     responses:
  *       200:
  *         description: Products retrieved successfully
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 products:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Product'
- *                 count:
- *                   type: number
+ *               $ref: '#/components/schemas/PaginatedProductsResponse'
  */
 productRouter.get(
   "/",
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(productController.getAllProducts),
+);
+
+/**
+ * @swagger
+ * /products/by-ims:
+ *   get:
+ *     summary: Get product by IMS code (barcode) for POS – returns product with variations and optional location stock
+ *     tags: [Products]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: imsCode
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: query
+ *         name: locationId
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: Optional; when provided, variations include quantity at this location
+ *     responses:
+ *       200:
+ *         description: Product with variations (and location stock when locationId provided)
+ *       404:
+ *         description: Product not found
+ */
+productRouter.get(
+  "/by-ims",
+  authorizeRoles("admin", "user", "superAdmin"),
+  asyncHandler(productController.getProductByIms),
 );
 
 /**
@@ -165,6 +268,22 @@ productRouter.get(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, maximum: 100 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
  *     responses:
  *       200:
  *         description: Categories retrieved successfully
@@ -183,6 +302,22 @@ productRouter.get(
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10, maximum: 100 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortBy
+ *         schema: { type: string }
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
  *     responses:
  *       200:
  *         description: Discount types retrieved successfully
@@ -418,6 +553,10 @@ productRouter.get(
  *           schema:
  *             type: object
  *             properties:
+ *               imsCode:
+ *                 type: string
+ *                 maxLength: 100
+ *                 description: Product-level IMS code (barcode); unique per tenant
  *               name:
  *                 type: string
  *               description:
@@ -435,7 +574,7 @@ productRouter.get(
 productRouter.put(
   "/:id",
   authorizeRoles("admin", "superAdmin"),
-  validate(updateProductSchema),
+  validate(UpdateProductSchema),
   asyncHandler(productController.updateProduct),
 );
 

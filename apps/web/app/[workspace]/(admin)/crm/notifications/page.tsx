@@ -1,4 +1,4 @@
-import { NotificationsPage } from "@/views/crm/notifications/NotificationsPage";
+import { NotificationsPage } from "@/features/crm";
 
 export default function CrmNotifications() {
   return <NotificationsPage />;

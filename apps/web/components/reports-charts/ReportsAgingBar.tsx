@@ -109,8 +109,8 @@ export function ReportsAgingBar({
   if (data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-muted-foreground text-sm"
-        style={{ height }}
+        className="flex items-center justify-center text-muted-foreground text-sm h-[var(--chart-height)]"
+        style={{ "--chart-height": `${height}px` } as React.CSSProperties}
         aria-label={ariaLabel}
       >
         No data
@@ -120,8 +120,8 @@ export function ReportsAgingBar({
 
   return (
     <div
-      className="w-full"
-      style={{ height }}
+      className="w-full h-[var(--chart-height)]"
+      style={{ "--chart-height": `${height}px` } as React.CSSProperties}
       aria-label={ariaLabel}
       role="img"
     >

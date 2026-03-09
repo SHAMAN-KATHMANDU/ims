@@ -1,6 +1,6 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
-import { WORKSPACE_ROOT } from "@/config/routes";
-import { NewLocationPage } from "@/views/locations/NewLocationPage";
+import { WORKSPACE_ROOT } from "@/constants/routes";
+import { NewLocationPage } from "@/features/locations";
 
 export default function NewLocationRoute() {
   return (

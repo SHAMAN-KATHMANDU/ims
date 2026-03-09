@@ -46,7 +46,7 @@ const userRouter = Router();
  *                 message:
  *                   type: string
  *                 user:
- *                   $ref: '#/components/schemas/User'
+ *                   $ref: '#/components/schemas/UserPublic'
  *       400:
  *         description: Bad request or validation error
  *       401:
@@ -77,14 +77,7 @@ userRouter.post(
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 users:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/User'
+ *               $ref: '#/components/schemas/PaginatedUsersResponse'
  *       401:
  *         description: Unauthorized
  *       403:
@@ -123,7 +116,7 @@ userRouter.get(
  *                 message:
  *                   type: string
  *                 user:
- *                   $ref: '#/components/schemas/User'
+ *                   $ref: '#/components/schemas/UserPublic'
  *       401:
  *         description: Unauthorized
  *       403:
@@ -177,7 +170,7 @@ userRouter.get(
  *                 message:
  *                   type: string
  *                 user:
- *                   $ref: '#/components/schemas/User'
+ *                   $ref: '#/components/schemas/UserPublic'
  *       400:
  *         description: Bad request
  *       401:

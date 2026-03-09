@@ -1,6 +1,12 @@
 import type React from "react";
+import type { Metadata } from "next";
 import { AuthGuard } from "@/components/auth/auth-guard";
+import { WorkspaceSlugGuard } from "@/components/auth/workspace-slug-guard";
 import { DashboardLayout } from "@/components/layout/dashboard-layout";
+
+export const metadata: Metadata = {
+  title: { template: "%s | IMS", default: "Dashboard" },
+};
 
 type Props = {
   children: React.ReactNode;
@@ -17,7 +23,9 @@ export default async function SuperadminLayout({ children, params }: Props) {
   const slug = workspace?.trim() || "admin";
   return (
     <AuthGuard loginPath={`/${slug}/login`}>
-      <DashboardLayout>{children}</DashboardLayout>
+      <WorkspaceSlugGuard>
+        <DashboardLayout>{children}</DashboardLayout>
+      </WorkspaceSlugGuard>
     </AuthGuard>
   );
 }

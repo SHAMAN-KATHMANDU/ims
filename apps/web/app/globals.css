@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./chart-utils.css";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -213,6 +214,7 @@
     border: 1px solid rgba(255, 255, 255, 0.08);
     border-radius: 16px;
     padding: 24px;
+    -webkit-backdrop-filter: blur(10px);
     backdrop-filter: blur(10px);
     transition: border-color 0.3s ease;
   }
@@ -266,4 +268,24 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Print: show only receipt content */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .receipt-print-area,
+  .receipt-print-area * {
+    visibility: visible;
+  }
+  .receipt-print-area {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    background: white;
+    color: black;
+    padding: 16px;
+  }
 }

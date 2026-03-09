@@ -2,8 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import { useContact, useUpdateContact } from "@/hooks/useContacts";
-import { ContactForm } from "@/views/crm/contacts/ContactForm";
+import { useContact, useUpdateContact } from "@/features/crm";
+import { ContactForm } from "@/features/crm";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -40,7 +40,6 @@ export default function EditContactPage() {
           email: contact.email ?? undefined,
           phone: contact.phone ?? undefined,
           companyId: contact.companyId ?? undefined,
-          memberId: contact.memberId ?? undefined,
           tagIds: contact.tagLinks?.map((l) => l.tag.id),
         }}
         onSubmit={async (data) => {

@@ -63,6 +63,8 @@ model Tenant {
   deals          Deal[]
   tasks          Task[]
   activities     Activity[]
+  crmSources       CrmSource[]
+  crmJourneyTypes  CrmJourneyType[]
 
   @@map("tenants")
 }
@@ -95,6 +97,7 @@ model PlanLimit {
   promoManagement Boolean  @default(false) @map("promo_management")
   auditLogs       Boolean  @default(false) @map("audit_logs")
   apiAccess       Boolean  @default(false) @map("api_access")
+  salesPipeline   Boolean  @default(false) @map("sales_pipeline")
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -236,13 +239,15 @@ enum Role {
 // ============================================
 
 model Category {
-  id          String    @id @default(uuid()) @map("category_id")
-  tenantId    String    @map("tenant_id")
-  name        String    @map("category_name") @db.VarChar(255)
-  description String?   @db.Text
-  deletedAt   DateTime? @map("deleted_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid()) @map("category_id")
+  tenantId     String    @map("tenant_id")
+  name         String    @map("category_name") @db.VarChar(255)
+  description  String?   @db.Text
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?   @map("deleted_by")
+  deleteReason String?   @map("delete_reason") @db.VarChar(500)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products      Product[]
@@ -253,12 +258,14 @@ model Category {
 }
 
 model SubCategory {
-  id         String    @id @default(uuid()) @map("sub_category_id")
-  name       String    @db.VarChar(255)
-  categoryId String    @map("category_id")
-  deletedAt  DateTime? @map("deleted_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
-  updatedAt  DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid()) @map("sub_category_id")
+  name         String    @db.VarChar(255)
+  categoryId   String    @map("category_id")
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?   @map("deleted_by")
+  deleteReason String?   @map("delete_reason") @db.VarChar(500)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   products Product[]
@@ -270,6 +277,8 @@ model SubCategory {
 model Product {
   id            String   @id @default(uuid()) @map("product_id")
   tenantId      String   @map("tenant_id")
+  /// Unique per-tenant product barcode / IMS code (scanned at POS to fetch product and choose variation).
+  imsCode       String   @map("ims_code") @db.VarChar(100)
   name          String   @map("product_name") @db.VarChar(255)
   categoryId    String   @map("category_id")
   /// Optional sub-category label for further grouping within a category (denormalized name)
@@ -293,6 +302,8 @@ model Product {
   dateCreated   DateTime  @default(now()) @map("date_created")
   dateModified  DateTime  @updatedAt @map("date_modified")
   deletedAt     DateTime? @map("deleted_at")
+  deletedBy     String?   @map("deleted_by")
+  deleteReason  String?   @map("delete_reason") @db.VarChar(500)
 
   tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   category     Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -304,6 +315,7 @@ model Product {
   promoCodes           PromoCodeProduct[]
   productAttributeTypes ProductAttributeType[]
 
+  @@unique([tenantId, imsCode])
   @@map("products")
 }
 
@@ -362,8 +374,6 @@ model ProductVariation {
   id                String   @id @default(uuid()) @map("variation_id")
   tenantId          String   @map("tenant_id")
   productId         String   @map("product_id")
-  /// Unique per-tenant variation identifier (IMS code at variation level).
-  imsCode           String   @map("ims_code") @db.VarChar(100)
   /// Optional overrides; when null, product base price is used
   costPriceOverride Decimal? @map("cost_price_override") @db.Decimal(10, 2)
   mrpOverride       Decimal? @map("mrp_override") @db.Decimal(10, 2)
@@ -382,7 +392,6 @@ model ProductVariation {
   transferItems     TransferItem[]
   saleItems         SaleItem[]
 
-  @@unique([tenantId, imsCode])
   @@map("product_variations")
 }
 
@@ -479,15 +488,17 @@ model ProductDiscount {
 // ============================================
 
 model Vendor {
-  id        String    @id @default(uuid()) @map("vendor_id")
-  tenantId  String    @map("tenant_id")
-  name      String    @db.VarChar(255)
-  contact   String?   @db.VarChar(255)
-  phone     String?   @db.VarChar(50)
-  address   String?   @db.Text
-  deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid()) @map("vendor_id")
+  tenantId     String    @map("tenant_id")
+  name         String    @db.VarChar(255)
+  contact      String?   @db.VarChar(255)
+  phone        String?   @db.VarChar(50)
+  address      String?   @db.Text
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?   @map("deleted_by")
+  deleteReason String?   @map("delete_reason") @db.VarChar(500)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   products Product[]
@@ -510,6 +521,8 @@ model Location {
   /// When true, new product stock is added here by default; only one warehouse should be default
   isDefaultWarehouse Boolean      @default(false) @map("is_default_warehouse")
   deletedAt          DateTime?    @map("deleted_at")
+  deletedBy          String?      @map("deleted_by")
+  deleteReason       String?      @map("delete_reason") @db.VarChar(500)
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
@@ -637,6 +650,8 @@ model Member {
   /// First purchase date
   firstPurchase DateTime?    @map("first_purchase")
   deletedAt     DateTime?    @map("deleted_at")
+  deletedBy     String?      @map("deleted_by")
+  deleteReason  String?      @map("delete_reason") @db.VarChar(500)
   createdAt     DateTime     @default(now()) @map("created_at")
   updatedAt     DateTime     @updatedAt @map("updated_at")
 
@@ -659,23 +674,26 @@ enum MemberStatus {
 }
 
 model Sale {
-  id           String   @id @default(uuid()) @map("sale_id")
-  tenantId     String   @map("tenant_id")
-  saleCode     String   @map("sale_code") @db.VarChar(50)
-  type         SaleType @default(GENERAL)
-  isCreditSale Boolean  @default(false) @map("is_credit_sale")
-  locationId   String   @map("location_id")
-  memberId     String?  @map("member_id")
-  subtotal     Decimal  @db.Decimal(12, 2)
-  discount     Decimal  @default(0) @db.Decimal(12, 2)
-  total        Decimal  @db.Decimal(12, 2)
-  notes        String?  @db.Text
-  createdById  String   @map("created_by_id")
-  createdAt    DateTime @default(now()) @map("created_at")
+  id               String   @id @default(uuid()) @map("sale_id")
+  tenantId         String   @map("tenant_id")
+  saleCode         String   @map("sale_code") @db.VarChar(50)
+  type             SaleType @default(GENERAL)
+  isCreditSale     Boolean  @default(false) @map("is_credit_sale")
+  locationId       String   @map("location_id")
+  memberId         String?  @map("member_id")
+  contactId        String?  @map("contact_id")
+  subtotal         Decimal  @db.Decimal(12, 2)
+  discount         Decimal  @default(0) @db.Decimal(12, 2)
+  total            Decimal  @db.Decimal(12, 2)
+  notes            String?  @db.Text
+  promoCodesUsed   Json?    @map("promo_codes_used")
+  createdById      String   @map("created_by_id")
+  createdAt        DateTime @default(now()) @map("created_at")
 
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   location  Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
   member    Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  contact   Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
   createdBy User         @relation("SaleCreator", fields: [createdById], references: [id], onDelete: Restrict)
   items     SaleItem[]
   payments  SalePayment[]
@@ -760,6 +778,8 @@ model PromoCode {
   usageCount        Int               @default(0) @map("usage_count")
   isActive          Boolean           @default(true) @map("is_active")
   deletedAt         DateTime?         @map("deleted_at")
+  deletedBy         String?           @map("deleted_by")
+  deleteReason      String?           @map("delete_reason") @db.VarChar(500)
   createdAt         DateTime          @default(now()) @map("created_at")
   updatedAt         DateTime          @updatedAt @map("updated_at")
 
@@ -835,15 +855,17 @@ model ErrorReport {
 // ============================================
 
 model Company {
-  id        String    @id @default(uuid()) @map("company_id")
-  tenantId  String    @map("tenant_id")
-  name      String    @map("company_name") @db.VarChar(255)
-  website   String?   @db.VarChar(500)
-  address   String?   @db.Text
-  phone     String?   @db.VarChar(50)
-  deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid()) @map("company_id")
+  tenantId     String    @map("tenant_id")
+  name         String    @map("company_name") @db.VarChar(255)
+  website      String?   @db.VarChar(500)
+  address      String?   @db.Text
+  phone        String?   @db.VarChar(50)
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?   @map("deleted_by")
+  deleteReason String?   @map("delete_reason") @db.VarChar(500)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts Contact[]
@@ -889,7 +911,11 @@ model Contact {
   memberId     String?  @unique @map("member_id")
   ownedById    String    @map("owned_by_id")
   createdById  String    @map("created_by_id")
+  source       String?  @db.VarChar(100)
+  journeyType  String?  @map("journey_type") @db.VarChar(100)
   deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?  @map("deleted_by")
+  deleteReason String?  @map("delete_reason") @db.VarChar(500)
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -905,6 +931,7 @@ model Contact {
   deals          Deal[]
   tasks          Task[]
   activities     Activity[]
+  sales          Sale[]
 
   @@index([tenantId])
   @@map("contacts")
@@ -982,6 +1009,8 @@ model Lead {
   createdById  String     @map("created_by_id")
   convertedAt  DateTime?  @map("converted_at")
   deletedAt    DateTime?  @map("deleted_at")
+  deletedBy    String?    @map("deleted_by")
+  deleteReason String?    @map("delete_reason") @db.VarChar(500)
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
@@ -995,14 +1024,16 @@ model Lead {
 }
 
 model Pipeline {
-  id        String    @id @default(uuid()) @map("pipeline_id")
-  tenantId  String   @map("tenant_id")
-  name      String    @db.VarChar(255)
-  stages    Json      // Array of { id, name, order, probability }
-  isDefault Boolean   @default(false) @map("is_default")
-  deletedAt DateTime? @map("deleted_at")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  id           String    @id @default(uuid()) @map("pipeline_id")
+  tenantId     String    @map("tenant_id")
+  name         String    @db.VarChar(255)
+  stages       Json      // Array of { id, name, order, probability }
+  isDefault    Boolean   @default(false) @map("is_default")
+  deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?   @map("deleted_by")
+  deleteReason String?   @map("delete_reason") @db.VarChar(500)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   deals  Deal[]
@@ -1036,6 +1067,8 @@ model Deal {
   createdById        String    @map("created_by_id")
   leadId             String?   @unique @map("lead_id")
   deletedAt          DateTime? @map("deleted_at")
+  deletedBy          String?   @map("deleted_by")
+  deleteReason       String?   @map("delete_reason") @db.VarChar(500)
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
@@ -1056,7 +1089,7 @@ model Deal {
 
 model Task {
   id           String    @id @default(uuid()) @map("task_id")
-  tenantId     String   @map("tenant_id")
+  tenantId     String    @map("tenant_id")
   title        String    @db.VarChar(500)
   dueDate      DateTime? @map("due_date")
   completed    Boolean   @default(false)
@@ -1065,6 +1098,8 @@ model Task {
   dealId       String?   @map("deal_id")
   assignedToId String    @map("assigned_to_id")
   deletedAt    DateTime? @map("deleted_at")
+  deletedBy    String?   @map("deleted_by")
+  deleteReason String?   @map("delete_reason") @db.VarChar(500)
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
@@ -1095,6 +1130,8 @@ model Activity {
   dealId     String?     @map("deal_id")
   createdById String     @map("created_by_id")
   deletedAt  DateTime?   @map("deleted_at")
+  deletedBy  String?     @map("deleted_by")
+  deleteReason String?   @map("delete_reason") @db.VarChar(500)
   createdAt  DateTime    @default(now()) @map("created_at")
 
   tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -1105,6 +1142,34 @@ model Activity {
 
   @@index([tenantId])
   @@map("activities")
+}
+
+model CrmSource {
+  id        String   @id @default(uuid()) @map("crm_source_id")
+  tenantId  String   @map("tenant_id")
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("crm_sources")
+}
+
+model CrmJourneyType {
+  id        String   @id @default(uuid()) @map("crm_journey_type_id")
+  tenantId  String   @map("tenant_id")
+  name      String   @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, name])
+  @@index([tenantId])
+  @@map("crm_journey_types")
 }
 
 enum NotificationType {

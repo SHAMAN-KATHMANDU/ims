@@ -2,8 +2,8 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
-import { useCreateContact } from "@/hooks/useContacts";
-import { ContactForm } from "@/views/crm/contacts/ContactForm";
+import { useCreateContact } from "@/features/crm";
+import { ContactForm } from "@/features/crm";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 

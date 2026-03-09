@@ -41,7 +41,7 @@ import taskRouter from "@/modules/tasks/task.router";
 import activityRouter from "@/modules/activities/activity.router";
 import notificationRouter from "@/modules/notifications/notification.router";
 import crmRouter from "@/modules/crm/crm.router";
-import trashRouter from "@/modules/trash/trash.router";
+import crmSettingsRouter from "@/modules/crm-settings/crm-settings.router";
 
 const router = Router();
 
@@ -89,6 +89,6 @@ router.use("/tasks", taskRouter);
 router.use("/activities", activityRouter);
 router.use("/notifications", notificationRouter);
 router.use("/crm", crmRouter);
-router.use("/trash", trashRouter);
+router.use("/crm-settings", crmSettingsRouter);
 
 export default router;

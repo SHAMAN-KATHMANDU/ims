@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useAuthStore, selectUserRole } from "@/stores/auth-store";
+import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import type { UserRole } from "@/utils/auth";
 
 interface RoleGuardProps {

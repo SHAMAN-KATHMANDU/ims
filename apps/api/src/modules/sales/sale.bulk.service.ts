@@ -1,8 +1,17 @@
 import ExcelJS from "exceljs";
-import prisma from "@/config/prisma";
 import { parseAndValidatePhone } from "@/utils/phone";
 import type { ExcelSaleRow } from "./bulkUpload.validation";
 import type { ValidationError } from "@/utils/bulkParse";
+import {
+  findLocationsShowrooms,
+  findAllUsersForBulk,
+  findProductsByTenant,
+  findVariationsByTenant,
+  findSaleByIdMinimal,
+  findMemberByPhone,
+  createMember,
+  createSaleBulk,
+} from "./sale.repository";
 
 export interface ProcessSaleBulkContext {
   tenantId: string;
@@ -73,26 +82,10 @@ export async function processSaleBulkRows(
 
   const [allLocations, allUsers, allProducts, allVariations] =
     await Promise.all([
-      prisma.location.findMany({
-        where: { tenantId, type: "SHOWROOM", isActive: true },
-        select: { id: true, name: true },
-      }),
-      prisma.user.findMany({
-        select: { id: true, username: true },
-      }),
-      prisma.product.findMany({
-        where: { tenantId },
-        select: { id: true, name: true },
-      }),
-      prisma.productVariation.findMany({
-        where: { tenantId },
-        select: {
-          id: true,
-          imsCode: true,
-          productId: true,
-          product: { select: { id: true, name: true } },
-        },
-      }),
+      findLocationsShowrooms(tenantId),
+      findAllUsersForBulk(),
+      findProductsByTenant(tenantId),
+      findVariationsByTenant(tenantId),
     ]);
 
   const locationMap = new Map(
@@ -101,9 +94,15 @@ export async function processSaleBulkRows(
   const userMap = new Map(
     allUsers.map((u) => [u.username.toLowerCase(), u.id]),
   );
-  const variationMapByIms = new Map(
-    allVariations.map((v) => [v.imsCode.toLowerCase(), v]),
-  );
+  const variationsByProductIms = new Map<string, (typeof allVariations)[number][]>();
+  for (const v of allVariations) {
+    const code = (v.product as { imsCode?: string }).imsCode?.toLowerCase();
+    if (code) {
+      const list = variationsByProductIms.get(code) ?? [];
+      list.push(v);
+      variationsByProductIms.set(code, list);
+    }
+  }
   const productMapByName = new Map(
     allProducts.map((p) => [p.name.toLowerCase(), p]),
   );
@@ -115,9 +114,7 @@ export async function processSaleBulkRows(
       const firstRow = group.rows[0];
 
       if (group.saleId) {
-        const existingSale = await prisma.sale.findUnique({
-          where: { id: group.saleId },
-        });
+        const existingSale = await findSaleByIdMinimal(group.saleId);
         if (existingSale) {
           skipped.push({
             saleId: group.saleId,
@@ -181,12 +178,11 @@ export async function processSaleBulkRows(
       if (phoneVal && phoneVal.length > 0) {
         const parsed = parseAndValidatePhone(phoneVal);
         if (parsed.valid) {
-          let member = await prisma.member.findFirst({
-            where: { phone: parsed.e164 },
-          });
+          let member = await findMemberByPhone(parsed.e164);
           if (!member) {
-            member = await prisma.member.create({
-              data: { tenantId, phone: parsed.e164 },
+            member = await createMember({
+              tenantId,
+              phone: parsed.e164,
             });
           }
           memberId = member.id;
@@ -210,16 +206,17 @@ export async function processSaleBulkRows(
         const imsCodeLower = itemRow.productImsCode.toLowerCase();
         const nameLower = itemRow.productName.toLowerCase();
 
-        let variation = variationMapByIms.get(imsCodeLower);
-        if (!variation) {
-          const product = productMapByName.get(nameLower);
-          if (product) {
-            variation =
-              allVariations.find(
-                (v) =>
-                  v.productId === product.id &&
-                  v.imsCode.toLowerCase() === imsCodeLower,
-              ) ?? undefined;
+        const variationList = variationsByProductIms.get(imsCodeLower);
+        let variation: (typeof allVariations)[number] | undefined;
+        if (variationList?.length === 1) {
+          variation = variationList[0];
+        } else if (variationList && variationList.length > 1) {
+          const variationId = (itemRow as { variationId?: string }).variationId;
+          if (variationId) {
+            variation = variationList.find((v) => v.id === variationId);
+          }
+          if (!variation) {
+            variation = variationList[0];
           }
         }
 
@@ -227,7 +224,7 @@ export async function processSaleBulkRows(
           errors.push({
             row: rows.indexOf(itemRow) + 2,
             field: "productImsCode",
-            message: `Variation with IMS code "${itemRow.productImsCode}" not found for product "${itemRow.productName}"`,
+            message: `Product with IMS code "${itemRow.productImsCode}" not found for "${itemRow.productName}"`,
             value: itemRow.productImsCode,
           });
           continue;
@@ -273,35 +270,20 @@ export async function processSaleBulkRows(
           ? (paymentMethods[0] as "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR")
           : "CASH";
 
-      const sale = await prisma.sale.create({
-        data: {
-          tenantId,
-          ...(group.saleId && { id: group.saleId }),
-          saleCode: generateSaleCode(),
-          type: saleType,
-          locationId,
-          ...(memberId && { memberId }),
-          createdById: userId,
-          subtotal,
-          discount: totalDiscount,
-          total,
-          createdAt: group.dateOfSale || new Date(),
-          items: {
-            create: saleItems.map((item) => ({
-              variationId: item.variationId,
-              quantity: item.quantity,
-              unitPrice: item.unitPrice,
-              totalMrp: item.unitPrice * item.quantity,
-              discountPercent: item.discountPercent,
-              discountAmount: item.discountAmount,
-              lineTotal: item.lineTotal,
-            })),
-          },
-          payments: {
-            create: [{ method: paymentMethod, amount: total }],
-          },
-        },
-        include: { items: true },
+      const sale = await createSaleBulk({
+        tenantId,
+        ...(group.saleId && { id: group.saleId }),
+        saleCode: generateSaleCode(),
+        type: saleType,
+        locationId,
+        ...(memberId && { memberId }),
+        createdById: userId,
+        subtotal,
+        discount: totalDiscount,
+        total,
+        createdAt: group.dateOfSale || new Date(),
+        items: saleItems,
+        paymentMethod,
       });
 
       created.push({
