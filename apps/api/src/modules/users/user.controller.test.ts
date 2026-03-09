@@ -290,6 +290,23 @@ describe("UserController", () => {
       );
     });
 
+    it("returns 403 when deleting platform admin", async () => {
+      const err = new Error("Cannot delete the platform admin.") as any;
+      err.statusCode = 403;
+      mockService.delete.mockRejectedValue(err);
+      const req = makeReq({ params: { id: "platform-admin-id" } });
+      const res = mockRes() as Response;
+
+      await userController.deleteUser(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Cannot delete the platform admin.",
+        }),
+      );
+    });
+
     it("calls sendControllerError on unexpected error", async () => {
       mockService.delete.mockRejectedValue(new Error("DB down"));
       const req = makeReq({ params: { id: "u2" } });
