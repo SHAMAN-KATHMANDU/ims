@@ -1,5 +1,6 @@
 /**
  * Totals section with divider before total.
+ * Order: Subtotal → Promo Applied (codes + amount) → Product Discount → Total.
  */
 import type PDFDocument from "pdfkit";
 import { fmtCurrency } from "../utils";
@@ -18,21 +19,30 @@ export function drawTotals(
   ctx: ReceiptContext,
 ): void {
   const pageCtx = createPageContext(ctx);
-  const estimatedHeight = 55;
+  const estimatedHeight = 65;
   ensureSpace(doc, estimatedHeight, pageCtx);
 
   drawKeyValueRow(doc, "Subtotal", fmtCurrency(sale.subtotal), ctx);
-
-  if (Number(sale.discount) > 0) {
-    drawKeyValueRow(doc, "Discount", `-${fmtCurrency(sale.discount)}`, ctx);
-  }
 
   const rawPromo = sale.promoCodesUsed;
   const promoCodes = Array.isArray(rawPromo)
     ? rawPromo.filter((x): x is string => typeof x === "string")
     : [];
+  const promoDiscount = Number(sale.promoDiscount ?? 0);
+
   if (promoCodes.length > 0) {
-    drawKeyValueRow(doc, "Promo Applied", promoCodes.join(", "), ctx);
+    drawKeyValueRow(
+      doc,
+      `Promo (${promoCodes.join(", ")})`,
+      `-${fmtCurrency(promoDiscount)}`,
+      ctx,
+    );
+  }
+
+  const productDiscount =
+    Number(sale.discount) - Number(sale.promoDiscount ?? 0);
+  if (productDiscount > 0) {
+    drawKeyValueRow(doc, "Discount", `-${fmtCurrency(productDiscount)}`, ctx);
   }
 
   doc.moveDown(SPACE.xxs);

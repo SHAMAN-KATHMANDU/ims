@@ -438,7 +438,7 @@ export async function createSale(
     );
   }
 
-  const { processedItems, subtotal, totalDiscount, total } =
+  const { processedItems, subtotal, totalDiscount, totalPromoDiscount, total } =
     await calculateSaleItems(dto.items, dto.locationId, saleType, ctx.tenantId);
 
   const promoCodesUsed = new Set<string>();
@@ -480,6 +480,7 @@ export async function createSale(
     createdById: ctx.userId,
     subtotal,
     discount: totalDiscount,
+    promoDiscount: promoCodesUsed.size > 0 ? totalPromoDiscount : undefined,
     total,
     notes: dto.notes ?? null,
     promoCodesUsed:

@@ -287,6 +287,7 @@ export interface CreateSaleWithItemsInput {
   createdById: string;
   subtotal: number;
   discount: number;
+  promoDiscount?: number;
   total: number;
   notes: string | null;
   promoCodesUsed?: string[] | null;
@@ -344,6 +345,10 @@ export async function createSaleWithItemsAndDeductInventory(
         contactId: input.contactId,
         subtotal: input.subtotal,
         discount: input.discount,
+        promoDiscount:
+          input.promoCodesUsed?.length && (input.promoDiscount ?? 0) > 0
+            ? (input.promoDiscount ?? 0)
+            : 0,
         total: input.total,
         notes: input.notes,
         promoCodesUsed:

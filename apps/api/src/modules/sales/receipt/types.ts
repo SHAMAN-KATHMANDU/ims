@@ -7,6 +7,7 @@ export type SaleWithIncludes = {
   createdAt: Date | string;
   subtotal: unknown;
   discount: unknown;
+  promoDiscount?: unknown;
   total: unknown;
   notes?: string | null;
   isCreditSale?: boolean;

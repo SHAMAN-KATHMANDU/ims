@@ -19,6 +19,8 @@ export interface SaleItem {
   quantity: number;
   unitPrice: number;
   discountPercent: number;
+  discountAmount?: number;
+  totalMrp?: number;
   lineTotal: number;
   variation: {
     id: string;
@@ -60,6 +62,8 @@ export interface Sale {
   contactId?: string | null;
   subtotal: number;
   discount: number;
+  promoDiscount?: number;
+  promoCodesUsed?: string[];
   total: number;
   notes?: string;
   createdById: string;
