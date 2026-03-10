@@ -26,6 +26,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
@@ -34,6 +40,7 @@ import {
   Loader2,
   X,
   MoreHorizontal,
+  Eye,
 } from "lucide-react";
 import {
   DataTablePagination,
@@ -72,6 +79,8 @@ interface ProductTableProps {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onDeleteVariation?: (product: Product, variationId: string) => void;
+  /** When provided and !canManageProducts, shows clickable eye icon for product detail view */
+  onView?: (product: Product) => void;
   // Pagination props (required for server-side pagination)
   pagination: PaginationState;
   onPageChange: (page: number) => void;
@@ -190,6 +199,7 @@ export function ProductTable({
   onEdit,
   onDelete,
   onDeleteVariation,
+  onView,
   pagination,
   onPageChange,
   onPageSizeChange,
@@ -577,6 +587,24 @@ export function ProductTable({
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
+                          ) : onView ? (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => onView(product)}
+                                    aria-label="View product details"
+                                  >
+                                    <Eye className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  View product details
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
                           ) : (
                             <span className="text-muted-foreground text-sm">
                               View only
