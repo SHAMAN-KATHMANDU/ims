@@ -892,7 +892,7 @@ export function NewSaleForm({
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_520px] gap-6">
               {/* Left Panel: Location, Customer, Products */}
               <div className="space-y-6">
                 {/* Location & Customer Panel */}
@@ -1261,7 +1261,10 @@ export function NewSaleForm({
                     )}
                   </FormSection>
                 </div>
+              </div>
 
+              {/* Right Panel: Cart, Summary, Promo, Payment — always visible to prevent layout shift */}
+              <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
                 {/* Cart Panel */}
                 <div className="form-panel flex flex-col">
                   <FormSection title="Shopping Cart">
@@ -1463,10 +1466,7 @@ export function NewSaleForm({
                     )}
                   </FormSection>
                 </div>
-              </div>
 
-              {/* Right Panel: Summary, Promo, Payment — always visible to prevent layout shift */}
-              <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
                 <div className="form-panel flex flex-col">
                   {/* Order Summary — placeholder when empty */}
                   <FormSection title="Order Summary">
