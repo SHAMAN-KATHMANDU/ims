@@ -527,6 +527,20 @@ export function ProductPage() {
           return;
         }
 
+        if (productAttributeTypeIds.length > 0) {
+          const variationWithoutAttribute = productVariations.find(
+            (v) => !v.attributes?.length || v.attributes.length === 0,
+          );
+          if (variationWithoutAttribute) {
+            setErrorDialog({
+              open: true,
+              title: "Validation Error",
+              message: "A variation must have at least one attribute selected.",
+            });
+            return;
+          }
+        }
+
         const costPrice = Number(values.costPrice);
         const mrp = Number(values.mrp);
 
@@ -809,6 +823,15 @@ export function ProductPage() {
 
   // Variation handlers
   const addVariationToForm = () => {
+    if (productAttributeTypeIds.length === 0) {
+      toast({
+        title: "Select attribute types first",
+        description:
+          "Select at least one attribute type for the product (e.g. Color, Size) before adding a variation.",
+        variant: "destructive",
+      });
+      return;
+    }
     setProductVariations([
       ...productVariations,
       {

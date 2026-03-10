@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useCallback, useEffect, useRef } from "react";
-import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -43,11 +42,18 @@ import { Checkbox } from "@/components/ui/checkbox";
 import {
   getDiscountedPrices,
   getCategoryName,
-  calculateDiscountedPrice,
   getVariationAttributeDisplay,
   getVariationTotal,
   getStockForVariationAtLocation,
+  getTotalStock,
+  getStockAtLocation,
 } from "../utils/helpers";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import type { Product, ProductVariation, Category } from "@/features/products";
 import { formatCurrency } from "@/lib/format";
 
@@ -203,7 +209,7 @@ export function ProductTable({
   onSelectionChange,
 }: ProductTableProps) {
   const canSort = Boolean(onSort);
-  const [expandedProductId, setExpandedProductId] = useState<string | null>(
+  const [productForDetail, setProductForDetail] = useState<Product | null>(
     null,
   );
 
@@ -363,440 +369,257 @@ export function ProductTable({
               </TableRow>
             ) : (
               (() => {
-                const rows: ProductTableRow[] = products.flatMap(
-                  (product): ProductTableRow[] => {
-                    if (!product.variations?.length) {
-                      return [{ product, variation: null }];
-                    }
-                    return product.variations.map((variation) => ({
-                      product,
-                      variation,
-                    }));
-                  },
-                );
-                const lastRowIndexByProductId = new Map<string, number>();
-                rows.forEach((r, i) =>
-                  lastRowIndexByProductId.set(r.product.id, i),
-                );
+                const rows: ProductTableRow[] = products.map((product) => ({
+                  product,
+                  variation: null,
+                }));
 
-                return rows.map(({ product, variation }, rowIndex) => {
+                return rows.map(({ product }) => {
                   const discountedPrices = !canSeeCostPrice
                     ? getDiscountedPrices(product)
                     : {};
                   const hasVariations =
                     product.variations && product.variations.length > 0;
-                  const isExpanded = expandedProductId === product.id;
-                  const productDiscounts = product.discounts || [];
-                  const isLastRowForProduct =
-                    lastRowIndexByProductId.get(product.id) === rowIndex;
-                  const displayStock = variation
-                    ? selectedLocationId
-                      ? getStockForVariationAtLocation(
-                          variation,
-                          selectedLocationId,
-                        )
-                      : getVariationTotal(variation)
-                    : 0;
+                  const displayStock = selectedLocationId
+                    ? getStockAtLocation(product, selectedLocationId)
+                    : getTotalStock(product);
+                  const variationCount = product.variations?.length ?? 0;
 
                   return (
-                    <React.Fragment
-                      key={`${product.id}-${variation ? (variation as { id?: string }).id : "novar"}`}
+                    <TableRow
+                      key={product.id}
+                      className="cursor-pointer hover:bg-muted/50"
+                      onClick={() => setProductForDetail(product)}
                     >
-                      <TableRow
-                        className={
-                          hasVariations
-                            ? "cursor-pointer hover:bg-muted/50"
-                            : ""
-                        }
-                        onClick={
-                          hasVariations
-                            ? () => {
-                                setExpandedProductId(
-                                  isExpanded ? null : product.id,
-                                );
-                              }
-                            : undefined
-                        }
-                      >
-                        {onSelectionChange && (
-                          <TableCell
-                            onClick={(e) => e.stopPropagation()}
-                            className="w-12"
-                          >
-                            <Checkbox
-                              checked={selectedProducts.has(product.id)}
-                              onCheckedChange={(checked) =>
-                                handleSelectProduct(
-                                  product.id,
-                                  checked === true,
-                                )
-                              }
-                              aria-label={`Select ${product.name}`}
-                            />
-                          </TableCell>
-                        )}
-                        <TableCell className="font-mono">
-                          {(product as { imsCode?: string }).imsCode ?? "—"}
-                        </TableCell>
-                        <TableCell className="font-medium">
-                          {product.name}
-                        </TableCell>
-                        <TableCell>
-                          {variation
-                            ? getVariationAttributeDisplay(variation)
-                            : "—"}
-                        </TableCell>
-                        <TableCell>
-                          {getCategoryName(
-                            product.categoryId,
-                            product,
-                            categories,
-                          )}
-                        </TableCell>
-                        {canSeeCostPrice && (
-                          <TableCell>
-                            {formatCurrency(Number(product.costPrice))}
-                          </TableCell>
-                        )}
-                        <TableCell>
-                          {formatCurrency(Number(product.mrp))}
-                        </TableCell>
-                        {!canSeeCostPrice && (
-                          <>
-                            <TableCell>
-                              {discountedPrices.normal ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatCurrency(
-                                      Number(discountedPrices.normal.price),
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({discountedPrices.normal.percentage}% off)
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {discountedPrices.special ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatCurrency(
-                                      Number(discountedPrices.special.price),
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({discountedPrices.special.percentage}% off)
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {discountedPrices.member ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatCurrency(
-                                      Number(discountedPrices.member.price),
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({discountedPrices.member.percentage}% off)
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {discountedPrices.wholesale ? (
-                                <div>
-                                  <div className="font-medium">
-                                    {formatCurrency(
-                                      Number(discountedPrices.wholesale.price),
-                                    )}
-                                  </div>
-                                  <div className="text-xs text-muted-foreground">
-                                    ({discountedPrices.wholesale.percentage}%
-                                    off)
-                                  </div>
-                                </div>
-                              ) : (
-                                <span className="text-muted-foreground">-</span>
-                              )}
-                            </TableCell>
-                          </>
-                        )}
-                        <TableCell>
-                          <span className="font-medium">{displayStock}</span>
-                        </TableCell>
+                      {onSelectionChange && (
                         <TableCell
-                          className="text-right"
                           onClick={(e) => e.stopPropagation()}
+                          className="w-12"
                         >
-                          {canManageProducts ? (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                  <MoreHorizontal className="h-4 w-4" />
-                                  <span className="sr-only">Actions</span>
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => onEdit(product)}
-                                >
-                                  <Edit2 className="mr-2 h-4 w-4" />
-                                  Edit Product
-                                </DropdownMenuItem>
-                                {variation &&
-                                  (product.variations?.length ?? 0) > 1 &&
-                                  onDeleteVariation && (
-                                    <DropdownMenuItem
-                                      variant="destructive"
-                                      onClick={() =>
-                                        onDeleteVariation(
-                                          product,
-                                          (variation as { id: string }).id,
-                                        )
-                                      }
-                                    >
-                                      <Trash2 className="mr-2 h-4 w-4" />
-                                      Delete Variation
-                                    </DropdownMenuItem>
-                                  )}
-                                <DropdownMenuItem
-                                  variant="destructive"
-                                  onClick={() => onDelete(product)}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Delete Product
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">
-                              View only
-                            </span>
-                          )}
+                          <Checkbox
+                            checked={selectedProducts.has(product.id)}
+                            onCheckedChange={(checked) =>
+                              handleSelectProduct(product.id, checked === true)
+                            }
+                            aria-label={`Select ${product.name}`}
+                          />
                         </TableCell>
-                      </TableRow>
-                      {hasVariations && isExpanded && isLastRowForProduct && (
-                        <TableRow>
-                          <TableCell
-                            colSpan={columnCount}
-                            className="p-4 bg-muted/30"
-                          >
-                            <div className="space-y-4">
-                              {/* Discounts Section */}
-                              {productDiscounts.length > 0 && (
-                                <div className="space-y-2">
-                                  <div className="text-sm font-semibold">
-                                    Available Discounts:
-                                  </div>
-                                  <div className="flex flex-wrap gap-2">
-                                    {productDiscounts
-                                      .filter((d) => d.isActive)
-                                      .map((discount) => {
-                                        const discountPrice =
-                                          calculateDiscountedPrice(
-                                            product.mrp,
-                                            discount.discountPercentage,
-                                          );
-                                        return (
-                                          <div
-                                            key={discount.id}
-                                            className="border rounded-lg p-2 bg-background"
-                                          >
-                                            <div className="text-xs font-medium">
-                                              {discount.discountType?.name ||
-                                                "Unknown"}
-                                            </div>
-                                            <div className="text-xs text-muted-foreground">
-                                              {discount.discountPercentage}% off
-                                              -{" "}
-                                              {formatCurrency(
-                                                Number(discountPrice),
-                                              )}
-                                            </div>
-                                          </div>
-                                        );
-                                      })}
-                                  </div>
+                      )}
+                      <TableCell className="font-mono">
+                        {(product as { imsCode?: string }).imsCode ?? "—"}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {product.name}
+                      </TableCell>
+                      <TableCell>
+                        {variationCount > 0
+                          ? `${variationCount} variation(s)`
+                          : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {getCategoryName(
+                          product.categoryId,
+                          product,
+                          categories,
+                        )}
+                      </TableCell>
+                      {canSeeCostPrice && (
+                        <TableCell>
+                          {formatCurrency(Number(product.costPrice))}
+                        </TableCell>
+                      )}
+                      <TableCell>
+                        {formatCurrency(Number(product.mrp))}
+                      </TableCell>
+                      {!canSeeCostPrice && (
+                        <>
+                          <TableCell>
+                            {discountedPrices.normal ? (
+                              <div>
+                                <div className="font-medium">
+                                  {formatCurrency(
+                                    Number(discountedPrices.normal.price),
+                                  )}
                                 </div>
-                              )}
-
-                              {/* Variations Section */}
-                              <div className="space-y-2">
-                                <div className="text-sm font-semibold">
-                                  Variations:
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                                  {product.variations?.map((variation) => {
-                                    const photos = variation.photos || [];
-                                    const primaryPhoto =
-                                      photos.find((p) => p.isPrimary) ||
-                                      photos[0];
-                                    const hasLocationInventory =
-                                      variation.locationInventory &&
-                                      variation.locationInventory.length > 0;
-                                    const totalStock = hasLocationInventory
-                                      ? variation.locationInventory!.reduce(
-                                          (s, inv) => s + inv.quantity,
-                                          0,
-                                        )
-                                      : (variation.stockQuantity ?? 0);
-                                    const subVars =
-                                      variation.subVariations ?? [];
-                                    const hasSubVariants = subVars.length > 0;
-
-                                    return (
-                                      <div
-                                        key={variation.id}
-                                        className="border rounded-lg p-3 space-y-2"
-                                      >
-                                        <div className="flex items-center justify-between">
-                                          <div className="space-y-2">
-                                            <div className="font-medium text-sm">
-                                              {getVariationAttributeDisplay(
-                                                variation,
-                                              )}
-                                            </div>
-                                            <div className="text-xs font-medium text-muted-foreground">
-                                              Total: {totalStock}
-                                            </div>
-                                            {!hasSubVariants &&
-                                              hasLocationInventory && (
-                                                <div className="space-y-1.5">
-                                                  <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                                    By location
-                                                  </div>
-                                                  <div className="flex flex-wrap gap-2">
-                                                    {variation.locationInventory!.map(
-                                                      (inv) => (
-                                                        <div
-                                                          key={inv.location.id}
-                                                          className="rounded-md border bg-muted/50 px-2.5 py-1.5 text-xs"
-                                                        >
-                                                          <span className="font-medium text-foreground">
-                                                            {inv.location.name}
-                                                          </span>
-                                                          <span className="ml-1.5 text-muted-foreground">
-                                                            {inv.quantity}
-                                                          </span>
-                                                        </div>
-                                                      ),
-                                                    )}
-                                                  </div>
-                                                </div>
-                                              )}
-                                            {hasSubVariants && (
-                                              <div className="space-y-2">
-                                                <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                                                  Sub-variants
-                                                </div>
-                                                {subVars.map((sub) => {
-                                                  const subInvs = (
-                                                    variation.locationInventory ??
-                                                    []
-                                                  ).filter(
-                                                    (inv) =>
-                                                      inv.subVariationId ===
-                                                      sub.id,
-                                                  );
-                                                  const subTotal =
-                                                    subInvs.reduce(
-                                                      (s, inv) =>
-                                                        s + inv.quantity,
-                                                      0,
-                                                    );
-                                                  return (
-                                                    <div
-                                                      key={sub.id}
-                                                      className="rounded-md border bg-muted/30 px-2.5 py-1.5 text-xs"
-                                                    >
-                                                      <span className="font-medium text-foreground">
-                                                        {sub.name}
-                                                      </span>
-                                                      <span className="ml-1.5 text-muted-foreground">
-                                                        Total: {subTotal}
-                                                      </span>
-                                                      {subInvs.length > 0 && (
-                                                        <div className="flex flex-wrap gap-1.5 mt-1">
-                                                          {subInvs.map(
-                                                            (inv) => (
-                                                              <span
-                                                                key={
-                                                                  inv.location
-                                                                    .id
-                                                                }
-                                                                className="text-muted-foreground"
-                                                              >
-                                                                {
-                                                                  inv.location
-                                                                    .name
-                                                                }
-                                                                : {inv.quantity}
-                                                              </span>
-                                                            ),
-                                                          )}
-                                                        </div>
-                                                      )}
-                                                    </div>
-                                                  );
-                                                })}
-                                              </div>
-                                            )}
-                                          </div>
-                                        </div>
-                                        {primaryPhoto && (
-                                          <div className="relative">
-                                            <Image
-                                              src={primaryPhoto.photoUrl}
-                                              alt={`${getVariationAttributeDisplay(variation)} variation`}
-                                              width={200}
-                                              height={128}
-                                              className="w-full h-32 object-cover rounded border"
-                                              onError={(e) => {
-                                                (
-                                                  e.target as HTMLImageElement
-                                                ).src =
-                                                  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Crect fill='%23ddd' width='200' height='200'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='14'%3ENo Image%3C/text%3E%3C/svg%3E";
-                                              }}
-                                            />
-                                            {photos.length > 1 && (
-                                              <span className="absolute top-2 right-2 bg-primary text-primary-foreground text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                                                {photos.length}
-                                              </span>
-                                            )}
-                                          </div>
-                                        )}
-                                        {photos.length === 0 && (
-                                          <div className="w-full h-32 bg-muted rounded border flex items-center justify-center">
-                                            <span className="text-xs text-muted-foreground">
-                                              No photos
-                                            </span>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+                                <div className="text-xs text-muted-foreground">
+                                  ({discountedPrices.normal.percentage}% off)
                                 </div>
                               </div>
-                            </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
                           </TableCell>
-                        </TableRow>
+                          <TableCell>
+                            {discountedPrices.special ? (
+                              <div>
+                                <div className="font-medium">
+                                  {formatCurrency(
+                                    Number(discountedPrices.special.price),
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  ({discountedPrices.special.percentage}% off)
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {discountedPrices.member ? (
+                              <div>
+                                <div className="font-medium">
+                                  {formatCurrency(
+                                    Number(discountedPrices.member.price),
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  ({discountedPrices.member.percentage}% off)
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            {discountedPrices.wholesale ? (
+                              <div>
+                                <div className="font-medium">
+                                  {formatCurrency(
+                                    Number(discountedPrices.wholesale.price),
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  ({discountedPrices.wholesale.percentage}% off)
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">-</span>
+                            )}
+                          </TableCell>
+                        </>
                       )}
-                    </React.Fragment>
+                      <TableCell>
+                        <span className="font-medium">{displayStock}</span>
+                      </TableCell>
+                      <TableCell
+                        className="text-right"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {canManageProducts ? (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                                <span className="sr-only">Actions</span>
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => onEdit(product)}>
+                                <Edit2 className="mr-2 h-4 w-4" />
+                                Edit Product
+                              </DropdownMenuItem>
+                              {hasVariations &&
+                                variationCount > 1 &&
+                                onDeleteVariation &&
+                                product.variations?.map((variation) => (
+                                  <DropdownMenuItem
+                                    key={variation.id}
+                                    variant="destructive"
+                                    onClick={() =>
+                                      onDeleteVariation(
+                                        product,
+                                        (variation as { id: string }).id,
+                                      )
+                                    }
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Delete:{" "}
+                                    {getVariationAttributeDisplay(variation) ||
+                                      "Variation"}
+                                  </DropdownMenuItem>
+                                ))}
+                              <DropdownMenuItem
+                                variant="destructive"
+                                onClick={() => onDelete(product)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete Product
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <span className="text-muted-foreground text-sm">
+                            View only
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   );
                 });
               })()
             )}
           </TableBody>
         </Table>
+
+        {/* Product detail sheet: one row per product, click to see variations */}
+        <Sheet
+          open={!!productForDetail}
+          onOpenChange={(open) => !open && setProductForDetail(null)}
+        >
+          <SheetContent className="overflow-y-auto sm:max-w-xl">
+            <SheetHeader>
+              <SheetTitle>
+                {productForDetail ? productForDetail.name : ""}
+              </SheetTitle>
+            </SheetHeader>
+            {productForDetail && (
+              <div className="mt-4 space-y-4">
+                <p className="text-sm text-muted-foreground font-mono">
+                  IMS:{" "}
+                  {(productForDetail as { imsCode?: string }).imsCode ?? "—"}
+                </p>
+                <div>
+                  <h4 className="mb-2 font-semibold">Variations</h4>
+                  {!productForDetail.variations?.length ? (
+                    <p className="text-sm text-muted-foreground">
+                      No variations.
+                    </p>
+                  ) : (
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Variation</TableHead>
+                          <TableHead className="text-right">Stock</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {productForDetail.variations.map((variation) => {
+                          const stock = selectedLocationId
+                            ? getStockForVariationAtLocation(
+                                variation,
+                                selectedLocationId,
+                              )
+                            : getVariationTotal(variation);
+                          return (
+                            <TableRow key={variation.id}>
+                              <TableCell className="font-medium">
+                                {getVariationAttributeDisplay(variation) || "—"}
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {stock}
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  )}
+                </div>
+              </div>
+            )}
+          </SheetContent>
+        </Sheet>
 
         {/* Pagination Controls */}
         <DataTablePagination

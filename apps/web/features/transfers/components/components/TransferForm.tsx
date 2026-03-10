@@ -30,6 +30,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useToast } from "@/hooks/useToast";
 import { Plus, Trash2, ArrowRight } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
@@ -88,6 +89,7 @@ export function TransferForm({
   getLocationInventory,
   inline = false,
 }: TransferFormProps) {
+  const { toast } = useToast();
   const [fromLocationId, setFromLocationId] = useState("");
   const [toLocationId, setToLocationId] = useState("");
   const [notes, setNotes] = useState("");
@@ -139,14 +141,36 @@ export function TransferForm({
     if (!inventoryItem) return;
 
     const parsedQuantity = parseInt(quantity);
-    if (isNaN(parsedQuantity) || parsedQuantity <= 0) return;
+    if (isNaN(parsedQuantity) || parsedQuantity <= 0) {
+      toast({
+        title: "Invalid quantity",
+        description: "Please enter a positive number.",
+        variant: "destructive",
+      });
+      return;
+    }
 
+    const availableQty = inventoryItem.quantity;
     const subVariationId = inventoryItem.subVariationId ?? null;
     const existingIndex = items.findIndex(
       (item) =>
         item.variationId === inventoryItem.variationId &&
         (item.subVariationId ?? null) === subVariationId,
     );
+
+    const totalQtyAfterAdd =
+      existingIndex >= 0 && items[existingIndex]
+        ? items[existingIndex].quantity + parsedQuantity
+        : parsedQuantity;
+
+    if (totalQtyAfterAdd > availableQty) {
+      toast({
+        title: "Quantity exceeds available",
+        description: `Only ${availableQty} available. You entered ${parsedQuantity}${existingIndex >= 0 ? ` (total would be ${totalQtyAfterAdd})` : ""}.`,
+        variant: "destructive",
+      });
+      return;
+    }
 
     if (existingIndex >= 0) {
       const newItems = [...items];
