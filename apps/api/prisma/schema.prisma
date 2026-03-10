@@ -684,6 +684,7 @@ model Sale {
   contactId        String?  @map("contact_id")
   subtotal         Decimal  @db.Decimal(12, 2)
   discount         Decimal  @default(0) @db.Decimal(12, 2)
+  promoDiscount    Decimal  @default(0) @map("promo_discount") @db.Decimal(12, 2)
   total            Decimal  @db.Decimal(12, 2)
   notes            String?  @db.Text
   promoCodesUsed   Json?    @map("promo_codes_used")

@@ -42,4 +42,18 @@ describe("generateReceiptPdf", () => {
     expect(buffer.length).toBeGreaterThan(100);
     expect(buffer.subarray(0, 5).toString()).toBe("%PDF-");
   });
+
+  it("generates PDF with promo codes and promo discount without error", async () => {
+    const saleWithPromo = {
+      ...mockSale,
+      subtotal: 100,
+      discount: 15,
+      promoDiscount: 10,
+      total: 85,
+      promoCodesUsed: ["SAVE10"],
+    };
+    const buffer = await generateReceiptPdf(saleWithPromo);
+    expect(Buffer.isBuffer(buffer)).toBe(true);
+    expect(buffer.length).toBeGreaterThan(100);
+  });
 });

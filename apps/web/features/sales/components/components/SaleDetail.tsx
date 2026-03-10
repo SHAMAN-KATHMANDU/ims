@@ -269,13 +269,14 @@ export function SaleDetail({
             <div>
               <h4 className="font-medium mb-2">Items</h4>
               <div className="rounded-md border overflow-x-auto">
-                <Table className="min-w-[320px]">
+                <Table className="min-w-[380px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Product</TableHead>
                       <TableHead className="text-right">Price</TableHead>
                       <TableHead className="text-center">Qty</TableHead>
                       <TableHead className="text-right">Disc %</TableHead>
+                      <TableHead className="text-right">Disc</TableHead>
                       <TableHead className="text-right">Total</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -315,6 +316,15 @@ export function SaleDetail({
                             "-"
                           )}
                         </TableCell>
+                        <TableCell className="text-right">
+                          {Number(item.discountAmount ?? 0) > 0 ? (
+                            <span className="text-green-600">
+                              -{formatCurrency(Number(item.discountAmount))}
+                            </span>
+                          ) : (
+                            "-"
+                          )}
+                        </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatCurrency(Number(item.lineTotal))}
                         </TableCell>
@@ -331,12 +341,24 @@ export function SaleDetail({
                 <span>Subtotal</span>
                 <span>{formatCurrency(Number(sale.subtotal))}</span>
               </div>
-              {Number(sale.discount) > 0 && (
+              {sale.promoCodesUsed && sale.promoCodesUsed.length > 0 && (
                 <div className="flex justify-between text-sm text-green-600">
-                  <span>Discount</span>
-                  <span>-{formatCurrency(Number(sale.discount))}</span>
+                  <span>Promo ({sale.promoCodesUsed.join(", ")})</span>
+                  <span>
+                    -{formatCurrency(Number(sale.promoDiscount ?? 0))}
+                  </span>
                 </div>
               )}
+              {(() => {
+                const productDiscount =
+                  Number(sale.discount) - Number(sale.promoDiscount ?? 0);
+                return productDiscount > 0 ? (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount</span>
+                    <span>-{formatCurrency(productDiscount)}</span>
+                  </div>
+                ) : null;
+              })()}
               <Separator />
               <div className="flex justify-between font-bold text-lg">
                 <span>Total</span>
