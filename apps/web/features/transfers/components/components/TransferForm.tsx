@@ -335,19 +335,27 @@ export function TransferForm({
                   </SelectItem>
                   {availableInventory
                     .filter((inv) => inv.quantity > 0)
-                    .map((inv) => (
-                      <SelectItem key={inv.id} value={inv.id}>
-                        {inv.variation.product.name}
-                        {inv.variation.attributes?.length
-                          ? ` — ${inv.variation.attributes.map((a) => a.attributeValue.value).join(" / ")}`
-                          : ""}{" "}
-                        [{inv.variation.product.imsCode}]
-                        {inv.subVariation?.name
-                          ? ` / ${inv.subVariation.name}`
-                          : ""}{" "}
-                        ({inv.quantity} available)
-                      </SelectItem>
-                    ))}
+                    .map((inv) => {
+                      const attrLabel =
+                        inv.variation.attributes
+                          ?.map((a) => a.attributeValue.value)
+                          .join(" / ") || "";
+                      const variationLabel = attrLabel
+                        ? ` — ${attrLabel}`
+                        : inv.subVariation?.name
+                          ? ` — ${inv.subVariation.name}`
+                          : " — Variation";
+                      return (
+                        <SelectItem key={inv.id} value={inv.id}>
+                          {inv.variation.product.name}
+                          {variationLabel} [{inv.variation.product.imsCode}
+                          {inv.subVariation?.name
+                            ? ` / ${inv.subVariation.name}`
+                            : ""}
+                          ] ({inv.quantity} available)
+                        </SelectItem>
+                      );
+                    })}
                 </SelectContent>
               </Select>
               <Input
@@ -386,44 +394,50 @@ export function TransferForm({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {items.map((item, idx) => (
-                    <TableRow
-                      key={`${item.variationId}-${item.subVariationId ?? "v"}-${idx}`}
-                    >
-                      <TableCell className="font-medium">
-                        {item.productName}
-                        {item.attributeLabel && (
-                          <span className="text-muted-foreground font-normal ml-1.5">
-                            — {item.attributeLabel}
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        {item.imsCode}
-                        {item.subVariationName
-                          ? ` / ${item.subVariationName}`
-                          : ""}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {item.quantity}
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={() =>
-                            handleRemoveItem(
-                              item.variationId,
-                              item.subVariationId,
-                            )
-                          }
-                        >
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {items.map((item, idx) => {
+                    const variationLabel =
+                      item.attributeLabel ||
+                      item.subVariationName ||
+                      (items.length > 1 ? "Variation" : "");
+                    return (
+                      <TableRow
+                        key={`${item.variationId}-${item.subVariationId ?? "v"}-${idx}`}
+                      >
+                        <TableCell className="font-medium">
+                          {item.productName}
+                          {variationLabel && (
+                            <span className="text-muted-foreground font-normal ml-1.5">
+                              — {variationLabel}
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {item.imsCode}
+                          {item.subVariationName
+                            ? ` / ${item.subVariationName}`
+                            : ""}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {item.quantity}
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              handleRemoveItem(
+                                item.variationId,
+                                item.subVariationId,
+                              )
+                            }
+                          >
+                            <Trash2 className="h-4 w-4 text-destructive" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </ScrollArea>
