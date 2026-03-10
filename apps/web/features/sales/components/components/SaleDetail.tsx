@@ -40,6 +40,7 @@ import {
 } from "../../hooks/use-sales";
 import { downloadReceiptPdf } from "../../services/sales.service";
 import { useToast } from "@/hooks/useToast";
+import { useAuthStore } from "@/store/auth-store";
 import {
   MapPin,
   User,
@@ -74,6 +75,7 @@ export function SaleDetail({
   isLoading,
 }: SaleDetailProps) {
   const { toast } = useToast();
+  const tenant = useAuthStore((s) => s.tenant);
   const addPaymentMutation = useAddPaymentToSale();
   const [payDialogOpen, setPayDialogOpen] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(false);
@@ -85,6 +87,8 @@ export function SaleDetail({
   const totalNum = sale ? Number(sale.total) : 0;
   const balanceDue = Math.round((totalNum - amountPaid) * 100) / 100;
   const isCreditSale = sale?.isCreditSale === true;
+  const storeName =
+    tenant?.name ?? (sale ? sale.location.name : null) ?? "Store";
 
   const handlePaySubmit = async () => {
     if (!sale) return;
@@ -117,7 +121,11 @@ export function SaleDetail({
     }
   };
 
-  const handlePrintOrPdf = async () => {
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handlePdf = async () => {
     if (!sale) return;
     setReceiptLoading(true);
     try {
@@ -135,8 +143,8 @@ export function SaleDetail({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-[600px] max-h-[90vh] overflow-y-auto">
-        <DialogHeader className="flex flex-row flex-wrap items-start justify-between gap-2">
+      <DialogContent className="flex w-[95vw] max-w-3xl max-h-[90vh] flex-col gap-4 p-6 sm:max-w-[800px]">
+        <DialogHeader className="flex shrink-0 flex-row flex-wrap items-start justify-between gap-2">
           <DialogTitle className="flex items-center gap-2">
             <Receipt className="h-5 w-5" />
             Sale Details
@@ -146,19 +154,18 @@ export function SaleDetail({
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handlePrintOrPdf}
-                disabled={receiptLoading}
-                className="gap-1.5"
+                onClick={handlePrint}
+                className="gap-1.5 print:hidden"
               >
                 <Printer className="h-4 w-4" />
-                {receiptLoading ? "..." : "Print"}
+                Print
               </Button>
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handlePrintOrPdf}
+                onClick={handlePdf}
                 disabled={receiptLoading}
-                className="gap-1.5"
+                className="gap-1.5 print:hidden"
               >
                 <FileDown className="h-4 w-4" />
                 {receiptLoading ? "..." : "PDF"}
@@ -176,282 +183,350 @@ export function SaleDetail({
             <Skeleton className="h-24 w-full" />
           </div>
         ) : sale ? (
-          <div className="receipt-print-area space-y-4">
-            {/* Header Info */}
-            <div className="flex items-start justify-between">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Hash className="h-4 w-4 text-muted-foreground" />
-                  <span className="font-mono text-lg font-bold">
-                    {sale.saleCode}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                  {format(new Date(sale.createdAt), "MMMM d, yyyy 'at' h:mm a")}
-                </div>
-              </div>
-              <Badge className={getSaleTypeColor(sale.type)} variant="outline">
-                {getSaleTypeLabel(sale.type)}
-              </Badge>
-            </div>
-
-            <Separator />
-
-            {/* Location & Customer */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <MapPin className="h-4 w-4" />
-                  Location
-                </div>
-                <p className="font-medium">{sale.location.name}</p>
-              </div>
-
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <User className="h-4 w-4" />
-                  Sold To
-                </div>
-                {sale.member ? (
-                  <div>
-                    <p className="font-medium">{sale.member.phone}</p>
-                    {sale.member.name && (
-                      <p className="text-sm text-muted-foreground">
-                        {sale.member.name}
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">Walk-in Customer</p>
-                )}
-              </div>
-            </div>
-
-            {/* CRM Contact */}
-            {sale.contact && (
-              <div className="space-y-1">
-                <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                  <Contact className="h-4 w-4" />
-                  CRM Contact
-                </div>
-                <div>
-                  <p className="font-medium">
-                    {sale.contact.firstName}
-                    {sale.contact.lastName ? ` ${sale.contact.lastName}` : ""}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            <div className="receipt-print-area receipt-print-wrapper space-y-4">
+              {/* receipt-header: store, title, receipt #, date */}
+              <div className="receipt-header break-inside-avoid">
+                <div className="text-center print:mb-3">
+                  <h1 className="text-xl font-bold print:text-[18pt] sm:text-2xl">
+                    {storeName}
+                  </h1>
+                  <p className="mt-0.5 text-sm text-muted-foreground print:text-[10pt]">
+                    {sale.location.name}
                   </p>
-                  {sale.contact.email && (
-                    <p className="text-sm text-muted-foreground">
-                      {sale.contact.email}
-                    </p>
-                  )}
-                  {sale.contact.phone && (
-                    <p className="text-sm text-muted-foreground">
-                      {sale.contact.phone}
-                    </p>
-                  )}
                 </div>
-              </div>
-            )}
-
-            {/* Sold By */}
-            <div className="space-y-1">
-              <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
-                <User className="h-4 w-4" />
-                Sold By
-              </div>
-              <p className="font-medium">{sale.createdBy.username}</p>
-            </div>
-
-            <Separator />
-
-            {/* Items */}
-            <div>
-              <h4 className="font-medium mb-2">Items</h4>
-              <div className="rounded-md border overflow-x-auto">
-                <Table className="min-w-[380px]">
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Product</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
-                      <TableHead className="text-center">Qty</TableHead>
-                      <TableHead className="text-right">Disc %</TableHead>
-                      <TableHead className="text-right">Disc</TableHead>
-                      <TableHead className="text-right">Total</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {sale.items?.map((item) => (
-                      <TableRow key={item.id}>
-                        <TableCell>
-                          <div>
-                            <div className="font-medium">
-                              {item.variation.product.name}
-                            </div>
-                            {item.variation.attributes &&
-                              item.variation.attributes.length > 0 && (
-                                <div className="text-xs text-muted-foreground mt-0.5">
-                                  {item.variation.attributes
-                                    .map((a) => a.attributeValue.value)
-                                    .join(" / ")}
-                                </div>
-                              )}
-                            <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                              {item.variation.product?.imsCode ?? "—"}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {formatCurrency(Number(item.unitPrice))}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {item.quantity}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {Number(item.discountPercent) > 0 ? (
-                            <span className="text-green-600">
-                              {Number(item.discountPercent).toFixed(1)}%
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          {Number(item.discountAmount ?? 0) > 0 ? (
-                            <span className="text-green-600">
-                              -{formatCurrency(Number(item.discountAmount))}
-                            </span>
-                          ) : (
-                            "-"
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(Number(item.lineTotal))}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </div>
-
-            {/* Totals */}
-            <div className="bg-muted/50 rounded-lg p-4 space-y-2">
-              <div className="flex justify-between text-sm">
-                <span>Subtotal</span>
-                <span>{formatCurrency(Number(sale.subtotal))}</span>
-              </div>
-              {sale.promoCodesUsed && sale.promoCodesUsed.length > 0 && (
-                <div className="flex justify-between text-sm text-green-600">
-                  <span>Promo ({sale.promoCodesUsed.join(", ")})</span>
-                  <span>
-                    -{formatCurrency(Number(sale.promoDiscount ?? 0))}
-                  </span>
-                </div>
-              )}
-              {(() => {
-                const productDiscount =
-                  Number(sale.discount) - Number(sale.promoDiscount ?? 0);
-                return productDiscount > 0 ? (
-                  <div className="flex justify-between text-sm text-green-600">
-                    <span>Discount</span>
-                    <span>-{formatCurrency(productDiscount)}</span>
-                  </div>
-                ) : null;
-              })()}
-              <Separator />
-              <div className="flex justify-between font-bold text-lg">
-                <span>Total</span>
-                <span>{formatCurrency(Number(sale.total))}</span>
-              </div>
-              {sale.payments && sale.payments.length > 0 && (
-                <>
-                  <Separator />
-                  <div className="space-y-1">
-                    <div className="text-sm font-medium text-muted-foreground">
-                      Payment Method
+                <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground print:text-[9pt]">
+                  Sales Receipt
+                </p>
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Hash className="h-4 w-4 text-muted-foreground print:hidden" />
+                      <span className="font-mono text-lg font-bold print:text-[12pt]">
+                        {sale.saleCode}
+                      </span>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                      {sale.payments.map((payment, idx) => (
-                        <Badge key={idx} variant="outline">
-                          {payment.method}: {formatCurrency(payment.amount)}
-                        </Badge>
-                      ))}
+                    <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground print:mt-0.5 print:text-[10pt]">
+                      <Calendar className="h-4 w-4 print:hidden" />
+                      {format(new Date(sale.createdAt), "d MMM yyyy, h:mm a")}
                     </div>
                   </div>
-                </>
-              )}
-              {isCreditSale && (
-                <>
-                  <Separator />
+                  <Badge
+                    className={`print:hidden ${getSaleTypeColor(sale.type)}`}
+                    variant="outline"
+                  >
+                    {getSaleTypeLabel(sale.type)}
+                  </Badge>
+                </div>
+              </div>
+
+              <Separator className="receipt-divider" />
+
+              {/* receipt-customer: sold to, contact, sold by */}
+              <div className="receipt-customer break-inside-avoid">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground print:text-[9pt]">
+                  Customer
+                </p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div className="space-y-1">
-                    <div className="flex justify-between text-sm">
-                      <span>Amount paid</span>
-                      <span>{formatCurrency(amountPaid)}</span>
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <MapPin className="h-4 w-4 print:hidden" />
+                      Location
                     </div>
-                    <div className="flex justify-between text-sm font-medium">
-                      <span>Balance due</span>
-                      <span>{formatCurrency(balanceDue)}</span>
+                    <p className="font-medium">{sale.location.name}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <User className="h-4 w-4 print:hidden" />
+                      Sold To
                     </div>
-                    {balanceDue > 0 && (
-                      <Button
-                        size="sm"
-                        className="mt-2"
-                        onClick={() => setPayDialogOpen(true)}
-                      >
-                        Pay
-                      </Button>
+                    {sale.member ? (
+                      <div>
+                        <p className="font-medium">{sale.member.phone}</p>
+                        {sale.member.name && (
+                          <p className="text-sm text-muted-foreground">
+                            {sale.member.name}
+                          </p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground">Walk-in Customer</p>
                     )}
                   </div>
-                </>
-              )}
-            </div>
+                </div>
 
-            {/* Payment Methods */}
-            {sale.payments && sale.payments.length > 0 && (
-              <>
-                <Separator />
-                <div>
-                  <h4 className="font-medium mb-2 flex items-center gap-2">
-                    <CreditCard className="h-4 w-4" />
-                    Payment Methods
-                  </h4>
-                  <div className="rounded-md border">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Method</TableHead>
-                          <TableHead className="text-right">Amount</TableHead>
+                {sale.contact && (
+                  <div className="mt-3 space-y-1">
+                    <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                      <Contact className="h-4 w-4 print:hidden" />
+                      CRM Contact
+                    </div>
+                    <div>
+                      <p className="font-medium">
+                        {sale.contact.firstName}
+                        {sale.contact.lastName
+                          ? ` ${sale.contact.lastName}`
+                          : ""}
+                      </p>
+                      {sale.contact.email && (
+                        <p className="text-sm text-muted-foreground">
+                          {sale.contact.email}
+                        </p>
+                      )}
+                      {sale.contact.phone && (
+                        <p className="text-sm text-muted-foreground">
+                          {sale.contact.phone}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-3 space-y-1">
+                  <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
+                    <User className="h-4 w-4 print:hidden" />
+                    Sold By
+                  </div>
+                  <p className="font-medium">{sale.createdBy.username}</p>
+                </div>
+              </div>
+
+              <Separator className="receipt-divider" />
+
+              {/* receipt-items: items table */}
+              <div className="receipt-items break-inside-avoid">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground print:text-[9pt]">
+                  Items
+                </p>
+                <div className="overflow-x-auto rounded-md border">
+                  <Table className="w-full min-w-[400px] table-fixed sm:min-w-0">
+                    <TableHeader>
+                      <TableRow className="receipt-table-header">
+                        <TableHead className="w-[40%]">Product</TableHead>
+                        <TableHead className="w-[12%] text-right">Price</TableHead>
+                        <TableHead className="w-[8%] text-center">Qty</TableHead>
+                        <TableHead className="w-[10%] text-right">
+                          Disc %
+                        </TableHead>
+                        <TableHead className="w-[12%] text-right">Disc</TableHead>
+                        <TableHead className="w-[18%] text-right">Total</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sale.items?.map((item) => (
+                        <TableRow
+                          key={item.id}
+                          className="receipt-table-row break-inside-avoid"
+                        >
+                          <TableCell className="align-top">
+                            <div>
+                              <div className="text-sm font-medium">
+                                {item.variation.product.name}
+                              </div>
+                              {item.variation.attributes &&
+                                item.variation.attributes.length > 0 && (
+                                  <div className="mt-0.5 text-xs text-muted-foreground">
+                                    {item.variation.attributes
+                                      .map((a) => a.attributeValue.value)
+                                      .join(" / ")}
+                                  </div>
+                                )}
+                              <div className="mt-0.5 font-mono text-xs text-muted-foreground">
+                                {item.variation.product?.imsCode ?? "—"}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell
+                            className="text-right tabular-nums"
+                            style={{ fontVariantNumeric: "tabular-nums" }}
+                          >
+                            {formatCurrency(Number(item.unitPrice))}
+                          </TableCell>
+                          <TableCell className="text-center tabular-nums">
+                            {item.quantity}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {Number(item.discountPercent) > 0 ? (
+                              <span className="text-green-600 print:text-green-800">
+                                {Number(item.discountPercent).toFixed(1)}%
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {Number(item.discountAmount ?? 0) > 0 ? (
+                              <span className="text-green-600 print:text-green-800">
+                                -{formatCurrency(Number(item.discountAmount))}
+                              </span>
+                            ) : (
+                              "-"
+                            )}
+                          </TableCell>
+                          <TableCell
+                            className="text-right font-medium tabular-nums"
+                            style={{ fontVariantNumeric: "tabular-nums" }}
+                          >
+                            {formatCurrency(Number(item.lineTotal))}
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sale.payments.map((payment) => (
-                          <TableRow key={payment.id}>
-                            <TableCell>
-                              <Badge variant="outline">{payment.method}</Badge>
-                            </TableCell>
-                            <TableCell className="text-right font-medium">
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              <Separator className="receipt-divider" />
+
+              {/* receipt-totals: subtotal, promo, discount, total, payment */}
+              <div className="receipt-totals break-inside-avoid">
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground print:text-[9pt]">
+                  Totals
+                </p>
+                <div className="space-y-1.5 rounded-lg border bg-muted/50 p-4 print:border-gray-300 print:bg-gray-50">
+                  <div className="flex justify-between text-sm">
+                    <span>Subtotal</span>
+                    <span className="tabular-nums">
+                      {formatCurrency(Number(sale.subtotal))}
+                    </span>
+                  </div>
+                  {sale.promoCodesUsed && sale.promoCodesUsed.length > 0 && (
+                    <div className="flex justify-between text-sm text-green-600 print:text-green-800">
+                      <span>Promo ({sale.promoCodesUsed.join(", ")})</span>
+                      <span className="tabular-nums">
+                        -
+                        {formatCurrency(Number(sale.promoDiscount ?? 0))}
+                      </span>
+                    </div>
+                  )}
+                  {(() => {
+                    const productDiscount =
+                      Number(sale.discount) - Number(sale.promoDiscount ?? 0);
+                    return productDiscount > 0 ? (
+                      <div className="flex justify-between text-sm text-green-600 print:text-green-800">
+                        <span>Discount</span>
+                        <span className="tabular-nums">
+                          -{formatCurrency(productDiscount)}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
+                  <Separator className="receipt-totals-divider my-2" />
+                  <div className="flex justify-between font-bold print:text-[14pt]">
+                    <span>Total</span>
+                    <span className="tabular-nums">
+                      {formatCurrency(Number(sale.total))}
+                    </span>
+                  </div>
+                  {sale.payments && sale.payments.length > 0 && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="space-y-1">
+                        <div className="text-xs font-medium text-muted-foreground print:text-[9pt]">
+                          Payment
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {sale.payments.map((payment, idx) => (
+                            <span
+                              key={idx}
+                              className="inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium print:border-gray-400"
+                            >
+                              {payment.method}:{" "}
                               {formatCurrency(Number(payment.amount))}
-                            </TableCell>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                  {isCreditSale && (
+                    <>
+                      <Separator className="my-2" />
+                      <div className="space-y-1 text-sm">
+                        <div className="flex justify-between">
+                          <span>Amount paid</span>
+                          <span className="tabular-nums">
+                            {formatCurrency(amountPaid)}
+                          </span>
+                        </div>
+                        <div className="flex justify-between font-medium">
+                          <span>Balance due</span>
+                          <span className="tabular-nums">
+                            {formatCurrency(balanceDue)}
+                          </span>
+                        </div>
+                        {balanceDue > 0 && (
+                          <Button
+                            size="sm"
+                            className="mt-2 print:hidden"
+                            onClick={() => setPayDialogOpen(true)}
+                          >
+                            Pay
+                          </Button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {/* receipt-payment: payment methods table (screen only for detail) */}
+              {sale.payments && sale.payments.length > 0 && (
+                <div className="receipt-payment break-inside-avoid print:hidden">
+                  <Separator />
+                  <div>
+                    <h4 className="mb-2 flex items-center gap-2 font-medium">
+                      <CreditCard className="h-4 w-4" />
+                      Payment Methods
+                    </h4>
+                    <div className="rounded-md border">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Method</TableHead>
+                            <TableHead className="text-right">Amount</TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHeader>
+                        <TableBody>
+                          {sale.payments.map((payment) => (
+                            <TableRow key={payment.id}>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {payment.method}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency(Number(payment.amount))}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
                   </div>
                 </div>
-              </>
-            )}
+              )}
 
-            {/* Notes */}
-            {sale.notes && (
-              <div>
-                <h4 className="font-medium mb-1">Notes</h4>
-                <p className="text-sm text-muted-foreground">{sale.notes}</p>
+              {sale.notes && (
+                <div className="break-inside-avoid">
+                  <h4 className="mb-1 font-medium">Notes</h4>
+                  <p className="text-sm text-muted-foreground">{sale.notes}</p>
+                </div>
+              )}
+
+              {/* receipt-footer */}
+              <div className="receipt-footer break-inside-avoid border-t pt-4">
+                <p className="text-center text-sm font-medium">
+                  Thank you for your business
+                </p>
+                <p className="mt-1 text-center text-xs text-muted-foreground print:text-[8pt]">
+                  Powered by Shamanyantra
+                </p>
               </div>
-            )}
+            </div>
           </div>
         ) : (
-          <div className="text-center text-muted-foreground py-8">
+          <div className="py-8 text-center text-muted-foreground">
             Sale not found
           </div>
         )}
