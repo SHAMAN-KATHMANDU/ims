@@ -303,13 +303,21 @@ export function SaleDetail({
                     <TableHeader>
                       <TableRow className="receipt-table-header">
                         <TableHead className="w-[40%]">Product</TableHead>
-                        <TableHead className="w-[12%] text-right">Price</TableHead>
-                        <TableHead className="w-[8%] text-center">Qty</TableHead>
+                        <TableHead className="w-[12%] text-right">
+                          Price
+                        </TableHead>
+                        <TableHead className="w-[8%] text-center">
+                          Qty
+                        </TableHead>
                         <TableHead className="w-[10%] text-right">
                           Disc %
                         </TableHead>
-                        <TableHead className="w-[12%] text-right">Disc</TableHead>
-                        <TableHead className="w-[18%] text-right">Total</TableHead>
+                        <TableHead className="w-[12%] text-right">
+                          Disc
+                        </TableHead>
+                        <TableHead className="w-[18%] text-right">
+                          Total
+                        </TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -386,16 +394,15 @@ export function SaleDetail({
                 <div className="space-y-1.5 rounded-lg border bg-muted/50 p-4 print:border-gray-300 print:bg-gray-50">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
-                    <span className="tabular-nums">
+                    <span className="shrink-0 tabular-nums">
                       {formatCurrency(Number(sale.subtotal))}
                     </span>
                   </div>
                   {sale.promoCodesUsed && sale.promoCodesUsed.length > 0 && (
                     <div className="flex justify-between text-sm text-green-600 print:text-green-800">
                       <span>Promo ({sale.promoCodesUsed.join(", ")})</span>
-                      <span className="tabular-nums">
-                        -
-                        {formatCurrency(Number(sale.promoDiscount ?? 0))}
+                      <span className="shrink-0 tabular-nums">
+                        -{formatCurrency(Number(sale.promoDiscount ?? 0))}
                       </span>
                     </div>
                   )}
@@ -405,7 +412,7 @@ export function SaleDetail({
                     return productDiscount > 0 ? (
                       <div className="flex justify-between text-sm text-green-600 print:text-green-800">
                         <span>Discount</span>
-                        <span className="tabular-nums">
+                        <span className="shrink-0 tabular-nums">
                           -{formatCurrency(productDiscount)}
                         </span>
                       </div>
@@ -414,7 +421,7 @@ export function SaleDetail({
                   <Separator className="receipt-totals-divider my-2" />
                   <div className="flex justify-between font-bold print:text-[14pt]">
                     <span>Total</span>
-                    <span className="tabular-nums">
+                    <span className="shrink-0 tabular-nums">
                       {formatCurrency(Number(sale.total))}
                     </span>
                   </div>
@@ -445,13 +452,13 @@ export function SaleDetail({
                       <div className="space-y-1 text-sm">
                         <div className="flex justify-between">
                           <span>Amount paid</span>
-                          <span className="tabular-nums">
+                          <span className="shrink-0 tabular-nums">
                             {formatCurrency(amountPaid)}
                           </span>
                         </div>
                         <div className="flex justify-between font-medium">
                           <span>Balance due</span>
-                          <span className="tabular-nums">
+                          <span className="shrink-0 tabular-nums">
                             {formatCurrency(balanceDue)}
                           </span>
                         </div>
