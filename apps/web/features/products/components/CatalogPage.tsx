@@ -30,6 +30,7 @@ import {
 import { type CreateProductData, downloadProducts } from "@/features/products";
 import { ProductForm } from "./components/ProductForm";
 import { ProductTable } from "./components/ProductTable";
+import { ProductDetailSheet } from "./components/ProductDetailSheet";
 import { ProductDeleteDialog } from "./components/dialogs/ProductDeleteDialog";
 import { VariationDeleteDialog } from "./components/dialogs/VariationDeleteDialog";
 import { getVariationAttributeDisplay } from "./utils/helpers";
@@ -245,6 +246,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
 
   // Form states
   const [productVariations, setProductVariations] = useState<
@@ -852,6 +854,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         onDeleteVariation={(product, variationId) =>
           setVariationToDelete({ product, variationId })
         }
+        onView={readOnly ? (product) => setViewingProduct(product) : undefined}
         selectedLocationId={paginationParams.locationId ?? undefined}
         filterBar={
           <>
@@ -1024,6 +1027,12 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         // Selection props
         selectedProducts={selectedProductIds}
         onSelectionChange={setSelectedProductIds}
+      />
+
+      <ProductDetailSheet
+        product={viewingProduct}
+        open={!!viewingProduct}
+        onOpenChange={(open) => !open && setViewingProduct(null)}
       />
 
       <ProductDeleteDialog
