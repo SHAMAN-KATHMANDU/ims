@@ -226,6 +226,19 @@ interface DiscountTypesResponse {
   pagination?: PaginationMeta;
 }
 
+export interface DiscountTypeListParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+}
+
+export interface PaginatedDiscountTypesResponse {
+  data: DiscountType[];
+  pagination: PaginationMeta;
+}
+
 // ============================================
 // API Functions
 // ============================================
@@ -469,6 +482,42 @@ export async function getAllDiscountTypes(): Promise<DiscountType[]> {
       { params: { limit: 100 } },
     );
     return response.data.data || [];
+  } catch (error) {
+    handleApiError(error, "fetch discount types");
+  }
+}
+
+/**
+ * Get discount types with pagination (for discount types section on discount page).
+ */
+export async function getDiscountTypesPaginated(
+  params: DiscountTypeListParams = {},
+): Promise<PaginatedDiscountTypesResponse> {
+  const {
+    page = DEFAULT_PAGE,
+    limit = DEFAULT_LIMIT,
+    search = "",
+    sortBy,
+    sortOrder,
+  } = params;
+  try {
+    const response = await api.get<{
+      message: string;
+      data: DiscountType[];
+      pagination: PaginationMeta;
+    }>("/products/discount-types/list", {
+      params: {
+        page,
+        limit,
+        ...(search?.trim() && { search: search.trim() }),
+        ...(sortBy && { sortBy }),
+        ...(sortOrder && { sortOrder }),
+      },
+    });
+    return {
+      data: response.data.data || [],
+      pagination: response.data.pagination,
+    };
   } catch (error) {
     handleApiError(error, "fetch discount types");
   }

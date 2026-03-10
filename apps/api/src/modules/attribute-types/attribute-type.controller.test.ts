@@ -5,6 +5,7 @@ vi.mock("./attribute-type.service", () => ({
   AttributeTypeService: vi.fn(),
   default: {
     list: vi.fn(),
+    listPaginated: vi.fn(),
     create: vi.fn(),
     getById: vi.fn(),
     update: vi.fn(),
@@ -72,6 +73,37 @@ describe("AttributeTypeController", () => {
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({ attributeTypes: types }),
+      );
+    });
+
+    it("returns 200 with pagination when page/limit in query", async () => {
+      const result = {
+        data: [{ id: "at1", name: "Color", code: "color", values: [] }],
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 1,
+          itemsPerPage: 10,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      };
+      mockService.listPaginated.mockResolvedValue(result);
+      const req = makeReq({ query: { page: "1", limit: "10" } });
+      const res = mockRes() as Response;
+
+      await attributeTypeController.list(req, res);
+
+      expect(mockService.listPaginated).toHaveBeenCalledWith("t1", {
+        page: 1,
+        limit: 10,
+      });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          attributeTypes: result.data,
+          pagination: result.pagination,
+        }),
       );
     });
   });

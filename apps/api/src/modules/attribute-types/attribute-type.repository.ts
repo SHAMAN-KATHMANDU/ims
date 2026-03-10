@@ -1,4 +1,5 @@
 import prisma from "@/config/prisma";
+import { createPaginationResult } from "@/utils/pagination";
 
 const attributeTypeInclude = {
   values: {
@@ -44,6 +45,26 @@ export class AttributeTypeRepository {
       orderBy: [{ displayOrder: "asc" }, { name: "asc" }],
       include: attributeTypeInclude,
     });
+  }
+
+  async findManyPaginated(tenantId: string, page: number, limit: number) {
+    const where = { tenantId };
+    const orderBy = [
+      { displayOrder: "asc" as const },
+      { name: "asc" as const },
+    ];
+    const skip = (page - 1) * limit;
+    const [totalItems, data] = await Promise.all([
+      prisma.attributeType.count({ where }),
+      prisma.attributeType.findMany({
+        where,
+        orderBy,
+        include: attributeTypeInclude,
+        skip,
+        take: limit,
+      }),
+    ]);
+    return createPaginationResult(data, totalItems, page, limit);
   }
 
   async findFirst(tenantId: string, id: string) {

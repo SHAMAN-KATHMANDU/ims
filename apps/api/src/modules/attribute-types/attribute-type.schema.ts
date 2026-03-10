@@ -4,6 +4,14 @@ function normalizeCode(val: string): string {
   return val.trim().toLowerCase().replace(/\s+/g, "_");
 }
 
+export const ListAttributeTypesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+export type ListAttributeTypesQueryDto = z.infer<
+  typeof ListAttributeTypesQuerySchema
+>;
+
 export const CreateAttributeTypeSchema = z.object({
   name: z.string().min(1, "Name is required").max(100),
   code: z

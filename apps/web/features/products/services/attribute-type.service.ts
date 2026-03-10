@@ -7,6 +7,11 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
+import {
+  type PaginationMeta,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
+} from "@/lib/apiTypes";
 
 // ============================================
 // Types
@@ -57,6 +62,16 @@ export interface UpdateAttributeValueData {
   displayOrder?: number;
 }
 
+export interface AttributeTypeListParams {
+  page?: number;
+  limit?: number;
+}
+
+export interface PaginatedAttributeTypesResponse {
+  attributeTypes: AttributeType[];
+  pagination: PaginationMeta;
+}
+
 // ============================================
 // API Functions
 // ============================================
@@ -68,6 +83,26 @@ export async function getAttributeTypes(): Promise<AttributeType[]> {
       attributeTypes: AttributeType[];
     }>("/attribute-types");
     return response.data.attributeTypes ?? [];
+  } catch (error) {
+    handleApiError(error, "fetch attribute types");
+  }
+}
+
+export async function getAttributeTypesPaginated(
+  params: AttributeTypeListParams = {},
+): Promise<PaginatedAttributeTypesResponse> {
+  const page = params.page ?? DEFAULT_PAGE;
+  const limit = params.limit ?? DEFAULT_LIMIT;
+  try {
+    const response = await api.get<{
+      message: string;
+      attributeTypes: AttributeType[];
+      pagination: PaginationMeta;
+    }>("/attribute-types", { params: { page, limit } });
+    return {
+      attributeTypes: response.data.attributeTypes ?? [],
+      pagination: response.data.pagination,
+    };
   } catch (error) {
     handleApiError(error, "fetch attribute types");
   }

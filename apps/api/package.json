@@ -8,7 +8,7 @@
     "build": "tsc --project tsconfig.build.json && tsc-alias",
     "start": "node dist/index.js",
     "lint": "echo 'No linter configured for API'",
-    "check-types": "tsc --noEmit",
+    "check-types": "tsc --noEmit -p tsconfig.check.json",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "prisma:push": "prisma db push",

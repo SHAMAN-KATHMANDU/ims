@@ -3,6 +3,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getAttributeTypes,
+  getAttributeTypesPaginated,
   getAttributeTypeById,
   createAttributeType,
   updateAttributeType,
@@ -16,6 +17,7 @@ import {
   type UpdateAttributeTypeData,
   type CreateAttributeValueData,
   type UpdateAttributeValueData,
+  type AttributeTypeListParams,
 } from "../services/attribute-type.service";
 
 export type {
@@ -30,6 +32,8 @@ export type {
 export const attributeTypeKeys = {
   all: ["attributeTypes"] as const,
   lists: () => [...attributeTypeKeys.all, "list"] as const,
+  list: (params: AttributeTypeListParams) =>
+    [...attributeTypeKeys.lists(), params] as const,
   detail: (id: string) => [...attributeTypeKeys.all, "detail", id] as const,
 };
 
@@ -37,6 +41,20 @@ export function useAttributeTypes() {
   return useQuery({
     queryKey: attributeTypeKeys.lists(),
     queryFn: getAttributeTypes,
+  });
+}
+
+export function useAttributeTypesPaginated(
+  params: AttributeTypeListParams = {},
+) {
+  const normalized = {
+    page: params.page ?? 1,
+    limit: params.limit ?? 10,
+  };
+  return useQuery({
+    queryKey: attributeTypeKeys.list(normalized),
+    queryFn: () => getAttributeTypesPaginated(normalized),
+    staleTime: 2 * 60 * 1000,
   });
 }
 
