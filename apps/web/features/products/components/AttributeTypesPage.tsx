@@ -3,7 +3,7 @@
 import { Fragment, useState } from "react";
 import { useToast } from "@/hooks/useToast";
 import {
-  useAttributeTypes,
+  useAttributeTypesPaginated,
   useCreateAttributeType,
   useUpdateAttributeType,
   useDeleteAttributeType,
@@ -12,6 +12,8 @@ import {
   useDeleteAttributeValue,
   type AttributeType,
   type AttributeValue,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
 } from "@/features/products";
 import {
   Card,
@@ -49,10 +51,16 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { Plus, Pencil, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 
 export function AttributeTypesPage() {
-  const { data: attributeTypes = [], isLoading } = useAttributeTypes();
+  const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
+  const { data: attributeTypesResponse, isLoading } =
+    useAttributeTypesPaginated({ page, limit: pageSize });
+  const attributeTypes = attributeTypesResponse?.attributeTypes ?? [];
+  const pagination = attributeTypesResponse?.pagination;
   const createTypeMutation = useCreateAttributeType();
   const updateTypeMutation = useUpdateAttributeType();
   const deleteTypeMutation = useDeleteAttributeType();
@@ -96,7 +104,7 @@ export function AttributeTypesPage() {
     setEditingType(null);
     setTypeName("");
     setTypeCode("");
-    setTypeDisplayOrder(attributeTypes.length);
+    setTypeDisplayOrder(pagination?.totalItems ?? attributeTypes.length);
     setTypeDialogOpen(true);
   };
 
@@ -413,6 +421,25 @@ export function AttributeTypesPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          {pagination && (
+            <DataTablePagination
+              pagination={{
+                currentPage: pagination.currentPage,
+                totalPages: pagination.totalPages,
+                totalItems: pagination.totalItems,
+                itemsPerPage: pagination.itemsPerPage,
+                hasNextPage: pagination.hasNextPage,
+                hasPrevPage: pagination.hasPrevPage,
+              }}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(DEFAULT_PAGE);
+              }}
+              pageSizeOptions={[10, 20, 30, 50]}
+              isLoading={isLoading}
+            />
           )}
         </CardContent>
       </Card>

@@ -7,6 +7,7 @@ import {
   UpdateAttributeTypeSchema,
   CreateAttributeValueSchema,
   UpdateAttributeValueSchema,
+  ListAttributeTypesQuerySchema,
 } from "./attribute-type.schema";
 import attributeTypeService, {
   AttributeTypeService,
@@ -23,6 +24,25 @@ class AttributeTypeController {
   list = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
+      const query = ListAttributeTypesQuerySchema.safeParse(req.query);
+      const hasPagination =
+        query.success &&
+        (query.data.page !== undefined || query.data.limit !== undefined);
+
+      if (hasPagination && query.success) {
+        const page = query.data.page ?? 1;
+        const limit = query.data.limit ?? 10;
+        const result = await this.service.listPaginated(tenantId, {
+          page,
+          limit,
+        });
+        return res.status(200).json({
+          message: "Attribute types fetched successfully",
+          attributeTypes: result.data,
+          pagination: result.pagination,
+        });
+      }
+
       const types = await this.service.list(tenantId);
       return res.status(200).json({
         message: "Attribute types fetched successfully",

@@ -18,6 +18,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "../hooks/use-transfers";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { TransferTable } from "./components/TransferTable";
 import { TransferDetail } from "./components/TransferDetail";
 import {
@@ -59,6 +60,7 @@ export function TransfersPage() {
 
   // Filter state
   const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [statusFilter, setStatusFilter] = useState<TransferStatus | "ALL">(
@@ -80,7 +82,7 @@ export function TransfersPage() {
   const { data: transfersResponse, isLoading: transfersLoading } =
     useTransfersPaginated({
       page,
-      limit: DEFAULT_LIMIT,
+      limit: pageSize,
       search: debouncedSearch,
       status: statusFilter === "ALL" ? undefined : statusFilter,
       sortBy,
@@ -88,6 +90,7 @@ export function TransfersPage() {
     });
 
   const transfers = transfersResponse?.data ?? [];
+  const pagination = transfersResponse?.pagination;
 
   const { data: selectedTransfer, isLoading: transferLoading } = useTransfer(
     selectedTransferId || "",
@@ -301,6 +304,26 @@ export function TransfersPage() {
         onComplete={handleComplete}
         onCancel={handleCancelClick}
       />
+
+      {pagination && (
+        <DataTablePagination
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: pagination.totalPages,
+            totalItems: pagination.totalItems,
+            itemsPerPage: pagination.itemsPerPage,
+            hasNextPage: pagination.hasNextPage,
+            hasPrevPage: pagination.hasPrevPage,
+          }}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(DEFAULT_PAGE);
+          }}
+          pageSizeOptions={[10, 20, 30, 50]}
+          isLoading={transfersLoading}
+        />
+      )}
 
       {/* Transfer Detail Dialog */}
       <TransferDetail

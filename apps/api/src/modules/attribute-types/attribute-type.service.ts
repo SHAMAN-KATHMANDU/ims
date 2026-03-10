@@ -21,6 +21,13 @@ export class AttributeTypeService {
     return this.repo.findMany(tenantId);
   }
 
+  async listPaginated(
+    tenantId: string,
+    query: { page: number; limit: number },
+  ) {
+    return this.repo.findManyPaginated(tenantId, query.page, query.limit);
+  }
+
   async create(tenantId: string, data: CreateAttributeTypeDto) {
     const code = deriveCode(data.name, data.code);
     if (!code) {

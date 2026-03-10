@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Table,
   TableBody,
@@ -37,11 +38,13 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  useDiscountTypes,
+  useDiscountTypesPaginated,
   useCreateDiscountType,
   useUpdateDiscountType,
   useDeleteDiscountType,
   type DiscountType,
+  DEFAULT_PAGE,
+  DEFAULT_LIMIT,
 } from "@/features/products";
 import { Loader2, Pencil, Trash2 } from "lucide-react";
 
@@ -53,7 +56,14 @@ function formatPercentage(v: unknown): string {
 }
 
 export function DiscountTypesCard() {
-  const { data: discountTypes = [], isLoading } = useDiscountTypes();
+  const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
+  const { data: discountTypesResponse, isLoading } = useDiscountTypesPaginated({
+    page,
+    limit: pageSize,
+  });
+  const discountTypes = discountTypesResponse?.data ?? [];
+  const pagination = discountTypesResponse?.pagination;
   const createMutation = useCreateDiscountType();
   const updateMutation = useUpdateDiscountType();
   const deleteMutation = useDeleteDiscountType();
@@ -250,6 +260,25 @@ export function DiscountTypesCard() {
                 )}
               </TableBody>
             </Table>
+          )}
+          {pagination && (
+            <DataTablePagination
+              pagination={{
+                currentPage: pagination.currentPage,
+                totalPages: pagination.totalPages,
+                totalItems: pagination.totalItems,
+                itemsPerPage: pagination.itemsPerPage,
+                hasNextPage: pagination.hasNextPage,
+                hasPrevPage: pagination.hasPrevPage,
+              }}
+              onPageChange={setPage}
+              onPageSizeChange={(size) => {
+                setPageSize(size);
+                setPage(DEFAULT_PAGE);
+              }}
+              pageSizeOptions={[10, 20, 30, 50]}
+              isLoading={isLoading}
+            />
           )}
         </CardContent>
       </Card>

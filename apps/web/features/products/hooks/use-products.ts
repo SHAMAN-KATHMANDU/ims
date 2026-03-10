@@ -16,6 +16,7 @@ import {
   deleteProduct,
   deleteVariation,
   getAllDiscountTypes,
+  getDiscountTypesPaginated,
   createDiscountType,
   updateDiscountType,
   deleteDiscountType,
@@ -33,6 +34,8 @@ import {
   type PaginatedProductDiscountsResponse,
   type ProductDiscountListItem,
   type DiscountType,
+  type DiscountTypeListParams,
+  type PaginatedDiscountTypesResponse,
   type CreateDiscountTypeData,
   type UpdateDiscountTypeData,
   DEFAULT_PAGE,
@@ -69,6 +72,8 @@ export type {
   ProductDiscountListParams,
   PaginatedProductDiscountsResponse,
   DiscountType,
+  DiscountTypeListParams,
+  PaginatedDiscountTypesResponse,
   CreateDiscountTypeData,
   UpdateDiscountTypeData,
 };
@@ -350,6 +355,8 @@ export function useCategories() {
 export const discountTypeKeys = {
   all: ["discountTypes"] as const,
   lists: () => [...discountTypeKeys.all, "list"] as const,
+  list: (params: DiscountTypeListParams) =>
+    [...discountTypeKeys.lists(), params] as const,
 };
 
 export function useDiscountTypes() {
@@ -357,6 +364,21 @@ export function useDiscountTypes() {
     queryKey: discountTypeKeys.lists(),
     queryFn: getAllDiscountTypes,
     staleTime: 5 * 60 * 1000, // Cache for 5 minutes - discount types rarely change
+  });
+}
+
+export function useDiscountTypesPaginated(params: DiscountTypeListParams = {}) {
+  const normalized = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    search: params.search?.trim() ?? "",
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
+  };
+  return useQuery({
+    queryKey: discountTypeKeys.list(normalized),
+    queryFn: () => getDiscountTypesPaginated(normalized),
+    staleTime: 2 * 60 * 1000,
   });
 }
 
