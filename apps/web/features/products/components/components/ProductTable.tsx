@@ -25,6 +25,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+  TooltipProvider,
+} from "@/components/ui/tooltip";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Search,
@@ -33,6 +39,7 @@ import {
   Loader2,
   X,
   MoreHorizontal,
+  Eye,
 } from "lucide-react";
 import {
   DataTablePagination,
@@ -78,6 +85,8 @@ interface ProductTableProps {
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onDeleteVariation?: (product: Product, variationId: string) => void;
+  /** When provided and !canManageProducts, shows clickable eye icon for product detail view */
+  onView?: (product: Product) => void;
   // Pagination props (required for server-side pagination)
   pagination: PaginationState;
   onPageChange: (page: number) => void;
@@ -196,6 +205,7 @@ export function ProductTable({
   onEdit,
   onDelete,
   onDeleteVariation,
+  onView,
   pagination,
   onPageChange,
   onPageSizeChange,

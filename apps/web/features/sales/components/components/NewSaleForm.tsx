@@ -220,6 +220,8 @@ export function NewSaleForm({
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<SaleItem[]>([]);
   const [payments, setPayments] = useState<PaymentEntry[]>([]);
+  const cartItemsRef = useRef<HTMLDivElement>(null);
+  const prevItemsLengthRef = useRef(items.length);
   const [isCreditSale, setIsCreditSale] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
     useState<PaymentMethod>("CASH");
@@ -239,6 +241,17 @@ export function NewSaleForm({
     () => contactsResult?.data ?? [],
     [contactsResult?.data],
   );
+
+  // Auto-scroll cart to show newly added items (fix #281)
+  useEffect(() => {
+    if (items.length > prevItemsLengthRef.current) {
+      cartItemsRef.current?.lastElementChild?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    }
+    prevItemsLengthRef.current = items.length;
+  }, [items.length]);
 
   // Credit sale requires member or contact; clear credit sale if both are cleared
   useEffect(() => {
@@ -879,7 +892,7 @@ export function NewSaleForm({
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto">
           <div className="p-6">
-            <div className="grid grid-cols-1 lg:grid-cols-[1fr_450px] gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-[1fr_520px] gap-6">
               {/* Left Panel: Location, Customer, Products */}
               <div className="space-y-6">
                 {/* Location & Customer Panel */}
@@ -1248,7 +1261,10 @@ export function NewSaleForm({
                     )}
                   </FormSection>
                 </div>
+              </div>
 
+              {/* Right Panel: Cart, Summary, Promo, Payment — always visible to prevent layout shift */}
+              <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
                 {/* Cart Panel */}
                 <div className="form-panel flex flex-col">
                   <FormSection title="Shopping Cart">
@@ -1329,7 +1345,10 @@ export function NewSaleForm({
                         </div>
 
                         {/* Cart Items */}
-                        <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                        <div
+                          ref={cartItemsRef}
+                          className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
+                        >
                           {items.map((item, index) => (
                             <div
                               key={`${item.variationId}-${item.subVariationId ?? "v"}-${index}`}
@@ -1447,10 +1466,7 @@ export function NewSaleForm({
                     )}
                   </FormSection>
                 </div>
-              </div>
 
-              {/* Right Panel: Summary, Promo, Payment — always visible to prevent layout shift */}
-              <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
                 <div className="form-panel flex flex-col">
                   {/* Order Summary — placeholder when empty */}
                   <FormSection title="Order Summary">
