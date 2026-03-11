@@ -38,7 +38,7 @@ describe("LocationController", () => {
   describe("createLocation", () => {
     it("returns 201 with created location on success", async () => {
       const location = { id: "loc1", name: "Main Warehouse" };
-      mockService.create.mockResolvedValue(location);
+      mockService.create.mockResolvedValue({ location, restored: false });
       const req = makeReq({ body: { name: "Main Warehouse" } });
       const res = mockRes() as Response;
 
@@ -46,9 +46,26 @@ describe("LocationController", () => {
 
       expect(mockService.create).toHaveBeenCalledWith("t1", expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ location }),
-      );
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Location created successfully",
+        location,
+      });
+    });
+
+    it("returns 201 with restored message when deactivated location exists", async () => {
+      const location = { id: "loc1", name: "Main Warehouse" };
+      mockService.create.mockResolvedValue({ location, restored: true });
+      const req = makeReq({ body: { name: "Main Warehouse" } });
+      const res = mockRes() as Response;
+
+      await locationController.createLocation(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Location restored successfully",
+        location,
+        restored: true,
+      });
     });
 
     it("returns 400 when name is missing (Zod validation)", async () => {

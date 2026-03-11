@@ -13,10 +13,14 @@ class LocationController {
     try {
       const tenantId = req.user!.tenantId;
       const body = CreateLocationSchema.parse(req.body);
-      const location = await this.service.create(tenantId, body);
+      const result = await this.service.create(tenantId, body);
+      const message = result.restored
+        ? "Location restored successfully"
+        : "Location created successfully";
       return res.status(201).json({
-        message: "Location created successfully",
-        location,
+        message,
+        location: result.location,
+        ...(result.restored && { restored: true }),
       });
     } catch (error: unknown) {
       if (error instanceof ZodError) {

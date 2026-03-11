@@ -10,6 +10,18 @@ export class LocationService {
   async create(tenantId: string, data: CreateLocationDto) {
     const existing = await this.repo.findByName(tenantId, data.name);
     if (existing) {
+      const isDeactivated =
+        existing.deletedAt !== null || !existing.isActive;
+      if (isDeactivated) {
+        let restored = await this.repo.restore(existing.id);
+        if (data.isDefaultWarehouse === true) {
+          await this.repo.unsetDefaultWarehouse(existing.id);
+          restored = await this.repo.update(existing.id, {
+            isDefaultWarehouse: true,
+          });
+        }
+        return { location: restored, restored: true };
+      }
       throw createError("Location with this name already exists", 409);
     }
 
@@ -17,7 +29,8 @@ export class LocationService {
       await this.repo.unsetDefaultWarehouse();
     }
 
-    return this.repo.create(tenantId, data);
+    const location = await this.repo.create(tenantId, data);
+    return { location, restored: false };
   }
 
   async findAll(

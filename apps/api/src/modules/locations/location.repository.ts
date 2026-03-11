@@ -163,6 +163,18 @@ export class LocationRepository {
     });
   }
 
+  async restore(id: string) {
+    return prisma.location.update({
+      where: { id },
+      data: {
+        isActive: true,
+        deletedAt: null,
+        deletedBy: null,
+        deleteReason: null,
+      },
+    });
+  }
+
   async countActiveWarehouses(excludeId?: string) {
     const where: Record<string, unknown> = {
       type: "WAREHOUSE",
