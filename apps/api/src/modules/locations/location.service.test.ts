@@ -16,6 +16,8 @@ const mockUnsetDefaultWarehouse = vi.fn();
 const mockCountActiveWarehouses = vi.fn();
 const mockGetInventory = vi.fn();
 
+const mockRestore = vi.fn();
+
 const mockRepo: LocationRepository = {
   findByName: mockFindByName,
   findByNameExcluding: mockFindByNameExcluding,
@@ -25,6 +27,7 @@ const mockRepo: LocationRepository = {
   findByIdWithTransferCounts: mockFindByIdWithTransferCounts,
   update: mockUpdate,
   softDelete: mockSoftDelete,
+  restore: mockRestore,
   unsetDefaultWarehouse: mockUnsetDefaultWarehouse,
   countActiveWarehouses: mockCountActiveWarehouses,
   getInventory: mockGetInventory,
@@ -56,7 +59,8 @@ describe("LocationService", () => {
         type: "WAREHOUSE",
       });
 
-      expect(result.name).toBe("Warehouse A");
+      expect(result.location.name).toBe("Warehouse A");
+      expect(result.restored).toBe(false);
       expect(mockCreate).toHaveBeenCalled();
     });
 
@@ -64,6 +68,8 @@ describe("LocationService", () => {
       mockFindByName.mockResolvedValue({
         id: "loc0",
         name: "Warehouse A",
+        deletedAt: null,
+        isActive: true,
       });
 
       await expect(

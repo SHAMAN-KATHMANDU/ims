@@ -57,7 +57,8 @@ describe("CategoryService", () => {
         name: "Electronics",
       });
 
-      expect(result.name).toBe("Electronics");
+      expect(result.category.name).toBe("Electronics");
+      expect(result.restored).toBe(false);
       expect(mockCreate).toHaveBeenCalledWith("t1", { name: "Electronics" });
     });
 
