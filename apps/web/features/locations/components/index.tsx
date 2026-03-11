@@ -41,8 +41,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { SortOrder } from "@/components/ui/table";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Trash2, X } from "lucide-react";
 import { Label } from "@/components/ui/label";
+import {
+  useLocationSelectionStore,
+  selectSelectedLocationIds,
+  selectClearLocationSelection,
+} from "@/store/location-selection-store";
+import { BulkDeleteLocationsDialog } from "./components/BulkDeleteLocationsDialog";
 
 export function LocationsPage() {
   const params = useParams();
@@ -69,6 +75,14 @@ export function LocationsPage() {
   const [locationToDelete, setLocationToDelete] = useState<Location | null>(
     null,
   );
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  // Selection store for bulk actions
+  const selectedLocationIds = useLocationSelectionStore(selectSelectedLocationIds);
+  const clearSelection = useLocationSelectionStore(
+    selectClearLocationSelection,
+  );
+  const setLocations = useLocationSelectionStore((s) => s.setLocations);
 
   // Data fetching — refetch on this page when dialog closes
   const {
@@ -153,13 +167,17 @@ export function LocationsPage() {
         });
         toast({ title: "Location updated successfully" });
       } else {
-        await createLocationMutation.mutateAsync({
+        const result = await createLocationMutation.mutateAsync({
           name: data.name,
           type: data.type,
           address: data.address || undefined,
           isDefaultWarehouse: data.isDefaultWarehouse,
         });
-        toast({ title: "Location created successfully" });
+        toast({
+          title: result.restored
+            ? "Location restored successfully"
+            : "Location created successfully",
+        });
       }
       setFormOpen(false);
       setEditingLocation(null);
@@ -197,6 +215,32 @@ export function LocationsPage() {
         variant: "destructive",
       });
       setLocationToDelete(null);
+    }
+  };
+
+  const handleBulkDelete = async (idsToDelete: string[]) => {
+    if (idsToDelete.length === 0) return;
+    try {
+      for (const id of idsToDelete) {
+        await deleteLocationMutation.mutateAsync(id);
+      }
+      toast({ title: `${idsToDelete.length} location(s) deactivated` });
+      clearSelection();
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : typeof (error as { response?: { data?: { message?: string } } })
+                ?.response?.data?.message === "string"
+            ? (error as { response: { data: { message: string } } }).response
+                .data.message
+            : "Failed to deactivate locations";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
@@ -277,6 +321,34 @@ export function LocationsPage() {
         </div>
       </div>
 
+      {canManageLocations && selectedLocationIds.size > 0 && (
+        <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5">
+          <span className="text-sm font-medium">
+            {selectedLocationIds.size} selected
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setBulkDeleteOpen(true)}
+            disabled={deleteLocationMutation.isPending}
+            className="h-7 gap-1.5 text-destructive hover:text-destructive"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Deactivate
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => clearSelection()}
+            className="h-7 gap-1.5"
+            aria-label="Clear selection"
+          >
+            <X className="h-3.5 w-3.5" />
+            Clear
+          </Button>
+        </div>
+      )}
+
       <LocationTable
         locations={locations}
         isLoading={isLoading}
@@ -286,6 +358,18 @@ export function LocationsPage() {
         onSort={handleSort}
         onEdit={handleEdit}
         onDelete={setLocationToDelete}
+        {...(canManageLocations && {
+          selectedLocations: selectedLocationIds,
+          onSelectionChange: setLocations,
+        })}
+      />
+
+      <BulkDeleteLocationsDialog
+        open={bulkDeleteOpen}
+        onOpenChange={setBulkDeleteOpen}
+        locationIds={Array.from(selectedLocationIds)}
+        onConfirm={handleBulkDelete}
+        isDeleting={deleteLocationMutation.isPending}
       />
 
       {pagination && (

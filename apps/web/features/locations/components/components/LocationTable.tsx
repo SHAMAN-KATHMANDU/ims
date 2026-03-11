@@ -1,5 +1,6 @@
 "use client";
 
+import { useCallback } from "react";
 import {
   Table,
   TableBody,
@@ -11,6 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,6 +33,8 @@ interface LocationTableProps {
   onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onEdit: (location: Location) => void;
   onDelete: (location: Location) => void;
+  selectedLocations?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
 }
 
 export function LocationTable({
@@ -42,14 +46,52 @@ export function LocationTable({
   onSort,
   onEdit,
   onDelete,
+  selectedLocations = new Set(),
+  onSelectionChange,
 }: LocationTableProps) {
   const canSort = Boolean(onSort);
+  const showCheckboxes = canManage && Boolean(onSelectionChange);
+
+  const handleSelectLocation = useCallback(
+    (locationId: string, checked: boolean) => {
+      if (!onSelectionChange) return;
+      const newSelection = new Set(selectedLocations);
+      if (checked) {
+        newSelection.add(locationId);
+      } else {
+        newSelection.delete(locationId);
+      }
+      onSelectionChange(newSelection);
+    },
+    [selectedLocations, onSelectionChange],
+  );
+
+  const handleSelectAll = useCallback(
+    (checked: boolean) => {
+      if (!onSelectionChange) return;
+      if (checked) {
+        onSelectionChange(new Set(locations.map((l) => l.id)));
+      } else {
+        onSelectionChange(new Set());
+      }
+    },
+    [locations, onSelectionChange],
+  );
+
+  const allSelected =
+    locations.length > 0 && locations.every((l) => selectedLocations.has(l.id));
+
   if (isLoading) {
     return (
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              {showCheckboxes && (
+                <TableHead className="w-12">
+                  <Checkbox disabled aria-label="Select all locations" />
+                </TableHead>
+              )}
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
               <TableHead>Default warehouse</TableHead>
@@ -62,6 +104,7 @@ export function LocationTable({
           <TableBody>
             {[1, 2, 3].map((i) => (
               <TableRow key={i}>
+                {showCheckboxes && <TableCell className="w-12" />}
                 <TableCell>
                   <Skeleton className="h-4 w-32" />
                 </TableCell>
@@ -108,6 +151,15 @@ export function LocationTable({
       <Table>
         <TableHeader>
           <TableRow>
+            {showCheckboxes && (
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={allSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all locations"
+                />
+              </TableHead>
+            )}
             {canSort ? (
               <>
                 <SortableTableHead
@@ -143,6 +195,20 @@ export function LocationTable({
         <TableBody>
           {locations.map((location) => (
             <TableRow key={location.id}>
+              {showCheckboxes && (
+                <TableCell
+                  onClick={(e) => e.stopPropagation()}
+                  className="w-12"
+                >
+                  <Checkbox
+                    checked={selectedLocations.has(location.id)}
+                    onCheckedChange={(checked) =>
+                      handleSelectLocation(location.id, checked === true)
+                    }
+                    aria-label={`Select ${location.name}`}
+                  />
+                </TableCell>
+              )}
               <TableCell className="font-medium">
                 <div className="flex items-center gap-2">
                   {location.type === "WAREHOUSE" ? (
