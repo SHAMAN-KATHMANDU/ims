@@ -52,7 +52,7 @@ describe("CategoryController", () => {
   describe("createCategory", () => {
     it("returns 201 with created category on success", async () => {
       const category = { id: "c1", name: "Electronics" };
-      mockService.create.mockResolvedValue(category);
+      mockService.create.mockResolvedValue({ category, restored: false });
       const req = makeReq({ body: { name: "Electronics" } });
       const res = mockRes() as Response;
 
@@ -62,9 +62,26 @@ describe("CategoryController", () => {
         name: "Electronics",
       });
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(
-        expect.objectContaining({ category }),
-      );
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Category created successfully",
+        category,
+      });
+    });
+
+    it("returns 201 with restored message when soft-deleted category exists", async () => {
+      const category = { id: "c1", name: "Electronics" };
+      mockService.create.mockResolvedValue({ category, restored: true });
+      const req = makeReq({ body: { name: "Electronics" } });
+      const res = mockRes() as Response;
+
+      await categoryController.createCategory(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Category restored successfully",
+        category,
+        restored: true,
+      });
     });
 
     it("returns 400 when name is missing (Zod validation)", async () => {
