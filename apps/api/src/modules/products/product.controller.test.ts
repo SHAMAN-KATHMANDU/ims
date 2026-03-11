@@ -521,7 +521,10 @@ describe("ProductController", () => {
 
       await productController.downloadProducts(req, res);
 
-      expect(mockService.getProductsForExport).toHaveBeenCalledWith(undefined);
+      expect(mockService.getProductsForExport).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ ids: undefined }),
+      );
       expect(res.setHeader).toHaveBeenCalledWith(
         "Content-Type",
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",

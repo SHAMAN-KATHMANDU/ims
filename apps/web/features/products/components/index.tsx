@@ -527,6 +527,20 @@ export function ProductPage() {
           return;
         }
 
+        if (productAttributeTypeIds.length > 0) {
+          const variationWithoutAttribute = productVariations.find(
+            (v) => !v.attributes?.length || v.attributes.length === 0,
+          );
+          if (variationWithoutAttribute) {
+            setErrorDialog({
+              open: true,
+              title: "Validation Error",
+              message: "A variation must have at least one attribute selected.",
+            });
+            return;
+          }
+        }
+
         const costPrice = Number(values.costPrice);
         const mrp = Number(values.mrp);
 
@@ -581,6 +595,7 @@ export function ProductPage() {
           data.variations = productVariations.map((v) => ({
             id: v.id,
             stockQuantity: Number(v.stockQuantity) || 0,
+            locationId: v.locationId,
             subVariants:
               v.subVariants && v.subVariants.length > 0
                 ? v.subVariants.filter(Boolean)
@@ -732,19 +747,26 @@ export function ProductPage() {
     });
 
     if (product.variations && product.variations.length > 0) {
+      const activeLocationId = paginationParams.locationId;
       setProductVariations(
         product.variations.map((v) => {
-          const hasLocationInv =
-            v.locationInventory && v.locationInventory.length > 0;
-          const stock = hasLocationInv
-            ? (v.locationInventory as Array<{ quantity: number }>).reduce(
-                (s, inv) => s + inv.quantity,
-                0,
-              )
-            : (v.stockQuantity ?? 0);
+          const inv = v.locationInventory ?? [];
+          // When a specific location is selected, use that location's stock.
+          // Otherwise use the first (or only) location inventory entry.
+          let locEntry = activeLocationId
+            ? inv.find((i) => i.location?.id === activeLocationId)
+            : inv[0];
+          if (!locEntry && inv.length > 0) locEntry = inv[0];
+          const stock = locEntry ? locEntry.quantity : (v.stockQuantity ?? 0);
+          const locId = locEntry?.location?.id;
+          const locName = locEntry?.location
+            ? (locEntry.location as { name?: string }).name
+            : undefined;
           return {
             id: v.id,
             stockQuantity: stock.toString(),
+            locationId: locId,
+            locationName: locName,
             subVariants: (v.subVariations || []).map((s) => s.name),
             photos: (v.photos || []).map((p) => ({
               photoUrl: p.photoUrl,
@@ -809,6 +831,15 @@ export function ProductPage() {
 
   // Variation handlers
   const addVariationToForm = () => {
+    if (productAttributeTypeIds.length === 0) {
+      toast({
+        title: "Select attribute types first",
+        description:
+          "Select at least one attribute type for the product (e.g. Color, Size) before adding a variation.",
+        variant: "destructive",
+      });
+      return;
+    }
     setProductVariations([
       ...productVariations,
       {
@@ -911,23 +942,35 @@ export function ProductPage() {
   const handleExport = useCallback(
     async (format: "excel" | "csv") => {
       try {
-        // Get selected product IDs or undefined (which means export all)
         const productIdsToExport =
           selectedProductIds.size > 0
             ? Array.from(selectedProductIds)
             : undefined;
 
-        // Call backend download endpoint
-        await downloadProducts(format, productIdsToExport);
+        const filters =
+          productIdsToExport == null
+            ? {
+                search: paginationParams.search || undefined,
+                locationId: paginationParams.locationId,
+                categoryId: paginationParams.categoryId,
+                subCategoryId: paginationParams.subCategoryId,
+                subCategory: paginationParams.subCategory,
+                vendorId: paginationParams.vendorId,
+                dateFrom: paginationParams.dateFrom,
+                dateTo: paginationParams.dateTo,
+                lowStock: paginationParams.lowStock,
+              }
+            : undefined;
+
+        await downloadProducts(format, productIdsToExport, filters);
 
         const count =
-          productIdsToExport?.length || paginationInfo?.totalItems || 0;
+          productIdsToExport?.length ?? paginationInfo?.totalItems ?? 0;
         toast({
           title: "Download started",
           description: `Downloading ${count} product(s) as ${format.toUpperCase()}`,
         });
 
-        // Clear selection after export
         if (selectedProductIds.size > 0) {
           clearSelection();
         }
@@ -940,7 +983,13 @@ export function ProductPage() {
         });
       }
     },
-    [selectedProductIds, paginationInfo?.totalItems, toast, clearSelection],
+    [
+      selectedProductIds,
+      paginationParams,
+      paginationInfo?.totalItems,
+      toast,
+      clearSelection,
+    ],
   );
 
   return (

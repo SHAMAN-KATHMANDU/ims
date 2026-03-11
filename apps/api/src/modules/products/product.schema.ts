@@ -54,6 +54,27 @@ export const DownloadProductsQuerySchema = z.object({
             .filter(Boolean)
         : undefined,
     ),
+  // Filters (same as list). When ids is omitted, only products matching these filters are exported.
+  search: z
+    .string()
+    .optional()
+    .transform((v) => v?.trim() || ""),
+  locationId: z.string().uuid().optional(),
+  categoryId: z.string().uuid().optional(),
+  subCategoryId: z.string().uuid().optional(),
+  subCategory: z.string().optional(),
+  vendorId: z.string().uuid().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
+  lowStock: z
+    .union([
+      z.literal("1"),
+      z.literal("true"),
+      z.literal("0"),
+      z.literal("false"),
+    ])
+    .optional()
+    .transform((v) => v === "1" || v === "true"),
 });
 
 export const GetListQuerySchema = z.object({
@@ -116,6 +137,8 @@ export type { ExcelProductRow } from "./bulkUpload.validation";
 const VariationSchema = z.object({
   id: z.string().uuid().optional(),
   stockQuantity: z.coerce.number().min(0).default(0),
+  /** When editing existing variation stock, specify which location's inventory to update */
+  locationId: z.string().uuid().optional(),
   costPriceOverride: z.coerce.number().nullish(),
   mrpOverride: z.coerce.number().nullish(),
   finalSpOverride: z.coerce.number().nullish(),

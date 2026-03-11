@@ -34,7 +34,7 @@ export function CreateTransferPage() {
   const completeTransferMutation = useCompleteTransfer();
 
   const fetchLocationInventory = useCallback(async (locationId: string) => {
-    const response = await getLocationInventory(locationId, { limit: 10 });
+    const response = await getLocationInventory(locationId, { limit: 100 });
     return response.data;
   }, []);
 

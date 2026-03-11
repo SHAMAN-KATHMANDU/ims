@@ -41,6 +41,7 @@ const transferDetailInclude = {
           photos: { where: { isPrimary: true }, take: 1 },
         },
       },
+      subVariation: { select: { id: true, name: true } },
     },
   },
   logs: {

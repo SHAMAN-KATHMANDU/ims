@@ -36,30 +36,28 @@ export function getVariationAttributeDisplay(
   return "—";
 }
 
-/**
- * Get total stock for a single variation: sum of locationInventory when present, else stockQuantity
- */
-export function getVariationTotal(variation: {
+/** Variation shape with optional locationInventory from the list API */
+type VariationWithLocationInv = {
   stockQuantity?: number;
-  locationInventory?: Array<{ quantity: number }>;
-}): number {
+  locationInventory?: Array<{
+    quantity: number;
+    location?: { id: string; name?: string; type?: string };
+  }>;
+};
+
+/**
+ * Total stock for one variation across all locations.
+ * Uses locationInventory (the real per-location rows) when present; falls back to stockQuantity.
+ */
+export function getVariationTotal(variation: VariationWithLocationInv): number {
   if (variation.locationInventory && variation.locationInventory.length > 0) {
     return variation.locationInventory.reduce((s, inv) => s + inv.quantity, 0);
   }
   return variation.stockQuantity ?? 0;
 }
 
-/** Variation with locationInventory items that have location.id */
-type VariationWithLocationInv = {
-  locationInventory?: Array<{
-    quantity: number;
-    location?: { id: string };
-  }>;
-  stockQuantity?: number;
-};
-
 /**
- * Get stock for a single variation at a specific location (for table row when location filter is set).
+ * Stock for one variation at a specific location.
  */
 export function getStockForVariationAtLocation(
   variation: VariationWithLocationInv,
@@ -72,7 +70,7 @@ export function getStockForVariationAtLocation(
 }
 
 /**
- * Get total stock quantity from all variations (uses locationInventory sum when available)
+ * Total stock for a product across all variations and all locations.
  */
 export const getTotalStock = (product: Product): number => {
   if (!product.variations || product.variations.length === 0) return 0;
@@ -83,8 +81,7 @@ export const getTotalStock = (product: Product): number => {
 };
 
 /**
- * Get stock quantity at a specific location (sum across all variations' inventory at that location).
- * When a location is selected in the dropdown, use this so the Stock column shows actual count at that location.
+ * Stock for a product at one specific location (sum across all variations).
  */
 export function getStockAtLocation(
   product: Product,
@@ -92,11 +89,30 @@ export function getStockAtLocation(
 ): number {
   if (!product.variations || product.variations.length === 0) return 0;
   return product.variations.reduce((sum, variation) => {
-    const inv = (variation as VariationWithLocationInv).locationInventory;
-    if (!inv?.length) return sum;
-    const atLocation = inv.find((i) => i.location?.id === locationId);
-    return sum + (atLocation?.quantity ?? 0);
+    return sum + getStockForVariationAtLocation(variation, locationId);
   }, 0);
+}
+
+/**
+ * Extract the unique locations that actually have inventory for a variation.
+ */
+export function getLocationsForVariation(
+  variation: VariationWithLocationInv,
+): Array<{ id: string; name: string; type: string }> {
+  if (!variation.locationInventory?.length) return [];
+  const seen = new Set<string>();
+  const result: Array<{ id: string; name: string; type: string }> = [];
+  for (const inv of variation.locationInventory) {
+    if (inv.location?.id && !seen.has(inv.location.id)) {
+      seen.add(inv.location.id);
+      result.push({
+        id: inv.location.id,
+        name: inv.location.name ?? "Unknown",
+        type: inv.location.type ?? "UNKNOWN",
+      });
+    }
+  }
+  return result;
 }
 
 /**
@@ -157,7 +173,9 @@ export const filterProducts = (
     ).toLowerCase();
 
     return (
-      (product as { imsCode?: string }).imsCode?.toLowerCase().includes(query) ||
+      (product as { imsCode?: string }).imsCode
+        ?.toLowerCase()
+        .includes(query) ||
       product.name?.toLowerCase().includes(query) ||
       categoryName.includes(query) ||
       product.description?.toLowerCase().includes(query) ||

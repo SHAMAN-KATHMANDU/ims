@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -146,7 +145,9 @@ export function VariationsTab({
               <div className="flex gap-2 items-end flex-wrap">
                 <div className="flex-1 min-w-[80px] space-y-1">
                   <Label htmlFor={`var-stock-${index}`} className="text-xs">
-                    Default stock
+                    {variation.locationName
+                      ? `Stock @ ${variation.locationName}`
+                      : "Default stock"}
                   </Label>
                   <Input
                     id={`var-stock-${index}`}
@@ -232,14 +233,13 @@ export function VariationsTab({
                   <div className="grid grid-cols-3 gap-2">
                     {variation.photos.map((photo, photoIndex) => (
                       <div key={photoIndex} className="relative group">
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={photo.photoUrl}
                           alt={`Variation ${index + 1} photo ${photoIndex + 1}`}
-                          width={100}
-                          height={80}
                           className="h-20 w-full rounded border object-cover"
                           onError={(e) => {
-                            (e.target as HTMLImageElement).src =
+                            e.currentTarget.src =
                               "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect fill='%23ddd' width='100' height='100'/%3E%3Ctext x='50%25' y='50%25' text-anchor='middle' dy='.3em' fill='%23999' font-size='12'%3EInvalid%3C/text%3E%3C/svg%3E";
                           }}
                         />

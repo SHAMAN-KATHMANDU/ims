@@ -29,6 +29,7 @@ export interface TransferItem {
   id: string;
   transferId: string;
   variationId: string;
+  subVariationId?: string | null;
   quantity: number;
   variation: {
     id: string;
@@ -51,6 +52,7 @@ export interface TransferItem {
       isPrimary: boolean;
     }>;
   };
+  subVariation?: { id: string; name: string } | null;
 }
 
 export interface TransferLog {

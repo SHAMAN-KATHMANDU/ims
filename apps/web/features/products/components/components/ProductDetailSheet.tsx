@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import {
   Sheet,
   SheetContent,
@@ -121,12 +120,14 @@ export function ProductDetailSheet({
                           <div className="flex items-start gap-3">
                             {primaryPhoto?.photoUrl && (
                               <div className="relative w-16 h-16 rounded border overflow-hidden shrink-0">
-                                <Image
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
                                   src={primaryPhoto.photoUrl}
                                   alt={attrLabel || "Variation"}
-                                  fill
-                                  className="object-cover"
-                                  sizes="64px"
+                                  className="w-full h-full object-cover"
+                                  onError={(e) => {
+                                    e.currentTarget.style.display = "none";
+                                  }}
                                 />
                               </div>
                             )}

@@ -206,12 +206,24 @@ export function useUpdateProduct() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateProductData }) =>
       updateProduct(id, data),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: productKeys.all });
-      queryClient.refetchQueries({ queryKey: productKeys.all });
-      queryClient.invalidateQueries({
-        queryKey: productKeys.detail(variables.id),
-      });
+    onSuccess: (updatedProduct, variables) => {
+      // Update response now includes locationInventory, so write it directly.
+      queryClient.setQueriesData<PaginatedProductsResponse>(
+        { queryKey: productKeys.lists() },
+        (old) => {
+          if (!old?.data) return old;
+          return {
+            ...old,
+            data: old.data.map((p) =>
+              p.id === updatedProduct.id ? updatedProduct : p,
+            ),
+          };
+        },
+      );
+      queryClient.setQueryData(
+        productKeys.detail(variables.id),
+        updatedProduct,
+      );
       queryClient.invalidateQueries({ queryKey: productDiscountKeys.all });
     },
   });

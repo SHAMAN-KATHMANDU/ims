@@ -151,24 +151,38 @@ export function TransferDetail({
                           item.variation.attributes
                             ?.map((a) => a.attributeValue.value)
                             .join(" / ") || "";
+                        const variationLabel =
+                          attrLabel ||
+                          item.subVariation?.name ||
+                          (transfer.items && transfer.items.length > 1
+                            ? `Variation #${item.variation.id.slice(0, 8)}`
+                            : "");
                         return (
                           <TableRow key={item.id}>
                             <TableCell>
                               <div>
                                 <p className="font-medium">
                                   {item.variation.product.name}
-                                  {attrLabel && (
+                                  {variationLabel && (
                                     <span className="text-muted-foreground font-normal ml-1.5">
-                                      — {attrLabel}
+                                      — {variationLabel}
                                     </span>
                                   )}
                                 </p>
                                 <p className="text-xs text-muted-foreground font-mono">
                                   {item.variation.product?.imsCode ?? "—"}
+                                  {item.subVariation?.name
+                                    ? ` / ${item.subVariation.name}`
+                                    : ""}
                                 </p>
                               </div>
                             </TableCell>
-                            <TableCell>{item.variation.product?.imsCode ?? "—"}</TableCell>
+                            <TableCell>
+                              {item.variation.product?.imsCode ?? "—"}
+                              {item.subVariation?.name
+                                ? ` / ${item.subVariation.name}`
+                                : ""}
+                            </TableCell>
                             <TableCell className="text-right font-medium">
                               {item.quantity}
                             </TableCell>
