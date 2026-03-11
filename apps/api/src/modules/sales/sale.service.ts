@@ -30,7 +30,9 @@ import {
   aggregateSalesByTypeByFilter,
   findSalesForExportByFilter,
   findSalesForDailyChartByFilter,
+  updateSaleContactId,
 } from "./sale.repository";
+import contactRepository from "@/modules/contacts/contact.repository";
 
 // ── Shared types ──────────────────────────────────────────────────────────
 
@@ -510,6 +512,23 @@ export async function createSale(
     }
   }
 
+  // Auto-create CRM contact when sale has customer info but no linked contact
+  let finalSale = sale;
+  if (!resolvedContactId && member) {
+    try {
+      const newContact = await contactRepository.createFromSale(ctx.tenantId, {
+        phone: member.phone,
+        name: member.name,
+        memberId: member.id,
+        createdById: ctx.userId,
+      });
+      await updateSaleContactId(sale.id, newContact.id);
+      finalSale = { ...sale, contactId: newContact.id };
+    } catch {
+      // Log but don't fail sale creation
+    }
+  }
+
   try {
     await createAuditLog({
       tenantId: ctx.tenantId,
@@ -529,7 +548,7 @@ export async function createSale(
     // Log but don't fail
   }
 
-  return sale;
+  return finalSale;
 }
 
 export async function previewSale(
@@ -644,6 +663,43 @@ export async function getSalesSinceLastLogin(
   const [totalItems, sales] = await Promise.all([
     countSalesForUserSince(userId, since),
     findSalesPaginatedForUserSince(userId, since, params),
+  ]);
+
+  return { sales, totalItems, page: params.page, limit: params.limit };
+}
+
+export interface GetMySalesParams {
+  page: number;
+  limit: number;
+  sortBy: string;
+  sortOrder: "asc" | "desc";
+  startDate?: string;
+  endDate?: string;
+  locationId?: string;
+  type?: "GENERAL" | "MEMBER";
+  isCreditSale?: boolean;
+}
+
+export async function getMySales(userId: string, params: GetMySalesParams) {
+  const filter = {
+    createdById: userId,
+    startDate: params.startDate,
+    endDate: params.endDate,
+    locationId: params.locationId,
+    type: params.type,
+    isCreditSale: params.isCreditSale,
+  };
+
+  const pagination = {
+    page: params.page,
+    limit: params.limit,
+    sortBy: params.sortBy,
+    sortOrder: params.sortOrder,
+  };
+
+  const [totalItems, sales] = await Promise.all([
+    countSalesByFilter(filter),
+    findSalesPaginatedByFilter(filter, pagination),
   ]);
 
   return { sales, totalItems, page: params.page, limit: params.limit };
@@ -854,6 +910,10 @@ export class SaleService {
 
   async getAllSales(params: GetAllSalesParams) {
     return getAllSales(params);
+  }
+
+  async getMySales(userId: string, params: GetMySalesParams) {
+    return getMySales(userId, params);
   }
 
   async getSalesSinceLastLogin(

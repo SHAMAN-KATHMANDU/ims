@@ -23,6 +23,7 @@ vi.mock("./sale.service", () => ({
     createSale: vi.fn(),
     previewSale: vi.fn(),
     getAllSales: vi.fn(),
+    getMySales: vi.fn(),
     getSalesSinceLastLogin: vi.fn(),
     getSaleById: vi.fn(),
     addPayment: vi.fn(),
@@ -80,6 +81,7 @@ import { CreateSaleSchema } from "./sale.schema";
 const mockCreateSale = vi.mocked(saleService.createSale);
 const mockPreviewSale = vi.mocked(saleService.previewSale);
 const mockGetAllSales = vi.mocked(saleService.getAllSales);
+const mockGetMySales = vi.mocked(saleService.getMySales);
 const mockGetSalesSinceLastLogin = vi.mocked(
   saleService.getSalesSinceLastLogin,
 );
@@ -418,6 +420,63 @@ describe("SaleController", () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(mockAddPayment).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("getMySales", () => {
+    it("returns 200 with paginated sales (full history)", async () => {
+      mockGetMySales.mockResolvedValue({
+        sales: [{ id: "s1" }] as Awaited<
+          ReturnType<typeof mockGetMySales>
+        >["sales"],
+        totalItems: 1,
+        page: 1,
+        limit: 20,
+      });
+      const req = makeReq({ query: { page: "1", limit: "20" } });
+      const res = mockRes() as Response;
+
+      await saleController.getMySales(req, res);
+
+      expect(mockGetMySales).toHaveBeenCalledWith(
+        "u1",
+        expect.objectContaining({
+          page: 1,
+          limit: 20,
+          sortBy: "createdAt",
+          sortOrder: "desc",
+        }),
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "My sales" }),
+      );
+    });
+
+    it("passes optional startDate and endDate to service", async () => {
+      mockGetMySales.mockResolvedValue({
+        sales: [],
+        totalItems: 0,
+        page: 1,
+        limit: 20,
+      });
+      const req = makeReq({
+        query: {
+          startDate: "2025-03-01",
+          endDate: "2025-03-31",
+        },
+      });
+      const res = mockRes() as Response;
+
+      await saleController.getMySales(req, res);
+
+      expect(mockGetMySales).toHaveBeenCalledWith(
+        "u1",
+        expect.objectContaining({
+          startDate: "2025-03-01",
+          endDate: "2025-03-31",
+        }),
+      );
     });
   });
 

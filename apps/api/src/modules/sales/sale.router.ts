@@ -221,7 +221,7 @@ saleRouter.get(
  * @swagger
  * /sales/me/since-last-login:
  *   get:
- *     summary: Get current user's sales since last login (User Sales Report)
+ *     summary: Get current user's sales since last login
  *     tags: [Sales]
  *     security:
  *       - bearerAuth: []
@@ -242,6 +242,58 @@ saleRouter.get(
   "/me/since-last-login",
   authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(saleController.getSalesSinceLastLogin),
+);
+
+/**
+ * @swagger
+ * /sales/me:
+ *   get:
+ *     summary: Get current user's sales (full history, User Sales Report)
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20, maximum: 100 }
+ *       - in: query
+ *         name: sortBy
+ *         schema:
+ *           type: string
+ *           enum: [createdAt, total, subtotal, discount, saleCode, type, id]
+ *       - in: query
+ *         name: sortOrder
+ *         schema: { type: string, enum: [asc, desc] }
+ *       - in: query
+ *         name: startDate
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: endDate
+ *         schema: { type: string, format: date }
+ *       - in: query
+ *         name: locationId
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: type
+ *         schema: { type: string, enum: [GENERAL, MEMBER] }
+ *       - in: query
+ *         name: isCreditSale
+ *         schema: { type: string, enum: [true, false] }
+ *     responses:
+ *       200:
+ *         description: Current user's sales (full history)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/PaginatedSalesResponse'
+ */
+saleRouter.get(
+  "/me",
+  authorizeRoles("user", "admin", "superAdmin"),
+  asyncHandler(saleController.getMySales),
 );
 
 /**

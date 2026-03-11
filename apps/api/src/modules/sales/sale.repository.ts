@@ -740,6 +740,13 @@ export async function findVariationsByTenant(tenantId: string) {
   });
 }
 
+export async function updateSaleContactId(saleId: string, contactId: string) {
+  return prisma.sale.update({
+    where: { id: saleId },
+    data: { contactId },
+  });
+}
+
 export async function findSaleByIdMinimal(id: string) {
   return prisma.sale.findUnique({
     where: { id },
