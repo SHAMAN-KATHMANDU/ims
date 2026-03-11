@@ -17,7 +17,6 @@ import {
   Receipt,
   Factory,
   Percent,
-  Tags,
   Layers,
   Bug,
   Building2,
@@ -53,6 +52,7 @@ import { usePlanFeatures } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { Badge } from "../ui/badge";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { useScrollRestoration } from "@/hooks/useScrollRestoration";
 import {
   Collapsible,
   CollapsibleContent,
@@ -164,12 +164,6 @@ const navSections: NavSection[] = [
         icon: Bell,
         roles: ["user", "admin", "superAdmin"],
       },
-      {
-        path: "crm/settings",
-        label: "CRM Settings",
-        icon: SlidersHorizontal,
-        roles: ["admin", "superAdmin"],
-      },
     ],
   },
   {
@@ -223,14 +217,8 @@ const navSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
       },
       {
-        path: "products/categories",
-        label: "Categories",
-        icon: Tags,
-        roles: ["admin", "superAdmin"],
-      },
-      {
-        path: "products/attribute-types",
-        label: "Attribute Types",
+        path: "products/catalog-settings",
+        label: "Catalog Settings",
         icon: Layers,
         roles: ["admin", "superAdmin"],
       },
@@ -321,6 +309,12 @@ const navSections: NavSection[] = [
         path: "settings",
         label: "Settings",
         icon: UserCog,
+        roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "settings/crm",
+        label: "CRM Settings",
+        icon: SlidersHorizontal,
         roles: ["admin", "superAdmin"],
       },
       {
@@ -703,6 +697,9 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
     }
   };
 
+  const navRef = useRef<HTMLElement>(null);
+  useScrollRestoration(navRef, "sidebar-nav");
+
   const sidebarContent = (
     <TooltipProvider delayDuration={300}>
       <div className="flex h-16 items-center justify-between px-4 border-b border-border shrink-0">
@@ -776,6 +773,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
       </div>
 
       <nav
+        ref={navRef}
         className="flex-1 overflow-y-auto scrollbar-hide p-4 space-y-6"
         aria-label="Main navigation"
       >
