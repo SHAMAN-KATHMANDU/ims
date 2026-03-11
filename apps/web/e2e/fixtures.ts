@@ -26,32 +26,32 @@ type Fixtures = {
 };
 
 export const test = base.extend<Fixtures>({
-  slugEntryPage: async ({ page }, use) => {
-    await use(new SlugEntryPage(page));
+  slugEntryPage: async ({ page }, inject) => {
+    await inject(new SlugEntryPage(page));
   },
-  loginPage: async ({ page }, use) => {
-    await use(new LoginPage(page));
+  loginPage: async ({ page }, inject) => {
+    await inject(new LoginPage(page));
   },
-  dashboardPage: async ({ page }, use) => {
-    await use(new DashboardPage(page));
+  dashboardPage: async ({ page }, inject) => {
+    await inject(new DashboardPage(page));
   },
-  productsPage: async ({ page }, use) => {
-    await use(new ProductsPage(page));
+  productsPage: async ({ page }, inject) => {
+    await inject(new ProductsPage(page));
   },
-  newSalePage: async ({ page }, use) => {
-    await use(new NewSalePage(page));
+  newSalePage: async ({ page }, inject) => {
+    await inject(new NewSalePage(page));
   },
-  createTransferPage: async ({ page }, use) => {
-    await use(new CreateTransferPage(page));
+  createTransferPage: async ({ page }, inject) => {
+    await inject(new CreateTransferPage(page));
   },
-  membersPage: async ({ page }, use) => {
-    await use(new MembersPage(page));
+  membersPage: async ({ page }, inject) => {
+    await inject(new MembersPage(page));
   },
-  contactsPage: async ({ page }, use) => {
-    await use(new ContactsPage(page));
+  contactsPage: async ({ page }, inject) => {
+    await inject(new ContactsPage(page));
   },
-  settingsPage: async ({ page }, use) => {
-    await use(new SettingsPage(page));
+  settingsPage: async ({ page }, inject) => {
+    await inject(new SettingsPage(page));
   },
 });
 

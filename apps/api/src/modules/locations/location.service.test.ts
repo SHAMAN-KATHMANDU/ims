@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { LocationService } from "./location.service";
 import type { LocationRepository } from "./location.repository";
+import type { UpdateLocationDto } from "./location.schema";
 import { createError } from "@/middlewares/errorHandler";
 
 const mockFindByName = vi.fn();
@@ -111,7 +112,11 @@ describe("LocationService", () => {
       });
 
       await expect(
-        locationService.update("loc1", { type: "INVALID" }, "t1"),
+        locationService.update(
+          "loc1",
+          { type: "INVALID" } as unknown as UpdateLocationDto,
+          "t1",
+        ),
       ).rejects.toMatchObject(
         createError(
           "Invalid location type. Must be WAREHOUSE or SHOWROOM",

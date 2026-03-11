@@ -16,7 +16,6 @@ test.describe("Sale creation", () => {
 
   test("creates a sale and redirects to sales list", async ({
     newSalePage,
-    page,
   }) => {
     await newSalePage.goto(E2E_SLUG);
     await newSalePage.expectLoaded();

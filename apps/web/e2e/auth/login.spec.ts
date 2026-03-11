@@ -1,10 +1,4 @@
-import {
-  test,
-  expect,
-  E2E_SLUG,
-  E2E_USERNAME,
-  E2E_PASSWORD,
-} from "../fixtures";
+import { test, E2E_SLUG, E2E_USERNAME, E2E_PASSWORD } from "../fixtures";
 
 test.describe("Login flow", () => {
   test("slug entry → login → dashboard redirect", async ({

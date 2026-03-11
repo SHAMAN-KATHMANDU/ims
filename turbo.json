@@ -11,7 +11,13 @@
     "lint": {
       "inputs": ["$TURBO_DEFAULT$"],
       "outputs": [],
-      "env": ["CI", "BASE_URL"]
+      "env": [
+        "CI",
+        "BASE_URL",
+        "E2E_TENANT_SLUG",
+        "E2E_USERNAME",
+        "E2E_PASSWORD"
+      ]
     },
     "prisma:generate": {
       "inputs": ["$TURBO_DEFAULT$"],

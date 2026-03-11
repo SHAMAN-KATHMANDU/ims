@@ -50,7 +50,7 @@ describe("PromoService", () => {
 
       const result = await promoService.create("t1", {
         code: "SAVE10",
-        valueType: "PERCENT",
+        valueType: "PERCENTAGE",
         value: 10,
         isActive: true,
       });
@@ -68,7 +68,7 @@ describe("PromoService", () => {
       await expect(
         promoService.create("t1", {
           code: "SAVE10",
-          valueType: "PERCENT",
+          valueType: "PERCENTAGE",
           value: 10,
           isActive: true,
         }),

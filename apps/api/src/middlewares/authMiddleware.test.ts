@@ -78,10 +78,13 @@ describe("authMiddleware", () => {
   });
 
   it("returns 401 when token payload fails Zod validation (e.g. missing id or role)", () => {
-    vi.mocked(jwt.verify).mockReturnValue({
-      tenantId: "t1",
-      tenantSlug: "acme",
-    } as unknown as object);
+    vi.mocked(jwt.verify).mockImplementation(
+      () =>
+        ({
+          tenantId: "t1",
+          tenantSlug: "acme",
+        }) as jwt.JwtPayload,
+    );
     const req = {
       headers: { authorization: "Bearer valid-token" },
     } as Request;
@@ -103,7 +106,7 @@ describe("authMiddleware", () => {
       tenantId: "t1",
       tenantSlug: "acme",
     };
-    vi.mocked(jwt.verify).mockReturnValue(decoded);
+    vi.mocked(jwt.verify).mockImplementation(() => decoded as jwt.JwtPayload);
     const req = {
       headers: { authorization: "Bearer valid-token" },
     } as Request;

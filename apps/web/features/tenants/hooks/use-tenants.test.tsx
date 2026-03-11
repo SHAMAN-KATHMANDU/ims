@@ -58,6 +58,9 @@ describe("useCreateTenant", () => {
       await result.current.mutateAsync(createData);
     });
 
-    expect(mockCreateTenant).toHaveBeenCalledWith(createData);
+    expect(mockCreateTenant).toHaveBeenCalledWith(
+      createData,
+      expect.objectContaining({ client: expect.anything() }),
+    );
   });
 });
