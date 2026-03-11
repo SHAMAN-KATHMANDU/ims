@@ -11,6 +11,7 @@ import {
   createUser,
   updateUser,
   deleteUser,
+  changePassword,
   type User,
   type CreateUserData,
   type UpdateUserData,
@@ -97,6 +98,30 @@ export function useDeleteUser() {
 
   return useMutation({
     mutationFn: (id: string) => deleteUser(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: userKeys.lists() });
+    },
+  });
+}
+
+/**
+ * Hook for bulk change password (calls single-user API in a loop)
+ */
+export function useBulkChangePassword() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      userIds,
+      newPassword,
+    }: {
+      userIds: string[];
+      newPassword: string;
+    }) => {
+      for (const id of userIds) {
+        await changePassword(id, newPassword);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: userKeys.lists() });
     },

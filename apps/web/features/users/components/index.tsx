@@ -12,15 +12,6 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  SortableTableHead,
-} from "@/components/ui/table";
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -30,21 +21,30 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Edit2, Plus } from "lucide-react";
+import { Trash2, Plus, KeyRound, X } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import {
   useUsers,
   useCreateUser,
   useUpdateUser,
   useDeleteUser,
+  useBulkChangePassword,
   type User,
   type CreateUserData,
   type UpdateUserData,
 } from "../hooks/use-users";
 import { useAuthStore, selectUser } from "@/store/auth-store";
+import {
+  useUserSelectionStore,
+  selectSelectedUserIds,
+  selectClearUserSelection,
+} from "@/store/user-selection-store";
 import { RoleGuard } from "@/components/auth/role-guard";
 import { useIsMobile } from "@/hooks/useMobile";
 import { UserForm } from "./components/UserForm";
+import { UserTable } from "./components/UserTable";
+import { BulkChangePasswordDialog } from "./components/BulkChangePasswordDialog";
+import { BulkDeleteUsersDialog } from "./components/BulkDeleteUsersDialog";
 import type { UserFormValues } from "../validation";
 import { type UserRoleType } from "@repo/shared";
 
@@ -56,8 +56,14 @@ export function UsersPage() {
   const [userDialog, setUserDialog] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [bulkChangePasswordOpen, setBulkChangePasswordOpen] = useState(false);
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [sortBy, setSortBy] = useState<string>("username");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+
+  const selectedUserIds = useUserSelectionStore(selectSelectedUserIds);
+  const clearSelection = useUserSelectionStore(selectClearUserSelection);
+  const setUsers = useUserSelectionStore((s) => s.setUsers);
 
   const handleColumnSort = useCallback((by: string, order: "asc" | "desc") => {
     setSortBy(by);
@@ -70,6 +76,7 @@ export function UsersPage() {
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
+  const bulkChangePasswordMutation = useBulkChangePassword();
   const { toast } = useToast();
   const currentUser = useAuthStore(selectUser);
   const isMobile = useIsMobile();
@@ -139,6 +146,59 @@ export function UsersPage() {
     }
   };
 
+  const handleBulkChangePassword = async (newPassword: string) => {
+    const ids = Array.from(selectedUserIds);
+    try {
+      await bulkChangePasswordMutation.mutateAsync({
+        userIds: ids,
+        newPassword,
+      });
+      toast({ title: `Password changed for ${ids.length} user(s)` });
+      clearSelection();
+    } catch (error: unknown) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error
+            ? error.message
+            : "Failed to change passwords",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const handleBulkDelete = async (idsToDelete: string[]) => {
+    if (idsToDelete.length === 0) return;
+    try {
+      for (const id of idsToDelete) {
+        await deleteUserMutation.mutateAsync(id);
+      }
+      toast({ title: `${idsToDelete.length} user(s) deleted` });
+      clearSelection();
+    } catch (error: unknown) {
+      toast({
+        title: "Error",
+        description:
+          error instanceof Error ? error.message : "Failed to delete users",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const handleBulkDeleteClick = () => {
+    if (currentUser && selectedUserIds.has(currentUser.id)) {
+      toast({
+        title: "Cannot delete yourself",
+        description: "Deselect yourself before bulk delete.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setBulkDeleteOpen(true);
+  };
+
   return (
     <RoleGuard
       allowedRoles={["superAdmin"]}
@@ -152,8 +212,47 @@ export function UsersPage() {
           </p>
         </div>
 
-        <div className="flex justify-between items-center">
-          <h2 className="text-xl font-semibold">All Users</h2>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-4">
+            <h2 className="text-xl font-semibold">All Users</h2>
+            {selectedUserIds.size > 0 && (
+              <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5">
+                <span className="text-sm font-medium">
+                  {selectedUserIds.size} selected
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setBulkChangePasswordOpen(true)}
+                  disabled={bulkChangePasswordMutation.isPending}
+                  className="h-7 gap-1.5"
+                >
+                  <KeyRound className="h-3.5 w-3.5" />
+                  Change password
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleBulkDeleteClick}
+                  disabled={deleteUserMutation.isPending}
+                  className="h-7 gap-1.5 text-destructive hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Delete
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => clearSelection()}
+                  className="h-7 gap-1.5"
+                  aria-label="Clear selection"
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear
+                </Button>
+              </div>
+            )}
+          </div>
           {isMobile ? (
             <Button asChild>
               <Link href={`${basePath}/users/new`} className="gap-2">
@@ -189,91 +288,36 @@ export function UsersPage() {
             <CardDescription>Total: {totalItems}</CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoading ? (
-              <div className="text-center py-8 text-muted-foreground">
-                Loading users...
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <SortableTableHead
-                      sortKey="username"
-                      currentSortBy={sortBy}
-                      currentSortOrder={sortOrder}
-                      onSort={handleColumnSort}
-                    >
-                      Username
-                    </SortableTableHead>
-                    <SortableTableHead
-                      sortKey="role"
-                      currentSortBy={sortBy}
-                      currentSortOrder={sortOrder}
-                      onSort={handleColumnSort}
-                    >
-                      Role
-                    </SortableTableHead>
-                    <SortableTableHead
-                      sortKey="createdAt"
-                      currentSortBy={sortBy}
-                      currentSortOrder={sortOrder}
-                      onSort={handleColumnSort}
-                    >
-                      Created At
-                    </SortableTableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.length === 0 ? (
-                    <TableRow>
-                      <TableCell
-                        colSpan={4}
-                        className="text-center text-muted-foreground py-8"
-                      >
-                        No users found.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    users.map((user) => (
-                      <TableRow key={user.id}>
-                        <TableCell className="font-medium">
-                          {user.username}
-                        </TableCell>
-                        <TableCell>
-                          <span className="px-2 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-                            {user.role}
-                          </span>
-                        </TableCell>
-                        <TableCell>
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleEditUser(user)}
-                            aria-label="Edit user"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDeleteClick(user)}
-                            aria-label="Delete user"
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            )}
+            <UserTable
+              users={users}
+              isLoading={isLoading}
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSort={handleColumnSort}
+              onEdit={handleEditUser}
+              onDelete={handleDeleteClick}
+              selectedUsers={selectedUserIds}
+              onSelectionChange={setUsers}
+            />
           </CardContent>
         </Card>
+
+        <BulkChangePasswordDialog
+          open={bulkChangePasswordOpen}
+          onOpenChange={setBulkChangePasswordOpen}
+          userIds={Array.from(selectedUserIds)}
+          onSubmit={handleBulkChangePassword}
+          isSubmitting={bulkChangePasswordMutation.isPending}
+        />
+
+        <BulkDeleteUsersDialog
+          open={bulkDeleteOpen}
+          onOpenChange={setBulkDeleteOpen}
+          userIds={Array.from(selectedUserIds)}
+          currentUserId={currentUser?.id}
+          onConfirm={handleBulkDelete}
+          isDeleting={deleteUserMutation.isPending}
+        />
 
         {/* User Delete Confirmation Dialog */}
         <AlertDialog
