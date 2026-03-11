@@ -23,6 +23,12 @@ const DEAL_DETAIL_INCLUDE = {
   pipeline: true,
   assignedTo: { select: { id: true, username: true } },
   lead: true,
+  lineItems: {
+    include: {
+      product: { select: { id: true, name: true, imsCode: true } },
+      variation: { select: { id: true } },
+    },
+  },
   tasks: {
     where: { deletedAt: null },
     include: { assignedTo: { select: { id: true, username: true } } },
@@ -151,9 +157,20 @@ export class DealRepository {
   }
 
   async findDefaultPipeline(tenantId: string, pipelineId?: string | null) {
-    return pipelineId
-      ? prisma.pipeline.findFirst({ where: { id: pipelineId, tenantId } })
-      : prisma.pipeline.findFirst({ where: { tenantId, isDefault: true } });
+    if (pipelineId) {
+      const byId = await prisma.pipeline.findFirst({
+        where: { id: pipelineId, tenantId, deletedAt: null },
+      });
+      if (byId) return byId;
+    }
+    const defaultPipe = await prisma.pipeline.findFirst({
+      where: { tenantId, isDefault: true, deletedAt: null },
+    });
+    if (defaultPipe) return defaultPipe;
+    return prisma.pipeline.findFirst({
+      where: { tenantId, deletedAt: null },
+      orderBy: { createdAt: "asc" },
+    });
   }
 
   async create(
@@ -249,6 +266,43 @@ export class DealRepository {
         deletedBy: data.deletedBy,
         deleteReason: data.deleteReason ?? undefined,
       },
+    });
+  }
+
+  async addLineItem(
+    dealId: string,
+    data: {
+      productId: string;
+      variationId: string | null;
+      quantity: number;
+      unitPrice: number;
+    },
+  ) {
+    return prisma.dealLineItem.create({
+      data: {
+        dealId,
+        productId: data.productId,
+        variationId: data.variationId,
+        quantity: data.quantity,
+        unitPrice: data.unitPrice,
+      },
+      include: {
+        product: { select: { id: true, name: true, imsCode: true } },
+        variation: { select: { id: true } },
+      },
+    });
+  }
+
+  async removeLineItem(dealId: string, lineItemId: string) {
+    return prisma.dealLineItem.deleteMany({
+      where: { id: lineItemId, dealId },
+    });
+  }
+
+  async findFirstVariationByProduct(productId: string, tenantId: string) {
+    return prisma.productVariation.findFirst({
+      where: { productId, tenantId, isActive: true },
+      orderBy: { createdAt: "asc" },
     });
   }
 

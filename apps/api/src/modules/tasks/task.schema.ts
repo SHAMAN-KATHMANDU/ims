@@ -13,5 +13,11 @@ export const UpdateTaskSchema = CreateTaskSchema.partial().extend({
   completed: z.boolean().optional(),
 });
 
+export const BulkIdsSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1, "At least one task ID is required"),
+  reason: z.string().max(500).optional(),
+});
+
 export type CreateTaskDto = z.infer<typeof CreateTaskSchema>;
 export type UpdateTaskDto = z.infer<typeof UpdateTaskSchema>;
+export type BulkIdsDto = z.infer<typeof BulkIdsSchema>;

@@ -26,7 +26,7 @@ export default function EditContactPage() {
   const contact = data.contact;
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl px-4 sm:px-6">
       <div className="flex items-center gap-4">
         <Link href={`${basePath}/crm/contacts/${id}`}>
           <Button variant="ghost">Back</Button>
@@ -41,6 +41,8 @@ export default function EditContactPage() {
           phone: contact.phone ?? undefined,
           companyId: contact.companyId ?? undefined,
           tagIds: contact.tagLinks?.map((l) => l.tag.id),
+          source: contact.source ?? undefined,
+          journeyType: contact.journeyType ?? undefined,
         }}
         onSubmit={async (data) => {
           await updateMutation.mutateAsync({ id, data });

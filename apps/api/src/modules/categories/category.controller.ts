@@ -18,10 +18,15 @@ class CategoryController {
     try {
       const tenantId = req.user!.tenantId;
       const body = CreateCategorySchema.parse(req.body);
-      const category = await this.service.create(tenantId, body);
-      return res
-        .status(201)
-        .json({ message: "Category created successfully", category });
+      const result = await this.service.create(tenantId, body);
+      const message = result.restored
+        ? "Category restored successfully"
+        : "Category created successfully";
+      return res.status(201).json({
+        message,
+        category: result.category,
+        ...(result.restored && { restored: true }),
+      });
     } catch (error: unknown) {
       if (error instanceof ZodError) {
         return res

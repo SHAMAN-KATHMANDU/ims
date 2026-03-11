@@ -3,7 +3,11 @@ import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
-import { CreateTaskSchema, UpdateTaskSchema } from "./task.schema";
+import {
+  CreateTaskSchema,
+  UpdateTaskSchema,
+  BulkIdsSchema,
+} from "./task.schema";
 import taskService from "./task.service";
 
 class TaskController {
@@ -94,6 +98,60 @@ class TaskController {
           .json({ message: (error as AppError).message });
       }
       return sendControllerError(req, res, error, "Complete task error");
+    }
+  };
+
+  bulkComplete = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const body = BulkIdsSchema.parse(req.body);
+      const result = await taskService.bulkComplete(tenantId, body.ids);
+      return res
+        .status(200)
+        .json({ message: "Tasks completed", count: result.count });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
+      return sendControllerError(req, res, error, "Bulk complete tasks error");
+    }
+  };
+
+  bulkDelete = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
+      const body = BulkIdsSchema.parse(req.body);
+      const ip = typeof req.ip === "string" ? req.ip : undefined;
+      const userAgent = req.get("user-agent");
+      const result = await taskService.bulkDelete(tenantId, body.ids, {
+        userId,
+        reason: body.reason,
+        ip,
+        userAgent,
+      });
+      return res
+        .status(200)
+        .json({ message: "Tasks deleted", count: result.count });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
+      return sendControllerError(req, res, error, "Bulk delete tasks error");
     }
   };
 

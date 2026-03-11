@@ -52,6 +52,8 @@ export default function EditDealPage() {
       </div>
       <DealForm
         mode="edit"
+        deal={deal}
+        basePath={basePath}
         defaultValues={{
           name: deal.name,
           value: Number(deal.value),

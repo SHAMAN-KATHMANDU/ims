@@ -15,11 +15,16 @@ export class CategoryService {
   async create(tenantId: string, data: CreateCategoryDto) {
     const existing = await this.repo.findByName(tenantId, data.name);
     if (existing) {
+      if (existing.deletedAt) {
+        const restored = await this.repo.restore(existing.id);
+        return { category: restored, restored: true };
+      }
       const err = createError("Category with this name already exists", 409);
       (err as any).existingCategory = { id: existing.id, name: existing.name };
       throw err;
     }
-    return this.repo.create(tenantId, data);
+    const category = await this.repo.create(tenantId, data);
+    return { category, restored: false };
   }
 
   async findAll(tenantId: string, rawQuery: Record<string, unknown>) {

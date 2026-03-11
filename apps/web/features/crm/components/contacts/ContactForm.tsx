@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,11 +16,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
-import { useContactTags } from "../../hooks/use-contacts";
+import {
+  useContactTags,
+  useCreateContactTag,
+} from "../../hooks/use-contacts";
 import {
   useCrmSources,
   useCrmJourneyTypes,
 } from "../../hooks/use-crm-settings";
+import { useToast } from "@/hooks/useToast";
 import type { CreateContactData } from "../../services/contact.service";
 
 const schema = z.object({
@@ -48,8 +53,10 @@ export function ContactForm({
   onCancel,
   isLoading,
 }: ContactFormProps) {
+  const { toast } = useToast();
   const { data: companiesData } = useCompaniesForSelect();
   const { data: tagsData } = useContactTags();
+  const createTagMutation = useCreateContactTag();
   const { data: sourcesData } = useCrmSources();
   const { data: journeyTypesData } = useCrmJourneyTypes();
   const companies = companiesData?.companies ?? [];
@@ -71,6 +78,26 @@ export function ContactForm({
     },
   });
 
+  const hasAppliedDefaults = useRef(false);
+  useEffect(() => {
+    if (!defaultValues) {
+      hasAppliedDefaults.current = false;
+      return;
+    }
+    if (hasAppliedDefaults.current) return;
+    hasAppliedDefaults.current = true;
+    form.reset({
+      firstName: defaultValues.firstName ?? "",
+      lastName: defaultValues.lastName ?? "",
+      email: defaultValues.email ?? "",
+      phone: defaultValues.phone ?? "",
+      companyId: defaultValues.companyId ?? "",
+      tagIds: defaultValues.tagIds ?? [],
+      source: defaultValues.source ?? "",
+      journeyType: defaultValues.journeyType ?? "",
+    });
+  }, [defaultValues, form]);
+
   return (
     <form
       onSubmit={form.handleSubmit(async (values) => {
@@ -85,7 +112,7 @@ export function ContactForm({
           journeyType: values.journeyType || undefined,
         });
       })}
-      className="space-y-4 pb-safe"
+      className="space-y-4 px-4 sm:px-6 pb-safe"
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -194,36 +221,57 @@ export function ContactForm({
           </Select>
         </div>
       </div>
-      {tags.length > 0 && (
-        <div>
-          <Label>Tags</Label>
-          <div className="flex flex-wrap gap-2 mt-1">
-            {tags.map((tag) => {
-              const current = form.watch("tagIds") ?? [];
-              const checked = current.includes(tag.id);
-              return (
-                <label
-                  key={tag.id}
-                  className="flex items-center gap-1.5 text-sm cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={(e) => {
-                      const next = e.target.checked
-                        ? [...current, tag.id]
-                        : current.filter((id) => id !== tag.id);
-                      form.setValue("tagIds", next);
-                    }}
-                    className="rounded"
-                  />
-                  {tag.name}
-                </label>
-              );
-            })}
-          </div>
+      <div>
+        <Label>Tags</Label>
+        <div className="flex flex-wrap gap-2 mt-1 items-center">
+          {tags.map((tag) => {
+            const current = form.watch("tagIds") ?? [];
+            const checked = current.includes(tag.id);
+            return (
+              <label
+                key={tag.id}
+                className="flex items-center gap-1.5 text-sm cursor-pointer"
+              >
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={(e) => {
+                    const next = e.target.checked
+                      ? [...current, tag.id]
+                      : current.filter((id) => id !== tag.id);
+                    form.setValue("tagIds", next);
+                  }}
+                  className="rounded"
+                />
+                {tag.name}
+              </label>
+            );
+          })}
+          <button
+            type="button"
+            onClick={async () => {
+              const name = window.prompt("New tag name");
+              if (!name?.trim()) return;
+              try {
+                const result = await createTagMutation.mutateAsync(name.trim());
+                const current = form.watch("tagIds") ?? [];
+                if (result?.tag && !current.includes(result.tag.id)) {
+                  form.setValue("tagIds", [...current, result.tag.id]);
+                }
+              } catch {
+                toast({
+                  title: "Failed to create tag",
+                  variant: "destructive",
+                });
+              }
+            }}
+            disabled={createTagMutation.isPending}
+            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed rounded px-2 py-1"
+          >
+            + Add tag
+          </button>
         </div>
-      )}
+      </div>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

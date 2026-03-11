@@ -7,6 +7,7 @@ export {
   useCreateUser,
   useUpdateUser,
   useDeleteUser,
+  useBulkChangePassword,
   userKeys,
 } from "./hooks/use-users";
 export type {

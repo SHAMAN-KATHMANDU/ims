@@ -29,6 +29,7 @@ export interface TaskListParams {
   dueToday?: boolean;
   contactId?: string;
   dealId?: string;
+  orphaned?: boolean;
 }
 
 export interface PaginatedTasksResponse {
@@ -89,4 +90,19 @@ export async function completeTask(id: string): Promise<{ task: Task }> {
 
 export async function deleteTask(id: string): Promise<void> {
   await api.delete(`/tasks/${id}`);
+}
+
+export async function bulkCompleteTasks(
+  ids: string[],
+): Promise<{ count: number }> {
+  const res = await api.post("/tasks/bulk-complete", { ids });
+  return res.data;
+}
+
+export async function bulkDeleteTasks(
+  ids: string[],
+  reason?: string,
+): Promise<{ count: number }> {
+  const res = await api.post("/tasks/bulk-delete", { ids, reason });
+  return res.data;
 }

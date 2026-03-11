@@ -27,6 +27,19 @@ export const UpdateDealStageSchema = z.object({
   stage: z.string().min(1, "Stage is required"),
 });
 
+export const AddDealLineItemSchema = z.object({
+  productId: z.string().uuid(),
+  variationId: z.string().uuid().optional().nullable(),
+  quantity: z.number().int().min(1).default(1),
+  unitPrice: z.number().min(0).default(0),
+});
+
+export const ConvertDealToSaleSchema = z.object({
+  locationId: z.string().uuid(),
+});
+
 export type CreateDealDto = z.infer<typeof CreateDealSchema>;
 export type UpdateDealDto = z.infer<typeof UpdateDealSchema>;
 export type UpdateDealStageDto = z.infer<typeof UpdateDealStageSchema>;
+export type AddDealLineItemDto = z.infer<typeof AddDealLineItemSchema>;
+export type ConvertDealToSaleDto = z.infer<typeof ConvertDealToSaleSchema>;

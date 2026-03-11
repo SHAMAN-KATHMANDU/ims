@@ -111,3 +111,33 @@ export const DownloadSalesQuerySchema = z.object({
 });
 
 export type DownloadSalesQueryDto = z.infer<typeof DownloadSalesQuerySchema>;
+
+export const GetMySalesQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(20),
+  sortBy: z
+    .enum([
+      "createdAt",
+      "total",
+      "subtotal",
+      "discount",
+      "saleCode",
+      "type",
+      "id",
+    ])
+    .optional()
+    .default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+  locationId: z.string().uuid().optional(),
+  type: z.enum(["GENERAL", "MEMBER"]).optional(),
+  isCreditSale: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === "true" ? true : v === "false" ? false : undefined,
+    ),
+});
+
+export type GetMySalesQueryDto = z.infer<typeof GetMySalesQuerySchema>;

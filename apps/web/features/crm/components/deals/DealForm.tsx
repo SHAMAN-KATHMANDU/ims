@@ -21,7 +21,9 @@ import { useUsers } from "@/features/users";
 import type {
   CreateDealData,
   UpdateDealData,
+  Deal,
 } from "../../services/deal.service";
+import { DealLineItemsSection } from "./DealLineItemsSection";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -76,6 +78,9 @@ interface DealFormEditProps {
     assignedToId: string;
     stageNames: string[];
   };
+  /** Full deal for line items section (products, convert to sale) */
+  deal?: Deal;
+  basePath?: string;
   onSubmit: (data: UpdateDealData) => Promise<void>;
   onCancel: () => void;
   isLoading?: boolean;
@@ -354,6 +359,15 @@ export function DealForm(props: DealFormProps) {
           </SelectContent>
         </Select>
       </div>
+
+      {isEdit && "deal" in props && props.deal && "basePath" in props && props.basePath && (
+        <div className="border-t pt-4">
+          <DealLineItemsSection
+            deal={props.deal}
+            basePath={props.basePath}
+          />
+        </div>
+      )}
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={props.isLoading}>

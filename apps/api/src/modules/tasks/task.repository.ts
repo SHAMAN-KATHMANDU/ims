@@ -29,6 +29,7 @@ export class TaskRepository {
     const dueToday = query.dueToday === "true";
     const contactId = query.contactId as string | undefined;
     const dealId = query.dealId as string | undefined;
+    const orphaned = query.orphaned === "true";
 
     const allowedSortFields = [
       "createdAt",
@@ -48,6 +49,7 @@ export class TaskRepository {
     if (assignedToId) where.assignedToId = assignedToId;
     if (contactId) where.contactId = contactId;
     if (dealId) where.dealId = dealId;
+    if (orphaned) where.contactId = null;
 
     if (dueToday) {
       const today = new Date();
@@ -155,6 +157,47 @@ export class TaskRepository {
         deleteReason: data.deleteReason ?? undefined,
       },
     });
+  }
+
+  async completeManyByContactId(contactId: string) {
+    await prisma.task.updateMany({
+      where: { contactId, completed: false, deletedAt: null },
+      data: { completed: true },
+    });
+  }
+
+  async completeMany(tenantId: string, ids: string[]) {
+    if (ids.length === 0) return { count: 0 };
+    return prisma.task.updateMany({
+      where: { id: { in: ids }, tenantId, deletedAt: null },
+      data: { completed: true },
+    });
+  }
+
+  async findIdsForTenant(tenantId: string, ids: string[]) {
+    if (ids.length === 0) return [];
+    const tasks = await prisma.task.findMany({
+      where: { id: { in: ids }, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    return tasks.map((t) => t.id);
+  }
+
+  async softDeleteMany(
+    tenantId: string,
+    ids: string[],
+    data: { deletedBy: string; deleteReason?: string | null },
+  ) {
+    if (ids.length === 0) return { count: 0 };
+    const result = await prisma.task.updateMany({
+      where: { id: { in: ids }, tenantId, deletedAt: null },
+      data: {
+        deletedAt: new Date(),
+        deletedBy: data.deletedBy,
+        deleteReason: data.deleteReason ?? undefined,
+      },
+    });
+    return result;
   }
 
   async createNotification(

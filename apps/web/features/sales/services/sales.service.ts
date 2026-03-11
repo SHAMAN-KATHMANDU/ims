@@ -185,6 +185,56 @@ export async function downloadReceiptPdf(saleId: string): Promise<void> {
   }
 }
 
+export interface MySalesParams {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  startDate?: string;
+  endDate?: string;
+  locationId?: string;
+  type?: SaleType;
+  isCreditSale?: boolean;
+}
+
+export async function getMySales(
+  params: MySalesParams = {},
+): Promise<PaginatedSalesResponse> {
+  const {
+    page = DEFAULT_PAGE,
+    limit = DEFAULT_LIMIT,
+    sortBy,
+    sortOrder,
+    startDate,
+    endDate,
+    locationId,
+    type,
+    isCreditSale,
+  } = params;
+  const queryParams = new URLSearchParams();
+  queryParams.set("page", String(page));
+  queryParams.set("limit", String(limit));
+  if (sortBy) queryParams.set("sortBy", sortBy);
+  if (sortOrder) queryParams.set("sortOrder", sortOrder);
+  if (startDate) queryParams.set("startDate", startDate);
+  if (endDate) queryParams.set("endDate", endDate);
+  if (locationId) queryParams.set("locationId", locationId);
+  if (type) queryParams.set("type", type);
+  if (isCreditSale === true) queryParams.set("isCreditSale", "true");
+  else if (isCreditSale === false) queryParams.set("isCreditSale", "false");
+  try {
+    const response = await api.get<SalesApiResponse>(
+      `/sales/me?${queryParams.toString()}`,
+    );
+    return {
+      data: response.data.data || [],
+      pagination: response.data.pagination,
+    };
+  } catch (error) {
+    handleApiError(error, "fetch my sales");
+  }
+}
+
 export async function getSalesSinceLastLogin(
   params: { page?: number; limit?: number } = {},
 ): Promise<PaginatedSalesResponse> {

@@ -28,7 +28,7 @@ const ACTIVITY_DETAIL_INCLUDE = {
 
 export interface CreateActivityData {
   tenantId: string;
-  type: "CALL" | "MEETING";
+  type: "CALL" | "EMAIL" | "MEETING";
   subject: string | null;
   notes: string | null;
   activityAt: Date;

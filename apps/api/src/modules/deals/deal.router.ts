@@ -167,6 +167,16 @@ dealRouter.put("/:id", asyncHandler(dealController.update));
  */
 dealRouter.patch("/:id/stage", asyncHandler(dealController.updateStage));
 
+dealRouter.post("/:id/line-items", asyncHandler(dealController.addLineItem));
+dealRouter.delete(
+  "/:id/line-items/:lineItemId",
+  asyncHandler(dealController.removeLineItem),
+);
+dealRouter.post(
+  "/:id/convert-to-sale",
+  asyncHandler(dealController.convertToSale),
+);
+
 /**
  * @swagger
  * /deals/{id}:

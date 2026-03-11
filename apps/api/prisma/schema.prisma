@@ -314,6 +314,7 @@ model Product {
   discounts            ProductDiscount[]
   promoCodes           PromoCodeProduct[]
   productAttributeTypes ProductAttributeType[]
+  dealLineItems        DealLineItem[]
 
   @@unique([tenantId, imsCode])
   @@map("products")
@@ -391,6 +392,7 @@ model ProductVariation {
   locationInventory LocationInventory[]
   transferItems     TransferItem[]
   saleItems         SaleItem[]
+  dealLineItems     DealLineItem[]
 
   @@map("product_variations")
 }
@@ -1083,9 +1085,25 @@ model Deal {
   lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
   tasks      Task[]
   activities Activity[]
+  lineItems  DealLineItem[]
 
   @@index([tenantId])
   @@map("deals")
+}
+
+model DealLineItem {
+  id          String   @id @default(uuid()) @map("deal_line_item_id")
+  dealId      String   @map("deal_id")
+  productId   String   @map("product_id")
+  variationId String?  @map("variation_id")
+  quantity    Int      @default(1)
+  unitPrice   Decimal  @default(0) @map("unit_price") @db.Decimal(12, 2)
+  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  variation   ProductVariation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
+
+  @@index([dealId])
+  @@map("deal_line_items")
 }
 
 model Task {
@@ -1116,6 +1134,7 @@ model Task {
 
 enum ActivityType {
   CALL
+  EMAIL
   MEETING
 }
 

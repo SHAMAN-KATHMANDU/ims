@@ -1,6 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  arrayMove,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -27,7 +42,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Pencil, Plus, Trash2, GitBranch, Tag, Route } from "lucide-react";
+import {
+  Pencil,
+  Plus,
+  Trash2,
+  GitBranch,
+  Tag,
+  Route,
+  Tags,
+  GripVertical,
+} from "lucide-react";
 import {
   usePipelines,
   useCreatePipeline,
@@ -44,6 +68,12 @@ import {
   useUpdateCrmJourneyType,
   useDeleteCrmJourneyType,
 } from "../../hooks/use-crm-settings";
+import {
+  useContactTags,
+  useCreateContactTag,
+  useUpdateContactTag,
+  useDeleteContactTag,
+} from "../../hooks/use-contacts";
 import type { PipelineStage } from "../../services/pipeline.service";
 import type {
   CrmSource,
@@ -74,6 +104,10 @@ export default function CrmSettingsPage() {
             <Route className="h-4 w-4" />
             <span className="hidden sm:inline">Journey </span>Types
           </TabsTrigger>
+          <TabsTrigger value="tags" className="gap-2 shrink-0">
+            <Tags className="h-4 w-4" />
+            Tags
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pipelines">
@@ -85,7 +119,145 @@ export default function CrmSettingsPage() {
         <TabsContent value="journey-types">
           <JourneyTypeSettings />
         </TabsContent>
+        <TabsContent value="tags">
+          <TagSettings />
+        </TabsContent>
       </Tabs>
+    </div>
+  );
+}
+
+// ── Stage Builder (drag-and-drop) ─────────────────────────────────────────────
+
+function StageBuilder({
+  stages,
+  onChange,
+}: {
+  stages: PipelineStage[];
+  onChange: (stages: PipelineStage[]) => void;
+}) {
+  const sensors = useSensors(useSensor(PointerSensor));
+  const ids = useMemo(() => stages.map((s) => s.id), [stages]);
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = stages.findIndex((s) => s.id === active.id);
+    const newIndex = stages.findIndex((s) => s.id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const reordered = arrayMove(stages, oldIndex, newIndex).map((s, i) => ({
+      ...s,
+      order: i,
+    }));
+    onChange(reordered);
+  };
+
+  const updateStage = (id: string, name: string) => {
+    onChange(
+      stages.map((s) => (s.id === id ? { ...s, name } : s)),
+    );
+  };
+
+  const removeStage = (id: string) => {
+    const filtered = stages.filter((s) => s.id !== id).map((s, i) => ({
+      ...s,
+      order: i,
+    }));
+    onChange(filtered);
+  };
+
+  const addStage = () => {
+    onChange([
+      ...stages,
+      {
+        id: crypto.randomUUID(),
+        name: "",
+        order: stages.length,
+        probability: 0,
+      },
+    ]);
+  };
+
+  return (
+    <div className="space-y-2">
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragEnd={handleDragEnd}
+      >
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          <div className="space-y-2">
+            {stages.map((stage) => (
+              <SortableStageItem
+                key={stage.id}
+                stage={stage}
+                onNameChange={(name) => updateStage(stage.id, name)}
+                onRemove={() => removeStage(stage.id)}
+              />
+            ))}
+          </div>
+        </SortableContext>
+      </DndContext>
+      <Button type="button" variant="outline" size="sm" onClick={addStage}>
+        <Plus className="h-4 w-4 mr-1" />
+        Add Stage
+      </Button>
+    </div>
+  );
+}
+
+function SortableStageItem({
+  stage,
+  onNameChange,
+  onRemove,
+}: {
+  stage: PipelineStage;
+  onNameChange: (name: string) => void;
+  onRemove: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: stage.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 p-2 rounded-md border bg-card ${isDragging ? "opacity-50 shadow-md" : ""}`}
+    >
+      <button
+        type="button"
+        className="cursor-grab touch-none p-1 text-muted-foreground hover:text-foreground"
+        {...attributes}
+        {...listeners}
+        aria-label="Drag to reorder"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+      <Input
+        placeholder="Stage name"
+        value={stage.name}
+        onChange={(e) => onNameChange(e.target.value)}
+        className="flex-1"
+      />
+      <Button
+        type="button"
+        size="icon"
+        variant="ghost"
+        className="h-8 w-8 text-destructive hover:text-destructive shrink-0"
+        onClick={onRemove}
+        aria-label="Remove stage"
+      >
+        <Trash2 className="h-3.5 w-3.5" />
+      </Button>
     </div>
   );
 }
@@ -106,29 +278,24 @@ function PipelineSettings() {
     isDefault: boolean;
   } | null>(null);
   const [newName, setNewName] = useState("");
-  const [stagesText, setStagesText] = useState("");
+  const [createStages, setCreateStages] = useState<PipelineStage[]>([]);
+  const [editStages, setEditStages] = useState<PipelineStage[]>([]);
 
   const pipelines = data?.pipelines ?? [];
 
   const handleCreate = () => {
     if (!newName.trim()) return;
-    const stages: PipelineStage[] = stagesText
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .map((name, i) => ({
-        id: crypto.randomUUID(),
-        name,
-        order: i,
-        probability: 0,
-      }));
+    const stages = createStages
+      .map((s, i) => ({ ...s, name: s.name.trim(), order: i }))
+      .filter((s) => s.name);
+    if (stages.length === 0) return;
     createMutation.mutate(
       { name: newName.trim(), stages },
       {
         onSuccess: () => {
           setShowCreate(false);
           setNewName("");
-          setStagesText("");
+          setCreateStages([]);
         },
       },
     );
@@ -136,16 +303,10 @@ function PipelineSettings() {
 
   const handleUpdate = () => {
     if (!editPipeline) return;
-    const stages: PipelineStage[] = stagesText
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean)
-      .map((name, i) => ({
-        id: crypto.randomUUID(),
-        name,
-        order: i,
-        probability: 0,
-      }));
+    const stages = editStages
+      .map((s, i) => ({ ...s, name: s.name.trim(), order: i }))
+      .filter((s) => s.name);
+    if (stages.length === 0) return;
     updateMutation.mutate(
       {
         id: editPipeline.id,
@@ -155,7 +316,7 @@ function PipelineSettings() {
         onSuccess: () => {
           setEditPipeline(null);
           setNewName("");
-          setStagesText("");
+          setEditStages([]);
         },
       },
     );
@@ -169,7 +330,14 @@ function PipelineSettings() {
       isDefault: p.isDefault,
     });
     setNewName(p.name);
-    setStagesText(p.stages.map((s) => s.name).join(", "));
+    setEditStages(
+      p.stages.map((s, i) => ({
+        id: s.id,
+        name: s.name,
+        order: i,
+        probability: s.probability ?? 0,
+      })),
+    );
   };
 
   return (
@@ -187,7 +355,9 @@ function PipelineSettings() {
           onClick={() => {
             setShowCreate(true);
             setNewName("");
-            setStagesText("");
+            setCreateStages([
+              { id: crypto.randomUUID(), name: "", order: 0, probability: 0 },
+            ]);
           }}
         >
           <Plus className="h-4 w-4 mr-1" /> New Pipeline
@@ -294,14 +464,10 @@ function PipelineSettings() {
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Stages</label>
-              <Input
-                placeholder="e.g. Qualification, Proposal, Negotiation, Closing"
-                value={stagesText}
-                onChange={(e) => setStagesText(e.target.value)}
+              <StageBuilder
+                stages={createStages}
+                onChange={setCreateStages}
               />
-              <p className="text-xs text-muted-foreground">
-                Separate stage names with commas
-              </p>
             </div>
           </div>
           <DialogFooter>
@@ -310,7 +476,11 @@ function PipelineSettings() {
             </Button>
             <Button
               onClick={handleCreate}
-              disabled={!newName.trim() || createMutation.isPending}
+              disabled={
+                !newName.trim() ||
+                createMutation.isPending ||
+                createStages.filter((s) => s.name.trim()).length === 0
+              }
             >
               {createMutation.isPending ? "Creating..." : "Create Pipeline"}
             </Button>
@@ -340,21 +510,23 @@ function PipelineSettings() {
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Stages</label>
-              <Input
-                placeholder="Comma-separated stage names"
-                value={stagesText}
-                onChange={(e) => setStagesText(e.target.value)}
+              <StageBuilder
+                stages={editStages}
+                onChange={setEditStages}
               />
-              <p className="text-xs text-muted-foreground">
-                Separate stage names with commas
-              </p>
             </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditPipeline(null)}>
               Cancel
             </Button>
-            <Button onClick={handleUpdate} disabled={updateMutation.isPending}>
+            <Button
+              onClick={handleUpdate}
+              disabled={
+                updateMutation.isPending ||
+                editStages.filter((s) => s.name.trim()).length === 0
+              }
+            >
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -572,6 +744,39 @@ function JourneyTypeSettings() {
       emptyText="No journey types yet. Add one above."
       placeholder="e.g. Prospecting, Qualified, Proposal, Negotiation, Closed"
       items={journeyTypes}
+      isLoading={isLoading}
+      isCreating={createMutation.isPending}
+      isUpdating={updateMutation.isPending}
+      isDeleting={deleteMutation.isPending}
+      onAdd={(name) => createMutation.mutate(name)}
+      onUpdate={(id, name) => updateMutation.mutate({ id, name })}
+      onDelete={(id) => deleteMutation.mutate(id)}
+    />
+  );
+}
+
+// ── Tag Settings ──────────────────────────────────────────────────────────────
+
+function TagSettings() {
+  const { data, isLoading } = useContactTags();
+  const createMutation = useCreateContactTag();
+  const updateMutation = useUpdateContactTag();
+  const deleteMutation = useDeleteContactTag();
+
+  const tags = (data?.tags ?? []).map((t) => ({
+    id: t.id,
+    name: t.name,
+    createdAt: t.createdAt ?? new Date().toISOString(),
+  }));
+
+  return (
+    <ListSettings
+      title="Contact Tags"
+      description="Create tags to categorize contacts. Tags appear when creating or editing a contact."
+      emptyIcon={<Tags className="h-8 w-8" />}
+      emptyText="No tags yet. Add one above."
+      placeholder="e.g. VIP, Lead, Customer, Newsletter"
+      items={tags}
       isLoading={isLoading}
       isCreating={createMutation.isPending}
       isUpdating={updateMutation.isPending}

@@ -8,11 +8,14 @@ import {
   updateTask,
   completeTask,
   deleteTask,
+  bulkCompleteTasks,
+  bulkDeleteTasks,
   type TaskListParams,
   type CreateTaskData,
   type UpdateTaskData,
 } from "../services/task.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+import { contactKeys } from "./use-contacts";
 
 export const taskKeys = {
   all: ["tasks"] as const,
@@ -35,6 +38,7 @@ export function useTasksPaginated(params: TaskListParams = {}) {
       dueToday: params.dueToday,
       contactId: params.contactId,
       dealId: params.dealId,
+      orphaned: params.orphaned,
     }),
     queryFn: () => getTasks(params),
     placeholderData: (prev) => prev,
@@ -53,7 +57,14 @@ export function useCreateTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateTaskData) => createTask(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.lists() }),
+    onSuccess: (_, variables) => {
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      if (variables.contactId) {
+        qc.invalidateQueries({
+          queryKey: contactKeys.detail(variables.contactId),
+        });
+      }
+    },
   });
 }
 
@@ -84,6 +95,28 @@ export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteTask(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.lists() }),
+  });
+}
+
+export function useBulkCompleteTasks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (ids: string[]) => bulkCompleteTasks(ids),
+    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.lists() }),
+  });
+}
+
+export function useBulkDeleteTasks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      ids,
+      reason,
+    }: {
+      ids: string[];
+      reason?: string;
+    }) => bulkDeleteTasks(ids, reason),
     onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.lists() }),
   });
 }

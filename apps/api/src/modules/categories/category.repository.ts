@@ -132,6 +132,17 @@ export class CategoryRepository {
     });
   }
 
+  async restore(id: string) {
+    return prisma.category.update({
+      where: { id },
+      data: {
+        deletedAt: null,
+        deletedBy: null,
+        deleteReason: null,
+      },
+    });
+  }
+
   async findSubcategories(categoryId: string) {
     return prisma.subCategory.findMany({
       where: { categoryId, deletedAt: null },

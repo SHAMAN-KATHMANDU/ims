@@ -80,6 +80,12 @@ interface LocationsApiResponse {
 interface LocationResponse {
   message: string;
   location: Location;
+  restored?: boolean;
+}
+
+export interface CreateLocationResult {
+  location: Location;
+  restored?: boolean;
 }
 
 // ============================================
@@ -175,14 +181,17 @@ export async function getLocationById(id: string): Promise<Location> {
  */
 export async function createLocation(
   data: CreateLocationData,
-): Promise<Location> {
+): Promise<CreateLocationResult> {
   if (!data.name?.trim()) {
     throw new Error("Location name is required");
   }
 
   try {
     const response = await api.post<LocationResponse>("/locations", data);
-    return response.data.location;
+    return {
+      location: response.data.location,
+      restored: response.data.restored,
+    };
   } catch (error) {
     handleApiError(error, "create location");
   }

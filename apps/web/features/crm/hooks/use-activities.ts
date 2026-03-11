@@ -36,7 +36,7 @@ export function useCreateActivity() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: {
-      type: "CALL" | "MEETING";
+      type: "CALL" | "EMAIL" | "MEETING";
       subject?: string;
       notes?: string;
       activityAt?: string;

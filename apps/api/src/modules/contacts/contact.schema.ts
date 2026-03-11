@@ -18,6 +18,10 @@ export const CreateTagSchema = z.object({
   name: z.string().min(1, "Tag name is required").max(100),
 });
 
+export const UpdateTagSchema = z.object({
+  name: z.string().min(1, "Tag name is required").max(100),
+});
+
 export const AddNoteSchema = z.object({
   content: z.string().min(1, "Note content is required"),
 });
@@ -31,5 +35,6 @@ export const AddCommunicationSchema = z.object({
 export type CreateContactDto = z.infer<typeof CreateContactSchema>;
 export type UpdateContactDto = z.infer<typeof UpdateContactSchema>;
 export type CreateTagDto = z.infer<typeof CreateTagSchema>;
+export type UpdateTagDto = z.infer<typeof UpdateTagSchema>;
 export type AddNoteDto = z.infer<typeof AddNoteSchema>;
 export type AddCommunicationDto = z.infer<typeof AddCommunicationSchema>;

@@ -72,6 +72,16 @@ const CONTACT_DETAIL_INCLUDE = {
       assignedTo: { select: { id: true, username: true } },
     },
   },
+  sales: {
+    orderBy: { createdAt: "desc" as const },
+    select: {
+      id: true,
+      saleCode: true,
+      total: true,
+      type: true,
+      createdAt: true,
+    },
+  },
 } as const;
 
 export interface FindAllContactsParams {
@@ -235,8 +245,28 @@ export class ContactRepository {
     return prisma.contactTag.findMany({
       where: { tenantId },
       orderBy: { name: "asc" },
-      select: { id: true, name: true },
+      select: { id: true, name: true, createdAt: true },
     });
+  }
+
+  async updateTag(id: string, tenantId: string, name: string) {
+    const existing = await prisma.contactTag.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) return null;
+    return prisma.contactTag.update({
+      where: { id },
+      data: { name: name.trim() },
+    });
+  }
+
+  async deleteTag(id: string, tenantId: string) {
+    const existing = await prisma.contactTag.findFirst({
+      where: { id, tenantId },
+    });
+    if (!existing) return null;
+    await prisma.contactTag.delete({ where: { id } });
+    return existing;
   }
 
   async createTag(tenantId: string, name: string) {
@@ -335,6 +365,33 @@ export class ContactRepository {
   async createCompany(tenantId: string, name: string) {
     return prisma.company.create({
       data: { tenantId, name },
+      select: { id: true },
+    });
+  }
+
+  async createFromSale(
+    tenantId: string,
+    data: {
+      phone: string;
+      name?: string | null;
+      memberId: string;
+      createdById: string;
+    },
+  ) {
+    const nameParts = (data.name || "").trim().split(/\s+/);
+    const firstName = nameParts[0] || "Customer";
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
+    return prisma.contact.create({
+      data: {
+        tenantId,
+        firstName,
+        lastName,
+        phone: data.phone,
+        memberId: data.memberId,
+        source: "Sales",
+        ownedById: data.createdById,
+        createdById: data.createdById,
+      },
       select: { id: true },
     });
   }

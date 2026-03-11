@@ -41,6 +41,37 @@ export class TaskService {
     return taskRepository.complete(id);
   }
 
+  async bulkComplete(tenantId: string, ids: string[]) {
+    if (ids.length === 0) return { count: 0 };
+    return taskRepository.completeMany(tenantId, ids);
+  }
+
+  async bulkDelete(
+    tenantId: string,
+    ids: string[],
+    ctx: { userId: string; reason?: string; ip?: string; userAgent?: string },
+  ) {
+    if (ids.length === 0) return { count: 0 };
+    const validIds = await taskRepository.findIdsForTenant(tenantId, ids);
+    if (validIds.length === 0) return { count: 0 };
+    await taskRepository.softDeleteMany(tenantId, validIds, {
+      deletedBy: ctx.userId,
+      deleteReason: ctx.reason ?? null,
+    });
+    for (const id of validIds) {
+      await createDeleteAuditLog({
+        userId: ctx.userId,
+        tenantId,
+        resource: "Task",
+        resourceId: id,
+        deleteReason: ctx.reason ?? undefined,
+        ip: ctx.ip,
+        userAgent: ctx.userAgent,
+      });
+    }
+    return { count: validIds.length };
+  }
+
   async delete(
     tenantId: string,
     id: string,

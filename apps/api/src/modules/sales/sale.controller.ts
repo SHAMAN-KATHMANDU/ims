@@ -29,6 +29,7 @@ import {
   PreviewSaleSchema,
   AddPaymentSchema,
   GetAllSalesQuerySchema,
+  GetMySalesQuerySchema,
   GetSalesSummaryQuerySchema,
   GetSalesByLocationQuerySchema,
   GetDailySalesQuerySchema,
@@ -194,6 +195,43 @@ class SaleController {
         });
       }
       return sendControllerError(req, res, error, "Get all sales error");
+    }
+  };
+
+  getMySales = async (req: Request, res: Response) => {
+    try {
+      const query = GetMySalesQuerySchema.parse(req.query);
+      const userId = req.user!.id;
+
+      const result = await saleService.getMySales(userId, {
+        page: query.page,
+        limit: query.limit,
+        sortBy: query.sortBy,
+        sortOrder: query.sortOrder,
+        startDate: query.startDate,
+        endDate: query.endDate,
+        locationId: query.locationId,
+        type: query.type,
+        isCreditSale: query.isCreditSale,
+      });
+      const paginated = createPaginationResult(
+        result.sales,
+        result.totalItems,
+        result.page,
+        result.limit,
+      );
+
+      return res.status(200).json({
+        message: "My sales",
+        ...paginated,
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          message: error.errors[0]?.message ?? "Validation error",
+        });
+      }
+      return handleServiceError(req, res, error, "Get my sales error");
     }
   };
 

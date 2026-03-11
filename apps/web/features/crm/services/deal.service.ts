@@ -57,6 +57,15 @@ export interface Deal {
     activityAt: string;
     creator?: { id: string; username: string };
   }>;
+  lineItems?: Array<{
+    id: string;
+    productId: string;
+    variationId?: string | null;
+    quantity: number;
+    unitPrice: number;
+    product: { id: string; name: string; imsCode: string };
+    variation?: { id: string } | null;
+  }>;
 }
 
 export interface DealListParams {
@@ -152,4 +161,36 @@ export async function updateDealStage(
 
 export async function deleteDeal(id: string): Promise<void> {
   await api.delete(`/deals/${id}`);
+}
+
+export interface AddDealLineItemData {
+  productId: string;
+  variationId?: string | null;
+  quantity?: number;
+  unitPrice?: number;
+}
+
+export async function addDealLineItem(
+  dealId: string,
+  data: AddDealLineItemData,
+): Promise<{ item: Deal["lineItems"] extends (infer I)[] | undefined ? I : never }> {
+  const res = await api.post(`/deals/${dealId}/line-items`, data);
+  return res.data;
+}
+
+export async function removeDealLineItem(
+  dealId: string,
+  lineItemId: string,
+): Promise<void> {
+  await api.delete(`/deals/${dealId}/line-items/${lineItemId}`);
+}
+
+export async function convertDealToSale(
+  dealId: string,
+  locationId: string,
+): Promise<{ sale: { id: string; saleCode: string; total: number } }> {
+  const res = await api.post(`/deals/${dealId}/convert-to-sale`, {
+    locationId,
+  });
+  return res.data;
 }

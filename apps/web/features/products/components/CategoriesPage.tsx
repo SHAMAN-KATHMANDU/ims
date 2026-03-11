@@ -114,7 +114,7 @@ export function CategoriesPage() {
 
   // Category form
   const categoryForm = useForm<CategoryFormValues>({
-    initialValues: { name: "", description: "" },
+    initialValues: { name: "", description: "", subcategories: [] },
     validate: validateCategory,
     onSubmit: async (values) => {
       try {
@@ -130,12 +130,30 @@ export function CategoriesPage() {
         if (editingCategory) {
           await updateCategoryMutation.mutateAsync({
             id: editingCategory.id,
-            data: values,
+            data: { name: values.name, description: values.description },
           });
           toast({ title: "Category updated successfully" });
         } else {
-          await createCategoryMutation.mutateAsync(values);
-          toast({ title: "Category added successfully" });
+          const result = await createCategoryMutation.mutateAsync({
+            name: values.name,
+            description: values.description,
+          });
+          const { category, restored } = result;
+          if (category.id && values.subcategories?.length) {
+            for (const name of values.subcategories) {
+              if (name?.trim()) {
+                await createSubcategoryMutation.mutateAsync({
+                  categoryId: category.id,
+                  name: name.trim(),
+                });
+              }
+            }
+          }
+          toast({
+            title: restored
+              ? "Category restored successfully"
+              : "Category added successfully",
+          });
         }
         setCategoryDialog(false);
         setEditingCategory(null);

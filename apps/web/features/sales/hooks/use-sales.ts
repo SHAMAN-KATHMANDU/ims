@@ -8,6 +8,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getSales,
   getSaleById,
+  getMySales,
   getSalesSinceLastLogin,
   createSale,
   addPaymentToSale,
@@ -70,6 +71,18 @@ export const salesKeys = {
     [...salesKeys.analytics(), "by-location", params] as const,
   daily: (params: { locationId?: string; days?: number }) =>
     [...salesKeys.analytics(), "daily", params] as const,
+  mySales: (params: {
+    page?: number;
+    limit?: number;
+    sortBy?: string;
+    sortOrder?: string;
+    startDate?: string;
+    endDate?: string;
+    locationId?: string;
+    type?: string;
+    isCreditSale?: boolean;
+  }) => [...salesKeys.all, "me", params] as const,
+  mySalesAll: () => [...salesKeys.all, "me"] as const,
   sinceLastLogin: (params: { page?: number; limit?: number }) =>
     [...salesKeys.all, "since-last-login", params] as const,
 };
@@ -107,6 +120,37 @@ export function useSale(id: string) {
   });
 }
 
+export interface MySalesParams {
+  page?: number;
+  limit?: number;
+  sortBy?: string;
+  sortOrder?: "asc" | "desc";
+  startDate?: string;
+  endDate?: string;
+  locationId?: string;
+  type?: "GENERAL" | "MEMBER";
+  isCreditSale?: boolean;
+}
+
+export function useMySales(params: MySalesParams = {}) {
+  const normalizedParams = {
+    page: params.page ?? DEFAULT_PAGE,
+    limit: params.limit ?? DEFAULT_LIMIT,
+    sortBy: params.sortBy ?? "createdAt",
+    sortOrder: params.sortOrder ?? "desc",
+    startDate: params.startDate,
+    endDate: params.endDate,
+    locationId: params.locationId,
+    type: params.type,
+    isCreditSale: params.isCreditSale,
+  };
+  return useQuery({
+    queryKey: salesKeys.mySales(normalizedParams),
+    queryFn: () => getMySales(normalizedParams),
+    placeholderData: (previousData) => previousData,
+  });
+}
+
 export function useSalesSinceLastLogin(
   params: { page?: number; limit?: number } = {},
 ) {
@@ -127,6 +171,7 @@ export function useCreateSale() {
     mutationFn: (data: CreateSaleData) => createSale(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesKeys.mySalesAll() });
       queryClient.refetchQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.analytics() });
       queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
@@ -155,6 +200,7 @@ export function useAddPaymentToSale() {
         queryKey: salesKeys.detail(variables.saleId),
       });
       queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesKeys.mySalesAll() });
     },
   });
 }
