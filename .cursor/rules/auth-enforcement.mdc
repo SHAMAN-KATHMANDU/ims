@@ -1,0 +1,45 @@
+---
+description: Every endpoint must declare auth requirements; default to authenticated
+globs:
+  - "apps/api/**/*.ts"
+alwaysApply: false
+---
+
+# Auth Enforcement Rule
+
+All endpoints must explicitly declare who can access them.
+
+## Default
+
+**Assume authenticated.** New endpoints require auth unless explicitly public.
+
+## Public Endpoints (No Auth)
+
+- `POST /auth/login`
+- `GET /health`
+- `GET /metrics` (for Prometheus)
+- Any route mounted before `verifyToken` middleware
+
+## Protected Endpoints
+
+- Mount after `verifyToken` and `resolveTenant`
+- Use `authorizeRoles("admin", "superAdmin")` for role-based access
+- Use `enforcePlanLimits("users")` for plan-gated features
+
+## Role Hierarchy
+
+- `platformAdmin` — Cross-tenant platform operations
+- `superAdmin` — Tenant-level admin
+- `admin` — Tenant admin
+- `user` — Regular tenant user
+
+## Checklist for New Endpoints
+
+1. Is it public? If yes, mount before auth middleware
+2. If protected: which roles? Add `authorizeRoles(...)`
+3. Does it need tenant context? Ensure `resolveTenant` runs
+4. Is it plan-gated? Add `enforcePlanLimits`
+
+## Golden Rule
+
+**Never expose an endpoint without explicit auth/authz decision.**

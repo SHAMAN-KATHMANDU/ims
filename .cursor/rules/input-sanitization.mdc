@@ -1,0 +1,39 @@
+---
+description: All input validated via Zod; no raw req.body/req.query/req.params
+globs:
+  - "apps/api/**/*.ts"
+alwaysApply: false
+---
+
+# Input Sanitization Rule
+
+Never trust client input. Validate everything.
+
+## Required
+
+1. **Zod validation** — All `req.body`, `req.query`, `req.params` must be parsed through Zod schemas
+2. **Parse at controller boundary** — `Schema.parse()` or `Schema.safeParse()` before passing to service
+3. **No raw access** — Never use `req.body.name` without prior validation
+
+## Pattern
+
+```typescript
+// In controller
+const body = CreateSchema.parse(req.body);
+const result = await service.create(tenantId, body);
+```
+
+## Schemas Location
+
+- Per-module: `*.schema.ts`
+- Export `Schema` and `z.infer<typeof Schema>` type
+
+## Validation Scope
+
+- **Body** — POST, PUT, PATCH
+- **Query** — GET params (page, limit, search, filters)
+- **Params** — Dynamic route segments (`:id`)
+
+## Golden Rule
+
+**If it comes from the client, validate it with Zod.**

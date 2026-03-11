@@ -18,20 +18,27 @@ declare global {
 }
 
 /**
- * Middleware to add a unique request ID to each request.
- * The request ID is available in req.requestId and can be used for logging.
+ * Middleware to add a unique request/correlation ID to each request.
+ * Reads X-Correlation-ID from incoming request (e.g. from frontend), or generates one.
+ * The ID is available in req.requestId and can be used for logging and tracing.
  */
 export const requestIdMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => {
-  // Generate a unique request ID
-  const requestId = randomUUID();
+  const incoming = (
+    typeof req.headers["x-correlation-id"] === "string"
+      ? req.headers["x-correlation-id"]
+      : Array.isArray(req.headers["x-correlation-id"])
+        ? req.headers["x-correlation-id"][0]
+        : undefined
+  )?.trim();
+  const requestId = incoming || randomUUID();
   req.requestId = requestId;
 
-  // Add request ID to response header for client correlation
   res.setHeader("X-Request-ID", requestId);
+  res.setHeader("X-Correlation-ID", requestId);
 
   next();
 };

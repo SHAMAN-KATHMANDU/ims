@@ -1,0 +1,34 @@
+---
+description: POST/PUT must accept idempotency keys; mutations must be retry-safe
+globs:
+  - "apps/api/**/*.ts"
+alwaysApply: false
+---
+
+# Idempotency Rule
+
+Network retries and user double-clicks can cause duplicate mutations. Design for idempotency.
+
+## When Idempotency Matters
+
+- **POST** — Creating resources (sale, order, payment)
+- **PUT/PATCH** — Updating resources
+- **DELETE** — Deleting (idempotent if "delete" twice = same outcome)
+
+## Idempotency Key Pattern
+
+1. Client sends `Idempotency-Key: <uuid>` header on POST/PUT
+2. Server stores key + response in cache (e.g. Redis) with TTL
+3. On duplicate request with same key, return cached response (200/201) without re-executing
+4. TTL: 24 hours typical for payments; shorter for simpler mutations
+
+## Retry-Safe Design
+
+1. **Use transactions** — Multi-step mutations in a single transaction
+2. **Unique constraints** — Rely on DB unique constraints; handle P2002 as conflict
+3. **Check-before-insert** — "Create if not exists" patterns
+4. **Upsert** — Prefer `upsert` when semantics allow
+
+## Golden Rule
+
+**Duplicate requests should not create duplicate side effects.**

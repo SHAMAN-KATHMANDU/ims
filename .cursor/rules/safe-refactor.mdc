@@ -1,0 +1,36 @@
+---
+description: Step-by-step refactoring checklist with test verification
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: false
+---
+
+# Safe Refactor Rule
+
+Before refactoring any code, follow this checklist to avoid introducing regressions.
+
+## Pre-Refactor Checklist
+
+1. **Run existing tests** — `pnpm test` or `pnpm --filter <app> test -- --run`
+2. **Verify tests pass** — All tests must be green before starting
+3. **Identify all callers** — Use ripgrep to find every usage of the code being changed
+4. **Understand behavior** — Document current behavior and edge cases
+
+## During Refactor
+
+1. **One logical change per commit** — Do not mix refactors with feature changes
+2. **Preserve behavior** — No intentional behavior changes; refactor only
+3. **Run tests after each step** — Catch regressions early
+4. **Update callers** — Fix all identified call sites in the same change
+
+## Post-Refactor Checklist
+
+1. **Run full test suite** — Unit, integration, E2E
+2. **Run type checker** — `pnpm check-types` or `tsc --noEmit`
+3. **Run linter** — `pnpm lint`
+4. **Verify no new `any` or `@ts-ignore`** — Maintain type safety
+
+## Golden Rule
+
+**Never refactor without tests passing before and after.**

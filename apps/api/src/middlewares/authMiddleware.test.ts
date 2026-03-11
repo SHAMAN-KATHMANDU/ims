@@ -15,7 +15,7 @@ vi.mock("@/config/env", () => ({
 }));
 
 vi.mock("@/config/logger", () => ({
-  logger: { error: vi.fn() },
+  logger: { error: vi.fn(), warn: vi.fn() },
 }));
 
 import jwt from "jsonwebtoken";
@@ -77,11 +77,11 @@ describe("authMiddleware", () => {
     expect(mockNext).not.toHaveBeenCalled();
   });
 
-  it("returns 401 when token is missing id or role", () => {
+  it("returns 401 when token payload fails Zod validation (e.g. missing id or role)", () => {
     vi.mocked(jwt.verify).mockReturnValue({
       tenantId: "t1",
       tenantSlug: "acme",
-    } as any);
+    } as unknown as object);
     const req = {
       headers: { authorization: "Bearer valid-token" },
     } as Request;
@@ -91,7 +91,7 @@ describe("authMiddleware", () => {
 
     expect(res.status).toHaveBeenCalledWith(401);
     expect(res.json).toHaveBeenCalledWith({
-      message: "Token is missing required fields (id or role)",
+      message: "Token is not valid",
     });
     expect(mockNext).not.toHaveBeenCalled();
   });
@@ -103,7 +103,7 @@ describe("authMiddleware", () => {
       tenantId: "t1",
       tenantSlug: "acme",
     };
-    vi.mocked(jwt.verify).mockReturnValue(decoded as any);
+    vi.mocked(jwt.verify).mockReturnValue(decoded);
     const req = {
       headers: { authorization: "Bearer valid-token" },
     } as Request;

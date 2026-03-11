@@ -1,0 +1,56 @@
+# Observability stack — Prometheus, Grafana, Jaeger (100% free, self-hosted)
+# Run with: docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+# Then: Prometheus http://localhost:9090 | Grafana http://localhost:3001 | Jaeger http://localhost:16686
+
+services:
+  prometheus:
+    image: prom/prometheus:v2.52.0
+    container_name: ims-prometheus
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+      - "--storage.tsdb.path=/prometheus"
+      - "--web.enable-lifecycle"
+    networks:
+      - ims-network
+
+  grafana:
+    image: grafana/grafana-oss:11.3.0
+    container_name: ims-grafana
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_SERVER_ROOT_URL: "http://localhost:3001"
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+    depends_on:
+      - prometheus
+    networks:
+      - ims-network
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.70
+    container_name: ims-jaeger
+    restart: unless-stopped
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317" # OTLP gRPC
+      - "4318:4318" # OTLP HTTP
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    networks:
+      - ims-network
+
+volumes:
+  prometheus_data:
+  grafana_data:

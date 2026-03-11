@@ -1,0 +1,42 @@
+---
+description: Use pino; JSON format; required fields; sensitive data redaction
+globs:
+  - "apps/api/**/*.ts"
+alwaysApply: false
+---
+
+# Structured Logging Rule
+
+Logs must be machine-parseable and safe. Use pino with JSON output.
+
+## Required Fields
+
+Every log entry should include (where available):
+
+- `timestamp` — ISO 8601
+- `level` — info, warn, error
+- `message` — Human-readable summary
+- `requestId` — Correlation ID for the request
+- `userId` — When in request context
+- `tenantId` — When in tenant context
+
+## Sensitive Data Redaction
+
+Never log:
+
+- Passwords
+- Tokens (JWT, API keys)
+- `Authorization` header
+- Credit card numbers
+- PII (without consent/anonymization)
+
+Use pino's `redact` option for automatic redaction.
+
+## Format
+
+- **Development** — Pretty-printed for readability
+- **Staging/Production** — JSON lines for log aggregation (ELK, Loki)
+
+## Golden Rule
+
+**Logs are for debugging. Redact secrets. Use structured JSON in production.**

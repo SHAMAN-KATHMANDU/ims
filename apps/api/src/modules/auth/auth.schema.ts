@@ -1,5 +1,23 @@
 import { z } from "zod";
 
+/**
+ * JWT payload schema — validates decoded token claims at runtime.
+ * Used by auth middleware to prevent arbitrary payload injection.
+ */
+export const JwtPayloadSchema = z.object({
+  id: z.string().min(1, "Token missing user id"),
+  role: z.enum(["platformAdmin", "superAdmin", "admin", "user"], {
+    errorMap: () => ({ message: "Token has invalid role" }),
+  }),
+  tenantId: z.string().min(1, "Token missing tenant id"),
+  tenantSlug: z.string().min(1, "Token missing tenant slug"),
+  username: z.string().optional(),
+  iat: z.number().optional(),
+  exp: z.number().optional(),
+});
+
+export type JwtPayload = z.infer<typeof JwtPayloadSchema>;
+
 export const LoginSchema = z.object({
   username: z
     .string()

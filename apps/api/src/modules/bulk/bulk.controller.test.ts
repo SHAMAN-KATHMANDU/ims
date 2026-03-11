@@ -23,7 +23,7 @@ vi.mock("@/modules/sales/sale.controller", () => ({
   },
 }));
 
-import * as bulkController from "./bulk.controller";
+import bulkController from "./bulk.controller";
 import productController from "@/modules/products/product.controller";
 import memberController from "@/modules/members/member.controller";
 import saleController from "@/modules/sales/sale.controller";
