@@ -9,6 +9,8 @@ import {
   deleteContact,
   getContactTags,
   createContactTag,
+  updateContactTag,
+  deleteContactTag,
   addContactNote,
   deleteContactNote,
   addContactAttachment,
@@ -96,6 +98,23 @@ export function useCreateContactTag() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => createContactTag(name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.tags() }),
+  });
+}
+
+export function useUpdateContactTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, name }: { id: string; name: string }) =>
+      updateContactTag(id, name),
+    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.tags() }),
+  });
+}
+
+export function useDeleteContactTag() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => deleteContactTag(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.tags() }),
   });
 }

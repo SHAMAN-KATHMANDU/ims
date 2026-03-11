@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { LogActivityForm } from "../components/LogActivityForm";
+import { DealLineItemsSection } from "./DealLineItemsSection";
 import type { Deal } from "../../services/deal.service";
 import { Check } from "lucide-react";
 
@@ -112,11 +113,15 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
         </div>
       )}
 
-      <Tabs defaultValue="activities">
+      <Tabs defaultValue="line-items">
         <TabsList>
+          <TabsTrigger value="line-items">Line Items</TabsTrigger>
           <TabsTrigger value="activities">Activities</TabsTrigger>
           <TabsTrigger value="tasks">Tasks</TabsTrigger>
         </TabsList>
+        <TabsContent value="line-items" className="mt-4">
+          <DealLineItemsSection deal={deal} basePath={basePath} />
+        </TabsContent>
         <TabsContent value="activities" className="mt-4 space-y-4">
           <div>
             <h3 className="font-medium mb-2">Log Activity</h3>

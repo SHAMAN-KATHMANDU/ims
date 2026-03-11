@@ -23,16 +23,22 @@ import {
 import {
   useAddContactNote,
   useDeleteContactNote,
-  useAddContactCommunication,
   useAddContactAttachment,
   useDeleteContactAttachment,
 } from "../../hooks/use-contacts";
 import { useActivitiesByContact } from "../../hooks/use-activities";
 import { useCreateTask } from "../../hooks/use-tasks";
 import { useCreateDeal } from "../../hooks/use-deals";
+import { usePipelines } from "../../hooks/use-pipelines";
 import { useUsers, type User } from "@/features/users";
-import { LogActivityForm } from "../components/LogActivityForm";
+import { LogActivityDialog } from "../components/LogActivityDialog";
 import { useToast } from "@/hooks/useToast";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -79,11 +85,10 @@ export function ContactDetail({
   const { toast } = useToast();
 
   const [noteContent, setNoteContent] = useState("");
-  const [commType, setCommType] = useState<"CALL" | "EMAIL" | "MEETING">(
-    "CALL",
-  );
-  const [commSubject, setCommSubject] = useState("");
-  const [commNotes, setCommNotes] = useState("");
+  const [logActivityType, setLogActivityType] = useState<
+    "CALL" | "EMAIL" | "MEETING" | null
+  >(null);
+  const [logNoteOpen, setLogNoteOpen] = useState(false);
   const [attachmentFile, setAttachmentFile] = useState<File | null>(null);
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDueDate, setTaskDueDate] = useState("");
@@ -98,7 +103,6 @@ export function ContactDetail({
 
   const addNoteMutation = useAddContactNote(contactId);
   const deleteNoteMutation = useDeleteContactNote(contactId);
-  const addCommMutation = useAddContactCommunication(contactId);
   const addAttachmentMutation = useAddContactAttachment(contactId);
   const deleteAttachmentMutation = useDeleteContactAttachment(contactId);
   const createTaskMutation = useCreateTask();
@@ -107,7 +111,10 @@ export function ContactDetail({
   const { data: activitiesData } = useActivitiesByContact(contactId);
   const activities = activitiesData?.activities ?? [];
   const { data: usersResult } = useUsers({ limit: 10 });
+  const { data: pipelinesData } = usePipelines();
   const users: User[] = usersResult?.users ?? [];
+  const pipelines = pipelinesData?.pipelines ?? [];
+  const defaultPipeline = pipelines.find((p) => p.isDefault) ?? pipelines[0];
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -134,22 +141,6 @@ export function ContactDetail({
     } catch {
       toast({ title: "Failed to delete note", variant: "destructive" });
       setDeleteNoteId(null);
-    }
-  };
-
-  const handleAddCommunication = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      await addCommMutation.mutateAsync({
-        type: commType,
-        subject: commSubject.trim() || undefined,
-        notes: commNotes.trim() || undefined,
-      });
-      setCommSubject("");
-      setCommNotes("");
-      toast({ title: "Interaction logged" });
-    } catch {
-      toast({ title: "Failed to log interaction", variant: "destructive" });
     }
   };
 
@@ -203,11 +194,20 @@ export function ContactDetail({
   const handleCreateDeal = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dealName.trim()) return;
+    if (!defaultPipeline) {
+      toast({
+        title: "No pipeline configured",
+        description: "Create a pipeline in CRM Settings before creating deals.",
+        variant: "destructive",
+      });
+      return;
+    }
     try {
       await createDealMutation.mutateAsync({
         name: dealName.trim(),
         value: dealValue ? Number(dealValue) : 0,
         contactId,
+        pipelineId: defaultPipeline.id,
         assignedToId: dealAssignedToId || undefined,
       });
       setDealName("");
@@ -231,7 +231,7 @@ export function ContactDetail({
     );
   }
 
-  // Build unified activity timeline
+  // Build unified activity timeline (communications, activities, sales)
   const commItems = (contact.communications ?? []).map((c) => ({
     id: c.id,
     date: c.createdAt,
@@ -240,6 +240,7 @@ export function ContactDetail({
     subject: c.subject,
     notes: c.notes,
     creator: c.creator,
+    total: null as number | null,
   }));
   const activityItems = activities.map((a) => ({
     id: a.id,
@@ -249,8 +250,19 @@ export function ContactDetail({
     subject: a.subject,
     notes: a.notes,
     creator: a.creator,
+    total: null as number | null,
   }));
-  const timeline = [...commItems, ...activityItems].sort(
+  const saleItems = (contact.sales ?? []).map((s) => ({
+    id: s.id,
+    date: s.createdAt,
+    kind: "sale" as const,
+    label: "SALE",
+    subject: s.saleCode,
+    notes: null,
+    creator: null,
+    total: typeof s.total === "number" ? s.total : Number(s.total),
+  }));
+  const timeline = [...commItems, ...activityItems, ...saleItems].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
@@ -374,6 +386,66 @@ export function ContactDetail({
           <div className="flex-1 overflow-y-auto">
             {/* ── OVERVIEW ─────────────────────────────────────────────── */}
             <TabsContent value="overview" className="mt-0 p-6 space-y-5">
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {contact.deals && contact.deals.length > 0 && (
+                  <div className="rounded-lg border bg-card p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <Handshake className="h-3 w-3" />
+                      Deals
+                    </div>
+                    <p className="text-sm font-medium">
+                      {contact.deals.filter((d) => d.status === "OPEN").length}{" "}
+                      open / {contact.deals.length} total
+                    </p>
+                  </div>
+                )}
+                {contact.sales && contact.sales.length > 0 && (
+                  <div className="rounded-lg border bg-card p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <DollarSign className="h-3 w-3" />
+                      Sales
+                    </div>
+                    <p className="text-sm font-medium">
+                      {formatCurrency(
+                        contact.sales.reduce(
+                          (sum, s) =>
+                            sum + (typeof s.total === "number" ? s.total : Number(s.total)),
+                          0,
+                        ),
+                      )}{" "}
+                      ({contact.sales.length} sale
+                      {contact.sales.length !== 1 ? "s" : ""})
+                    </p>
+                  </div>
+                )}
+                {contact.tasks && contact.tasks.length > 0 && (
+                  <div className="rounded-lg border bg-card p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <CheckSquare className="h-3 w-3" />
+                      Tasks
+                    </div>
+                    <p className="text-sm font-medium">
+                      {contact.tasks.filter((t) => !t.completed).length} pending
+                    </p>
+                  </div>
+                )}
+                {timeline.length > 0 && (
+                  <div className="rounded-lg border bg-card p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <Clock className="h-3 w-3" />
+                      Last activity
+                    </div>
+                    <p className="text-sm font-medium">
+                      {format(
+                        new Date(timeline[0]!.date),
+                        "MMM d, h:mm a",
+                      )}
+                    </p>
+                  </div>
+                )}
+              </div>
+
               {/* CRM Fields */}
               {(contact.source || contact.journeyType) && (
                 <div>
@@ -431,7 +503,8 @@ export function ContactDetail({
 
               {!contact.source &&
                 !contact.journeyType &&
-                !contact.notes?.length && (
+                !contact.notes?.length &&
+                !(contact.deals?.length || contact.sales?.length || contact.tasks?.length) && (
                   <div className="text-center py-10 text-muted-foreground">
                     <UserIcon className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No overview data yet.</p>
@@ -444,70 +517,116 @@ export function ContactDetail({
 
             {/* ── ACTIVITY ─────────────────────────────────────────────── */}
             <TabsContent value="activity" className="mt-0 p-6 space-y-5">
-              {/* Log interaction form */}
-              <div className="rounded-lg border bg-card">
-                <div className="px-4 py-3 border-b">
-                  <h3 className="text-sm font-semibold">Log Interaction</h3>
-                </div>
-                <form
-                  onSubmit={handleAddCommunication}
-                  className="p-4 space-y-3"
+              {/* HubSpot-style action buttons */}
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLogActivityType("CALL")}
+                  className="gap-1.5"
                 >
-                  <div className="grid grid-cols-3 gap-2">
-                    {(["CALL", "EMAIL", "MEETING"] as const).map((type) => (
-                      <button
-                        key={type}
-                        type="button"
-                        onClick={() => setCommType(type)}
-                        className={`py-1.5 px-2 rounded-md text-xs font-medium border transition-colors ${
-                          commType === type
-                            ? "bg-primary text-primary-foreground border-primary"
-                            : "bg-background border-border hover:bg-muted"
-                        }`}
-                      >
-                        {type === "CALL"
-                          ? "📞 Call"
-                          : type === "EMAIL"
-                            ? "✉️ Email"
-                            : "🤝 Meeting"}
-                      </button>
-                    ))}
-                  </div>
-                  <Input
-                    value={commSubject}
-                    onChange={(e) => setCommSubject(e.target.value)}
-                    placeholder="Subject (optional)"
-                    className="text-sm"
-                  />
-                  <Textarea
-                    value={commNotes}
-                    onChange={(e) => setCommNotes(e.target.value)}
-                    placeholder="Notes (optional)"
-                    rows={2}
-                    className="text-sm resize-none"
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={addCommMutation.isPending}
-                    className="w-full"
-                  >
-                    {addCommMutation.isPending
-                      ? "Logging..."
-                      : "Log Interaction"}
-                  </Button>
-                </form>
+                  <Phone className="h-3.5 w-3.5" />
+                  Log Call
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLogActivityType("EMAIL")}
+                  className="gap-1.5"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  Log Email
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLogActivityType("MEETING")}
+                  className="gap-1.5"
+                >
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Log Meeting
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setLogNoteOpen(true)}
+                  className="gap-1.5"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Log Note
+                </Button>
               </div>
 
-              {/* Log activity */}
-              <div className="rounded-lg border bg-card">
-                <div className="px-4 py-3 border-b">
-                  <h3 className="text-sm font-semibold">Log Activity</h3>
-                </div>
-                <div className="p-4">
-                  <LogActivityForm contactId={contactId} onSuccess={() => {}} />
-                </div>
-              </div>
+              {/* Log Activity dialogs */}
+              {logActivityType && (
+                <LogActivityDialog
+                  open={!!logActivityType}
+                  onOpenChange={(open) => !open && setLogActivityType(null)}
+                  type={logActivityType}
+                  contactId={contactId}
+                />
+              )}
+
+              {/* Log Note dialog */}
+              <Dialog
+                open={logNoteOpen}
+                onOpenChange={(open) => {
+                  if (!open) setNoteContent("");
+                  setLogNoteOpen(open);
+                }}
+              >
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Log Note</DialogTitle>
+                  </DialogHeader>
+                  <form
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (!noteContent.trim()) return;
+                      try {
+                        await addNoteMutation.mutateAsync(noteContent.trim());
+                        setNoteContent("");
+                        setLogNoteOpen(false);
+                        toast({ title: "Note added" });
+                      } catch {
+                        toast({
+                          title: "Failed to add note",
+                          variant: "destructive",
+                        });
+                      }
+                    }}
+                    className="space-y-4"
+                  >
+                    <Textarea
+                      value={noteContent}
+                      onChange={(e) => setNoteContent(e.target.value)}
+                      placeholder="Add a note..."
+                      rows={3}
+                      className="resize-none"
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setLogNoteOpen(false);
+                          setNoteContent("");
+                        }}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={
+                          !noteContent.trim() || addNoteMutation.isPending
+                        }
+                      >
+                        {addNoteMutation.isPending ? "Adding..." : "Add Note"}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
 
               {/* Timeline */}
               {timeline.length > 0 ? (
@@ -517,16 +636,18 @@ export function ContactDetail({
                   </h3>
                   <div className="relative space-y-3">
                     {timeline.map((item) => (
-                      <div key={item.id} className="flex gap-3">
+                      <div key={`${item.kind}-${item.id}`} className="flex gap-3">
                         <div className="flex flex-col items-center">
                           <div className="h-7 w-7 rounded-full bg-muted border flex items-center justify-center shrink-0 text-xs">
-                            {item.kind === "comm"
-                              ? item.label === "CALL"
-                                ? "📞"
-                                : item.label === "EMAIL"
-                                  ? "✉️"
-                                  : "🤝"
-                              : "📋"}
+                            {item.kind === "sale"
+                              ? "💰"
+                              : item.kind === "comm"
+                                ? item.label === "CALL"
+                                  ? "📞"
+                                  : item.label === "EMAIL"
+                                    ? "✉️"
+                                    : "🤝"
+                                : "📋"}
                           </div>
                           <div className="w-px flex-1 bg-border mt-1" />
                         </div>
@@ -546,6 +667,12 @@ export function ContactDetail({
                             {item.subject && (
                               <p className="text-sm font-medium">
                                 {item.subject}
+                                {item.kind === "sale" &&
+                                  item.total != null && (
+                                    <span className="ml-2 text-muted-foreground font-normal">
+                                      {formatCurrency(item.total)}
+                                    </span>
+                                  )}
                               </p>
                             )}
                             {item.notes && (

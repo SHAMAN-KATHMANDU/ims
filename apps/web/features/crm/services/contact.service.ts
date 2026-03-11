@@ -4,6 +4,7 @@ import type { PaginationMeta } from "@/lib/apiTypes";
 export interface ContactTag {
   id: string;
   name: string;
+  createdAt?: string;
 }
 
 export interface Contact {
@@ -71,6 +72,14 @@ export type ContactDeal = {
   expectedCloseDate?: string | null;
 };
 
+export type ContactSale = {
+  id: string;
+  saleCode: string;
+  total: number;
+  type: string;
+  createdAt: string;
+};
+
 export type ContactTask = {
   id: string;
   title: string;
@@ -85,6 +94,7 @@ export interface ContactDetail extends Contact {
   communications?: ContactCommunication[];
   deals?: ContactDeal[];
   tasks?: ContactTask[];
+  sales?: ContactSale[];
 }
 
 export interface ContactListParams {
@@ -170,6 +180,18 @@ export async function createContactTag(
 ): Promise<{ tag: ContactTag }> {
   const res = await api.post("/contacts/tags", { name });
   return res.data;
+}
+
+export async function updateContactTag(
+  id: string,
+  name: string,
+): Promise<{ tag: ContactTag }> {
+  const res = await api.patch(`/contacts/tags/${id}`, { name });
+  return res.data;
+}
+
+export async function deleteContactTag(id: string): Promise<void> {
+  await api.delete(`/contacts/tags/${id}`);
 }
 
 export async function addContactNote(

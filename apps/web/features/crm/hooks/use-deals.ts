@@ -9,12 +9,17 @@ import {
   updateDeal,
   updateDealStage,
   deleteDeal,
+  addDealLineItem,
+  removeDealLineItem,
+  convertDealToSale,
   type Deal,
   type DealListParams,
   type CreateDealData,
   type UpdateDealData,
+  type AddDealLineItemData,
 } from "../services/deal.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+import { contactKeys } from "./use-contacts";
 
 type DealsKanbanData = {
   pipeline: unknown;
@@ -70,9 +75,14 @@ export function useCreateDeal() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateDealData) => createDeal(data),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      if (variables.contactId) {
+        qc.invalidateQueries({
+          queryKey: contactKeys.detail(variables.contactId),
+        });
+      }
     },
   });
 }
@@ -141,6 +151,44 @@ export function useDeleteDeal() {
   return useMutation({
     mutationFn: (id: string) => deleteDeal(id),
     onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
+      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+    },
+  });
+}
+
+export function useAddDealLineItem(dealId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: AddDealLineItemData) => addDealLineItem(dealId, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
+      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+    },
+  });
+}
+
+export function useRemoveDealLineItem(dealId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (lineItemId: string) =>
+      removeDealLineItem(dealId, lineItemId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
+      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+    },
+  });
+}
+
+export function useConvertDealToSale(dealId: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (locationId: string) =>
+      convertDealToSale(dealId, locationId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
     },

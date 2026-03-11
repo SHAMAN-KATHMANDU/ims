@@ -11,7 +11,10 @@ import {
   useTask,
   useCreateTask,
   useUpdateTask,
+  useBulkCompleteTasks,
+  useBulkDeleteTasks,
 } from "../../hooks/use-tasks";
+import { useTaskSelectionStore } from "@/store/task-selection-store";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
@@ -25,7 +28,9 @@ import {
   Trash2,
   Calendar,
   User as UserIcon,
+  AlertCircle,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -75,9 +80,19 @@ export function TasksPage() {
   const debouncedSearch = useDebounce(search, 300);
   const [taskTab, setTaskTab] = useState<TaskFilterTab>("all");
   const [dueToday, setDueToday] = useState(false);
+  const [orphanedOnly, setOrphanedOnly] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteTaskId, setDeleteTaskId] = useState<string | null>(null);
+
+  const {
+    selectedTaskIds,
+    toggleTask,
+    addTask,
+    removeTask,
+    clearSelection,
+    isSelected,
+  } = useTaskSelectionStore();
 
   const completedFilter =
     taskTab === "incomplete"
@@ -97,6 +112,8 @@ export function TasksPage() {
   const { data: selectedTaskData } = useTask(selectedId ?? "");
   const completeMutation = useCompleteTask();
   const deleteMutation = useDeleteTask();
+  const bulkCompleteMutation = useBulkCompleteTasks();
+  const bulkDeleteMutation = useBulkDeleteTasks();
   const createMutation = useCreateTask();
   const updateMutation = useUpdateTask();
 
@@ -207,8 +224,79 @@ export function TasksPage() {
           >
             Due Today
           </Button>
+          <Button
+            variant={orphanedOnly ? "default" : "outline"}
+            size="sm"
+            onClick={() => {
+              setOrphanedOnly(!orphanedOnly);
+              setPage(DEFAULT_PAGE);
+            }}
+            title="Tasks with no contact (orphaned)"
+          >
+            <AlertCircle className="h-4 w-4 mr-1" />
+            Orphaned
+          </Button>
         </div>
       </div>
+
+      {selectedTaskIds.size > 0 && (
+        <div className="flex items-center gap-2 py-2 px-3 rounded-md border bg-muted/50">
+          <span className="text-sm">
+            {selectedTaskIds.size} task{selectedTaskIds.size !== 1 ? "s" : ""}{" "}
+            selected
+          </span>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              const ids = [...selectedTaskIds];
+              if (ids.length > 0) {
+                bulkCompleteMutation.mutate(ids, {
+                  onSuccess: () => {
+                    toast({ title: "Tasks completed" });
+                    clearSelection();
+                  },
+                  onError: () =>
+                    toast({ title: "Failed to complete", variant: "destructive" }),
+                });
+              }
+            }}
+            disabled={bulkCompleteMutation.isPending}
+          >
+            <Check className="h-4 w-4 mr-1" />
+            Complete
+          </Button>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => {
+              const ids = [...selectedTaskIds];
+              bulkDeleteMutation.mutate(
+                { ids },
+                {
+                  onSuccess: () => {
+                    toast({ title: "Tasks deleted" });
+                    clearSelection();
+                  },
+                  onError: () =>
+                    toast({ title: "Delete failed", variant: "destructive" }),
+                },
+              );
+            }}
+            disabled={bulkDeleteMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={clearSelection}
+          >
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* ── Mobile card list ─────────────────────────────────────────── */}
       <div className="sm:hidden space-y-2">
@@ -231,11 +319,17 @@ export function TasksPage() {
               className="rounded-lg border bg-card p-3 space-y-2"
             >
               <div className="flex items-start justify-between gap-2">
-                <span
-                  className={`text-sm font-medium ${task.completed ? "line-through text-muted-foreground" : ""}`}
-                >
-                  {task.title}
-                </span>
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Checkbox
+                    checked={isSelected(task.id)}
+                    onCheckedChange={() => toggleTask(task.id)}
+                  />
+                  <span
+                    className={`text-sm font-medium truncate ${task.completed ? "line-through text-muted-foreground" : ""}`}
+                  >
+                    {task.title}
+                  </span>
+                </div>
                 <Badge
                   variant={task.completed ? "secondary" : "outline"}
                   className="text-xs shrink-0"
@@ -255,6 +349,12 @@ export function TasksPage() {
                   <span className="flex items-center gap-1">
                     <UserIcon className="h-3 w-3" />
                     {task.assignedTo.username}
+                  </span>
+                )}
+                {!task.contact && (
+                  <span className="flex items-center gap-1 text-amber-600">
+                    <AlertCircle className="h-3 w-3" />
+                    Orphaned
                   </span>
                 )}
                 {task.contact && (
@@ -317,6 +417,21 @@ export function TasksPage() {
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-10">
+                <Checkbox
+                  checked={
+                    tasks.length > 0 &&
+                    tasks.every((t) => isSelected(t.id))
+                  }
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      tasks.forEach((t) => addTask(t.id));
+                    } else {
+                      tasks.forEach((t) => removeTask(t.id));
+                    }
+                  }}
+                />
+              </TableHead>
               <TableHead>Title</TableHead>
               <TableHead>Due Date</TableHead>
               <TableHead>Assigned To</TableHead>
@@ -330,6 +445,9 @@ export function TasksPage() {
             {isLoading ? (
               [1, 2, 3, 4].map((i) => (
                 <TableRow key={i}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-4" />
+                  </TableCell>
                   <TableCell>
                     <Skeleton className="h-4 w-48" />
                   </TableCell>
@@ -356,7 +474,7 @@ export function TasksPage() {
             ) : tasks.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={7}
+                  colSpan={8}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No tasks found
@@ -365,6 +483,12 @@ export function TasksPage() {
             ) : (
               tasks.map((task) => (
                 <TableRow key={task.id}>
+                  <TableCell>
+                    <Checkbox
+                      checked={isSelected(task.id)}
+                      onCheckedChange={() => toggleTask(task.id)}
+                    />
+                  </TableCell>
                   <TableCell className="font-medium">{task.title}</TableCell>
                   <TableCell>
                     {task.dueDate
@@ -373,7 +497,12 @@ export function TasksPage() {
                   </TableCell>
                   <TableCell>{task.assignedTo?.username ?? "—"}</TableCell>
                   <TableCell>
-                    {task.contact ? (
+                    {!task.contact ? (
+                      <span className="flex items-center gap-1 text-amber-600">
+                        <AlertCircle className="h-3 w-3" />
+                        Orphaned
+                      </span>
+                    ) : (
                       <Link
                         href={`${basePath}/crm/contacts/${task.contact.id}`}
                       >
@@ -381,8 +510,6 @@ export function TasksPage() {
                           {task.contact.firstName} {task.contact.lastName || ""}
                         </span>
                       </Link>
-                    ) : (
-                      "—"
                     )}
                   </TableCell>
                   <TableCell>

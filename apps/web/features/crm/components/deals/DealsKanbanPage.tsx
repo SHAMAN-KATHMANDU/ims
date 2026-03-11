@@ -235,7 +235,14 @@ export function DealsKanbanPage() {
       <div className="space-y-4">
         <h1 className="text-3xl font-bold">Deals</h1>
         <p className="text-muted-foreground">
-          No pipeline yet. Create one to start organizing deals.
+          No pipeline yet. Create one to start organizing deals, or{" "}
+          <Link
+            href={`${basePath}/settings/crm`}
+            className="underline hover:no-underline"
+          >
+            configure CRM defaults
+          </Link>
+          .
         </p>
         <AddPipelineDialog
           open={addPipelineOpen}
@@ -257,8 +264,13 @@ export function DealsKanbanPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
         <h1 className="text-3xl font-bold">Deals</h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Manage your sales pipeline and track deals through stages.
+        </p>
+      </div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex items-center gap-1">
             <Select value={pipelineId} onValueChange={setPipelineId}>
@@ -474,6 +486,8 @@ export function DealsKanbanPage() {
         {drawerMode === "edit" && selectedDealId && selectedDealData?.deal && (
           <DealForm
             mode="edit"
+            deal={selectedDealData.deal}
+            basePath={basePath}
             defaultValues={{
               name: selectedDealData.deal.name,
               value: Number(selectedDealData.deal.value),

@@ -19,13 +19,8 @@ import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { CompanyCombobox } from "./CompanyCombobox";
+import { TagCombobox } from "./TagCombobox";
 import { Search, Plus, Upload, Download } from "lucide-react";
 import {
   DataTablePagination,
@@ -71,6 +66,8 @@ export function ContactsPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
+  const [deleteConfirmName, setDeleteConfirmName] = useState("");
 
   const { data, isLoading } = useContactsPaginated({
     page,
@@ -83,6 +80,7 @@ export function ContactsPage() {
   });
 
   const { data: contactData } = useContact(selectedId || "");
+  const { data: contactToDeleteData } = useContact(deleteId || "");
   const { data: companiesData } = useCompaniesForSelect();
   const { data: tagsData } = useContactTags();
   const companies = companiesData?.companies ?? [];
@@ -159,17 +157,50 @@ export function ContactsPage() {
     setSelectedId(null);
   };
 
+  const contactToDelete = contactToDeleteData?.contact;
+  const contactDisplayName =
+    contactToDelete != null
+      ? [contactToDelete.firstName, contactToDelete.lastName]
+          .filter(Boolean)
+          .join(" ") || "this contact"
+      : "";
+  const dealCount = contactToDelete?.deals?.length ?? 0;
+  const taskCount = contactToDelete?.tasks?.length ?? 0;
+  const canConfirmDelete =
+    deleteConfirmStep === 2 &&
+    deleteConfirmName.trim().toLowerCase() ===
+      contactDisplayName.trim().toLowerCase();
+
+  const openDeleteDialog = (id: string) => {
+    setDeleteId(id);
+    setDeleteConfirmStep(1);
+    setDeleteConfirmName("");
+  };
+
+  const closeDeleteDialog = () => {
+    setDeleteId(null);
+    setDeleteConfirmStep(1);
+    setDeleteConfirmName("");
+  };
+
+  const confirmDeleteStep1 = () => setDeleteConfirmStep(2);
+
   const confirmDelete = () => {
     if (!deleteId) return;
+    if (deleteConfirmStep === 1) {
+      confirmDeleteStep1();
+      return;
+    }
+    if (!canConfirmDelete) return;
     deleteMutation.mutate(deleteId, {
       onSuccess: () => {
         toast({ title: "Contact deleted" });
         if (selectedId === deleteId) closeDrawer();
-        setDeleteId(null);
+        closeDeleteDialog();
       },
       onError: () => {
         toast({ title: "Delete failed", variant: "destructive" });
-        setDeleteId(null);
+        closeDeleteDialog();
       },
     });
   };
@@ -230,44 +261,22 @@ export function ContactsPage() {
             className="pl-9"
           />
         </div>
-        <Select
-          value={companyId || "__all__"}
+        <CompanyCombobox
+          companies={companies}
+          value={companyId}
           onValueChange={(v) => {
-            setCompanyId(v === "__all__" ? "" : v);
+            setCompanyId(v);
             setPage(DEFAULT_PAGE);
           }}
-        >
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All companies" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All companies</SelectItem>
-            {companies.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={tagId || "__all__"}
+        />
+        <TagCombobox
+          tags={tags}
+          value={tagId}
           onValueChange={(v) => {
-            setTagId(v === "__all__" ? "" : v);
+            setTagId(v);
             setPage(DEFAULT_PAGE);
           }}
-        >
-          <SelectTrigger className="w-full sm:w-[160px]">
-            <SelectValue placeholder="All tags" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All tags</SelectItem>
-            {tags.map((t) => (
-              <SelectItem key={t.id} value={t.id}>
-                {t.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        />
       </div>
 
       <ContactTable
@@ -276,7 +285,7 @@ export function ContactsPage() {
         basePath={basePath}
         onView={openView}
         onEdit={openEdit}
-        onDelete={(id) => setDeleteId(id)}
+        onDelete={(id) => openDeleteDialog(id)}
       />
 
       {pagination && (
@@ -358,23 +367,53 @@ export function ContactsPage() {
 
       <AlertDialog
         open={!!deleteId}
-        onOpenChange={(o) => !o && setDeleteId(null)}
+        onOpenChange={(o) => !o && closeDeleteDialog()}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Delete this contact?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {deleteConfirmStep === 1
+                ? "Delete this contact?"
+                : "Confirm deletion"}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone.
+              {deleteConfirmStep === 1 ? (
+                <>
+                  Are you sure you want to delete{" "}
+                  <strong>{contactDisplayName || "this contact"}</strong>? This
+                  will affect {dealCount} deal{dealCount !== 1 ? "s" : ""} and{" "}
+                  {taskCount} task{taskCount !== 1 ? "s" : ""}. Incomplete tasks
+                  will be marked as done.
+                </>
+              ) : (
+                <>
+                  Type{" "}
+                  <strong>{contactDisplayName}</strong> below to confirm
+                  deletion.
+                </>
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {deleteConfirmStep === 2 && (
+            <Input
+              placeholder="Contact name"
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              className="mt-2"
+              autoFocus
+            />
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={confirmDelete}
-              disabled={deleteMutation.isPending}
+              disabled={
+                deleteMutation.isPending ||
+                (deleteConfirmStep === 2 && !canConfirmDelete)
+              }
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteConfirmStep === 1 ? "Continue" : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

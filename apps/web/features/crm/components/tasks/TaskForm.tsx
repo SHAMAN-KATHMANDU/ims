@@ -157,7 +157,7 @@ export function TaskForm(props: TaskFormProps) {
       <div>
         <Label>Contact</Label>
         <Select
-          value={form.watch("contactId") || "__none__"}
+          value={form.watch("contactId") ?? "__none__"}
           onValueChange={(v) =>
             form.setValue("contactId", v === "__none__" ? undefined : v)
           }
@@ -166,7 +166,7 @@ export function TaskForm(props: TaskFormProps) {
             <SelectValue placeholder="Select contact" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">None</SelectItem>
+            <SelectItem value="__none__">—</SelectItem>
             {contacts.map((c) => (
               <SelectItem key={c.id} value={c.id}>
                 {c.firstName} {c.lastName || ""}
@@ -179,7 +179,7 @@ export function TaskForm(props: TaskFormProps) {
       <div>
         <Label>Deal</Label>
         <Select
-          value={form.watch("dealId") || "__none__"}
+          value={form.watch("dealId") ?? "__none__"}
           onValueChange={(v) =>
             form.setValue("dealId", v === "__none__" ? undefined : v)
           }
@@ -188,7 +188,7 @@ export function TaskForm(props: TaskFormProps) {
             <SelectValue placeholder="Select deal" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">None</SelectItem>
+            <SelectItem value="__none__">—</SelectItem>
             {deals.map((d) => (
               <SelectItem key={d.id} value={d.id}>
                 {d.name}

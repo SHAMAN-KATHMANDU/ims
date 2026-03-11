@@ -16,7 +16,7 @@ export default function NewContactPage() {
   const createMutation = useCreateContact();
 
   return (
-    <div className="space-y-6 max-w-2xl">
+    <div className="space-y-6 max-w-2xl px-4 sm:px-6">
       <div className="flex items-center gap-4">
         <Link href={`${basePath}/crm/contacts`}>
           <Button variant="ghost">Back</Button>

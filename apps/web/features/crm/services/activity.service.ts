@@ -1,6 +1,6 @@
 import api from "@/lib/axios";
 
-export type ActivityType = "CALL" | "MEETING";
+export type ActivityType = "CALL" | "EMAIL" | "MEETING";
 
 export interface Activity {
   id: string;
