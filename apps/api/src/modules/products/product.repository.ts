@@ -294,6 +294,18 @@ export class ProductRepository {
     });
   }
 
+  findAllLocationInventoryForVariation(variationId: string) {
+    return prisma.locationInventory.findMany({
+      where: { variationId },
+      select: {
+        id: true,
+        quantity: true,
+        locationId: true,
+        subVariationId: true,
+      },
+    });
+  }
+
   // AuditLog
   createAuditLog(data: {
     userId: string;
@@ -464,7 +476,7 @@ export class ProductRepository {
       include:
         include ??
         ({
-          ...PRODUCT_INCLUDE_FULL,
+          ...PRODUCT_INCLUDE_WITH_INVENTORY,
           productAttributeTypes: {
             include: {
               attributeType: { select: { id: true, name: true, code: true } },
@@ -704,8 +716,8 @@ export class ProductRepository {
   }
 
   // Product - download/export
-  findProductsForExport(ids?: string[]) {
-    const where: Prisma.ProductWhereInput = { deletedAt: null };
+  findProductsForExport(tenantId: string, ids?: string[]) {
+    const where: Prisma.ProductWhereInput = { tenantId, deletedAt: null };
     if (ids && ids.length > 0) where.id = { in: ids };
     return prisma.product.findMany({
       where,
@@ -715,6 +727,25 @@ export class ProductRepository {
         discounts: { include: { discountType: true } },
       },
       orderBy: { dateCreated: "desc" },
+    });
+  }
+
+  findProductsForExportByFilter(
+    tenantId: string,
+    where: ProductListWhere,
+    orderBy: Prisma.ProductOrderByWithRelationInput,
+  ) {
+    const tenantWhere = { ...where, tenantId, deletedAt: null };
+    const MAX_EXPORT = 50_000;
+    return prisma.product.findMany({
+      where: tenantWhere,
+      include: {
+        category: true,
+        variations: { include: { photos: true } },
+        discounts: { include: { discountType: true } },
+      },
+      orderBy,
+      take: MAX_EXPORT,
     });
   }
 

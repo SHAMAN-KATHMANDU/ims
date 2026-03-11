@@ -585,12 +585,53 @@ export class ProductService {
                 await this.repo.createProductSubVariation(existing.id, name);
               }
             }
-            await this.repo.updateProductVariation(existing.id, {
-              stockQuantity: payload.stockQuantity ?? existing.stockQuantity,
-              ...(newPhotos.length > 0
-                ? { photos: { create: newPhotos } }
-                : {}),
-            });
+            // Update LocationInventory if a specific location was provided
+            if (
+              payload.locationId &&
+              payload.stockQuantity !== undefined &&
+              payload.stockQuantity !== null
+            ) {
+              const locInv = await this.repo.findLocationInventory(
+                payload.locationId,
+                existing.id,
+                null,
+              );
+              if (locInv) {
+                await this.repo.setLocationInventoryQuantity(
+                  locInv.id,
+                  payload.stockQuantity,
+                );
+              } else {
+                await this.repo.createLocationInventory({
+                  locationId: payload.locationId,
+                  variationId: existing.id,
+                  subVariationId: null,
+                  quantity: payload.stockQuantity,
+                });
+              }
+              // Recalculate ProductVariation.stockQuantity as the sum of all LocationInventory rows
+              const allInv =
+                await this.repo.findAllLocationInventoryForVariation(
+                  existing.id,
+                );
+              const totalStock = allInv.reduce(
+                (sum, inv) => sum + inv.quantity,
+                0,
+              );
+              await this.repo.updateProductVariation(existing.id, {
+                stockQuantity: totalStock,
+                ...(newPhotos.length > 0
+                  ? { photos: { create: newPhotos } }
+                  : {}),
+              });
+            } else {
+              await this.repo.updateProductVariation(existing.id, {
+                stockQuantity: payload.stockQuantity ?? existing.stockQuantity,
+                ...(newPhotos.length > 0
+                  ? { photos: { create: newPhotos } }
+                  : {}),
+              });
+            }
           }
         } else if (!hasDependents) {
           await this.repo.deleteProductVariation(existing.id);
@@ -1044,12 +1085,140 @@ export class ProductService {
     });
   }
 
-  async getProductsForExport(ids?: string[]) {
-    const products = await this.repo.findProductsForExport(ids);
+  async getProductsForExport(
+    tenantId: string,
+    query: {
+      ids?: string[];
+      search?: string;
+      locationId?: string;
+      categoryId?: string;
+      subCategoryId?: string;
+      subCategory?: string;
+      vendorId?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      lowStock?: boolean;
+    },
+  ) {
+    if (query.ids && query.ids.length > 0) {
+      const products = await this.repo.findProductsForExport(
+        tenantId,
+        query.ids,
+      );
+      if (products.length === 0) {
+        throw createError("No products found to export", 404);
+      }
+      return products;
+    }
+
+    const where = await this.buildProductListWhere({
+      search: query.search,
+      locationId: query.locationId,
+      categoryId: query.categoryId,
+      subCategoryId: query.subCategoryId,
+      subCategory: query.subCategory,
+      vendorId: query.vendorId,
+      dateFrom: query.dateFrom,
+      dateTo: query.dateTo,
+      lowStock: query.lowStock,
+    });
+    const orderBy = { dateCreated: "desc" as const };
+    const products = await this.repo.findProductsForExportByFilter(
+      tenantId,
+      where,
+      orderBy,
+    );
     if (products.length === 0) {
       throw createError("No products found to export", 404);
     }
     return products;
+  }
+
+  private async buildProductListWhere(params: {
+    search?: string;
+    locationId?: string;
+    categoryId?: string;
+    subCategoryId?: string;
+    subCategory?: string;
+    vendorId?: string;
+    dateFrom?: string;
+    dateTo?: string;
+    lowStock?: boolean;
+  }): Promise<ProductListWhere> {
+    const {
+      search,
+      locationId,
+      categoryId,
+      subCategoryId,
+      subCategory,
+      vendorId,
+      dateFrom,
+      dateTo,
+      lowStock,
+    } = params;
+    const where: ProductListWhere = {};
+    if (search) {
+      where.OR = [
+        { imsCode: { contains: search, mode: "insensitive" } },
+        { name: { contains: search, mode: "insensitive" } },
+        { description: { contains: search, mode: "insensitive" } },
+        {
+          category: {
+            name: { contains: search, mode: "insensitive" },
+          },
+        },
+      ];
+    }
+    if (categoryId) where.categoryId = categoryId;
+    if (subCategoryId) where.subCategoryId = subCategoryId;
+    if (subCategory && !subCategoryId) {
+      where.subCategory = {
+        equals: subCategory,
+        mode: "insensitive",
+      };
+    }
+    if (vendorId) where.vendorId = vendorId;
+    if (dateFrom || dateTo) {
+      where.dateCreated = {};
+      if (dateFrom) where.dateCreated.gte = new Date(dateFrom);
+      if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59, 999);
+        where.dateCreated!.lte = to;
+      }
+    }
+    let lowStockVariationIds: string[] = [];
+    if (lowStock) {
+      lowStockVariationIds =
+        await this.repo.getLowStockVariationIds(LOW_STOCK_THRESHOLD);
+    }
+    if (locationId || lowStock) {
+      if (locationId && lowStock && lowStockVariationIds.length > 0) {
+        where.variations = {
+          some: {
+            id: { in: lowStockVariationIds },
+            locationInventory: {
+              some: { locationId, quantity: { gt: 0 } },
+            },
+          },
+        };
+      } else if (locationId) {
+        where.variations = {
+          some: {
+            locationInventory: {
+              some: { locationId, quantity: { gt: 0 } },
+            },
+          },
+        };
+      } else if (lowStock && lowStockVariationIds.length > 0) {
+        where.variations = {
+          some: { id: { in: lowStockVariationIds } },
+        };
+      } else if (lowStock) {
+        where.variations = { some: { id: { in: [] } } };
+      }
+    }
+    return where;
   }
 }
 

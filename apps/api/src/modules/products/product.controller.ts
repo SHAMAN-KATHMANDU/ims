@@ -561,11 +561,14 @@ class ProductController {
 
   downloadProducts = async (req: Request, res: Response) => {
     try {
-      const { format, ids: productIds } = DownloadProductsQuerySchema.parse(
-        req.query,
-      );
+      const tenantId = req.user!.tenantId;
+      const query = DownloadProductsQuerySchema.parse(req.query);
+      const { format, ids: productIds, ...filters } = query;
 
-      const products = await this.service.getProductsForExport(productIds);
+      const products = await this.service.getProductsForExport(tenantId, {
+        ids: productIds,
+        ...filters,
+      });
 
       const columns = [
         { header: "IMS Code", key: "imsCode", width: 15 },

@@ -179,7 +179,9 @@ export interface UpdateProductData {
   vendorId?: string;
   attributeTypeIds?: string[];
   variations?: Array<{
+    id?: string;
     stockQuantity?: number;
+    locationId?: string;
     attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
     subVariants?: string[];
     photos?: Array<{
@@ -803,13 +805,31 @@ export async function bulkUploadProducts(
 }
 
 /**
+ * Params for filtering the product export (same as list filters).
+ * When productIds is not provided, only products matching these filters are exported.
+ */
+export interface ProductDownloadFilters {
+  search?: string;
+  locationId?: string;
+  categoryId?: string;
+  subCategoryId?: string;
+  subCategory?: string;
+  vendorId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  lowStock?: boolean;
+}
+
+/**
  * Download products as Excel or CSV
  * @param format - Export format: 'excel' or 'csv'
- * @param productIds - Optional array of product IDs to export. If not provided, exports all products.
+ * @param productIds - Optional array of product IDs to export. If provided, only these products are exported.
+ * @param filters - When productIds is not provided, only products matching these filters are exported. Omit to export all.
  */
 export async function downloadProducts(
   format: "excel" | "csv" = "excel",
   productIds?: string[],
+  filters?: ProductDownloadFilters,
 ): Promise<void> {
   try {
     const queryParams = new URLSearchParams();
@@ -817,6 +837,18 @@ export async function downloadProducts(
 
     if (productIds && productIds.length > 0) {
       queryParams.set("ids", productIds.join(","));
+    } else if (filters) {
+      if (filters.search) queryParams.set("search", filters.search);
+      if (filters.locationId) queryParams.set("locationId", filters.locationId);
+      if (filters.categoryId) queryParams.set("categoryId", filters.categoryId);
+      if (filters.subCategoryId)
+        queryParams.set("subCategoryId", filters.subCategoryId);
+      if (filters.subCategory)
+        queryParams.set("subCategory", filters.subCategory);
+      if (filters.vendorId) queryParams.set("vendorId", filters.vendorId);
+      if (filters.dateFrom) queryParams.set("dateFrom", filters.dateFrom);
+      if (filters.dateTo) queryParams.set("dateTo", filters.dateTo);
+      if (filters.lowStock === true) queryParams.set("lowStock", "true");
     }
 
     queryParams.set("type", "products");
