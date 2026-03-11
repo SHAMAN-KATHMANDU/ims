@@ -1,0 +1,41 @@
+---
+description: API changes must be additive or versioned; breaking changes require expand-contract
+globs:
+  - "apps/api/**/*.ts"
+  - "apps/web/**/services/*.ts"
+alwaysApply: false
+---
+
+# Backwards Compatibility Rule
+
+APIs are contracts. Breaking them breaks clients.
+
+## Additive Changes (Allowed)
+
+1. **New optional fields** — Add new fields with defaults or as optional
+2. **New endpoints** — Add new routes without touching existing ones
+3. **New enum values** — Add new values; clients that don't know them should ignore
+4. **New query params** — Add optional params with sensible defaults
+
+## Breaking Changes (Require Migration)
+
+1. **Removing fields** — Use expand-contract: add deprecation, then remove in next version
+2. **Renaming fields** — Support both old and new during transition
+3. **Changing types** — e.g. string → number requires version bump or new field
+4. **Removing endpoints** — Deprecate first; return 410 Gone after grace period
+
+## Expand-Contract Pattern
+
+1. **Expand** — Add new field/behavior; keep old working
+2. **Migrate** — Update all clients to use new
+3. **Contract** — Remove old after migration complete
+
+## API Versioning
+
+- Use `/api/v1/` prefix
+- Breaking changes → new version `/api/v2/`
+- Document deprecation in Swagger and changelog
+
+## Golden Rule
+
+**Never ship a breaking API change without a migration path.**

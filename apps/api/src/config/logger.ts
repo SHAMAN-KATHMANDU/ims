@@ -1,61 +1,97 @@
 /**
- * Structured logger for request/runtime logging.
- * In dev: logs all levels to console with structured format
- * In staging/prod: only logs errors and warnings
+ * Structured logger using pino.
+ * Dev: pretty-printed human-readable output
+ * Staging/prod: JSON for log aggregation (ELK, Loki, etc.)
+ *
  * Do not use for startup failures (use console.error there).
  */
 
+import pino from "pino";
 import { env } from "@/config/env";
 
-function noop(_?: unknown) {}
+const redactPaths = [
+  "password",
+  "token",
+  "authorization",
+  "jwt",
+  "secret",
+  "*.password",
+  "*.token",
+  "*.authorization",
+  "*.jwt",
+  "*.secret",
+];
 
-/**
- * Format log message with timestamp and optional request ID
- */
-function formatMessage(
-  level: string,
-  message: string,
+const pinoBase = pino({
+  level: env.isDev ? "debug" : "info",
+  redact: {
+    paths: redactPaths,
+    censor: "[REDACTED]",
+  },
+  formatters: {
+    level: (label) => ({ level: label }),
+  },
+  timestamp: pino.stdTimeFunctions.isoTime,
+  ...(env.isDev
+    ? {
+        transport: {
+          target: "pino-pretty",
+          options: {
+            colorize: true,
+            translateTime: "SYS:standard",
+            ignore: "pid,hostname",
+          },
+        },
+      }
+    : {}),
+});
+
+function bindContext(
   requestId?: string,
-  data?: any,
-): string {
-  const timestamp = new Date().toISOString();
-  const reqId = requestId ? `[${requestId}]` : "";
-  const dataStr = data ? ` ${JSON.stringify(data)}` : "";
-  return `[${timestamp}] [${level}]${reqId} ${message}${dataStr}`;
+  data?: unknown,
+): Record<string, unknown> {
+  const ctx: Record<string, unknown> = {};
+  if (requestId) ctx.requestId = requestId;
+  if (data !== undefined) {
+    if (data && typeof data === "object" && !Array.isArray(data)) {
+      Object.assign(ctx, data);
+    } else {
+      ctx.data = data;
+    }
+  }
+  return ctx;
 }
 
 export const logger = {
   /**
-   * Log info messages (dev only)
+   * Log info messages (dev only in non-request context)
    */
-  log: (message: string, requestId?: string, data?: any) => {
+  log: (message: string, requestId?: string, data?: unknown) => {
     if (env.isDev) {
-      console.log(formatMessage("INFO", message, requestId, data));
+      pinoBase.info(bindContext(requestId, data), message);
     }
   },
 
   /**
-   * Log warning messages (dev and staging/prod)
+   * Log warning messages (all environments)
    */
-  warn: (message: string, requestId?: string, data?: any) => {
-    if (env.isDev || env.isStaging || env.isProd) {
-      console.warn(formatMessage("WARN", message, requestId, data));
-    }
+  warn: (message: string, requestId?: string, data?: unknown) => {
+    pinoBase.warn(bindContext(requestId, data), message);
   },
 
   /**
    * Log error messages (all environments)
    */
-  error: (message: string, requestId?: string, data?: any) => {
-    console.error(formatMessage("ERROR", message, requestId, data));
+  error: (message: string, requestId?: string, data?: unknown) => {
+    pinoBase.error(bindContext(requestId, data), message);
   },
 
   /**
    * Log info with structured data (dev only)
    */
-  info: (message: string, requestId?: string, data?: any) => {
+  info: (message: string, requestId?: string, data?: unknown) => {
     if (env.isDev) {
-      console.log(formatMessage("INFO", message, requestId, data));
+      pinoBase.info(bindContext(requestId, data), message);
     }
   },
 
@@ -63,7 +99,7 @@ export const logger = {
    * Log API request/response (all environments) for audit and debugging.
    * Use for request logging middleware only; do not log secrets.
    */
-  request: (message: string, requestId?: string, data?: any) => {
-    console.log(formatMessage("REQUEST", message, requestId, data));
+  request: (message: string, requestId?: string, data?: unknown) => {
+    pinoBase.info(bindContext(requestId, data), message);
   },
 };

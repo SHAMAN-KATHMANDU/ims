@@ -1,0 +1,42 @@
+---
+description: No swallowed errors; structured error context required
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: false
+---
+
+# Error Handling Rule
+
+Errors must be visible and debuggable. Silent failures hide bugs.
+
+## Forbidden
+
+1. **Empty catch blocks** — `catch {}` or `catch (e) {}` swallows errors
+2. **`console.error` without re-throw** — Logging alone does not propagate the failure
+3. **Catching and returning null** — Prefer throwing or returning `Result` type
+4. **Ignoring promise rejections** — Use `.catch()` or `try/await`; never leave promises unhandled
+
+## Required
+
+1. **Structured error context** — Include: operation name, identifiers (userId, tenantId, id), requestId
+2. **Re-throw after logging** — If you catch and log, re-throw unless you intentionally handle
+3. **Use AppError for business errors** — `throw createError("Message", statusCode)`
+4. **Use sendControllerError in controllers** — For unexpected errors, let the global handler format the response
+
+## Pattern
+
+```typescript
+try {
+  const result = await riskyOperation();
+  return result;
+} catch (error) {
+  logger.error("Operation failed", requestId, { userId, operation: "createX", error });
+  if (error instanceof AppError) throw error;
+  throw error; // or sendControllerError in controller
+}
+```
+
+## Golden Rule
+
+**Every error must be logged with context and either handled or re-thrown.**

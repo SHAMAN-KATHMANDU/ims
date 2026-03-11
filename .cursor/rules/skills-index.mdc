@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Skills Index
 
-This project has 21 skills in `.cursor/skills/`. Before working on any task below, read the corresponding `SKILL.md` file first.
+This project has 29 skills in `.cursor/skills/`. Before working on any task below, read the corresponding `SKILL.md` file first.
 
 ## How to Use
 
@@ -29,6 +29,8 @@ Then follow the patterns and guidelines it contains.
 | Before writing a utility function or adding a new npm dependency | `.cursor/skills/search-first/SKILL.md` |
 | Writing a new feature, fixing a bug, refactoring existing code | `.cursor/skills/tdd-workflow/SKILL.md` |
 | Before creating a PR, after completing a feature implementation | `.cursor/skills/verification-loop/SKILL.md` |
+| Finding unused exports, orphaned files, unreachable code | `.cursor/skills/dead-code-detection/SKILL.md` |
+| Circular dependency detection, import graph analysis, coupling | `.cursor/skills/dependency-analysis/SKILL.md` |
 
 ### API & Backend
 
@@ -44,6 +46,8 @@ Then follow the patterns and guidelines it contains.
 |----------------|------------|
 | Prisma schema changes, adding columns/tables/indexes, backfilling data, zero-downtime migrations | `.cursor/skills/database-migrations/SKILL.md` |
 | Index design, query optimization, data type selection, RLS policies, cursor pagination, slow queries | `.cursor/skills/postgres-patterns/SKILL.md` |
+| Missing indexes, N+1 queries, full table scans, EXPLAIN ANALYZE | `.cursor/skills/slow-query-detection/SKILL.md` |
+| pg_dump automation, PITR, backup verification | `.cursor/skills/database-backup/SKILL.md` |
 
 ### Security
 
@@ -57,6 +61,7 @@ Then follow the patterns and guidelines it contains.
 | Trigger Context | Skill File |
 |----------------|------------|
 | React components, custom hooks, Next.js App Router, state management, forms, accessibility | `.cursor/skills/frontend-patterns/SKILL.md` |
+| Bundle size analysis, heavy imports, code splitting | `.cursor/skills/bundle-analysis/SKILL.md` |
 
 ### Testing
 
@@ -77,6 +82,9 @@ Then follow the patterns and guidelines it contains.
 |----------------|------------|
 | Dockerfile, docker-compose, container networking, volumes, container security | `.cursor/skills/docker-patterns/SKILL.md` |
 | CI/CD pipelines, GitHub Actions, rolling/blue-green/canary deployments, rollback | `.cursor/skills/deployment-patterns/SKILL.md` |
+| OpenTelemetry, Prometheus, Grafana, Jaeger integration | `.cursor/skills/observability-setup/SKILL.md` |
+| Failure points, missing error handling, unhandled rejections | `.cursor/skills/failure-mode-analysis/SKILL.md` |
+| Runbooks, rollback procedures, incident communication | `.cursor/skills/incident-response/SKILL.md` |
 
 ### AI Agent Workflow
 
@@ -120,6 +128,14 @@ eval-harness            → LLM feature evals
 
 docker-patterns         → Dockerfile, compose
 deployment-patterns     → CI/CD, rollouts
+observability-setup     → OpenTelemetry, Prometheus, Grafana
+slow-query-detection    → N+1, indexes, EXPLAIN
+database-backup         → pg_dump, PITR
+dead-code-detection     → unused exports, orphaned files
+dependency-analysis     → circular deps, import graph
+failure-mode-analysis   → error handling, unhandled rejections
+bundle-analysis         → frontend bundle size
+incident-response       → runbooks, rollback
 
 iterative-retrieval     → exploring unfamiliar code
 strategic-compact       → context management

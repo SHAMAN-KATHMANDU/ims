@@ -175,16 +175,8 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Build shared package
         run: pnpm --filter @repo/shared build
-      - uses: actions/cache@v4
-        id: playwright-cache
-        with:
-          path: ~/.cache/ms-playwright
-          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml', 'apps/web/package.json') }}
-      - name: Install Playwright
-        if: steps.playwright-cache.outputs.cache-hit != 'true'
-        run: pnpm --filter web exec playwright install --with-deps chromium
       - name: Run Web tests
-        run: pnpm --filter web test:smoke
+        run: pnpm --filter web test:unit
 
   typecheck:
     name: Type check

@@ -2,98 +2,128 @@
  * Environment and runtime config. Single source of truth.
  * Do NOT read process.env elsewhere in the API.
  *
- * Fail-fast: missing required vars in staging/production will exit(1) on load.
+ * Fail-fast: validated via Zod at load time. Missing or invalid vars in
+ * staging/production cause process.exit(1) with descriptive errors.
  */
 
 import dotenv from "dotenv";
+import { z } from "zod";
 
 dotenv.config();
 
-const NODE_ENV = process.env.NODE_ENV ?? "development";
-const isDev = NODE_ENV === "development";
-const isStaging = NODE_ENV === "staging";
-const isProd = NODE_ENV === "production";
+const EnvSchema = z
+  .object({
+    NODE_ENV: z
+      .string()
+      .optional()
+      .default("development")
+      .refine((v) => ["development", "staging", "production"].includes(v), {
+        message: "NODE_ENV must be development, staging, or production",
+      }),
+    PORT: z
+      .string()
+      .optional()
+      .default("4000")
+      .transform((v) => parseInt(v, 10))
+      .refine((n) => !isNaN(n) && n >= 1 && n <= 65535, {
+        message: "PORT must be a number between 1 and 65535",
+      }),
+    HOST: z.string().optional().default("0.0.0.0"),
+    JWT_SECRET: z.string().optional().default(""),
+    DATABASE_URL: z.string().optional().default(""),
+    CORS_ORIGIN: z.string().optional(),
+    API_PUBLIC_URL: z.string().optional(),
+  })
+  .transform((raw) => {
+    const isDev = raw.NODE_ENV === "development";
+    const isStaging = raw.NODE_ENV === "staging";
+    const isProd = raw.NODE_ENV === "production";
 
-// In non-dev, required vars must be set; no silent fallbacks.
-if (!isDev) {
-  if (!process.env.JWT_SECRET?.trim()) {
-    console.error("FATAL: JWT_SECRET is required in staging and production.");
-    process.exit(1);
-  }
-  if (!process.env.DATABASE_URL?.trim()) {
-    console.error("FATAL: DATABASE_URL is required in staging and production.");
-    process.exit(1);
-  }
-}
+    if (!isDev) {
+      if (!raw.JWT_SECRET?.trim()) {
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["JWT_SECRET"],
+            message: "JWT_SECRET is required in staging and production",
+          },
+        ]);
+      }
+      if (!raw.DATABASE_URL?.trim()) {
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["DATABASE_URL"],
+            message: "DATABASE_URL is required in staging and production",
+          },
+        ]);
+      }
+      if (!raw.CORS_ORIGIN?.trim()) {
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["CORS_ORIGIN"],
+            message:
+              "CORS_ORIGIN is required in staging and production. Set it to your frontend origin(s).",
+          },
+        ]);
+      }
+      if (!raw.API_PUBLIC_URL?.trim()) {
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["API_PUBLIC_URL"],
+            message:
+              "API_PUBLIC_URL is required in staging and production for API docs.",
+          },
+        ]);
+      }
+    }
 
-// Port and Host validation
-const portEnv = process.env.PORT?.trim();
-if (!isDev && portEnv) {
-  const portNum = parseInt(portEnv, 10);
-  if (isNaN(portNum) || portNum < 1 || portNum > 65535) {
-    console.error("FATAL: PORT must be a valid number between 1 and 65535.");
-    process.exit(1);
-  }
-}
-const port = parseInt(portEnv ?? "4000", 10);
-const host = process.env.HOST?.trim() ?? "0.0.0.0";
+    let corsOrigin: string | string[];
+    if (raw.CORS_ORIGIN?.trim()) {
+      corsOrigin = raw.CORS_ORIGIN.includes(",")
+        ? raw.CORS_ORIGIN.split(",")
+            .map((o) => o.trim())
+            .filter(Boolean)
+        : raw.CORS_ORIGIN.trim();
+    } else if (isDev) {
+      corsOrigin = [
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001",
+      ];
+    } else {
+      corsOrigin = []; // unreachable due to throw above
+    }
 
-const jwtSecret = process.env.JWT_SECRET ?? "";
-const databaseUrl = process.env.DATABASE_URL ?? "";
+    const publicApiUrl =
+      raw.API_PUBLIC_URL?.trim() ?? "http://localhost:4000/api/v1";
 
-// CORS: must be set explicitly in staging/production.
-// With credentials (cookies), the browser requires a specific origin, not "*".
-// In dev, default to common local frontend origins so credentials work.
-// CORS_ORIGIN can be a single origin or comma-separated list.
-const corsOriginRaw = process.env.CORS_ORIGIN?.trim();
-let corsOrigin: string | string[];
-if (corsOriginRaw) {
-  corsOrigin = corsOriginRaw.includes(",")
-    ? corsOriginRaw
-        .split(",")
-        .map((o) => o.trim())
-        .filter(Boolean)
-    : corsOriginRaw;
-} else if (isDev) {
-  corsOrigin = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3001",
-  ];
-} else {
-  console.error(
-    "FATAL: CORS_ORIGIN is required in staging and production. Set it to your frontend origin(s).",
-  );
+    return {
+      nodeEnv: raw.NODE_ENV,
+      isDev,
+      isStaging,
+      isProd,
+      port: raw.PORT,
+      host: raw.HOST.trim() || "0.0.0.0",
+      jwtSecret: raw.JWT_SECRET ?? "",
+      databaseUrl: raw.DATABASE_URL ?? "",
+      corsOrigin,
+      publicApiUrl,
+      features: {} as const,
+    };
+  });
+
+const parsed = EnvSchema.safeParse(process.env);
+
+if (!parsed.success) {
+  const msg = parsed.error.errors
+    .map((e) => `${e.path.join(".")}: ${e.message}`)
+    .join("\n");
+  console.error("FATAL: Invalid environment configuration:\n", msg);
   process.exit(1);
 }
 
-// Swagger server URL. In dev default to localhost; in staging/prod must be set.
-const apiPublicUrlEnv = process.env.API_PUBLIC_URL?.trim();
-if (!isDev && !apiPublicUrlEnv) {
-  console.error(
-    "FATAL: API_PUBLIC_URL is required in staging and production for API docs.",
-  );
-  process.exit(1);
-}
-const publicApiUrl = apiPublicUrlEnv ?? "http://localhost:4000/api/v1";
-
-// Feature availability is resolved here; do NOT add feature checks in controllers beyond reading env.features.
-// New features must be explicitly enabled per environment; default is OFF for staging and production.
-const features = {
-  // Example: myFeature: process.env.FEATURE_MY_FEATURE === "1",
-} as const;
-
-export const env = Object.freeze({
-  nodeEnv: NODE_ENV,
-  isDev,
-  isStaging,
-  isProd,
-  port,
-  host,
-  jwtSecret,
-  databaseUrl,
-  corsOrigin,
-  publicApiUrl,
-  features,
-});
+export const env = Object.freeze(parsed.data);

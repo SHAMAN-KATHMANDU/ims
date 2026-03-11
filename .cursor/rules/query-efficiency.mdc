@@ -1,0 +1,37 @@
+---
+description: No N+1; use select/include; paginate all list endpoints
+globs:
+  - "apps/api/**/*.ts"
+alwaysApply: false
+---
+
+# Query Efficiency Rule
+
+Database queries are often the bottleneck. Optimize proactively.
+
+## N+1 Prevention
+
+- **Use `include`** — Fetch related data in one query
+- **Use `select`** — Fetch only needed fields
+- **Batch lookups** — Use `findMany` with `where: { id: { in: [...] } }` instead of loop + `findUnique`
+
+## Pagination
+
+- **All list endpoints** must support pagination (`page`, `limit`)
+- **Cursor pagination** for large, ordered lists (better performance)
+- **Default limits** — Cap max `limit` (e.g. 100) to avoid runaway queries
+
+## Indexes
+
+- Add indexes for `where`, `orderBy`, and `include` foreign keys
+- Use `@@index` in Prisma for compound queries
+
+## Anti-Patterns
+
+- `findMany` without `take` on unbounded lists
+- Loading full relations when only IDs needed
+- Sequential queries in a loop
+
+## Golden Rule
+
+**One query per request when possible. Paginate all lists.**

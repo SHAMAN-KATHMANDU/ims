@@ -1,0 +1,35 @@
+---
+description: Ban any/as any/@ts-ignore; require explicit return types on exports
+globs:
+  - "**/*.ts"
+  - "**/*.tsx"
+alwaysApply: false
+---
+
+# Strict Typing Rule
+
+TypeScript's value is in type safety. Do not bypass it.
+
+## Forbidden
+
+1. **`any`** — Never use `any` as a type
+2. **`as any`** — Never cast to any to silence errors
+3. **`@ts-ignore`** — Never use; prefer `@ts-expect-error` with a comment explaining why
+4. **`@ts-expect-error`** — Use sparingly; add a comment and ticket to fix the root cause
+5. **Implicit `any`** — Enable `noImplicitAny`; all parameters and returns must be typed
+
+## Required
+
+1. **Explicit return types** — All exported functions must have explicit return types
+2. **Proper typing for unknowns** — Use `unknown` + type guards instead of `any`
+3. **Generic constraints** — Use `<T extends SomeType>` when needed
+4. **Narrow with Zod** — For runtime-validated data, use `z.infer<typeof Schema>`
+
+## Exceptions (Rare)
+
+- **Third-party typings** — When a library has no types and `@ts-expect-error` is the only option, add a TODO
+- **Test mocks** — Prefer `vi.mocked()` and proper mock types over `as any`
+
+## Golden Rule
+
+**If you need `any`, you need to fix the types.**

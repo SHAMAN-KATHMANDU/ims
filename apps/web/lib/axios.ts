@@ -28,7 +28,16 @@ const api = axios.create({
   },
 });
 
-// Request interceptor: Attach JWT token and tenant slug; allow multipart when body is FormData
+// Simple UUID v4 for correlation IDs (no crypto import needed in browser)
+function randomCorrelationId(): string {
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+// Request interceptor: Attach JWT token, tenant slug, correlation ID; allow multipart when body is FormData
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // Access Zustand store directly (not a hook - this is outside React)
@@ -45,6 +54,11 @@ api.interceptors.request.use(
       !config.headers["X-Tenant-Slug"]
     ) {
       config.headers["X-Tenant-Slug"] = state.tenant.slug;
+    }
+
+    // Correlation ID for distributed tracing (backend propagates to logs)
+    if (config.headers && !config.headers["X-Correlation-ID"]) {
+      config.headers["X-Correlation-ID"] = randomCorrelationId();
     }
 
     // When sending FormData, remove default Content-Type so axios/browser sets multipart/form-data with boundary
