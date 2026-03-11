@@ -16,6 +16,7 @@ export type ProductFormValues = {
 export type CategoryFormValues = {
   name: string;
   description: string;
+  subcategories?: string[];
 };
 
 export type ProductVariationForm = {

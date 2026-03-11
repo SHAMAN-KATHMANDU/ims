@@ -60,6 +60,12 @@ interface PaginatedCategoriesApiResponse {
 interface CategoryResponse {
   message: string;
   category: Category;
+  restored?: boolean;
+}
+
+export interface CreateCategoryResult {
+  category: Category;
+  restored?: boolean;
 }
 
 // ============================================
@@ -152,14 +158,17 @@ export async function getCategorySubcategories(id: string): Promise<string[]> {
  */
 export async function createCategory(
   data: CreateCategoryData,
-): Promise<Category> {
+): Promise<CreateCategoryResult> {
   if (!data.name?.trim()) {
     throw new Error("Category name is required");
   }
 
   try {
     const response = await api.post<CategoryResponse>("/categories", data);
-    return response.data.category;
+    return {
+      category: response.data.category,
+      restored: response.data.restored,
+    };
   } catch (error) {
     handleApiError(error, "create category");
   }
