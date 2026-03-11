@@ -69,6 +69,10 @@ export class ContactService {
   ) {
     const existing = await contactRepository.findById(tenantId, id);
     if (!existing) throw createError("Contact not found", 404);
+
+    const taskRepository = (await import("../tasks/task.repository")).default;
+    await taskRepository.completeManyByContactId(id);
+
     await contactRepository.softDelete(id, {
       deletedBy: ctx.userId,
       deleteReason: ctx.reason ?? null,
@@ -90,6 +94,17 @@ export class ContactService {
 
   async createTag(tenantId: string, name: string) {
     return contactRepository.createTag(tenantId, name.trim());
+  }
+
+  async updateTag(tenantId: string, id: string, name: string) {
+    const tag = await contactRepository.updateTag(id, tenantId, name);
+    if (!tag) throw createError("Tag not found", 404);
+    return tag;
+  }
+
+  async deleteTag(tenantId: string, id: string) {
+    const tag = await contactRepository.deleteTag(id, tenantId);
+    if (!tag) throw createError("Tag not found", 404);
   }
 
   async addNote(

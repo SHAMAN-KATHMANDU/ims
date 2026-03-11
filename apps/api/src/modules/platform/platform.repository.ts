@@ -3,6 +3,7 @@
  * All cross-tenant operations use basePrisma (unscoped).
  */
 
+import { randomUUID } from "crypto";
 import { basePrisma } from "@/config/prisma";
 import type { PlanTier } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
@@ -146,6 +147,43 @@ export class PlatformRepository {
           description: "Default category",
         },
       });
+
+      // CRM defaults: pipeline, sources, journey types
+      const defaultStages = [
+        { id: randomUUID(), name: "Qualification", order: 0, probability: 0 },
+        { id: randomUUID(), name: "Proposal", order: 1, probability: 0 },
+        { id: randomUUID(), name: "Negotiation", order: 2, probability: 0 },
+        { id: randomUUID(), name: "Closed Won", order: 3, probability: 0 },
+        { id: randomUUID(), name: "Closed Lost", order: 4, probability: 0 },
+      ];
+      await tx.pipeline.create({
+        data: {
+          tenantId: tenant.id,
+          name: "Sales Pipeline",
+          stages: defaultStages,
+          isDefault: true,
+        },
+      });
+
+      const defaultSources = [
+        "Website",
+        "Referral",
+        "Social Media",
+        "Cold Call",
+        "Event",
+      ];
+      for (const name of defaultSources) {
+        await tx.crmSource.create({
+          data: { tenantId: tenant.id, name },
+        });
+      }
+
+      const defaultJourneyTypes = ["New", "Returning", "VIP"];
+      for (const name of defaultJourneyTypes) {
+        await tx.crmJourneyType.create({
+          data: { tenantId: tenant.id, name },
+        });
+      }
 
       return {
         tenant,

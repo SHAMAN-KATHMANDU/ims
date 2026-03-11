@@ -48,6 +48,18 @@ contactRouter.post(
   asyncHandler(contactController.createTag),
 );
 
+contactRouter.patch(
+  "/tags/:tagId",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(contactController.updateTag),
+);
+
+contactRouter.delete(
+  "/tags/:tagId",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(contactController.deleteTag),
+);
+
 /**
  * @swagger
  * /contacts:

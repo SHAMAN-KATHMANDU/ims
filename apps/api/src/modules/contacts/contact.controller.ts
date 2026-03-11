@@ -7,6 +7,7 @@ import {
   CreateContactSchema,
   UpdateContactSchema,
   CreateTagSchema,
+  UpdateTagSchema,
   AddNoteSchema,
   AddCommunicationSchema,
 } from "./contact.schema";
@@ -144,6 +145,46 @@ class ContactController {
           .json({ message: error.errors[0]?.message ?? "Validation error" });
       }
       return sendControllerError(req, res, error, "Create tag error");
+    }
+  };
+
+  updateTag = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const { name } = UpdateTagSchema.parse(req.body);
+      const tag = await contactService.updateTag(
+        tenantId,
+        req.params.tagId,
+        name,
+      );
+      return res.status(200).json({ message: "OK", tag });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
+      return sendControllerError(req, res, error, "Update tag error");
+    }
+  };
+
+  deleteTag = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      await contactService.deleteTag(tenantId, req.params.tagId);
+      return res.status(200).json({ message: "Tag deleted" });
+    } catch (error: unknown) {
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
+      return sendControllerError(req, res, error, "Delete tag error");
     }
   };
 

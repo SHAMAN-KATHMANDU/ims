@@ -7,6 +7,8 @@ import {
   CreateDealSchema,
   UpdateDealSchema,
   UpdateDealStageSchema,
+  AddDealLineItemSchema,
+  ConvertDealToSaleSchema,
 } from "./deal.schema";
 import dealService from "./deal.service";
 
@@ -125,6 +127,70 @@ class DealController {
           .json({ message: (error as AppError).message });
       }
       return sendControllerError(req, res, error, "Update deal stage error");
+    }
+  };
+
+  addLineItem = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const body = AddDealLineItemSchema.parse(req.body);
+      const item = await dealService.addLineItem(tenantId, req.params.id, body);
+      return res.status(201).json({ message: "Line item added", item });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
+      return sendControllerError(req, res, error, "Add line item error");
+    }
+  };
+
+  removeLineItem = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const lineItemId = req.params.lineItemId;
+      await dealService.removeLineItem(tenantId, req.params.id, lineItemId);
+      return res.status(200).json({ message: "Line item removed" });
+    } catch (error: unknown) {
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
+      return sendControllerError(req, res, error, "Remove line item error");
+    }
+  };
+
+  convertToSale = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
+      const body = ConvertDealToSaleSchema.parse(req.body);
+      const sale = await dealService.convertToSale(
+        tenantId,
+        req.params.id,
+        userId,
+        body,
+      );
+      return res.status(201).json({ message: "Deal converted to sale", sale });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      if ((error as AppError).statusCode) {
+        return res
+          .status((error as AppError).statusCode!)
+          .json({ message: (error as AppError).message });
+      }
+      return sendControllerError(req, res, error, "Convert to sale error");
     }
   };
 
