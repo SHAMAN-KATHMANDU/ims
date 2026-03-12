@@ -36,6 +36,8 @@ interface CategoryTableProps {
   subcategoriesByCategory?: Record<string, string[]>;
   onManageSubcategories?: (category: Category) => void;
   totalItems?: number;
+  /** When set, the matching category row is highlighted (e.g. on duplicate error). */
+  highlightCategoryId?: string | null;
 }
 
 export function CategoryTable({
@@ -48,6 +50,7 @@ export function CategoryTable({
   subcategoriesByCategory = {},
   onManageSubcategories,
   totalItems,
+  highlightCategoryId,
 }: CategoryTableProps) {
   return (
     <Card>
@@ -72,7 +75,16 @@ export function CategoryTable({
           </TableHeader>
           <TableBody>
             {categories.map((category) => (
-              <TableRow key={category.id}>
+              <TableRow
+                key={category.id}
+                id={`category-row-${category.id}`}
+                data-category-id={category.id}
+                className={
+                  highlightCategoryId === category.id
+                    ? "bg-amber-100 dark:bg-amber-950/50 animate-pulse"
+                    : undefined
+                }
+              >
                 <TableCell className="font-medium">{category.name}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {category.description || "-"}
@@ -127,9 +139,7 @@ export function CategoryTable({
                           <>
                             {onManageSubcategories && (
                               <DropdownMenuItem
-                                onClick={() =>
-                                  onManageSubcategories(category)
-                                }
+                                onClick={() => onManageSubcategories(category)}
                               >
                                 <Layers className="mr-2 h-4 w-4" />
                                 Manage subcategories
