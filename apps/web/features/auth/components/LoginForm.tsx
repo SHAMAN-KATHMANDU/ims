@@ -32,6 +32,7 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
     formState: { errors, isSubmitting },
   } = useForm<LoginInput>({
     resolver: zodResolver(LoginSchema),
+    mode: "onBlur",
     defaultValues: {
       username: "",
       password: "",
