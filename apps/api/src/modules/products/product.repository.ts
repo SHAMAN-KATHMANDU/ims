@@ -324,7 +324,9 @@ export class ProductRepository {
   async findAllProducts(
     tenantId: string,
     where: ProductListWhere,
-    orderBy: Prisma.ProductOrderByWithRelationInput,
+    orderBy:
+      | Prisma.ProductOrderByWithRelationInput
+      | Prisma.ProductOrderByWithRelationInput[],
     skip: number,
     take: number,
   ) {

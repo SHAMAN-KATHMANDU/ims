@@ -83,7 +83,7 @@ export async function processSaleBulkRows(
   const [allLocations, allUsers, allProducts, allVariations] =
     await Promise.all([
       findLocationsShowrooms(tenantId),
-      findAllUsersForBulk(),
+      findAllUsersForBulk(tenantId),
       findProductsByTenant(tenantId),
       findVariationsByTenant(tenantId),
     ]);
@@ -94,7 +94,10 @@ export async function processSaleBulkRows(
   const userMap = new Map(
     allUsers.map((u) => [u.username.toLowerCase(), u.id]),
   );
-  const variationsByProductIms = new Map<string, (typeof allVariations)[number][]>();
+  const variationsByProductIms = new Map<
+    string,
+    (typeof allVariations)[number][]
+  >();
   for (const v of allVariations) {
     const code = (v.product as { imsCode?: string }).imsCode?.toLowerCase();
     if (code) {

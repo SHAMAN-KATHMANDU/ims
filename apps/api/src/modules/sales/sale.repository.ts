@@ -1033,8 +1033,9 @@ export async function findLocationsShowrooms(tenantId: string) {
   });
 }
 
-export async function findAllUsersForBulk() {
+export async function findAllUsersForBulk(tenantId: string) {
   return prisma.user.findMany({
+    where: { tenantId },
     select: { id: true, username: true },
   });
 }

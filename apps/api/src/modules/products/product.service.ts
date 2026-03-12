@@ -351,6 +351,11 @@ export class ProductService {
     if (sortBy?.toLowerCase() === "vendorname") {
       orderBy = { vendor: { name: sortOrder } };
     }
+    // Add id tiebreaker for deterministic pagination (avoids duplicates across pages)
+    const orderByWithTiebreaker: Prisma.ProductOrderByWithRelationInput[] =
+      Array.isArray(orderBy)
+        ? [...orderBy, { id: "asc" as const }]
+        : [orderBy, { id: "asc" as const }];
 
     const where: ProductListWhere = {};
     if (search) {
@@ -421,7 +426,7 @@ export class ProductService {
     const { products, totalItems } = await this.repo.findAllProducts(
       tenantId,
       where,
-      orderBy,
+      orderByWithTiebreaker,
       skip,
       limit,
     );
