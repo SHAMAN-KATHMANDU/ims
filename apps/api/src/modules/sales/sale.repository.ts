@@ -201,8 +201,15 @@ export async function findUserLastLogin(userId: string) {
 // ─── PromoCode ───────────────────────────────────────────────────────────────
 
 export async function findPromoByCode(tenantId: string, code: string) {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
   return prisma.promoCode.findFirst({
-    where: { tenantId, code, isActive: true },
+    where: {
+      tenantId,
+      code: { equals: trimmed, mode: "insensitive" },
+      isActive: true,
+      deletedAt: null,
+    },
   });
 }
 
@@ -210,8 +217,15 @@ export async function findPromoByCodeWithProducts(
   tenantId: string,
   code: string,
 ) {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
   return prisma.promoCode.findFirst({
-    where: { tenantId, code },
+    where: {
+      tenantId,
+      code: { equals: trimmed, mode: "insensitive" },
+      isActive: true,
+      deletedAt: null,
+    },
     include: { products: { include: { product: true } } },
   });
 }

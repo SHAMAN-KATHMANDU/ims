@@ -6,9 +6,9 @@ import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import promoService, { PromoService } from "./promo.service";
 import { CreatePromoSchema, UpdatePromoSchema } from "./promo.schema";
 
-function getParam(req: Request, key: "id"): string {
+function getParam(req: Request, key: "id" | "code"): string {
   const val = req.params[key];
-  return Array.isArray(val) ? val[0] : val;
+  return Array.isArray(val) ? val[0] : (val ?? "");
 }
 
 class PromoController {
@@ -50,6 +50,26 @@ class PromoController {
       });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get promos error");
+    }
+  };
+
+  getPromoByCode = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const code = getParam(req, "code");
+
+      const promo = await this.service.findByCode(tenantId, code);
+
+      if (!promo) {
+        return res.status(404).json({ message: "Promo code not found" });
+      }
+
+      return res.status(200).json({
+        message: "Promo code fetched successfully",
+        promo,
+      });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get promo by code error");
     }
   };
 

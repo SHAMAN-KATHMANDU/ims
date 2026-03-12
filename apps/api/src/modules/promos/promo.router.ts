@@ -109,6 +109,31 @@ promoRouter.get(
 
 /**
  * @swagger
+ * /promos/by-code/{code}:
+ *   get:
+ *     summary: Get promo code by code (case-insensitive, for sale flow validation)
+ *     tags: [Promos]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: code
+ *         required: true
+ *         schema: { type: string }
+ *     responses:
+ *       200:
+ *         description: Promo code found
+ *       404:
+ *         description: Promo code not found
+ */
+promoRouter.get(
+  "/by-code/:code",
+  authorizeRoles("user", "admin", "superAdmin"),
+  asyncHandler(promoController.getPromoByCode),
+);
+
+/**
+ * @swagger
  * /promos/{id}:
  *   get:
  *     summary: Get promo code by ID
