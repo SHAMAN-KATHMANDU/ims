@@ -42,7 +42,12 @@ import {
   KeyRound,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useAuthStore, selectUserRole, selectTenant } from "@/store/auth-store";
+import {
+  useAuthStore,
+  selectUserRole,
+  selectTenant,
+  selectToken,
+} from "@/store/auth-store";
 import {
   useSidebarStore,
   selectSidebarWidth,
@@ -617,12 +622,19 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const pathname = usePathname();
   const userRole = useAuthStore(selectUserRole);
   const tenant = useAuthStore(selectTenant);
+  const token = useAuthStore(selectToken);
+  const refreshTenant = useAuthStore((s) => s.refreshTenant);
   const isMobile = useIsMobile();
   const sidebarWidth = useSidebarStore(selectSidebarWidth);
   const setSidebarWidth = useSidebarStore(selectSetSidebarWidth);
   const [resizing, setResizing] = useState(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
+
+  // Refresh tenant (plan, etc.) on mount and navigation so badge/features stay current
+  useEffect(() => {
+    if (token) refreshTenant();
+  }, [token, pathname, refreshTenant]);
 
   useEffect(() => {
     if (!resizing) return;

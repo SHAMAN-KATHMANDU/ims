@@ -6,6 +6,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
+import { fetchCurrentUser as fetchCurrentUserApi } from "@/lib/auth-api";
 import type { AuthUser, TenantInfo } from "@/utils/auth";
 
 export interface LoginResponse {
@@ -14,7 +15,7 @@ export interface LoginResponse {
   tenant: TenantInfo;
 }
 
-interface CurrentUserResponse {
+export interface CurrentUserResponse {
   user: AuthUser;
   tenant: TenantInfo;
 }
@@ -51,8 +52,7 @@ export async function login(
 
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   try {
-    const response = await api.get<CurrentUserResponse>("/auth/me");
-    return response.data;
+    return await fetchCurrentUserApi();
   } catch {
     return null;
   }
