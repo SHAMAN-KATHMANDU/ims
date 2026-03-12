@@ -66,6 +66,7 @@ export function ContactForm({
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onBlur",
     defaultValues: {
       firstName: defaultValues?.firstName ?? "",
       lastName: defaultValues?.lastName ?? "",
@@ -145,6 +146,11 @@ export function ContactForm({
           {...form.register("email")}
           className="mt-1"
         />
+        {form.formState.errors.email && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.email.message}
+          </p>
+        )}
       </div>
       <div>
         <Label htmlFor="contact-phone">Phone</Label>

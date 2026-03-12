@@ -41,7 +41,23 @@ export const TaskSchema = z.object({
   assignedToId: z.string().uuid().optional().nullable(),
 });
 
+export const CompanySchema = z.object({
+  name: z.string().min(1, "Name is required").max(200),
+  website: z.string().url().optional().or(z.literal("")),
+  address: z.string().max(500).optional(),
+  phone: z.string().max(50).optional().nullable(),
+});
+
+export const LogActivitySchema = z.object({
+  type: z.enum(["CALL", "MEETING"]),
+  subject: z.string().max(200).optional(),
+  notes: z.string().max(1000).optional(),
+  activityAt: z.string().min(1, "Date and time is required"),
+});
+
 export type ContactInput = z.infer<typeof ContactSchema>;
 export type LeadInput = z.infer<typeof LeadSchema>;
 export type DealInput = z.infer<typeof DealSchema>;
 export type TaskInput = z.infer<typeof TaskSchema>;
+export type CompanyInput = z.infer<typeof CompanySchema>;
+export type LogActivityInput = z.infer<typeof LogActivitySchema>;

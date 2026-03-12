@@ -75,6 +75,7 @@ export function TaskForm(props: TaskFormProps) {
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onBlur",
     defaultValues: isEdit
       ? {
           title: props.defaultValues.title,

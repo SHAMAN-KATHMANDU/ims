@@ -109,6 +109,7 @@ export function DealForm(props: DealFormProps) {
 
   const form = useForm<EditFormValues>({
     resolver: zodResolver(isEdit ? editSchema : createSchema),
+    mode: "onBlur",
     defaultValues: isEdit
       ? {
           name: props.defaultValues.name,
@@ -203,6 +204,11 @@ export function DealForm(props: DealFormProps) {
             className="mt-1"
             min={0}
           />
+          {form.formState.errors.value && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.value.message}
+            </p>
+          )}
         </div>
         <div>
           <Label>Probability (%)</Label>
@@ -213,6 +219,11 @@ export function DealForm(props: DealFormProps) {
             min={0}
             max={100}
           />
+          {form.formState.errors.probability && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.probability.message}
+            </p>
+          )}
         </div>
       </div>
 
@@ -220,39 +231,58 @@ export function DealForm(props: DealFormProps) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <Label>Stage</Label>
-            <Select
-              value={form.watch("stage") ?? ""}
-              onValueChange={(v) => form.setValue("stage", v)}
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="Select stage" />
-              </SelectTrigger>
-              <SelectContent>
-                {stageNames.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="stage"
+              control={form.control}
+              render={({ field }) => (
+                <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stageNames.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.stage && (
+              <p className="text-sm text-destructive mt-1">
+                {form.formState.errors.stage.message}
+              </p>
+            )}
           </div>
           <div>
             <Label>Status</Label>
-            <Select
-              value={form.watch("status") ?? "OPEN"}
-              onValueChange={(v) =>
-                form.setValue("status", v as "OPEN" | "WON" | "LOST")
-              }
-            >
-              <SelectTrigger className="mt-1">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="OPEN">Open</SelectItem>
-                <SelectItem value="WON">Won</SelectItem>
-                <SelectItem value="LOST">Lost</SelectItem>
-              </SelectContent>
-            </Select>
+            <Controller
+              name="status"
+              control={form.control}
+              render={({ field }) => (
+                <Select
+                  value={field.value ?? "OPEN"}
+                  onValueChange={(v) =>
+                    field.onChange(v as "OPEN" | "WON" | "LOST")
+                  }
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="OPEN">Open</SelectItem>
+                    <SelectItem value="WON">Won</SelectItem>
+                    <SelectItem value="LOST">Lost</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.status && (
+              <p className="text-sm text-destructive mt-1">
+                {form.formState.errors.status.message}
+              </p>
+            )}
           </div>
         </div>
       )}
