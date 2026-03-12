@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,10 +16,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
-import {
-  useContactTags,
-  useCreateContactTag,
-} from "../../hooks/use-contacts";
+import { useContactTags, useCreateContactTag } from "../../hooks/use-contacts";
 import {
   useCrmSources,
   useCrmJourneyTypes,
@@ -60,7 +57,22 @@ export function ContactForm({
   const { data: sourcesData } = useCrmSources();
   const { data: journeyTypesData } = useCrmJourneyTypes();
   const companies = companiesData?.companies ?? [];
-  const tags = tagsData?.tags ?? [];
+  const [optimisticTags, setOptimisticTags] = useState<
+    Array<{ id: string; name: string }>
+  >([]);
+  useEffect(() => {
+    if (!tagsData?.tags?.length) return;
+    setOptimisticTags((prev) =>
+      prev.filter((ot) => !tagsData.tags.some((t) => t.id === ot.id)),
+    );
+  }, [tagsData?.tags]);
+  const displayTags = [
+    ...(tagsData?.tags ?? []),
+    ...optimisticTags.filter(
+      (ot) => !(tagsData?.tags ?? []).some((t) => t.id === ot.id),
+    ),
+  ];
+  const tags = displayTags;
   const sources = sourcesData?.sources ?? [];
   const journeyTypes = journeyTypesData?.journeyTypes ?? [];
 
@@ -113,7 +125,7 @@ export function ContactForm({
           journeyType: values.journeyType || undefined,
         });
       })}
-      className="space-y-4 px-4 sm:px-6 pb-safe"
+      className="space-y-4 px-6 py-6 sm:px-6 pb-safe"
     >
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
@@ -262,6 +274,10 @@ export function ContactForm({
                 const result = await createTagMutation.mutateAsync(name.trim());
                 const current = form.watch("tagIds") ?? [];
                 if (result?.tag && !current.includes(result.tag.id)) {
+                  setOptimisticTags((prev) => [
+                    ...prev.filter((t) => t.id !== result.tag.id),
+                    { id: result.tag.id, name: result.tag.name },
+                  ]);
                   form.setValue("tagIds", [...current, result.tag.id]);
                 }
               } catch {
