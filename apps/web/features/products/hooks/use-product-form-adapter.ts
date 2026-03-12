@@ -21,21 +21,24 @@ export function useProductFormAdapter({
   initialValues = {},
   getAdditionalErrors,
 }: UseProductFormAdapterOptions): UseFormReturn<ProductFormValues> {
-  const defaultValues: ProductFormValues = {
-    imsCode: "",
-    name: "",
-    categoryId: "",
-    subCategory: "",
-    description: "",
-    length: "",
-    breadth: "",
-    height: "",
-    weight: "",
-    costPrice: "",
-    mrp: "",
-    vendorId: undefined,
-    ...initialValues,
-  };
+  const defaultValues = useMemo<ProductFormValues>(
+    () => ({
+      imsCode: "",
+      name: "",
+      categoryId: "",
+      subCategory: "",
+      description: "",
+      length: "",
+      breadth: "",
+      height: "",
+      weight: "",
+      costPrice: "",
+      mrp: "",
+      vendorId: undefined,
+      ...initialValues,
+    }),
+    [initialValues],
+  );
 
   const rhf = useForm<ProductFormValues>({
     resolver: zodResolver(ProductFormSchema),
