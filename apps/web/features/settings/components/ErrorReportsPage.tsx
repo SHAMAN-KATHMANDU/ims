@@ -33,6 +33,7 @@ import {
   useUpdateErrorReportStatus,
 } from "../hooks/use-settings";
 import { useUsers } from "@/features/users";
+import { useAuthStore, selectUserRole } from "@/store/auth-store";
 import type {
   ErrorReport,
   ErrorReportStatus,
@@ -66,6 +67,8 @@ export function ErrorReportsPage() {
   });
 
   const updateStatusMutation = useUpdateErrorReportStatus();
+  const userRole = useAuthStore(selectUserRole);
+  const canChangeStatus = userRole === "platformAdmin";
 
   const clearDateFilters = () => {
     setDateFrom(undefined);
@@ -285,29 +288,35 @@ export function ErrorReportsPage() {
                             )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Select
-                              value={report.status}
-                              onValueChange={(value) =>
-                                updateStatusMutation.mutate({
-                                  id: report.id,
-                                  status: value as ErrorReportStatus,
-                                })
-                              }
-                              disabled={updateStatusMutation.isPending}
-                            >
-                              <SelectTrigger className="w-[120px] h-8">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="OPEN">OPEN</SelectItem>
-                                <SelectItem value="REVIEWED">
-                                  REVIEWED
-                                </SelectItem>
-                                <SelectItem value="RESOLVED">
-                                  RESOLVED
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
+                            {canChangeStatus ? (
+                              <Select
+                                value={report.status}
+                                onValueChange={(value) =>
+                                  updateStatusMutation.mutate({
+                                    id: report.id,
+                                    status: value as ErrorReportStatus,
+                                  })
+                                }
+                                disabled={updateStatusMutation.isPending}
+                              >
+                                <SelectTrigger className="w-[120px] h-8">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="OPEN">OPEN</SelectItem>
+                                  <SelectItem value="REVIEWED">
+                                    REVIEWED
+                                  </SelectItem>
+                                  <SelectItem value="RESOLVED">
+                                    RESOLVED
+                                  </SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">
+                                —
+                              </span>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
