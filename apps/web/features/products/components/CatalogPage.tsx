@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useIsMobile } from "@/hooks/useMobile";
-import { useForm } from "@/hooks/useForm";
+import { useProductFormAdapter } from "../hooks/use-product-form-adapter";
 import {
   useProductsPaginated,
   useCategories,
@@ -312,8 +312,8 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     return Object.keys(errors).length > 0 ? errors : null;
   };
 
-  // Product form
-  const productForm = useForm<ProductFormValues>({
+  // Product form (uses react-hook-form with mode: "onBlur" for real-time validation)
+  const productForm = useProductFormAdapter({
     initialValues: {
       imsCode: "",
       name: "",
@@ -328,7 +328,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       mrp: "",
       vendorId: undefined,
     },
-    validate: validateProduct,
+    getAdditionalErrors: (vals) => validateProduct(vals) ?? {},
     onSubmit: async (values) => {
       try {
         if (!values.name?.trim() || !values.categoryId) {

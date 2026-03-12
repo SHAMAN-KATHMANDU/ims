@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -14,43 +16,77 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
-import type { CategoryFormValues } from "../types";
-import type { UseFormReturn } from "@/hooks/useForm";
 import type { Category } from "@/features/products";
+import {
+  CategoryFormSchema,
+  type CategoryFormInput,
+} from "../../validation";
 
 interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  form: UseFormReturn<CategoryFormValues>;
   editingCategory: Category | null;
+  onSubmit: (data: CategoryFormInput) => Promise<void>;
   onReset: () => void;
+  isLoading?: boolean;
 }
 
 export function CategoryForm({
   open,
   onOpenChange,
-  form,
   editingCategory,
+  onSubmit,
   onReset,
+  isLoading = false,
 }: CategoryFormProps) {
   const [subcategoryInput, setSubcategoryInput] = useState("");
 
-  const subcategories = form.values.subcategories ?? [];
+  const form = useForm<CategoryFormInput>({
+    resolver: zodResolver(CategoryFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      name: "",
+      description: "",
+      subcategories: [],
+    },
+  });
+
+  useEffect(() => {
+    if (open && editingCategory) {
+      form.reset({
+        name: editingCategory.name,
+        description: editingCategory.description || "",
+        subcategories: [],
+      });
+    } else if (!open) {
+      form.reset({ name: "", description: "", subcategories: [] });
+      setSubcategoryInput("");
+    }
+  }, [open, editingCategory, form]);
 
   const handleAddSubcategory = () => {
     const trimmed = subcategoryInput.trim();
-    if (!trimmed || subcategories.includes(trimmed)) return;
-    form.setValues({
-      subcategories: [...subcategories, trimmed],
-    });
+    const current = form.getValues("subcategories") ?? [];
+    if (!trimmed || current.includes(trimmed)) return;
+    form.setValue("subcategories", [...current, trimmed]);
     setSubcategoryInput("");
   };
 
-  const handleRemoveSubcategory = (name: string) => {
-    form.setValues({
-      subcategories: subcategories.filter((s) => s !== name),
-    });
+  const handleRemoveSubcategory = (index: number) => {
+    const current = form.getValues("subcategories") ?? [];
+    form.setValue(
+      "subcategories",
+      current.filter((_, i) => i !== index),
+    );
   };
+
+  const handleSubmit = form.handleSubmit(async (values) => {
+    await onSubmit(values);
+    onOpenChange(false);
+    onReset();
+  });
+
+  const subcategories = form.watch("subcategories") ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,24 +106,24 @@ export function CategoryForm({
             {editingCategory ? "Edit Category" : "Add Category"}
           </DialogTitle>
         </DialogHeader>
-        <form onSubmit={form.handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="cat-name">Name</Label>
             <Input
               id="cat-name"
-              value={form.values.name}
-              onChange={(e) => form.handleChange("name", e.target.value)}
+              {...form.register("name")}
             />
-            {form.errors.name && (
-              <p className="text-sm text-destructive">{form.errors.name}</p>
+            {form.formState.errors.name && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.name.message}
+              </p>
             )}
           </div>
           <div className="space-y-2">
             <Label htmlFor="cat-description">Description</Label>
             <Textarea
               id="cat-description"
-              value={form.values.description}
-              onChange={(e) => form.handleChange("description", e.target.value)}
+              {...form.register("description")}
             />
           </div>
           {!editingCategory && (
@@ -99,9 +135,9 @@ export function CategoryForm({
               </p>
               {subcategories.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {subcategories.map((sub) => (
+                  {subcategories.map((sub, index) => (
                     <Badge
-                      key={sub}
+                      key={`${sub}-${index}`}
                       variant="secondary"
                       className="flex items-center gap-1"
                     >
@@ -109,7 +145,7 @@ export function CategoryForm({
                       <button
                         type="button"
                         className="text-xs text-muted-foreground hover:text-destructive"
-                        onClick={() => handleRemoveSubcategory(sub)}
+                        onClick={() => handleRemoveSubcategory(index)}
                       >
                         ×
                       </button>
@@ -139,9 +175,6 @@ export function CategoryForm({
               </div>
             </div>
           )}
-          {form.errors._form && (
-            <p className="text-sm text-destructive">{form.errors._form}</p>
-          )}
           <div className="flex gap-2 justify-end">
             <Button
               type="button"
@@ -153,8 +186,8 @@ export function CategoryForm({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={form.isLoading}>
-              {form.isLoading
+            <Button type="submit" disabled={isLoading}>
+              {isLoading
                 ? "Saving..."
                 : editingCategory
                   ? "Update"
