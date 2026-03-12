@@ -22,6 +22,8 @@ vi.mock("./sale.service", () => ({
   default: {
     createSale: vi.fn(),
     previewSale: vi.fn(),
+    deleteSale: vi.fn(),
+    editSale: vi.fn(),
     getAllSales: vi.fn(),
     getMySales: vi.fn(),
     getSalesSinceLastLogin: vi.fn(),
@@ -90,6 +92,8 @@ const mockAddPayment = vi.mocked(saleService.addPayment);
 const mockGetSalesSummary = vi.mocked(saleService.getSalesSummary);
 const mockGetSalesByLocation = vi.mocked(saleService.getSalesByLocation);
 const mockGetDailySales = vi.mocked(saleService.getDailySales);
+const mockDeleteSale = vi.mocked(saleService.deleteSale);
+const mockEditSale = vi.mocked(saleService.editSale);
 
 function mockRes(): Partial<Response> {
   return {
@@ -232,6 +236,167 @@ describe("SaleController", () => {
       const res = mockRes() as Response;
 
       await saleController.createSale(req, res);
+
+      expect(sendControllerError).toHaveBeenCalled();
+    });
+  });
+
+  describe("deleteSale", () => {
+    it("returns 200 with deleted sale on success", async () => {
+      const deleted = {
+        id: "s1",
+        saleCode: "SL-20250303-ABCD",
+        deletedAt: new Date(),
+      };
+      mockDeleteSale.mockResolvedValue(
+        deleted as unknown as Awaited<ReturnType<typeof mockDeleteSale>>,
+      );
+
+      const req = makeReq({
+        params: { id: "s1" },
+        body: {},
+      });
+      const res = mockRes() as Response;
+
+      await saleController.deleteSale(req, res);
+
+      expect(mockDeleteSale).toHaveBeenCalledWith("s1", "u1", undefined);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Sale deleted successfully",
+        sale: deleted,
+      });
+    });
+
+    it("passes deleteReason when provided", async () => {
+      const deleted = { id: "s1", deletedAt: new Date() };
+      mockDeleteSale.mockResolvedValue(
+        deleted as unknown as Awaited<ReturnType<typeof mockDeleteSale>>,
+      );
+
+      const req = makeReq({
+        params: { id: "s1" },
+        body: { deleteReason: "Duplicate entry" },
+      });
+      const res = mockRes() as Response;
+
+      await saleController.deleteSale(req, res);
+
+      expect(mockDeleteSale).toHaveBeenCalledWith(
+        "s1",
+        "u1",
+        "Duplicate entry",
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("returns 404 when sale not found", async () => {
+      mockDeleteSale.mockRejectedValue(
+        Object.assign(new Error("Sale not found or already deleted"), {
+          statusCode: 404,
+        }),
+      );
+
+      const req = makeReq({ params: { id: "s1" }, body: {} });
+      const res = mockRes() as Response;
+
+      await saleController.deleteSale(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+    });
+
+    it("calls sendControllerError on unexpected error", async () => {
+      mockDeleteSale.mockRejectedValue(new Error("DB down"));
+
+      const req = makeReq({ params: { id: "s1" }, body: {} });
+      const res = mockRes() as Response;
+
+      await saleController.deleteSale(req, res);
+
+      expect(sendControllerError).toHaveBeenCalled();
+    });
+  });
+
+  describe("editSale", () => {
+    it("returns 200 with updated sale on success", async () => {
+      const updated = {
+        id: "s2",
+        saleCode: "SL-20250303-XYZ",
+        revisionNo: 2,
+        isLatest: true,
+      };
+      mockEditSale.mockResolvedValue(
+        updated as unknown as Awaited<ReturnType<typeof mockEditSale>>,
+      );
+
+      const req = makeReq({
+        params: { id: "s1" },
+        body: {
+          items: [
+            {
+              variationId: "550e8400-e29b-41d4-a716-446655440001",
+              quantity: 2,
+            },
+          ],
+          notes: "Updated",
+          editReason: "Fixed quantity",
+        },
+      });
+      const res = mockRes() as Response;
+
+      await saleController.editSale(req, res);
+
+      expect(mockEditSale).toHaveBeenCalledWith(
+        "s1",
+        "u1",
+        expect.objectContaining({
+          items: [
+            {
+              variationId: "550e8400-e29b-41d4-a716-446655440001",
+              quantity: 2,
+            },
+          ],
+          notes: "Updated",
+          editReason: "Fixed quantity",
+        }),
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Sale updated successfully",
+        sale: updated,
+      });
+    });
+
+    it("returns 400 on Zod validation error", async () => {
+      const req = makeReq({
+        params: { id: "s1" },
+        body: { items: [] },
+      });
+      const res = mockRes() as Response;
+
+      await saleController.editSale(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockEditSale).not.toHaveBeenCalled();
+    });
+
+    it("calls sendControllerError on unexpected error", async () => {
+      mockEditSale.mockRejectedValue(new Error("DB down"));
+
+      const req = makeReq({
+        params: { id: "s1" },
+        body: {
+          items: [
+            {
+              variationId: "550e8400-e29b-41d4-a716-446655440001",
+              quantity: 1,
+            },
+          ],
+        },
+      });
+      const res = mockRes() as Response;
+
+      await saleController.editSale(req, res);
 
       expect(sendControllerError).toHaveBeenCalled();
     });

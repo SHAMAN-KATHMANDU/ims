@@ -37,6 +37,8 @@ import {
   getSaleTypeColor,
   formatCurrency,
   useAddPaymentToSale,
+  useDeleteSale,
+  useEditSale,
 } from "../../hooks/use-sales";
 import { downloadReceiptPdf } from "../../services/sales.service";
 import { useToast } from "@/hooks/useToast";
@@ -51,7 +53,11 @@ import {
   Contact,
   Printer,
   FileDown,
+  Trash2,
+  Pencil,
 } from "lucide-react";
+import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
+import { EditSaleForm } from "./EditSaleForm";
 
 const PAYMENT_METHODS: { value: PaymentMethod; label: string }[] = [
   { value: "CASH", label: "Cash" },
@@ -77,7 +83,11 @@ export function SaleDetail({
   const { toast } = useToast();
   const tenant = useAuthStore((s) => s.tenant);
   const addPaymentMutation = useAddPaymentToSale();
+  const deleteSaleMutation = useDeleteSale();
+  const editSaleMutation = useEditSale();
   const [payDialogOpen, setPayDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("CASH");
@@ -141,6 +151,30 @@ export function SaleDetail({
     }
   };
 
+  const handleDeleteConfirm = async (reason?: string) => {
+    if (!sale) return;
+    try {
+      await deleteSaleMutation.mutateAsync({
+        saleId: sale.id,
+        deleteReason: reason || null,
+      });
+      toast({ title: "Sale deleted" });
+      onOpenChange(false);
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      toast({
+        title: "Failed to delete sale",
+        description: err.message ?? "Could not delete sale",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
+  const handleEditSuccess = () => {
+    setEditDialogOpen(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="flex w-[95vw] max-w-3xl max-h-[90vh] flex-col gap-4 p-6 sm:max-w-[800px]">
@@ -169,6 +203,26 @@ export function SaleDetail({
               >
                 <FileDown className="h-4 w-4" />
                 {receiptLoading ? "..." : "PDF"}
+              </Button>
+              {sale.isLatest !== false && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditDialogOpen(true)}
+                  className="gap-1.5 print:hidden"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Edit
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDeleteDialogOpen(true)}
+                className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive print:hidden"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
               </Button>
             </div>
           )}
@@ -538,6 +592,37 @@ export function SaleDetail({
           </div>
         )}
       </DialogContent>
+
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Sale</DialogTitle>
+          </DialogHeader>
+          {sale && (
+            <EditSaleForm
+              sale={sale}
+              onSubmit={async (data) => {
+                await editSaleMutation.mutateAsync({ saleId: sale.id, data });
+                toast({ title: "Sale updated" });
+                handleEditSuccess();
+              }}
+              onCancel={() => setEditDialogOpen(false)}
+              isLoading={editSaleMutation.isPending}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <DeleteConfirmDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        itemName={sale?.saleCode ?? "sale"}
+        title="Delete this sale?"
+        description="This will soft-delete the sale, restore inventory and promo usage, and remove it from listings. This cannot be undone."
+        showReasonField={true}
+        onConfirm={handleDeleteConfirm}
+        isLoading={deleteSaleMutation.isPending}
+      />
 
       {/* Pay dialog for credit sales */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>

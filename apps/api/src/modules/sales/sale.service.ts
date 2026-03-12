@@ -31,6 +31,8 @@ import {
   findSalesForExportByFilter,
   findSalesForDailyChartByFilter,
   updateSaleContactId,
+  softDeleteSale,
+  createSaleRevision,
 } from "./sale.repository";
 import contactRepository from "@/modules/contacts/contact.repository";
 
@@ -551,6 +553,125 @@ export async function createSale(
   return finalSale;
 }
 
+export async function deleteSale(
+  saleId: string,
+  userId: string,
+  deleteReason?: string | null,
+) {
+  const result = await softDeleteSale(saleId, userId, deleteReason ?? null);
+  if (!result) {
+    throw Object.assign(new Error("Sale not found or already deleted"), {
+      statusCode: 404,
+    });
+  }
+  return result;
+}
+
+export async function editSale(
+  saleId: string,
+  userId: string,
+  dto: {
+    items: SaleItemInput[];
+    notes?: string;
+    payments?: Array<{
+      method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+      amount: number;
+    }>;
+    editReason?: string | null;
+  },
+) {
+  const sale = await findSaleById(saleId);
+  if (!sale) {
+    throw Object.assign(new Error("Sale not found"), { statusCode: 404 });
+  }
+  if (sale.deletedAt) {
+    throw Object.assign(new Error("Cannot edit a deleted sale"), {
+      statusCode: 400,
+    });
+  }
+  if (!sale.isLatest) {
+    throw Object.assign(new Error("Cannot edit a superseded revision"), {
+      statusCode: 400,
+    });
+  }
+
+  const location = await findLocationById(sale.locationId);
+  if (!location?.isActive || location.type !== "SHOWROOM") {
+    throw Object.assign(new Error("Sale location is invalid or inactive"), {
+      statusCode: 400,
+    });
+  }
+
+  const { processedItems, subtotal, totalDiscount, totalPromoDiscount, total } =
+    await calculateSaleItems(
+      dto.items,
+      sale.locationId,
+      sale.type as "GENERAL" | "MEMBER",
+      sale.tenantId,
+    );
+
+  const promoCodesUsed = new Set<string>();
+  for (const item of dto.items) {
+    const code = item.promoCode?.trim();
+    if (!code || promoCodesUsed.has(code)) continue;
+    promoCodesUsed.add(code);
+  }
+  const creditSale = sale.isCreditSale;
+  if (!creditSale && dto.payments && dto.payments.length > 0) {
+    const paymentSum =
+      Math.round(
+        dto.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) * 100,
+      ) / 100;
+    const totalNum = Number(total);
+    if (Math.abs(paymentSum - totalNum) > 0.01) {
+      throw Object.assign(
+        new Error(
+          `Payment total ${paymentSum} does not match sale total ${totalNum}`,
+        ),
+        { statusCode: 400 },
+      );
+    }
+  }
+
+  const result = await createSaleRevision({
+    tenantId: sale.tenantId,
+    saleCode: generateSaleCode(),
+    type: sale.type as "GENERAL" | "MEMBER",
+    isCreditSale: creditSale,
+    locationId: sale.locationId,
+    memberId: sale.memberId,
+    contactId: sale.contactId,
+    createdById: sale.createdById,
+    subtotal: Number(subtotal),
+    discount: Number(totalDiscount),
+    promoDiscount: Number(totalPromoDiscount),
+    total: Number(total),
+    notes: dto.notes ?? sale.notes ?? null,
+    promoCodesUsed: Array.from(promoCodesUsed),
+    items: processedItems.map((p) => ({
+      variationId: p.variationId,
+      subVariationId: p.subVariationId,
+      quantity: p.quantity,
+      unitPrice: p.unitPrice,
+      totalMrp: p.totalMrp,
+      discountPercent: p.discountPercent,
+      discountAmount: p.discountAmount,
+      lineTotal: p.lineTotal,
+    })),
+    payments: dto.payments,
+    parentSaleId: saleId,
+    editedById: userId,
+    editReason: dto.editReason ?? null,
+  });
+
+  if (!result) {
+    throw Object.assign(new Error("Failed to create sale revision"), {
+      statusCode: 500,
+    });
+  }
+  return result;
+}
+
 export async function previewSale(
   ctx: { tenantId: string },
   dto: {
@@ -929,6 +1050,26 @@ export class SaleService {
 
   async addPayment(saleId: string, dto: { method: string; amount: number }) {
     return addPayment(saleId, dto);
+  }
+
+  async deleteSale(saleId: string, userId: string, deleteReason?: string) {
+    return deleteSale(saleId, userId, deleteReason);
+  }
+
+  async editSale(
+    saleId: string,
+    userId: string,
+    dto: {
+      items: SaleItemInput[];
+      notes?: string;
+      payments?: Array<{
+        method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+        amount: number;
+      }>;
+      editReason?: string | null;
+    },
+  ) {
+    return editSale(saleId, userId, dto);
   }
 
   async getSalesSummary(params: {

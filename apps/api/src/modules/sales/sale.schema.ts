@@ -141,3 +141,25 @@ export const GetMySalesQuerySchema = z.object({
 });
 
 export type GetMySalesQueryDto = z.infer<typeof GetMySalesQuerySchema>;
+
+export const DeleteSaleSchema = z.object({
+  deleteReason: z.string().max(500).optional().nullable(),
+});
+
+export type DeleteSaleDto = z.infer<typeof DeleteSaleSchema>;
+
+export const EditSaleSchema = z.object({
+  items: z.array(SALE_ITEM_SCHEMA).min(1, "At least one item is required"),
+  notes: z.string().optional(),
+  payments: z
+    .array(
+      z.object({
+        method: PAYMENT_METHOD,
+        amount: z.number().min(0),
+      }),
+    )
+    .optional(),
+  editReason: z.string().max(500).optional().nullable(),
+});
+
+export type EditSaleDto = z.infer<typeof EditSaleSchema>;

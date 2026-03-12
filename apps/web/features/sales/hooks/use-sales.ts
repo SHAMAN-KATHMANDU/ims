@@ -12,6 +12,8 @@ import {
   getSalesSinceLastLogin,
   createSale,
   addPaymentToSale,
+  deleteSale,
+  editSale,
   getSalesSummary,
   getSalesByLocation,
   getDailySales,
@@ -21,6 +23,7 @@ import {
   type SalesListParams,
   type PaginatedSalesResponse,
   type CreateSaleData,
+  type EditSaleData,
   type SalesSummary,
   type LocationSalesStat,
   type DailySalesStat,
@@ -41,6 +44,7 @@ export type {
   SalesListParams,
   PaginatedSalesResponse,
   CreateSaleData,
+  EditSaleData,
   SalesSummary,
   LocationSalesStat,
   DailySalesStat,
@@ -201,6 +205,45 @@ export function useAddPaymentToSale() {
       });
       queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.mySalesAll() });
+    },
+  });
+}
+
+export function useDeleteSale() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      saleId,
+      deleteReason,
+    }: {
+      saleId: string;
+      deleteReason?: string | null;
+    }) => deleteSale(saleId, deleteReason),
+    onSuccess: (_, variables) => {
+      queryClient.removeQueries({
+        queryKey: salesKeys.detail(variables.saleId),
+      });
+      queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesKeys.mySalesAll() });
+      queryClient.invalidateQueries({ queryKey: salesKeys.analytics() });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
+    },
+  });
+}
+
+export function useEditSale() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ saleId, data }: { saleId: string; data: EditSaleData }) =>
+      editSale(saleId, data),
+    onSuccess: (sale) => {
+      queryClient.invalidateQueries({ queryKey: salesKeys.detail(sale.id) });
+      queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: salesKeys.mySalesAll() });
+      queryClient.invalidateQueries({ queryKey: salesKeys.analytics() });
+      queryClient.invalidateQueries({ queryKey: inventoryKeys.all });
+      queryClient.invalidateQueries({ queryKey: productKeys.all });
     },
   });
 }

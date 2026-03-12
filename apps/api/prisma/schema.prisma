@@ -209,6 +209,8 @@ model User {
   transfersApproved Transfer[]    @relation("TransferApprover")
   transferLogs      TransferLog[]
   salesCreated      Sale[]        @relation("SaleCreator")
+  salesDeleted      Sale[]        @relation("SaleDeletedBy")
+  salesEdited       Sale[]        @relation("SaleEditedBy")
   auditLogs         AuditLog[]
   errorReports      ErrorReport[]
 
@@ -720,14 +722,27 @@ model Sale {
   promoCodesUsed   Json?    @map("promo_codes_used")
   createdById      String   @map("created_by_id")
   createdAt        DateTime @default(now()) @map("created_at")
+  deletedAt        DateTime? @map("deleted_at")
+  deletedById      String?   @map("deleted_by")
+  deleteReason     String?   @map("delete_reason") @db.VarChar(500)
+  parentSaleId     String?   @map("parent_sale_id")
+  revisionNo       Int       @default(1) @map("revision_no")
+  isLatest         Boolean   @default(true) @map("is_latest")
+  editReason       String?   @map("edit_reason") @db.VarChar(500)
+  editedById       String?   @map("edited_by_id")
+  editedAt         DateTime? @map("edited_at")
 
-  tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  location  Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  member    Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  contact   Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  createdBy User         @relation("SaleCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  items     SaleItem[]
-  payments  SalePayment[]
+  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location   Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  member     Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  contact    Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  createdBy  User         @relation("SaleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  deletedBy  User?        @relation("SaleDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  editedBy   User?        @relation("SaleEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
+  parentSale Sale?        @relation("SaleRevisions", fields: [parentSaleId], references: [id], onDelete: SetNull)
+  revisions  Sale[]       @relation("SaleRevisions")
+  items      SaleItem[]
+  payments   SalePayment[]
 
   @@unique([tenantId, saleCode])
   @@map("sales")

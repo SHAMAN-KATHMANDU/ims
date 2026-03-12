@@ -294,6 +294,45 @@ export async function createSale(data: CreateSaleData): Promise<Sale> {
   }
 }
 
+export async function deleteSale(
+  saleId: string,
+  deleteReason?: string | null,
+): Promise<Sale> {
+  if (!saleId?.trim()) throw new Error("Sale ID is required");
+  try {
+    const response = await api.delete<SaleResponse>(`/sales/${saleId}`, {
+      data: deleteReason ? { deleteReason } : {},
+    });
+    return response.data.sale;
+  } catch (error) {
+    handleApiError(error, "delete sale");
+  }
+}
+
+export interface EditSaleData {
+  items: CreateSaleItem[];
+  notes?: string;
+  payments?: { method: PaymentMethod; amount: number }[];
+  editReason?: string | null;
+}
+
+export async function editSale(
+  saleId: string,
+  data: EditSaleData,
+): Promise<Sale> {
+  if (!saleId?.trim()) throw new Error("Sale ID is required");
+  if (!data.items?.length) throw new Error("At least one item is required");
+  try {
+    const response = await api.post<SaleResponse>(
+      `/sales/${saleId}/edit`,
+      data,
+    );
+    return response.data.sale;
+  } catch (error) {
+    handleApiError(error, "edit sale");
+  }
+}
+
 export async function getSalesSummary(
   params: {
     locationId?: string;
