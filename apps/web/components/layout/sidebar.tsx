@@ -39,6 +39,7 @@ import {
   Truck,
   PackageCheck,
   ListChecks,
+  KeyRound,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import { useAuthStore, selectUserRole, selectTenant } from "@/store/auth-store";
@@ -115,6 +116,12 @@ const navSections: NavSection[] = [
         path: "settings/error-reports",
         label: "Error Reports",
         icon: Bug,
+        roles: ["platformAdmin"],
+      },
+      {
+        path: "platform/password-resets",
+        label: "Password Resets",
+        icon: KeyRound,
         roles: ["platformAdmin"],
       },
     ],
@@ -335,6 +342,12 @@ const navSections: NavSection[] = [
         icon: FileText,
         roles: ["superAdmin"],
         feature: Feature.AUDIT_LOGS,
+      },
+      {
+        path: "settings/password-reset",
+        label: "Password Reset Requests",
+        icon: KeyRound,
+        roles: ["superAdmin"],
       },
       {
         path: "admin-controls",

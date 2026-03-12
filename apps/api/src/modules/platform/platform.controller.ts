@@ -12,6 +12,7 @@ import {
   UpdateTenantSchema,
   CreateTenantUserSchema,
   ResetTenantUserPasswordSchema,
+  ApprovePlatformResetSchema,
   ChangePlanSchema,
   UpsertPlanLimitSchema,
   CreatePricingPlanSchema,
@@ -560,6 +561,51 @@ class PlatformController {
         res,
         error,
         "Delete tenant payment error",
+      );
+    }
+  };
+
+  // ─── Password Reset Requests (escalated) ───────────────────────────────────
+
+  getPlatformResetRequests = async (req: Request, res: Response) => {
+    try {
+      const requests =
+        await platformService.getPlatformResetRequests();
+      return res
+        .status(200)
+        .json({ message: "Password reset requests fetched", requests });
+    } catch (error) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get platform reset requests error",
+      );
+    }
+  };
+
+  approvePlatformResetRequest = async (req: Request, res: Response) => {
+    try {
+      const requestId = getParam(req, "requestId");
+      const handledById = req.user!.id;
+      const body = ApprovePlatformResetSchema.parse(req.body);
+      await platformService.approvePlatformResetRequest(requestId, handledById, {
+        newPassword: body.newPassword,
+      });
+      return res
+        .status(200)
+        .json({ message: "Password reset approved. User can now log in." });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          message: error.errors[0]?.message ?? "Validation error",
+        });
+      }
+      return handleError(
+        req,
+        res,
+        error,
+        "Approve platform reset request error",
       );
     }
   };

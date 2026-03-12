@@ -3,7 +3,12 @@ import { type Role } from "@prisma/client";
 import { createError } from "@/middlewares/errorHandler";
 import { getPaginationParams } from "@/utils/pagination";
 import userRepository, { UserRepository } from "./user.repository";
-import type { CreateUserDto, UpdateUserDto } from "./user.schema";
+import passwordResetRepository from "./password-reset.repository";
+import type {
+  CreateUserDto,
+  UpdateUserDto,
+  ApprovePasswordResetDto,
+} from "./user.schema";
 
 const BCRYPT_ROUNDS = 10;
 
@@ -71,6 +76,64 @@ export class UserService {
     }
 
     await this.repo.delete(id);
+  }
+
+  async getPasswordResetRequests(tenantId: string) {
+    return passwordResetRepository.findForTenant(tenantId, false);
+  }
+
+  async approveResetRequest(
+    requestId: string,
+    tenantId: string,
+    handledById: string,
+    data: ApprovePasswordResetDto,
+  ) {
+    const req = await passwordResetRepository.findById(requestId);
+    if (!req) throw createError("Password reset request not found", 404);
+    if (req.tenantId !== tenantId)
+      throw createError("Request does not belong to your organization", 403);
+    if (req.status !== "PENDING")
+      throw createError("Request has already been handled", 400);
+    if (req.escalated)
+      throw createError(
+        "Escalated requests must be handled by platform admin",
+        403,
+      );
+
+    const hashedPassword = await bcrypt.hash(data.newPassword, BCRYPT_ROUNDS);
+    await passwordResetRepository.approve(
+      requestId,
+      handledById,
+      hashedPassword,
+    );
+  }
+
+  async escalateResetRequest(requestId: string, tenantId: string) {
+    const req = await passwordResetRepository.findById(requestId);
+    if (!req) throw createError("Password reset request not found", 404);
+    if (req.tenantId !== tenantId)
+      throw createError("Request does not belong to your organization", 403);
+    if (req.status !== "PENDING")
+      throw createError("Request has already been handled", 400);
+    if (req.escalated)
+      throw createError("Request is already escalated", 400);
+
+    return passwordResetRepository.escalate(requestId);
+  }
+
+  async rejectResetRequest(
+    requestId: string,
+    tenantId: string,
+    handledById: string,
+  ) {
+    const req = await passwordResetRepository.findById(requestId);
+    if (!req) throw createError("Password reset request not found", 404);
+    if (req.tenantId !== tenantId)
+      throw createError("Request does not belong to your organization", 403);
+    if (req.status !== "PENDING")
+      throw createError("Request has already been handled", 400);
+
+    return passwordResetRepository.reject(requestId, handledById);
   }
 }
 

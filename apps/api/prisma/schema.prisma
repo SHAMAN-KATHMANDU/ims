@@ -37,8 +37,9 @@ model Tenant {
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
   // Relations
-  users          User[]
-  categories     Category[]
+  users                 User[]
+  passwordResetRequests PasswordResetRequest[]
+  categories            Category[]
   products       Product[]
   discountTypes  DiscountType[]
   vendors        Vendor[]
@@ -201,6 +202,8 @@ model User {
 
   // Relations
   tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  passwordResetRequestsRequested PasswordResetRequest[] @relation("ResetRequester")
+  passwordResetRequestsHandled   PasswordResetRequest[] @relation("ResetHandler")
   productsCreated   Product[]     @relation("ProductCreator")
   transfersCreated  Transfer[]    @relation("TransferCreator")
   transfersApproved Transfer[]    @relation("TransferApprover")
@@ -232,6 +235,31 @@ enum Role {
   superAdmin
   admin
   user
+}
+
+enum PasswordResetStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  ESCALATED
+}
+
+model PasswordResetRequest {
+  id            String              @id @default(uuid()) @map("reset_request_id")
+  tenantId      String              @map("tenant_id")
+  requestedById String              @map("requested_by_id")
+  status        PasswordResetStatus @default(PENDING)
+  escalated     Boolean             @default(false)
+  handledById   String?             @map("handled_by_id")
+  handledAt     DateTime?           @map("handled_at")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  requestedBy User   @relation("ResetRequester", fields: [requestedById], references: [id])
+  handledBy   User?  @relation("ResetHandler", fields: [handledById], references: [id])
+
+  @@map("password_reset_requests")
 }
 
 // ============================================

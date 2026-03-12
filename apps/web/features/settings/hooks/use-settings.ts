@@ -11,6 +11,12 @@ import {
   type CreateErrorReportData,
   type ErrorReportStatus,
 } from "../services/error-report.service";
+import {
+  getPasswordResetRequests,
+  approvePasswordResetRequest,
+  escalatePasswordResetRequest,
+  rejectPasswordResetRequest,
+} from "@/features/users/services/user.service";
 
 export const auditLogKeys = {
   all: ["audit-logs"] as const,
@@ -59,6 +65,63 @@ export function useUpdateErrorReportStatus() {
     },
     onError: () => {
       toast({ title: "Failed to update status", variant: "destructive" });
+    },
+  });
+}
+
+export const passwordResetKeys = {
+  all: ["password-reset-requests"] as const,
+};
+
+export function usePasswordResetRequests() {
+  return useQuery({
+    queryKey: passwordResetKeys.all,
+    queryFn: getPasswordResetRequests,
+  });
+}
+
+export function useApprovePasswordReset() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({ requestId, newPassword }: { requestId: string; newPassword: string }) =>
+      approvePasswordResetRequest(requestId, newPassword),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: passwordResetKeys.all });
+      toast({ title: "Password reset approved" });
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message ?? "Failed to approve", variant: "destructive" });
+    },
+  });
+}
+
+export function useEscalatePasswordReset() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (requestId: string) => escalatePasswordResetRequest(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: passwordResetKeys.all });
+      toast({ title: "Request escalated to platform admin" });
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message ?? "Failed to escalate", variant: "destructive" });
+    },
+  });
+}
+
+export function useRejectPasswordReset() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: (requestId: string) => rejectPasswordResetRequest(requestId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: passwordResetKeys.all });
+      toast({ title: "Request rejected" });
+    },
+    onError: (err: Error) => {
+      toast({ title: err.message ?? "Failed to reject", variant: "destructive" });
     },
   });
 }

@@ -243,3 +243,46 @@ export async function resetTenantUserPassword(
     handleApiError(error, "reset tenant user password");
   }
 }
+
+// ─── Platform Password Reset Requests (escalated) ─────────────────────────────
+
+export interface PlatformPasswordResetRequest {
+  id: string;
+  tenantId: string;
+  requestedById: string;
+  status: string;
+  escalated: boolean;
+  createdAt: string;
+  requestedBy: { id: string; username: string; role: string };
+  tenant: { id: string; name: string; slug: string };
+}
+
+export async function getPlatformResetRequests(): Promise<
+  PlatformPasswordResetRequest[]
+> {
+  try {
+    const response = await api.get<{
+      requests: PlatformPasswordResetRequest[];
+    }>("/platform/password-reset-requests");
+    return response.data.requests ?? [];
+  } catch (error) {
+    handleApiError(error, "fetch platform password reset requests");
+  }
+}
+
+export async function approvePlatformResetRequest(
+  requestId: string,
+  newPassword: string,
+): Promise<void> {
+  if (!requestId?.trim()) throw new Error("Request ID is required");
+  if (!newPassword || newPassword.length < 8)
+    throw new Error("Password must be at least 8 characters");
+  try {
+    await api.post(
+      `/platform/password-reset-requests/${requestId}/approve`,
+      { newPassword },
+    );
+  } catch (error) {
+    handleApiError(error, "approve platform password reset");
+  }
+}

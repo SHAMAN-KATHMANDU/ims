@@ -189,3 +189,65 @@ export async function changePassword(
     handleApiError(error, "change password");
   }
 }
+
+// ─── Password Reset Requests (superAdmin only) ─────────────────────────────────
+
+export interface PasswordResetRequest {
+  id: string;
+  tenantId: string;
+  requestedById: string;
+  status: string;
+  escalated: boolean;
+  createdAt: string;
+  requestedBy: { id: string; username: string; role: string };
+  tenant: { id: string; name: string; slug: string };
+}
+
+export async function getPasswordResetRequests(): Promise<PasswordResetRequest[]> {
+  try {
+    const response = await api.get<{ requests: PasswordResetRequest[] }>(
+      "/users/password-reset-requests",
+    );
+    return response.data.requests ?? [];
+  } catch (error) {
+    handleApiError(error, "fetch password reset requests");
+  }
+}
+
+export async function approvePasswordResetRequest(
+  requestId: string,
+  newPassword: string,
+): Promise<void> {
+  try {
+    await api.post(
+      `/users/password-reset-requests/${requestId}/approve`,
+      { newPassword },
+    );
+  } catch (error) {
+    handleApiError(error, "approve password reset");
+  }
+}
+
+export async function escalatePasswordResetRequest(
+  requestId: string,
+): Promise<void> {
+  try {
+    await api.post(
+      `/users/password-reset-requests/${requestId}/escalate`,
+    );
+  } catch (error) {
+    handleApiError(error, "escalate password reset");
+  }
+}
+
+export async function rejectPasswordResetRequest(
+  requestId: string,
+): Promise<void> {
+  try {
+    await api.post(
+      `/users/password-reset-requests/${requestId}/reject`,
+    );
+  } catch (error) {
+    handleApiError(error, "reject password reset");
+  }
+}

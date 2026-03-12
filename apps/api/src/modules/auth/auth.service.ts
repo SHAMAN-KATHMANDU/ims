@@ -3,7 +3,7 @@ import jwt from "jsonwebtoken";
 import { env } from "@/config/env";
 import { createError } from "@/middlewares/errorHandler";
 import authRepository, { AuthRepository } from "./auth.repository";
-import type { LoginDto } from "./auth.schema";
+import type { LoginDto, ForgotPasswordDto } from "./auth.schema";
 
 export interface LoginParams {
   username: string;
@@ -134,6 +134,43 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(newPassword, 12);
     return this.repo.updateUserPassword(userId, hashedPassword);
+  }
+
+  async requestPasswordReset(
+    tenantSlug: string,
+    data: ForgotPasswordDto,
+  ): Promise<{ message: string }> {
+    const tenant = await this.repo.findTenantBySlug(tenantSlug);
+    if (!tenant) {
+      throw createError("Organization not found", 404);
+    }
+    if (!tenant.isActive) {
+      throw createError("This organization has been deactivated", 403);
+    }
+
+    const user = await this.repo.findUserByTenantAndUsername(
+      tenant.id,
+      data.username,
+    );
+    if (!user) {
+      // Do not reveal whether user exists
+      return {
+        message:
+          "If an account exists with this username, a password reset request has been submitted. Contact your administrator.",
+      };
+    }
+
+    const escalated = user.role === "superAdmin";
+    await this.repo.createPasswordResetRequest({
+      tenantId: tenant.id,
+      requestedById: user.id,
+      escalated,
+    });
+
+    return {
+      message:
+        "If an account exists with this username, a password reset request has been submitted. Contact your administrator.",
+    };
   }
 }
 

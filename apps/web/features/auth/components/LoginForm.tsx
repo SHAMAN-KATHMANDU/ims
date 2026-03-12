@@ -14,8 +14,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { LoginSchema, type LoginInput } from "../validation";
+import { getForgotPasswordPath } from "@/constants/routes";
 
 /**
  * Login form: username and password. Tenant slug comes from the URL (e.g. /ruby/login)
@@ -135,6 +137,15 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Logging in..." : "Login"}
           </Button>
+
+          <div className="text-center">
+            <Link
+              href={tenantSlug ? getForgotPasswordPath(tenantSlug) : "#"}
+              className="text-sm text-muted-foreground hover:underline"
+            >
+              Forgot password?
+            </Link>
+          </div>
         </form>
       </CardContent>
     </Card>

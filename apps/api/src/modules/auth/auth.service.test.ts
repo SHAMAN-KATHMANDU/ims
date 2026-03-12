@@ -17,6 +17,7 @@ const mockRepo: AuthRepository = {
   findTenantById: vi.fn(),
   findUserWithPassword: vi.fn(),
   updateUserPassword: vi.fn(),
+  createPasswordResetRequest: vi.fn(),
 };
 
 const mockBcryptCompare = vi.fn();

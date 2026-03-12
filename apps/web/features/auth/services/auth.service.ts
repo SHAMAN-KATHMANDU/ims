@@ -65,3 +65,23 @@ export async function logout(): Promise<void> {
     // Ignore errors on logout - we'll clear local state anyway
   }
 }
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+export async function requestPasswordReset(
+  username: string,
+  tenantSlug: string,
+): Promise<ForgotPasswordResponse> {
+  try {
+    const response = await api.post<ForgotPasswordResponse>(
+      "/auth/forgot-password",
+      { username: username.trim().toLowerCase() },
+      { headers: { "X-Tenant-Slug": tenantSlug } },
+    );
+    return response.data;
+  } catch (error: unknown) {
+    handleApiError(error, "request password reset");
+  }
+}

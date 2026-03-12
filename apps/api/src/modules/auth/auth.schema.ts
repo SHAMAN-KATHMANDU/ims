@@ -42,3 +42,12 @@ export const ChangePasswordSchema = z.object({
 });
 
 export type ChangePasswordDto = z.infer<typeof ChangePasswordSchema>;
+
+export const ForgotPasswordSchema = z.object({
+  username: z
+    .string()
+    .transform((s) => s?.toString().toLowerCase().trim() ?? "")
+    .pipe(z.string().min(1, "Username is required")),
+});
+
+export type ForgotPasswordDto = z.infer<typeof ForgotPasswordSchema>;

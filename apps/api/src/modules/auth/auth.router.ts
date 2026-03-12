@@ -81,6 +81,40 @@ authRouter.post("/login", asyncHandler(authController.logIn));
 
 /**
  * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: header
+ *         name: X-Tenant-Slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Tenant slug
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username]
+ *             properties:
+ *               username:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Request submitted
+ *       400:
+ *         description: Validation error
+ */
+authRouter.post(
+  "/forgot-password",
+  asyncHandler(authController.forgotPassword),
+);
+
+/**
+ * @swagger
  * /auth/me:
  *   get:
  *     summary: Get current user information

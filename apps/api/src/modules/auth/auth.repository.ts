@@ -103,6 +103,20 @@ export class AuthRepository {
       },
     });
   }
+
+  async createPasswordResetRequest(data: {
+    tenantId: string;
+    requestedById: string;
+    escalated: boolean;
+  }) {
+    return basePrisma.passwordResetRequest.create({
+      data: {
+        tenantId: data.tenantId,
+        requestedById: data.requestedById,
+        escalated: data.escalated,
+      },
+    });
+  }
 }
 
 export default new AuthRepository();
