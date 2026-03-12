@@ -7,6 +7,7 @@ import { TYPE } from "../typography";
 import { getFontRegular } from "../typography";
 import { drawSectionTitle } from "../layout";
 import { ensureSpace, createPageContext } from "../pagination";
+import { truncateWithEllipsis } from "../utils";
 import { COLORS } from "../constants";
 import type { ReceiptContext } from "../types";
 import type { SaleWithIncludes } from "../types";
@@ -24,9 +25,10 @@ export function drawNotes(
   const estimatedHeight = 38;
   ensureSpace(doc, estimatedHeight, pageCtx);
 
+  const notesText = truncateWithEllipsis(sale.notes, 200);
   drawSectionTitle(doc, "Notes");
   doc.font(getFontRegular()).fontSize(TYPE.small).fillColor(COLORS.text);
-  doc.text(sale.notes, ctx.margin, doc.y, {
+  doc.text(notesText, ctx.margin, doc.y, {
     width: ctx.usableWidth,
     lineGap: 0,
   });

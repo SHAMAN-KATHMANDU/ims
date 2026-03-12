@@ -5,6 +5,7 @@ import type PDFDocument from "pdfkit";
 import { SPACE } from "../spacing";
 import { TYPE } from "../typography";
 import { getFontRegular, getFontBold } from "../typography";
+import { truncateWithEllipsis } from "../utils";
 import { COLORS } from "../constants";
 import type { ReceiptContext } from "../types";
 
@@ -22,7 +23,7 @@ export function drawHeader(
 
   const textOpts = { lineGap: 0 };
   doc.font(getFontBold()).fontSize(TYPE.title);
-  doc.text(orgName, ctx.margin, doc.y, {
+  doc.text(truncateWithEllipsis(orgName, 60), ctx.margin, doc.y, {
     width: ctx.usableWidth,
     align: "center",
     ...textOpts,
@@ -45,10 +46,15 @@ export function drawHeader(
 
   if (locationAddress) {
     doc.fontSize(TYPE.small).fillColor(COLORS.textMuted);
-    doc.text(locationAddress, ctx.margin, doc.y + 1, {
-      width: ctx.usableWidth,
-      ...textOpts,
-    });
+    doc.text(
+      truncateWithEllipsis(locationAddress, 100),
+      ctx.margin,
+      doc.y + 1,
+      {
+        width: ctx.usableWidth,
+        ...textOpts,
+      },
+    );
     doc.fillColor(COLORS.text);
   }
 

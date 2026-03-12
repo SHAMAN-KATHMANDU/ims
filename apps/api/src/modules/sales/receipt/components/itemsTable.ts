@@ -2,7 +2,7 @@
  * Items table component with adaptive columns and text wrapping.
  */
 import type PDFDocument from "pdfkit";
-import { fmtCurrency } from "../utils";
+import { fmtCurrency, truncateWithEllipsis } from "../utils";
 import { drawTableHeader, drawTableRow } from "../table";
 import { drawDivider } from "../layout";
 import { ensureSpace, createPageContext } from "../pagination";
@@ -46,8 +46,13 @@ export function drawItemsTable(
 
   repeatHeader();
 
+  const MAX_PRODUCT_CHARS = 80;
+
   for (const item of items) {
-    const product = buildProductName(item);
+    const product = truncateWithEllipsis(
+      buildProductName(item),
+      MAX_PRODUCT_CHARS,
+    );
     const row = {
       product,
       price: fmtCurrency(item.unitPrice),

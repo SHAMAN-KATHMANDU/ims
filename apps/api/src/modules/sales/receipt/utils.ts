@@ -2,6 +2,13 @@
  * Formatting utilities for receipt generation.
  */
 
+/** Truncate text to maxChars, appending "…" when shortened. */
+export function truncateWithEllipsis(text: string, maxChars: number): string {
+  const s = String(text ?? "").trim();
+  if (s.length <= maxChars) return s;
+  return s.slice(0, maxChars - 1) + "…";
+}
+
 export function fmtCurrency(value: unknown): string {
   const n = Number(value);
   if (Number.isNaN(n)) return "0.00";
