@@ -172,6 +172,25 @@ export class MemberRepository {
     });
   }
 
+  /** Find or create member by phone (for sale flow — auto-create when adding phone). */
+  async findOrCreateByPhone(
+    tenantId: string,
+    phone: string,
+    name?: string | null,
+  ) {
+    const existing = await prisma.member.findFirst({
+      where: { tenantId, phone, deletedAt: null },
+    });
+    if (existing) return existing;
+    return prisma.member.create({
+      data: {
+        tenantId,
+        phone,
+        name: name ?? null,
+      },
+    });
+  }
+
   /** Find members for download/export (filter by ids or all). */
   async findForExport(tenantId: string, memberIds?: string[]) {
     const where: MemberWhere = { tenantId, deletedAt: null };

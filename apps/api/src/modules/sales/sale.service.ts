@@ -8,9 +8,7 @@ import {
   findInventory,
   findPromoByCodeWithProducts,
   findLocationById,
-  findMemberByPhone,
   findMemberById,
-  createMember,
   findContactForSale,
   findPromoByCode,
   incrementPromoUsage,
@@ -35,6 +33,7 @@ import {
   createSaleRevision,
 } from "./sale.repository";
 import contactRepository from "@/modules/contacts/contact.repository";
+import memberRepository from "@/modules/members/member.repository";
 
 // ── Shared types ──────────────────────────────────────────────────────────
 
@@ -460,7 +459,9 @@ export async function createSale(
     );
   }
 
-  let member: Awaited<ReturnType<typeof findMemberByPhone>> = null;
+  let member: Awaited<
+    ReturnType<typeof memberRepository.findOrCreateByPhone>
+  > | null = null;
   let saleType: "GENERAL" | "MEMBER" = "GENERAL";
   let resolvedContactId: string | null = null;
 
@@ -480,18 +481,15 @@ export async function createSale(
       const { parseAndValidatePhone } = await import("@/utils/phone");
       const parsed = parseAndValidatePhone(contact.phone);
       if (parsed.valid) {
-        member = await findMemberByPhone((parsed as { e164: string }).e164);
-        if (!member) {
-          const name = [contact.firstName, contact.lastName]
-            .filter(Boolean)
-            .join(" ")
-            .trim();
-          member = await createMember({
-            tenantId: ctx.tenantId,
-            phone: (parsed as { e164: string }).e164,
-            name: name || null,
-          });
-        }
+        const name = [contact.firstName, contact.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+        member = await memberRepository.findOrCreateByPhone(
+          ctx.tenantId,
+          (parsed as { e164: string }).e164,
+          name || null,
+        );
         if (member.isActive) saleType = "MEMBER";
       }
     }
@@ -504,14 +502,11 @@ export async function createSale(
       const err = parsed as { valid: false; message: string };
       throw Object.assign(new Error(err.message), { statusCode: 400 });
     }
-    member = await findMemberByPhone(parsed.e164);
-    if (!member) {
-      member = await createMember({
-        tenantId: ctx.tenantId,
-        phone: parsed.e164,
-        name: dto.memberName?.trim() || null,
-      });
-    }
+    member = await memberRepository.findOrCreateByPhone(
+      ctx.tenantId,
+      parsed.e164,
+      dto.memberName?.trim() || null,
+    );
     if (member.isActive) saleType = "MEMBER";
   }
 
@@ -613,12 +608,11 @@ export async function createSale(
   let finalSale = sale;
   if (!resolvedContactId && member) {
     try {
-      const newContact = await contactRepository.createFromSale(ctx.tenantId, {
-        phone: member.phone,
-        name: member.name,
-        memberId: member.id,
-        createdById: ctx.userId,
-      });
+      const newContact = await contactRepository.findOrCreateFromMember(
+        ctx.tenantId,
+        { id: member.id, phone: member.phone, name: member.name },
+        ctx.userId,
+      );
       await updateSaleContactId(sale.id, newContact.id);
       finalSale = { ...sale, contactId: newContact.id };
     } catch {
@@ -798,7 +792,8 @@ export async function previewSale(
       const { parseAndValidatePhone } = await import("@/utils/phone");
       const parsed = parseAndValidatePhone(contact.phone);
       if (parsed.valid) {
-        const member = await findMemberByPhone(
+        const member = await memberRepository.findByPhone(
+          ctx.tenantId,
           (parsed as { e164: string }).e164,
         );
         if (member?.isActive) saleType = "MEMBER";
@@ -812,7 +807,10 @@ export async function previewSale(
       const err = parsed as { valid: false; message: string };
       throw Object.assign(new Error(err.message), { statusCode: 400 });
     }
-    const member = await findMemberByPhone((parsed as { e164: string }).e164);
+    const member = await memberRepository.findByPhone(
+      ctx.tenantId,
+      (parsed as { e164: string }).e164,
+    );
     if (member?.isActive) saleType = "MEMBER";
   }
 

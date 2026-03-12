@@ -369,6 +369,39 @@ export class ContactRepository {
     });
   }
 
+  /** Find or create contact from member (for sale flow — auto-create when sale has phone). */
+  async findOrCreateFromMember(
+    tenantId: string,
+    member: { id: string; phone: string; name?: string | null },
+    createdById: string,
+  ) {
+    const existing = await prisma.contact.findFirst({
+      where: {
+        tenantId,
+        deletedAt: null,
+        OR: [{ memberId: member.id }, { phone: member.phone }],
+      },
+      select: { id: true },
+    });
+    if (existing) return existing;
+    const nameParts = (member.name || "").trim().split(/\s+/);
+    const firstName = nameParts[0] || "Customer";
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
+    return prisma.contact.create({
+      data: {
+        tenantId,
+        firstName,
+        lastName,
+        phone: member.phone,
+        memberId: member.id,
+        source: "Sales",
+        ownedById: createdById,
+        createdById,
+      },
+      select: { id: true },
+    });
+  }
+
   async createFromSale(
     tenantId: string,
     data: {
