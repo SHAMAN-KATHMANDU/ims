@@ -39,6 +39,12 @@ vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
 }));
 
+vi.mock("../tasks/task.repository", () => ({
+  default: {
+    completeManyByContactId: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 import contactService from "./contact.service";
 
 describe("ContactService", () => {

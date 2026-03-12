@@ -11,15 +11,17 @@ const mockFindMany = vi.fn();
 const mockCount = vi.fn();
 const mockFindFirst = vi.fn();
 
-vi.mock("@/config/prisma", () => ({
-  default: {
-    category: {
-      findMany: (...args: unknown[]) => mockFindMany(...args),
-      count: (...args: unknown[]) => mockCount(...args),
-      findFirst: (...args: unknown[]) => mockFindFirst(...args),
-    },
-  },
-}));
+vi.mock("@/config/prisma", () => {
+  const mockCategory = {
+    findMany: (...args: unknown[]) => mockFindMany(...args),
+    count: (...args: unknown[]) => mockCount(...args),
+    findFirst: (...args: unknown[]) => mockFindFirst(...args),
+  };
+  return {
+    default: { category: mockCategory },
+    basePrisma: { category: mockCategory },
+  };
+});
 
 describe("Tenant isolation", () => {
   const repo = new CategoryRepository();
@@ -32,13 +34,17 @@ describe("Tenant isolation", () => {
   });
 
   it("findAll includes tenantId in where clause", async () => {
-    await repo.findAll("tenant-A", {
-      page: 1,
-      limit: 10,
-      sortBy: "name",
-      sortOrder: "asc",
-      search: undefined,
-    });
+    await repo.findAll(
+      "tenant-A",
+      {
+        page: 1,
+        limit: 10,
+        sortBy: "name",
+        sortOrder: "asc",
+        search: undefined,
+      },
+      { status: "active" },
+    );
 
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({
