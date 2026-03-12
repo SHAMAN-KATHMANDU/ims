@@ -6,6 +6,7 @@
 import bcrypt from "bcryptjs";
 import { DEFAULT_PLAN_LIMITS, PlanTier } from "@repo/shared";
 import passwordResetRepository from "@/modules/users/password-reset.repository";
+import pipelineRepository from "@/modules/pipelines/pipeline.repository";
 import platformRepository, {
   type PlatformRepository,
   type CreateTenantRepoData,
@@ -58,12 +59,14 @@ export class PlatformService {
       subscriptionStatus: "TRIAL",
     };
 
-    return this.repo.createTenantWithAdmin({
+    const result = await this.repo.createTenantWithAdmin({
       tenantData,
       adminUsername: data.adminUsername,
       adminPasswordHash: hashedPassword,
       discountTypeNames: DEFAULT_DISCOUNT_TYPES,
     });
+    await pipelineRepository.seedDefaultPipelines(result.tenant.id);
+    return result;
   }
 
   async findAllTenants() {
