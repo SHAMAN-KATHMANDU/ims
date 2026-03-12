@@ -146,6 +146,16 @@ export class LocationService {
     });
   }
 
+  async restore(id: string, tenantId: string) {
+    const existing = await this.repo.findByIdIncludingDeactivated(id, tenantId);
+    if (!existing) throw createError("Location not found", 404);
+    if (!existing.deletedAt) {
+      throw createError("Location is not deactivated", 400);
+    }
+    const restored = await this.repo.restore(id);
+    return restored;
+  }
+
   async getInventory(locationId: string, rawQuery: Record<string, unknown>) {
     const location = await this.repo.findById(locationId);
     if (!location) throw createError("Location not found", 404);

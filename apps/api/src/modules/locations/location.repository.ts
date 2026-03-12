@@ -1,4 +1,4 @@
-import prisma from "@/config/prisma";
+import prisma, { basePrisma } from "@/config/prisma";
 import {
   getPaginationParams,
   createPaginationResult,
@@ -80,17 +80,25 @@ export class LocationRepository {
       where.type = filters.type;
     }
 
+    // Status filter: active (non-deleted, isActive), inactive (soft-deleted), all (both)
     if (filters?.activeOnly || filters?.status === "active") {
       where.isActive = true;
+      // Prisma extension injects deletedAt: null for trashable models
     } else if (filters?.status === "inactive") {
-      where.isActive = false;
+      // Explicit deletedAt so extension skips; return only soft-deleted
+      where.deletedAt = { not: null };
     }
+    // status === "all" or undefined: no deletedAt filter — use basePrisma to include soft-deleted
 
     const skip = (page - 1) * limit;
+    const includeDeleted =
+      !filters?.activeOnly && filters?.status !== "active" && filters?.status !== "inactive";
+
+    const client = includeDeleted ? basePrisma.location : prisma.location;
 
     const [totalItems, locations] = await Promise.all([
-      prisma.location.count({ where }),
-      prisma.location.findMany({
+      client.count({ where }),
+      client.findMany({
         where,
         orderBy,
         skip,
@@ -107,6 +115,14 @@ export class LocationRepository {
     if (tenantId) where.tenantId = tenantId;
     return prisma.location.findFirst({
       where,
+      include: LOCATION_INCLUDE,
+    });
+  }
+
+  /** Find location by id and tenantId including soft-deleted (for restore flow). */
+  async findByIdIncludingDeactivated(id: string, tenantId: string) {
+    return basePrisma.location.findFirst({
+      where: { id, tenantId },
       include: LOCATION_INCLUDE,
     });
   }
