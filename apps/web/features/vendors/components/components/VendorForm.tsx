@@ -1,8 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Dialog,
@@ -13,6 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
 import type { Vendor, CreateOrUpdateVendorData } from "../../hooks/use-vendors";
+import { CreateVendorSchema, type CreateVendorInput } from "../../validation";
 
 interface VendorFormProps {
   open: boolean;
@@ -27,7 +31,7 @@ interface VendorFormProps {
   renderTrigger?: boolean;
 }
 
-const initialFormData: CreateOrUpdateVendorData = {
+const defaultValues: CreateVendorInput = {
   name: "",
   contact: "",
   phone: "",
@@ -44,28 +48,35 @@ export function VendorForm({
   inline = false,
   renderTrigger = true,
 }: VendorFormProps) {
-  const [formData, setFormData] =
-    useState<CreateOrUpdateVendorData>(initialFormData);
+  const form = useForm<CreateVendorInput>({
+    resolver: zodResolver(CreateVendorSchema),
+    mode: "onBlur",
+    defaultValues,
+  });
 
   useEffect(() => {
     if (open && editingVendor) {
-      setFormData({
+      form.reset({
         name: editingVendor.name,
         contact: editingVendor.contact || "",
         phone: editingVendor.phone || "",
         address: editingVendor.address || "",
       });
     } else if (!open) {
-      setFormData(initialFormData);
+      form.reset(defaultValues);
     }
-  }, [open, editingVendor]);
+  }, [open, editingVendor, form]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await onSubmit(formData);
+  const handleSubmit = form.handleSubmit(async (values) => {
+    await onSubmit({
+      name: values.name,
+      contact: values.contact ?? "",
+      phone: values.phone ?? "",
+      address: values.address ?? "",
+    });
     onOpenChange(false);
     onReset();
-  };
+  });
 
   const handleCancel = () => {
     onOpenChange(false);
@@ -75,46 +86,57 @@ export function VendorForm({
   const formContent = (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="space-y-2">
-        <label className="text-sm font-medium">Name *</label>
+        <Label htmlFor="vendor-name">Name *</Label>
         <Input
-          value={formData.name}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, name: e.target.value }))
-          }
+          id="vendor-name"
+          {...form.register("name")}
           placeholder="Vendor name"
-          required
         />
+        {form.formState.errors.name && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.name.message}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium">Contact Person</label>
+        <Label htmlFor="vendor-contact">Contact Person</Label>
         <Input
-          value={formData.contact ?? ""}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, contact: e.target.value }))
-          }
+          id="vendor-contact"
+          {...form.register("contact")}
           placeholder="Contact person name or email"
         />
+        {form.formState.errors.contact && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.contact.message}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium">Phone</label>
+        <Label htmlFor="vendor-phone">Phone</Label>
         <PhoneInput
-          value={formData.phone ?? ""}
-          onChange={(phone) =>
-            setFormData((prev) => ({ ...prev, phone: phone || "" }))
-          }
+          value={form.watch("phone") ?? ""}
+          onChange={(phone) => form.setValue("phone", phone || "", { shouldValidate: true })}
           placeholder="e.g. 9841234567"
           numberInputId="vendor-phone"
         />
+        {form.formState.errors.phone && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.phone.message}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
-        <label className="text-sm font-medium">Address</label>
+        <Label htmlFor="vendor-address">Address</Label>
         <Input
-          value={formData.address ?? ""}
-          onChange={(e) =>
-            setFormData((prev) => ({ ...prev, address: e.target.value }))
-          }
+          id="vendor-address"
+          {...form.register("address")}
           placeholder="Vendor address"
         />
+        {form.formState.errors.address && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.address.message}
+          </p>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 pt-2">

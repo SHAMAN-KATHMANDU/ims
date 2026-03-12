@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -36,17 +38,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Location } from "@/features/locations";
 import type { CreateTransferData } from "../../hooks/use-transfers";
-
-interface TransferItem {
-  variationId: string;
-  subVariationId?: string | null;
-  subVariationName?: string;
-  productName: string;
-  imsCode: string;
-  attributeLabel?: string;
-  quantity: number;
-  availableQuantity: number;
-}
+import { CreateTransferSchema, type CreateTransferInput } from "../../validation";
 
 interface InventoryItem {
   id: string;
@@ -72,13 +64,18 @@ interface TransferFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   locations: Location[];
-  /** Second arg: when true, approve + start transit + complete so stock moves immediately. Used on create page. */
   onSubmit: (data: CreateTransferData, completeNow?: boolean) => Promise<void>;
   isLoading?: boolean;
   getLocationInventory: (locationId: string) => Promise<InventoryItem[]>;
-  /** When true, render form inline (e.g. on a dedicated page) without dialog. */
   inline?: boolean;
 }
+
+const defaultValues: CreateTransferInput = {
+  fromLocationId: "",
+  toLocationId: "",
+  items: [],
+  notes: "",
+};
 
 export function TransferForm({
   open,
@@ -90,10 +87,6 @@ export function TransferForm({
   inline = false,
 }: TransferFormProps) {
   const { toast } = useToast();
-  const [fromLocationId, setFromLocationId] = useState("");
-  const [toLocationId, setToLocationId] = useState("");
-  const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<TransferItem[]>([]);
   const [availableInventory, setAvailableInventory] = useState<InventoryItem[]>(
     [],
   );
@@ -102,35 +95,38 @@ export function TransferForm({
   const [quantity, setQuantity] = useState("");
   const [completeNow, setCompleteNow] = useState(false);
 
-  // Load inventory when source location changes
+  const form = useForm<CreateTransferInput>({
+    resolver: zodResolver(CreateTransferSchema),
+    mode: "onBlur",
+    defaultValues,
+  });
+
+  const fromLocationId = form.watch("fromLocationId");
+  const items = form.watch("items") ?? [];
+
   useEffect(() => {
     if (fromLocationId) {
       setLoadingInventory(true);
       getLocationInventory(fromLocationId)
         .then((inventory) => {
           setAvailableInventory(inventory);
-          // Clear items when source changes
-          setItems([]);
+          form.setValue("items", []);
         })
         .catch(console.error)
         .finally(() => setLoadingInventory(false));
     } else {
       setAvailableInventory([]);
-      setItems([]);
+      form.setValue("items", []);
     }
-  }, [fromLocationId, getLocationInventory]);
+  }, [fromLocationId, getLocationInventory, form]);
 
-  // Reset form when dialog closes; when inline, reset on mount
   useEffect(() => {
     if (!open && !inline) {
-      setFromLocationId("");
-      setToLocationId("");
-      setNotes("");
-      setItems([]);
+      form.reset(defaultValues);
       setSelectedInventoryId("");
       setQuantity("");
     }
-  }, [open, inline]);
+  }, [open, inline, form]);
 
   const handleAddItem = () => {
     if (!selectedInventoryId || !quantity) return;
@@ -177,24 +173,15 @@ export function TransferForm({
       const itemToUpdate = newItems[existingIndex];
       if (itemToUpdate) {
         itemToUpdate.quantity += parsedQuantity;
-        setItems(newItems);
+        form.setValue("items", newItems);
       }
     } else {
-      const attrLabel =
-        inventoryItem.variation.attributes
-          ?.map((a) => a.attributeValue.value)
-          .join(" / ") || "";
-      setItems([
+      form.setValue("items", [
         ...items,
         {
           variationId: inventoryItem.variationId,
           subVariationId: inventoryItem.subVariationId ?? undefined,
-          subVariationName: inventoryItem.subVariation?.name,
-          productName: inventoryItem.variation.product.name,
-          imsCode: inventoryItem.variation.product.imsCode,
-          attributeLabel: attrLabel,
           quantity: parsedQuantity,
-          availableQuantity: inventoryItem.quantity,
         },
       ]);
     }
@@ -207,7 +194,8 @@ export function TransferForm({
     variationId: string,
     subVariationId?: string | null,
   ) => {
-    setItems(
+    form.setValue(
+      "items",
       items.filter(
         (item) =>
           !(
@@ -218,31 +206,46 @@ export function TransferForm({
     );
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!fromLocationId || !toLocationId || items.length === 0) return;
-
+  const handleSubmit = form.handleSubmit(async (values) => {
     await onSubmit(
       {
-        fromLocationId,
-        toLocationId,
-        items: items.map((item) => ({
+        fromLocationId: values.fromLocationId,
+        toLocationId: values.toLocationId,
+        items: values.items.map((item) => ({
           variationId: item.variationId,
           subVariationId: item.subVariationId ?? undefined,
           quantity: item.quantity,
         })),
-        notes: notes || undefined,
+        notes: values.notes || undefined,
       },
       completeNow,
     );
-  };
+  });
 
   const activeLocations = locations.filter((loc) => loc.isActive);
   const selectedInventoryItem = availableInventory.find(
     (inv) => inv.id === selectedInventoryId,
   );
   const maxQuantity = selectedInventoryItem?.quantity ?? 0;
+
+  const getItemDisplay = (item: (typeof items)[0]) => {
+    const inv = availableInventory.find(
+      (i) =>
+        i.variationId === item.variationId &&
+        (i.subVariationId ?? null) === (item.subVariationId ?? null),
+    );
+    if (!inv) return { productName: "—", imsCode: "—", attributeLabel: "" };
+    const attrLabel =
+      inv.variation.attributes
+        ?.map((a) => a.attributeValue.value)
+        .join(" / ") || "";
+    return {
+      productName: inv.variation.product.name,
+      imsCode: inv.variation.product.imsCode,
+      subVariationName: inv.subVariation?.name,
+      attributeLabel: attrLabel,
+    };
+  };
 
   const formHeader = inline ? (
     <div className="space-y-1.5 pb-4">
@@ -276,7 +279,10 @@ export function TransferForm({
       <Button
         type="submit"
         disabled={
-          isLoading || !fromLocationId || !toLocationId || items.length === 0
+          isLoading ||
+          !fromLocationId ||
+          !form.watch("toLocationId") ||
+          (items?.length ?? 0) === 0
         }
       >
         {isLoading ? "Creating..." : "Create Transfer"}
@@ -289,48 +295,74 @@ export function TransferForm({
       {formHeader}
 
       <div className="grid gap-4 py-4">
-        {/* Location Selection */}
         <div className="grid grid-cols-[1fr,auto,1fr] items-end gap-4">
           <div className="grid gap-2">
             <Label htmlFor="from">From Location *</Label>
-            <Select value={fromLocationId} onValueChange={setFromLocationId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select source" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeLocations
-                  .filter((loc) => loc.id !== toLocationId)
-                  .map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name} ({location.type})
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="fromLocationId"
+              control={form.control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => field.onChange(v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeLocations
+                      .filter((loc) => loc.id !== form.watch("toLocationId"))
+                      .map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name} ({location.type})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.fromLocationId && (
+              <p className="text-sm text-destructive mt-1">
+                {form.formState.errors.fromLocationId.message}
+              </p>
+            )}
           </div>
 
           <ArrowRight className="h-5 w-5 text-muted-foreground mb-2" />
 
           <div className="grid gap-2">
             <Label htmlFor="to">To Location *</Label>
-            <Select value={toLocationId} onValueChange={setToLocationId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select destination" />
-              </SelectTrigger>
-              <SelectContent>
-                {activeLocations
-                  .filter((loc) => loc.id !== fromLocationId)
-                  .map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name} ({location.type})
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
+            <Controller
+              name="toLocationId"
+              control={form.control}
+              render={({ field }) => (
+                <Select
+                  value={field.value}
+                  onValueChange={(v) => field.onChange(v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select destination" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {activeLocations
+                      .filter((loc) => loc.id !== form.watch("fromLocationId"))
+                      .map((location) => (
+                        <SelectItem key={location.id} value={location.id}>
+                          {location.name} ({location.type})
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+            {form.formState.errors.toLocationId && (
+              <p className="text-sm text-destructive mt-1">
+                {form.formState.errors.toLocationId.message}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Item Selection */}
         {fromLocationId && (
           <div className="grid gap-2">
             <Label>Add Items</Label>
@@ -384,7 +416,7 @@ export function TransferForm({
               </Select>
               <Input
                 type="number"
-                min="1"
+                min={1}
                 max={maxQuantity}
                 value={quantity}
                 onChange={(e) => setQuantity(e.target.value)}
@@ -403,10 +435,14 @@ export function TransferForm({
           </div>
         )}
 
-        {/* Items List */}
         {items.length > 0 && (
           <div className="grid gap-2">
             <Label>Transfer Items ({items.length})</Label>
+            {form.formState.errors.items && (
+              <p className="text-sm text-destructive">
+                {form.formState.errors.items.message}
+              </p>
+            )}
             <ScrollArea className="h-[200px] rounded-md border">
               <Table>
                 <TableHeader>
@@ -419,16 +455,17 @@ export function TransferForm({
                 </TableHeader>
                 <TableBody>
                   {items.map((item, idx) => {
+                    const display = getItemDisplay(item);
                     const variationLabel =
-                      item.attributeLabel ||
-                      item.subVariationName ||
+                      display.attributeLabel ||
+                      display.subVariationName ||
                       (items.length > 1 ? "Variation" : "");
                     return (
                       <TableRow
                         key={`${item.variationId}-${item.subVariationId ?? "v"}-${idx}`}
                       >
                         <TableCell className="font-medium">
-                          {item.productName}
+                          {display.productName}
                           {variationLabel && (
                             <span className="text-muted-foreground font-normal ml-1.5">
                               — {variationLabel}
@@ -436,9 +473,9 @@ export function TransferForm({
                           )}
                         </TableCell>
                         <TableCell>
-                          {item.imsCode}
-                          {item.subVariationName
-                            ? ` / ${item.subVariationName}`
+                          {display.imsCode}
+                          {display.subVariationName
+                            ? ` / ${display.subVariationName}`
                             : ""}
                         </TableCell>
                         <TableCell className="text-right">
@@ -468,19 +505,16 @@ export function TransferForm({
           </div>
         )}
 
-        {/* Notes */}
         <div className="grid gap-2">
           <Label htmlFor="notes">Notes (optional)</Label>
           <Textarea
             id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            {...form.register("notes")}
             placeholder="Add any notes about this transfer..."
             rows={2}
           />
         </div>
 
-        {/* Complete now: only on create page (inline) */}
         {inline && (
           <div className="flex items-center gap-2">
             <Switch

@@ -10,6 +10,7 @@ import {
   useCreateLocation,
   useUpdateLocation,
   useDeleteLocation,
+  useRestoreLocation,
   type Location,
   type LocationType,
   type LocationStatusFilter,
@@ -106,6 +107,7 @@ export function LocationsPage() {
   const createLocationMutation = useCreateLocation();
   const updateLocationMutation = useUpdateLocation();
   const deleteLocationMutation = useDeleteLocation();
+  const restoreLocationMutation = useRestoreLocation();
 
   // Handlers
   const handleSearchChange = useCallback(
@@ -193,6 +195,17 @@ export function LocationsPage() {
     }
   };
 
+  const handleRestore = async (location: Location) => {
+    try {
+      await restoreLocationMutation.mutateAsync(location.id);
+      toast({ title: "Location reactivated successfully" });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error ? error.message : "Failed to reactivate location";
+      toast({ title: "Error", description: message, variant: "destructive" });
+    }
+  };
+
   const handleDelete = async () => {
     if (!locationToDelete) return;
 
@@ -219,12 +232,15 @@ export function LocationsPage() {
   };
 
   const handleBulkDelete = async (idsToDelete: string[]) => {
-    if (idsToDelete.length === 0) return;
+    const activeIds = idsToDelete.filter((id) =>
+      locations.find((l) => l.id === id)?.isActive,
+    );
+    if (activeIds.length === 0) return;
     try {
-      for (const id of idsToDelete) {
+      for (const id of activeIds) {
         await deleteLocationMutation.mutateAsync(id);
       }
-      toast({ title: `${idsToDelete.length} location(s) deactivated` });
+      toast({ title: `${activeIds.length} location(s) deactivated` });
       clearSelection();
     } catch (error: unknown) {
       const message =
@@ -358,6 +374,7 @@ export function LocationsPage() {
         onSort={handleSort}
         onEdit={handleEdit}
         onDelete={setLocationToDelete}
+        onRestore={canManageLocations ? handleRestore : undefined}
         {...(canManageLocations && {
           selectedLocations: selectedLocationIds,
           onSelectionChange: setLocations,

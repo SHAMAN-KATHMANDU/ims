@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 
 const mockPush = vi.fn();
 
@@ -24,41 +24,43 @@ describe("SlugEntryForm", () => {
     expect(screen.getByRole("button", { name: /^go$/i })).toBeInTheDocument();
   });
 
-  it("shows error when submitting empty", () => {
+  it("shows error when submitting empty", async () => {
     render(<SlugEntryForm />);
 
     fireEvent.click(screen.getByRole("button", { name: /^go$/i }));
 
-    expect(
-      screen.getByText(/enter your organization slug/i),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/enter your organization slug/i),
+      ).toBeInTheDocument();
+    });
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("shows error for invalid slug format", () => {
+  it("shows error for invalid slug format", async () => {
     render(<SlugEntryForm />);
 
-    fireEvent.change(
-      screen.getByRole("textbox", { name: /organization slug/i }),
-      { target: { value: "invalid slug!" } },
-    );
+    const input = screen.getByRole("textbox", { name: /organization slug/i });
+    fireEvent.change(input, { target: { value: "invalid slug!" } });
     fireEvent.click(screen.getByRole("button", { name: /^go$/i }));
 
-    expect(
-      screen.getByText(/use only letters, numbers, and hyphens/i),
-    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(
+        screen.getByText(/use only letters, numbers, and hyphens/i),
+      ).toBeInTheDocument();
+    });
     expect(mockPush).not.toHaveBeenCalled();
   });
 
-  it("navigates to login path on valid slug", () => {
+  it("navigates to login path on valid slug", async () => {
     render(<SlugEntryForm />);
 
-    fireEvent.change(
-      screen.getByRole("textbox", { name: /organization slug/i }),
-      { target: { value: "my-org" } },
-    );
+    const input = screen.getByRole("textbox", { name: /organization slug/i });
+    fireEvent.change(input, { target: { value: "my-org" } });
     fireEvent.click(screen.getByRole("button", { name: /^go$/i }));
 
-    expect(mockPush).toHaveBeenCalledWith("/my-org/login");
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith("/my-org/login");
+    });
   });
 });

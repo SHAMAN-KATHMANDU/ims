@@ -37,7 +37,10 @@ class ErrorReportController {
 
   list = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user?.tenantId ?? null;
+      const tenantId =
+        req.user?.role === "platformAdmin"
+          ? null
+          : (req.user?.tenantId ?? null);
       const result = await this.service.list(tenantId, req.query);
       return res.status(200).json({
         message: "Error reports fetched",

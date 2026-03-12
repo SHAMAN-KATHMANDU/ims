@@ -1,4 +1,5 @@
-import prisma from "@/config/prisma";
+import type { Prisma } from "@prisma/client";
+import prisma, { basePrisma } from "@/config/prisma";
 import {
   getPaginationParams,
   createPaginationResult,
@@ -32,6 +33,7 @@ export class CategoryRepository {
   async findAll(
     tenantId: string,
     query: ReturnType<typeof getPaginationParams>,
+    filters?: { status?: string },
   ) {
     const { page, limit, sortBy, sortOrder, search } = query;
 
@@ -43,10 +45,17 @@ export class CategoryRepository {
       name: "asc" as const,
     };
 
-    const where: Parameters<typeof prisma.category.findMany>[0]["where"] = {
+    const where: Prisma.CategoryWhereInput = {
       tenantId,
-      deletedAt: null,
     };
+
+    // Status filter: active (non-deleted), inactive (soft-deleted), all (both)
+    if (filters?.status === "active") {
+      where.deletedAt = null;
+    } else if (filters?.status === "inactive") {
+      where.deletedAt = { not: null };
+    }
+    // status === "all" or undefined: use basePrisma to include soft-deleted
 
     if (search) {
       where.OR = [
@@ -56,32 +65,65 @@ export class CategoryRepository {
     }
 
     const skip = (page - 1) * limit;
+    const includeDeleted =
+      filters?.status !== "active" && filters?.status !== "inactive";
 
-    const [totalItems, categories] = await Promise.all([
-      prisma.category.count({ where }),
-      prisma.category.findMany({
-        where,
-        select: {
-          id: true,
-          name: true,
-          description: true,
-          createdAt: true,
-          updatedAt: true,
-          subCategories: {
-            where: { deletedAt: null },
-            select: { name: true },
-          },
-          _count: {
-            select: { products: { where: { deletedAt: null } } },
-          },
-        },
-        orderBy,
-        skip,
-        take: limit,
-      }),
-    ]);
+    const select = {
+      id: true,
+      name: true,
+      description: true,
+      createdAt: true,
+      updatedAt: true,
+      deletedAt: true,
+      subCategories: {
+        where: { deletedAt: null },
+        select: { name: true },
+      },
+      _count: {
+        select: { products: { where: { deletedAt: null } } },
+      },
+    } as const;
+
+    const [totalItems, categories] = includeDeleted
+      ? await Promise.all([
+          basePrisma.category.count({ where }),
+          basePrisma.category.findMany({
+            where,
+            select,
+            orderBy,
+            skip,
+            take: limit,
+          }),
+        ])
+      : await Promise.all([
+          prisma.category.count({ where }),
+          prisma.category.findMany({
+            where,
+            select,
+            orderBy,
+            skip,
+            take: limit,
+          }),
+        ]);
 
     return createPaginationResult(categories, totalItems, page, limit);
+  }
+
+  /** Find category by id and tenantId including soft-deleted (for restore flow). */
+  async findByIdIncludingDeactivated(id: string, tenantId: string) {
+    return basePrisma.category.findFirst({
+      where: { id, tenantId },
+      include: {
+        products: {
+          where: { deletedAt: null },
+          select: { id: true, name: true, mrp: true, costPrice: true },
+          take: 10,
+        },
+        _count: {
+          select: { products: { where: { deletedAt: null } } },
+        },
+      },
+    });
   }
 
   async findById(id: string, tenantId: string) {

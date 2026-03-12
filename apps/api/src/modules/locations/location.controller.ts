@@ -139,6 +139,29 @@ class LocationController {
     }
   };
 
+  restoreLocation = async (req: Request, res: Response) => {
+    try {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const tenantId = req.user!.tenantId;
+      const location = await this.service.restore(id, tenantId);
+      return res.status(200).json({
+        message: "Location reactivated successfully",
+        location,
+      });
+    } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (appErr.statusCode === 404) {
+        return res.status(404).json({ message: appErr.message });
+      }
+      if (appErr.statusCode === 400) {
+        return res.status(400).json({ message: appErr.message });
+      }
+      return sendControllerError(req, res, error, "Restore location error");
+    }
+  };
+
   getLocationInventory = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)

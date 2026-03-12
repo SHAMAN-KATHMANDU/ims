@@ -111,6 +111,12 @@ const navSections: NavSection[] = [
         icon: Trash2,
         roles: ["platformAdmin"],
       },
+      {
+        path: "settings/error-reports",
+        label: "Error Reports",
+        icon: Bug,
+        roles: ["platformAdmin"],
+      },
     ],
   },
   {
@@ -329,12 +335,6 @@ const navSections: NavSection[] = [
         icon: FileText,
         roles: ["superAdmin"],
         feature: Feature.AUDIT_LOGS,
-      },
-      {
-        path: "settings/error-reports",
-        label: "Error Reports",
-        icon: Bug,
-        roles: ["superAdmin"],
       },
       {
         path: "admin-controls",

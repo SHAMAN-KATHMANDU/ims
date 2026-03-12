@@ -104,6 +104,29 @@ class CategoryController {
     }
   };
 
+  restoreCategory = async (req: Request, res: Response) => {
+    try {
+      const id = Array.isArray(req.params.id)
+        ? req.params.id[0]
+        : req.params.id;
+      const tenantId = req.user!.tenantId;
+      const category = await this.service.restore(id, tenantId);
+      return res.status(200).json({
+        message: "Category reactivated successfully",
+        category,
+      });
+    } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (appErr.statusCode === 404) {
+        return res.status(404).json({ message: appErr.message });
+      }
+      if (appErr.statusCode === 400) {
+        return res.status(400).json({ message: appErr.message });
+      }
+      return sendControllerError(req, res, error, "Restore category error");
+    }
+  };
+
   deleteCategory = async (req: Request, res: Response) => {
     try {
       const id = Array.isArray(req.params.id)

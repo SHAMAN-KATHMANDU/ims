@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -29,6 +31,7 @@ import type {
   PromoCode,
   CreateOrUpdatePromoData,
 } from "../../hooks/use-promos";
+import { PromoFormSchema, type PromoFormInput } from "../../validation";
 
 interface PromoFormProps {
   open: boolean;
@@ -43,7 +46,7 @@ interface PromoFormProps {
   renderTrigger?: boolean;
 }
 
-const initialFormData: CreateOrUpdatePromoData = {
+const defaultValues: PromoFormInput = {
   code: "",
   description: "",
   valueType: "PERCENTAGE",
@@ -71,9 +74,13 @@ export function PromoForm({
   inline = false,
   renderTrigger = true,
 }: PromoFormProps) {
-  const [formData, setFormData] =
-    useState<CreateOrUpdatePromoData>(initialFormData);
   const [productSearch, setProductSearch] = useState("");
+
+  const form = useForm<PromoFormInput>({
+    resolver: zodResolver(PromoFormSchema),
+    mode: "onBlur",
+    defaultValues,
+  });
 
   const { data: productsResponse } = useProductsPaginated({
     page: 1,
@@ -103,7 +110,7 @@ export function PromoForm({
 
   useEffect(() => {
     if (open && editingPromo) {
-      setFormData({
+      form.reset({
         code: editingPromo.code,
         description: editingPromo.description || "",
         valueType: editingPromo.valueType,
@@ -111,8 +118,12 @@ export function PromoForm({
         overrideDiscounts: editingPromo.overrideDiscounts,
         allowStacking: editingPromo.allowStacking,
         eligibility: editingPromo.eligibility,
-        validFrom: editingPromo.validFrom || undefined,
-        validTo: editingPromo.validTo || undefined,
+        validFrom: editingPromo.validFrom
+          ? editingPromo.validFrom.slice(0, 10)
+          : undefined,
+        validTo: editingPromo.validTo
+          ? editingPromo.validTo.slice(0, 10)
+          : undefined,
         usageLimit: editingPromo.usageLimit ?? undefined,
         isActive: editingPromo.isActive,
         productIds: (editingPromo.products || []).map((p) => p.productId),
@@ -121,96 +132,126 @@ export function PromoForm({
         subCategories: [],
       });
     } else if (!open) {
-      setFormData(initialFormData);
+      form.reset(defaultValues);
       setProductSearch("");
     }
-  }, [open, editingPromo]);
+  }, [open, editingPromo, form]);
 
-  const handleSubmit = async () => {
-    await onSubmit(formData);
+  const handleSubmit = form.handleSubmit(async (values) => {
+    await onSubmit({
+      code: values.code,
+      description: values.description || undefined,
+      valueType: values.valueType,
+      value: values.value,
+      overrideDiscounts: values.overrideDiscounts,
+      allowStacking: values.allowStacking,
+      eligibility: values.eligibility,
+      validFrom: values.validFrom
+        ? `${values.validFrom}T00:00:00.000Z`
+        : undefined,
+      validTo: values.validTo
+        ? `${values.validTo}T23:59:59.999Z`
+        : undefined,
+      usageLimit: values.usageLimit ?? undefined,
+      isActive: values.isActive,
+      productIds: values.productIds,
+      applyToAll: values.applyToAll,
+      categoryIds: values.categoryIds,
+      subCategories: values.subCategories,
+    });
     onOpenChange(false);
     onReset();
-  };
+  });
 
   const handleCancel = () => {
     onOpenChange(false);
     onReset();
   };
 
+  const productIds = form.watch("productIds") ?? [];
+  const categoryIds = form.watch("categoryIds") ?? [];
+  const subCategories = form.watch("subCategories") ?? [];
+  const applyToAll = form.watch("applyToAll");
+
   const formContent = (
-    <div className="space-y-4">
+    <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-medium">Code *</label>
-          <Input
-            value={formData.code}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                code: e.target.value.toUpperCase(),
-              }))
-            }
-            placeholder="e.g. FESTIVE20"
+          <Controller
+            name="code"
+            control={form.control}
+            render={({ field }) => (
+              <Input
+                {...field}
+                onChange={(e) =>
+                  field.onChange(e.target.value.toUpperCase())
+                }
+                placeholder="e.g. FESTIVE20"
+              />
+            )}
           />
+          {form.formState.errors.code && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.code.message}
+            </p>
+          )}
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium">Eligibility</label>
-          <Select
-            value={formData.eligibility}
-            onValueChange={(value) =>
-              setFormData((prev) => ({
-                ...prev,
-                eligibility: value as CreateOrUpdatePromoData["eligibility"],
-              }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="ALL">All Customers</SelectItem>
-              <SelectItem value="MEMBER">Members Only</SelectItem>
-              <SelectItem value="NON_MEMBER">Non-Members Only</SelectItem>
-              <SelectItem value="WHOLESALE">Wholesale Only</SelectItem>
-            </SelectContent>
-          </Select>
+          <Controller
+            name="eligibility"
+            control={form.control}
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={(value) =>
+                  field.onChange(value as PromoFormInput["eligibility"])
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Customers</SelectItem>
+                  <SelectItem value="MEMBER">Members Only</SelectItem>
+                  <SelectItem value="NON_MEMBER">Non-Members Only</SelectItem>
+                  <SelectItem value="WHOLESALE">Wholesale Only</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
       </div>
 
       <div className="space-y-1">
         <label className="text-xs font-medium">Description</label>
-        <Input
-          value={formData.description}
-          onChange={(e) =>
-            setFormData((prev) => ({
-              ...prev,
-              description: e.target.value,
-            }))
-          }
-          placeholder="Short description for internal use"
-        />
+        <Input {...form.register("description")} placeholder="Short description for internal use" />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-medium">Discount Type</label>
-          <Select
-            value={formData.valueType}
-            onValueChange={(value) =>
-              setFormData((prev) => ({
-                ...prev,
-                valueType: value as CreateOrUpdatePromoData["valueType"],
-              }))
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
-              <SelectItem value="FLAT">Flat Amount</SelectItem>
-            </SelectContent>
-          </Select>
+          <Controller
+            name="valueType"
+            control={form.control}
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={(value) =>
+                  field.onChange(value as "PERCENTAGE" | "FLAT")
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
+                  <SelectItem value="FLAT">Flat Amount</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium">Value</label>
@@ -218,29 +259,32 @@ export function PromoForm({
             type="number"
             min={0}
             step={0.01}
-            value={formData.value}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                value: Number(e.target.value) || 0,
-              }))
-            }
+            {...form.register("value", { valueAsNumber: true })}
           />
+          {form.formState.errors.value && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.value.message}
+            </p>
+          )}
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium">Usage Limit (optional)</label>
-          <Input
-            type="number"
-            min={0}
-            value={formData.usageLimit ?? ""}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                usageLimit:
-                  e.target.value === "" ? undefined : Number(e.target.value),
-              }))
-            }
-            placeholder="Unlimited if empty"
+          <Controller
+            name="usageLimit"
+            control={form.control}
+            render={({ field }) => (
+              <Input
+                type="number"
+                min={0}
+                value={field.value ?? ""}
+                onChange={(e) =>
+                  field.onChange(
+                    e.target.value === "" ? undefined : Number(e.target.value),
+                  )
+                }
+                placeholder="Unlimited if empty"
+              />
+            )}
           />
         </div>
       </div>
@@ -248,109 +292,113 @@ export function PromoForm({
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
           <label className="text-xs font-medium">Valid From (optional)</label>
-          <Input
-            type="date"
-            value={formData.validFrom ? formData.validFrom.slice(0, 10) : ""}
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                validFrom:
-                  e.target.value || formData.validTo
-                    ? e.target.value
-                    : undefined,
-              }))
-            }
+          <Controller
+            name="validFrom"
+            control={form.control}
+            render={({ field }) => (
+              <Input
+                type="date"
+                value={field.value ? String(field.value).slice(0, 10) : ""}
+                onChange={(e) => field.onChange(e.target.value || undefined)}
+                onBlur={field.onBlur}
+              />
+            )}
           />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium">Valid To (optional)</label>
-          <Input
-            type="date"
-            value={formData.validTo ? formData.validTo.slice(0, 10) : ""}
-            min={
-              formData.validFrom ? formData.validFrom.slice(0, 10) : undefined
-            }
-            onChange={(e) =>
-              setFormData((prev) => ({
-                ...prev,
-                validTo:
-                  e.target.value || formData.validFrom
-                    ? e.target.value
-                    : undefined,
-              }))
-            }
+          <Controller
+            name="validTo"
+            control={form.control}
+            render={({ field }) => (
+              <Input
+                type="date"
+                value={field.value ? String(field.value).slice(0, 10) : ""}
+                onChange={(e) => field.onChange(e.target.value || undefined)}
+                onBlur={field.onBlur}
+                min={
+                  form.watch("validFrom")
+                    ? String(form.watch("validFrom")).slice(0, 10)
+                    : undefined
+                }
+              />
+            )}
           />
         </div>
       </div>
 
       <div className="flex flex-wrap gap-4">
-        <div className="flex items-center gap-2">
-          <Switch
-            id="override-discounts"
-            checked={!!formData.overrideDiscounts}
-            onCheckedChange={(checked) =>
-              setFormData((prev) => ({ ...prev, overrideDiscounts: checked }))
-            }
-          />
-          <label
-            htmlFor="override-discounts"
-            className="text-xs text-muted-foreground"
-          >
-            Override existing discounts
-          </label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            id="allow-stacking"
-            checked={!!formData.allowStacking}
-            onCheckedChange={(checked) =>
-              setFormData((prev) => ({ ...prev, allowStacking: checked }))
-            }
-          />
-          <label
-            htmlFor="allow-stacking"
-            className="text-xs text-muted-foreground"
-          >
-            Allow stacking with discounts
-          </label>
-        </div>
-        <div className="flex items-center gap-2">
-          <Switch
-            id="promo-active"
-            checked={!!formData.isActive}
-            onCheckedChange={(checked) =>
-              setFormData((prev) => ({ ...prev, isActive: checked }))
-            }
-          />
-          <label
-            htmlFor="promo-active"
-            className="text-xs text-muted-foreground"
-          >
-            Active
-          </label>
-        </div>
+        <Controller
+          name="overrideDiscounts"
+          control={form.control}
+          render={({ field }) => (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="override-discounts"
+                checked={!!field.value}
+                onCheckedChange={field.onChange}
+              />
+              <label htmlFor="override-discounts" className="text-xs text-muted-foreground">
+                Override existing discounts
+              </label>
+            </div>
+          )}
+        />
+        <Controller
+          name="allowStacking"
+          control={form.control}
+          render={({ field }) => (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="allow-stacking"
+                checked={!!field.value}
+                onCheckedChange={field.onChange}
+              />
+              <label htmlFor="allow-stacking" className="text-xs text-muted-foreground">
+                Allow stacking with discounts
+              </label>
+            </div>
+          )}
+        />
+        <Controller
+          name="isActive"
+          control={form.control}
+          render={({ field }) => (
+            <div className="flex items-center gap-2">
+              <Switch
+                id="promo-active"
+                checked={!!field.value}
+                onCheckedChange={field.onChange}
+              />
+              <label htmlFor="promo-active" className="text-xs text-muted-foreground">
+                Active
+              </label>
+            </div>
+          )}
+        />
       </div>
 
       <div className="space-y-2">
         <label className="text-xs font-medium">Products (apply to)</label>
         <div className="space-y-2">
           <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Switch
-                id="apply-all"
-                checked={!!formData.applyToAll}
-                onCheckedChange={(checked) =>
-                  setFormData((prev) => ({ ...prev, applyToAll: checked }))
-                }
-              />
-              <label
-                htmlFor="apply-all"
-                className="text-xs text-muted-foreground"
-              >
-                Apply to all products
-              </label>
-            </div>
-            {!formData.applyToAll && (
+            <Controller
+              name="applyToAll"
+              control={form.control}
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="apply-all"
+                    checked={!!field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <label htmlFor="apply-all" className="text-xs text-muted-foreground">
+                    Apply to all products
+                  </label>
+                </div>
+              )}
+            />
+            {!applyToAll && (
               <Input
                 placeholder="Search products..."
                 className="h-8 w-40 text-xs"
@@ -359,37 +407,29 @@ export function PromoForm({
             )}
           </div>
 
-          {!formData.applyToAll && (
+          {!applyToAll && (
             <>
               <div className="space-y-1">
-                <label className="text-xs font-medium">
-                  Filter by Category
-                </label>
+                <label className="text-xs font-medium">Filter by Category</label>
                 <div className="flex flex-wrap gap-1">
                   {categories.map((cat) => {
-                    const selected =
-                      formData.categoryIds?.includes(cat.id) ?? false;
+                    const selected = categoryIds.includes(cat.id);
                     return (
                       <button
                         key={cat.id}
                         type="button"
                         className={`px-2 py-0.5 rounded-full text-xs border ${
-                          selected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
+                          selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                         }`}
-                        onClick={() =>
-                          setFormData((prev) => {
-                            const current = prev.categoryIds || [];
-                            const exists = current.includes(cat.id);
-                            return {
-                              ...prev,
-                              categoryIds: exists
-                                ? current.filter((id) => id !== cat.id)
-                                : [...current, cat.id],
-                            };
-                          })
-                        }
+                        onClick={() => {
+                          const exists = categoryIds.includes(cat.id);
+                          form.setValue(
+                            "categoryIds",
+                            exists
+                              ? categoryIds.filter((id) => id !== cat.id)
+                              : [...categoryIds, cat.id],
+                          );
+                        }}
                       >
                         {cat.name}
                       </button>
@@ -399,34 +439,26 @@ export function PromoForm({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium">
-                  Filter by Subcategory
-                </label>
+                <label className="text-xs font-medium">Filter by Subcategory</label>
                 <div className="flex flex-wrap gap-1">
                   {allSubcategories.map((sub) => {
-                    const selected =
-                      formData.subCategories?.includes(sub) ?? false;
+                    const selected = subCategories.includes(sub);
                     return (
                       <button
                         key={sub}
                         type="button"
                         className={`px-2 py-0.5 rounded-full text-xs border ${
-                          selected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
+                          selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                         }`}
-                        onClick={() =>
-                          setFormData((prev) => {
-                            const current = prev.subCategories || [];
-                            const exists = current.includes(sub);
-                            return {
-                              ...prev,
-                              subCategories: exists
-                                ? current.filter((s) => s !== sub)
-                                : [...current, sub],
-                            };
-                          })
-                        }
+                        onClick={() => {
+                          const exists = subCategories.includes(sub);
+                          form.setValue(
+                            "subCategories",
+                            exists
+                              ? subCategories.filter((s) => s !== sub)
+                              : [...subCategories, sub],
+                          );
+                        }}
                       >
                         {sub}
                       </button>
@@ -437,8 +469,7 @@ export function PromoForm({
 
               <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
                 {filteredProducts.map((product) => {
-                  const isSelected =
-                    formData.productIds?.includes(product.id) ?? false;
+                  const isSelected = productIds.includes(product.id);
                   return (
                     <button
                       key={product.id}
@@ -447,16 +478,13 @@ export function PromoForm({
                         isSelected ? "bg-muted" : ""
                       }`}
                       onClick={() => {
-                        setFormData((prev) => {
-                          const current = prev.productIds || [];
-                          const exists = current.includes(product.id);
-                          return {
-                            ...prev,
-                            productIds: exists
-                              ? current.filter((id) => id !== product.id)
-                              : [...current, product.id],
-                          };
-                        });
+                        const exists = productIds.includes(product.id);
+                        form.setValue(
+                          "productIds",
+                          exists
+                            ? productIds.filter((id) => id !== product.id)
+                            : [...productIds, product.id],
+                        );
                       }}
                     >
                       <span className="truncate">
@@ -474,9 +502,7 @@ export function PromoForm({
                   );
                 })}
                 {filteredProducts.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    No products available
-                  </p>
+                  <p className="text-xs text-muted-foreground">No products available</p>
                 )}
               </div>
             </>
@@ -488,11 +514,7 @@ export function PromoForm({
         <Button type="button" variant="outline" onClick={handleCancel}>
           Cancel
         </Button>
-        <Button
-          type="button"
-          onClick={handleSubmit}
-          disabled={isLoading || !formData.code.trim()}
-        >
+        <Button type="submit" disabled={isLoading}>
           {isLoading
             ? "Saving..."
             : editingPromo
@@ -500,7 +522,7 @@ export function PromoForm({
               : "Create Promo"}
         </Button>
       </div>
-    </div>
+    </form>
   );
 
   if (inline) {
@@ -534,7 +556,7 @@ export function PromoForm({
           <Button
             className="gap-2"
             onClick={() => {
-              setFormData(initialFormData);
+              form.reset(defaultValues);
               onReset();
             }}
           >

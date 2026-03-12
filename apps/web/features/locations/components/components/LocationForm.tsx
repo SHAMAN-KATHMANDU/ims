@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,6 +26,10 @@ import {
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import type { Location, LocationType } from "../../hooks/use-locations";
+import {
+  CreateLocationSchema,
+  type CreateLocationInput,
+} from "../../validation";
 
 interface LocationFormProps {
   open: boolean;
@@ -47,6 +53,13 @@ interface LocationFormProps {
   };
 }
 
+const formDefaults: CreateLocationInput = {
+  name: "",
+  type: "SHOWROOM",
+  address: "",
+  isDefaultWarehouse: false,
+};
+
 export function LocationForm({
   open,
   onOpenChange,
@@ -57,40 +70,47 @@ export function LocationForm({
   inline = false,
   defaultValues,
 }: LocationFormProps) {
-  const [name, setName] = useState(defaultValues?.name ?? "");
-  const [type, setType] = useState<LocationType>(
-    defaultValues?.type ?? "SHOWROOM",
-  );
-  const [address, setAddress] = useState("");
-  const [isDefaultWarehouse, setIsDefaultWarehouse] = useState(
-    defaultValues?.isDefaultWarehouse ?? false,
-  );
+  const form = useForm<CreateLocationInput>({
+    resolver: zodResolver(CreateLocationSchema),
+    mode: "onBlur",
+    defaultValues: {
+      ...formDefaults,
+      name: defaultValues?.name ?? "",
+      type: (defaultValues?.type ?? "SHOWROOM") as "WAREHOUSE" | "SHOWROOM",
+      isDefaultWarehouse: defaultValues?.isDefaultWarehouse ?? false,
+    },
+  });
 
-  // Populate form when editing
+  const locationType = form.watch("type");
+
   useEffect(() => {
     if (editingLocation) {
-      setName(editingLocation.name);
-      setType(editingLocation.type);
-      setAddress(editingLocation.address || "");
-      setIsDefaultWarehouse(editingLocation.isDefaultWarehouse ?? false);
+      form.reset({
+        name: editingLocation.name,
+        type: editingLocation.type,
+        address: editingLocation.address || "",
+        isDefaultWarehouse: editingLocation.isDefaultWarehouse ?? false,
+      });
     } else {
-      setName(defaultValues?.name ?? "");
-      setType(defaultValues?.type ?? "SHOWROOM");
-      setAddress("");
-      setIsDefaultWarehouse(defaultValues?.isDefaultWarehouse ?? false);
+      form.reset({
+        ...formDefaults,
+        name: defaultValues?.name ?? "",
+        type: (defaultValues?.type ?? "SHOWROOM") as "WAREHOUSE" | "SHOWROOM",
+        address: "",
+        isDefaultWarehouse: defaultValues?.isDefaultWarehouse ?? false,
+      });
     }
-  }, [editingLocation, open, defaultValues]);
+  }, [editingLocation, open, defaultValues, form]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = form.handleSubmit(async (values) => {
     await onSubmit({
-      name,
-      type,
-      address,
-      // Send false when not warehouse so backend clears default when type changes to SHOWROOM
-      isDefaultWarehouse: type === "WAREHOUSE" ? isDefaultWarehouse : false,
+      name: values.name,
+      type: values.type as LocationType,
+      address: values.address,
+      isDefaultWarehouse:
+        values.type === "WAREHOUSE" ? values.isDefaultWarehouse : false,
     });
-  };
+  });
 
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
@@ -127,48 +147,74 @@ export function LocationForm({
       )}
       <div className="grid gap-4 py-4">
         <div className="grid gap-2">
-          <Label htmlFor="name">Name *</Label>
+          <Label htmlFor="location-name">Name *</Label>
           <Input
-            id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            id="location-name"
+            {...form.register("name")}
             placeholder="e.g., Main Warehouse"
-            required
           />
+          {form.formState.errors.name && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.name.message}
+            </p>
+          )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="type">Type *</Label>
-          <Select
-            value={type}
-            onValueChange={(value) => setType(value as LocationType)}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
-              <SelectItem value="SHOWROOM">Showroom</SelectItem>
-            </SelectContent>
-          </Select>
+          <Label htmlFor="location-type">Type *</Label>
+          <Controller
+            name="type"
+            control={form.control}
+            render={({ field }) => (
+              <Select
+                value={field.value}
+                onValueChange={(value) =>
+                  field.onChange(value as "WAREHOUSE" | "SHOWROOM")
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="WAREHOUSE">Warehouse</SelectItem>
+                  <SelectItem value="SHOWROOM">Showroom</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {form.formState.errors.type && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.type.message}
+            </p>
+          )}
         </div>
         <div className="grid gap-2">
-          <Label htmlFor="address">Address</Label>
+          <Label htmlFor="location-address">Address</Label>
           <Textarea
-            id="address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            id="location-address"
+            {...form.register("address")}
             placeholder="Enter the location address..."
             rows={3}
           />
+          {form.formState.errors.address && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.address.message}
+            </p>
+          )}
         </div>
-        {type === "WAREHOUSE" && (
+        {locationType === "WAREHOUSE" && (
           <div className="flex items-center space-x-2">
-            <Checkbox
-              id="isDefaultWarehouse"
-              checked={isDefaultWarehouse}
-              onCheckedChange={(checked) =>
-                setIsDefaultWarehouse(checked === true)
-              }
+            <Controller
+              name="isDefaultWarehouse"
+              control={form.control}
+              render={({ field }) => (
+                <Checkbox
+                  id="isDefaultWarehouse"
+                  checked={field.value}
+                  onCheckedChange={(checked) =>
+                    field.onChange(checked === true)
+                  }
+                />
+              )}
             />
             <Label
               htmlFor="isDefaultWarehouse"
@@ -187,7 +233,7 @@ export function LocationForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading || !name.trim()}>
+        <Button type="submit" disabled={isLoading}>
           {isLoading
             ? "Saving..."
             : editingLocation

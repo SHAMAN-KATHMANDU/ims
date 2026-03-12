@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import {
   Table,
   TableBody,
@@ -22,7 +23,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit2, Trash2, Layers, MoreHorizontal } from "lucide-react";
+import { Edit2, RotateCcw, Trash2, Layers, MoreHorizontal } from "lucide-react";
 import type { Category } from "@/features/products";
 
 interface CategoryTableProps {
@@ -30,6 +31,8 @@ interface CategoryTableProps {
   canManageProducts: boolean;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
+  onRestore?: (category: Category) => void;
+  isRestoring?: boolean;
   subcategoriesByCategory?: Record<string, string[]>;
   onManageSubcategories?: (category: Category) => void;
   totalItems?: number;
@@ -40,6 +43,8 @@ export function CategoryTable({
   canManageProducts,
   onEdit,
   onDelete,
+  onRestore,
+  isRestoring = false,
   subcategoriesByCategory = {},
   onManageSubcategories,
   totalItems,
@@ -59,6 +64,7 @@ export function CategoryTable({
               <TableHead>Name</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Subcategories</TableHead>
+              <TableHead>Status</TableHead>
               {canManageProducts && (
                 <TableHead className="text-right">Actions</TableHead>
               )}
@@ -88,6 +94,15 @@ export function CategoryTable({
                     <span>-</span>
                   )}
                 </TableCell>
+                <TableCell>
+                  {category.deletedAt ? (
+                    <Badge variant="secondary">Deactivated</Badge>
+                  ) : (
+                    <Badge variant="default" className="bg-green-600">
+                      Active
+                    </Badge>
+                  )}
+                </TableCell>
                 {canManageProducts && (
                   <TableCell className="text-right">
                     <DropdownMenu>
@@ -98,25 +113,41 @@ export function CategoryTable({
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        {onManageSubcategories && (
-                          <DropdownMenuItem
-                            onClick={() => onManageSubcategories(category)}
-                          >
-                            <Layers className="mr-2 h-4 w-4" />
-                            Manage subcategories
-                          </DropdownMenuItem>
+                        {category.deletedAt ? (
+                          onRestore && (
+                            <DropdownMenuItem
+                              onClick={() => onRestore(category)}
+                              disabled={isRestoring}
+                            >
+                              <RotateCcw className="mr-2 h-4 w-4" />
+                              Restore
+                            </DropdownMenuItem>
+                          )
+                        ) : (
+                          <>
+                            {onManageSubcategories && (
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  onManageSubcategories(category)
+                                }
+                              >
+                                <Layers className="mr-2 h-4 w-4" />
+                                Manage subcategories
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuItem onClick={() => onEdit(category)}>
+                              <Edit2 className="mr-2 h-4 w-4" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              variant="destructive"
+                              onClick={() => onDelete(category)}
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Delete
+                            </DropdownMenuItem>
+                          </>
                         )}
-                        <DropdownMenuItem onClick={() => onEdit(category)}>
-                          <Edit2 className="mr-2 h-4 w-4" />
-                          Edit
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => onDelete(category)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete
-                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>

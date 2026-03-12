@@ -20,7 +20,14 @@ import {
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { MoreHorizontal, Pencil, Trash2, Warehouse, Store } from "lucide-react";
+import {
+  MoreHorizontal,
+  Pencil,
+  RotateCcw,
+  Trash2,
+  Warehouse,
+  Store,
+} from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Location } from "../../hooks/use-locations";
 
@@ -33,6 +40,7 @@ interface LocationTableProps {
   onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
   onEdit: (location: Location) => void;
   onDelete: (location: Location) => void;
+  onRestore?: (location: Location) => void;
   selectedLocations?: Set<string>;
   onSelectionChange?: (ids: Set<string>) => void;
 }
@@ -46,6 +54,7 @@ export function LocationTable({
   onSort,
   onEdit,
   onDelete,
+  onRestore,
   selectedLocations = new Set(),
   onSelectionChange,
 }: LocationTableProps) {
@@ -257,13 +266,24 @@ export function LocationTable({
                           <Pencil className="mr-2 h-4 w-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem
-                          variant="destructive"
-                          onClick={() => onDelete(location)}
-                        >
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          {location.isActive ? "Deactivate" : "Delete"}
-                        </DropdownMenuItem>
+                        {location.isActive ? (
+                          <DropdownMenuItem
+                            variant="destructive"
+                            onClick={() => onDelete(location)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Deactivate
+                          </DropdownMenuItem>
+                        ) : (
+                          onRestore && (
+                            <DropdownMenuItem
+                              onClick={() => onRestore(location)}
+                            >
+                              <RotateCcw className="mr-2 h-4 w-4" />
+                              Reactivate
+                            </DropdownMenuItem>
+                          )
+                        )}
                       </>
                     ) : (
                       <>

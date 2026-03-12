@@ -11,15 +11,17 @@ const mockFindFirst = vi.fn();
 const mockFindMany = vi.fn();
 const mockCount = vi.fn();
 
-vi.mock("@/config/prisma", () => ({
-  default: {
-    category: {
-      findFirst: (...args: unknown[]) => mockFindFirst(...args),
-      findMany: (...args: unknown[]) => mockFindMany(...args),
-      count: (...args: unknown[]) => mockCount(...args),
-    },
-  },
-}));
+vi.mock("@/config/prisma", () => {
+  const mockCategory = {
+    findFirst: (...args: unknown[]) => mockFindFirst(...args),
+    findMany: (...args: unknown[]) => mockFindMany(...args),
+    count: (...args: unknown[]) => mockCount(...args),
+  };
+  return {
+    default: { category: mockCategory },
+    basePrisma: { category: mockCategory },
+  };
+});
 
 describe("IDOR prevention", () => {
   const repo = new CategoryRepository();
@@ -54,13 +56,17 @@ describe("IDOR prevention", () => {
   it("findAll uses tenantId from auth context", async () => {
     const tenantIdFromToken = "tenant-a";
 
-    await repo.findAll(tenantIdFromToken, {
-      page: 1,
-      limit: 10,
-      sortBy: "name",
-      sortOrder: "asc",
-      search: undefined,
-    });
+    await repo.findAll(
+      tenantIdFromToken,
+      {
+        page: 1,
+        limit: 10,
+        sortBy: "name",
+        sortOrder: "asc",
+        search: undefined,
+      },
+      { status: "active" },
+    );
 
     expect(mockFindMany).toHaveBeenCalledWith(
       expect.objectContaining({

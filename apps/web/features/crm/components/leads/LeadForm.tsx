@@ -51,6 +51,7 @@ export function LeadForm({
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
+    mode: "onBlur",
     defaultValues: {
       name: defaultValues?.name ?? "",
       email: defaultValues?.email ?? "",
@@ -96,6 +97,11 @@ export function LeadForm({
           {...form.register("email")}
           className="mt-1"
         />
+        {form.formState.errors.email && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.email.message}
+          </p>
+        )}
       </div>
       <div>
         <Label htmlFor="lead-phone">Phone</Label>

@@ -23,9 +23,12 @@ export interface Category {
   description?: string;
   createdAt?: string;
   updatedAt?: string;
+  deletedAt?: string | null;
   subCategories?: { name: string }[];
   _count?: { products: number };
 }
+
+export type CategoryStatusFilter = "all" | "active" | "inactive";
 
 export interface CreateCategoryData {
   name: string;
@@ -41,6 +44,7 @@ export interface CategoryListParams {
   page?: number;
   limit?: number;
   search?: string;
+  status?: CategoryStatusFilter;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -89,6 +93,7 @@ export async function getCategories(
   try {
     const queryParams: Record<string, string | number> = { page, limit };
     if (search) queryParams.search = search;
+    if (params.status) queryParams.status = params.status;
     if (sortBy) queryParams.sortBy = sortBy;
     if (sortOrder) queryParams.sortOrder = sortOrder;
 
@@ -107,13 +112,13 @@ export async function getCategories(
 
 /**
  * Get all categories (unpaginated, for dropdowns).
- * Uses a high limit as a practical ceiling — increase if tenants grow beyond this.
+ * Only returns active (non-deactivated) categories.
  */
 export async function getAllCategories(): Promise<Category[]> {
   try {
     const response = await api.get<PaginatedCategoriesApiResponse>(
       "/categories",
-      { params: { limit: 10 } },
+      { params: { limit: 500, status: "active" } },
     );
     return response.data.data || [];
   } catch (error) {
@@ -193,6 +198,24 @@ export async function updateCategory(
     return response.data.category;
   } catch (error) {
     handleApiError(error, `update category "${id}"`);
+  }
+}
+
+/**
+ * Restore a deactivated category
+ */
+export async function restoreCategory(id: string): Promise<Category> {
+  if (!id?.trim()) {
+    throw new Error("Category ID is required");
+  }
+
+  try {
+    const response = await api.post<CategoryResponse>(
+      `/categories/${id}/restore`,
+    );
+    return response.data.category;
+  } catch (error) {
+    handleApiError(error, `restore category "${id}"`);
   }
 }
 

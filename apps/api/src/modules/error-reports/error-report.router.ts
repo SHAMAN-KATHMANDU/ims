@@ -41,7 +41,7 @@ const errorReportRouter = Router();
  */
 errorReportRouter.post(
   "/",
-  authorizeRoles("user", "admin", "superAdmin"),
+  authorizeRoles("user", "admin", "superAdmin", "platformAdmin"),
   asyncHandler(errorReportController.create),
 );
 
@@ -49,7 +49,7 @@ errorReportRouter.post(
  * @swagger
  * /error-reports:
  *   get:
- *     summary: List error reports (superAdmin only)
+ *     summary: List error reports (platformAdmin only)
  *     tags: [ErrorReports]
  *     security:
  *       - bearerAuth: []
@@ -90,7 +90,7 @@ errorReportRouter.post(
  */
 errorReportRouter.get(
   "/",
-  authorizeRoles("superAdmin"),
+  authorizeRoles("platformAdmin"),
   asyncHandler(errorReportController.list),
 );
 
@@ -98,7 +98,7 @@ errorReportRouter.get(
  * @swagger
  * /error-reports/{id}:
  *   patch:
- *     summary: Update error report status (superAdmin only)
+ *     summary: Update error report status (platformAdmin only)
  *     tags: [ErrorReports]
  *     security:
  *       - bearerAuth: []
@@ -124,7 +124,7 @@ errorReportRouter.get(
  */
 errorReportRouter.patch(
   "/:id",
-  authorizeRoles("superAdmin"),
+  authorizeRoles("platformAdmin"),
   asyncHandler(errorReportController.updateStatus),
 );
 

@@ -37,6 +37,8 @@ export interface PhoneInputProps {
   value: string;
   /** Called with E.164 when valid, or "" when empty/invalid. */
   onChange: (e164: string) => void;
+  /** Optional. Called when the number input loses focus. */
+  onBlur?: () => void;
   /** Optional. When value is empty, this country is pre-selected. */
   defaultCountry?: CountryCode;
   required?: boolean;
@@ -52,6 +54,7 @@ export interface PhoneInputProps {
 export function PhoneInput({
   value,
   onChange,
+  onBlur,
   defaultCountry = DEFAULT_COUNTRY,
   required = false,
   error,
@@ -155,6 +158,7 @@ export function PhoneInput({
           inputMode="numeric"
           value={nationalNumber}
           onChange={(e) => handleNumberChange(e.target.value)}
+          onBlur={onBlur}
           placeholder={placeholder}
           required={required}
           disabled={disabled}

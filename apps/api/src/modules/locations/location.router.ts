@@ -69,6 +69,12 @@ locationRouter.post(
  *           type: boolean
  *         description: Filter only active locations
  *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [all, active, inactive]
+ *         description: all = include deactivated, active = non-deleted only, inactive = deactivated only
+ *       - in: query
  *         name: page
  *         schema: { type: integer, default: 1 }
  *         description: Page number
@@ -164,6 +170,35 @@ locationRouter.get(
   "/:id/inventory",
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(locationController.getLocationInventory),
+);
+
+/**
+ * @swagger
+ * /locations/{id}/restore:
+ *   post:
+ *     summary: Reactivate a deactivated location
+ *     tags: [Locations]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Location reactivated successfully
+ *       404:
+ *         description: Location not found
+ *       400:
+ *         description: Location is not deactivated
+ */
+locationRouter.post(
+  "/:id/restore",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(locationController.restoreLocation),
 );
 
 /**

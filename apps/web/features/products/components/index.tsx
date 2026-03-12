@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useToast } from "@/hooks/useToast";
 import { useIsMobile } from "@/hooks/useMobile";
-import { useForm } from "@/hooks/useForm";
+import { useProductFormAdapter } from "../hooks/use-product-form-adapter";
 import {
   useProductsPaginated,
   useProduct,
@@ -491,12 +491,13 @@ export function ProductPage() {
     return Object.keys(errors).length > 0 ? errors : null;
   };
 
-  // Product form
-  const productForm = useForm<ProductFormValues>({
+  // Product form (uses react-hook-form with mode: "onBlur" for real-time validation)
+  const productForm = useProductFormAdapter({
     initialValues: {
       imsCode: "",
       name: "",
       categoryId: "",
+      subCategory: "",
       description: "",
       length: "",
       breadth: "",
@@ -504,8 +505,9 @@ export function ProductPage() {
       weight: "",
       costPrice: "",
       mrp: "",
+      vendorId: undefined,
     },
-    validate: validateProduct,
+    getAdditionalErrors: (vals) => validateProduct(vals) ?? {},
     onSubmit: async (values) => {
       try {
         // Additional validation before submission

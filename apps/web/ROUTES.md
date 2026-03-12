@@ -29,7 +29,7 @@ All routes live under `/[workspace]` (e.g. `/admin`). Route groups `(admin)` and
 | `settings`                    | admin, superAdmin       | `(admin)/settings/page.tsx`                    | Workspace settings; guarded    |
 | `users`                       | superAdmin              | `(superadmin)/users/page.tsx`                  | Guarded                        |
 | `settings/logs`               | superAdmin              | `(superadmin)/settings/logs/page.tsx`          | User logs; guarded             |
-| `settings/error-reports`      | superAdmin              | `(superadmin)/settings/error-reports/page.tsx` | Guarded                        |
+| `settings/error-reports`      | platformAdmin           | `(superadmin)/settings/error-reports/page.tsx` | Guarded                        |
 | `admin-controls`              | superAdmin              | `(superadmin)/admin-controls/page.tsx`         | System; guarded                |
 
 ## Rules

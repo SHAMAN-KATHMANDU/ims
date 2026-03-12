@@ -29,7 +29,17 @@ export class CategoryService {
 
   async findAll(tenantId: string, rawQuery: Record<string, unknown>) {
     const query = getPaginationParams(rawQuery);
-    return this.repo.findAll(tenantId, query);
+    const status = (rawQuery.status as string | undefined) || "active";
+    return this.repo.findAll(tenantId, query, { status });
+  }
+
+  async restore(id: string, tenantId: string) {
+    const existing = await this.repo.findByIdIncludingDeactivated(id, tenantId);
+    if (!existing) throw createError("Category not found", 404);
+    if (!existing.deletedAt) {
+      throw createError("Category is not deactivated", 400);
+    }
+    return this.repo.restore(id);
   }
 
   async findById(id: string, tenantId: string) {

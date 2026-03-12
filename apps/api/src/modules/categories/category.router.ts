@@ -63,6 +63,22 @@ categoryRouter.post(
  *     tags: [Categories]
  *     security:
  *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [all, active, inactive]
+ *         description: all = include deactivated, active = non-deleted only, inactive = deactivated only
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
  *     responses:
  *       200:
  *         description: Categories retrieved successfully
@@ -75,6 +91,35 @@ categoryRouter.get(
   "/",
   authorizeRoles("admin", "user", "superAdmin"),
   asyncHandler(categoryController.getAllCategories),
+);
+
+/**
+ * @swagger
+ * /categories/{id}/restore:
+ *   post:
+ *     summary: Reactivate a deactivated category
+ *     tags: [Categories]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     responses:
+ *       200:
+ *         description: Category reactivated successfully
+ *       404:
+ *         description: Category not found
+ *       400:
+ *         description: Category is not deactivated
+ */
+categoryRouter.post(
+  "/:id/restore",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(categoryController.restoreCategory),
 );
 
 /**

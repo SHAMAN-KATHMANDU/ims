@@ -4,10 +4,10 @@ import { ErrorReportsPage } from "@/features/settings";
 
 export const metadata = { title: "Error Reports" };
 
-/** Error reports – superAdmin only. */
+/** Error reports – platformAdmin only. */
 export default function ErrorReportsRoute() {
   return (
-    <AuthGuard roles={["superAdmin"]} unauthorizedPath={WORKSPACE_ROOT}>
+    <AuthGuard roles={["platformAdmin"]} unauthorizedPath={WORKSPACE_ROOT}>
       <ErrorReportsPage />
     </AuthGuard>
   );

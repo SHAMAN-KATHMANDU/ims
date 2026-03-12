@@ -52,6 +52,7 @@ export function BulkChangePasswordDialog({
     formState: { errors },
   } = useForm<BulkPasswordFormValues>({
     resolver: zodResolver(bulkPasswordSchema),
+    mode: "onBlur",
     defaultValues: {
       newPassword: "",
       confirmPassword: "",

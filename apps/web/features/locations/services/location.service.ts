@@ -233,3 +233,21 @@ export async function deleteLocation(id: string): Promise<void> {
     handleApiError(error, `delete location "${id}"`);
   }
 }
+
+/**
+ * Restore (reactivate) a deactivated location
+ */
+export async function restoreLocation(id: string): Promise<Location> {
+  if (!id?.trim()) {
+    throw new Error("Location ID is required");
+  }
+
+  try {
+    const response = await api.post<LocationResponse>(
+      `/locations/${id}/restore`,
+    );
+    return response.data.location;
+  } catch (error) {
+    handleApiError(error, `restore location "${id}"`);
+  }
+}

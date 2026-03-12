@@ -11,9 +11,15 @@ export const TransferItemSchema = z.object({
 });
 
 export const CreateTransferSchema = z.object({
-  fromLocationId: z.string().uuid("Invalid from location"),
-  toLocationId: z.string().uuid("Invalid to location"),
-  items: z.array(TransferItemSchema).min(1, "At least one item required"),
+  fromLocationId: z
+    .string()
+    .min(1, "Select source location")
+    .uuid("Invalid from location"),
+  toLocationId: z
+    .string()
+    .min(1, "Select destination location")
+    .uuid("Invalid to location"),
+  items: z.array(TransferItemSchema).min(1, "Add at least one item to transfer"),
   notes: z.string().max(500).optional(),
 });
 

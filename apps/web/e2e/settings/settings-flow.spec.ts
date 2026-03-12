@@ -29,7 +29,7 @@ test.describe("Settings flow", () => {
     await expect(page).not.toHaveURL(/\/settings\/logs$/);
   });
 
-  test("error reports page redirects when not superAdmin", async ({
+  test("error reports page redirects when not platformAdmin", async ({
     settingsPage,
     page,
   }) => {

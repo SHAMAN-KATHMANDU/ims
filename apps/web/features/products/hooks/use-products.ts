@@ -49,6 +49,7 @@ import {
   createCategory,
   updateCategory,
   deleteCategory,
+  restoreCategory,
   createSubcategory,
   deleteSubcategory,
   type Category,
@@ -56,6 +57,7 @@ import {
   type PaginatedCategoriesResponse,
   type CreateCategoryData,
   type UpdateCategoryData,
+  type CategoryStatusFilter,
 } from "../services/category.service";
 
 // Re-export types for convenience
@@ -63,6 +65,7 @@ export type {
   Product,
   Category,
   CategoryListParams,
+  CategoryStatusFilter,
   PaginatedCategoriesResponse,
   ProductVariation,
   ProductListParams,
@@ -341,6 +344,7 @@ export function useCategoriesPaginated(params: CategoryListParams = {}) {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
     search: params.search?.trim() || "",
+    status: params.status,
     sortBy: params.sortBy,
     sortOrder: params.sortOrder,
   };
@@ -543,6 +547,26 @@ export function useDeleteCategory() {
       deleteCategory(id, reason),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
+    },
+  });
+}
+
+export function useRestoreCategory() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: (id: string) => restoreCategory(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: categoryKeys.lists() });
+      toast({ title: "Category restored successfully" });
+    },
+    onError: (err: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Failed to restore category",
+        description: err.message,
+      });
     },
   });
 }

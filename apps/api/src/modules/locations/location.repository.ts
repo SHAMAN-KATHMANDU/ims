@@ -1,4 +1,5 @@
-import prisma from "@/config/prisma";
+import type { Prisma } from "@prisma/client";
+import prisma, { basePrisma } from "@/config/prisma";
 import {
   getPaginationParams,
   createPaginationResult,
@@ -67,7 +68,7 @@ export class LocationRepository {
       name: "asc" as const,
     };
 
-    const where: Record<string, unknown> = { tenantId };
+    const where: Prisma.LocationWhereInput = { tenantId };
 
     if (search) {
       where.OR = [
@@ -77,27 +78,44 @@ export class LocationRepository {
     }
 
     if (filters?.type && ["WAREHOUSE", "SHOWROOM"].includes(filters.type)) {
-      where.type = filters.type;
+      where.type = filters.type as "WAREHOUSE" | "SHOWROOM";
     }
 
+    // Status filter: active (non-deleted, isActive), inactive (soft-deleted), all (both)
     if (filters?.activeOnly || filters?.status === "active") {
       where.isActive = true;
+      // Prisma extension injects deletedAt: null for trashable models
     } else if (filters?.status === "inactive") {
-      where.isActive = false;
+      // Explicit deletedAt so extension skips; return only soft-deleted
+      where.deletedAt = { not: null };
     }
+    // status === "all" or undefined: no deletedAt filter — use basePrisma to include soft-deleted
 
     const skip = (page - 1) * limit;
+    const includeDeleted =
+      !filters?.activeOnly && filters?.status !== "active" && filters?.status !== "inactive";
 
-    const [totalItems, locations] = await Promise.all([
-      prisma.location.count({ where }),
-      prisma.location.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        include: LOCATION_INCLUDE,
-      }),
-    ]);
+    const [totalItems, locations] = includeDeleted
+      ? await Promise.all([
+          basePrisma.location.count({ where }),
+          basePrisma.location.findMany({
+            where,
+            orderBy,
+            skip,
+            take: limit,
+            include: LOCATION_INCLUDE,
+          }),
+        ])
+      : await Promise.all([
+          prisma.location.count({ where }),
+          prisma.location.findMany({
+            where,
+            orderBy,
+            skip,
+            take: limit,
+            include: LOCATION_INCLUDE,
+          }),
+        ]);
 
     return createPaginationResult(locations, totalItems, page, limit);
   }
@@ -107,6 +125,14 @@ export class LocationRepository {
     if (tenantId) where.tenantId = tenantId;
     return prisma.location.findFirst({
       where,
+      include: LOCATION_INCLUDE,
+    });
+  }
+
+  /** Find location by id and tenantId including soft-deleted (for restore flow). */
+  async findByIdIncludingDeactivated(id: string, tenantId: string) {
+    return basePrisma.location.findFirst({
+      where: { id, tenantId },
       include: LOCATION_INCLUDE,
     });
   }

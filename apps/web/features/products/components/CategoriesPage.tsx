@@ -2,12 +2,12 @@
 
 import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
-import { useForm } from "@/hooks/useForm";
 import {
   useCategoriesPaginated,
   useCreateCategory,
   useUpdateCategory,
   useDeleteCategory,
+  useRestoreCategory,
   useCategorySubcategories,
   useCreateSubcategory,
   useDeleteSubcategory,
@@ -15,6 +15,7 @@ import {
   DEFAULT_LIMIT,
   type Category,
   type CategoryListParams,
+  type CategoryStatusFilter,
 } from "@/features/products";
 import { useAuthStore, selectIsAdmin } from "@/store/auth-store";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -34,14 +35,22 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Plus, Search } from "lucide-react";
-import type { CategoryFormValues } from "./types";
+import type { CategoryFormInput } from "../validation";
 
 export function CategoriesPage() {
   const [listParams, setListParams] = useState<CategoryListParams>({
     page: DEFAULT_PAGE,
     limit: DEFAULT_LIMIT,
     search: "",
+    status: "all",
   });
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -63,6 +72,7 @@ export function CategoriesPage() {
   const createCategoryMutation = useCreateCategory();
   const updateCategoryMutation = useUpdateCategory();
   const deleteCategoryMutation = useDeleteCategory();
+  const restoreCategoryMutation = useRestoreCategory();
   const { toast } = useToast();
   const isAdmin = useAuthStore(selectIsAdmin);
   const canManageProducts = isAdmin;
@@ -73,6 +83,10 @@ export function CategoriesPage() {
 
   const handlePageSizeChange = useCallback((limit: number) => {
     setListParams((prev) => ({ ...prev, page: DEFAULT_PAGE, limit }));
+  }, []);
+
+  const handleStatusChange = useCallback((status: CategoryStatusFilter) => {
+    setListParams((prev) => ({ ...prev, page: DEFAULT_PAGE, status }));
   }, []);
 
   // Dialog states
@@ -105,88 +119,62 @@ export function CategoriesPage() {
   const createSubcategoryMutation = useCreateSubcategory();
   const deleteSubcategoryMutation = useDeleteSubcategory();
 
-  // Validation functions
-  const validateCategory = (values: CategoryFormValues) => {
-    const errors: Record<string, string> = {};
-    if (!values.name?.trim()) errors.name = "Category name is required";
-    return Object.keys(errors).length > 0 ? errors : null;
-  };
-
-  // Category form
-  const categoryForm = useForm<CategoryFormValues>({
-    initialValues: { name: "", description: "", subcategories: [] },
-    validate: validateCategory,
-    onSubmit: async (values) => {
-      try {
-        if (!values.name?.trim()) {
-          setErrorDialog({
-            open: true,
-            title: "Validation Error",
-            message: "Category name is required. Please enter a category name.",
-          });
-          return;
-        }
-
-        if (editingCategory) {
-          await updateCategoryMutation.mutateAsync({
-            id: editingCategory.id,
-            data: { name: values.name, description: values.description },
-          });
-          toast({ title: "Category updated successfully" });
-        } else {
-          const result = await createCategoryMutation.mutateAsync({
-            name: values.name,
-            description: values.description,
-          });
-          const { category, restored } = result;
-          if (category.id && values.subcategories?.length) {
-            for (const name of values.subcategories) {
-              if (name?.trim()) {
-                await createSubcategoryMutation.mutateAsync({
-                  categoryId: category.id,
-                  name: name.trim(),
-                });
-              }
+  const handleCategorySubmit = async (values: CategoryFormInput) => {
+    try {
+      if (editingCategory) {
+        await updateCategoryMutation.mutateAsync({
+          id: editingCategory.id,
+          data: { name: values.name, description: values.description },
+        });
+        toast({ title: "Category updated successfully" });
+      } else {
+        const result = await createCategoryMutation.mutateAsync({
+          name: values.name,
+          description: values.description,
+        });
+        const { category, restored } = result;
+        if (category.id && values.subcategories?.length) {
+          for (const name of values.subcategories) {
+            if (name?.trim()) {
+              await createSubcategoryMutation.mutateAsync({
+                categoryId: category.id,
+                name: name.trim(),
+              });
             }
           }
-          toast({
-            title: restored
-              ? "Category restored successfully"
-              : "Category added successfully",
-          });
         }
-        setCategoryDialog(false);
-        setEditingCategory(null);
-        categoryForm.reset();
-      } catch (error: unknown) {
-        const err = error as {
-          response?: { data?: { message?: string } };
-          message?: string;
-        };
-        const errorMessage =
-          err.response?.data?.message ||
-          err.message ||
-          "Failed to save category";
-        setErrorDialog({
-          open: true,
-          title: "Error Saving Category",
-          message: errorMessage,
+        toast({
+          title: restored
+            ? "Category restored successfully"
+            : "Category added successfully",
         });
       }
-    },
-  });
+      setCategoryDialog(false);
+      setEditingCategory(null);
+    } catch (error: unknown) {
+      const err = error as {
+        response?: { data?: { message?: string } };
+        message?: string;
+      };
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to save category";
+      setErrorDialog({
+        open: true,
+        title: "Error Saving Category",
+        message: errorMessage,
+      });
+    }
+  };
 
-  // Handlers
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
-    categoryForm.values.name = category.name;
-    categoryForm.values.description = category.description || "";
     setCategoryDialog(true);
   };
 
   const handleResetCategory = () => {
     setEditingCategory(null);
-    categoryForm.reset();
   };
 
   const handleOpenSubcategoryDialog = (category: Category) => {
@@ -261,15 +249,18 @@ export function CategoriesPage() {
           <CategoryForm
             open={categoryDialog}
             onOpenChange={setCategoryDialog}
-            form={categoryForm}
             editingCategory={editingCategory}
+            onSubmit={handleCategorySubmit}
             onReset={handleResetCategory}
+            isLoading={
+              createCategoryMutation.isPending || updateCategoryMutation.isPending
+            }
           />
         )}
       </div>
 
-      <div className="flex items-center gap-2 max-w-sm">
-        <div className="relative flex-1">
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="relative flex-1 min-w-[200px] max-w-sm">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Search categories..."
@@ -278,6 +269,19 @@ export function CategoriesPage() {
             className="pl-9"
           />
         </div>
+        <Select
+          value={listParams.status ?? "all"}
+          onValueChange={(v) => handleStatusChange(v as CategoryStatusFilter)}
+        >
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Deactivated</SelectItem>
+          </SelectContent>
+        </Select>
         {searchInput && (
           <Button
             variant="ghost"
@@ -300,6 +304,8 @@ export function CategoriesPage() {
         canManageProducts={canManageProducts}
         onEdit={handleEditCategory}
         onDelete={setCategoryToDelete}
+        onRestore={(cat) => restoreCategoryMutation.mutate(cat.id)}
+        isRestoring={restoreCategoryMutation.isPending}
         subcategoriesByCategory={Object.fromEntries(
           categories.map((cat) => [
             cat.id,

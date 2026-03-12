@@ -17,6 +17,7 @@ import {
   createLocation,
   updateLocation,
   deleteLocation,
+  restoreLocation,
   type Location,
   type LocationListParams,
   type PaginatedLocationsResponse,
@@ -156,6 +157,23 @@ export function useDeleteLocation() {
 
   return useMutation({
     mutationFn: (id: string) => deleteLocation(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: locationKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: locationKeys.active() });
+      queryClient.refetchQueries({ queryKey: locationKeys.lists() });
+      queryClient.refetchQueries({ queryKey: locationKeys.active() });
+    },
+  });
+}
+
+/**
+ * Hook for restoring (reactivating) a deactivated location
+ */
+export function useRestoreLocation() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (id: string) => restoreLocation(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: locationKeys.lists() });
       queryClient.invalidateQueries({ queryKey: locationKeys.active() });
