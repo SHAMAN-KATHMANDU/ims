@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import prisma, { basePrisma } from "@/config/prisma";
 import {
   getPaginationParams,
@@ -67,7 +68,7 @@ export class LocationRepository {
       name: "asc" as const,
     };
 
-    const where: Record<string, unknown> = { tenantId };
+    const where: Prisma.LocationWhereInput = { tenantId };
 
     if (search) {
       where.OR = [
@@ -77,7 +78,7 @@ export class LocationRepository {
     }
 
     if (filters?.type && ["WAREHOUSE", "SHOWROOM"].includes(filters.type)) {
-      where.type = filters.type;
+      where.type = filters.type as "WAREHOUSE" | "SHOWROOM";
     }
 
     // Status filter: active (non-deleted, isActive), inactive (soft-deleted), all (both)
@@ -94,18 +95,27 @@ export class LocationRepository {
     const includeDeleted =
       !filters?.activeOnly && filters?.status !== "active" && filters?.status !== "inactive";
 
-    const client = includeDeleted ? basePrisma.location : prisma.location;
-
-    const [totalItems, locations] = await Promise.all([
-      client.count({ where }),
-      client.findMany({
-        where,
-        orderBy,
-        skip,
-        take: limit,
-        include: LOCATION_INCLUDE,
-      }),
-    ]);
+    const [totalItems, locations] = includeDeleted
+      ? await Promise.all([
+          basePrisma.location.count({ where }),
+          basePrisma.location.findMany({
+            where,
+            orderBy,
+            skip,
+            take: limit,
+            include: LOCATION_INCLUDE,
+          }),
+        ])
+      : await Promise.all([
+          prisma.location.count({ where }),
+          prisma.location.findMany({
+            where,
+            orderBy,
+            skip,
+            take: limit,
+            include: LOCATION_INCLUDE,
+          }),
+        ]);
 
     return createPaginationResult(locations, totalItems, page, limit);
   }

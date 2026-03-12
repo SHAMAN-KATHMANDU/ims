@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import prisma, { basePrisma } from "@/config/prisma";
 import {
   getPaginationParams,
@@ -44,7 +45,7 @@ export class CategoryRepository {
       name: "asc" as const,
     };
 
-    const where: Parameters<typeof prisma.category.findMany>[0]["where"] = {
+    const where: Prisma.CategoryWhereInput = {
       tenantId,
     };
 
@@ -66,7 +67,6 @@ export class CategoryRepository {
     const skip = (page - 1) * limit;
     const includeDeleted =
       filters?.status !== "active" && filters?.status !== "inactive";
-    const client = includeDeleted ? basePrisma.category : prisma.category;
 
     const select = {
       id: true,
@@ -84,16 +84,27 @@ export class CategoryRepository {
       },
     } as const;
 
-    const [totalItems, categories] = await Promise.all([
-      client.count({ where }),
-      client.findMany({
-        where,
-        select,
-        orderBy,
-        skip,
-        take: limit,
-      }),
-    ]);
+    const [totalItems, categories] = includeDeleted
+      ? await Promise.all([
+          basePrisma.category.count({ where }),
+          basePrisma.category.findMany({
+            where,
+            select,
+            orderBy,
+            skip,
+            take: limit,
+          }),
+        ])
+      : await Promise.all([
+          prisma.category.count({ where }),
+          prisma.category.findMany({
+            where,
+            select,
+            orderBy,
+            skip,
+            take: limit,
+          }),
+        ]);
 
     return createPaginationResult(categories, totalItems, page, limit);
   }
