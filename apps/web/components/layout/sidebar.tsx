@@ -801,6 +801,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
           side="left"
           className="w-64 p-0"
           aria-describedby={undefined}
+          allowDismiss
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation Menu</SheetTitle>
