@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +13,13 @@ import {
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { LocationSelector } from "@/components/ui/location-selector";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Info } from "lucide-react";
 import type { ProductFormValues } from "../../types";
 import type { Category } from "@/features/products";
 import type { UseFormReturn } from "@/hooks/useForm";
@@ -25,6 +33,10 @@ interface GeneralTabProps {
   isCreating?: boolean;
   defaultLocationId?: string;
   onDefaultLocationChange?: (locationId: string | undefined) => void;
+  /** When true, MRP < cost price is explicitly accepted by the user. */
+  mrpBelowCpAccepted?: boolean;
+  /** Called when user accepts or resets MRP-below-CP. */
+  onMrpBelowCpAcceptedChange?: (accepted: boolean) => void;
 }
 
 export function GeneralTab({
@@ -33,7 +45,10 @@ export function GeneralTab({
   isCreating,
   defaultLocationId,
   onDefaultLocationChange,
+  mrpBelowCpAccepted = false,
+  onMrpBelowCpAcceptedChange,
 }: GeneralTabProps) {
+  const [showMrpBelowCpWarning, setShowMrpBelowCpWarning] = useState(false);
   const isAdmin = useAuthStore(selectIsAdmin);
   const { data: vendorsResponse } = useVendorsPaginated({
     page: 1,
@@ -164,7 +179,20 @@ export function GeneralTab({
         </div>
       )}
       <div className="space-y-2">
-        <Label htmlFor="description">Description</Label>
+        <div className="flex items-center gap-1.5">
+          <Label htmlFor="description">Product Description</Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Info
+                className="h-3.5 w-3.5 text-muted-foreground"
+                aria-label="Product description help"
+              />
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              A brief description of the product for internal use or display.
+            </TooltipContent>
+          </Tooltip>
+        </div>
         <Textarea
           id="description"
           value={form.values.description}
@@ -177,7 +205,11 @@ export function GeneralTab({
           <NumericInput
             id="costPrice"
             value={form.values.costPrice}
-            onChange={(v) => form.handleChange("costPrice", v)}
+            onChange={(v) => {
+              form.handleChange("costPrice", v);
+              onMrpBelowCpAcceptedChange?.(false);
+              setShowMrpBelowCpWarning(false);
+            }}
             error={form.errors.costPrice}
             allowDecimals
             min={0}
@@ -188,11 +220,52 @@ export function GeneralTab({
           <NumericInput
             id="mrp"
             value={form.values.mrp}
-            onChange={(v) => form.handleChange("mrp", v)}
+            onChange={(v) => {
+              form.handleChange("mrp", v);
+              onMrpBelowCpAcceptedChange?.(false);
+              setShowMrpBelowCpWarning(false);
+            }}
+            onBlur={() => {
+              const costPrice = parseFloat(
+                (form.values.costPrice ?? "").trim() || "0",
+              );
+              const mrp = parseFloat((form.values.mrp ?? "").trim() || "0");
+              if (
+                !Number.isNaN(costPrice) &&
+                costPrice > 0 &&
+                !Number.isNaN(mrp) &&
+                mrp > 0 &&
+                mrp < costPrice &&
+                !mrpBelowCpAccepted
+              ) {
+                setShowMrpBelowCpWarning(true);
+              } else {
+                setShowMrpBelowCpWarning(false);
+              }
+            }}
             error={form.errors.mrp}
             allowDecimals
             min={0}
           />
+          {showMrpBelowCpWarning && (
+            <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm dark:border-amber-900 dark:bg-amber-950/50">
+              <span className="text-amber-800 dark:text-amber-200">
+                MRP is below cost price.
+              </span>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-7 shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950"
+                onClick={() => {
+                  onMrpBelowCpAcceptedChange?.(true);
+                  setShowMrpBelowCpWarning(false);
+                }}
+              >
+                Accept anyway
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>

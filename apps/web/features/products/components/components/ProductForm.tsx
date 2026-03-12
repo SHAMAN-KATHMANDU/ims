@@ -54,6 +54,10 @@ interface ProductFormProps {
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
   onShowError: (title: string, message: string) => void;
   validateProduct: (values: ProductFormValues) => Record<string, string> | null;
+  /** When true, MRP < cost price was explicitly accepted by the user. */
+  mrpBelowCpAccepted?: boolean;
+  /** Called when user accepts or resets MRP-below-CP. */
+  onMrpBelowCpAcceptedChange?: (accepted: boolean) => void;
   /** When true, render form only (no Dialog/trigger). For use on dedicated pages (e.g. mobile). */
   inline?: boolean;
   /** When false, do not render the Dialog trigger (parent opens dialog). Default true. */
@@ -86,6 +90,8 @@ export function ProductForm({
   onSetPrimaryPhoto,
   onShowError,
   validateProduct,
+  mrpBelowCpAccepted,
+  onMrpBelowCpAcceptedChange,
   inline = false,
   renderTrigger = true,
   addDisabled = false,
@@ -266,6 +272,8 @@ export function ProductForm({
               isCreating={!editingProduct}
               defaultLocationId={defaultLocationId}
               onDefaultLocationChange={onDefaultLocationChange}
+              mrpBelowCpAccepted={mrpBelowCpAccepted}
+              onMrpBelowCpAcceptedChange={onMrpBelowCpAcceptedChange}
             />
           </TabsContent>
 

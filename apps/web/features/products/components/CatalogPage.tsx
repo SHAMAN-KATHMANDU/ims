@@ -255,6 +255,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const [productDiscounts, setProductDiscounts] = useState<
     ProductDiscountForm[]
   >([]);
+  const [mrpBelowCpAccepted, setMrpBelowCpAccepted] = useState(false);
 
   // Fetch discount types
   const { data: discountTypes = [] } = useDiscountTypes();
@@ -284,7 +285,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       errors.mrp = "MRP cannot be negative";
     } else if (mrp === 0) {
       errors.mrp = "MRP must be greater than 0";
-    } else if (costPrice > 0 && mrp < costPrice) {
+    } else if (costPrice > 0 && mrp < costPrice && !mrpBelowCpAccepted) {
       errors.mrp = "MRP must be greater than or equal to cost price";
     }
 
@@ -371,7 +372,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           return;
         }
 
-        if (mrp < costPrice) {
+        if (mrp < costPrice && !mrpBelowCpAccepted) {
           setErrorDialog({
             open: true,
             title: "Validation Error",
@@ -609,6 +610,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     setEditingProduct(null);
     setProductVariations([]);
     setProductDiscounts([]);
+    setMrpBelowCpAccepted(false);
     productForm.reset();
   };
 
@@ -862,6 +864,8 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                   setErrorDialog({ open: true, title, message })
                 }
                 validateProduct={validateProduct}
+                mrpBelowCpAccepted={mrpBelowCpAccepted}
+                onMrpBelowCpAcceptedChange={setMrpBelowCpAccepted}
               />
             )}
           </div>

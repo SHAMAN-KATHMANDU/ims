@@ -85,9 +85,29 @@ export function VariationsTab({
     <div className="space-y-4">
       {attributeTypes.length > 0 && onProductAttributeTypeIdsChange && (
         <div className="space-y-2 rounded-lg border p-3 bg-muted/30">
-          <Label className="text-sm font-medium">
-            Attribute types for this product
-          </Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm font-medium">
+              Attribute types for this product
+            </Label>
+            <label className="flex items-center gap-2 cursor-pointer shrink-0 text-sm text-muted-foreground">
+              <Checkbox
+                checked={
+                  attributeTypes.length > 0 &&
+                  productAttributeTypeIds.length === attributeTypes.length
+                }
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onProductAttributeTypeIdsChange(
+                      attributeTypes.map((t) => t.id),
+                    );
+                  } else {
+                    onProductAttributeTypeIdsChange([]);
+                  }
+                }}
+              />
+              Select all
+            </label>
+          </div>
           <p className="text-xs text-muted-foreground">
             Select which attributes apply (e.g. Color, Size). Then set a value
             per variation below.

@@ -101,6 +101,7 @@ const PRODUCT_INCLUDE_WITH_INVENTORY = {
         },
       },
       locationInventory: {
+        orderBy: { location: { name: "asc" } },
         select: {
           quantity: true,
           subVariationId: true,
