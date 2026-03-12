@@ -4,6 +4,7 @@
  */
 
 import { Request, Response, NextFunction } from "express";
+import multer from "multer";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 
@@ -35,6 +36,18 @@ export const errorHandler = (
 ) => {
   // Get request ID if available (from requestId middleware)
   const requestId = (req as any).requestId || "unknown";
+
+  // Handle Multer errors (file upload) with 400 and user-friendly messages
+  if (err instanceof multer.MulterError) {
+    const statusCode = 400;
+    const message =
+      err.code === "LIMIT_FILE_SIZE"
+        ? "File is too large. Maximum size is 10MB."
+        : err.code === "LIMIT_UNEXPECTED_FILE"
+          ? "Invalid file upload. Expected a single file."
+          : err.message;
+    return res.status(statusCode).json({ message, statusCode });
+  }
 
   // Determine status code
   const statusCode = (err as AppError).statusCode || 500;

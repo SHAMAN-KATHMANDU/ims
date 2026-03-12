@@ -33,6 +33,7 @@ import { usePipelines } from "../../hooks/use-pipelines";
 import { useUsers, type User } from "@/features/users";
 import { LogActivityDialog } from "../components/LogActivityDialog";
 import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/api-error";
 import {
   Dialog,
   DialogContent,
@@ -214,8 +215,11 @@ export function ContactDetail({
       setDealValue("");
       setDealAssignedToId("");
       toast({ title: "Deal created" });
-    } catch {
-      toast({ title: "Failed to create deal", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: getApiErrorMessage(err, "create deal"),
+        variant: "destructive",
+      });
     }
   };
 
