@@ -60,7 +60,8 @@ model Tenant {
   contactTags    ContactTag[]
   contacts       Contact[]
   leads          Lead[]
-  pipelines      Pipeline[]
+  pipelines       Pipeline[]
+  pipelineWorkflows PipelineWorkflow[]
   deals          Deal[]
   tasks          Task[]
   activities     Activity[]
@@ -1091,11 +1092,64 @@ model Pipeline {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  deals  Deal[]
+  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deals           Deal[]
+  pipelineWorkflows PipelineWorkflow[]
 
   @@index([tenantId])
   @@map("pipelines")
+}
+
+enum WorkflowTrigger {
+  STAGE_ENTER
+  STAGE_EXIT
+  DEAL_CREATED
+  DEAL_WON
+  DEAL_LOST
+}
+
+enum WorkflowAction {
+  CREATE_TASK
+  SEND_NOTIFICATION
+  MOVE_STAGE
+  UPDATE_FIELD
+  CREATE_ACTIVITY
+}
+
+model PipelineWorkflow {
+  id         String   @id @default(uuid()) @map("workflow_id")
+  tenantId   String   @map("tenant_id")
+  pipelineId String   @map("pipeline_id")
+  name       String   @db.VarChar(255)
+  isActive   Boolean  @default(true) @map("is_active")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pipeline Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  rules    WorkflowRule[]
+
+  @@unique([tenantId, pipelineId, name])
+  @@index([tenantId])
+  @@index([pipelineId])
+  @@map("pipeline_workflows")
+}
+
+model WorkflowRule {
+  id             String          @id @default(uuid()) @map("rule_id")
+  workflowId     String          @map("workflow_id")
+  trigger        WorkflowTrigger
+  triggerStageId String?         @map("trigger_stage_id") @db.VarChar(100) // stage id/name for STAGE_ENTER/EXIT
+  action         WorkflowAction
+  actionConfig   Json            @map("action_config") // e.g. { taskTitle, assigneeId, targetStageId }
+  ruleOrder      Int             @default(0) @map("rule_order")
+  createdAt      DateTime        @default(now()) @map("created_at")
+  updatedAt      DateTime        @updatedAt @map("updated_at")
+
+  workflow PipelineWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@map("workflow_rules")
 }
 
 enum DealStatus {

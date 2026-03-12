@@ -1,5 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
+import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
 import dealRepository from "./deal.repository";
 import {
   createSaleWithItemsAndDeductInventory,
@@ -41,7 +42,19 @@ export class DealService {
         : "Qualification";
     const stage = data.stage || firstStage;
 
-    return dealRepository.create(tenantId, data, userId, stage, pipeline.id);
+    const deal = await dealRepository.create(
+      tenantId,
+      data,
+      userId,
+      stage,
+      pipeline.id,
+    );
+    await executeWorkflowRules({
+      trigger: "DEAL_CREATED",
+      deal: toDealContext(deal),
+      userId,
+    }).catch((err) => console.error("[DealService] Workflow error:", err));
+    return deal;
   }
 
   async getAll(tenantId: string, query: Record<string, unknown>) {
@@ -73,6 +86,32 @@ export class DealService {
         deal.name,
         data.stage,
       );
+      await executeWorkflowRules({
+        trigger: "STAGE_EXIT",
+        deal: toDealContext(deal),
+        previousStage: existing.stage,
+        userId: existing.assignedToId,
+      }).catch((err) => console.error("[DealService] Workflow error:", err));
+      await executeWorkflowRules({
+        trigger: "STAGE_ENTER",
+        deal: toDealContext(deal),
+        previousStage: existing.stage,
+        userId: existing.assignedToId,
+      }).catch((err) => console.error("[DealService] Workflow error:", err));
+    }
+
+    if (data.status === "WON") {
+      await executeWorkflowRules({
+        trigger: "DEAL_WON",
+        deal: toDealContext(deal),
+        userId: existing.assignedToId,
+      }).catch((err) => console.error("[DealService] Workflow error:", err));
+    } else if (data.status === "LOST") {
+      await executeWorkflowRules({
+        trigger: "DEAL_LOST",
+        deal: toDealContext(deal),
+        userId: existing.assignedToId,
+      }).catch((err) => console.error("[DealService] Workflow error:", err));
     }
 
     return deal;
@@ -91,6 +130,18 @@ export class DealService {
         deal.name,
         data.stage,
       );
+      await executeWorkflowRules({
+        trigger: "STAGE_EXIT",
+        deal: toDealContext(deal),
+        previousStage: existing.stage,
+        userId: existing.assignedToId,
+      }).catch((err) => console.error("[DealService] Workflow error:", err));
+      await executeWorkflowRules({
+        trigger: "STAGE_ENTER",
+        deal: toDealContext(deal),
+        previousStage: existing.stage,
+        userId: existing.assignedToId,
+      }).catch((err) => console.error("[DealService] Workflow error:", err));
     }
 
     return deal;
@@ -111,11 +162,7 @@ export class DealService {
     });
   }
 
-  async removeLineItem(
-    tenantId: string,
-    dealId: string,
-    lineItemId: string,
-  ) {
+  async removeLineItem(tenantId: string, dealId: string, lineItemId: string) {
     const deal = await dealRepository.findById(tenantId, dealId);
     if (!deal) throw createError("Deal not found", 404);
     const result = await dealRepository.removeLineItem(dealId, lineItemId);
@@ -171,7 +218,8 @@ export class DealService {
         typeof item.unitPrice === "object" &&
         item.unitPrice !== null &&
         "toNumber" in item.unitPrice &&
-        typeof (item.unitPrice as { toNumber: () => number }).toNumber === "function"
+        typeof (item.unitPrice as { toNumber: () => number }).toNumber ===
+          "function"
           ? (item.unitPrice as { toNumber: () => number }).toNumber()
           : Number(item.unitPrice);
       const totalMrp = unitPrice * qty;
@@ -226,6 +274,30 @@ export class DealService {
       userAgent: ctx.userAgent,
     });
   }
+}
+
+function toDealContext(deal: {
+  id: string;
+  tenantId: string;
+  pipelineId: string;
+  stage: string;
+  status: string;
+  contactId: string | null;
+  memberId: string | null;
+  assignedToId: string;
+  createdById: string;
+}) {
+  return {
+    id: deal.id,
+    tenantId: deal.tenantId,
+    pipelineId: deal.pipelineId,
+    stage: deal.stage,
+    status: deal.status,
+    contactId: deal.contactId,
+    memberId: deal.memberId,
+    assignedToId: deal.assignedToId,
+    createdById: deal.createdById,
+  };
 }
 
 export default new DealService();

@@ -40,6 +40,7 @@ import {
   PackageCheck,
   ListChecks,
   KeyRound,
+  Zap,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -334,6 +335,13 @@ const navSections: NavSection[] = [
         label: "CRM Settings",
         icon: SlidersHorizontal,
         roles: ["admin", "superAdmin"],
+      },
+      {
+        path: "settings/crm/workflows",
+        label: "Workflows",
+        icon: Zap,
+        roles: ["admin", "superAdmin"],
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "users",
