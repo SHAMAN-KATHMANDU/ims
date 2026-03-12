@@ -1,6 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -173,27 +174,25 @@ export function GeneralTab({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label htmlFor="costPrice">Cost Price</Label>
-          <Input
+          <NumericInput
             id="costPrice"
-            type="number"
             value={form.values.costPrice}
-            onChange={(e) => form.handleChange("costPrice", e.target.value)}
+            onChange={(v) => form.handleChange("costPrice", v)}
+            error={form.errors.costPrice}
+            allowDecimals
+            min={0}
           />
-          {form.errors.costPrice && (
-            <p className="text-sm text-destructive">{form.errors.costPrice}</p>
-          )}
         </div>
         <div className="space-y-2">
           <Label htmlFor="mrp">MRP</Label>
-          <Input
+          <NumericInput
             id="mrp"
-            type="number"
             value={form.values.mrp}
-            onChange={(e) => form.handleChange("mrp", e.target.value)}
+            onChange={(v) => form.handleChange("mrp", v)}
+            error={form.errors.mrp}
+            allowDecimals
+            min={0}
           />
-          {form.errors.mrp && (
-            <p className="text-sm text-destructive">{form.errors.mrp}</p>
-          )}
         </div>
       </div>
     </div>

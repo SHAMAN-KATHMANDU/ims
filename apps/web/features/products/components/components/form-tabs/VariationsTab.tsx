@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -149,20 +149,15 @@ export function VariationsTab({
                       ? `Stock @ ${variation.locationName}`
                       : "Default stock"}
                   </Label>
-                  <Input
+                  <NumericInput
                     id={`var-stock-${index}`}
-                    type="number"
                     placeholder="0"
-                    value={variation.stockQuantity}
-                    onChange={(e) =>
-                      onUpdate(index, "stockQuantity", e.target.value)
-                    }
+                    value={String(variation.stockQuantity ?? "")}
+                    onChange={(v) => onUpdate(index, "stockQuantity", v)}
+                    error={form.errors[`variation_${index}_stock`]}
+                    allowDecimals={false}
+                    min={0}
                   />
-                  {form.errors[`variation_${index}_stock`] && (
-                    <p className="text-xs text-destructive">
-                      {form.errors[`variation_${index}_stock`]}
-                    </p>
-                  )}
                 </div>
                 <Button
                   type="button"
