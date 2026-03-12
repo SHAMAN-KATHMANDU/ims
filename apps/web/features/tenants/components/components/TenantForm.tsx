@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -17,6 +18,12 @@ import type {
   PlanTier,
   SubscriptionStatus,
 } from "../../hooks/use-tenants";
+import {
+  TenantCreateFormSchema,
+  TenantEditFormSchema,
+  type TenantCreateFormInput,
+  type TenantEditFormInput,
+} from "../../validation";
 
 const PLANS: PlanTier[] = ["STARTER", "PROFESSIONAL", "ENTERPRISE"];
 const STATUSES: SubscriptionStatus[] = [
@@ -68,22 +75,27 @@ function TenantFormCreate({
   onCancel,
   isLoading,
 }: TenantFormCreateProps) {
-  const [name, setName] = useState("");
-  const [slug, setSlug] = useState("");
-  const [plan, setPlan] = useState<PlanTier>("STARTER");
-  const [adminUsername, setAdminUsername] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
+  const form = useForm<TenantCreateFormInput>({
+    resolver: zodResolver(TenantCreateFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      name: "",
+      slug: "",
+      plan: "STARTER",
+      adminUsername: "",
+      adminPassword: "",
+    },
+  });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = form.handleSubmit(async (values) => {
     await onSubmit({
-      name: name.trim(),
-      slug: slug.trim().toLowerCase().replace(/\s+/g, "-"),
-      plan,
-      adminUsername: adminUsername.trim(),
-      adminPassword,
+      name: values.name.trim(),
+      slug: values.slug.trim().toLowerCase().replace(/\s+/g, "-"),
+      plan: values.plan as PlanTier,
+      adminUsername: values.adminUsername.trim(),
+      adminPassword: values.adminPassword,
     });
-  };
+  });
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
@@ -91,62 +103,89 @@ function TenantFormCreate({
         <Label htmlFor="name">Organization name</Label>
         <Input
           id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          {...form.register("name")}
           placeholder="Acme Corp"
-          required
         />
+        {form.formState.errors.name && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.name.message}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="slug">Slug (URL identifier)</Label>
-        <Input
-          id="slug"
-          value={slug}
-          onChange={(e) =>
-            setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"))
-          }
-          placeholder="acme"
-          required
+        <Controller
+          name="slug"
+          control={form.control}
+          render={({ field }) => (
+            <Input
+              id="slug"
+              {...field}
+              placeholder="acme"
+              onChange={(e) =>
+                field.onChange(
+                  e.target.value.toLowerCase().replace(/\s+/g, "-"),
+                )
+              }
+            />
+          )}
         />
+        {form.formState.errors.slug && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.slug.message}
+          </p>
+        )}
         <p className="text-xs text-muted-foreground">
           Lowercase letters, numbers, hyphens only (e.g. acme, my-org).
         </p>
       </div>
       <div className="space-y-2">
         <Label htmlFor="plan">Plan</Label>
-        <Select value={plan} onValueChange={(v) => setPlan(v as PlanTier)}>
-          <SelectTrigger id="plan">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {PLANS.map((p) => (
-              <SelectItem key={p} value={p}>
-                {p}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Controller
+          name="plan"
+          control={form.control}
+          render={({ field }) => (
+            <Select value={field.value} onValueChange={field.onChange}>
+              <SelectTrigger id="plan">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {PLANS.map((p) => (
+                  <SelectItem key={p} value={p}>
+                    {p}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="adminUsername">Initial admin username</Label>
         <Input
           id="adminUsername"
-          value={adminUsername}
-          onChange={(e) => setAdminUsername(e.target.value)}
+          {...form.register("adminUsername")}
           placeholder="admin"
-          required
         />
+        {form.formState.errors.adminUsername && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.adminUsername.message}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="adminPassword">Initial admin password</Label>
         <Input
           id="adminPassword"
           type="password"
-          value={adminPassword}
-          onChange={(e) => setAdminPassword(e.target.value)}
+          {...form.register("adminPassword")}
           placeholder="••••••••"
-          required
         />
+        {form.formState.errors.adminPassword && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.adminPassword.message}
+          </p>
+        )}
       </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={isLoading}>
@@ -166,74 +205,104 @@ function TenantFormEdit({
   onCancel,
   isLoading,
 }: TenantFormEditProps) {
-  const [name, setName] = useState(tenant.name);
-  const [slug, setSlug] = useState(tenant.slug);
-  const [isActive, setIsActive] = useState(tenant.isActive);
-  const [subscriptionStatus, setSubscriptionStatus] =
-    useState<SubscriptionStatus>(tenant.subscriptionStatus);
+  const form = useForm<TenantEditFormInput>({
+    resolver: zodResolver(TenantEditFormSchema),
+    mode: "onBlur",
+    defaultValues: {
+      name: tenant.name,
+      slug: tenant.slug,
+      isActive: tenant.isActive,
+      subscriptionStatus: tenant.subscriptionStatus,
+    },
+  });
 
-  useEffect(() => {
-    setName(tenant.name);
-    setSlug(tenant.slug);
-    setIsActive(tenant.isActive);
-    setSubscriptionStatus(tenant.subscriptionStatus);
-  }, [tenant]);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = form.handleSubmit(async (values) => {
     await onSubmit({
-      name: name.trim(),
-      slug: slug.trim(),
-      isActive,
-      subscriptionStatus,
+      name: values.name.trim(),
+      slug: values.slug.trim().toLowerCase(),
+      isActive: values.isActive,
+      subscriptionStatus: values.subscriptionStatus as SubscriptionStatus,
     });
-  };
+  });
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6 max-w-md">
       <div className="space-y-2">
         <Label htmlFor="name">Organization name</Label>
-        <Input
-          id="name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
+        <Input id="name" {...form.register("name")} />
+        {form.formState.errors.name && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.name.message}
+          </p>
+        )}
       </div>
       <div className="space-y-2">
         <Label htmlFor="slug">Slug</Label>
-        <Input
-          id="slug"
-          value={slug}
-          onChange={(e) => setSlug(e.target.value.toLowerCase())}
-          required
+        <Controller
+          name="slug"
+          control={form.control}
+          render={({ field }) => (
+            <Input
+              id="slug"
+              {...field}
+              onChange={(e) =>
+                field.onChange(e.target.value.toLowerCase())
+              }
+            />
+          )}
         />
+        {form.formState.errors.slug && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.slug.message}
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-2">
-        <Switch
-          id="isActive"
-          checked={isActive}
-          onCheckedChange={setIsActive}
+        <Controller
+          name="isActive"
+          control={form.control}
+          render={({ field }) => (
+            <Switch
+              id="isActive"
+              checked={field.value}
+              onCheckedChange={field.onChange}
+            />
+          )}
         />
-        <Label htmlFor="isActive">Active (tenant can access the system)</Label>
+        <Label htmlFor="isActive" className="text-sm font-normal cursor-pointer">
+          Active (tenant can access the system)
+        </Label>
       </div>
       <div className="space-y-2">
         <Label htmlFor="subscriptionStatus">Subscription status</Label>
-        <Select
-          value={subscriptionStatus}
-          onValueChange={(v) => setSubscriptionStatus(v as SubscriptionStatus)}
-        >
-          <SelectTrigger id="subscriptionStatus">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {STATUSES.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Controller
+          name="subscriptionStatus"
+          control={form.control}
+          render={({ field }) => (
+            <Select
+              value={field.value}
+              onValueChange={(v) =>
+                field.onChange(v as TenantEditFormInput["subscriptionStatus"])
+              }
+            >
+              <SelectTrigger id="subscriptionStatus">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {STATUSES.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {form.formState.errors.subscriptionStatus && (
+          <p className="text-sm text-destructive mt-1">
+            {form.formState.errors.subscriptionStatus.message}
+          </p>
+        )}
       </div>
       <div className="flex gap-2">
         <Button type="submit" disabled={isLoading}>

@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef, useMemo } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -24,6 +26,7 @@ import {
   formatCurrency,
   previewSale,
 } from "../../services/sales.service";
+import { NewSaleFormSchema, type NewSaleFormInput } from "../../validation";
 import {
   Dialog,
   DialogContent,
@@ -230,6 +233,30 @@ export function NewSaleForm({
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
   const [promoCodeValidating, setPromoCodeValidating] = useState(false);
   const debouncedPromoCode = useDebounce(promoCode, 2000);
+
+  const validationForm = useForm<NewSaleFormInput>({
+    resolver: zodResolver(NewSaleFormSchema),
+    mode: "onBlur",
+    defaultValues: { locationId: "", items: [] },
+  });
+
+  useEffect(() => {
+    validationForm.setValue("locationId", locationId, {
+      shouldValidate: true,
+    });
+  }, [locationId, validationForm]);
+
+  useEffect(() => {
+    validationForm.setValue(
+      "items",
+      items.map((i) => ({
+        variationId: i.variationId,
+        subVariationId: i.subVariationId ?? null,
+        quantity: i.quantity,
+      })),
+      { shouldValidate: true },
+    );
+  }, [items, validationForm]);
 
   // Contact search (200ms debounce) — must be before auto-fill effect
   const debouncedContactSearch = useDebounce(contactSearch, 200);
@@ -744,7 +771,8 @@ export function NewSaleForm({
     e.preventDefault();
     if (!completeSaleClickedRef.current) return;
 
-    if (!locationId || items.length === 0) return;
+    const isValid = await validationForm.trigger();
+    if (!isValid) return;
 
     const submittedPhone = memberPhone.trim() || undefined;
 
@@ -785,6 +813,7 @@ export function NewSaleForm({
     });
 
     // Reset form
+    validationForm.reset({ locationId: "", items: [] });
     setLocationId("");
     setMemberPhone("");
     setMemberName("");
@@ -810,6 +839,7 @@ export function NewSaleForm({
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
       completeSaleClickedRef.current = false;
+      validationForm.reset({ locationId: "", items: [] });
       setLocationId("");
       setMemberPhone("");
       setMemberName("");
@@ -903,21 +933,41 @@ export function NewSaleForm({
                         <Label className="text-xs font-medium text-muted-foreground">
                           Showroom *
                         </Label>
-                        <Select
-                          value={locationId}
-                          onValueChange={setLocationId}
-                        >
-                          <SelectTrigger className="bg-surface border-border/50">
-                            <SelectValue placeholder="Select showroom" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {showrooms.map((loc) => (
-                              <SelectItem key={loc.id} value={loc.id}>
-                                {loc.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Controller
+                          name="locationId"
+                          control={validationForm.control}
+                          render={({ field }) => (
+                            <Select
+                              value={field.value}
+                              onValueChange={(v) => {
+                                field.onChange(v);
+                                setLocationId(v);
+                              }}
+                              onOpenChange={(open) => {
+                                if (!open) field.onBlur();
+                              }}
+                            >
+                              <SelectTrigger className="bg-surface border-border/50">
+                                <SelectValue placeholder="Select showroom" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {showrooms.map((loc) => (
+                                  <SelectItem key={loc.id} value={loc.id}>
+                                    {loc.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        />
+                        {validationForm.formState.errors.locationId && (
+                          <p className="text-sm text-destructive">
+                            {
+                              validationForm.formState.errors.locationId
+                                .message
+                            }
+                          </p>
+                        )}
                       </div>
 
                       {/* CRM Contact (primary customer selection) */}
@@ -1268,6 +1318,11 @@ export function NewSaleForm({
                 {/* Cart Panel */}
                 <div className="form-panel flex flex-col">
                   <FormSection title="Shopping Cart">
+                    {validationForm.formState.errors.items && (
+                      <p className="text-sm text-destructive mb-2">
+                        {validationForm.formState.errors.items.message}
+                      </p>
+                    )}
                     {items.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-12">
                         <div className="text-muted-foreground text-sm">

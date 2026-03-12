@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import {
   Dialog,
   DialogContent,
@@ -21,6 +23,7 @@ import {
   type CreateMemberData,
   type UpdateMemberData,
 } from "../../hooks/use-members";
+import { MemberFormSchema, type MemberFormInput } from "../../validation";
 import { Plus, Loader2 } from "lucide-react";
 
 interface MemberFormProps {
@@ -33,6 +36,19 @@ interface MemberFormProps {
   inline?: boolean;
 }
 
+const defaultValues: MemberFormInput = {
+  phone: "",
+  name: "",
+  email: "",
+  notes: "",
+  gender: "",
+  age: undefined,
+  address: "",
+  birthday: "",
+  isActive: true,
+  memberStatus: "ACTIVE",
+};
+
 export function MemberForm({
   open,
   onOpenChange,
@@ -41,80 +57,59 @@ export function MemberForm({
   isLoading,
   inline = false,
 }: MemberFormProps) {
-  const [phone, setPhone] = useState("");
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [notes, setNotes] = useState("");
-  const [isActive, setIsActive] = useState(true);
-  const [gender, setGender] = useState("");
-  const [age, setAge] = useState("");
-  const [address, setAddress] = useState("");
-  const [birthday, setBirthday] = useState("");
-  const [memberStatus, setMemberStatus] = useState<
-    "" | "ACTIVE" | "INACTIVE" | "PROSPECT" | "VIP"
-  >("ACTIVE");
-
   const isEdit = !!member;
 
-  // Reset form when dialog opens/closes or member changes
+  const form = useForm<MemberFormInput>({
+    resolver: zodResolver(MemberFormSchema),
+    mode: "onBlur",
+    defaultValues,
+  });
+
   useEffect(() => {
     if (open && member) {
-      setPhone(member.phone);
-      setName(member.name || "");
-      setEmail(member.email || "");
-      setNotes(member.notes || "");
-      setIsActive(member.isActive);
-      setGender(member.gender || "");
-      setAge(
-        member.age !== undefined && member.age !== null
-          ? String(member.age)
-          : "",
-      );
-      setAddress(member.address || "");
-      setBirthday(member.birthday ? member.birthday.slice(0, 10) : "");
-      setMemberStatus(member.memberStatus || "ACTIVE");
+      form.reset({
+        phone: member.phone,
+        name: member.name || "",
+        email: member.email || "",
+        notes: member.notes || "",
+        gender: member.gender || "",
+        age: member.age ?? undefined,
+        address: member.address || "",
+        birthday: member.birthday ? member.birthday.slice(0, 10) : "",
+        isActive: member.isActive,
+        memberStatus: (member.memberStatus || "ACTIVE") as
+          | "ACTIVE"
+          | "INACTIVE"
+          | "PROSPECT"
+          | "VIP",
+      });
     } else if (!open) {
-      setPhone("");
-      setName("");
-      setEmail("");
-      setNotes("");
-      setIsActive(true);
-      setGender("");
-      setAge("");
-      setAddress("");
-      setBirthday("");
-      setMemberStatus("ACTIVE");
+      form.reset(defaultValues);
     }
-  }, [open, member]);
+  }, [open, member, form]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!phone.trim()) return;
-
+  const handleSubmit = form.handleSubmit(async (values) => {
     const commonData = {
-      phone,
-      name: name.trim() || undefined,
-      email: email.trim() || undefined,
-      notes: notes.trim() || undefined,
-      gender: gender.trim() || undefined,
-      age: age ? Number(age) : undefined,
-      address: address.trim() || undefined,
-      birthday: birthday || undefined,
+      phone: values.phone,
+      name: values.name?.trim() || undefined,
+      email: values.email?.trim() || undefined,
+      notes: values.notes?.trim() || undefined,
+      gender: values.gender?.trim() || undefined,
+      age: values.age,
+      address: values.address?.trim() || undefined,
+      birthday: values.birthday || undefined,
     };
 
     if (isEdit) {
       await onSubmit({
         ...commonData,
-        isActive,
-        memberStatus: memberStatus || undefined,
+        isActive: values.isActive,
+        memberStatus: values.memberStatus,
       });
     } else {
-      await onSubmit({
-        ...commonData,
-      });
+      await onSubmit(commonData);
     }
-  };
+  });
 
   const formContent = (
     <form onSubmit={handleSubmit}>
@@ -142,61 +137,68 @@ export function MemberForm({
       )}
 
       <div className="space-y-4 py-4">
-        {/* Phone */}
         <div className="space-y-2">
           <Label htmlFor="phone-number">Phone Number *</Label>
-          <PhoneInput
-            value={phone}
-            onChange={setPhone}
-            required
-            numberInputId="phone-number"
-            placeholder="e.g. 9841234567"
+          <Controller
+            name="phone"
+            control={form.control}
+            render={({ field }) => (
+              <PhoneInput
+                value={field.value}
+                onChange={(v) => field.onChange(v ?? "")}
+                onBlur={field.onBlur}
+                numberInputId="phone-number"
+                placeholder="e.g. 9841234567"
+              />
+            )}
           />
+          {form.formState.errors.phone && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.phone.message}
+            </p>
+          )}
         </div>
 
-        {/* Name */}
         <div className="space-y-2">
           <Label htmlFor="name">Name</Label>
           <Input
             id="name"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
+            {...form.register("name")}
             placeholder="Customer name (optional)"
           />
         </div>
 
-        {/* Email */}
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>
           <Input
             id="email"
             type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            {...form.register("email")}
             placeholder="Email address (optional)"
           />
+          {form.formState.errors.email && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.email.message}
+            </p>
+          )}
         </div>
 
-        {/* Notes */}
         <div className="space-y-2">
           <Label htmlFor="notes">Notes</Label>
           <Textarea
             id="notes"
-            value={notes}
-            onChange={(e) => setNotes(e.target.value)}
+            {...form.register("notes")}
             placeholder="Any additional notes..."
             rows={2}
           />
         </div>
 
-        {/* Gender & Age */}
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="gender">Gender</Label>
             <Input
               id="gender"
-              value={gender}
-              onChange={(e) => setGender(e.target.value)}
+              {...form.register("gender")}
               placeholder="e.g. Male, Female, Other"
             />
           </div>
@@ -205,71 +207,78 @@ export function MemberForm({
             <Input
               id="age"
               type="number"
-              min="0"
-              value={age}
-              onChange={(e) => setAge(e.target.value)}
+              min={0}
+              {...form.register("age")}
               placeholder="Age in years"
             />
+            {form.formState.errors.age && (
+              <p className="text-sm text-destructive mt-1">
+                {form.formState.errors.age.message}
+              </p>
+            )}
           </div>
         </div>
 
-        {/* Address */}
         <div className="space-y-2">
           <Label htmlFor="address">Address</Label>
           <Textarea
             id="address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
+            {...form.register("address")}
             placeholder="Customer address"
             rows={2}
           />
         </div>
 
-        {/* Birthday */}
         <div className="space-y-2">
           <Label htmlFor="birthday">Birthday</Label>
-          <Input
-            id="birthday"
-            type="date"
-            value={birthday}
-            onChange={(e) => setBirthday(e.target.value)}
-          />
+          <Input id="birthday" type="date" {...form.register("birthday")} />
         </div>
 
-        {/* Active Status (only for edit) */}
         {isEdit && (
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <Label htmlFor="isActive">Active Status</Label>
-              <Switch
-                id="isActive"
-                checked={isActive}
-                onCheckedChange={setIsActive}
+              <Controller
+                name="isActive"
+                control={form.control}
+                render={({ field }) => (
+                  <Switch
+                    id="isActive"
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                )}
               />
             </div>
             <div className="space-y-2">
               <Label htmlFor="memberStatus">Member Status</Label>
-              <select
-                id="memberStatus"
-                aria-label="Member status"
-                className="border rounded-md px-3 py-2 text-sm w-full bg-background"
-                value={memberStatus}
-                onChange={(e) =>
-                  setMemberStatus(
-                    e.target.value as
-                      | ""
-                      | "ACTIVE"
-                      | "INACTIVE"
-                      | "PROSPECT"
-                      | "VIP",
-                  )
-                }
-              >
-                <option value="ACTIVE">Active</option>
-                <option value="INACTIVE">Inactive</option>
-                <option value="PROSPECT">Prospect</option>
-                <option value="VIP">VIP</option>
-              </select>
+              <Controller
+                name="memberStatus"
+                control={form.control}
+                render={({ field }) => (
+                  <select
+                    id="memberStatus"
+                    aria-label="Member status"
+                    className="border rounded-md px-3 py-2 text-sm w-full bg-background"
+                    value={field.value ?? "ACTIVE"}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value as
+                          | "ACTIVE"
+                          | "INACTIVE"
+                          | "PROSPECT"
+                          | "VIP",
+                      )
+                    }
+                    onBlur={field.onBlur}
+                  >
+                    <option value="ACTIVE">Active</option>
+                    <option value="INACTIVE">Inactive</option>
+                    <option value="PROSPECT">Prospect</option>
+                    <option value="VIP">VIP</option>
+                  </select>
+                )}
+              />
             </div>
           </div>
         )}
@@ -284,7 +293,7 @@ export function MemberForm({
         >
           Cancel
         </Button>
-        <Button type="submit" disabled={isLoading || !phone.trim()}>
+        <Button type="submit" disabled={isLoading}>
           {isLoading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
