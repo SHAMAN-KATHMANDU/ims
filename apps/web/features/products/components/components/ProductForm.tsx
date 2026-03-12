@@ -105,10 +105,52 @@ export function ProductForm({
   const handleNext = (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
-    if (canGoNext) {
-      const nextTab = tabs[currentTabIndex + 1];
-      if (nextTab) setDialogTab(nextTab);
+    if (!canGoNext) return;
+
+    const values = form.values;
+    let validationErrors: Record<string, string> | null = null;
+
+    if (dialogTab === "general") {
+      const errs = validateProduct?.(values);
+      if (errs) {
+        const generalKeys = ["name", "categoryId", "imsCode", "costPrice", "mrp"];
+        const hasGeneralError = generalKeys.some((k) => errs![k]);
+        if (hasGeneralError) validationErrors = errs;
+      }
+    } else if (dialogTab === "dimensions") {
+      const dimKeys = ["length", "breadth", "height", "weight"] as const;
+      const dimErrors: Record<string, string> = {};
+      for (const key of dimKeys) {
+        const val = values[key];
+        if (val !== undefined && val !== null && String(val).trim() !== "") {
+          const num = Number(val);
+          if (isNaN(num) || num < 0) {
+            dimErrors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} must be a valid non-negative number`;
+          }
+        }
+      }
+      if (Object.keys(dimErrors).length > 0) validationErrors = dimErrors;
+    } else if (dialogTab === "variations") {
+      const errs = validateProduct?.(values);
+      if (errs) {
+        const hasVariationError =
+          errs._form || Object.keys(errs).some((k) => k.startsWith("variation_"));
+        if (hasVariationError) validationErrors = errs;
+      }
     }
+
+    if (validationErrors) {
+      const errorMessages = Object.values(validationErrors).filter(Boolean);
+      onShowError(
+        "Validation Error",
+        errorMessages.slice(0, 3).join(". ") +
+          (errorMessages.length > 3 ? "..." : ""),
+      );
+      return;
+    }
+
+    const nextTab = tabs[currentTabIndex + 1];
+    if (nextTab) setDialogTab(nextTab);
   };
 
   const handlePrev = (e?: React.MouseEvent<HTMLButtonElement>) => {
