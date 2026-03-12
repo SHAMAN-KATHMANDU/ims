@@ -34,6 +34,7 @@ taskRouter.post("/", asyncHandler(taskController.create));
 
 taskRouter.post("/bulk-complete", asyncHandler(taskController.bulkComplete));
 taskRouter.post("/bulk-delete", asyncHandler(taskController.bulkDelete));
+taskRouter.delete("/bulk", asyncHandler(taskController.bulkDelete));
 
 /**
  * @swagger
