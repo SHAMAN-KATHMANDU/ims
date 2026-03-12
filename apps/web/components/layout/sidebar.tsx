@@ -335,6 +335,7 @@ const navSections: NavSection[] = [
         label: "CRM Settings",
         icon: SlidersHorizontal,
         roles: ["admin", "superAdmin"],
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "settings/crm/workflows",

@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import {
   DndContext,
@@ -29,6 +29,8 @@ import {
 import { dealKeys } from "../../hooks/use-deals";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { useFeatureFlag } from "@/features/flags/use-feature-flag";
+import { Feature } from "@repo/shared";
 import { useToast } from "@/hooks/useToast";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -94,6 +96,8 @@ type DrawerMode = "view" | "new" | "edit" | null;
 export function DealsKanbanPage() {
   const params = useParams();
   const router = useRouter();
+  const salesPipelineEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
+  if (!salesPipelineEnabled) notFound();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const isDesktop = useIsDesktop();
