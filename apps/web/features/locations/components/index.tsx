@@ -43,6 +43,11 @@ import {
 } from "@/components/ui/select";
 import type { SortOrder } from "@/components/ui/table";
 import { Plus, Search, Trash2, X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import {
   useLocationSelectionStore,
@@ -333,35 +338,58 @@ export function LocationsPage() {
             </div>
           </div>
 
-          {canManageLocations &&
-            (isMobile ? (
-              atLocationLimit ? (
-                <Button disabled className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Location
-                </Button>
+          {canManageLocations && (
+            <div className="flex items-center gap-2 shrink-0">
+              {locationsUsage && (
+                <span
+                  className="text-sm text-muted-foreground tabular-nums"
+                  aria-live="polite"
+                >
+                  {locationsUsage.limit === -1
+                    ? `${locationsUsage.used} locations`
+                    : `${locationsUsage.used} of ${locationsUsage.limit} locations`}
+                </span>
+              )}
+              {isMobile ? (
+                atLocationLimit ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button disabled className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          Add Location
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Location limit reached for your plan
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button asChild>
+                    <Link href={`${basePath}/locations/new`} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Location
+                    </Link>
+                  </Button>
+                )
               ) : (
-                <Button asChild>
-                  <Link href={`${basePath}/locations/new`} className="gap-2">
-                    <Plus className="h-4 w-4" />
-                    Add Location
-                  </Link>
-                </Button>
-              )
-            ) : (
-              <LocationForm
-                open={formOpen}
-                onOpenChange={setFormOpen}
-                editingLocation={editingLocation}
-                onSubmit={handleSubmit}
-                onReset={handleReset}
-                isLoading={
-                  createLocationMutation.isPending ||
-                  updateLocationMutation.isPending
-                }
-                addDisabled={atLocationLimit}
-              />
-            ))}
+                <LocationForm
+                  open={formOpen}
+                  onOpenChange={setFormOpen}
+                  editingLocation={editingLocation}
+                  onSubmit={handleSubmit}
+                  onReset={handleReset}
+                  isLoading={
+                    createLocationMutation.isPending ||
+                    updateLocationMutation.isPending
+                  }
+                  addDisabled={atLocationLimit}
+                  addDisabledTooltip="Location limit reached for your plan"
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
 
