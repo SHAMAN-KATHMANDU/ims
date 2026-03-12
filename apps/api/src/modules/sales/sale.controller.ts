@@ -78,10 +78,13 @@ class SaleController {
       const tenantId = req.user!.tenantId;
       const userId = req.user!.id;
 
+      const userRole =
+        (req as { user?: { role?: string } }).user?.role ?? "user";
       const sale = await saleService.createSale(
         {
           tenantId,
           userId,
+          userRole,
           ip:
             (req as { ip?: string }).ip ??
             (req.socket as { remoteAddress?: string })?.remoteAddress,
@@ -153,12 +156,19 @@ class SaleController {
             amount: number;
           }>
         | undefined;
-      const sale = await saleService.editSale(saleId, userId, {
-        items: body.items as SaleItemInput[],
-        notes: body.notes,
-        payments,
-        editReason: body.editReason ?? undefined,
-      });
+      const userRole =
+        (req as { user?: { role?: string } }).user?.role ?? "user";
+      const sale = await saleService.editSale(
+        saleId,
+        userId,
+        {
+          items: body.items as SaleItemInput[],
+          notes: body.notes,
+          payments,
+          editReason: body.editReason ?? undefined,
+        },
+        userRole,
+      );
       return res.status(200).json({
         message: "Sale updated successfully",
         sale,

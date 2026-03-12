@@ -211,6 +211,7 @@ model User {
   salesCreated      Sale[]        @relation("SaleCreator")
   salesDeleted      Sale[]        @relation("SaleDeletedBy")
   salesEdited       Sale[]        @relation("SaleEditedBy")
+  saleItemsApprovedForDiscount SaleItem[] @relation("DiscountApprover")
   auditLogs         AuditLog[]
   errorReports      ErrorReport[]
 
@@ -754,25 +755,34 @@ enum SaleType {
 }
 
 model SaleItem {
-  id              String  @id @default(uuid()) @map("sale_item_id")
-  saleId          String  @map("sale_id")
-  variationId     String  @map("variation_id")
-  subVariationId  String? @map("sub_variation_id")
-  quantity        Int
+  id                    String   @id @default(uuid()) @map("sale_item_id")
+  saleId                String   @map("sale_id")
+  variationId           String   @map("variation_id")
+  subVariationId        String?  @map("sub_variation_id")
+  quantity              Int
   /// Snapshot of the MRP / unit price at the time of sale
-  unitPrice       Decimal @db.Decimal(10, 2)
+  unitPrice             Decimal  @db.Decimal(10, 2)
   /// Total MRP (unitPrice * quantity) at the time of sale
-  totalMrp        Decimal @default(0) @map("total_mrp") @db.Decimal(12, 2)
+  totalMrp              Decimal  @default(0) @map("total_mrp") @db.Decimal(12, 2)
   /// Percentage discount applied on this line (derived from product discounts & promo codes)
-  discountPercent Decimal @default(0) @map("discount_percent") @db.Decimal(5, 2)
+  discountPercent       Decimal  @default(0) @map("discount_percent") @db.Decimal(5, 2)
   /// Absolute discount value applied on this line
-  discountAmount  Decimal @default(0) @map("discount_amount") @db.Decimal(12, 2)
+  discountAmount        Decimal  @default(0) @map("discount_amount") @db.Decimal(12, 2)
   /// Final payable for this line after all discounts
-  lineTotal       Decimal @map("line_total") @db.Decimal(12, 2)
+  lineTotal             Decimal  @map("line_total") @db.Decimal(12, 2)
+  /// Enterprise: manual discount percent (overrides product discount when set)
+  manualDiscountPercent Decimal? @map("manual_discount_percent") @db.Decimal(5, 2)
+  /// Enterprise: manual discount amount (overrides product discount when set)
+  manualDiscountAmount  Decimal? @map("manual_discount_amount") @db.Decimal(12, 2)
+  /// User who approved the manual discount (audit trail)
+  discountApprovedById  String?  @map("discount_approved_by_id")
+  /// Reason for manual discount (required when manual discount is applied)
+  discountReason        String?  @map("discount_reason") @db.VarChar(500)
 
-  sale         Sale                  @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  variation    ProductVariation      @relation(fields: [variationId], references: [id], onDelete: Restrict)
-  subVariation ProductSubVariation?  @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
+  sale               Sale                  @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variation          ProductVariation      @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  subVariation       ProductSubVariation?  @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
+  discountApprovedBy User?                 @relation("DiscountApprover", fields: [discountApprovedById], references: [id], onDelete: SetNull)
 
   @@map("sale_items")
 }

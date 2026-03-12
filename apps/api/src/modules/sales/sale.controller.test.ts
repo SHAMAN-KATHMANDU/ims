@@ -359,6 +359,7 @@ describe("SaleController", () => {
           notes: "Updated",
           editReason: "Fixed quantity",
         }),
+        "admin",
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({

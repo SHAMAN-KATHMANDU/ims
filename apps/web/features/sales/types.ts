@@ -127,6 +127,9 @@ export interface CreateSaleItem {
   quantity: number;
   discountId?: string | null;
   promoCode?: string;
+  manualDiscountPercent?: number;
+  manualDiscountAmount?: number;
+  discountReason?: string;
 }
 
 export interface CreateSaleData {

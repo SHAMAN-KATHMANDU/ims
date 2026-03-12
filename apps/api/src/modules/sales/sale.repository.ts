@@ -312,6 +312,10 @@ export interface CreateSaleWithItemsInput {
     discountPercent: number;
     discountAmount: number;
     lineTotal: number;
+    manualDiscountPercent?: number | null;
+    manualDiscountAmount?: number | null;
+    discountReason?: string | null;
+    discountApprovedById?: string | null;
   }>;
   payments?: Array<{
     method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
@@ -378,6 +382,10 @@ export async function createSaleWithItemsAndDeductInventory(
             discountPercent: item.discountPercent,
             discountAmount: item.discountAmount,
             lineTotal: item.lineTotal,
+            manualDiscountPercent: item.manualDiscountPercent ?? undefined,
+            manualDiscountAmount: item.manualDiscountAmount ?? undefined,
+            discountReason: item.discountReason ?? undefined,
+            discountApprovedById: item.discountApprovedById ?? undefined,
           })),
         },
         payments:
@@ -741,6 +749,10 @@ export async function createSaleRevision(input: CreateSaleRevisionInput) {
             discountPercent: item.discountPercent,
             discountAmount: item.discountAmount,
             lineTotal: item.lineTotal,
+            manualDiscountPercent: item.manualDiscountPercent ?? undefined,
+            manualDiscountAmount: item.manualDiscountAmount ?? undefined,
+            discountReason: item.discountReason ?? undefined,
+            discountApprovedById: item.discountApprovedById ?? undefined,
           })),
         },
         payments:

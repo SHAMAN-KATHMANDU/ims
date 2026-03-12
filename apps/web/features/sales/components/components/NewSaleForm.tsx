@@ -195,6 +195,12 @@ interface SaleItem {
   promoCode?: string;
   selectedDiscountId?: string;
   availableDiscounts?: ProductDiscount[];
+  /** Enterprise: manual discount percent (0–100) — overrides product discount */
+  manualDiscountPercent?: number;
+  /** Enterprise: manual discount amount — overrides product discount */
+  manualDiscountAmount?: number;
+  /** Required when manual discount is applied */
+  discountReason?: string;
 }
 
 type PaymentMethod = "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
@@ -491,10 +497,22 @@ export function NewSaleForm({
         subVariationId: i.subVariationId ?? undefined,
         quantity: i.quantity,
         discountId:
-          i.selectedDiscountId && i.selectedDiscountId !== "none"
+          !i.manualDiscountPercent &&
+          !i.manualDiscountAmount &&
+          i.selectedDiscountId &&
+          i.selectedDiscountId !== "none"
             ? i.selectedDiscountId
             : undefined,
         promoCode: i.promoCode?.trim() || undefined,
+        manualDiscountPercent:
+          (i.manualDiscountPercent ?? 0) > 0
+            ? i.manualDiscountPercent
+            : undefined,
+        manualDiscountAmount:
+          (i.manualDiscountAmount ?? 0) > 0
+            ? i.manualDiscountAmount
+            : undefined,
+        discountReason: i.discountReason?.trim() || undefined,
       })),
     })
       .then((res) => {
@@ -698,17 +716,20 @@ export function NewSaleForm({
     );
 
   const getItemDiscountDisplay = (item: SaleItem): number => {
-    if (
-      discountMode !== "individual" ||
-      !item.selectedDiscountId ||
-      item.selectedDiscountId === "none"
-    )
+    if (discountMode !== "individual") return 0;
+    const itemSub = item.unitPrice * item.quantity;
+    if ((item.manualDiscountPercent ?? 0) > 0) {
+      return Math.min(itemSub * (item.manualDiscountPercent! / 100), itemSub);
+    }
+    if ((item.manualDiscountAmount ?? 0) > 0) {
+      return Math.min(item.manualDiscountAmount!, itemSub);
+    }
+    if (!item.selectedDiscountId || item.selectedDiscountId === "none")
       return 0;
     const disc = item.availableDiscounts?.find(
       (d) => d.id === item.selectedDiscountId,
     );
     if (!disc) return 0;
-    const itemSub = item.unitPrice * item.quantity;
     return disc.valueType === "FLAT"
       ? Math.min(disc.value, itemSub)
       : itemSub * (disc.value / 100);
@@ -795,6 +816,22 @@ export function NewSaleForm({
       return;
     }
 
+    const manualDiscountWithoutReason = items.find(
+      (i) =>
+        ((i.manualDiscountPercent ?? 0) > 0 ||
+          (i.manualDiscountAmount ?? 0) > 0) &&
+        !(i.discountReason?.trim().length ?? 0),
+    );
+    if (manualDiscountWithoutReason) {
+      toast({
+        title: "Manual discount requires reason",
+        description:
+          "Enter a reason for each line item with manual discount applied.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     await onSubmit({
       locationId,
       memberPhone: submittedPhone,
@@ -805,10 +842,22 @@ export function NewSaleForm({
         subVariationId: item.subVariationId ?? undefined,
         quantity: item.quantity,
         discountId:
-          item.selectedDiscountId && item.selectedDiscountId !== "none"
+          !item.manualDiscountPercent &&
+          !item.manualDiscountAmount &&
+          item.selectedDiscountId &&
+          item.selectedDiscountId !== "none"
             ? item.selectedDiscountId
             : undefined,
         promoCode: item.promoCode?.trim() || undefined,
+        manualDiscountPercent:
+          (item.manualDiscountPercent ?? 0) > 0
+            ? item.manualDiscountPercent
+            : undefined,
+        manualDiscountAmount:
+          (item.manualDiscountAmount ?? 0) > 0
+            ? item.manualDiscountAmount
+            : undefined,
+        discountReason: item.discountReason?.trim() || undefined,
       })),
       notes: notes.trim() || undefined,
       payments: payments.map((p) => ({
@@ -1525,6 +1574,8 @@ export function NewSaleForm({
                                 </div>
 
                                 {discountMode === "individual" &&
+                                  !item.manualDiscountPercent &&
+                                  !item.manualDiscountAmount &&
                                   item.availableDiscounts &&
                                   item.availableDiscounts.length > 0 && (
                                     <Select
@@ -1551,6 +1602,113 @@ export function NewSaleForm({
                                       </SelectContent>
                                     </Select>
                                   )}
+
+                                {/* Enterprise: manual discount per line */}
+                                {discountMode === "individual" && (
+                                  <div className="space-y-1.5 text-xs">
+                                    <span className="text-muted-foreground">
+                                      Manual discount:
+                                    </span>
+                                    <div className="flex flex-wrap gap-2">
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        max={100}
+                                        step={0.5}
+                                        placeholder="%"
+                                        className="h-7 w-16 text-xs"
+                                        value={item.manualDiscountPercent ?? ""}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          const num =
+                                            v === ""
+                                              ? undefined
+                                              : Math.min(
+                                                  100,
+                                                  Math.max(0, Number(v) || 0),
+                                                );
+                                          const next = [...items];
+                                          const row = next[index];
+                                          if (row) {
+                                            row.manualDiscountPercent = num;
+                                            if (num != null)
+                                              row.manualDiscountAmount =
+                                                undefined;
+                                            if (!num)
+                                              row.discountReason = undefined;
+                                          }
+                                          setItems(next);
+                                        }}
+                                      />
+                                      <span className="text-muted-foreground self-center">
+                                        or
+                                      </span>
+                                      <Input
+                                        type="number"
+                                        min={0}
+                                        step={0.01}
+                                        placeholder="Amount"
+                                        className="h-7 w-20 text-xs"
+                                        value={item.manualDiscountAmount ?? ""}
+                                        onChange={(e) => {
+                                          const v = e.target.value;
+                                          const num =
+                                            v === ""
+                                              ? undefined
+                                              : Math.max(0, Number(v) || 0);
+                                          const next = [...items];
+                                          const row = next[index];
+                                          if (row) {
+                                            row.manualDiscountAmount = num;
+                                            if (num != null)
+                                              row.manualDiscountPercent =
+                                                undefined;
+                                            if (!num)
+                                              row.discountReason = undefined;
+                                          }
+                                          setItems(next);
+                                        }}
+                                      />
+                                      <Input
+                                        placeholder="Reason (required)"
+                                        className="h-7 flex-1 min-w-[120px] text-xs"
+                                        value={item.discountReason ?? ""}
+                                        onChange={(e) => {
+                                          const next = [...items];
+                                          const row = next[index];
+                                          if (row)
+                                            row.discountReason =
+                                              e.target.value || undefined;
+                                          setItems(next);
+                                        }}
+                                      />
+                                      {((item.manualDiscountPercent ?? 0) > 0 ||
+                                        (item.manualDiscountAmount ?? 0) >
+                                          0) && (
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-7 text-xs text-muted-foreground"
+                                          onClick={() => {
+                                            const next = [...items];
+                                            const row = next[index];
+                                            if (row) {
+                                              row.manualDiscountPercent =
+                                                undefined;
+                                              row.manualDiscountAmount =
+                                                undefined;
+                                              row.discountReason = undefined;
+                                            }
+                                            setItems(next);
+                                          }}
+                                        >
+                                          Clear
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                )}
 
                                 <div className="flex justify-between items-center pt-2 border-t">
                                   <span className="text-xs text-muted-foreground">
