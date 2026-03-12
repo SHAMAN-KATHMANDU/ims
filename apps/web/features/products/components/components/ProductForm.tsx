@@ -58,6 +58,8 @@ interface ProductFormProps {
   inline?: boolean;
   /** When false, do not render the Dialog trigger (parent opens dialog). Default true. */
   renderTrigger?: boolean;
+  /** When true, disables the Add trigger (e.g. when plan limit reached). */
+  addDisabled?: boolean;
 }
 
 export function ProductForm({
@@ -86,6 +88,7 @@ export function ProductForm({
   validateProduct,
   inline = false,
   renderTrigger = true,
+  addDisabled = false,
 }: ProductFormProps) {
   const [dialogTab, setDialogTab] = useState("general");
 
@@ -113,7 +116,13 @@ export function ProductForm({
     if (dialogTab === "general") {
       const errs = validateProduct?.(values);
       if (errs) {
-        const generalKeys = ["name", "categoryId", "imsCode", "costPrice", "mrp"];
+        const generalKeys = [
+          "name",
+          "categoryId",
+          "imsCode",
+          "costPrice",
+          "mrp",
+        ];
         const hasGeneralError = generalKeys.some((k) => errs![k]);
         if (hasGeneralError) validationErrors = errs;
       }
@@ -125,7 +134,8 @@ export function ProductForm({
         if (val !== undefined && val !== null && String(val).trim() !== "") {
           const num = Number(val);
           if (isNaN(num) || num < 0) {
-            dimErrors[key] = `${key.charAt(0).toUpperCase() + key.slice(1)} must be a valid non-negative number`;
+            dimErrors[key] =
+              `${key.charAt(0).toUpperCase() + key.slice(1)} must be a valid non-negative number`;
           }
         }
       }
@@ -134,7 +144,8 @@ export function ProductForm({
       const errs = validateProduct?.(values);
       if (errs) {
         const hasVariationError =
-          errs._form || Object.keys(errs).some((k) => k.startsWith("variation_"));
+          errs._form ||
+          Object.keys(errs).some((k) => k.startsWith("variation_"));
         if (hasVariationError) validationErrors = errs;
       }
     }
@@ -336,6 +347,7 @@ export function ProductForm({
               onReset();
             }}
             className="gap-2"
+            disabled={addDisabled}
           >
             <Plus className="h-4 w-4" /> Add Product
           </Button>

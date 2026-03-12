@@ -112,4 +112,22 @@ export async function getDashboardSuperAdminSummary(): Promise<DashboardSuperAdm
   }
 }
 
+export interface TenantUsage {
+  users: { used: number; limit: number };
+  locations: { used: number; limit: number };
+  products: { used: number; limit: number };
+}
+
+export async function getTenantUsage(): Promise<TenantUsage | null> {
+  try {
+    const res = await api.get<TenantUsage>("/dashboard/usage");
+    return res.data;
+  } catch (e) {
+    const err = e as { response?: { status?: number } };
+    if (err.response?.status === 404) return null;
+    handleApiError(e, "fetch tenant usage");
+    throw e;
+  }
+}
+
 export { STALE_TIME_MS as DASHBOARD_STALE_TIME_MS };

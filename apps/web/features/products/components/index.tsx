@@ -38,6 +38,7 @@ import { getVariationAttributeDisplay } from "./utils/helpers";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./components/BulkUploadDialog";
 import { FeatureGuard } from "@/features/flags";
+import { useTenantUsage } from "@/features/dashboard";
 import { Feature } from "@repo/shared";
 import { LocationSelector } from "@/components/ui/location-selector";
 import { Button } from "@/components/ui/button";
@@ -245,6 +246,13 @@ export function ProductPage() {
   // Extract products and pagination info from response
   const products = productsResponse?.data ?? [];
   const paginationInfo = productsResponse?.pagination;
+
+  const { data: usage } = useTenantUsage();
+  const productsUsage = usage?.products;
+  const atProductLimit =
+    productsUsage &&
+    productsUsage.limit !== -1 &&
+    productsUsage.used >= productsUsage.limit;
 
   const { data: categories = [] } = useCategories();
   const { data: vendorsResponse } = useVendorsPaginated({
@@ -1000,6 +1008,15 @@ export function ProductPage() {
         <h1 className="text-3xl font-bold">Products</h1>
         <p className="text-muted-foreground mt-2">
           Manage products, categories, and variations
+          {productsUsage && (
+            <span className="ml-2 text-sm">
+              (
+              {productsUsage.limit === -1
+                ? `${productsUsage.used} products`
+                : `${productsUsage.used} of ${productsUsage.limit} products`}
+              )
+            </span>
+          )}
         </p>
       </div>
 
@@ -1056,12 +1073,19 @@ export function ProductPage() {
                   )}
                 </FeatureGuard>
                 {isMobile ? (
-                  <Button asChild>
-                    <Link href={`${basePath}/products/new`} className="gap-2">
+                  atProductLimit ? (
+                    <Button disabled className="gap-2">
                       <Plus className="h-4 w-4" />
                       Add Product
-                    </Link>
-                  </Button>
+                    </Button>
+                  ) : (
+                    <Button asChild>
+                      <Link href={`${basePath}/products/new`} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add Product
+                      </Link>
+                    </Button>
+                  )
                 ) : (
                   <ProductForm
                     open={productDialog}
@@ -1089,6 +1113,7 @@ export function ProductPage() {
                       setErrorDialog({ open: true, title, message })
                     }
                     validateProduct={validateProduct}
+                    addDisabled={atProductLimit}
                   />
                 )}
               </div>

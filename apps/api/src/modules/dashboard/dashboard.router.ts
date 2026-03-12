@@ -64,4 +64,24 @@ dashboardRouter.get(
   asyncHandler(dashboardController.getSuperAdminSummary),
 );
 
+/**
+ * @swagger
+ * /dashboard/usage:
+ *   get:
+ *     summary: Get tenant resource usage and plan limits
+ *     tags: [Dashboard]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Usage counts and limits for users, locations, products
+ *       401: { description: Unauthorized }
+ *       404: { description: Tenant context not available }
+ */
+dashboardRouter.get(
+  "/usage",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(dashboardController.getTenantUsage),
+);
+
 export default dashboardRouter;

@@ -51,6 +51,8 @@ interface LocationFormProps {
     type?: LocationType;
     isDefaultWarehouse?: boolean;
   };
+  /** When true, disables the Add trigger (e.g. when plan limit reached). */
+  addDisabled?: boolean;
 }
 
 const formDefaults: CreateLocationInput = {
@@ -69,6 +71,7 @@ export function LocationForm({
   isLoading,
   inline = false,
   defaultValues,
+  addDisabled = false,
 }: LocationFormProps) {
   const form = useForm<CreateLocationInput>({
     resolver: zodResolver(CreateLocationSchema),
@@ -251,7 +254,7 @@ export function LocationForm({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>
+        <Button disabled={addDisabled}>
           <Plus className="mr-2 h-4 w-4" />
           Add Location
         </Button>
