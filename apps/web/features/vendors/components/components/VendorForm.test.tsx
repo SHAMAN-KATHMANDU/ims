@@ -1,6 +1,14 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+
+vi.mock("@/lib/phone", () => ({
+  parseAndValidatePhone: () => ({ valid: false, error: "Invalid" }),
+  parseE164ToCountryAndNational: () => null,
+  getCountries: () => ["NP"],
+  getCountryCallingCode: () => "977",
+}));
+
 import { VendorForm } from "./VendorForm";
 
 const mockOnSubmit = vi.fn();

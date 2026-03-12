@@ -13,7 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Users, Settings, Bug, ArrowRight } from "lucide-react";
+import { Users, Settings, ArrowRight } from "lucide-react";
 
 export const WIDGET_ID = "superadmin-shortcuts";
 export const REQUIRED_ROLES = ["superAdmin"] as const;
@@ -31,11 +31,6 @@ export function SuperAdminShortcuts({ basePath }: SuperAdminShortcutsProps) {
       href: `${basePath}/admin-controls`,
       label: "System settings",
       icon: Settings,
-    },
-    {
-      href: `${basePath}/settings/error-reports`,
-      label: "Error reports",
-      icon: Bug,
     },
   ];
 

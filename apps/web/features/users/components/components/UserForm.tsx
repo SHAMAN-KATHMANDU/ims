@@ -59,6 +59,7 @@ export function UserForm({
     formState: { errors, isSubmitting },
   } = useForm<UserFormValues>({
     resolver: zodResolver(editingUser ? UpdateUserSchema : CreateUserSchema),
+    mode: "onBlur",
     defaultValues: {
       username: "",
       password: "",

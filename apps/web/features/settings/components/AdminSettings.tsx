@@ -92,6 +92,7 @@ export function AdminSettings() {
 
   const form = useForm<UserFormData>({
     resolver: zodResolver(userSchema),
+    mode: "onBlur",
     defaultValues: {
       name: "",
       email: "",

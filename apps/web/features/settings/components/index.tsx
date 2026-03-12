@@ -54,6 +54,7 @@ export function SettingsPage() {
     formState: { errors, isSubmitting },
   } = useForm<PasswordFormValues>({
     resolver: zodResolver(passwordSchema),
+    mode: "onBlur",
     defaultValues: {
       currentPassword: "",
       newPassword: "",
