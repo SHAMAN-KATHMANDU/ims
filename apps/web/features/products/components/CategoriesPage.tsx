@@ -344,7 +344,7 @@ export function CategoriesPage() {
 
       {/* Subcategory Management Dialog */}
       <Dialog open={subcategoryDialog} onOpenChange={setSubcategoryDialog}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>
               Manage Subcategories - {selectedCategory?.name}

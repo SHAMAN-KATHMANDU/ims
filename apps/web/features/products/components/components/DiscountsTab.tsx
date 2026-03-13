@@ -762,7 +762,7 @@ export function DiscountsTab() {
 
       {/* Add dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Add Product Discount</DialogTitle>
           </DialogHeader>
@@ -892,7 +892,7 @@ export function DiscountsTab() {
           !open && setEditState({ open: false, discount: null })
         }
       >
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Edit Product Discount</DialogTitle>
           </DialogHeader>

@@ -60,7 +60,8 @@ export function PlatformResetRequestsPage() {
       <div>
         <h1 className="text-3xl font-bold">Password Reset Requests</h1>
         <p className="text-muted-foreground mt-2">
-          Escalated requests from tenant superadmins. Approve to set a new password for the user.
+          Escalated requests from tenant superadmins. Approve to set a new
+          password for the user.
         </p>
       </div>
 
@@ -94,7 +95,9 @@ export function PlatformResetRequestsPage() {
                     </TableCell>
                     <TableCell>{req.tenant.name}</TableCell>
                     <TableCell>{req.requestedBy.role}</TableCell>
-                    <TableCell>{format(new Date(req.createdAt), "PPp")}</TableCell>
+                    <TableCell>
+                      {format(new Date(req.createdAt), "PPp")}
+                    </TableCell>
                     <TableCell className="text-right">
                       <Button
                         size="sm"
@@ -126,13 +129,14 @@ export function PlatformResetRequestsPage() {
           setApproveDialog({ open: false, request: null, newPassword: "" })
         }
       >
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Set New Password</DialogTitle>
             <DialogDescription>
-              Enter a new password for {approveDialog.request?.requestedBy.username}{" "}
-              ({approveDialog.request?.tenant.name}). The user will be able to log in with this
-              password.
+              Enter a new password for{" "}
+              {approveDialog.request?.requestedBy.username} (
+              {approveDialog.request?.tenant.name}). The user will be able to
+              log in with this password.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -143,7 +147,10 @@ export function PlatformResetRequestsPage() {
                 type="password"
                 value={approveDialog.newPassword}
                 onChange={(e) =>
-                  setApproveDialog((p) => ({ ...p, newPassword: e.target.value }))
+                  setApproveDialog((p) => ({
+                    ...p,
+                    newPassword: e.target.value,
+                  }))
                 }
                 placeholder="Min 8 characters"
                 minLength={8}
@@ -154,7 +161,11 @@ export function PlatformResetRequestsPage() {
             <Button
               variant="outline"
               onClick={() =>
-                setApproveDialog({ open: false, request: null, newPassword: "" })
+                setApproveDialog({
+                  open: false,
+                  request: null,
+                  newPassword: "",
+                })
               }
             >
               Cancel

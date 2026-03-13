@@ -54,13 +54,13 @@ function SheetContent({
   className,
   children,
   side = "right",
-  allowDismiss = false,
+  allowDismiss = true,
   onInteractOutside,
   onEscapeKeyDown,
   ...props
 }: SheetContentProps & {
   side?: "top" | "right" | "bottom" | "left";
-  /** When false (default), prevents closing on outside click or Escape to avoid form data loss */
+  /** When false, prevents closing on outside click or Escape to avoid form data loss */
   allowDismiss?: boolean;
 }) {
   const handleInteractOutside: InteractOutsideHandler = (e) => {

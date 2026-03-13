@@ -72,9 +72,11 @@ export function BulkChangePasswordDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent allowDismiss={false}>
         <DialogHeader>
-          <DialogTitle>Change password for {userIds.length} user(s)</DialogTitle>
+          <DialogTitle>
+            Change password for {userIds.length} user(s)
+          </DialogTitle>
           <DialogDescription>
             Set a new password for all selected users. They will need to use
             this password to sign in.

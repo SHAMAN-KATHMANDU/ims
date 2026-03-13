@@ -45,6 +45,7 @@ export function ResponsiveDrawer({
         <SheetContent
           side="bottom"
           className="flex flex-col p-0 gap-0 rounded-t-2xl max-h-[90vh]"
+          allowDismiss={false}
         >
           <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted-foreground/20 shrink-0" />
           <SheetHeader className="px-6 py-4 border-b shrink-0">
@@ -65,6 +66,7 @@ export function ResponsiveDrawer({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
         className={`flex flex-col p-0 gap-0 w-full ${sizeMap[size]}`}
+        allowDismiss={false}
       >
         <SheetHeader className="px-6 py-4 border-b shrink-0">
           <SheetTitle className="text-base font-semibold">{title}</SheetTitle>

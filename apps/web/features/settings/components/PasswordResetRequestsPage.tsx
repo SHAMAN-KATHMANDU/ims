@@ -22,7 +22,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { usePasswordResetRequests, useApprovePasswordReset, useEscalatePasswordReset, useRejectPasswordReset } from "../hooks/use-settings";
+import {
+  usePasswordResetRequests,
+  useApprovePasswordReset,
+  useEscalatePasswordReset,
+  useRejectPasswordReset,
+} from "../hooks/use-settings";
 import { format } from "date-fns";
 import type { PasswordResetRequest } from "@/features/users/services/user.service";
 
@@ -42,7 +47,10 @@ export function PasswordResetRequestsPage() {
     if (!approveDialog.request || !approveDialog.newPassword.trim()) return;
     if (approveDialog.newPassword.length < 8) return;
     approveMutation.mutate(
-      { requestId: approveDialog.request.id, newPassword: approveDialog.newPassword },
+      {
+        requestId: approveDialog.request.id,
+        newPassword: approveDialog.newPassword,
+      },
       {
         onSuccess: () => {
           setApproveDialog({ open: false, request: null, newPassword: "" });
@@ -56,7 +64,8 @@ export function PasswordResetRequestsPage() {
       <div>
         <h1 className="text-3xl font-bold">Password Reset Requests</h1>
         <p className="text-muted-foreground mt-2">
-          Staff and admin forgot-password requests. Approve to set a new password, or escalate to platform admin.
+          Staff and admin forgot-password requests. Approve to set a new
+          password, or escalate to platform admin.
         </p>
       </div>
 
@@ -88,7 +97,9 @@ export function PasswordResetRequestsPage() {
                       {req.requestedBy.username}
                     </TableCell>
                     <TableCell>{req.requestedBy.role}</TableCell>
-                    <TableCell>{format(new Date(req.createdAt), "PPp")}</TableCell>
+                    <TableCell>
+                      {format(new Date(req.createdAt), "PPp")}
+                    </TableCell>
                     <TableCell className="text-right space-x-2">
                       <Button
                         size="sm"
@@ -111,9 +122,7 @@ export function PasswordResetRequestsPage() {
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() =>
-                          escalateMutation.mutate(req.id)
-                        }
+                        onClick={() => escalateMutation.mutate(req.id)}
                         disabled={
                           approveMutation.isPending ||
                           escalateMutation.isPending ||
@@ -146,15 +155,17 @@ export function PasswordResetRequestsPage() {
       <Dialog
         open={approveDialog.open}
         onOpenChange={(open) =>
-          !open && setApproveDialog({ open: false, request: null, newPassword: "" })
+          !open &&
+          setApproveDialog({ open: false, request: null, newPassword: "" })
         }
       >
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Set New Password</DialogTitle>
             <DialogDescription>
-              Enter a new password for {approveDialog.request?.requestedBy.username}.
-              The user will be able to log in with this password.
+              Enter a new password for{" "}
+              {approveDialog.request?.requestedBy.username}. The user will be
+              able to log in with this password.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
@@ -165,7 +176,10 @@ export function PasswordResetRequestsPage() {
                 type="password"
                 value={approveDialog.newPassword}
                 onChange={(e) =>
-                  setApproveDialog((p) => ({ ...p, newPassword: e.target.value }))
+                  setApproveDialog((p) => ({
+                    ...p,
+                    newPassword: e.target.value,
+                  }))
                 }
                 placeholder="Min 8 characters"
                 minLength={8}
@@ -176,7 +190,11 @@ export function PasswordResetRequestsPage() {
             <Button
               variant="outline"
               onClick={() =>
-                setApproveDialog({ open: false, request: null, newPassword: "" })
+                setApproveDialog({
+                  open: false,
+                  request: null,
+                  newPassword: "",
+                })
               }
             >
               Cancel

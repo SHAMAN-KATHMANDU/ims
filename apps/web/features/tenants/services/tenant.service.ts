@@ -107,7 +107,6 @@ export async function getPlatformStats(): Promise<PlatformStats> {
     return response.data;
   } catch (error) {
     handleApiError(error, "fetch platform stats");
-    throw error;
   }
 }
 

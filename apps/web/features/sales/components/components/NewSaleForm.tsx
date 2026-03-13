@@ -2011,7 +2011,10 @@ export function NewSaleForm({
           New Sale
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[1000px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+      <DialogContent
+        className="sm:max-w-[1000px] max-h-[90vh] flex flex-col p-0 overflow-hidden"
+        allowDismiss={false}
+      >
         {formContent}
       </DialogContent>
     </Dialog>

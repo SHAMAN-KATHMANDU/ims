@@ -181,7 +181,6 @@ export async function downloadReceiptPdf(saleId: string): Promise<void> {
     downloadBlobFromResponse(response, "receipt.pdf");
   } catch (error) {
     handleApiError(error, "download receipt");
-    throw error;
   }
 }
 
@@ -485,7 +484,6 @@ export async function downloadSales(
     downloadBlobFromResponse(response, defaultFilename);
   } catch (error) {
     handleApiError(error, "download sales");
-    throw error;
   }
 }
 
@@ -497,6 +495,5 @@ export async function downloadBulkUploadTemplate(): Promise<void> {
     downloadBlobFromResponse(response, "sales_bulk_upload_template.xlsx");
   } catch (error) {
     handleApiError(error, "download template");
-    throw error;
   }
 }

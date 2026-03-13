@@ -285,7 +285,10 @@ export default function WorkflowEditorPage() {
         open={showCreate || !!editWorkflow}
         onOpenChange={(open) => !open && resetForm()}
       >
-        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogContent
+          className="max-w-lg max-h-[90vh] overflow-y-auto"
+          allowDismiss={false}
+        >
           <DialogHeader>
             <DialogTitle>
               {editWorkflow ? "Edit Workflow" : "New Workflow"}

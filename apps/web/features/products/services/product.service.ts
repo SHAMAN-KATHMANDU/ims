@@ -861,7 +861,6 @@ export async function downloadProducts(
     downloadBlobFromResponse(response, defaultFilename);
   } catch (error) {
     handleApiError(error, "download products");
-    throw error;
   }
 }
 
@@ -876,6 +875,5 @@ export async function downloadBulkUploadTemplate(): Promise<void> {
     downloadBlobFromResponse(response, "products_bulk_upload_template.xlsx");
   } catch (error) {
     handleApiError(error, "download template");
-    throw error;
   }
 }

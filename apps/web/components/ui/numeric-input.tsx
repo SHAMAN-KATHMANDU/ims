@@ -92,7 +92,8 @@ export function NumericInput({
       <Input
         {...props}
         type="text"
-        inputMode="decimal"
+        inputMode={allowDecimals ? "decimal" : "numeric"}
+        pattern={allowDecimals ? "[0-9]*\\.?[0-9]*" : "[0-9]*"}
         value={value}
         onChange={handleInput}
         onBlur={handleBlur}

@@ -323,7 +323,9 @@ export function MemberForm({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="sm:max-w-[425px]">{formContent}</DialogContent>
+      <DialogContent className="sm:max-w-[425px]" allowDismiss={false}>
+        {formContent}
+      </DialogContent>
     </Dialog>
   );
 }

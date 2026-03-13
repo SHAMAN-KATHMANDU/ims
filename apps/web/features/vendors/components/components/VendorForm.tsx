@@ -115,7 +115,9 @@ export function VendorForm({
         <Label htmlFor="vendor-phone">Phone</Label>
         <PhoneInput
           value={form.watch("phone") ?? ""}
-          onChange={(phone) => form.setValue("phone", phone || "", { shouldValidate: true })}
+          onChange={(phone) =>
+            form.setValue("phone", phone || "", { shouldValidate: true })
+          }
           placeholder="e.g. 9841234567"
           numberInputId="vendor-phone"
         />
@@ -184,7 +186,7 @@ export function VendorForm({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>
             {editingVendor ? "Edit Vendor" : "New Vendor"}

@@ -815,7 +815,7 @@ function AddPipelineDialog({
     <>
       {triggerWithClick}
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>New pipeline</DialogTitle>
             <DialogDescription>
@@ -910,7 +910,7 @@ function EditPipelineDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>Edit pipeline</DialogTitle>
           <DialogDescription>
@@ -1054,7 +1054,7 @@ function EditPipelineStagesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>Edit stages</DialogTitle>
           <DialogDescription>

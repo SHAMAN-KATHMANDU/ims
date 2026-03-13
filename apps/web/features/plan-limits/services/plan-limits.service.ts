@@ -23,7 +23,6 @@ export async function getPlanLimits(): Promise<PlanLimit[]> {
     return response.data.planLimits ?? [];
   } catch (error) {
     handleApiError(error, "fetch plan limits");
-    throw error;
   }
 }
 
@@ -55,6 +54,5 @@ export async function upsertPlanLimit(
     return response.data.planLimit;
   } catch (error) {
     handleApiError(error, `save plan limit ${tier}`);
-    throw error;
   }
 }

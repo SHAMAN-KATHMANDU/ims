@@ -361,7 +361,7 @@ export function ProductForm({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-h-[90vh] max-w-4xl">
+      <DialogContent className="max-h-[90vh] max-w-4xl" allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>
             {editingProduct ? "Edit Product" : "Add Product"}

@@ -593,7 +593,10 @@ export function SaleDetail({
       </DialogContent>
 
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
+        <DialogContent
+          className="max-h-[90vh] overflow-y-auto sm:max-w-2xl"
+          allowDismiss={false}
+        >
           <DialogHeader>
             <DialogTitle>Edit Sale</DialogTitle>
           </DialogHeader>
@@ -625,7 +628,7 @@ export function SaleDetail({
 
       {/* Pay dialog for credit sales */}
       <Dialog open={payDialogOpen} onOpenChange={setPayDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
+        <DialogContent className="sm:max-w-[400px]" allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Add Payment</DialogTitle>
           </DialogHeader>

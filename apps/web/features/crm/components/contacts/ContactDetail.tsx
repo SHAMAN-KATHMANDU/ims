@@ -586,7 +586,7 @@ export function ContactDetail({
                   setLogNoteOpen(open);
                 }}
               >
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md" allowDismiss={false}>
                   <DialogHeader>
                     <DialogTitle>Log Note</DialogTitle>
                   </DialogHeader>

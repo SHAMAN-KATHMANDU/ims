@@ -54,13 +54,13 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
-  allowDismiss = false,
+  allowDismiss = true,
   onInteractOutside,
   onEscapeKeyDown,
   ...props
 }: ContentProps & {
   showCloseButton?: boolean;
-  /** When false (default), prevents closing on outside click or Escape to avoid form data loss */
+  /** When false, prevents closing on outside click or Escape to avoid form data loss */
   allowDismiss?: boolean;
 }) {
   const handleInteractOutside: InteractOutsideHandler = (e) => {
