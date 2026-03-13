@@ -17,9 +17,24 @@ type WorkflowTx = {
   };
 };
 
+/** Extended prisma client type omits workflow delegates; use this for non-transaction workflow access. */
+type WorkflowDb = {
+  pipelineWorkflow: {
+    findMany: (args: unknown) => Promise<unknown>;
+    findFirst: (args: unknown) => Promise<unknown>;
+    updateMany: (args: unknown) => Promise<{ count: number }>;
+    deleteMany: (args: unknown) => Promise<unknown>;
+  };
+  workflowRule: {
+    findMany: (args: unknown) => Promise<unknown>;
+  };
+};
+
+const workflowDb = prisma as unknown as WorkflowDb;
+
 export class WorkflowRepository {
   async findAllByTenant(tenantId: string) {
-    return prisma.pipelineWorkflow.findMany({
+    return workflowDb.pipelineWorkflow.findMany({
       where: { tenantId },
       include: {
         pipeline: { select: { id: true, name: true } },
@@ -30,7 +45,7 @@ export class WorkflowRepository {
   }
 
   async findByPipeline(tenantId: string, pipelineId: string) {
-    return prisma.pipelineWorkflow.findMany({
+    return workflowDb.pipelineWorkflow.findMany({
       where: { tenantId, pipelineId },
       include: { rules: { orderBy: { ruleOrder: "asc" } } },
       orderBy: { createdAt: "asc" },
@@ -38,7 +53,7 @@ export class WorkflowRepository {
   }
 
   async findActiveRulesByPipeline(tenantId: string, pipelineId: string) {
-    return prisma.workflowRule.findMany({
+    return workflowDb.workflowRule.findMany({
       where: {
         workflow: {
           tenantId,
@@ -52,7 +67,7 @@ export class WorkflowRepository {
   }
 
   async findById(tenantId: string, id: string) {
-    return prisma.pipelineWorkflow.findFirst({
+    return workflowDb.pipelineWorkflow.findFirst({
       where: { id, tenantId },
       include: {
         pipeline: true,
@@ -146,10 +161,10 @@ export class WorkflowRepository {
       });
     }
 
-    const result = await prisma.pipelineWorkflow.updateMany({
+    const result = (await workflowDb.pipelineWorkflow.updateMany({
       where: { id, tenantId },
       data: updateData,
-    });
+    })) as { count: number };
     if (result.count === 0) throw new Error("Workflow not found");
     const found = await this.findById(tenantId, id);
     if (!found) throw new Error("Workflow not found after update");
@@ -175,9 +190,9 @@ export class WorkflowRepository {
   }
 
   async delete(id: string, tenantId: string) {
-    const result = await prisma.pipelineWorkflow.deleteMany({
+    const result = (await workflowDb.pipelineWorkflow.deleteMany({
       where: { id, tenantId },
-    });
+    })) as { count: number };
     if (result.count === 0) throw new Error("Workflow not found");
   }
 }
