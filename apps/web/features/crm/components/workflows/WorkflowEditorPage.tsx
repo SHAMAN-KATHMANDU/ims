@@ -20,21 +20,10 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Plus, Pencil, Trash2, Zap } from "lucide-react";
 import {
   useWorkflows,
@@ -47,8 +36,12 @@ import type {
   Workflow,
   WorkflowTrigger,
   WorkflowAction,
-  CreateWorkflowRuleInput,
 } from "../../services/workflow.service";
+import { WorkflowForm } from "./WorkflowForm";
+import type {
+  CreateWorkflowFormValues,
+  UpdateWorkflowFormValues,
+} from "../../validation";
 
 const TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
   STAGE_ENTER: "Stage enter",
@@ -67,7 +60,7 @@ const ACTION_LABELS: Record<WorkflowAction, string> = {
 };
 
 export default function WorkflowEditorPage() {
-  const { data, isLoading } = useWorkflows();
+  const { data, isLoading, isError, error } = useWorkflows();
   const { data: pipelinesData } = usePipelines();
   const createMutation = useCreateWorkflow();
   const updateMutation = useUpdateWorkflow();
@@ -75,93 +68,57 @@ export default function WorkflowEditorPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [editWorkflow, setEditWorkflow] = useState<Workflow | null>(null);
-  const [formName, setFormName] = useState("");
-  const [formPipelineId, setFormPipelineId] = useState("");
-  const [formIsActive, setFormIsActive] = useState(true);
-  const [formRules, setFormRules] = useState<CreateWorkflowRuleInput[]>([]);
 
   const workflows = data?.workflows ?? [];
   const pipelines = pipelinesData?.pipelines ?? [];
 
-  const resetFormFields = () => {
-    setFormName("");
-    setFormPipelineId("");
-    setFormIsActive(true);
-    setFormRules([]);
-  };
-
   const resetForm = () => {
-    resetFormFields();
     setShowCreate(false);
     setEditWorkflow(null);
   };
 
-  const handleCreate = () => {
-    if (!formName.trim() || !formPipelineId) return;
+  const handleCreate = (formData: CreateWorkflowFormValues) => {
+    const rules =
+      formData.rules && formData.rules.length > 0
+        ? formData.rules.map((r) => ({
+            trigger: r.trigger,
+            triggerStageId: r.triggerStageId ?? null,
+            action: r.action,
+            actionConfig: r.actionConfig ?? {},
+            ruleOrder: r.ruleOrder,
+          }))
+        : undefined;
     createMutation.mutate(
       {
-        pipelineId: formPipelineId,
-        name: formName.trim(),
-        isActive: formIsActive,
-        rules: formRules.length > 0 ? formRules : undefined,
+        pipelineId: formData.pipelineId,
+        name: formData.name,
+        isActive: formData.isActive,
+        rules,
       },
       { onSuccess: resetForm },
     );
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = (formData: UpdateWorkflowFormValues) => {
     if (!editWorkflow) return;
     updateMutation.mutate(
       {
         id: editWorkflow.id,
         data: {
-          name: formName.trim() || editWorkflow.name,
-          isActive: formIsActive,
-          rules: formRules,
+          name: formData.name,
+          isActive: formData.isActive,
+          rules: formData.rules?.map((r) => ({
+            trigger: r.trigger,
+            triggerStageId: r.triggerStageId ?? null,
+            action: r.action,
+            actionConfig: r.actionConfig ?? {},
+            ruleOrder: r.ruleOrder,
+          })),
         },
       },
       { onSuccess: resetForm },
     );
   };
-
-  const openEdit = (w: Workflow) => {
-    setEditWorkflow(w);
-    setFormName(w.name);
-    setFormPipelineId(w.pipelineId);
-    setFormIsActive(w.isActive);
-    setFormRules(
-      w.rules.map((r) => ({
-        trigger: r.trigger,
-        triggerStageId: r.triggerStageId,
-        action: r.action,
-        actionConfig: r.actionConfig ?? {},
-        ruleOrder: r.ruleOrder,
-      })),
-    );
-  };
-
-  const addRule = () => {
-    setFormRules((prev) => [
-      ...prev,
-      {
-        trigger: "STAGE_ENTER" as WorkflowTrigger,
-        action: "CREATE_TASK" as WorkflowAction,
-        actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
-      },
-    ]);
-  };
-
-  const removeRule = (i: number) => {
-    setFormRules((prev) => prev.filter((_, idx) => idx !== i));
-  };
-
-  const updateRule = (i: number, updates: Partial<CreateWorkflowRuleInput>) => {
-    setFormRules((prev) =>
-      prev.map((r, idx) => (idx === i ? { ...r, ...updates } : r)),
-    );
-  };
-
-  const isFormValid = formName.trim() && (editWorkflow || formPipelineId);
 
   return (
     <div className="space-y-6">
@@ -186,7 +143,6 @@ export default function WorkflowEditorPage() {
           <Button
             size="sm"
             onClick={() => {
-              resetFormFields();
               setEditWorkflow(null);
               setShowCreate(true);
             }}
@@ -200,6 +156,13 @@ export default function WorkflowEditorPage() {
               {[1, 2, 3].map((i) => (
                 <div key={i} className="h-12 bg-muted animate-pulse rounded" />
               ))}
+            </div>
+          ) : isError ? (
+            <div className="py-6 text-center">
+              <p className="text-sm text-destructive" role="alert">
+                Failed to load workflows.{" "}
+                {error?.message ?? "Please try again."}
+              </p>
             </div>
           ) : workflows.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
@@ -256,7 +219,8 @@ export default function WorkflowEditorPage() {
                             size="icon"
                             variant="ghost"
                             className="h-8 w-8"
-                            onClick={() => openEdit(w)}
+                            onClick={() => setEditWorkflow(w)}
+                            aria-label={`Edit workflow ${w.name}`}
                           >
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
@@ -266,6 +230,7 @@ export default function WorkflowEditorPage() {
                             className="h-8 w-8 text-destructive hover:text-destructive"
                             onClick={() => deleteMutation.mutate(w.id)}
                             disabled={deleteMutation.isPending}
+                            aria-label={`Delete workflow ${w.name}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
@@ -280,150 +245,52 @@ export default function WorkflowEditorPage() {
         </CardContent>
       </Card>
 
-      {/* Create / Edit dialog */}
       <Dialog
         open={showCreate || !!editWorkflow}
         onOpenChange={(open) => !open && resetForm()}
       >
         <DialogContent
           className="max-w-lg max-h-[90vh] overflow-y-auto"
-          allowDismiss={false}
+          allowDismiss={true}
         >
           <DialogHeader>
             <DialogTitle>
               {editWorkflow ? "Edit Workflow" : "New Workflow"}
             </DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Name</Label>
-              <Input
-                id="name"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                placeholder="e.g. Follow-up automation"
+          {(showCreate || editWorkflow) &&
+            (editWorkflow ? (
+              <WorkflowForm
+                mode="edit"
+                pipelines={pipelines}
+                stages={
+                  pipelines.find((p) => p.id === editWorkflow.pipelineId)
+                    ?.stages ?? []
+                }
+                defaultValues={{
+                  name: editWorkflow.name,
+                  isActive: editWorkflow.isActive,
+                  rules: editWorkflow.rules.map((r) => ({
+                    trigger: r.trigger,
+                    triggerStageId: r.triggerStageId,
+                    action: r.action,
+                    actionConfig: r.actionConfig ?? {},
+                    ruleOrder: r.ruleOrder,
+                  })),
+                }}
+                onSubmit={handleUpdate}
+                onCancel={resetForm}
+                isSubmitting={updateMutation.isPending}
               />
-            </div>
-            {!editWorkflow && (
-              <div className="space-y-2">
-                <Label>Pipeline</Label>
-                <Select
-                  value={formPipelineId}
-                  onValueChange={setFormPipelineId}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select pipeline" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {pipelines.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>
-                        {p.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Switch
-                id="active"
-                checked={formIsActive}
-                onCheckedChange={setFormIsActive}
+            ) : (
+              <WorkflowForm
+                mode="create"
+                pipelines={pipelines}
+                onSubmit={handleCreate}
+                onCancel={resetForm}
+                isSubmitting={createMutation.isPending}
               />
-              <Label htmlFor="active">Active</Label>
-            </div>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <Label>Rules</Label>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={addRule}
-                >
-                  <Plus className="h-3 w-3 mr-1" /> Add rule
-                </Button>
-              </div>
-              {formRules.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  No rules. Add a rule to trigger actions on deal events.
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {formRules.map((rule, i) => (
-                    <div
-                      key={i}
-                      className="flex flex-wrap gap-2 items-center p-2 border rounded bg-muted/30"
-                    >
-                      <Select
-                        value={rule.trigger}
-                        onValueChange={(v) =>
-                          updateRule(i, { trigger: v as WorkflowTrigger })
-                        }
-                      >
-                        <SelectTrigger className="w-36">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(
-                            Object.keys(TRIGGER_LABELS) as WorkflowTrigger[]
-                          ).map((t) => (
-                            <SelectItem key={t} value={t}>
-                              {TRIGGER_LABELS[t]}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <span className="text-muted-foreground">→</span>
-                      <Select
-                        value={rule.action}
-                        onValueChange={(v) =>
-                          updateRule(i, { action: v as WorkflowAction })
-                        }
-                      >
-                        <SelectTrigger className="w-40">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {(Object.keys(ACTION_LABELS) as WorkflowAction[]).map(
-                            (a) => (
-                              <SelectItem key={a} value={a}>
-                                {ACTION_LABELS[a]}
-                              </SelectItem>
-                            ),
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => removeRule(i)}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={resetForm}>
-              Cancel
-            </Button>
-            <Button
-              onClick={editWorkflow ? handleUpdate : handleCreate}
-              disabled={
-                !isFormValid ||
-                createMutation.isPending ||
-                updateMutation.isPending
-              }
-            >
-              {editWorkflow ? "Save" : "Create"}
-            </Button>
-          </DialogFooter>
+            ))}
         </DialogContent>
       </Dialog>
     </div>

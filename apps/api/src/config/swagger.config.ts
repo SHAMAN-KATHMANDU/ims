@@ -720,6 +720,136 @@ const swaggerDefinition: SwaggerDefinition = {
           pagination: { $ref: "#/components/schemas/Pagination" },
         },
       },
+      WorkflowRule: {
+        type: "object",
+        description: "A single rule in a workflow (trigger + action + config)",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          trigger: {
+            type: "string",
+            enum: [
+              "STAGE_ENTER",
+              "STAGE_EXIT",
+              "DEAL_CREATED",
+              "DEAL_WON",
+              "DEAL_LOST",
+            ],
+          },
+          triggerStageId: { type: "string", nullable: true },
+          action: {
+            type: "string",
+            enum: [
+              "CREATE_TASK",
+              "SEND_NOTIFICATION",
+              "MOVE_STAGE",
+              "UPDATE_FIELD",
+              "CREATE_ACTIVITY",
+            ],
+          },
+          actionConfig: { type: "object", additionalProperties: true },
+          ruleOrder: { type: "integer" },
+        },
+      },
+      Workflow: {
+        type: "object",
+        description: "Pipeline workflow with rules",
+        properties: {
+          id: { type: "string", format: "uuid" },
+          tenantId: { type: "string", format: "uuid" },
+          pipelineId: { type: "string", format: "uuid" },
+          name: { type: "string" },
+          isActive: { type: "boolean" },
+          pipeline: {
+            type: "object",
+            properties: {
+              id: { type: "string", format: "uuid" },
+              name: { type: "string" },
+            },
+          },
+          rules: {
+            type: "array",
+            items: { $ref: "#/components/schemas/WorkflowRule" },
+          },
+        },
+      },
+      CreateWorkflowInput: {
+        type: "object",
+        required: ["pipelineId", "name"],
+        properties: {
+          pipelineId: { type: "string", format: "uuid" },
+          name: { type: "string", minLength: 1, maxLength: 255 },
+          isActive: { type: "boolean", default: true },
+          rules: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                trigger: {
+                  type: "string",
+                  enum: [
+                    "STAGE_ENTER",
+                    "STAGE_EXIT",
+                    "DEAL_CREATED",
+                    "DEAL_WON",
+                    "DEAL_LOST",
+                  ],
+                },
+                triggerStageId: { type: "string", nullable: true },
+                action: {
+                  type: "string",
+                  enum: [
+                    "CREATE_TASK",
+                    "SEND_NOTIFICATION",
+                    "MOVE_STAGE",
+                    "UPDATE_FIELD",
+                    "CREATE_ACTIVITY",
+                  ],
+                },
+                actionConfig: { type: "object" },
+                ruleOrder: { type: "integer" },
+              },
+            },
+          },
+        },
+      },
+      UpdateWorkflowInput: {
+        type: "object",
+        properties: {
+          name: { type: "string", minLength: 1, maxLength: 255 },
+          isActive: { type: "boolean" },
+          rules: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                trigger: {
+                  type: "string",
+                  enum: [
+                    "STAGE_ENTER",
+                    "STAGE_EXIT",
+                    "DEAL_CREATED",
+                    "DEAL_WON",
+                    "DEAL_LOST",
+                  ],
+                },
+                triggerStageId: { type: "string", nullable: true },
+                action: {
+                  type: "string",
+                  enum: [
+                    "CREATE_TASK",
+                    "SEND_NOTIFICATION",
+                    "MOVE_STAGE",
+                    "UPDATE_FIELD",
+                    "CREATE_ACTIVITY",
+                  ],
+                },
+                actionConfig: { type: "object" },
+                ruleOrder: { type: "integer" },
+              },
+            },
+          },
+        },
+      },
     },
   },
   tags: [
@@ -755,6 +885,10 @@ const swaggerDefinition: SwaggerDefinition = {
     { name: "CRM", description: "CRM dashboard and reports" },
     { name: "CRMSettings", description: "CRM sources and journey types" },
     { name: "Trash", description: "Soft-deleted items restore" },
+    {
+      name: "Workflows",
+      description: "Pipeline workflow automation (triggers and actions)",
+    },
   ],
 };
 

@@ -55,9 +55,48 @@ export const LogActivitySchema = z.object({
   activityAt: z.string().min(1, "Date and time is required"),
 });
 
+const WORKFLOW_TRIGGERS = [
+  "STAGE_ENTER",
+  "STAGE_EXIT",
+  "DEAL_CREATED",
+  "DEAL_WON",
+  "DEAL_LOST",
+] as const;
+const WORKFLOW_ACTIONS = [
+  "CREATE_TASK",
+  "SEND_NOTIFICATION",
+  "MOVE_STAGE",
+  "UPDATE_FIELD",
+  "CREATE_ACTIVITY",
+] as const;
+
+export const WorkflowRuleSchema = z.object({
+  trigger: z.enum(WORKFLOW_TRIGGERS),
+  triggerStageId: z.string().max(100).optional().nullable(),
+  action: z.enum(WORKFLOW_ACTIONS),
+  actionConfig: z.record(z.unknown()).default({}),
+  ruleOrder: z.number().int().min(0).optional(),
+});
+
+export const CreateWorkflowFormSchema = z.object({
+  pipelineId: z.string().uuid("Select a pipeline"),
+  name: z.string().min(1, "Name is required").max(255),
+  isActive: z.boolean().default(true),
+  rules: z.array(WorkflowRuleSchema).optional().default([]),
+});
+
+export const UpdateWorkflowFormSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  isActive: z.boolean().default(true),
+  rules: z.array(WorkflowRuleSchema).optional().default([]),
+});
+
 export type ContactInput = z.infer<typeof ContactSchema>;
 export type LeadInput = z.infer<typeof LeadSchema>;
 export type DealInput = z.infer<typeof DealSchema>;
 export type TaskInput = z.infer<typeof TaskSchema>;
 export type CompanyInput = z.infer<typeof CompanySchema>;
 export type LogActivityInput = z.infer<typeof LogActivitySchema>;
+export type CreateWorkflowFormValues = z.infer<typeof CreateWorkflowFormSchema>;
+export type UpdateWorkflowFormValues = z.infer<typeof UpdateWorkflowFormSchema>;
+export type WorkflowRuleFormValues = z.infer<typeof WorkflowRuleSchema>;

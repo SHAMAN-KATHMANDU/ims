@@ -247,9 +247,9 @@ export class DealRepository {
     });
   }
 
-  async updateStage(id: string, stage: string) {
+  async updateStage(id: string, stage: string, tenantId: string) {
     return prisma.deal.update({
-      where: { id },
+      where: { id, tenantId },
       data: { stage },
       include: DEAL_INCLUDE,
     });

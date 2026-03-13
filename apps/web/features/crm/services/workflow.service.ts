@@ -1,4 +1,5 @@
 import api from "@/lib/axios";
+import { handleApiError } from "@/lib/api-error";
 
 export type WorkflowTrigger =
   | "STAGE_ENTER"
@@ -56,33 +57,53 @@ export interface UpdateWorkflowInput {
 export async function getWorkflows(
   pipelineId?: string,
 ): Promise<{ workflows: Workflow[] }> {
-  const params = pipelineId ? { pipelineId } : undefined;
-  const res = await api.get("/workflows", { params });
-  return res.data;
+  try {
+    const params = pipelineId ? { pipelineId } : undefined;
+    const res = await api.get("/workflows", { params });
+    return res.data;
+  } catch (error) {
+    handleApiError(error, "fetch workflows");
+  }
 }
 
 export async function getWorkflowById(
   id: string,
 ): Promise<{ workflow: Workflow }> {
-  const res = await api.get(`/workflows/${id}`);
-  return res.data;
+  try {
+    const res = await api.get(`/workflows/${id}`);
+    return res.data;
+  } catch (error) {
+    handleApiError(error, `fetch workflow "${id}"`);
+  }
 }
 
 export async function createWorkflow(
   data: CreateWorkflowInput,
 ): Promise<{ workflow: Workflow }> {
-  const res = await api.post("/workflows", data);
-  return res.data;
+  try {
+    const res = await api.post("/workflows", data);
+    return res.data;
+  } catch (error) {
+    handleApiError(error, "create workflow");
+  }
 }
 
 export async function updateWorkflow(
   id: string,
   data: UpdateWorkflowInput,
 ): Promise<{ workflow: Workflow }> {
-  const res = await api.put(`/workflows/${id}`, data);
-  return res.data;
+  try {
+    const res = await api.put(`/workflows/${id}`, data);
+    return res.data;
+  } catch (error) {
+    handleApiError(error, `update workflow "${id}"`);
+  }
 }
 
 export async function deleteWorkflow(id: string): Promise<void> {
-  await api.delete(`/workflows/${id}`);
+  try {
+    await api.delete(`/workflows/${id}`);
+  } catch (error) {
+    handleApiError(error, `delete workflow "${id}"`);
+  }
 }

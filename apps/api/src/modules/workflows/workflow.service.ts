@@ -1,6 +1,26 @@
 import { createError } from "@/middlewares/errorHandler";
 import workflowRepository from "./workflow.repository";
-import type { CreateWorkflowDto, UpdateWorkflowDto } from "./workflow.schema";
+import {
+  parseActionConfig,
+  type CreateWorkflowDto,
+  type CreateWorkflowRuleDto,
+  type UpdateWorkflowDto,
+} from "./workflow.schema";
+
+function validateRulesActionConfig(
+  rules: CreateWorkflowRuleDto[] | undefined,
+): void {
+  if (!rules || rules.length === 0) return;
+  for (let i = 0; i < rules.length; i++) {
+    try {
+      parseActionConfig(rules[i].action, rules[i].actionConfig ?? {});
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Invalid rule action config";
+      throw createError(`Rule ${i + 1}: ${message}`, 400);
+    }
+  }
+}
 
 export class WorkflowService {
   async getAll(tenantId: string) {
@@ -18,6 +38,7 @@ export class WorkflowService {
   }
 
   async create(tenantId: string, data: CreateWorkflowDto) {
+    validateRulesActionConfig(data.rules);
     return workflowRepository.create(tenantId, data);
   }
 
@@ -25,6 +46,7 @@ export class WorkflowService {
     const existing = await workflowRepository.findById(tenantId, id);
     if (!existing) throw createError("Workflow not found", 404);
 
+    validateRulesActionConfig(data.rules);
     return workflowRepository.update(id, tenantId, {
       name: data.name,
       isActive: data.isActive,

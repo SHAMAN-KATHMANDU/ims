@@ -1,6 +1,7 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
+import { logger } from "@/config/logger";
 import dealRepository from "./deal.repository";
 import {
   createSaleWithItemsAndDeductInventory,
@@ -53,7 +54,14 @@ export class DealService {
       trigger: "DEAL_CREATED",
       deal: toDealContext(deal),
       userId,
-    }).catch((err) => console.error("[DealService] Workflow error:", err));
+    }).catch((err) =>
+      logger.error("Workflow execution failed", undefined, {
+        dealId: deal.id,
+        tenantId: deal.tenantId,
+        trigger: "DEAL_CREATED",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
     return deal;
   }
 
@@ -86,18 +94,25 @@ export class DealService {
         deal.name,
         data.stage,
       );
+      const logWorkflowErr = (trigger: string) => (err: unknown) =>
+        logger.error("Workflow execution failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          trigger,
+          error: err instanceof Error ? err.message : String(err),
+        });
       await executeWorkflowRules({
         trigger: "STAGE_EXIT",
         deal: toDealContext(deal),
         previousStage: existing.stage,
         userId: existing.assignedToId,
-      }).catch((err) => console.error("[DealService] Workflow error:", err));
+      }).catch(logWorkflowErr("STAGE_EXIT"));
       await executeWorkflowRules({
         trigger: "STAGE_ENTER",
         deal: toDealContext(deal),
         previousStage: existing.stage,
         userId: existing.assignedToId,
-      }).catch((err) => console.error("[DealService] Workflow error:", err));
+      }).catch(logWorkflowErr("STAGE_ENTER"));
     }
 
     if (data.status === "WON") {
@@ -105,13 +120,27 @@ export class DealService {
         trigger: "DEAL_WON",
         deal: toDealContext(deal),
         userId: existing.assignedToId,
-      }).catch((err) => console.error("[DealService] Workflow error:", err));
+      }).catch((err) =>
+        logger.error("Workflow execution failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          trigger: "DEAL_WON",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     } else if (data.status === "LOST") {
       await executeWorkflowRules({
         trigger: "DEAL_LOST",
         deal: toDealContext(deal),
         userId: existing.assignedToId,
-      }).catch((err) => console.error("[DealService] Workflow error:", err));
+      }).catch((err) =>
+        logger.error("Workflow execution failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          trigger: "DEAL_LOST",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     }
 
     return deal;
@@ -121,7 +150,7 @@ export class DealService {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
 
-    const deal = await dealRepository.updateStage(id, data.stage);
+    const deal = await dealRepository.updateStage(id, data.stage, tenantId);
 
     if (existing.assignedToId) {
       await dealRepository.createNotification(
@@ -130,18 +159,25 @@ export class DealService {
         deal.name,
         data.stage,
       );
+      const logWorkflowErr = (trigger: string) => (err: unknown) =>
+        logger.error("Workflow execution failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          trigger,
+          error: err instanceof Error ? err.message : String(err),
+        });
       await executeWorkflowRules({
         trigger: "STAGE_EXIT",
         deal: toDealContext(deal),
         previousStage: existing.stage,
         userId: existing.assignedToId,
-      }).catch((err) => console.error("[DealService] Workflow error:", err));
+      }).catch(logWorkflowErr("STAGE_EXIT"));
       await executeWorkflowRules({
         trigger: "STAGE_ENTER",
         deal: toDealContext(deal),
         previousStage: existing.stage,
         userId: existing.assignedToId,
-      }).catch((err) => console.error("[DealService] Workflow error:", err));
+      }).catch(logWorkflowErr("STAGE_ENTER"));
     }
 
     return deal;
