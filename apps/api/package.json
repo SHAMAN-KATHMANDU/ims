@@ -20,7 +20,7 @@
     "check-user": "ts-node scripts/check-user.ts",
     "test": "vitest",
     "test:run": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "VITEST_COVERAGE=true vitest run --coverage"
   },
   "prisma": {
     "seed": "node prisma/seed.js"
