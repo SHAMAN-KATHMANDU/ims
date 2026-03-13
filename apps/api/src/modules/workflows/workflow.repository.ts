@@ -4,6 +4,19 @@ import type {
   CreateWorkflowRuleDto,
 } from "./workflow.schema";
 
+/** Transaction client typed for workflow models (basePrisma.$transaction tx omits them in this setup). */
+type WorkflowTx = {
+  pipelineWorkflow: {
+    create: (args: unknown) => Promise<{ id: string }>;
+    findFirst: (args: unknown) => Promise<unknown>;
+    updateMany: (args: unknown) => Promise<{ count: number }>;
+  };
+  workflowRule: {
+    deleteMany: (args: unknown) => Promise<unknown>;
+    createMany: (args: unknown) => Promise<unknown>;
+  };
+};
+
 export class WorkflowRepository {
   async findAllByTenant(tenantId: string) {
     return prisma.pipelineWorkflow.findMany({
@@ -51,7 +64,8 @@ export class WorkflowRepository {
   async create(tenantId: string, data: CreateWorkflowDto) {
     const { rules: rulesData, ...rest } = data;
     return basePrisma.$transaction(async (tx) => {
-      const workflow = await tx.pipelineWorkflow.create({
+      const db = tx as unknown as WorkflowTx;
+      const workflow = await db.pipelineWorkflow.create({
         data: {
           tenantId,
           pipelineId: rest.pipelineId,
@@ -60,7 +74,7 @@ export class WorkflowRepository {
         },
       });
       if (rulesData && rulesData.length > 0) {
-        await tx.workflowRule.createMany({
+        await db.workflowRule.createMany({
           data: rulesData.map((r, i) => ({
             workflowId: workflow.id,
             trigger: r.trigger,
@@ -71,7 +85,7 @@ export class WorkflowRepository {
           })),
         });
       }
-      const result = await tx.pipelineWorkflow.findFirst({
+      const result = await db.pipelineWorkflow.findFirst({
         where: { id: workflow.id, tenantId },
         include: {
           pipeline: true,
@@ -79,7 +93,7 @@ export class WorkflowRepository {
         },
       });
       if (!result) throw new Error("Workflow not found after create");
-      return result;
+      return result as Awaited<ReturnType<WorkflowRepository["findById"]>>;
     });
   }
 
@@ -99,16 +113,17 @@ export class WorkflowRepository {
 
     if (hasRules) {
       return basePrisma.$transaction(async (tx) => {
+        const db = tx as unknown as WorkflowTx;
         if (Object.keys(updateData).length > 0) {
-          const updated = await tx.pipelineWorkflow.updateMany({
+          const updated = await db.pipelineWorkflow.updateMany({
             where: { id, tenantId },
             data: updateData,
           });
           if (updated.count === 0) throw new Error("Workflow not found");
         }
-        await tx.workflowRule.deleteMany({ where: { workflowId: id } });
+        await db.workflowRule.deleteMany({ where: { workflowId: id } });
         if (data.rules!.length > 0) {
-          await tx.workflowRule.createMany({
+          await db.workflowRule.createMany({
             data: data.rules!.map((r, i) => ({
               workflowId: id,
               trigger: r.trigger,
@@ -119,7 +134,7 @@ export class WorkflowRepository {
             })),
           });
         }
-        const result = await tx.pipelineWorkflow.findFirst({
+        const result = await db.pipelineWorkflow.findFirst({
           where: { id, tenantId },
           include: {
             pipeline: true,
@@ -127,7 +142,7 @@ export class WorkflowRepository {
           },
         });
         if (!result) throw new Error("Workflow not found after update");
-        return result;
+        return result as Awaited<ReturnType<WorkflowRepository["findById"]>>;
       });
     }
 
@@ -143,9 +158,10 @@ export class WorkflowRepository {
 
   async upsertRules(workflowId: string, rules: CreateWorkflowRuleDto[]) {
     await basePrisma.$transaction(async (tx) => {
-      await tx.workflowRule.deleteMany({ where: { workflowId } });
+      const db = tx as unknown as WorkflowTx;
+      await db.workflowRule.deleteMany({ where: { workflowId } });
       if (rules.length === 0) return;
-      await tx.workflowRule.createMany({
+      await db.workflowRule.createMany({
         data: rules.map((r, i) => ({
           workflowId,
           trigger: r.trigger,
