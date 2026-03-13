@@ -98,6 +98,8 @@ export interface Sale {
   parentSaleId?: string | null;
   revisionNo?: number;
   isLatest?: boolean;
+  editReason?: string | null;
+  editedAt?: string | null;
 }
 
 export interface SalesListParams {

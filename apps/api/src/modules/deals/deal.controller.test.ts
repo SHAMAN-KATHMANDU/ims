@@ -19,25 +19,12 @@ vi.mock("@/config/prisma", () => ({ default: {} }));
 
 import dealController from "./deal.controller";
 import * as dealServiceModule from "./deal.service";
+import { mockRes, makeReq } from "@tests/helpers/controller";
 
 const mockService = dealServiceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;
-
-function mockRes(): Partial<Response> {
-  return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
-}
-
-function makeReq(overrides: Partial<Request> = {}): Request {
-  return {
-    user: { id: "u1", tenantId: "t1", role: "admin", tenantSlug: "acme" },
-    params: {},
-    body: {},
-    query: {},
-    ...overrides,
-  } as unknown as Request;
-}
 
 describe("DealController", () => {
   beforeEach(() => {
@@ -69,6 +56,82 @@ describe("DealController", () => {
       await dealController.getById(req, res);
 
       expect(res.status).toHaveBeenCalledWith(404);
+    });
+  });
+
+  describe("update", () => {
+    it("calls service with tenantId, id, body, and userId and returns 200 with deal", async () => {
+      const deal = { id: "2", name: "Updated Deal", revisionNo: 2 };
+      mockService.update.mockResolvedValue(deal);
+      const req = makeReq({
+        params: { id: "1" },
+        body: { name: "Updated Deal", editReason: "Corrected value" },
+      });
+      const res = mockRes() as Response;
+
+      await dealController.update(req, res);
+
+      expect(mockService.update).toHaveBeenCalledWith(
+        "t1",
+        "1",
+        expect.objectContaining({
+          name: "Updated Deal",
+          editReason: "Corrected value",
+        }),
+        "u1",
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Deal updated successfully", deal }),
+      );
+    });
+  });
+
+  describe("updateStage", () => {
+    it("calls service with tenantId, id, body, and userId and returns 200 with deal", async () => {
+      const deal = { id: "2", stage: "Proposal", revisionNo: 2 };
+      mockService.updateStage.mockResolvedValue(deal);
+      const req = makeReq({
+        params: { id: "1" },
+        body: { stage: "Proposal" },
+      });
+      const res = mockRes() as Response;
+
+      await dealController.updateStage(req, res);
+
+      expect(mockService.updateStage).toHaveBeenCalledWith(
+        "t1",
+        "1",
+        { stage: "Proposal" },
+        "u1",
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Deal stage updated", deal }),
+      );
+    });
+  });
+
+  describe("delete", () => {
+    it("calls service with tenantId, id, and delete context and returns 200", async () => {
+      mockService.delete.mockResolvedValue(undefined);
+      const req = makeReq({
+        params: { id: "1" },
+        body: { reason: "Duplicate" },
+      });
+      const res = mockRes() as Response;
+
+      await dealController.delete(req, res);
+
+      expect(mockService.delete).toHaveBeenCalledWith(
+        "t1",
+        "1",
+        expect.objectContaining({ userId: "u1", reason: "Duplicate" }),
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ message: "Deal deleted successfully" }),
+      );
     });
   });
 });

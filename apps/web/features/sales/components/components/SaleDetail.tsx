@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format } from "date-fns";
 import {
   Dialog,
@@ -39,6 +39,7 @@ import {
   useAddPaymentToSale,
   useDeleteSale,
   useEditSale,
+  useSale,
 } from "../../hooks/use-sales";
 import { downloadReceiptPdf } from "../../services/sales.service";
 import { useToast } from "@/hooks/useToast";
@@ -55,6 +56,8 @@ import {
   FileDown,
   Trash2,
   Pencil,
+  ExternalLink,
+  ArrowLeft,
 } from "lucide-react";
 import { DeleteConfirmDialog } from "@/components/ui/delete-confirm-dialog";
 import { EditSaleForm } from "./EditSaleForm";
@@ -91,14 +94,29 @@ export function SaleDetail({
   const [receiptLoading, setReceiptLoading] = useState(false);
   const [payAmount, setPayAmount] = useState("");
   const [payMethod, setPayMethod] = useState<PaymentMethod>("CASH");
+  const [viewingOriginalId, setViewingOriginalId] = useState<string | null>(
+    null,
+  );
+
+  const { data: originalSale, isLoading: originalLoading } = useSale(
+    viewingOriginalId ?? "",
+  );
+
+  const displaySale: Sale | null =
+    viewingOriginalId && originalSale ? originalSale : sale;
+  const isViewingOriginal = Boolean(viewingOriginalId && originalSale);
+
+  useEffect(() => {
+    setViewingOriginalId(null);
+  }, [sale?.id]);
 
   const amountPaid =
-    sale?.payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
-  const totalNum = sale ? Number(sale.total) : 0;
+    displaySale?.payments?.reduce((sum, p) => sum + Number(p.amount), 0) ?? 0;
+  const totalNum = displaySale ? Number(displaySale.total) : 0;
   const balanceDue = Math.round((totalNum - amountPaid) * 100) / 100;
-  const isCreditSale = sale?.isCreditSale === true;
+  const isCreditSale = displaySale?.isCreditSale === true;
   const storeName =
-    tenant?.name ?? (sale ? sale.location.name : null) ?? "Store";
+    tenant?.name ?? (displaySale ? displaySale.location.name : null) ?? "Store";
 
   const handlePaySubmit = async () => {
     if (!sale) return;
@@ -203,7 +221,7 @@ export function SaleDetail({
                 <FileDown className="h-4 w-4" />
                 {receiptLoading ? "..." : "PDF"}
               </Button>
-              {sale.isLatest !== false && (
+              {sale.isLatest !== false && !isViewingOriginal && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -214,15 +232,17 @@ export function SaleDetail({
                   Edit
                 </Button>
               )}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setDeleteDialogOpen(true)}
-                className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive print:hidden"
-              >
-                <Trash2 className="h-4 w-4" />
-                Delete
-              </Button>
+              {!isViewingOriginal && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setDeleteDialogOpen(true)}
+                  className="gap-1.5 text-destructive hover:bg-destructive/10 hover:text-destructive print:hidden"
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Delete
+                </Button>
+              )}
             </div>
           )}
         </DialogHeader>
@@ -245,7 +265,7 @@ export function SaleDetail({
                     {storeName}
                   </h1>
                   <p className="mt-0.5 text-sm text-muted-foreground print:text-[10pt]">
-                    {sale.location.name}
+                    {displaySale.location.name}
                   </p>
                 </div>
                 <p className="mb-2 text-center text-xs font-semibold uppercase tracking-wider text-muted-foreground print:text-[9pt]">
@@ -253,22 +273,79 @@ export function SaleDetail({
                 </p>
                 <div className="flex flex-wrap items-start justify-between gap-2">
                   <div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <Hash className="h-4 w-4 text-muted-foreground print:hidden" />
                       <span className="font-mono text-lg font-bold print:text-[12pt]">
-                        {sale.saleCode}
+                        {displaySale.saleCode}
                       </span>
+                      {sale.revisionNo != null &&
+                        sale.revisionNo > 1 &&
+                        !isViewingOriginal && (
+                          <>
+                            <Badge
+                              variant="outline"
+                              className="print:hidden bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400"
+                            >
+                              Edited
+                            </Badge>
+                            {sale.parentSaleId && (
+                              <Button
+                                type="button"
+                                variant="link"
+                                className="h-auto p-0 text-sm print:hidden"
+                                onClick={() =>
+                                  setViewingOriginalId(
+                                    sale.parentSaleId ?? null,
+                                  )
+                                }
+                              >
+                                <ExternalLink className="mr-1 h-3.5 w-3.5" />
+                                View original entry
+                              </Button>
+                            )}
+                          </>
+                        )}
+                      {viewingOriginalId && originalLoading && (
+                        <span className="text-sm text-muted-foreground print:hidden">
+                          Loading original…
+                        </span>
+                      )}
+                      {isViewingOriginal && (
+                        <Button
+                          type="button"
+                          variant="link"
+                          className="h-auto p-0 text-sm print:hidden"
+                          onClick={() => setViewingOriginalId(null)}
+                        >
+                          <ArrowLeft className="mr-1 h-3.5 w-3.5" />
+                          Back to current version
+                        </Button>
+                      )}
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-sm text-muted-foreground print:mt-0.5 print:text-[10pt]">
                       <Calendar className="h-4 w-4 print:hidden" />
-                      {format(new Date(sale.createdAt), "d MMM yyyy, h:mm a")}
+                      {format(
+                        new Date(displaySale.createdAt),
+                        "d MMM yyyy, h:mm a",
+                      )}
                     </div>
+                    {sale.revisionNo != null &&
+                      sale.revisionNo > 1 &&
+                      sale.editReason &&
+                      !isViewingOriginal && (
+                        <p
+                          className="mt-2 text-xs text-muted-foreground print:hidden"
+                          role="status"
+                        >
+                          Edit reason: {sale.editReason}
+                        </p>
+                      )}
                   </div>
                   <Badge
-                    className={`print:hidden ${getSaleTypeColor(sale.type)}`}
+                    className={`print:hidden ${getSaleTypeColor(displaySale.type)}`}
                     variant="outline"
                   >
-                    {getSaleTypeLabel(sale.type)}
+                    {getSaleTypeLabel(displaySale.type)}
                   </Badge>
                 </div>
               </div>
@@ -286,19 +363,21 @@ export function SaleDetail({
                       <MapPin className="h-4 w-4 print:hidden" />
                       Location
                     </div>
-                    <p className="font-medium">{sale.location.name}</p>
+                    <p className="font-medium">{displaySale.location.name}</p>
                   </div>
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                       <User className="h-4 w-4 print:hidden" />
                       Sold To
                     </div>
-                    {sale.member ? (
+                    {displaySale.member ? (
                       <div>
-                        <p className="font-medium">{sale.member.phone}</p>
-                        {sale.member.name && (
+                        <p className="font-medium">
+                          {displaySale.member.phone}
+                        </p>
+                        {displaySale.member.name && (
                           <p className="text-sm text-muted-foreground">
-                            {sale.member.name}
+                            {displaySale.member.name}
                           </p>
                         )}
                       </div>
@@ -308,7 +387,7 @@ export function SaleDetail({
                   </div>
                 </div>
 
-                {sale.contact && (
+                {displaySale.contact && (
                   <div className="mt-3 space-y-1">
                     <div className="flex items-center gap-2 text-sm font-medium text-muted-foreground">
                       <Contact className="h-4 w-4 print:hidden" />
@@ -316,19 +395,19 @@ export function SaleDetail({
                     </div>
                     <div>
                       <p className="font-medium">
-                        {sale.contact.firstName}
-                        {sale.contact.lastName
-                          ? ` ${sale.contact.lastName}`
+                        {displaySale.contact.firstName}
+                        {displaySale.contact.lastName
+                          ? ` ${displaySale.contact.lastName}`
                           : ""}
                       </p>
-                      {sale.contact.email && (
+                      {displaySale.contact.email && (
                         <p className="text-sm text-muted-foreground">
-                          {sale.contact.email}
+                          {displaySale.contact.email}
                         </p>
                       )}
-                      {sale.contact.phone && (
+                      {displaySale.contact.phone && (
                         <p className="text-sm text-muted-foreground">
-                          {sale.contact.phone}
+                          {displaySale.contact.phone}
                         </p>
                       )}
                     </div>
@@ -340,7 +419,9 @@ export function SaleDetail({
                     <User className="h-4 w-4 print:hidden" />
                     Sold By
                   </div>
-                  <p className="font-medium">{sale.createdBy.username}</p>
+                  <p className="font-medium">
+                    {displaySale.createdBy.username}
+                  </p>
                 </div>
               </div>
 
@@ -374,7 +455,7 @@ export function SaleDetail({
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {sale.items?.map((item) => (
+                      {displaySale.items?.map((item) => (
                         <TableRow
                           key={item.id}
                           className="receipt-table-row break-inside-avoid"
@@ -448,20 +529,27 @@ export function SaleDetail({
                   <div className="flex justify-between text-sm">
                     <span>Subtotal</span>
                     <span className="shrink-0 tabular-nums">
-                      {formatCurrency(Number(sale.subtotal))}
+                      {formatCurrency(Number(displaySale.subtotal))}
                     </span>
                   </div>
-                  {sale.promoCodesUsed && sale.promoCodesUsed.length > 0 && (
-                    <div className="flex justify-between text-sm text-green-600 print:text-green-800">
-                      <span>Promo ({sale.promoCodesUsed.join(", ")})</span>
-                      <span className="shrink-0 tabular-nums">
-                        -{formatCurrency(Number(sale.promoDiscount ?? 0))}
-                      </span>
-                    </div>
-                  )}
+                  {displaySale.promoCodesUsed &&
+                    displaySale.promoCodesUsed.length > 0 && (
+                      <div className="flex justify-between text-sm text-green-600 print:text-green-800">
+                        <span>
+                          Promo ({displaySale.promoCodesUsed.join(", ")})
+                        </span>
+                        <span className="shrink-0 tabular-nums">
+                          -
+                          {formatCurrency(
+                            Number(displaySale.promoDiscount ?? 0),
+                          )}
+                        </span>
+                      </div>
+                    )}
                   {(() => {
                     const productDiscount =
-                      Number(sale.discount) - Number(sale.promoDiscount ?? 0);
+                      Number(displaySale.discount) -
+                      Number(displaySale.promoDiscount ?? 0);
                     return productDiscount > 0 ? (
                       <div className="flex justify-between text-sm text-green-600 print:text-green-800">
                         <span>Discount</span>
@@ -486,7 +574,7 @@ export function SaleDetail({
                           Payment
                         </div>
                         <div className="flex flex-wrap gap-2">
-                          {sale.payments.map((payment, idx) => (
+                          {displaySale.payments.map((payment, idx) => (
                             <span
                               key={idx}
                               className="inline-flex items-center rounded border px-2 py-0.5 text-xs font-medium print:border-gray-400"
@@ -515,7 +603,7 @@ export function SaleDetail({
                             {formatCurrency(balanceDue)}
                           </span>
                         </div>
-                        {balanceDue > 0 && (
+                        {balanceDue > 0 && !isViewingOriginal && (
                           <Button
                             size="sm"
                             className="mt-2 print:hidden"
@@ -531,7 +619,7 @@ export function SaleDetail({
               </div>
 
               {/* receipt-payment: payment methods table (screen only for detail) */}
-              {sale.payments && sale.payments.length > 0 && (
+              {displaySale.payments && displaySale.payments.length > 0 && (
                 <div className="receipt-payment break-inside-avoid print:hidden">
                   <Separator />
                   <div>
@@ -548,7 +636,7 @@ export function SaleDetail({
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {sale.payments.map((payment) => (
+                          {displaySale.payments.map((payment) => (
                             <TableRow key={payment.id}>
                               <TableCell>
                                 <Badge variant="outline">
@@ -567,10 +655,12 @@ export function SaleDetail({
                 </div>
               )}
 
-              {sale.notes && (
+              {displaySale.notes && (
                 <div className="break-inside-avoid">
                   <h4 className="mb-1 font-medium">Notes</h4>
-                  <p className="text-sm text-muted-foreground">{sale.notes}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {displaySale.notes}
+                  </p>
                 </div>
               )}
 

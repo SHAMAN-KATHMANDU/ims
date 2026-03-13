@@ -22,6 +22,7 @@ const DEAL_DETAIL_INCLUDE = {
   company: true,
   pipeline: true,
   assignedTo: { select: { id: true, username: true } },
+  editedBy: { select: { id: true, username: true } },
   lead: true,
   lineItems: {
     include: {
@@ -61,7 +62,11 @@ export class DealRepository {
       createdAt: "desc",
     };
 
-    const where: Record<string, unknown> = { tenantId, deletedAt: null };
+    const where: Record<string, unknown> = {
+      tenantId,
+      deletedAt: null,
+      isLatest: true,
+    };
     if (search) {
       where.OR = [
         { name: { contains: search, mode: "insensitive" } },
@@ -132,6 +137,7 @@ export class DealRepository {
         pipelineId: pipeline.id,
         status: "OPEN",
         deletedAt: null,
+        isLatest: true,
       },
       include: {
         contact: { select: { id: true, firstName: true, lastName: true } },
@@ -151,7 +157,7 @@ export class DealRepository {
 
   async findById(tenantId: string, id: string) {
     return prisma.deal.findFirst({
-      where: { id, tenantId, deletedAt: null },
+      where: { id, tenantId, deletedAt: null, isLatest: true },
       include: DEAL_DETAIL_INCLUDE,
     });
   }
@@ -266,6 +272,174 @@ export class DealRepository {
         deletedBy: data.deletedBy,
         deleteReason: data.deleteReason ?? undefined,
       },
+    });
+  }
+
+  async createDealRevision(
+    parentDealId: string,
+    tenantId: string,
+    updates: UpdateDealDto,
+    editedById: string,
+    editReason: string | null,
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const parent = await tx.deal.findFirst({
+        where: {
+          id: parentDealId,
+          tenantId,
+          deletedAt: null,
+          isLatest: true,
+        },
+        include: { lineItems: true },
+      });
+      if (!parent) return null;
+
+      const name =
+        updates.name !== undefined
+          ? (updates.name?.trim() ?? parent.name)
+          : parent.name;
+      const value =
+        updates.value !== undefined
+          ? Number(updates.value)
+          : Number(parent.value);
+      const stage = updates.stage ?? parent.stage;
+      const probability =
+        updates.probability !== undefined
+          ? Math.min(100, Math.max(0, Number(updates.probability)))
+          : parent.probability;
+      const status = updates.status ?? parent.status;
+      const expectedCloseDate =
+        updates.expectedCloseDate !== undefined
+          ? updates.expectedCloseDate
+            ? new Date(updates.expectedCloseDate)
+            : null
+          : parent.expectedCloseDate;
+      const closedAt =
+        status === "WON" || status === "LOST"
+          ? new Date()
+          : updates.closedAt
+            ? new Date(updates.closedAt)
+            : parent.closedAt;
+      const lostReason =
+        updates.lostReason !== undefined
+          ? (updates.lostReason?.trim() ?? null)
+          : parent.lostReason;
+      const contactId =
+        updates.contactId !== undefined
+          ? (updates.contactId ?? null)
+          : parent.contactId;
+      const memberId =
+        updates.memberId !== undefined
+          ? (updates.memberId ?? null)
+          : parent.memberId;
+      const companyId =
+        updates.companyId !== undefined
+          ? (updates.companyId ?? null)
+          : parent.companyId;
+      const assignedToId = updates.assignedToId ?? parent.assignedToId;
+
+      await tx.deal.update({
+        where: { id: parentDealId },
+        data: { isLatest: false },
+      });
+
+      const newDeal = await tx.deal.create({
+        data: {
+          tenantId,
+          name,
+          value,
+          stage,
+          probability,
+          status,
+          expectedCloseDate,
+          closedAt,
+          lostReason,
+          contactId,
+          memberId,
+          companyId,
+          pipelineId: parent.pipelineId,
+          assignedToId,
+          createdById: parent.createdById,
+          leadId: parent.leadId,
+          parentDealId: parent.id,
+          revisionNo: parent.revisionNo + 1,
+          isLatest: true,
+          editedById,
+          editedAt: new Date(),
+          editReason: editReason ?? undefined,
+          lineItems: {
+            create: parent.lineItems.map((li) => ({
+              productId: li.productId,
+              variationId: li.variationId,
+              quantity: li.quantity,
+              unitPrice: li.unitPrice,
+            })),
+          },
+        },
+        include: DEAL_DETAIL_INCLUDE,
+      });
+      return newDeal;
+    });
+  }
+
+  async createDeleteRevision(
+    dealId: string,
+    tenantId: string,
+    data: { deletedBy: string; deleteReason?: string | null },
+  ) {
+    return prisma.$transaction(async (tx) => {
+      const parent = await tx.deal.findFirst({
+        where: {
+          id: dealId,
+          tenantId,
+          deletedAt: null,
+          isLatest: true,
+        },
+        include: { lineItems: true },
+      });
+      if (!parent) return null;
+
+      await tx.deal.update({
+        where: { id: dealId },
+        data: { isLatest: false },
+      });
+
+      const newDeal = await tx.deal.create({
+        data: {
+          tenantId: parent.tenantId,
+          name: parent.name,
+          value: parent.value,
+          stage: parent.stage,
+          probability: parent.probability,
+          status: parent.status,
+          expectedCloseDate: parent.expectedCloseDate,
+          closedAt: parent.closedAt,
+          lostReason: parent.lostReason,
+          contactId: parent.contactId,
+          memberId: parent.memberId,
+          companyId: parent.companyId,
+          pipelineId: parent.pipelineId,
+          assignedToId: parent.assignedToId,
+          createdById: parent.createdById,
+          leadId: parent.leadId,
+          parentDealId: parent.id,
+          revisionNo: parent.revisionNo + 1,
+          isLatest: true,
+          deletedAt: new Date(),
+          deletedBy: data.deletedBy,
+          deleteReason: data.deleteReason ?? undefined,
+          lineItems: {
+            create: parent.lineItems.map((li) => ({
+              productId: li.productId,
+              variationId: li.variationId,
+              quantity: li.quantity,
+              unitPrice: li.unitPrice,
+            })),
+          },
+        },
+        include: DEAL_INCLUDE,
+      });
+      return newDeal;
     });
   }
 

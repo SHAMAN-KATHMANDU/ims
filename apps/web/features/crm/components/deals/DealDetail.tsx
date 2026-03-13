@@ -58,18 +58,34 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
           </p>
         </div>
         <div className="flex gap-2">
-          {onEdit ? (
-            <Button onClick={onEdit}>Edit</Button>
-          ) : (
-            <Link href={`${basePath}/crm/deals/${dealId}/edit`}>
-              <Button>Edit</Button>
-            </Link>
-          )}
+          {deal.isLatest !== false &&
+            (onEdit ? (
+              <Button onClick={onEdit}>Edit</Button>
+            ) : (
+              <Link href={`${basePath}/crm/deals/${dealId}/edit`}>
+                <Button>Edit</Button>
+              </Link>
+            ))}
           <Link href={`${basePath}/crm/deals`}>
             <Button variant="outline">Back to Deals</Button>
           </Link>
         </div>
       </div>
+
+      {deal.revisionNo != null && deal.revisionNo > 1 && (
+        <div className="rounded-md bg-muted p-3 text-sm space-y-1">
+          <p className="font-medium">Revision #{deal.revisionNo}</p>
+          {deal.editedAt && (
+            <p className="text-muted-foreground">
+              Last edited: {new Date(deal.editedAt).toLocaleString()}
+              {deal.editedBy && ` by ${deal.editedBy.username}`}
+            </p>
+          )}
+          {deal.editReason && (
+            <p className="text-muted-foreground">Reason: {deal.editReason}</p>
+          )}
+        </div>
+      )}
 
       <div className="space-y-2 text-sm">
         <p>Stage: {deal.stage}</p>

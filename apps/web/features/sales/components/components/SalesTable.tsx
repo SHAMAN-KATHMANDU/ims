@@ -291,7 +291,17 @@ export function SalesTable({
                     />
                   </TableCell>
                 )}
-                <TableCell className="font-medium">{sale.saleCode}</TableCell>
+                <TableCell className="font-medium">
+                  <span>{sale.saleCode}</span>
+                  {sale.revisionNo != null && sale.revisionNo > 1 && (
+                    <Badge
+                      variant="outline"
+                      className="ml-1.5 bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-400 text-xs font-normal"
+                    >
+                      Edited
+                    </Badge>
+                  )}
+                </TableCell>
                 <TableCell>
                   <Badge
                     className={getSaleTypeColor(sale.type)}

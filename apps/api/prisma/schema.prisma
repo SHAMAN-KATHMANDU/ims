@@ -228,6 +228,7 @@ model User {
   createdContacts       Contact[]         @relation("ContactCreator")
   activitiesCreated     Activity[]
   dealsCreated          Deal[]            @relation("DealCreator")
+  dealsEdited           Deal[]            @relation("DealEditedBy")
   leadsCreated          Lead[]            @relation("LeadCreator")
 
   @@unique([tenantId, username])
@@ -1178,6 +1179,12 @@ model Deal {
   deletedAt          DateTime? @map("deleted_at")
   deletedBy          String?   @map("deleted_by")
   deleteReason       String?   @map("delete_reason") @db.VarChar(500)
+  parentDealId       String?   @map("parent_deal_id")
+  revisionNo         Int       @default(1) @map("revision_no")
+  isLatest           Boolean   @default(true) @map("is_latest")
+  editReason         String?   @map("edit_reason") @db.VarChar(500)
+  editedById         String?   @map("edited_by_id")
+  editedAt           DateTime? @map("edited_at")
   createdAt          DateTime  @default(now()) @map("created_at")
   updatedAt          DateTime  @updatedAt @map("updated_at")
 
@@ -1188,12 +1195,17 @@ model Deal {
   pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
   assignedTo User      @relation("DealAssignedTo", fields: [assignedToId], references: [id], onDelete: Restrict)
   creator    User      @relation("DealCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  editedBy   User?     @relation("DealEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
   lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  parentDeal Deal?    @relation("DealRevisions", fields: [parentDealId], references: [id], onDelete: SetNull)
+  revisions  Deal[]    @relation("DealRevisions")
   tasks      Task[]
   activities Activity[]
   lineItems  DealLineItem[]
 
   @@index([tenantId])
+  @@index([parentDealId])
+  @@index([isLatest])
   @@map("deals")
 }
 

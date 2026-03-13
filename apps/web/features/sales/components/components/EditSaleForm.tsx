@@ -3,6 +3,11 @@
 import { useState, useEffect } from "react";
 import { getProductByImsCode, type Product } from "@/features/products";
 import {
+  getLocationInventory,
+  type LocationInventoryItem,
+} from "@/features/analytics";
+import { useDebounce } from "@/hooks/useDebounce";
+import {
   type Sale,
   type SaleItem,
   type EditSaleData,
@@ -133,13 +138,42 @@ export function EditSaleForm({
   const [notes, setNotes] = useState(sale.notes ?? "");
   const [editReason, setEditReason] = useState("");
   const [productSearch, setProductSearch] = useState("");
+  const debouncedProductSearch = useDebounce(productSearch, 300);
+  const [inventoryResults, setInventoryResults] = useState<
+    LocationInventoryItem[]
+  >([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
   const [scanLoading, setScanLoading] = useState(false);
   const [scannedProduct, setScannedProduct] = useState<Product | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
 
   useEffect(() => {
     setItems((sale.items ?? []).map(saleItemToEditable));
     setNotes(sale.notes ?? "");
   }, [sale]);
+
+  useEffect(() => {
+    if (!sale.locationId || !debouncedProductSearch.trim()) {
+      setInventoryResults([]);
+      setDropdownOpen(false);
+      return;
+    }
+    setInventoryLoading(true);
+    getLocationInventory(sale.locationId, {
+      search: debouncedProductSearch.trim(),
+      limit: 3,
+    })
+      .then((res) => {
+        const list = (res.data ?? []).filter((item) => item.quantity > 0);
+        setInventoryResults(list);
+        setDropdownOpen(list.length > 0);
+      })
+      .catch(() => {
+        setInventoryResults([]);
+        setDropdownOpen(false);
+      })
+      .finally(() => setInventoryLoading(false));
+  }, [sale.locationId, debouncedProductSearch]);
 
   const handleQuantityChange = (index: number, delta: number) => {
     const newItems = [...items];
@@ -162,6 +196,7 @@ export function EditSaleForm({
     if (!term || !sale.locationId) return;
     setScanLoading(true);
     setScannedProduct(null);
+    setDropdownOpen(false);
     try {
       const product = await getProductByImsCode(term, {
         locationId: sale.locationId,
@@ -173,6 +208,48 @@ export function EditSaleForm({
     } finally {
       setScanLoading(false);
     }
+  };
+
+  const handleAddFromInventory = (invItem: LocationInventoryItem) => {
+    const subVariationId = invItem.subVariationId ?? null;
+    const existingIndex = items.findIndex(
+      (i) =>
+        i.variationId === invItem.variationId &&
+        (i.subVariationId ?? null) === subVariationId,
+    );
+    const productName = invItem.variation.product.name ?? "—";
+    const imsCode = invItem.variation.product.imsCode ?? "";
+    const unitPrice = Number(invItem.variation.product.mrp ?? 0);
+    const maxQty = invItem.quantity;
+
+    if (existingIndex !== -1) {
+      const newItems = [...items];
+      const item = newItems[existingIndex];
+      if (item && item.quantity < maxQty) {
+        newItems[existingIndex] = {
+          ...item,
+          quantity: item.quantity + 1,
+          maxQuantity: maxQty,
+        };
+        setItems(newItems);
+      }
+    } else {
+      setItems([
+        ...items,
+        {
+          variationId: invItem.variationId,
+          subVariationId,
+          quantity: 1,
+          productName,
+          imsCode,
+          unitPrice,
+          maxQuantity: maxQty,
+        },
+      ]);
+    }
+    setProductSearch("");
+    setInventoryResults([]);
+    setDropdownOpen(false);
   };
 
   const handleAddVariation = async (
@@ -241,25 +318,85 @@ export function EditSaleForm({
     ? getAddableRowsFromProduct(scannedProduct, sale.locationId)
     : [];
 
+  const showDropdown =
+    productSearch.trim() !== "" &&
+    (inventoryResults.length > 0 || inventoryLoading);
+
   return (
     <div className="space-y-4">
       <div>
         <Label>Items</Label>
-        <div className="mt-2 flex gap-2">
-          <Input
-            placeholder="IMS code to add product..."
-            value={productSearch}
-            onChange={(e) => setProductSearch(e.target.value)}
-            onKeyDown={(e) =>
-              e.key === "Enter" && (e.preventDefault(), handleAddByIms())
-            }
-          />
+        <div className="mt-2 flex gap-2 relative">
+          <div className="relative flex-1">
+            <Label htmlFor="edit-sale-product-search" className="sr-only">
+              Search products to add by name, IMS code, or category
+            </Label>
+            <Input
+              id="edit-sale-product-search"
+              title="Search products to add by name, IMS code, or category"
+              placeholder="Search by product name, IMS code, or category..."
+              value={productSearch}
+              onChange={(e) => {
+                setProductSearch(e.target.value);
+                if (!e.target.value.trim()) setDropdownOpen(false);
+              }}
+              onKeyDown={(e) =>
+                e.key === "Enter" && (e.preventDefault(), handleAddByIms())
+              }
+              onFocus={() =>
+                debouncedProductSearch.trim() &&
+                inventoryResults.length > 0 &&
+                setDropdownOpen(true)
+              }
+              onBlur={() => {
+                setTimeout(() => setDropdownOpen(false), 150);
+              }}
+              aria-expanded={showDropdown && dropdownOpen}
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+            />
+            {showDropdown && dropdownOpen && (
+              <div
+                className="absolute z-10 mt-1 w-full rounded-md border bg-popover py-1 shadow-md max-h-[200px] overflow-auto"
+                role="listbox"
+              >
+                {inventoryLoading ? (
+                  <div className="flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Searching…
+                  </div>
+                ) : (
+                  inventoryResults.slice(0, 3).map((invItem) => (
+                    <div
+                      key={`${invItem.variationId}-${invItem.subVariationId ?? "x"}`}
+                      role="option"
+                      className="cursor-pointer px-3 py-2 text-sm hover:bg-accent focus:bg-accent focus:outline-none"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        handleAddFromInventory(invItem);
+                      }}
+                    >
+                      <div className="font-medium">
+                        {invItem.variation.product.name}
+                      </div>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{invItem.variation.product.imsCode ?? "—"}</span>
+                        <span>·</span>
+                        <span>Stock: {invItem.quantity}</span>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
           <Button
             type="button"
             variant="outline"
             size="icon"
             onClick={handleAddByIms}
             disabled={scanLoading || !productSearch.trim()}
+            title="Search by IMS code (barcode)"
           >
             {scanLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -349,9 +486,7 @@ export function EditSaleForm({
                     >
                       <Minus className="h-3 w-3" />
                     </Button>
-                    <span className="min-w-[1.5rem] text-center">
-                      {item.quantity}
-                    </span>
+                    <span className="min-w-6 text-center">{item.quantity}</span>
                     <Button
                       type="button"
                       variant="ghost"

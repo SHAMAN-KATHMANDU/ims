@@ -624,7 +624,7 @@ const SALE_EXPORT_INCLUDE = {
 
 export async function findSalesForExport(where: Prisma.SaleWhereInput) {
   return prisma.sale.findMany({
-    where: { ...where, ...NOT_DELETED },
+    where: { ...where, ...NOT_DELETED, isLatest: true },
     include: SALE_EXPORT_INCLUDE,
     orderBy: { createdAt: "desc" },
   });
@@ -635,7 +635,7 @@ export async function findSalesForDailyChart(
   select: { total: true; type: true; createdAt: true },
 ) {
   return prisma.sale.findMany({
-    where: { ...where, ...NOT_DELETED },
+    where: { ...where, ...NOT_DELETED, isLatest: true },
     select,
     orderBy: { createdAt: "asc" },
   });
@@ -933,7 +933,7 @@ export async function createSalePayment(data: {
 
 export async function aggregateSales(where: Prisma.SaleWhereInput) {
   return prisma.sale.aggregate({
-    where: { ...where, ...NOT_DELETED },
+    where: { ...where, ...NOT_DELETED, isLatest: true },
     _sum: { total: true, discount: true },
     _count: true,
   });
@@ -944,7 +944,7 @@ export async function aggregateSalesByType(
   type: "GENERAL" | "MEMBER",
 ) {
   return prisma.sale.aggregate({
-    where: { ...where, ...NOT_DELETED, type },
+    where: { ...where, ...NOT_DELETED, isLatest: true, type },
     _sum: { total: true },
     _count: true,
   });

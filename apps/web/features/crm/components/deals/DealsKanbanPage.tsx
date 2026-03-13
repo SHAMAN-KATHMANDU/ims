@@ -218,8 +218,14 @@ export function DealsKanbanPage() {
   const handleUpdateDeal = useCallback(
     async (data: UpdateDealData) => {
       if (!selectedDealId) return;
-      await updateDealMutation.mutateAsync({ id: selectedDealId, data });
+      const result = await updateDealMutation.mutateAsync({
+        id: selectedDealId,
+        data,
+      });
       toast({ title: "Deal updated" });
+      if (result?.deal?.id && result.deal.id !== selectedDealId) {
+        setSelectedDealId(result.deal.id);
+      }
       setDrawerMode("view");
     },
     [selectedDealId, updateDealMutation, toast],
@@ -506,6 +512,7 @@ export function DealsKanbanPage() {
               contactId: selectedDealData.deal.contactId ?? undefined,
               companyId: selectedDealData.deal.companyId ?? undefined,
               assignedToId: selectedDealData.deal.assignedToId ?? "",
+              editReason: selectedDealData.deal.editReason ?? null,
               stageNames:
                 (
                   selectedDealData.deal.pipeline as

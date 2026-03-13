@@ -52,7 +52,11 @@ export class DashboardRepository {
     });
     const since = user?.lastLoginAt ?? new Date(0);
 
-    const baseWhere = { createdById: userId };
+    const baseWhere = {
+      createdById: userId,
+      deletedAt: null,
+      isLatest: true,
+    };
     const todayWhere = {
       ...baseWhere,
       createdAt: { gte: todayStart, lte: todayEnd },
@@ -128,6 +132,7 @@ export class DashboardRepository {
 
     const invWhere = locationInventoryTenantWhere(tenantId);
 
+    const saleWhereBase = { deletedAt: null, isLatest: true };
     const [
       todayRevenueAgg,
       allCreditSales,
@@ -137,11 +142,14 @@ export class DashboardRepository {
       locationRevenue,
     ] = await Promise.all([
       prisma.sale.aggregate({
-        where: { createdAt: { gte: todayStart, lte: todayEnd } },
+        where: {
+          ...saleWhereBase,
+          createdAt: { gte: todayStart, lte: todayEnd },
+        },
         _sum: { total: true },
       }),
       prisma.sale.findMany({
-        where: { isCreditSale: true },
+        where: { ...saleWhereBase, isCreditSale: true },
         select: {
           total: true,
           createdAt: true,
@@ -170,7 +178,10 @@ export class DashboardRepository {
       }),
       prisma.sale.groupBy({
         by: ["locationId"],
-        where: { createdAt: { gte: todayStart, lte: todayEnd } },
+        where: {
+          ...saleWhereBase,
+          createdAt: { gte: todayStart, lte: todayEnd },
+        },
         _sum: { total: true },
       }),
     ]);
@@ -230,6 +241,8 @@ export class DashboardRepository {
       }),
       prisma.sale.findMany({
         where: {
+          deletedAt: null,
+          isLatest: true,
           isCreditSale: true,
           createdAt: { gte: weekAgo },
         },
@@ -237,13 +250,19 @@ export class DashboardRepository {
       }),
       prisma.sale.findMany({
         where: {
+          deletedAt: null,
+          isLatest: true,
           isCreditSale: true,
           createdAt: { gte: twoWeeksAgo, lt: weekAgo },
         },
         select: { total: true, payments: { select: { amount: true } } },
       }),
       prisma.sale.aggregate({
-        where: { createdAt: { gte: weekAgo } },
+        where: {
+          deletedAt: null,
+          isLatest: true,
+          createdAt: { gte: weekAgo },
+        },
         _sum: { discount: true },
       }),
       prisma.locationInventory.count({

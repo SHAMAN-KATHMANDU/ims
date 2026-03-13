@@ -405,6 +405,15 @@ function generateSaleCode(): string {
   return `SL-${dateStr}-${random}`;
 }
 
+/** Derive sale code for an edit: base code (strip -E{n}) + -E{parent.revisionNo}. */
+function saleCodeForRevision(
+  parentSaleCode: string,
+  parentRevisionNo: number,
+): string {
+  const base = parentSaleCode.replace(/-E\d+$/i, "");
+  return `${base}-E${parentRevisionNo}`;
+}
+
 export interface CreateSaleContext {
   tenantId: string;
   userId: string;
@@ -724,9 +733,14 @@ export async function editSale(
     }
   }
 
+  const revisionSaleCode = saleCodeForRevision(
+    sale.saleCode,
+    sale.revisionNo ?? 1,
+  );
+
   const result = await createSaleRevision({
     tenantId: sale.tenantId,
-    saleCode: generateSaleCode(),
+    saleCode: revisionSaleCode,
     type: sale.type as "GENERAL" | "MEMBER",
     isCreditSale: creditSale,
     locationId: sale.locationId,

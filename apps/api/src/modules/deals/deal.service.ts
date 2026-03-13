@@ -81,18 +81,35 @@ export class DealService {
     return deal;
   }
 
-  async update(tenantId: string, id: string, data: UpdateDealDto) {
+  async update(
+    tenantId: string,
+    id: string,
+    data: UpdateDealDto,
+    userId: string,
+  ) {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
 
-    const deal = await dealRepository.update(id, data, existing.name);
+    const { editReason, ...updates } = data;
+    const deal = await dealRepository.createDealRevision(
+      id,
+      tenantId,
+      updates,
+      userId,
+      editReason ?? null,
+    );
+    if (!deal) throw createError("Deal not found", 404);
 
-    if (data.stage && data.stage !== existing.stage && existing.assignedToId) {
+    if (
+      updates.stage &&
+      updates.stage !== existing.stage &&
+      existing.assignedToId
+    ) {
       await dealRepository.createNotification(
         existing.assignedToId,
         deal.id,
         deal.name,
-        data.stage,
+        updates.stage,
       );
       const logWorkflowErr = (trigger: string) => (err: unknown) =>
         logger.error("Workflow execution failed", undefined, {
@@ -115,7 +132,7 @@ export class DealService {
       }).catch(logWorkflowErr("STAGE_ENTER"));
     }
 
-    if (data.status === "WON") {
+    if (updates.status === "WON") {
       await executeWorkflowRules({
         trigger: "DEAL_WON",
         deal: toDealContext(deal),
@@ -128,7 +145,7 @@ export class DealService {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
-    } else if (data.status === "LOST") {
+    } else if (updates.status === "LOST") {
       await executeWorkflowRules({
         trigger: "DEAL_LOST",
         deal: toDealContext(deal),
@@ -146,11 +163,23 @@ export class DealService {
     return deal;
   }
 
-  async updateStage(tenantId: string, id: string, data: UpdateDealStageDto) {
+  async updateStage(
+    tenantId: string,
+    id: string,
+    data: UpdateDealStageDto,
+    userId: string,
+  ) {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
 
-    const deal = await dealRepository.updateStage(id, data.stage, tenantId);
+    const deal = await dealRepository.createDealRevision(
+      id,
+      tenantId,
+      { stage: data.stage },
+      userId,
+      null,
+    );
+    if (!deal) throw createError("Deal not found", 404);
 
     if (existing.assignedToId) {
       await dealRepository.createNotification(
@@ -296,7 +325,7 @@ export class DealService {
   ) {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
-    await dealRepository.softDelete(id, {
+    await dealRepository.createDeleteRevision(id, tenantId, {
       deletedBy: ctx.userId,
       deleteReason: ctx.reason ?? null,
     });

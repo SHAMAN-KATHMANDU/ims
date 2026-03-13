@@ -33,9 +33,9 @@ export default function EditDealPage() {
   const stageNames = (pipeline?.stages ?? []).map((s) => s.name);
 
   const handleSubmit = async (data: UpdateDealData) => {
-    await updateMutation.mutateAsync({ id, data });
+    const result = await updateMutation.mutateAsync({ id, data });
     toast({ title: "Deal updated" });
-    router.push(`${basePath}/crm/deals/${id}`);
+    router.push(`${basePath}/crm/deals/${result.deal.id}`);
   };
 
   if (isLoading || !deal) {
@@ -66,6 +66,7 @@ export default function EditDealPage() {
           contactId: deal.contactId ?? undefined,
           companyId: deal.companyId ?? undefined,
           assignedToId: deal.assignedToId ?? "",
+          editReason: deal.editReason ?? null,
           stageNames,
         }}
         onSubmit={handleSubmit}
