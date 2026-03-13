@@ -21,6 +21,7 @@ export const UpdateDealSchema = CreateDealSchema.partial().extend({
   status: z.enum(["OPEN", "WON", "LOST"]).optional(),
   lostReason: z.string().optional().nullable(),
   closedAt: z.string().optional().nullable(),
+  editReason: z.string().max(500).optional().nullable(),
 });
 
 export const UpdateDealStageSchema = z.object({

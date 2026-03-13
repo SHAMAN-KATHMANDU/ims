@@ -622,6 +622,52 @@ router.delete(
 
 /**
  * @swagger
+ * /platform/password-reset-requests:
+ *   get:
+ *     summary: List escalated password reset requests
+ *     tags: [Platform]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: Password reset requests list }
+ */
+router.get(
+  "/password-reset-requests",
+  asyncHandler(platformController.getPlatformResetRequests),
+);
+
+/**
+ * @swagger
+ * /platform/password-reset-requests/{requestId}/approve:
+ *   post:
+ *     summary: Approve escalated password reset request
+ *     tags: [Platform]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [newPassword]
+ *             properties:
+ *               newPassword: { type: string }
+ *     responses:
+ *       200: { description: Approved }
+ */
+router.post(
+  "/password-reset-requests/:requestId/approve",
+  asyncHandler(platformController.approvePlatformResetRequest),
+);
+
+/**
+ * @swagger
  * /platform/stats:
  *   get:
  *     summary: Get platform statistics

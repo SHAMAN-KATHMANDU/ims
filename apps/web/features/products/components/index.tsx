@@ -38,6 +38,7 @@ import { getVariationAttributeDisplay } from "./utils/helpers";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./components/BulkUploadDialog";
 import { FeatureGuard } from "@/features/flags";
+import { useTenantUsage } from "@/features/dashboard";
 import { Feature } from "@repo/shared";
 import { LocationSelector } from "@/components/ui/location-selector";
 import { Button } from "@/components/ui/button";
@@ -246,6 +247,13 @@ export function ProductPage() {
   const products = productsResponse?.data ?? [];
   const paginationInfo = productsResponse?.pagination;
 
+  const { data: usage } = useTenantUsage();
+  const productsUsage = usage?.products;
+  const atProductLimit =
+    productsUsage &&
+    productsUsage.limit !== -1 &&
+    productsUsage.used >= productsUsage.limit;
+
   const { data: categories = [] } = useCategories();
   const { data: vendorsResponse } = useVendorsPaginated({
     page: 1,
@@ -430,6 +438,7 @@ export function ProductPage() {
   const [productAttributeTypeIds, setProductAttributeTypeIds] = useState<
     string[]
   >([]);
+  const [mrpBelowCpAccepted, setMrpBelowCpAccepted] = useState(false);
 
   // Fetch discount types using React Query (cached, no duplicate calls)
   const { data: discountTypes = [] } = useDiscountTypes();
@@ -462,7 +471,7 @@ export function ProductPage() {
       errors.mrp = "MRP cannot be negative";
     } else if (mrp === 0) {
       errors.mrp = "MRP must be greater than 0";
-    } else if (costPrice > 0 && mrp < costPrice) {
+    } else if (costPrice > 0 && mrp < costPrice && !mrpBelowCpAccepted) {
       errors.mrp = "MRP must be greater than or equal to cost price";
     }
 
@@ -564,7 +573,7 @@ export function ProductPage() {
           return;
         }
 
-        if (mrp < costPrice) {
+        if (mrp < costPrice && !mrpBelowCpAccepted) {
           setErrorDialog({
             open: true,
             title: "Validation Error",
@@ -828,6 +837,7 @@ export function ProductPage() {
     setProductVariations([]);
     setProductDiscounts([]);
     setProductAttributeTypeIds([]);
+    setMrpBelowCpAccepted(false);
     productForm.reset();
   };
 
@@ -1000,6 +1010,15 @@ export function ProductPage() {
         <h1 className="text-3xl font-bold">Products</h1>
         <p className="text-muted-foreground mt-2">
           Manage products, categories, and variations
+          {productsUsage && (
+            <span className="ml-2 text-sm">
+              (
+              {productsUsage.limit === -1
+                ? `${productsUsage.used} products`
+                : `${productsUsage.used} of ${productsUsage.limit} products`}
+              )
+            </span>
+          )}
         </p>
       </div>
 
@@ -1056,12 +1075,19 @@ export function ProductPage() {
                   )}
                 </FeatureGuard>
                 {isMobile ? (
-                  <Button asChild>
-                    <Link href={`${basePath}/products/new`} className="gap-2">
+                  atProductLimit ? (
+                    <Button disabled className="gap-2">
                       <Plus className="h-4 w-4" />
                       Add Product
-                    </Link>
-                  </Button>
+                    </Button>
+                  ) : (
+                    <Button asChild>
+                      <Link href={`${basePath}/products/new`} className="gap-2">
+                        <Plus className="h-4 w-4" />
+                        Add Product
+                      </Link>
+                    </Button>
+                  )
                 ) : (
                   <ProductForm
                     open={productDialog}
@@ -1089,6 +1115,9 @@ export function ProductPage() {
                       setErrorDialog({ open: true, title, message })
                     }
                     validateProduct={validateProduct}
+                    addDisabled={atProductLimit}
+                    mrpBelowCpAccepted={mrpBelowCpAccepted}
+                    onMrpBelowCpAcceptedChange={setMrpBelowCpAccepted}
                   />
                 )}
               </div>

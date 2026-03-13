@@ -13,9 +13,8 @@ vi.mock("./deal.repository", () => ({
     findById: (...args: unknown[]) => mockFindById(...args),
     findAll: vi.fn(),
     findKanban: vi.fn(),
-    update: vi.fn(),
-    updateStage: vi.fn(),
-    softDelete: vi.fn(),
+    createDealRevision: vi.fn(),
+    createDeleteRevision: vi.fn(),
     createNotification: vi.fn(),
   },
 }));

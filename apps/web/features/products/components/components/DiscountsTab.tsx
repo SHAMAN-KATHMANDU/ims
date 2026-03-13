@@ -55,6 +55,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   useProductDiscountsList,
   useCategories,
@@ -143,7 +144,24 @@ export function DiscountsTab() {
     open: boolean;
     discount: ProductDiscountListItem | null;
   }>({ open: false, discount: null });
+  const [bulkDeleteState, setBulkDeleteState] = useState(false);
+  const [selectedDiscounts, setSelectedDiscounts] = useState<
+    Map<string, ProductDiscountListItem>
+  >(new Map());
   const [formData, setFormData] = useState<DiscountFormData>(emptyForm);
+
+  const selectedDiscountIds = new Set(selectedDiscounts.keys());
+
+  const toggleDiscount = (discount: ProductDiscountListItem) => {
+    setSelectedDiscounts((prev) => {
+      const next = new Map(prev);
+      if (next.has(discount.id)) next.delete(discount.id);
+      else next.set(discount.id, discount);
+      return next;
+    });
+  };
+
+  const clearSelection = () => setSelectedDiscounts(new Map());
 
   const { data, isLoading } = useProductDiscountsList({
     ...params,
@@ -159,6 +177,25 @@ export function DiscountsTab() {
 
   const discounts = data?.data ?? [];
   const pagination = data?.pagination;
+
+  const toggleAllOnPage = (checked: boolean) => {
+    setSelectedDiscounts((prev) => {
+      const next = new Map(prev);
+      if (checked) {
+        for (const d of discounts) next.set(d.id, d);
+      } else {
+        for (const d of discounts) next.delete(d.id);
+      }
+      return next;
+    });
+  };
+
+  const allOnPageSelected =
+    discounts.length > 0 &&
+    discounts.every((d) => selectedDiscountIds.has(d.id));
+  const someOnPageSelected = discounts.some((d) =>
+    selectedDiscountIds.has(d.id),
+  );
 
   const handleSearchChange = useCallback((value: string) => {
     setSearchInput(value);
@@ -361,6 +398,50 @@ export function DiscountsTab() {
     }
   };
 
+  const handleBulkDeleteConfirm = async () => {
+    const toDelete = [...selectedDiscounts.values()];
+    if (toDelete.length === 0) {
+      setBulkDeleteState(false);
+      clearSelection();
+      return;
+    }
+    const byProduct = new Map<string, ProductDiscountListItem[]>();
+    for (const d of toDelete) {
+      const arr = byProduct.get(d.productId) ?? [];
+      arr.push(d);
+      byProduct.set(d.productId, arr);
+    }
+    try {
+      for (const [productId, discountList] of byProduct) {
+        const product = await getProductById(productId);
+        const existing = product.discounts ?? [];
+        const idsToRemove = new Set(discountList.map((d) => d.id));
+        const filtered = existing
+          .filter((d) => !idsToRemove.has(d.id))
+          .map((d) => ({
+            discountTypeId: d.discountTypeId,
+            discountPercentage: d.discountPercentage,
+            startDate: d.startDate,
+            endDate: d.endDate,
+            isActive: d.isActive,
+          }));
+        await updateProductMutation.mutateAsync({
+          id: productId,
+          data: { discounts: toUpdateDiscounts(filtered) },
+        });
+      }
+      toast({
+        title: `${toDelete.length} discount${toDelete.length !== 1 ? "s" : ""} removed`,
+      });
+      setBulkDeleteState(false);
+      clearSelection();
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Failed to remove discounts";
+      toast({ title: "Error", description: msg, variant: "destructive" });
+    }
+  };
+
   const formatValue = (d: ProductDiscountListItem) => {
     if (d.valueType === "PERCENTAGE") {
       return `${Number(d.value)}%`;
@@ -383,6 +464,27 @@ export function DiscountsTab() {
           Add Product Discount
         </Button>
       </div>
+
+      {selectedDiscountIds.size > 0 && (
+        <div className="flex items-center gap-2 py-2 px-3 rounded-md border bg-muted/50">
+          <span className="text-sm">
+            {selectedDiscountIds.size} discount
+            {selectedDiscountIds.size !== 1 ? "s" : ""} selected
+          </span>
+          <Button
+            size="sm"
+            variant="destructive"
+            onClick={() => setBulkDeleteState(true)}
+            disabled={updateProductMutation.isPending}
+          >
+            <Trash2 className="h-4 w-4 mr-1" />
+            Delete selected
+          </Button>
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
+            Clear
+          </Button>
+        </div>
+      )}
 
       {/* Minimal filter bar */}
       <div className="flex flex-wrap items-center gap-2 rounded-lg border bg-muted/30 px-3 py-2">
@@ -530,6 +632,19 @@ export function DiscountsTab() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox
+                        checked={
+                          allOnPageSelected
+                            ? true
+                            : someOnPageSelected
+                              ? "indeterminate"
+                              : false
+                        }
+                        onCheckedChange={(v) => toggleAllOnPage(v === true)}
+                        aria-label="Select all on page"
+                      />
+                    </TableHead>
                     <TableHead>Product</TableHead>
                     <TableHead>Category</TableHead>
                     <TableHead>Subcategory</TableHead>
@@ -545,7 +660,7 @@ export function DiscountsTab() {
                   {discounts.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={9}
+                        colSpan={10}
                         className="text-center text-muted-foreground py-8"
                       >
                         No discounts found. Add one above.
@@ -554,6 +669,13 @@ export function DiscountsTab() {
                   ) : (
                     discounts.map((discount) => (
                       <TableRow key={discount.id}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedDiscountIds.has(discount.id)}
+                            onCheckedChange={() => toggleDiscount(discount)}
+                            aria-label={`Select ${discount.discountType?.name ?? "discount"} for ${discount.product.name}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">
                           {discount.product.name}
                           <span className="text-muted-foreground text-xs block">
@@ -640,7 +762,7 @@ export function DiscountsTab() {
 
       {/* Add dialog */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Add Product Discount</DialogTitle>
           </DialogHeader>
@@ -770,7 +892,7 @@ export function DiscountsTab() {
           !open && setEditState({ open: false, discount: null })
         }
       >
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Edit Product Discount</DialogTitle>
           </DialogHeader>
@@ -908,6 +1030,34 @@ export function DiscountsTab() {
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 "Remove"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk delete confirm */}
+      <AlertDialog open={bulkDeleteState} onOpenChange={setBulkDeleteState}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove selected discounts?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will remove {selectedDiscountIds.size} discount
+              {selectedDiscountIds.size !== 1 ? "s" : ""} from their products.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDeleteConfirm}
+              disabled={updateProductMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {updateProductMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                "Delete selected"
               )}
             </AlertDialogAction>
           </AlertDialogFooter>

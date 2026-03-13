@@ -96,6 +96,10 @@ export class PromoService {
     return this.repo.findById(tenantId, id);
   }
 
+  async findByCode(tenantId: string, code: string) {
+    return this.repo.findActiveByCode(tenantId, code);
+  }
+
   async update(tenantId: string, id: string, data: UpdatePromoDto) {
     const existing = await this.repo.findByIdForUpdate(tenantId, id);
     if (!existing) return null;

@@ -1,7 +1,7 @@
 "use client";
 
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NumericInput } from "@/components/ui/numeric-input";
 import type { ProductFormValues } from "../../types";
 import type { UseFormReturn } from "@/hooks/useForm";
 
@@ -14,39 +14,42 @@ export function DimensionsTab({ form }: DimensionsTabProps) {
     <div className="grid grid-cols-2 gap-4">
       <div className="space-y-2">
         <Label htmlFor="length">Length (cm)</Label>
-        <Input
+        <NumericInput
           id="length"
-          type="number"
           value={form.values.length}
-          onChange={(e) => form.handleChange("length", e.target.value)}
+          onChange={(v) => form.handleChange("length", v)}
+          allowDecimals
+          min={0}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor="breadth">Breadth (cm)</Label>
-        <Input
+        <NumericInput
           id="breadth"
-          type="number"
           value={form.values.breadth}
-          onChange={(e) => form.handleChange("breadth", e.target.value)}
+          onChange={(v) => form.handleChange("breadth", v)}
+          allowDecimals
+          min={0}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor="height">Height (cm)</Label>
-        <Input
+        <NumericInput
           id="height"
-          type="number"
           value={form.values.height}
-          onChange={(e) => form.handleChange("height", e.target.value)}
+          onChange={(v) => form.handleChange("height", v)}
+          allowDecimals
+          min={0}
         />
       </div>
       <div className="space-y-2">
         <Label htmlFor="weight">Weight (kg)</Label>
-        <Input
+        <NumericInput
           id="weight"
-          type="number"
-          step="0.01"
           value={form.values.weight}
-          onChange={(e) => form.handleChange("weight", e.target.value)}
+          onChange={(v) => form.handleChange("weight", v)}
+          allowDecimals
+          min={0}
         />
       </div>
     </div>

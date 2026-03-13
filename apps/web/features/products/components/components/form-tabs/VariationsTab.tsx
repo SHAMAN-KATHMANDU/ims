@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -85,9 +85,29 @@ export function VariationsTab({
     <div className="space-y-4">
       {attributeTypes.length > 0 && onProductAttributeTypeIdsChange && (
         <div className="space-y-2 rounded-lg border p-3 bg-muted/30">
-          <Label className="text-sm font-medium">
-            Attribute types for this product
-          </Label>
+          <div className="flex items-center justify-between gap-2">
+            <Label className="text-sm font-medium">
+              Attribute types for this product
+            </Label>
+            <label className="flex items-center gap-2 cursor-pointer shrink-0 text-sm text-muted-foreground">
+              <Checkbox
+                checked={
+                  attributeTypes.length > 0 &&
+                  productAttributeTypeIds.length === attributeTypes.length
+                }
+                onCheckedChange={(checked) => {
+                  if (checked) {
+                    onProductAttributeTypeIdsChange(
+                      attributeTypes.map((t) => t.id),
+                    );
+                  } else {
+                    onProductAttributeTypeIdsChange([]);
+                  }
+                }}
+              />
+              Select all
+            </label>
+          </div>
           <p className="text-xs text-muted-foreground">
             Select which attributes apply (e.g. Color, Size). Then set a value
             per variation below.
@@ -149,20 +169,15 @@ export function VariationsTab({
                       ? `Stock @ ${variation.locationName}`
                       : "Default stock"}
                   </Label>
-                  <Input
+                  <NumericInput
                     id={`var-stock-${index}`}
-                    type="number"
                     placeholder="0"
-                    value={variation.stockQuantity}
-                    onChange={(e) =>
-                      onUpdate(index, "stockQuantity", e.target.value)
-                    }
+                    value={String(variation.stockQuantity ?? "")}
+                    onChange={(v) => onUpdate(index, "stockQuantity", v)}
+                    error={form.errors[`variation_${index}_stock`]}
+                    allowDecimals={false}
+                    min={0}
                   />
-                  {form.errors[`variation_${index}_stock`] && (
-                    <p className="text-xs text-destructive">
-                      {form.errors[`variation_${index}_stock`]}
-                    </p>
-                  )}
                 </div>
                 <Button
                   type="button"

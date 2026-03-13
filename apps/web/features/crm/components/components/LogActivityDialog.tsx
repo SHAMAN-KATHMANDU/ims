@@ -12,7 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useCreateActivity } from "../../hooks/use-activities";
+import { useAddContactCommunication } from "../../hooks/use-contacts";
 import { useToast } from "@/hooks/useToast";
 
 type ActivityType = "CALL" | "EMAIL" | "MEETING";
@@ -41,7 +41,7 @@ export function LogActivityDialog({
   const { toast } = useToast();
   const [subject, setSubject] = useState("");
   const [notes, setNotes] = useState("");
-  const createMutation = useCreateActivity();
+  const createMutation = useAddContactCommunication(contactId);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +50,6 @@ export function LogActivityDialog({
         type,
         subject: subject.trim() || undefined,
         notes: notes.trim() || undefined,
-        contactId,
       });
       setSubject("");
       setNotes("");
@@ -58,7 +57,10 @@ export function LogActivityDialog({
       onOpenChange(false);
       onSuccess?.();
     } catch {
-      toast({ title: `Failed to log ${type.toLowerCase()}`, variant: "destructive" });
+      toast({
+        title: `Failed to log ${type.toLowerCase()}`,
+        variant: "destructive",
+      });
     }
   };
 
@@ -72,7 +74,7 @@ export function LogActivityDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md" allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>{TYPE_LABELS[type]}</DialogTitle>
         </DialogHeader>

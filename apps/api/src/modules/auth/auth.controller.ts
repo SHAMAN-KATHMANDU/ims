@@ -3,11 +3,27 @@ import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
-import { LoginSchema } from "./auth.schema";
+import { LoginSchema, ForgotPasswordSchema } from "./auth.schema";
 import authService, { AuthService } from "./auth.service";
 
 class AuthController {
   constructor(private service: AuthService) {}
+
+  getOrgName = async (req: Request, res: Response) => {
+    try {
+      const slug = (req.query.slug as string)?.trim()?.toLowerCase();
+      if (!slug) {
+        return res.status(400).json({ message: "Slug is required" });
+      }
+      const result = await this.service.getOrgNameBySlug(slug);
+      if (!result) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      return res.status(200).json(result);
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get org name error");
+    }
+  };
 
   logIn = async (req: Request, res: Response) => {
     try {
@@ -79,6 +95,39 @@ class AuthController {
       return res.status(200).json({ message: "Logout successful" });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Logout error");
+    }
+  };
+
+  forgotPassword = async (req: Request, res: Response) => {
+    try {
+      const tenantSlug =
+        (req.headers["x-tenant-slug"] as string)?.trim() || null;
+      if (!tenantSlug) {
+        return res.status(400).json({
+          message: "No tenant configured. Provide X-Tenant-Slug header.",
+        });
+      }
+
+      const parsed = ForgotPasswordSchema.safeParse(req.body);
+      if (!parsed.success) {
+        return res.status(400).json({
+          message: "Username is required",
+        });
+      }
+
+      const result = await this.service.requestPasswordReset(
+        tenantSlug,
+        parsed.data,
+      );
+      return res.status(200).json(result);
+    } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (typeof appErr.statusCode === "number") {
+        return res.status(appErr.statusCode).json({
+          message: appErr.message,
+        });
+      }
+      return sendControllerError(req, res, error, "Forgot password error");
     }
   };
 }

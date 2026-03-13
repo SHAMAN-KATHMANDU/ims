@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import prisma from "@/config/prisma";
 
 const DEFAULT_STAGES = [
@@ -103,6 +104,75 @@ export class PipelineRepository {
 
   getDefaultStages() {
     return DEFAULT_STAGES;
+  }
+
+  /**
+   * Seed 3 default pipelines for a new tenant.
+   * Called after tenant creation.
+   */
+  async seedDefaultPipelines(tenantId: string) {
+    const makeStages = (
+      names: string[],
+      probabilities: number[] = [],
+    ): Array<{
+      id: string;
+      name: string;
+      order: number;
+      probability: number;
+    }> =>
+      names.map((name, i) => ({
+        id: randomUUID(),
+        name,
+        order: i,
+        probability: probabilities[i] ?? 0,
+      }));
+
+    const salesStages = makeStages(
+      [
+        "New Lead",
+        "Contacted",
+        "Qualified",
+        "Proposal Sent",
+        "Negotiation",
+        "Closed Won",
+        "Closed Lost",
+      ],
+      [0, 5, 15, 40, 70, 100, 0],
+    );
+    const remarketingStages = makeStages([
+      "Identified",
+      "Re-engaged",
+      "Interested",
+      "Offer Sent",
+      "Converted",
+      "Not Interested",
+    ]);
+    const repurchaseStages = makeStages([
+      "Past Customer",
+      "Follow-up Sent",
+      "Considering",
+      "Repeat Purchase",
+      "Churned",
+    ]);
+
+    await this.create({
+      tenantId,
+      name: "Sales Pipeline",
+      stages: salesStages,
+      isDefault: true,
+    });
+    await this.create({
+      tenantId,
+      name: "Remarketing Pipeline",
+      stages: remarketingStages,
+      isDefault: false,
+    });
+    await this.create({
+      tenantId,
+      name: "Repurchase Pipeline",
+      stages: repurchaseStages,
+      isDefault: false,
+    });
   }
 }
 

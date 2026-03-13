@@ -77,7 +77,69 @@ const authRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+/**
+ * @swagger
+ * /auth/org-name:
+ *   get:
+ *     summary: Get organization name by slug (public, for login page)
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: query
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Tenant slug (e.g. demo, acme)
+ *     responses:
+ *       200:
+ *         description: Organization name
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 name:
+ *                   type: string
+ *       404:
+ *         description: Organization not found
+ */
+authRouter.get("/org-name", asyncHandler(authController.getOrgName));
+
 authRouter.post("/login", asyncHandler(authController.logIn));
+
+/**
+ * @swagger
+ * /auth/forgot-password:
+ *   post:
+ *     summary: Request password reset
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: header
+ *         name: X-Tenant-Slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Tenant slug
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [username]
+ *             properties:
+ *               username:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Request submitted
+ *       400:
+ *         description: Validation error
+ */
+authRouter.post(
+  "/forgot-password",
+  asyncHandler(authController.forgotPassword),
+);
 
 /**
  * @swagger

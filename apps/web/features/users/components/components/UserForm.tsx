@@ -174,7 +174,7 @@ export function UserForm({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent>
+      <DialogContent allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>{editingUser ? "Edit User" : "Add User"}</DialogTitle>
         </DialogHeader>

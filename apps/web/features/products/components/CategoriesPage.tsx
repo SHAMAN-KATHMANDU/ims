@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useToast } from "@/hooks/useToast";
 import {
   useCategoriesPaginated,
@@ -111,6 +111,9 @@ export function CategoriesPage() {
     open: false,
     message: "",
   });
+  const [highlightCategoryId, setHighlightCategoryId] = useState<string | null>(
+    null,
+  );
 
   // Edit states
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -153,20 +156,34 @@ export function CategoriesPage() {
       setEditingCategory(null);
     } catch (error: unknown) {
       const err = error as {
-        response?: { data?: { message?: string } };
         message?: string;
+        existingCategory?: { id: string; name: string };
       };
-      const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to save category";
+      const errorMessage = err.message ?? "Failed to save category";
       setErrorDialog({
         open: true,
         title: "Error Saving Category",
         message: errorMessage,
       });
+      if (err.existingCategory?.id) {
+        setHighlightCategoryId(err.existingCategory.id);
+        setSearchInput(err.existingCategory.name);
+        setListParams((prev) => ({ ...prev, page: DEFAULT_PAGE }));
+      }
     }
   };
+
+  // Scroll to and highlight the category row when it appears after a 409
+  const isHighlightVisible =
+    !!highlightCategoryId &&
+    categories.some((c) => c.id === highlightCategoryId);
+  useEffect(() => {
+    if (!highlightCategoryId || !isHighlightVisible) return;
+    const el = document.getElementById(`category-row-${highlightCategoryId}`);
+    el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    const t = setTimeout(() => setHighlightCategoryId(null), 4000);
+    return () => clearTimeout(t);
+  }, [highlightCategoryId, isHighlightVisible]);
 
   const handleEditCategory = (category: Category) => {
     setEditingCategory(category);
@@ -253,7 +270,8 @@ export function CategoriesPage() {
             onSubmit={handleCategorySubmit}
             onReset={handleResetCategory}
             isLoading={
-              createCategoryMutation.isPending || updateCategoryMutation.isPending
+              createCategoryMutation.isPending ||
+              updateCategoryMutation.isPending
             }
           />
         )}
@@ -314,6 +332,7 @@ export function CategoriesPage() {
         )}
         onManageSubcategories={handleOpenSubcategoryDialog}
         totalItems={pagination.totalItems}
+        highlightCategoryId={highlightCategoryId}
       />
 
       <DataTablePagination
@@ -325,7 +344,7 @@ export function CategoriesPage() {
 
       {/* Subcategory Management Dialog */}
       <Dialog open={subcategoryDialog} onOpenChange={setSubcategoryDialog}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>
               Manage Subcategories - {selectedCategory?.name}

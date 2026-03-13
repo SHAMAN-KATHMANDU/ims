@@ -46,10 +46,15 @@ const ALLOWED_SORT_FIELDS = [
   "id",
 ] as const;
 
+const NOT_DELETED: Prisma.SaleWhereInput = { deletedAt: null };
+
 function buildSaleWhereFromFilter(
   filter: SaleListFilterParams,
 ): Prisma.SaleWhereInput {
-  const where: Prisma.SaleWhereInput = {};
+  const where: Prisma.SaleWhereInput = {
+    ...NOT_DELETED,
+    isLatest: true,
+  };
 
   if (filter.locationId) where.locationId = filter.locationId;
   if (filter.type) where.type = filter.type;
@@ -196,8 +201,15 @@ export async function findUserLastLogin(userId: string) {
 // ─── PromoCode ───────────────────────────────────────────────────────────────
 
 export async function findPromoByCode(tenantId: string, code: string) {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
   return prisma.promoCode.findFirst({
-    where: { tenantId, code, isActive: true },
+    where: {
+      tenantId,
+      code: { equals: trimmed, mode: "insensitive" },
+      isActive: true,
+      deletedAt: null,
+    },
   });
 }
 
@@ -205,8 +217,15 @@ export async function findPromoByCodeWithProducts(
   tenantId: string,
   code: string,
 ) {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
   return prisma.promoCode.findFirst({
-    where: { tenantId, code },
+    where: {
+      tenantId,
+      code: { equals: trimmed, mode: "insensitive" },
+      isActive: true,
+      deletedAt: null,
+    },
     include: { products: { include: { product: true } } },
   });
 }
@@ -215,6 +234,13 @@ export async function incrementPromoUsage(promoId: string) {
   return prisma.promoCode.update({
     where: { id: promoId },
     data: { usageCount: { increment: 1 } },
+  });
+}
+
+export async function decrementPromoUsage(promoId: string) {
+  return prisma.promoCode.update({
+    where: { id: promoId },
+    data: { usageCount: { decrement: 1 } },
   });
 }
 
@@ -300,6 +326,10 @@ export interface CreateSaleWithItemsInput {
     discountPercent: number;
     discountAmount: number;
     lineTotal: number;
+    manualDiscountPercent?: number | null;
+    manualDiscountAmount?: number | null;
+    discountReason?: string | null;
+    discountApprovedById?: string | null;
   }>;
   payments?: Array<{
     method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
@@ -366,6 +396,10 @@ export async function createSaleWithItemsAndDeductInventory(
             discountPercent: item.discountPercent,
             discountAmount: item.discountAmount,
             lineTotal: item.lineTotal,
+            manualDiscountPercent: item.manualDiscountPercent ?? undefined,
+            manualDiscountAmount: item.manualDiscountAmount ?? undefined,
+            discountReason: item.discountReason ?? undefined,
+            discountApprovedById: item.discountApprovedById ?? undefined,
           })),
         },
         payments:
@@ -440,8 +474,9 @@ export async function findSalesPaginated(
     orderBy: Prisma.SaleOrderByWithRelationInput;
   },
 ) {
+  const resolvedWhere = { ...where, ...NOT_DELETED };
   return prisma.sale.findMany({
-    where,
+    where: resolvedWhere,
     skip: opts.skip,
     take: opts.take,
     orderBy: opts.orderBy,
@@ -450,7 +485,9 @@ export async function findSalesPaginated(
 }
 
 export async function countSales(where: Prisma.SaleWhereInput) {
-  return prisma.sale.count({ where });
+  return prisma.sale.count({
+    where: { ...where, ...NOT_DELETED },
+  });
 }
 
 /** Filter-based list — service never needs Prisma. */
@@ -483,6 +520,8 @@ export async function findSalesPaginatedForUserSince(
   const where: Prisma.SaleWhereInput = {
     createdById: userId,
     createdAt: { gte: since },
+    ...NOT_DELETED,
+    isLatest: true,
   };
   const skip = (pagination.page - 1) * pagination.limit;
   return findSalesPaginated(where, {
@@ -496,6 +535,8 @@ export async function countSalesForUserSince(userId: string, since: Date) {
   return countSales({
     createdById: userId,
     createdAt: { gte: since },
+    ...NOT_DELETED,
+    isLatest: true,
   });
 }
 
@@ -543,15 +584,15 @@ const SALE_DETAIL_INCLUDE = {
 } as const;
 
 export async function findSaleById(id: string) {
-  return prisma.sale.findUnique({
-    where: { id },
+  return prisma.sale.findFirst({
+    where: { id, ...NOT_DELETED },
     include: SALE_DETAIL_INCLUDE,
   });
 }
 
 export async function findSaleWithPaymentsOnly(id: string) {
-  return prisma.sale.findUnique({
-    where: { id },
+  return prisma.sale.findFirst({
+    where: { id, ...NOT_DELETED },
     include: { payments: { select: { amount: true } } },
   });
 }
@@ -583,7 +624,7 @@ const SALE_EXPORT_INCLUDE = {
 
 export async function findSalesForExport(where: Prisma.SaleWhereInput) {
   return prisma.sale.findMany({
-    where,
+    where: { ...where, ...NOT_DELETED, isLatest: true },
     include: SALE_EXPORT_INCLUDE,
     orderBy: { createdAt: "desc" },
   });
@@ -594,9 +635,285 @@ export async function findSalesForDailyChart(
   select: { total: true; type: true; createdAt: true },
 ) {
   return prisma.sale.findMany({
-    where,
+    where: { ...where, ...NOT_DELETED, isLatest: true },
     select,
     orderBy: { createdAt: "asc" },
+  });
+}
+
+// ─── Sale Edit (Revision Branching) ───────────────────────────────────────────
+
+export interface CreateSaleRevisionInput extends CreateSaleWithItemsInput {
+  parentSaleId: string;
+  editedById: string;
+  editReason: string | null;
+}
+
+export async function createSaleRevision(input: CreateSaleRevisionInput) {
+  return prisma.$transaction(async (tx) => {
+    const parent = await tx.sale.findFirst({
+      where: {
+        id: input.parentSaleId,
+        isLatest: true,
+        ...NOT_DELETED,
+      },
+      include: {
+        items: {
+          select: {
+            variationId: true,
+            subVariationId: true,
+            quantity: true,
+          },
+        },
+      },
+    });
+    if (!parent) return null;
+
+    const locationId = parent.locationId;
+    const tenantId = parent.tenantId;
+
+    // 1. Reverse parent's inventory and promo
+    for (const item of parent.items) {
+      const inv =
+        item.subVariationId != null
+          ? await tx.locationInventory.findUnique({
+              where: {
+                locationId_variationId_subVariationId: {
+                  locationId,
+                  variationId: item.variationId,
+                  subVariationId: item.subVariationId,
+                },
+              },
+            })
+          : await tx.locationInventory.findFirst({
+              where: {
+                locationId,
+                variationId: item.variationId,
+                subVariationId: null,
+              },
+            });
+      if (inv) {
+        await tx.locationInventory.update({
+          where: { id: inv.id },
+          data: { quantity: { increment: item.quantity } },
+        });
+      }
+      await tx.productVariation.update({
+        where: { id: item.variationId },
+        data: { stockQuantity: { increment: item.quantity } },
+      });
+    }
+    const codes = parent.promoCodesUsed as string[] | null;
+    if (codes && Array.isArray(codes)) {
+      for (const code of codes) {
+        const promo = await tx.promoCode.findFirst({
+          where: { tenantId, code },
+        });
+        if (promo) {
+          await tx.promoCode.update({
+            where: { id: promo.id },
+            data: { usageCount: { decrement: 1 } },
+          });
+        }
+      }
+    }
+
+    // 2. Mark parent as superseded
+    await tx.sale.update({
+      where: { id: input.parentSaleId },
+      data: { isLatest: false },
+    });
+
+    // 3. Create new sale with revision metadata
+    const newSale = await tx.sale.create({
+      data: {
+        tenantId: input.tenantId,
+        saleCode: input.saleCode,
+        type: input.type,
+        isCreditSale: input.isCreditSale,
+        locationId: input.locationId,
+        memberId: input.memberId,
+        contactId: input.contactId,
+        subtotal: input.subtotal,
+        discount: input.discount,
+        promoDiscount:
+          input.promoCodesUsed?.length && (input.promoDiscount ?? 0) > 0
+            ? (input.promoDiscount ?? 0)
+            : 0,
+        total: input.total,
+        notes: input.notes,
+        promoCodesUsed:
+          input.promoCodesUsed && input.promoCodesUsed.length > 0
+            ? input.promoCodesUsed
+            : undefined,
+        createdById: input.createdById,
+        parentSaleId: input.parentSaleId,
+        revisionNo: parent.revisionNo + 1,
+        isLatest: true,
+        editedById: input.editedById,
+        editedAt: new Date(),
+        editReason: input.editReason,
+        items: {
+          create: input.items.map((item) => ({
+            variationId: item.variationId,
+            subVariationId: item.subVariationId ?? undefined,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalMrp: item.totalMrp,
+            discountPercent: item.discountPercent,
+            discountAmount: item.discountAmount,
+            lineTotal: item.lineTotal,
+            manualDiscountPercent: item.manualDiscountPercent ?? undefined,
+            manualDiscountAmount: item.manualDiscountAmount ?? undefined,
+            discountReason: item.discountReason ?? undefined,
+            discountApprovedById: item.discountApprovedById ?? undefined,
+          })),
+        },
+        payments:
+          input.payments && input.payments.length > 0
+            ? {
+                create: input.payments.map((p) => ({
+                  method: p.method,
+                  amount: p.amount,
+                })),
+              }
+            : undefined,
+      },
+      include: SALE_INCLUDE_FULL,
+    });
+
+    // 4. Increment promo usage for new sale's codes
+    const newCodes = input.promoCodesUsed;
+    if (newCodes && Array.isArray(newCodes)) {
+      for (const code of newCodes) {
+        const promo = await tx.promoCode.findFirst({
+          where: { tenantId: input.tenantId, code },
+        });
+        if (promo) {
+          await tx.promoCode.update({
+            where: { id: promo.id },
+            data: { usageCount: { increment: 1 } },
+          });
+        }
+      }
+    }
+
+    // 5. Deduct inventory for new sale
+    for (const item of input.items) {
+      const inv =
+        item.subVariationId != null
+          ? await tx.locationInventory.findUnique({
+              where: {
+                locationId_variationId_subVariationId: {
+                  locationId: input.locationId,
+                  variationId: item.variationId,
+                  subVariationId: item.subVariationId,
+                },
+              },
+            })
+          : await tx.locationInventory.findFirst({
+              where: {
+                locationId: input.locationId,
+                variationId: item.variationId,
+                subVariationId: null,
+              },
+            });
+      if (!inv) {
+        throw new Error(
+          `Inventory not found for location ${input.locationId}, variation ${item.variationId}`,
+        );
+      }
+      await tx.locationInventory.update({
+        where: { id: inv.id },
+        data: { quantity: { decrement: item.quantity } },
+      });
+      await tx.productVariation.update({
+        where: { id: item.variationId },
+        data: { stockQuantity: { decrement: item.quantity } },
+      });
+    }
+
+    return newSale;
+  });
+}
+
+// ─── Soft Delete ─────────────────────────────────────────────────────────────
+
+export async function softDeleteSale(
+  saleId: string,
+  deletedById: string,
+  deleteReason: string | null,
+) {
+  return prisma.$transaction(async (tx) => {
+    const sale = await tx.sale.findFirst({
+      where: { id: saleId, ...NOT_DELETED },
+      include: {
+        items: {
+          select: { variationId: true, subVariationId: true, quantity: true },
+        },
+      },
+    });
+    if (!sale) return null;
+
+    const locationId = sale.locationId;
+    const tenantId = sale.tenantId;
+
+    // Restore inventory for each item
+    for (const item of sale.items) {
+      const inv =
+        item.subVariationId != null
+          ? await tx.locationInventory.findUnique({
+              where: {
+                locationId_variationId_subVariationId: {
+                  locationId,
+                  variationId: item.variationId,
+                  subVariationId: item.subVariationId,
+                },
+              },
+            })
+          : await tx.locationInventory.findFirst({
+              where: {
+                locationId,
+                variationId: item.variationId,
+                subVariationId: null,
+              },
+            });
+      if (inv) {
+        await tx.locationInventory.update({
+          where: { id: inv.id },
+          data: { quantity: { increment: item.quantity } },
+        });
+      }
+      await tx.productVariation.update({
+        where: { id: item.variationId },
+        data: { stockQuantity: { increment: item.quantity } },
+      });
+    }
+
+    // Decrement promo usage for each code used
+    const codes = sale.promoCodesUsed as string[] | null;
+    if (codes && Array.isArray(codes)) {
+      for (const code of codes) {
+        const promo = await tx.promoCode.findFirst({
+          where: { tenantId, code },
+        });
+        if (promo) {
+          await tx.promoCode.update({
+            where: { id: promo.id },
+            data: { usageCount: { decrement: 1 } },
+          });
+        }
+      }
+    }
+
+    return tx.sale.update({
+      where: { id: saleId },
+      data: {
+        deletedAt: new Date(),
+        deletedById,
+        deleteReason: deleteReason ?? null,
+      },
+    });
   });
 }
 
@@ -616,7 +933,7 @@ export async function createSalePayment(data: {
 
 export async function aggregateSales(where: Prisma.SaleWhereInput) {
   return prisma.sale.aggregate({
-    where,
+    where: { ...where, ...NOT_DELETED, isLatest: true },
     _sum: { total: true, discount: true },
     _count: true,
   });
@@ -627,7 +944,7 @@ export async function aggregateSalesByType(
   type: "GENERAL" | "MEMBER",
 ) {
   return prisma.sale.aggregate({
-    where: { ...where, type },
+    where: { ...where, ...NOT_DELETED, isLatest: true, type },
     _sum: { total: true },
     _count: true,
   });
@@ -716,8 +1033,9 @@ export async function findLocationsShowrooms(tenantId: string) {
   });
 }
 
-export async function findAllUsersForBulk() {
+export async function findAllUsersForBulk(tenantId: string) {
   return prisma.user.findMany({
+    where: { tenantId },
     select: { id: true, username: true },
   });
 }

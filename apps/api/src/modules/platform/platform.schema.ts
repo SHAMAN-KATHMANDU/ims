@@ -75,6 +75,11 @@ export const ResetTenantUserPasswordSchema = z.object({
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
 });
 
+/** Approve escalated password reset request (platform admin). */
+export const ApprovePlatformResetSchema = z.object({
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+
 /** Create tenant user (platform admin). Role restricted to tenant-scoped roles only. */
 export const CreateTenantUserSchema = z.object({
   username: z

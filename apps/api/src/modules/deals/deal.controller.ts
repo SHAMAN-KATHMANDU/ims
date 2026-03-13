@@ -89,8 +89,14 @@ class DealController {
   update = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
       const body = UpdateDealSchema.parse(req.body);
-      const deal = await dealService.update(tenantId, req.params.id, body);
+      const deal = await dealService.update(
+        tenantId,
+        req.params.id,
+        body,
+        userId,
+      );
       return res
         .status(200)
         .json({ message: "Deal updated successfully", deal });
@@ -112,8 +118,14 @@ class DealController {
   updateStage = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
       const body = UpdateDealStageSchema.parse(req.body);
-      const deal = await dealService.updateStage(tenantId, req.params.id, body);
+      const deal = await dealService.updateStage(
+        tenantId,
+        req.params.id,
+        body,
+        userId,
+      );
       return res.status(200).json({ message: "Deal stage updated", deal });
     } catch (error: unknown) {
       if (error instanceof ZodError) {

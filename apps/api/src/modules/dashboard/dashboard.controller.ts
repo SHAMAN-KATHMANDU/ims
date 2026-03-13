@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
+import { getTenantUsage } from "@/middlewares/enforcePlanLimits";
 import dashboardService from "./dashboard.service";
 
 class DashboardController {
@@ -75,6 +76,26 @@ class DashboardController {
         res,
         error,
         "Dashboard getSuperAdminSummary error",
+      );
+    }
+  };
+
+  getTenantUsage = async (req: Request, res: Response) => {
+    try {
+      const tenant = (req as Request & { tenant?: unknown }).tenant;
+      const usage = await getTenantUsage(tenant);
+      if (!usage) {
+        return res
+          .status(404)
+          .json({ message: "Tenant context not available" });
+      }
+      return res.status(200).json(usage);
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Dashboard getTenantUsage error",
       );
     }
   };

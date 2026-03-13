@@ -62,8 +62,28 @@ export interface ResolveTargetProductIdsParams {
 
 export class PromoRepository {
   async findFirstByCode(tenantId: string, code: string) {
+    const trimmed = code.trim();
+    if (!trimmed) return null;
     return prisma.promoCode.findFirst({
-      where: { tenantId, code, deletedAt: null },
+      where: {
+        tenantId,
+        code: { equals: trimmed, mode: "insensitive" },
+        deletedAt: null,
+      },
+    });
+  }
+
+  async findActiveByCode(tenantId: string, code: string) {
+    const trimmed = code.trim();
+    if (!trimmed) return null;
+    return prisma.promoCode.findFirst({
+      where: {
+        tenantId,
+        code: { equals: trimmed, mode: "insensitive" },
+        isActive: true,
+        deletedAt: null,
+      },
+      include: promoInclude,
     });
   }
 

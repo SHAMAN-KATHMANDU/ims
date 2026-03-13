@@ -2,7 +2,11 @@ import { Request, Response } from "express";
 import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
-import { CreateUserSchema, UpdateUserSchema } from "./user.schema";
+import {
+  CreateUserSchema,
+  UpdateUserSchema,
+  ApprovePasswordResetSchema,
+} from "./user.schema";
 import userService, { UserService } from "./user.service";
 
 class UserController {
@@ -106,6 +110,112 @@ class UserController {
         return res.status(403).json({ message: appErr.message });
       }
       return sendControllerError(req, res, error, "Delete user error");
+    }
+  };
+
+  getPasswordResetRequests = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const requests = await this.service.getPasswordResetRequests(tenantId);
+      return res
+        .status(200)
+        .json({ message: "Password reset requests fetched", requests });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get password reset requests error",
+      );
+    }
+  };
+
+  approveResetRequest = async (req: Request, res: Response) => {
+    try {
+      const requestId =
+        Array.isArray(req.params.requestId)
+          ? req.params.requestId[0]
+          : req.params.requestId;
+      const tenantId = req.user!.tenantId;
+      const handledById = req.user!.id;
+      const body = ApprovePasswordResetSchema.parse(req.body);
+      await this.service.approveResetRequest(
+        requestId!,
+        tenantId,
+        handledById,
+        body,
+      );
+      return res
+        .status(200)
+        .json({ message: "Password reset approved. User can now log in." });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      const appErr = error as AppError;
+      if (appErr.statusCode) {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Approve password reset error",
+      );
+    }
+  };
+
+  escalateResetRequest = async (req: Request, res: Response) => {
+    try {
+      const requestId =
+        Array.isArray(req.params.requestId)
+          ? req.params.requestId[0]
+          : req.params.requestId;
+      const tenantId = req.user!.tenantId;
+      const result = await this.service.escalateResetRequest(
+        requestId!,
+        tenantId,
+      );
+      return res
+        .status(200)
+        .json({ message: "Request escalated to platform admin", request: result });
+    } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (appErr.statusCode) {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Escalate password reset error",
+      );
+    }
+  };
+
+  rejectResetRequest = async (req: Request, res: Response) => {
+    try {
+      const requestId =
+        Array.isArray(req.params.requestId)
+          ? req.params.requestId[0]
+          : req.params.requestId;
+      const tenantId = req.user!.tenantId;
+      const handledById = req.user!.id;
+      await this.service.rejectResetRequest(requestId!, tenantId, handledById);
+      return res.status(200).json({ message: "Password reset request rejected" });
+    } catch (error: unknown) {
+      const appErr = error as AppError;
+      if (appErr.statusCode) {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Reject password reset error",
+      );
     }
   };
 }

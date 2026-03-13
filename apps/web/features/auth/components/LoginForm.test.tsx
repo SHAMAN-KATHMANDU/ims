@@ -4,11 +4,16 @@ import { render, screen, fireEvent, waitFor } from "@testing-library/react";
 import { QueryClientWrapper } from "@/test-utils/query-client-wrapper";
 
 const mockLogin = vi.fn();
+const mockGetOrgNameBySlug = vi.fn();
 
 vi.mock("../hooks/use-auth", () => ({
   useAuth: () => ({
     login: mockLogin,
   }),
+}));
+
+vi.mock("../services/auth.service", () => ({
+  getOrgNameBySlug: (...args: unknown[]) => mockGetOrgNameBySlug(...args),
 }));
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (
@@ -20,6 +25,7 @@ import { LoginForm } from "./LoginForm";
 describe("LoginForm", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGetOrgNameBySlug.mockResolvedValue(null);
   });
 
   it("renders username and password fields", () => {
@@ -81,6 +87,16 @@ describe("LoginForm", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/invalid credentials/i)).toBeInTheDocument();
+    });
+  });
+
+  it("shows org name in title when slug resolves to org", async () => {
+    mockGetOrgNameBySlug.mockResolvedValue("Acme Corp");
+
+    render(<LoginForm tenantSlug="acme" />, { wrapper });
+
+    await waitFor(() => {
+      expect(screen.getByText("Sign in to Acme Corp")).toBeInTheDocument();
     });
   });
 

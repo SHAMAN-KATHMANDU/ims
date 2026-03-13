@@ -1,5 +1,7 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
+import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
+import { logger } from "@/config/logger";
 import dealRepository from "./deal.repository";
 import {
   createSaleWithItemsAndDeductInventory,
@@ -41,7 +43,26 @@ export class DealService {
         : "Qualification";
     const stage = data.stage || firstStage;
 
-    return dealRepository.create(tenantId, data, userId, stage, pipeline.id);
+    const deal = await dealRepository.create(
+      tenantId,
+      data,
+      userId,
+      stage,
+      pipeline.id,
+    );
+    await executeWorkflowRules({
+      trigger: "DEAL_CREATED",
+      deal: toDealContext(deal),
+      userId,
+    }).catch((err) =>
+      logger.error("Workflow execution failed", undefined, {
+        dealId: deal.id,
+        tenantId: deal.tenantId,
+        trigger: "DEAL_CREATED",
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+    return deal;
   }
 
   async getAll(tenantId: string, query: Record<string, unknown>) {
@@ -60,29 +81,105 @@ export class DealService {
     return deal;
   }
 
-  async update(tenantId: string, id: string, data: UpdateDealDto) {
+  async update(
+    tenantId: string,
+    id: string,
+    data: UpdateDealDto,
+    userId: string,
+  ) {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
 
-    const deal = await dealRepository.update(id, data, existing.name);
+    const { editReason, ...updates } = data;
+    const deal = await dealRepository.createDealRevision(
+      id,
+      tenantId,
+      updates,
+      userId,
+      editReason ?? null,
+    );
+    if (!deal) throw createError("Deal not found", 404);
 
-    if (data.stage && data.stage !== existing.stage && existing.assignedToId) {
+    if (
+      updates.stage &&
+      updates.stage !== existing.stage &&
+      existing.assignedToId
+    ) {
       await dealRepository.createNotification(
         existing.assignedToId,
         deal.id,
         deal.name,
-        data.stage,
+        updates.stage,
+      );
+      const logWorkflowErr = (trigger: string) => (err: unknown) =>
+        logger.error("Workflow execution failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          trigger,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      await executeWorkflowRules({
+        trigger: "STAGE_EXIT",
+        deal: toDealContext(deal),
+        previousStage: existing.stage,
+        userId: existing.assignedToId,
+      }).catch(logWorkflowErr("STAGE_EXIT"));
+      await executeWorkflowRules({
+        trigger: "STAGE_ENTER",
+        deal: toDealContext(deal),
+        previousStage: existing.stage,
+        userId: existing.assignedToId,
+      }).catch(logWorkflowErr("STAGE_ENTER"));
+    }
+
+    if (updates.status === "WON") {
+      await executeWorkflowRules({
+        trigger: "DEAL_WON",
+        deal: toDealContext(deal),
+        userId: existing.assignedToId,
+      }).catch((err) =>
+        logger.error("Workflow execution failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          trigger: "DEAL_WON",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    } else if (updates.status === "LOST") {
+      await executeWorkflowRules({
+        trigger: "DEAL_LOST",
+        deal: toDealContext(deal),
+        userId: existing.assignedToId,
+      }).catch((err) =>
+        logger.error("Workflow execution failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          trigger: "DEAL_LOST",
+          error: err instanceof Error ? err.message : String(err),
+        }),
       );
     }
 
     return deal;
   }
 
-  async updateStage(tenantId: string, id: string, data: UpdateDealStageDto) {
+  async updateStage(
+    tenantId: string,
+    id: string,
+    data: UpdateDealStageDto,
+    userId: string,
+  ) {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
 
-    const deal = await dealRepository.updateStage(id, data.stage);
+    const deal = await dealRepository.createDealRevision(
+      id,
+      tenantId,
+      { stage: data.stage },
+      userId,
+      null,
+    );
+    if (!deal) throw createError("Deal not found", 404);
 
     if (existing.assignedToId) {
       await dealRepository.createNotification(
@@ -91,6 +188,25 @@ export class DealService {
         deal.name,
         data.stage,
       );
+      const logWorkflowErr = (trigger: string) => (err: unknown) =>
+        logger.error("Workflow execution failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          trigger,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      await executeWorkflowRules({
+        trigger: "STAGE_EXIT",
+        deal: toDealContext(deal),
+        previousStage: existing.stage,
+        userId: existing.assignedToId,
+      }).catch(logWorkflowErr("STAGE_EXIT"));
+      await executeWorkflowRules({
+        trigger: "STAGE_ENTER",
+        deal: toDealContext(deal),
+        previousStage: existing.stage,
+        userId: existing.assignedToId,
+      }).catch(logWorkflowErr("STAGE_ENTER"));
     }
 
     return deal;
@@ -111,11 +227,7 @@ export class DealService {
     });
   }
 
-  async removeLineItem(
-    tenantId: string,
-    dealId: string,
-    lineItemId: string,
-  ) {
+  async removeLineItem(tenantId: string, dealId: string, lineItemId: string) {
     const deal = await dealRepository.findById(tenantId, dealId);
     if (!deal) throw createError("Deal not found", 404);
     const result = await dealRepository.removeLineItem(dealId, lineItemId);
@@ -171,7 +283,8 @@ export class DealService {
         typeof item.unitPrice === "object" &&
         item.unitPrice !== null &&
         "toNumber" in item.unitPrice &&
-        typeof (item.unitPrice as { toNumber: () => number }).toNumber === "function"
+        typeof (item.unitPrice as { toNumber: () => number }).toNumber ===
+          "function"
           ? (item.unitPrice as { toNumber: () => number }).toNumber()
           : Number(item.unitPrice);
       const totalMrp = unitPrice * qty;
@@ -212,7 +325,7 @@ export class DealService {
   ) {
     const existing = await dealRepository.findById(tenantId, id);
     if (!existing) throw createError("Deal not found", 404);
-    await dealRepository.softDelete(id, {
+    await dealRepository.createDeleteRevision(id, tenantId, {
       deletedBy: ctx.userId,
       deleteReason: ctx.reason ?? null,
     });
@@ -226,6 +339,30 @@ export class DealService {
       userAgent: ctx.userAgent,
     });
   }
+}
+
+function toDealContext(deal: {
+  id: string;
+  tenantId: string;
+  pipelineId: string;
+  stage: string;
+  status: string;
+  contactId: string | null;
+  memberId: string | null;
+  assignedToId: string;
+  createdById: string;
+}) {
+  return {
+    id: deal.id,
+    tenantId: deal.tenantId,
+    pipelineId: deal.pipelineId,
+    stage: deal.stage,
+    status: deal.status,
+    contactId: deal.contactId,
+    memberId: deal.memberId,
+    assignedToId: deal.assignedToId,
+    createdById: deal.createdById,
+  };
 }
 
 export default new DealService();

@@ -25,6 +25,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { Location, LocationType } from "../../hooks/use-locations";
 import {
   CreateLocationSchema,
@@ -51,6 +56,10 @@ interface LocationFormProps {
     type?: LocationType;
     isDefaultWarehouse?: boolean;
   };
+  /** When true, disables the Add trigger (e.g. when plan limit reached). */
+  addDisabled?: boolean;
+  /** Tooltip text when add trigger is disabled. */
+  addDisabledTooltip?: string;
 }
 
 const formDefaults: CreateLocationInput = {
@@ -69,6 +78,8 @@ export function LocationForm({
   isLoading,
   inline = false,
   defaultValues,
+  addDisabled = false,
+  addDisabledTooltip,
 }: LocationFormProps) {
   const form = useForm<CreateLocationInput>({
     resolver: zodResolver(CreateLocationSchema),
@@ -248,15 +259,30 @@ export function LocationForm({
     return <div className="max-w-lg">{formContent}</div>;
   }
 
+  const triggerButton = (
+    <Button disabled={addDisabled}>
+      <Plus className="mr-2 h-4 w-4" />
+      Add Location
+    </Button>
+  );
+
+  const trigger = <DialogTrigger asChild>{triggerButton}</DialogTrigger>;
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Add Location
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-[425px]">{formContent}</DialogContent>
+      {addDisabled && addDisabledTooltip ? (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="inline-block">{trigger}</span>
+          </TooltipTrigger>
+          <TooltipContent>{addDisabledTooltip}</TooltipContent>
+        </Tooltip>
+      ) : (
+        trigger
+      )}
+      <DialogContent className="sm:max-w-[425px]" allowDismiss={false}>
+        {formContent}
+      </DialogContent>
     </Dialog>
   );
 }

@@ -28,6 +28,8 @@ import {
   CreateSaleSchema,
   PreviewSaleSchema,
   AddPaymentSchema,
+  DeleteSaleSchema,
+  EditSaleSchema,
   GetAllSalesQuerySchema,
   GetMySalesQuerySchema,
   GetSalesSummaryQuerySchema,
@@ -76,10 +78,13 @@ class SaleController {
       const tenantId = req.user!.tenantId;
       const userId = req.user!.id;
 
+      const userRole =
+        (req as { user?: { role?: string } }).user?.role ?? "user";
       const sale = await saleService.createSale(
         {
           tenantId,
           userId,
+          userRole,
           ip:
             (req as { ip?: string }).ip ??
             (req.socket as { remoteAddress?: string })?.remoteAddress,
@@ -113,6 +118,68 @@ class SaleController {
         });
       }
       return handleServiceError(req, res, error, "Create sale error");
+    }
+  };
+
+  deleteSale = async (req: Request, res: Response) => {
+    try {
+      const saleId = getParam(req, "id");
+      const userId = req.user!.id;
+      const body = DeleteSaleSchema.parse(req.body ?? {});
+      const deleted = await saleService.deleteSale(
+        saleId,
+        userId,
+        body.deleteReason ?? undefined,
+      );
+      return res.status(200).json({
+        message: "Sale deleted successfully",
+        sale: deleted,
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          message: error.errors[0]?.message ?? "Validation error",
+        });
+      }
+      return handleServiceError(req, res, error, "Delete sale error");
+    }
+  };
+
+  editSale = async (req: Request, res: Response) => {
+    try {
+      const saleId = getParam(req, "id");
+      const userId = req.user!.id;
+      const body = EditSaleSchema.parse(req.body);
+      const payments = body.payments as
+        | Array<{
+            method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+            amount: number;
+          }>
+        | undefined;
+      const userRole =
+        (req as { user?: { role?: string } }).user?.role ?? "user";
+      const sale = await saleService.editSale(
+        saleId,
+        userId,
+        {
+          items: body.items as SaleItemInput[],
+          notes: body.notes,
+          payments,
+          editReason: body.editReason ?? undefined,
+        },
+        userRole,
+      );
+      return res.status(200).json({
+        message: "Sale updated successfully",
+        sale,
+      });
+    } catch (error) {
+      if (error instanceof ZodError) {
+        return res.status(400).json({
+          message: error.errors[0]?.message ?? "Validation error",
+        });
+      }
+      return handleServiceError(req, res, error, "Edit sale error");
     }
   };
 

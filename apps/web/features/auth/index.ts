@@ -1,4 +1,5 @@
 export { LoginForm } from "./components/LoginForm";
+export { ForgotPasswordPage } from "./components/ForgotPasswordPage";
 export { SlugEntryForm } from "./components/SlugEntryForm";
 export { useAuth, useIsAuthenticated, useCurrentUser } from "./hooks/use-auth";
 export { authKeys } from "./hooks/use-auth";

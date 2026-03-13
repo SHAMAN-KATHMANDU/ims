@@ -7,6 +7,8 @@ const SESSION_KEY_PREFIX = "scroll-restore:";
 /**
  * Persists and restores scroll position of an overflow container across page refreshes.
  * Uses sessionStorage so positions are cleared when the tab closes.
+ * Uses MutationObserver to wait for sidebar/nav items to render before restoring,
+ * so the scroll position is applied after content is available.
  */
 export function useScrollRestoration(
   ref: React.RefObject<HTMLElement | null>,
@@ -26,19 +28,48 @@ export function useScrollRestoration(
     const el = ref.current;
     if (!el) return;
 
+    let observer: MutationObserver | null = null;
+    let fallback: ReturnType<typeof setTimeout> | undefined;
+
     const stored = sessionStorage.getItem(key);
     if (stored) {
       const scrollTop = parseInt(stored, 10);
       if (!Number.isNaN(scrollTop) && scrollTop > 0) {
-        isRestoringRef.current = true;
-        requestAnimationFrame(() => {
+        const restore = () => {
+          if (isRestoringRef.current) return;
+          isRestoringRef.current = true;
           requestAnimationFrame(() => {
-            el.scrollTop = scrollTop;
-            setTimeout(() => {
-              isRestoringRef.current = false;
-            }, 50);
+            requestAnimationFrame(() => {
+              el.scrollTop = scrollTop;
+              setTimeout(() => {
+                isRestoringRef.current = false;
+              }, 50);
+            });
           });
+        };
+
+        // Wait for sidebar items to render via MutationObserver before restoring.
+        // This avoids restoring too early when the scroll container is empty.
+        observer = new MutationObserver(() => {
+          restore();
+          observer?.disconnect();
+          observer = null;
+          if (fallback) clearTimeout(fallback);
         });
+        observer.observe(el, {
+          childList: true,
+          subtree: true,
+        });
+
+        // Fallback: restore after a short delay in case no mutation fires
+        // (e.g. content already present or server-rendered).
+        fallback = setTimeout(() => {
+          if (observer) {
+            observer.disconnect();
+            restore();
+          }
+          fallback = undefined;
+        }, 300);
       }
     }
 
@@ -56,6 +87,8 @@ export function useScrollRestoration(
     window.addEventListener("beforeunload", beforeUnload);
 
     return () => {
+      observer?.disconnect();
+      if (fallback) clearTimeout(fallback);
       el.removeEventListener("scroll", save);
       window.removeEventListener("beforeunload", beforeUnload);
       if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);

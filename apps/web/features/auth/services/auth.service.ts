@@ -6,6 +6,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
+import { fetchCurrentUser as fetchCurrentUserApi } from "@/lib/auth-api";
 import type { AuthUser, TenantInfo } from "@/utils/auth";
 
 export interface LoginResponse {
@@ -14,7 +15,7 @@ export interface LoginResponse {
   tenant: TenantInfo;
 }
 
-interface CurrentUserResponse {
+export interface CurrentUserResponse {
   user: AuthUser;
   tenant: TenantInfo;
 }
@@ -51,8 +52,7 @@ export async function login(
 
 export async function getCurrentUser(): Promise<CurrentUserResponse | null> {
   try {
-    const response = await api.get<CurrentUserResponse>("/auth/me");
-    return response.data;
+    return await fetchCurrentUserApi();
   } catch {
     return null;
   }
@@ -63,5 +63,37 @@ export async function logout(): Promise<void> {
     await api.post("/auth/logout");
   } catch {
     // Ignore errors on logout - we'll clear local state anyway
+  }
+}
+
+export interface ForgotPasswordResponse {
+  message: string;
+}
+
+/** Fetch org name by slug (public). Returns org name or null if not found. */
+export async function getOrgNameBySlug(slug: string): Promise<string | null> {
+  try {
+    const response = await api.get<{ name: string }>("/auth/org-name", {
+      params: { slug: slug.trim().toLowerCase() },
+    });
+    return response.data?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function requestPasswordReset(
+  username: string,
+  tenantSlug: string,
+): Promise<ForgotPasswordResponse> {
+  try {
+    const response = await api.post<ForgotPasswordResponse>(
+      "/auth/forgot-password",
+      { username: username.trim().toLowerCase() },
+      { headers: { "X-Tenant-Slug": tenantSlug } },
+    );
+    return response.data;
+  } catch (error: unknown) {
+    handleApiError(error, "request password reset");
   }
 }

@@ -15,6 +15,15 @@ export class AuthRepository {
     });
   }
 
+  /** Fetch only org name by slug (public, for login page display). */
+  async findOrgNameBySlug(slug: string): Promise<{ name: string } | null> {
+    const tenant = await basePrisma.tenant.findUnique({
+      where: { slug },
+      select: { name: true },
+    });
+    return tenant ? { name: tenant.name } : null;
+  }
+
   async findUserByTenantAndUsername(tenantId: string, username: string) {
     return basePrisma.user.findFirst({
       where: { tenantId, username },
@@ -100,6 +109,20 @@ export class AuthRepository {
         role: true,
         createdAt: true,
         updatedAt: true,
+      },
+    });
+  }
+
+  async createPasswordResetRequest(data: {
+    tenantId: string;
+    requestedById: string;
+    escalated: boolean;
+  }) {
+    return basePrisma.passwordResetRequest.create({
+      data: {
+        tenantId: data.tenantId,
+        requestedById: data.requestedById,
+        ...(data.escalated ? { status: "ESCALATED" as const } : {}),
       },
     });
   }

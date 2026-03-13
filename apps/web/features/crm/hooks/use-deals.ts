@@ -92,10 +92,13 @@ export function useUpdateDeal() {
   return useMutation({
     mutationFn: ({ id, data }: { id: string; data: UpdateDealData }) =>
       updateDeal(id, data),
-    onSuccess: (_, { id }) => {
+    onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: dealKeys.kanban() });
-      qc.invalidateQueries({ queryKey: dealKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: dealKeys.detail(variables.id) });
+      if (result?.deal?.id && result.deal.id !== variables.id) {
+        qc.invalidateQueries({ queryKey: dealKeys.detail(result.deal.id) });
+      }
     },
   });
 }
@@ -137,11 +140,13 @@ export function useUpdateDealStage() {
     onError: (_err, _vars, ctx) => {
       if (ctx?.prev) qc.setQueryData(ctx.queryKey, ctx.prev);
     },
-    onSettled: (_data, _error, variables) => {
+    onSettled: (data, _error, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
       if (variables?.id)
         qc.invalidateQueries({ queryKey: dealKeys.detail(variables.id) });
+      if (data?.deal?.id && data.deal.id !== variables?.id)
+        qc.invalidateQueries({ queryKey: dealKeys.detail(data.deal.id) });
     },
   });
 }
@@ -172,8 +177,7 @@ export function useAddDealLineItem(dealId: string) {
 export function useRemoveDealLineItem(dealId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (lineItemId: string) =>
-      removeDealLineItem(dealId, lineItemId),
+    mutationFn: (lineItemId: string) => removeDealLineItem(dealId, lineItemId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
@@ -185,8 +189,7 @@ export function useRemoveDealLineItem(dealId: string) {
 export function useConvertDealToSale(dealId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (locationId: string) =>
-      convertDealToSale(dealId, locationId),
+    mutationFn: (locationId: string) => convertDealToSale(dealId, locationId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });

@@ -25,7 +25,6 @@ export async function getTrashItems(
     return data;
   } catch (error) {
     handleApiError(error, "fetch trash items");
-    throw error;
   }
 }
 
@@ -37,7 +36,6 @@ export async function restoreTrashItem(
     await api.post(`/platform/trash/${entityType.toLowerCase()}/${id}/restore`);
   } catch (error) {
     handleApiError(error, `restore ${entityType}`);
-    throw error;
   }
 }
 
@@ -49,6 +47,5 @@ export async function permanentlyDeleteTrashItem(
     await api.delete(`/platform/trash/${entityType.toLowerCase()}/${id}`);
   } catch (error) {
     handleApiError(error, `permanently delete ${entityType}`);
-    throw error;
   }
 }

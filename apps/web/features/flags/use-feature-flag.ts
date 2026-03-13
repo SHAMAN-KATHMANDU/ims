@@ -37,9 +37,11 @@ export function usePlanFeatures(): Record<Feature, boolean> {
   return useMemo(() => {
     const result = {} as Record<Feature, boolean>;
     const allEnabled = userRole === "platformAdmin";
-    const currentPlan = (plan ?? "STARTER") as PlanTier;
+    // When plan is null (e.g. before hydrate), be conservative: hide gated features.
+    // Platform admins bypass plan checks.
     for (const f of ALL_FEATURES) {
-      result[f] = allEnabled || isFeatureAvailable(f, currentPlan);
+      result[f] =
+        allEnabled || (plan != null && isFeatureAvailable(f, plan as PlanTier));
     }
     return result;
   }, [userRole, plan]);

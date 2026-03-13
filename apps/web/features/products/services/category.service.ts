@@ -5,8 +5,9 @@
  * Uses the shared axios instance from lib/axios.
  */
 
+import { AxiosError } from "axios";
 import api from "@/lib/axios";
-import { handleApiError } from "@/lib/api-error";
+import { getApiErrorMessage, handleApiError } from "@/lib/api-error";
 import {
   type PaginationMeta,
   DEFAULT_PAGE,
@@ -175,6 +176,26 @@ export async function createCategory(
       restored: response.data.restored,
     };
   } catch (error) {
+    if (
+      error instanceof AxiosError &&
+      error.response?.status === 409 &&
+      (
+        error.response.data as {
+          existingCategory?: { id: string; name: string };
+        }
+      )?.existingCategory
+    ) {
+      const existingCategory = (
+        error.response.data as {
+          existingCategory: { id: string; name: string };
+        }
+      ).existingCategory;
+      const e = new Error(
+        getApiErrorMessage(error, "create category"),
+      ) as Error & { existingCategory?: { id: string; name: string } };
+      e.existingCategory = existingCategory;
+      throw e;
+    }
     handleApiError(error, "create category");
   }
 }
@@ -197,6 +218,26 @@ export async function updateCategory(
     const response = await api.put<CategoryResponse>(`/categories/${id}`, data);
     return response.data.category;
   } catch (error) {
+    if (
+      error instanceof AxiosError &&
+      error.response?.status === 409 &&
+      (
+        error.response.data as {
+          existingCategory?: { id: string; name: string };
+        }
+      )?.existingCategory
+    ) {
+      const existingCategory = (
+        error.response.data as {
+          existingCategory: { id: string; name: string };
+        }
+      ).existingCategory;
+      const e = new Error(
+        getApiErrorMessage(error, `update category "${id}"`),
+      ) as Error & { existingCategory?: { id: string; name: string } };
+      e.existingCategory = existingCategory;
+      throw e;
+    }
     handleApiError(error, `update category "${id}"`);
   }
 }

@@ -44,19 +44,40 @@ function SheetOverlay({
   );
 }
 
+type SheetContentProps = React.ComponentProps<typeof SheetPrimitive.Content>;
+type InteractOutsideHandler = NonNullable<
+  SheetContentProps["onInteractOutside"]
+>;
+type EscapeKeyHandler = NonNullable<SheetContentProps["onEscapeKeyDown"]>;
+
 function SheetContent({
   className,
   children,
   side = "right",
+  allowDismiss = true,
+  onInteractOutside,
+  onEscapeKeyDown,
   ...props
-}: React.ComponentProps<typeof SheetPrimitive.Content> & {
+}: SheetContentProps & {
   side?: "top" | "right" | "bottom" | "left";
+  /** When false, prevents closing on outside click or Escape to avoid form data loss */
+  allowDismiss?: boolean;
 }) {
+  const handleInteractOutside: InteractOutsideHandler = (e) => {
+    if (!allowDismiss) e.preventDefault();
+    onInteractOutside?.(e);
+  };
+  const handleEscapeKeyDown: EscapeKeyHandler = (e) => {
+    if (!allowDismiss) e.preventDefault();
+    onEscapeKeyDown?.(e);
+  };
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         data-slot="sheet-content"
+        onInteractOutside={handleInteractOutside}
+        onEscapeKeyDown={handleEscapeKeyDown}
         className={cn(
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500",
           side === "right" &&

@@ -446,7 +446,7 @@ export function AttributeTypesPage() {
 
       {/* Type create/edit dialog */}
       <Dialog open={typeDialogOpen} onOpenChange={setTypeDialogOpen}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>
               {editingType ? "Edit attribute type" : "New attribute type"}
@@ -498,7 +498,7 @@ export function AttributeTypesPage() {
 
       {/* Value create/edit dialog */}
       <Dialog open={valueDialogOpen} onOpenChange={setValueDialogOpen}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>
               {editingValue ? "Edit value" : "Add value"}

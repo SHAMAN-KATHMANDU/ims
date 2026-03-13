@@ -53,6 +53,11 @@ class ErrorReportController {
 
   updateStatus = async (req: Request, res: Response) => {
     try {
+      if (req.user?.role !== "platformAdmin") {
+        return res.status(403).json({
+          message: "Only platform administrators can change error report status",
+        });
+      }
       const id = parseId(req);
       const body = UpdateErrorReportStatusSchema.parse(req.body);
       const report = await this.service.updateStatus(id, body.status);

@@ -42,6 +42,7 @@ export { CompaniesPage } from "./components/companies/CompaniesPage";
 export { TasksPage } from "./components/tasks/TasksPage";
 export { NotificationsPage } from "./components/notifications/NotificationsPage";
 export { default as CrmSettingsPage } from "./components/settings/CrmSettingsPage";
+export { default as WorkflowEditorPage } from "./components/workflows/WorkflowEditorPage";
 export { CrmReportsPage } from "./components/reports/CrmReportsPage";
 export { ContactForm } from "./components/contacts/ContactForm";
 export { CompanyForm } from "./components/companies/CompanyForm";

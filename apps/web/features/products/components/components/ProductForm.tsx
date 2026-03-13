@@ -54,10 +54,16 @@ interface ProductFormProps {
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
   onShowError: (title: string, message: string) => void;
   validateProduct: (values: ProductFormValues) => Record<string, string> | null;
+  /** When true, MRP < cost price was explicitly accepted by the user. */
+  mrpBelowCpAccepted?: boolean;
+  /** Called when user accepts or resets MRP-below-CP. */
+  onMrpBelowCpAcceptedChange?: (accepted: boolean) => void;
   /** When true, render form only (no Dialog/trigger). For use on dedicated pages (e.g. mobile). */
   inline?: boolean;
   /** When false, do not render the Dialog trigger (parent opens dialog). Default true. */
   renderTrigger?: boolean;
+  /** When true, disables the Add trigger (e.g. when plan limit reached). */
+  addDisabled?: boolean;
 }
 
 export function ProductForm({
@@ -84,8 +90,11 @@ export function ProductForm({
   onSetPrimaryPhoto,
   onShowError,
   validateProduct,
+  mrpBelowCpAccepted,
+  onMrpBelowCpAcceptedChange,
   inline = false,
   renderTrigger = true,
+  addDisabled = false,
 }: ProductFormProps) {
   const [dialogTab, setDialogTab] = useState("general");
 
@@ -105,10 +114,60 @@ export function ProductForm({
   const handleNext = (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
-    if (canGoNext) {
-      const nextTab = tabs[currentTabIndex + 1];
-      if (nextTab) setDialogTab(nextTab);
+    if (!canGoNext) return;
+
+    const values = form.values;
+    let validationErrors: Record<string, string> | null = null;
+
+    if (dialogTab === "general") {
+      const errs = validateProduct?.(values);
+      if (errs) {
+        const generalKeys = [
+          "name",
+          "categoryId",
+          "imsCode",
+          "costPrice",
+          "mrp",
+        ];
+        const hasGeneralError = generalKeys.some((k) => errs![k]);
+        if (hasGeneralError) validationErrors = errs;
+      }
+    } else if (dialogTab === "dimensions") {
+      const dimKeys = ["length", "breadth", "height", "weight"] as const;
+      const dimErrors: Record<string, string> = {};
+      for (const key of dimKeys) {
+        const val = values[key];
+        if (val !== undefined && val !== null && String(val).trim() !== "") {
+          const num = Number(val);
+          if (isNaN(num) || num < 0) {
+            dimErrors[key] =
+              `${key.charAt(0).toUpperCase() + key.slice(1)} must be a valid non-negative number`;
+          }
+        }
+      }
+      if (Object.keys(dimErrors).length > 0) validationErrors = dimErrors;
+    } else if (dialogTab === "variations") {
+      const errs = validateProduct?.(values);
+      if (errs) {
+        const hasVariationError =
+          errs._form ||
+          Object.keys(errs).some((k) => k.startsWith("variation_"));
+        if (hasVariationError) validationErrors = errs;
+      }
     }
+
+    if (validationErrors) {
+      const errorMessages = Object.values(validationErrors).filter(Boolean);
+      onShowError(
+        "Validation Error",
+        errorMessages.slice(0, 3).join(". ") +
+          (errorMessages.length > 3 ? "..." : ""),
+      );
+      return;
+    }
+
+    const nextTab = tabs[currentTabIndex + 1];
+    if (nextTab) setDialogTab(nextTab);
   };
 
   const handlePrev = (e?: React.MouseEvent<HTMLButtonElement>) => {
@@ -213,6 +272,8 @@ export function ProductForm({
               isCreating={!editingProduct}
               defaultLocationId={defaultLocationId}
               onDefaultLocationChange={onDefaultLocationChange}
+              mrpBelowCpAccepted={mrpBelowCpAccepted}
+              onMrpBelowCpAcceptedChange={onMrpBelowCpAcceptedChange}
             />
           </TabsContent>
 
@@ -294,12 +355,13 @@ export function ProductForm({
               onReset();
             }}
             className="gap-2"
+            disabled={addDisabled}
           >
             <Plus className="h-4 w-4" /> Add Product
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-h-[90vh] max-w-4xl">
+      <DialogContent className="max-h-[90vh] max-w-4xl" allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>
             {editingProduct ? "Edit Product" : "Add Product"}

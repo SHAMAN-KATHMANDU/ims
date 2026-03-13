@@ -582,7 +582,7 @@ export function EditTenantPage() {
         open={!!resetPasswordUser}
         onOpenChange={(open) => !open && handleCloseResetPassword()}
       >
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Reset password</DialogTitle>
             <DialogDescription>
@@ -642,7 +642,7 @@ export function EditTenantPage() {
         open={createUserOpen}
         onOpenChange={(open) => !open && handleCloseCreateUser()}
       >
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Create user</DialogTitle>
             <DialogDescription>

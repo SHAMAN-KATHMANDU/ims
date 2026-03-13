@@ -389,9 +389,7 @@ export async function createProduct(data: CreateProductData): Promise<Product> {
   if (typeof data.mrp !== "number" || data.mrp < 0) {
     throw new Error("Valid MRP is required");
   }
-  if (data.mrp < data.costPrice) {
-    throw new Error("MRP cannot be less than cost price");
-  }
+  // MRP < cost price is allowed when user explicitly accepts (handled in ProductForm)
 
   try {
     const response = await api.post<ProductResponse>("/products", data);
@@ -863,7 +861,6 @@ export async function downloadProducts(
     downloadBlobFromResponse(response, defaultFilename);
   } catch (error) {
     handleApiError(error, "download products");
-    throw error;
   }
 }
 
@@ -878,6 +875,5 @@ export async function downloadBulkUploadTemplate(): Promise<void> {
     downloadBlobFromResponse(response, "products_bulk_upload_template.xlsx");
   } catch (error) {
     handleApiError(error, "download template");
-    throw error;
   }
 }

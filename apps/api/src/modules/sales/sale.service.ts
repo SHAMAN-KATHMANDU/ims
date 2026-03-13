@@ -8,9 +8,7 @@ import {
   findInventory,
   findPromoByCodeWithProducts,
   findLocationById,
-  findMemberByPhone,
   findMemberById,
-  createMember,
   findContactForSale,
   findPromoByCode,
   incrementPromoUsage,
@@ -31,8 +29,11 @@ import {
   findSalesForExportByFilter,
   findSalesForDailyChartByFilter,
   updateSaleContactId,
+  softDeleteSale,
+  createSaleRevision,
 } from "./sale.repository";
 import contactRepository from "@/modules/contacts/contact.repository";
+import memberRepository from "@/modules/members/member.repository";
 
 // ── Shared types ──────────────────────────────────────────────────────────
 
@@ -42,6 +43,9 @@ export interface SaleItemInput {
   quantity: number;
   discountId?: string | null;
   promoCode?: string;
+  manualDiscountPercent?: number;
+  manualDiscountAmount?: number;
+  discountReason?: string;
 }
 
 export interface ProcessedItem {
@@ -54,6 +58,10 @@ export interface ProcessedItem {
   discountAmount: number;
   lineTotal: number;
   promoDiscount: number;
+  manualDiscountPercent?: number | null;
+  manualDiscountAmount?: number | null;
+  discountReason?: string | null;
+  discountApprovedById?: string | null;
 }
 
 export interface CalculationResult {
@@ -81,6 +89,9 @@ export class SaleCalculationError extends Error {
 
 // ── Core calculation ──────────────────────────────────────────────────────
 
+const MANUAL_DISCOUNT_AUTH_THRESHOLD_PERCENT = 20;
+const AUTHORIZED_ROLES = ["admin", "superAdmin", "platformAdmin"];
+
 /**
  * Validates items, resolves discounts & promo codes, and computes totals.
  *
@@ -89,12 +100,16 @@ export class SaleCalculationError extends Error {
  *
  * Throws `SaleCalculationError` on validation failures (bad item, missing
  * stock, unknown variation, etc.).
+ *
+ * When manual discount is used, opts.userId and opts.userRole must be
+ * provided for create/edit. For preview, opts may be omitted.
  */
 export async function calculateSaleItems(
   items: SaleItemInput[],
   locationId: string,
   saleType: "GENERAL" | "MEMBER",
   tenantId: string,
+  opts?: { userId: string; userRole: string },
 ): Promise<CalculationResult> {
   const processedItems: ProcessedItem[] = [];
   let subtotal = 0;
@@ -170,111 +185,174 @@ export async function calculateSaleItems(
     const itemSubtotal = unitPrice * item.quantity;
     let discountPercent = 0;
     let discountAmount = 0;
+    let manualDiscountPercent: number | null = null;
+    let manualDiscountAmount: number | null = null;
+    let discountReason: string | null = null;
+    let discountApprovedById: string | null = null;
 
-    type DiscountRow = (typeof variation.product.discounts)[number] & {
-      discountType: { name: string };
-    };
-    const activeDiscounts = variation.product.discounts as DiscountRow[];
-    let baseDiscount: DiscountRow | null = null;
+    // ── Manual discount (enterprise) — overrides product discount when set ──
+    const hasManualPercent =
+      item.manualDiscountPercent != null && item.manualDiscountPercent > 0;
+    const hasManualAmount =
+      item.manualDiscountAmount != null && item.manualDiscountAmount > 0;
+    if (hasManualPercent || hasManualAmount) {
+      if (
+        !item.discountReason ||
+        typeof item.discountReason !== "string" ||
+        item.discountReason.trim().length === 0
+      ) {
+        throw new SaleCalculationError(
+          400,
+          "Discount reason is required when applying manual discount",
+        );
+      }
+      discountReason = item.discountReason.trim();
 
-    if (item.discountId && item.discountId !== "none") {
-      baseDiscount =
-        activeDiscounts?.find((d) => d.id === item.discountId) ?? null;
-    } else if (!item.discountId) {
-      if (activeDiscounts && activeDiscounts.length > 0) {
-        const eligible = activeDiscounts.filter((d) => {
-          const tn = d.discountType.name.toLowerCase();
-          if (saleType === "MEMBER") {
-            return tn.includes("member") || tn.includes("non-member");
-          }
-          return tn.includes("non-member") || tn.includes("wholesale");
-        });
-        if (eligible.length > 0) {
-          eligible.sort((a, b) => {
-            const aS = a.discountType.name.toLowerCase() === "special" ? 1 : 0;
-            const bS = b.discountType.name.toLowerCase() === "special" ? 1 : 0;
-            if (aS !== bS) return bS - aS;
-            const aV =
-              a.valueType === "FLAT"
-                ? Number(a.value)
-                : (Number(a.value) / 100) * itemSubtotal;
-            const bV =
-              b.valueType === "FLAT"
-                ? Number(b.value)
-                : (Number(b.value) / 100) * itemSubtotal;
-            return bV - aV;
-          });
-          baseDiscount = eligible[0];
+      let manualEffectivePercent = 0;
+      if (hasManualAmount) {
+        const amt = Math.min(item.manualDiscountAmount!, itemSubtotal);
+        discountAmount = amt;
+        manualDiscountAmount = amt;
+        manualEffectivePercent =
+          itemSubtotal > 0 ? (amt / itemSubtotal) * 100 : 0;
+      } else {
+        discountPercent = Math.min(item.manualDiscountPercent!, 100);
+        manualDiscountPercent = discountPercent;
+        manualEffectivePercent = discountPercent;
+      }
+
+      // Authorization threshold: manual discount > 20% requires admin/superadmin/platformAdmin
+      if (
+        manualEffectivePercent > MANUAL_DISCOUNT_AUTH_THRESHOLD_PERCENT &&
+        opts
+      ) {
+        if (!AUTHORIZED_ROLES.includes(opts.userRole)) {
+          throw new SaleCalculationError(
+            403,
+            `Manual discount above ${MANUAL_DISCOUNT_AUTH_THRESHOLD_PERCENT}% requires admin approval`,
+          );
         }
       }
-    }
-
-    if (baseDiscount) {
-      const val =
-        Number(baseDiscount.value) || Number(baseDiscount.discountPercentage);
-      if (baseDiscount.valueType === "FLAT") {
-        discountAmount += val;
-      } else {
-        discountPercent += val;
+      if (opts?.userId) {
+        discountApprovedById = opts.userId;
       }
+      // Manual discount: skip product discount and promo for this line
     }
-
-    // ── Promo code ───────────────────────────────────────────────────
 
     let itemPromoDiscount = 0;
+    if (!hasManualPercent && !hasManualAmount) {
+      type DiscountRow = (typeof variation.product.discounts)[number] & {
+        discountType: { name: string };
+      };
+      const activeDiscounts = variation.product.discounts as DiscountRow[];
+      let baseDiscount: DiscountRow | null = null;
 
-    if (item.promoCode) {
-      const promo = await findPromoByCodeWithProducts(tenantId, item.promoCode);
-
-      if (promo && promo.isActive) {
-        const now = new Date();
-        const withinDates =
-          (!promo.validFrom || promo.validFrom <= now) &&
-          (!promo.validTo || promo.validTo >= now) &&
-          (!promo.usageLimit || promo.usageCount < promo.usageLimit);
-
-        if (withinDates) {
-          const isProductEligible =
-            promo.products.length === 0 ||
-            promo.products.some((pp) => pp.productId === variation.productId);
-
-          let isCustomerEligible = false;
-          if (promo.eligibility === "ALL") isCustomerEligible = true;
-          else if (promo.eligibility === "MEMBER")
-            isCustomerEligible = saleType === "MEMBER";
-          else if (promo.eligibility === "NON_MEMBER")
-            isCustomerEligible = saleType === "GENERAL";
-
-          if (isProductEligible && isCustomerEligible) {
-            const baseAfterProductDiscount =
-              itemSubtotal -
-              (discountAmount + itemSubtotal * (discountPercent / 100));
-
-            let promoAmt = 0;
-            if (promo.valueType === "FLAT") {
-              promoAmt = Number(promo.value);
-            } else {
-              promoAmt = baseAfterProductDiscount * (Number(promo.value) / 100);
+      if (item.discountId && item.discountId !== "none") {
+        baseDiscount =
+          activeDiscounts?.find((d) => d.id === item.discountId) ?? null;
+      } else if (!item.discountId) {
+        if (activeDiscounts && activeDiscounts.length > 0) {
+          const eligible = activeDiscounts.filter((d) => {
+            const tn = d.discountType.name.toLowerCase();
+            if (saleType === "MEMBER") {
+              return tn.includes("member") || tn.includes("non-member");
             }
-
-            if (promo.overrideDiscounts) {
-              discountAmount = promoAmt;
-              discountPercent = 0;
-            } else if (promo.allowStacking) {
-              discountAmount += promoAmt;
-            } else {
-              const baseTotalDiscount =
-                discountAmount + itemSubtotal * (discountPercent / 100);
-              if (promoAmt > baseTotalDiscount) {
-                discountAmount = promoAmt;
-                discountPercent = 0;
-              }
-            }
-
-            itemPromoDiscount = Math.min(promoAmt, itemSubtotal);
+            return tn.includes("non-member") || tn.includes("wholesale");
+          });
+          if (eligible.length > 0) {
+            eligible.sort((a, b) => {
+              const aS =
+                a.discountType.name.toLowerCase() === "special" ? 1 : 0;
+              const bS =
+                b.discountType.name.toLowerCase() === "special" ? 1 : 0;
+              if (aS !== bS) return bS - aS;
+              const aV =
+                a.valueType === "FLAT"
+                  ? Number(a.value)
+                  : (Number(a.value) / 100) * itemSubtotal;
+              const bV =
+                b.valueType === "FLAT"
+                  ? Number(b.value)
+                  : (Number(b.value) / 100) * itemSubtotal;
+              return bV - aV;
+            });
+            baseDiscount = eligible[0];
           }
         }
       }
+
+      if (baseDiscount) {
+        const val =
+          Number(baseDiscount.value) || Number(baseDiscount.discountPercentage);
+        if (baseDiscount.valueType === "FLAT") {
+          discountAmount += val;
+        } else {
+          discountPercent += val;
+        }
+      }
+
+      // ── Promo code (only when not using manual discount) ────────────────
+
+      if (item.promoCode) {
+        const promo = await findPromoByCodeWithProducts(
+          tenantId,
+          item.promoCode,
+        );
+
+        if (promo && promo.isActive) {
+          const now = new Date();
+          const withinDates =
+            (!promo.validFrom || promo.validFrom <= now) &&
+            (!promo.validTo || promo.validTo >= now) &&
+            (!promo.usageLimit || promo.usageCount < promo.usageLimit);
+
+          if (withinDates) {
+            const isProductEligible =
+              promo.products.length === 0 ||
+              promo.products.some((pp) => pp.productId === variation.productId);
+
+            let isCustomerEligible = false;
+            if (promo.eligibility === "ALL") isCustomerEligible = true;
+            else if (promo.eligibility === "MEMBER")
+              isCustomerEligible = saleType === "MEMBER";
+            else if (promo.eligibility === "NON_MEMBER")
+              isCustomerEligible = saleType === "GENERAL";
+
+            if (isProductEligible && isCustomerEligible) {
+              const baseAfterProductDiscount =
+                itemSubtotal -
+                (discountAmount + itemSubtotal * (discountPercent / 100));
+
+              let promoAmt = 0;
+              if (promo.valueType === "FLAT") {
+                promoAmt = Number(promo.value);
+              } else {
+                promoAmt =
+                  baseAfterProductDiscount * (Number(promo.value) / 100);
+              }
+
+              if (promo.overrideDiscounts) {
+                discountAmount = promoAmt;
+                discountPercent = 0;
+              } else if (promo.allowStacking) {
+                discountAmount += promoAmt;
+              } else {
+                const baseTotalDiscount =
+                  discountAmount + itemSubtotal * (discountPercent / 100);
+                if (promoAmt > baseTotalDiscount) {
+                  discountAmount = promoAmt;
+                  discountPercent = 0;
+                }
+              }
+
+              itemPromoDiscount = Math.min(promoAmt, itemSubtotal);
+            }
+          }
+        }
+      }
+
+      // For non-manual path, we need to set effective discount for clamp below
+      // (already set above via discountPercent/discountAmount)
     }
 
     // ── Clamp & accumulate ───────────────────────────────────────────
@@ -300,6 +378,10 @@ export async function calculateSaleItems(
       discountAmount: effectiveDiscount,
       lineTotal,
       promoDiscount: itemPromoDiscount,
+      manualDiscountPercent: manualDiscountPercent ?? undefined,
+      manualDiscountAmount: manualDiscountAmount ?? undefined,
+      discountReason: discountReason ?? undefined,
+      discountApprovedById: discountApprovedById ?? undefined,
     });
   }
 
@@ -323,9 +405,19 @@ function generateSaleCode(): string {
   return `SL-${dateStr}-${random}`;
 }
 
+/** Derive sale code for an edit: base code (strip -E{n}) + -E{parent.revisionNo}. */
+function saleCodeForRevision(
+  parentSaleCode: string,
+  parentRevisionNo: number,
+): string {
+  const base = parentSaleCode.replace(/-E\d+$/i, "");
+  return `${base}-E${parentRevisionNo}`;
+}
+
 export interface CreateSaleContext {
   tenantId: string;
   userId: string;
+  userRole?: string;
   ip?: string;
   userAgent?: string;
 }
@@ -376,7 +468,9 @@ export async function createSale(
     );
   }
 
-  let member: Awaited<ReturnType<typeof findMemberByPhone>> = null;
+  let member: Awaited<
+    ReturnType<typeof memberRepository.findOrCreateByPhone>
+  > | null = null;
   let saleType: "GENERAL" | "MEMBER" = "GENERAL";
   let resolvedContactId: string | null = null;
 
@@ -396,18 +490,15 @@ export async function createSale(
       const { parseAndValidatePhone } = await import("@/utils/phone");
       const parsed = parseAndValidatePhone(contact.phone);
       if (parsed.valid) {
-        member = await findMemberByPhone((parsed as { e164: string }).e164);
-        if (!member) {
-          const name = [contact.firstName, contact.lastName]
-            .filter(Boolean)
-            .join(" ")
-            .trim();
-          member = await createMember({
-            tenantId: ctx.tenantId,
-            phone: (parsed as { e164: string }).e164,
-            name: name || null,
-          });
-        }
+        const name = [contact.firstName, contact.lastName]
+          .filter(Boolean)
+          .join(" ")
+          .trim();
+        member = await memberRepository.findOrCreateByPhone(
+          ctx.tenantId,
+          (parsed as { e164: string }).e164,
+          name || null,
+        );
         if (member.isActive) saleType = "MEMBER";
       }
     }
@@ -420,14 +511,11 @@ export async function createSale(
       const err = parsed as { valid: false; message: string };
       throw Object.assign(new Error(err.message), { statusCode: 400 });
     }
-    member = await findMemberByPhone(parsed.e164);
-    if (!member) {
-      member = await createMember({
-        tenantId: ctx.tenantId,
-        phone: parsed.e164,
-        name: dto.memberName?.trim() || null,
-      });
-    }
+    member = await memberRepository.findOrCreateByPhone(
+      ctx.tenantId,
+      parsed.e164,
+      dto.memberName?.trim() || null,
+    );
     if (member.isActive) saleType = "MEMBER";
   }
 
@@ -441,7 +529,16 @@ export async function createSale(
   }
 
   const { processedItems, subtotal, totalDiscount, totalPromoDiscount, total } =
-    await calculateSaleItems(dto.items, dto.locationId, saleType, ctx.tenantId);
+    await calculateSaleItems(
+      dto.items,
+      dto.locationId,
+      saleType,
+      ctx.tenantId,
+      {
+        userId: ctx.userId,
+        userRole: ctx.userRole ?? "user",
+      },
+    );
 
   const promoCodesUsed = new Set<string>();
   for (const item of dto.items) {
@@ -496,6 +593,10 @@ export async function createSale(
       discountPercent: item.discountPercent,
       discountAmount: item.discountAmount,
       lineTotal: item.lineTotal,
+      manualDiscountPercent: item.manualDiscountPercent,
+      manualDiscountAmount: item.manualDiscountAmount,
+      discountReason: item.discountReason,
+      discountApprovedById: item.discountApprovedById,
     })),
     payments: dto.payments,
   });
@@ -516,12 +617,11 @@ export async function createSale(
   let finalSale = sale;
   if (!resolvedContactId && member) {
     try {
-      const newContact = await contactRepository.createFromSale(ctx.tenantId, {
-        phone: member.phone,
-        name: member.name,
-        memberId: member.id,
-        createdById: ctx.userId,
-      });
+      const newContact = await contactRepository.findOrCreateFromMember(
+        ctx.tenantId,
+        { id: member.id, phone: member.phone, name: member.name },
+        ctx.userId,
+      );
       await updateSaleContactId(sale.id, newContact.id);
       finalSale = { ...sale, contactId: newContact.id };
     } catch {
@@ -551,6 +651,136 @@ export async function createSale(
   return finalSale;
 }
 
+export async function deleteSale(
+  saleId: string,
+  userId: string,
+  deleteReason?: string | null,
+) {
+  const result = await softDeleteSale(saleId, userId, deleteReason ?? null);
+  if (!result) {
+    throw Object.assign(new Error("Sale not found or already deleted"), {
+      statusCode: 404,
+    });
+  }
+  return result;
+}
+
+export async function editSale(
+  saleId: string,
+  userId: string,
+  dto: {
+    items: SaleItemInput[];
+    notes?: string;
+    payments?: Array<{
+      method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+      amount: number;
+    }>;
+    editReason?: string | null;
+  },
+  userRole?: string,
+) {
+  const sale = await findSaleById(saleId);
+  if (!sale) {
+    throw Object.assign(new Error("Sale not found"), { statusCode: 404 });
+  }
+  if (sale.deletedAt) {
+    throw Object.assign(new Error("Cannot edit a deleted sale"), {
+      statusCode: 400,
+    });
+  }
+  if (!sale.isLatest) {
+    throw Object.assign(new Error("Cannot edit a superseded revision"), {
+      statusCode: 400,
+    });
+  }
+
+  const location = await findLocationById(sale.locationId);
+  if (!location?.isActive || location.type !== "SHOWROOM") {
+    throw Object.assign(new Error("Sale location is invalid or inactive"), {
+      statusCode: 400,
+    });
+  }
+
+  const { processedItems, subtotal, totalDiscount, totalPromoDiscount, total } =
+    await calculateSaleItems(
+      dto.items,
+      sale.locationId,
+      sale.type as "GENERAL" | "MEMBER",
+      sale.tenantId,
+      { userId, userRole: userRole ?? "user" },
+    );
+
+  const promoCodesUsed = new Set<string>();
+  for (const item of dto.items) {
+    const code = item.promoCode?.trim();
+    if (!code || promoCodesUsed.has(code)) continue;
+    promoCodesUsed.add(code);
+  }
+  const creditSale = sale.isCreditSale;
+  if (!creditSale && dto.payments && dto.payments.length > 0) {
+    const paymentSum =
+      Math.round(
+        dto.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) * 100,
+      ) / 100;
+    const totalNum = Number(total);
+    if (Math.abs(paymentSum - totalNum) > 0.01) {
+      throw Object.assign(
+        new Error(
+          `Payment total ${paymentSum} does not match sale total ${totalNum}`,
+        ),
+        { statusCode: 400 },
+      );
+    }
+  }
+
+  const revisionSaleCode = saleCodeForRevision(
+    sale.saleCode,
+    sale.revisionNo ?? 1,
+  );
+
+  const result = await createSaleRevision({
+    tenantId: sale.tenantId,
+    saleCode: revisionSaleCode,
+    type: sale.type as "GENERAL" | "MEMBER",
+    isCreditSale: creditSale,
+    locationId: sale.locationId,
+    memberId: sale.memberId,
+    contactId: sale.contactId,
+    createdById: sale.createdById,
+    subtotal: Number(subtotal),
+    discount: Number(totalDiscount),
+    promoDiscount: Number(totalPromoDiscount),
+    total: Number(total),
+    notes: dto.notes ?? sale.notes ?? null,
+    promoCodesUsed: Array.from(promoCodesUsed),
+    items: processedItems.map((p) => ({
+      variationId: p.variationId,
+      subVariationId: p.subVariationId,
+      quantity: p.quantity,
+      unitPrice: p.unitPrice,
+      totalMrp: p.totalMrp,
+      discountPercent: p.discountPercent,
+      discountAmount: p.discountAmount,
+      lineTotal: p.lineTotal,
+      manualDiscountPercent: p.manualDiscountPercent,
+      manualDiscountAmount: p.manualDiscountAmount,
+      discountReason: p.discountReason,
+      discountApprovedById: p.discountApprovedById,
+    })),
+    payments: dto.payments,
+    parentSaleId: saleId,
+    editedById: userId,
+    editReason: dto.editReason ?? null,
+  });
+
+  if (!result) {
+    throw Object.assign(new Error("Failed to create sale revision"), {
+      statusCode: 500,
+    });
+  }
+  return result;
+}
+
 export async function previewSale(
   ctx: { tenantId: string },
   dto: {
@@ -576,7 +806,8 @@ export async function previewSale(
       const { parseAndValidatePhone } = await import("@/utils/phone");
       const parsed = parseAndValidatePhone(contact.phone);
       if (parsed.valid) {
-        const member = await findMemberByPhone(
+        const member = await memberRepository.findByPhone(
+          ctx.tenantId,
           (parsed as { e164: string }).e164,
         );
         if (member?.isActive) saleType = "MEMBER";
@@ -590,7 +821,10 @@ export async function previewSale(
       const err = parsed as { valid: false; message: string };
       throw Object.assign(new Error(err.message), { statusCode: 400 });
     }
-    const member = await findMemberByPhone((parsed as { e164: string }).e164);
+    const member = await memberRepository.findByPhone(
+      ctx.tenantId,
+      (parsed as { e164: string }).e164,
+    );
     if (member?.isActive) saleType = "MEMBER";
   }
 
@@ -929,6 +1163,27 @@ export class SaleService {
 
   async addPayment(saleId: string, dto: { method: string; amount: number }) {
     return addPayment(saleId, dto);
+  }
+
+  async deleteSale(saleId: string, userId: string, deleteReason?: string) {
+    return deleteSale(saleId, userId, deleteReason);
+  }
+
+  async editSale(
+    saleId: string,
+    userId: string,
+    dto: {
+      items: SaleItemInput[];
+      notes?: string;
+      payments?: Array<{
+        method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+        amount: number;
+      }>;
+      editReason?: string | null;
+    },
+    userRole?: string,
+  ) {
+    return editSale(saleId, userId, dto, userRole);
   }
 
   async getSalesSummary(params: {
