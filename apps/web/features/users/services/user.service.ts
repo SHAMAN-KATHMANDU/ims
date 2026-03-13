@@ -192,18 +192,25 @@ export async function changePassword(
 
 // ─── Password Reset Requests (superAdmin only) ─────────────────────────────────
 
+export type PasswordResetStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "ESCALATED";
+
 export interface PasswordResetRequest {
   id: string;
   tenantId: string;
   requestedById: string;
-  status: string;
-  escalated: boolean;
+  status: PasswordResetStatus;
   createdAt: string;
   requestedBy: { id: string; username: string; role: string };
   tenant: { id: string; name: string; slug: string };
 }
 
-export async function getPasswordResetRequests(): Promise<PasswordResetRequest[]> {
+export async function getPasswordResetRequests(): Promise<
+  PasswordResetRequest[]
+> {
   try {
     const response = await api.get<{ requests: PasswordResetRequest[] }>(
       "/users/password-reset-requests",
@@ -219,10 +226,9 @@ export async function approvePasswordResetRequest(
   newPassword: string,
 ): Promise<void> {
   try {
-    await api.post(
-      `/users/password-reset-requests/${requestId}/approve`,
-      { newPassword },
-    );
+    await api.post(`/users/password-reset-requests/${requestId}/approve`, {
+      newPassword,
+    });
   } catch (error) {
     handleApiError(error, "approve password reset");
   }
@@ -232,9 +238,7 @@ export async function escalatePasswordResetRequest(
   requestId: string,
 ): Promise<void> {
   try {
-    await api.post(
-      `/users/password-reset-requests/${requestId}/escalate`,
-    );
+    await api.post(`/users/password-reset-requests/${requestId}/escalate`);
   } catch (error) {
     handleApiError(error, "escalate password reset");
   }
@@ -244,9 +248,7 @@ export async function rejectPasswordResetRequest(
   requestId: string,
 ): Promise<void> {
   try {
-    await api.post(
-      `/users/password-reset-requests/${requestId}/reject`,
-    );
+    await api.post(`/users/password-reset-requests/${requestId}/reject`);
   } catch (error) {
     handleApiError(error, "reject password reset");
   }

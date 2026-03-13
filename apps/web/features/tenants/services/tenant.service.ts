@@ -246,12 +246,17 @@ export async function resetTenantUserPassword(
 
 // ─── Platform Password Reset Requests (escalated) ─────────────────────────────
 
+export type PasswordResetStatus =
+  | "PENDING"
+  | "APPROVED"
+  | "REJECTED"
+  | "ESCALATED";
+
 export interface PlatformPasswordResetRequest {
   id: string;
   tenantId: string;
   requestedById: string;
-  status: string;
-  escalated: boolean;
+  status: PasswordResetStatus;
   createdAt: string;
   requestedBy: { id: string; username: string; role: string };
   tenant: { id: string; name: string; slug: string };
@@ -278,10 +283,9 @@ export async function approvePlatformResetRequest(
   if (!newPassword || newPassword.length < 8)
     throw new Error("Password must be at least 8 characters");
   try {
-    await api.post(
-      `/platform/password-reset-requests/${requestId}/approve`,
-      { newPassword },
-    );
+    await api.post(`/platform/password-reset-requests/${requestId}/approve`, {
+      newPassword,
+    });
   } catch (error) {
     handleApiError(error, "approve platform password reset");
   }

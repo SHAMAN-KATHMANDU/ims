@@ -167,7 +167,6 @@ export function SaleDetail({
         description: err.message ?? "Could not delete sale",
         variant: "destructive",
       });
-      throw error;
     }
   };
 

@@ -24,10 +24,11 @@ export class WorkflowRepository {
     });
   }
 
-  async findActiveRulesByPipeline(pipelineId: string) {
+  async findActiveRulesByPipeline(tenantId: string, pipelineId: string) {
     return prisma.workflowRule.findMany({
       where: {
         workflow: {
+          tenantId,
           pipelineId,
           isActive: true,
         },

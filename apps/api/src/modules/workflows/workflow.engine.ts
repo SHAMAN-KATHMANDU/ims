@@ -31,6 +31,7 @@ export async function executeWorkflowRules(
   const rules = await prisma.workflowRule.findMany({
     where: {
       workflow: {
+        tenantId: event.deal.tenantId,
         pipelineId: event.deal.pipelineId,
         isActive: true,
       },

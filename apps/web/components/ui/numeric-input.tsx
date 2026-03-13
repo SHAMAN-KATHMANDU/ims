@@ -4,11 +4,10 @@ import * as React from "react";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export interface NumericInputProps
-  extends Omit<
-    React.ComponentProps<typeof Input>,
-    "type" | "value" | "onChange" | "inputMode"
-  > {
+export interface NumericInputProps extends Omit<
+  React.ComponentProps<typeof Input>,
+  "type" | "value" | "onChange" | "inputMode"
+> {
   value: string;
   onChange: (value: string) => void;
   /** Allow decimal point. Default true. */
@@ -21,15 +20,22 @@ export interface NumericInputProps
   error?: string | null;
 }
 
-function stripNonNumeric(
-  raw: string,
-  allowDecimals: boolean,
-): string {
+function stripNonNumeric(raw: string, allowDecimals: boolean): string {
   if (allowDecimals) {
     const parts = raw.split(".");
-    if (parts.length > 2) return (parts[0] ?? "") + "." + parts.slice(1).join("");
+    if (parts.length > 2) {
+      return (
+        (parts[0] ?? "").replace(/\D/g, "") +
+        "." +
+        parts.slice(1).join("").replace(/\D/g, "")
+      );
+    }
     if (parts.length === 2) {
-      return (parts[0] ?? "").replace(/\D/g, "") + "." + (parts[1] ?? "").replace(/\D/g, "");
+      return (
+        (parts[0] ?? "").replace(/\D/g, "") +
+        "." +
+        (parts[1] ?? "").replace(/\D/g, "")
+      );
     }
     return (parts[0] ?? "").replace(/\D/g, "");
   }
