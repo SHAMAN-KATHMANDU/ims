@@ -237,7 +237,11 @@ export function useEditSale() {
   return useMutation({
     mutationFn: ({ saleId, data }: { saleId: string; data: EditSaleData }) =>
       editSale(saleId, data),
-    onSuccess: (sale) => {
+    onSuccess: (sale, variables) => {
+      // Edit creates a new revision (new id); invalidate both old and new
+      queryClient.invalidateQueries({
+        queryKey: salesKeys.detail(variables.saleId),
+      });
       queryClient.invalidateQueries({ queryKey: salesKeys.detail(sale.id) });
       queryClient.invalidateQueries({ queryKey: salesKeys.lists() });
       queryClient.invalidateQueries({ queryKey: salesKeys.mySalesAll() });

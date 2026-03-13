@@ -2,10 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { PlatformService } from "./platform.service";
 import type { PlatformRepository } from "./platform.repository";
 
-vi.mock("@/modules/pipelines/pipeline.repository", () => ({
-  default: { seedDefaultPipelines: vi.fn().mockResolvedValue(undefined) },
-}));
-
 const mockFindBySlug = vi.fn();
 const mockCreateTenantWithAdmin = vi.fn();
 const mockFindTenantById = vi.fn();

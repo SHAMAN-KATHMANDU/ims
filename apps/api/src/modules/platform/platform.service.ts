@@ -6,7 +6,6 @@
 import bcrypt from "bcryptjs";
 import { DEFAULT_PLAN_LIMITS, PlanTier } from "@repo/shared";
 import passwordResetRepository from "@/modules/users/password-reset.repository";
-import pipelineRepository from "@/modules/pipelines/pipeline.repository";
 import platformRepository, {
   type PlatformRepository,
   type CreateTenantRepoData,
@@ -59,14 +58,12 @@ export class PlatformService {
       subscriptionStatus: "TRIAL",
     };
 
-    const result = await this.repo.createTenantWithAdmin({
+    return this.repo.createTenantWithAdmin({
       tenantData,
       adminUsername: data.adminUsername,
       adminPasswordHash: hashedPassword,
       discountTypeNames: DEFAULT_DISCOUNT_TYPES,
     });
-    await pipelineRepository.seedDefaultPipelines(result.tenant.id);
-    return result;
   }
 
   async findAllTenants() {
@@ -486,15 +483,14 @@ export class PlatformService {
         statusCode: 404,
       });
     }
-    if (req.status !== "PENDING") {
-      throw Object.assign(new Error("Request has already been handled"), {
-        statusCode: 400,
-      });
-    }
-    if (!req.escalated) {
+    if (req.status !== "ESCALATED") {
       throw Object.assign(
-        new Error("This request should be handled by tenant superadmin"),
-        { statusCode: 403 },
+        new Error(
+          req.status === "PENDING"
+            ? "This request should be handled by tenant superadmin"
+            : "Request has already been handled",
+        ),
+        { statusCode: req.status === "PENDING" ? 403 : 400 },
       );
     }
 

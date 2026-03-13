@@ -1,9 +1,9 @@
 import { basePrisma } from "@/config/prisma";
 
 export class PasswordResetRepository {
-  async findForTenant(tenantId: string, escalated: boolean) {
+  async findForTenant(tenantId: string) {
     return basePrisma.passwordResetRequest.findMany({
-      where: { tenantId, escalated, status: "PENDING" },
+      where: { tenantId, status: "PENDING" },
       include: {
         requestedBy: {
           select: { id: true, username: true, role: true },
@@ -18,7 +18,7 @@ export class PasswordResetRepository {
 
   async findEscalated() {
     return basePrisma.passwordResetRequest.findMany({
-      where: { escalated: true, status: "PENDING" },
+      where: { status: "ESCALATED" },
       include: {
         requestedBy: {
           select: { id: true, username: true, role: true },
@@ -48,7 +48,7 @@ export class PasswordResetRepository {
   async escalate(id: string) {
     return basePrisma.passwordResetRequest.update({
       where: { id },
-      data: { escalated: true },
+      data: { status: "ESCALATED" },
       include: {
         requestedBy: { select: { id: true, username: true, role: true } },
         tenant: { select: { id: true, name: true, slug: true } },
@@ -66,7 +66,7 @@ export class PasswordResetRepository {
         where: { id },
         include: { requestedBy: true },
       });
-      if (!req || req.status !== "PENDING") {
+      if (!req || (req.status !== "PENDING" && req.status !== "ESCALATED")) {
         throw new Error("Request not found or already handled");
       }
       await tx.user.update({

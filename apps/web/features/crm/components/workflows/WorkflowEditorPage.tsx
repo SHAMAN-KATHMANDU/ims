@@ -83,11 +83,15 @@ export default function WorkflowEditorPage() {
   const workflows = data?.workflows ?? [];
   const pipelines = pipelinesData?.pipelines ?? [];
 
-  const resetForm = () => {
+  const resetFormFields = () => {
     setFormName("");
     setFormPipelineId("");
     setFormIsActive(true);
     setFormRules([]);
+  };
+
+  const resetForm = () => {
+    resetFormFields();
     setShowCreate(false);
     setEditWorkflow(null);
   };
@@ -182,8 +186,9 @@ export default function WorkflowEditorPage() {
           <Button
             size="sm"
             onClick={() => {
+              resetFormFields();
+              setEditWorkflow(null);
               setShowCreate(true);
-              resetForm();
             }}
           >
             <Plus className="h-4 w-4 mr-1" /> New Workflow

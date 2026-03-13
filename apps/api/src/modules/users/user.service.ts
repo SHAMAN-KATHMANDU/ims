@@ -79,7 +79,7 @@ export class UserService {
   }
 
   async getPasswordResetRequests(tenantId: string) {
-    return passwordResetRepository.findForTenant(tenantId, false);
+    return passwordResetRepository.findForTenant(tenantId);
   }
 
   async approveResetRequest(
@@ -92,13 +92,13 @@ export class UserService {
     if (!req) throw createError("Password reset request not found", 404);
     if (req.tenantId !== tenantId)
       throw createError("Request does not belong to your organization", 403);
-    if (req.status !== "PENDING")
-      throw createError("Request has already been handled", 400);
-    if (req.escalated)
+    if (req.status === "ESCALATED")
       throw createError(
         "Escalated requests must be handled by platform admin",
         403,
       );
+    if (req.status !== "PENDING")
+      throw createError("Request has already been handled", 400);
 
     const hashedPassword = await bcrypt.hash(data.newPassword, BCRYPT_ROUNDS);
     await passwordResetRepository.approve(
@@ -113,10 +113,10 @@ export class UserService {
     if (!req) throw createError("Password reset request not found", 404);
     if (req.tenantId !== tenantId)
       throw createError("Request does not belong to your organization", 403);
+    if (req.status === "ESCALATED")
+      throw createError("Request is already escalated", 400);
     if (req.status !== "PENDING")
       throw createError("Request has already been handled", 400);
-    if (req.escalated)
-      throw createError("Request is already escalated", 400);
 
     return passwordResetRepository.escalate(requestId);
   }

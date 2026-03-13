@@ -640,10 +640,11 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const startX = useRef(0);
   const startWidth = useRef(0);
 
-  // Refresh tenant (plan, etc.) on mount and navigation so badge/features stay current
+  // Refresh tenant (plan, etc.) on mount and token change only.
+  // Avoid refreshing on every pathname change to reduce /auth/me load and latency.
   useEffect(() => {
     if (token) refreshTenant();
-  }, [token, pathname, refreshTenant]);
+  }, [token, refreshTenant]);
 
   useEffect(() => {
     if (!resizing) return;

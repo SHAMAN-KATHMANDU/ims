@@ -122,7 +122,7 @@ export class AuthRepository {
       data: {
         tenantId: data.tenantId,
         requestedById: data.requestedById,
-        escalated: data.escalated,
+        ...(data.escalated ? { status: "ESCALATED" as const } : {}),
       },
     });
   }
