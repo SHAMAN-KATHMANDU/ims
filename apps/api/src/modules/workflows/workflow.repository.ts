@@ -1,4 +1,4 @@
-import prisma from "@/config/prisma";
+import prisma, { basePrisma } from "@/config/prisma";
 import type {
   CreateWorkflowDto,
   CreateWorkflowRuleDto,
@@ -50,58 +50,119 @@ export class WorkflowRepository {
 
   async create(tenantId: string, data: CreateWorkflowDto) {
     const { rules: rulesData, ...rest } = data;
-    const workflow = await prisma.pipelineWorkflow.create({
-      data: {
-        tenantId,
-        pipelineId: rest.pipelineId,
-        name: rest.name.trim(),
-        isActive: rest.isActive ?? true,
-      },
+    return basePrisma.$transaction(async (tx) => {
+      const workflow = await tx.pipelineWorkflow.create({
+        data: {
+          tenantId,
+          pipelineId: rest.pipelineId,
+          name: rest.name.trim(),
+          isActive: rest.isActive ?? true,
+        },
+      });
+      if (rulesData && rulesData.length > 0) {
+        await tx.workflowRule.createMany({
+          data: rulesData.map((r, i) => ({
+            workflowId: workflow.id,
+            trigger: r.trigger,
+            triggerStageId: r.triggerStageId ?? null,
+            action: r.action,
+            actionConfig: (r.actionConfig ?? {}) as object,
+            ruleOrder: r.ruleOrder ?? i,
+          })),
+        });
+      }
+      const result = await tx.pipelineWorkflow.findFirst({
+        where: { id: workflow.id, tenantId },
+        include: {
+          pipeline: true,
+          rules: { orderBy: { ruleOrder: "asc" } },
+        },
+      });
+      if (!result) throw new Error("Workflow not found after create");
+      return result;
     });
-    if (rulesData && rulesData.length > 0) {
-      await this.upsertRules(workflow.id, rulesData);
-    }
-    const result = await this.findById(tenantId, workflow.id);
-    if (!result) throw new Error("Workflow not found after create");
-    return result;
   }
 
   async update(
     id: string,
     tenantId: string,
-    data: { name?: string; isActive?: boolean },
+    data: {
+      name?: string;
+      isActive?: boolean;
+      rules?: CreateWorkflowRuleDto[];
+    },
   ) {
     const updateData: Record<string, unknown> = {};
     if (data.name !== undefined) updateData.name = data.name.trim();
     if (data.isActive !== undefined) updateData.isActive = data.isActive;
+    const hasRules = data.rules !== undefined;
 
-    await prisma.pipelineWorkflow.update({
-      where: { id },
+    if (hasRules) {
+      return basePrisma.$transaction(async (tx) => {
+        if (Object.keys(updateData).length > 0) {
+          const updated = await tx.pipelineWorkflow.updateMany({
+            where: { id, tenantId },
+            data: updateData,
+          });
+          if (updated.count === 0) throw new Error("Workflow not found");
+        }
+        await tx.workflowRule.deleteMany({ where: { workflowId: id } });
+        if (data.rules!.length > 0) {
+          await tx.workflowRule.createMany({
+            data: data.rules!.map((r, i) => ({
+              workflowId: id,
+              trigger: r.trigger,
+              triggerStageId: r.triggerStageId ?? null,
+              action: r.action,
+              actionConfig: (r.actionConfig ?? {}) as object,
+              ruleOrder: r.ruleOrder ?? i,
+            })),
+          });
+        }
+        const result = await tx.pipelineWorkflow.findFirst({
+          where: { id, tenantId },
+          include: {
+            pipeline: true,
+            rules: { orderBy: { ruleOrder: "asc" } },
+          },
+        });
+        if (!result) throw new Error("Workflow not found after update");
+        return result;
+      });
+    }
+
+    const result = await prisma.pipelineWorkflow.updateMany({
+      where: { id, tenantId },
       data: updateData,
     });
-    const result = await this.findById(tenantId, id);
-    if (!result) throw new Error("Workflow not found after update");
-    return result;
+    if (result.count === 0) throw new Error("Workflow not found");
+    const found = await this.findById(tenantId, id);
+    if (!found) throw new Error("Workflow not found after update");
+    return found;
   }
 
   async upsertRules(workflowId: string, rules: CreateWorkflowRuleDto[]) {
-    await prisma.workflowRule.deleteMany({ where: { workflowId } });
-    if (rules.length === 0) return;
-
-    await prisma.workflowRule.createMany({
-      data: rules.map((r, i) => ({
-        workflowId,
-        trigger: r.trigger,
-        triggerStageId: r.triggerStageId ?? null,
-        action: r.action,
-        actionConfig: (r.actionConfig ?? {}) as object,
-        ruleOrder: r.ruleOrder ?? i,
-      })),
+    await basePrisma.$transaction(async (tx) => {
+      await tx.workflowRule.deleteMany({ where: { workflowId } });
+      if (rules.length === 0) return;
+      await tx.workflowRule.createMany({
+        data: rules.map((r, i) => ({
+          workflowId,
+          trigger: r.trigger,
+          triggerStageId: r.triggerStageId ?? null,
+          action: r.action,
+          actionConfig: (r.actionConfig ?? {}) as object,
+          ruleOrder: r.ruleOrder ?? i,
+        })),
+      });
     });
   }
 
-  async delete(id: string) {
-    await prisma.pipelineWorkflow.delete({ where: { id } });
+  async delete(id: string, tenantId: string) {
+    const result = await prisma.pipelineWorkflow.deleteMany({
+      where: { id, tenantId },
+    });
+    if (result.count === 0) throw new Error("Workflow not found");
   }
 }
 

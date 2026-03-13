@@ -743,13 +743,16 @@ export function ContactDetail({
                         Assign To
                       </Label>
                       <Select
-                        value={taskAssignedToId || ""}
-                        onValueChange={(v) => setTaskAssignedToId(v || "")}
+                        value={taskAssignedToId || "__none__"}
+                        onValueChange={(v) =>
+                          setTaskAssignedToId(v === "__none__" ? "" : v)
+                        }
                       >
                         <SelectTrigger className="mt-1 text-sm">
-                          <SelectValue placeholder="Select user" />
+                          <SelectValue placeholder="Unassigned" />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="__none__">Unassigned</SelectItem>
                           {users.map((u) => (
                             <SelectItem key={u.id} value={u.id}>
                               {u.username}

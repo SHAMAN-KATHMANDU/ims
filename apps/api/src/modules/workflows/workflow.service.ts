@@ -25,24 +25,17 @@ export class WorkflowService {
     const existing = await workflowRepository.findById(tenantId, id);
     if (!existing) throw createError("Workflow not found", 404);
 
-    if (data.name !== undefined || data.isActive !== undefined) {
-      await workflowRepository.update(id, tenantId, {
-        name: data.name,
-        isActive: data.isActive,
-      });
-    }
-    if (data.rules !== undefined) {
-      await workflowRepository.upsertRules(id, data.rules);
-    }
-    const result = await workflowRepository.findById(tenantId, id);
-    if (!result) throw createError("Workflow not found", 404);
-    return result;
+    return workflowRepository.update(id, tenantId, {
+      name: data.name,
+      isActive: data.isActive,
+      rules: data.rules,
+    });
   }
 
   async delete(tenantId: string, id: string) {
     const existing = await workflowRepository.findById(tenantId, id);
     if (!existing) throw createError("Workflow not found", 404);
-    await workflowRepository.delete(id);
+    await workflowRepository.delete(id, tenantId);
   }
 }
 

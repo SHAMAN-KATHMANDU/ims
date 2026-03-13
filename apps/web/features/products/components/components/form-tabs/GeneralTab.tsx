@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
@@ -50,6 +50,19 @@ export function GeneralTab({
 }: GeneralTabProps) {
   const [showMrpBelowCpWarning, setShowMrpBelowCpWarning] = useState(false);
   const isAdmin = useAuthStore(selectIsAdmin);
+
+  useEffect(() => {
+    const costPrice = parseFloat((form.values.costPrice ?? "").trim() || "0");
+    const mrp = parseFloat((form.values.mrp ?? "").trim() || "0");
+    const shouldWarn =
+      !Number.isNaN(costPrice) &&
+      costPrice > 0 &&
+      !Number.isNaN(mrp) &&
+      mrp > 0 &&
+      mrp < costPrice &&
+      !mrpBelowCpAccepted;
+    setShowMrpBelowCpWarning(shouldWarn);
+  }, [form.values.costPrice, form.values.mrp, mrpBelowCpAccepted]);
   const { data: vendorsResponse } = useVendorsPaginated({
     page: 1,
     limit: 100,
@@ -223,25 +236,6 @@ export function GeneralTab({
             onChange={(v) => {
               form.handleChange("mrp", v);
               onMrpBelowCpAcceptedChange?.(false);
-              setShowMrpBelowCpWarning(false);
-            }}
-            onBlur={() => {
-              const costPrice = parseFloat(
-                (form.values.costPrice ?? "").trim() || "0",
-              );
-              const mrp = parseFloat((form.values.mrp ?? "").trim() || "0");
-              if (
-                !Number.isNaN(costPrice) &&
-                costPrice > 0 &&
-                !Number.isNaN(mrp) &&
-                mrp > 0 &&
-                mrp < costPrice &&
-                !mrpBelowCpAccepted
-              ) {
-                setShowMrpBelowCpWarning(true);
-              } else {
-                setShowMrpBelowCpWarning(false);
-              }
             }}
             error={form.errors.mrp}
             allowDecimals

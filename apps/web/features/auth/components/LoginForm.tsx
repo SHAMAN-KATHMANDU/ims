@@ -148,14 +148,16 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
             {isSubmitting ? "Logging in..." : "Login"}
           </Button>
 
-          <div className="text-center">
-            <Link
-              href={tenantSlug ? getForgotPasswordPath(tenantSlug) : "#"}
-              className="text-sm text-muted-foreground hover:underline"
-            >
-              Forgot password?
-            </Link>
-          </div>
+          {tenantSlug && (
+            <div className="text-center">
+              <Link
+                href={getForgotPasswordPath(tenantSlug)}
+                className="text-sm text-muted-foreground hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          )}
         </form>
       </CardContent>
     </Card>
