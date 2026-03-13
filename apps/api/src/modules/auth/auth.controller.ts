@@ -9,6 +9,22 @@ import authService, { AuthService } from "./auth.service";
 class AuthController {
   constructor(private service: AuthService) {}
 
+  getOrgName = async (req: Request, res: Response) => {
+    try {
+      const slug = (req.query.slug as string)?.trim()?.toLowerCase();
+      if (!slug) {
+        return res.status(400).json({ message: "Slug is required" });
+      }
+      const result = await this.service.getOrgNameBySlug(slug);
+      if (!result) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      return res.status(200).json(result);
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "Get org name error");
+    }
+  };
+
   logIn = async (req: Request, res: Response) => {
     try {
       const tenantSlug =

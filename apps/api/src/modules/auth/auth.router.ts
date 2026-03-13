@@ -77,6 +77,34 @@ const authRouter = Router();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
+/**
+ * @swagger
+ * /auth/org-name:
+ *   get:
+ *     summary: Get organization name by slug (public, for login page)
+ *     tags: [Authentication]
+ *     parameters:
+ *       - in: query
+ *         name: slug
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Tenant slug (e.g. demo, acme)
+ *     responses:
+ *       200:
+ *         description: Organization name
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 name:
+ *                   type: string
+ *       404:
+ *         description: Organization not found
+ */
+authRouter.get("/org-name", asyncHandler(authController.getOrgName));
+
 authRouter.post("/login", asyncHandler(authController.logIn));
 
 /**

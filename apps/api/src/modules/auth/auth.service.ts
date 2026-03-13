@@ -103,6 +103,11 @@ export class AuthService {
     };
   }
 
+  /** Get org name by slug only (public, for login page). Returns { name } or null. */
+  async getOrgNameBySlug(slug: string): Promise<{ name: string } | null> {
+    return this.repo.findOrgNameBySlug(slug.trim().toLowerCase());
+  }
+
   async getMe(userId: string) {
     const user = await this.repo.findUserById(userId);
     if (!user) {

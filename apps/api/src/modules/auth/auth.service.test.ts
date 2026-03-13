@@ -10,6 +10,7 @@ const mockCreateAuditLog = vi.fn();
 
 const mockRepo: AuthRepository = {
   findTenantBySlug: mockFindTenantBySlug,
+  findOrgNameBySlug: vi.fn().mockResolvedValue(null),
   findUserByTenantAndUsername: mockFindUserByTenantAndUsername,
   updateUserLastLogin: mockUpdateUserLastLogin,
   createAuditLog: mockCreateAuditLog,

@@ -70,6 +70,18 @@ export interface ForgotPasswordResponse {
   message: string;
 }
 
+/** Fetch org name by slug (public). Returns org name or null if not found. */
+export async function getOrgNameBySlug(slug: string): Promise<string | null> {
+  try {
+    const response = await api.get<{ name: string }>("/auth/org-name", {
+      params: { slug: slug.trim().toLowerCase() },
+    });
+    return response.data?.name ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function requestPasswordReset(
   username: string,
   tenantSlug: string,
