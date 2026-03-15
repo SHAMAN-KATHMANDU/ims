@@ -429,6 +429,42 @@ export class ContactRepository {
     });
   }
 
+  /** Find or create contact from sale info (phone + optional name, no member required). */
+  async findOrCreateFromSaleInfo(
+    tenantId: string,
+    data: { phone: string; name?: string | null },
+    createdById: string,
+  ) {
+    const existing = await prisma.contact.findFirst({
+      where: { tenantId, deletedAt: null, phone: data.phone },
+      select: { id: true },
+    });
+    if (existing) return existing;
+    const nameParts = (data.name || "").trim().split(/\s+/);
+    const firstName = nameParts[0] || "Customer";
+    const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
+    return prisma.contact.create({
+      data: {
+        tenantId,
+        firstName,
+        lastName,
+        phone: data.phone,
+        source: "Sales",
+        ownedById: createdById,
+        createdById,
+      },
+      select: { id: true },
+    });
+  }
+
+  async incrementPurchaseCount(contactId: string) {
+    return prisma.contact.update({
+      where: { id: contactId },
+      data: { purchaseCount: { increment: 1 } },
+      select: { id: true, purchaseCount: true },
+    });
+  }
+
   async createContactForImport(
     tenantId: string,
     data: {

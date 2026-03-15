@@ -5,6 +5,7 @@ import dbConnect from "@/config/dbConnect";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
+import { startRemarketingScheduler } from "@/modules/remarketing/remarketing.scheduler";
 
 // Note: dotenv.config() is called in env.ts - do not call it here
 const PORT = env.port;
@@ -60,6 +61,7 @@ const startServer = async () => {
         `CORS origins: ${Array.isArray(env.corsOrigin) ? env.corsOrigin.join(", ") : env.corsOrigin}`,
       );
       startTrashCleanupCron();
+      startRemarketingScheduler();
       logger.log("Server startup complete");
     });
   } catch (error) {

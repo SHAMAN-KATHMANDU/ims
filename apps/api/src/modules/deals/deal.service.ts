@@ -1,6 +1,7 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
+import pipelineTransitionService from "@/modules/pipeline-transitions/pipeline-transition.service";
 import { logger } from "@/config/logger";
 import dealRepository from "./deal.repository";
 import {
@@ -130,6 +131,22 @@ export class DealService {
         previousStage: existing.stage,
         userId: existing.assignedToId,
       }).catch(logWorkflowErr("STAGE_ENTER"));
+
+      // Cross-pipeline transition on stage enter
+      await pipelineTransitionService
+        .handleDealEvent({
+          trigger: "STAGE_ENTER",
+          deal: toDealContext(deal),
+          previousStage: existing.stage,
+          userId: existing.assignedToId,
+        })
+        .catch((err) =>
+          logger.error("Pipeline transition failed", undefined, {
+            dealId: deal.id,
+            trigger: "STAGE_ENTER",
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
     }
 
     if (updates.status === "WON") {
@@ -145,6 +162,19 @@ export class DealService {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
+      await pipelineTransitionService
+        .handleDealEvent({
+          trigger: "DEAL_WON",
+          deal: toDealContext(deal),
+          userId: existing.assignedToId,
+        })
+        .catch((err) =>
+          logger.error("Pipeline transition failed", undefined, {
+            dealId: deal.id,
+            trigger: "DEAL_WON",
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
     } else if (updates.status === "LOST") {
       await executeWorkflowRules({
         trigger: "DEAL_LOST",
@@ -158,6 +188,19 @@ export class DealService {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
+      await pipelineTransitionService
+        .handleDealEvent({
+          trigger: "DEAL_LOST",
+          deal: toDealContext(deal),
+          userId: existing.assignedToId,
+        })
+        .catch((err) =>
+          logger.error("Pipeline transition failed", undefined, {
+            dealId: deal.id,
+            trigger: "DEAL_LOST",
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
     }
 
     return deal;
@@ -207,6 +250,21 @@ export class DealService {
         previousStage: existing.stage,
         userId: existing.assignedToId,
       }).catch(logWorkflowErr("STAGE_ENTER"));
+
+      await pipelineTransitionService
+        .handleDealEvent({
+          trigger: "STAGE_ENTER",
+          deal: toDealContext(deal),
+          previousStage: existing.stage,
+          userId: existing.assignedToId,
+        })
+        .catch((err) =>
+          logger.error("Pipeline transition failed", undefined, {
+            dealId: deal.id,
+            trigger: "STAGE_ENTER",
+            error: err instanceof Error ? err.message : String(err),
+          }),
+        );
     }
 
     return deal;
@@ -315,7 +373,30 @@ export class DealService {
       notes: `Converted from deal: ${deal.name}`,
       items,
     };
-    return createSaleWithItemsAndDeductInventory(saleInput);
+    const sale = await createSaleWithItemsAndDeductInventory(saleInput);
+
+    if (deal.contactId) {
+      try {
+        const contactRepository = (
+          await import("@/modules/contacts/contact.repository")
+        ).default;
+        await contactRepository.incrementPurchaseCount(deal.contactId);
+        const { applyLoyaltyTier } =
+          await import("@/modules/contacts/loyalty.service");
+        await applyLoyaltyTier(deal.contactId);
+      } catch {
+        logger.error(
+          "Failed to increment purchaseCount after deal conversion",
+          undefined,
+          {
+            dealId,
+            contactId: deal.contactId,
+          },
+        );
+      }
+    }
+
+    return sale;
   }
 
   async delete(

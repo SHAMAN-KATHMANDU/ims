@@ -7,6 +7,7 @@ import {
   createPipeline,
   updatePipeline,
   deletePipeline,
+  seedPipelineFramework,
   type PipelineStage,
 } from "../services/pipeline.service";
 
@@ -66,5 +67,17 @@ export function useDeletePipeline() {
   return useMutation({
     mutationFn: (id: string) => deletePipeline(id),
     onSuccess: () => qc.invalidateQueries({ queryKey: pipelineKeys.lists() }),
+  });
+}
+
+export function useSeedPipelineFramework() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => seedPipelineFramework(),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: pipelineKeys.lists() });
+      qc.invalidateQueries({ queryKey: ["contacts"] });
+      qc.invalidateQueries({ queryKey: ["crm-settings"] });
+    },
   });
 }

@@ -86,10 +86,17 @@ import {
   ChevronUp,
   X,
   Trash2,
+  ArrowRight,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import type { Deal } from "../../services/deal.service";
-import type { Pipeline, PipelineStage } from "../../services/pipeline.service";
+import type {
+  Pipeline,
+  PipelineStage,
+  PipelineType,
+} from "../../services/pipeline.service";
+import { getTransitionInfo } from "../../services/pipeline-transition.service";
 
 type DrawerMode = "view" | "new" | "edit" | null;
 
@@ -291,10 +298,18 @@ export function DealsKanbanPage() {
                 {pipelines.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.name}
+                    {p.type && p.type !== "GENERAL"
+                      ? ` (${p.type.replace("_", " ")})`
+                      : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
+            {currentPipeline?.type && currentPipeline.type !== "GENERAL" && (
+              <Badge variant="outline" className="text-xs shrink-0">
+                {currentPipeline.type.replace("_", " ")}
+              </Badge>
+            )}
             {currentPipeline && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -433,6 +448,7 @@ export function DealsKanbanPage() {
               key={col.stage}
               stage={col.stage}
               count={col.deals.length}
+              pipelineType={currentPipeline?.type}
             >
               {col.deals.map((deal) => (
                 <DraggableDealCard
@@ -533,13 +549,24 @@ export function DealsKanbanPage() {
 function DroppableStageColumn({
   stage,
   count,
+  pipelineType,
   children,
 }: {
   stage: string;
   count: number;
+  pipelineType?: PipelineType;
   children: React.ReactNode;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: stage });
+
+  const isClosedWon = stage.toLowerCase().includes("closed won");
+  const isClosedLost = stage.toLowerCase().includes("closed lost");
+  const dealStatus = isClosedWon ? "WON" : isClosedLost ? "LOST" : null;
+  const transitionInfo =
+    pipelineType && dealStatus
+      ? getTransitionInfo(pipelineType, dealStatus)
+      : null;
+
   return (
     <div
       ref={setNodeRef}
@@ -553,6 +580,12 @@ function DroppableStageColumn({
           {count}
         </span>
       </h3>
+      {transitionInfo && (
+        <div className="mb-2 flex items-center gap-1.5 rounded-md bg-blue-50 dark:bg-blue-950/40 px-2 py-1.5 text-xs text-blue-700 dark:text-blue-300">
+          <ArrowRight className="h-3 w-3 shrink-0" />
+          <span>{transitionInfo.description}</span>
+        </div>
+      )}
       <div className="space-y-2">{children}</div>
     </div>
   );

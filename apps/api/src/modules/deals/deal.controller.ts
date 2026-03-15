@@ -11,6 +11,7 @@ import {
   ConvertDealToSaleSchema,
 } from "./deal.schema";
 import dealService from "./deal.service";
+import { checkDiscountAuthority } from "./discount-authority.service";
 
 class DealController {
   create = async (req: Request, res: Response) => {
@@ -203,6 +204,25 @@ class DealController {
           .json({ message: (error as AppError).message });
       }
       return sendControllerError(req, res, error, "Convert to sale error");
+    }
+  };
+
+  checkDiscount = async (req: Request, res: Response) => {
+    try {
+      const { pipelineType, purchaseCount, discountPercent } = req.body;
+      const result = checkDiscountAuthority({
+        pipelineType: pipelineType ?? "GENERAL",
+        purchaseCount: Number(purchaseCount) || 0,
+        discountPercent: Number(discountPercent) || 0,
+      });
+      return res.status(200).json(result);
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Check discount authority error",
+      );
     }
   };
 

@@ -25,6 +25,8 @@ import {
   useDeleteContactNote,
   useAddContactAttachment,
   useDeleteContactAttachment,
+  useContactTags,
+  useUpdateContact,
 } from "../../hooks/use-contacts";
 import { useActivitiesByContact } from "../../hooks/use-activities";
 import { useCreateTask } from "../../hooks/use-tasks";
@@ -108,14 +110,32 @@ export function ContactDetail({
   const deleteAttachmentMutation = useDeleteContactAttachment(contactId);
   const createTaskMutation = useCreateTask();
   const createDealMutation = useCreateDeal();
+  const updateContactMutation = useUpdateContact();
 
   const { data: activitiesData } = useActivitiesByContact(contactId);
   const activities = activitiesData?.activities ?? [];
   const { data: usersResult } = useUsers({ limit: 10 });
   const { data: pipelinesData } = usePipelines();
+  const { data: allTags } = useContactTags();
   const users: User[] = usersResult?.users ?? [];
   const pipelines = pipelinesData?.pipelines ?? [];
   const defaultPipeline = pipelines.find((p) => p.isDefault) ?? pipelines[0];
+
+  const currentTagIds = contact?.tagLinks?.map((tl) => tl.tag.id) ?? [];
+
+  const handleToggleTag = async (tagId: string) => {
+    const newTagIds = currentTagIds.includes(tagId)
+      ? currentTagIds.filter((id) => id !== tagId)
+      : [...currentTagIds, tagId];
+    try {
+      await updateContactMutation.mutateAsync({
+        id: contactId,
+        data: { tagIds: newTagIds },
+      });
+    } catch {
+      toast({ title: "Failed to update tags", variant: "destructive" });
+    }
+  };
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -332,23 +352,55 @@ export function ContactDetail({
               {openDeal.stage}
             </span>
           )}
+          {contact.purchaseCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-green-50 border border-green-200 text-green-700 dark:bg-green-950 dark:border-green-800 dark:text-green-300">
+              <DollarSign className="h-3 w-3" />
+              {contact.purchaseCount} purchase
+              {contact.purchaseCount !== 1 ? "s" : ""}
+            </span>
+          )}
+          {contact.purchaseCount >= 3 && (
+            <Badge className="text-xs bg-amber-100 text-amber-800 border-amber-300 dark:bg-amber-950 dark:text-amber-300 dark:border-amber-800">
+              VIP
+            </Badge>
+          )}
+          {contact.purchaseCount === 2 && (
+            <Badge className="text-xs bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-950 dark:text-purple-300 dark:border-purple-800">
+              Repeat Buyer
+            </Badge>
+          )}
         </div>
 
-        {/* Tags */}
-        {contact.tagLinks && contact.tagLinks.length > 0 && (
-          <div className="flex flex-wrap gap-1 mt-2">
-            {contact.tagLinks.map((tl) => (
+        {/* Tags — inline editor */}
+        <div className="flex flex-wrap gap-1 mt-2 items-center">
+          {contact.tagLinks?.map((tl) => (
+            <Badge
+              key={tl.tag.id}
+              variant="secondary"
+              className="text-xs gap-1 cursor-pointer hover:bg-destructive/10 hover:line-through"
+              onClick={() => handleToggleTag(tl.tag.id)}
+              title={`Click to remove "${tl.tag.name}"`}
+            >
+              <Tag className="h-2.5 w-2.5" />
+              {tl.tag.name}
+            </Badge>
+          ))}
+          {allTags
+            ?.filter((t) => !currentTagIds.includes(t.id))
+            .slice(0, 5)
+            .map((t) => (
               <Badge
-                key={tl.tag.id}
-                variant="secondary"
-                className="text-xs gap-1"
+                key={t.id}
+                variant="outline"
+                className="text-xs gap-1 cursor-pointer opacity-50 hover:opacity-100"
+                onClick={() => handleToggleTag(t.id)}
+                title={`Click to add "${t.name}"`}
               >
-                <Tag className="h-2.5 w-2.5" />
-                {tl.tag.name}
+                <Plus className="h-2.5 w-2.5" />
+                {t.name}
               </Badge>
             ))}
-          </div>
-        )}
+        </div>
       </div>
 
       {/* ── Tabs ──────────────────────────────────────────────────────── */}

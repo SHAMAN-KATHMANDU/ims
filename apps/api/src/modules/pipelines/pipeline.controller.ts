@@ -83,6 +83,22 @@ class PipelineController {
     }
   };
 
+  seedFramework = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const result = await pipelineService.seedFramework(tenantId);
+      return res.status(201).json({
+        message: "Pipeline framework seeded successfully",
+        ...result,
+      });
+    } catch (error: unknown) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Seed pipeline framework error")
+      );
+    }
+  };
+
   delete = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;

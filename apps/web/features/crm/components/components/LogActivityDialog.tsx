@@ -12,7 +12,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useAddContactCommunication } from "../../hooks/use-contacts";
+import { useCreateActivity } from "../../hooks/use-activities";
+import { contactKeys } from "../../hooks/use-contacts";
+import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/useToast";
 
 type ActivityType = "CALL" | "EMAIL" | "MEETING";
@@ -39,9 +41,10 @@ export function LogActivityDialog({
   onSuccess,
 }: LogActivityDialogProps) {
   const { toast } = useToast();
+  const qc = useQueryClient();
   const [subject, setSubject] = useState("");
   const [notes, setNotes] = useState("");
-  const createMutation = useAddContactCommunication(contactId);
+  const createMutation = useCreateActivity();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,9 +53,12 @@ export function LogActivityDialog({
         type,
         subject: subject.trim() || undefined,
         notes: notes.trim() || undefined,
+        contactId,
+        activityAt: new Date().toISOString(),
       });
       setSubject("");
       setNotes("");
+      qc.invalidateQueries({ queryKey: contactKeys.detail(contactId) });
       toast({ title: `${TYPE_LABELS[type]} logged` });
       onOpenChange(false);
       onSuccess?.();

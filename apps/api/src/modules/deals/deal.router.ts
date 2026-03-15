@@ -38,6 +38,29 @@ dealRouter.post("/", asyncHandler(dealController.create));
 
 /**
  * @swagger
+ * /deals/check-discount:
+ *   post:
+ *     summary: Check discount authority for a deal
+ *     tags: [Deals]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               pipelineType: { type: string }
+ *               purchaseCount: { type: number }
+ *               discountPercent: { type: number }
+ *     responses:
+ *       200: { description: Discount authority result }
+ */
+dealRouter.post("/check-discount", asyncHandler(dealController.checkDiscount));
+
+/**
+ * @swagger
  * /deals/kanban:
  *   get:
  *     summary: Get deals by pipeline (kanban view)

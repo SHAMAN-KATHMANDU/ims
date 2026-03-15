@@ -67,6 +67,7 @@ model Tenant {
   activities     Activity[]
   crmSources       CrmSource[]
   crmJourneyTypes  CrmJourneyType[]
+  remarketingSequences RemarketingSequence[]
 
   @@map("tenants")
 }
@@ -958,37 +959,39 @@ model ContactTagLink {
 }
 
 model Contact {
-  id           String   @id @default(uuid()) @map("contact_id")
-  tenantId     String   @map("tenant_id")
-  firstName    String   @map("first_name") @db.VarChar(255)
-  lastName     String?  @map("last_name") @db.VarChar(255)
-  email        String?  @db.VarChar(255)
-  phone        String?  @db.VarChar(50)
-  companyId    String?  @map("company_id")
-  memberId     String?  @unique @map("member_id")
-  ownedById    String    @map("owned_by_id")
-  createdById  String    @map("created_by_id")
-  source       String?  @db.VarChar(100)
-  journeyType  String?  @map("journey_type") @db.VarChar(100)
-  deletedAt    DateTime? @map("deleted_at")
-  deletedBy    String?  @map("deleted_by")
-  deleteReason String?  @map("delete_reason") @db.VarChar(500)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  id            String   @id @default(uuid()) @map("contact_id")
+  tenantId      String   @map("tenant_id")
+  firstName     String   @map("first_name") @db.VarChar(255)
+  lastName      String?  @map("last_name") @db.VarChar(255)
+  email         String?  @db.VarChar(255)
+  phone         String?  @db.VarChar(50)
+  companyId     String?  @map("company_id")
+  memberId      String?  @unique @map("member_id")
+  ownedById     String    @map("owned_by_id")
+  createdById   String    @map("created_by_id")
+  source        String?  @db.VarChar(100)
+  journeyType   String?  @map("journey_type") @db.VarChar(100)
+  purchaseCount Int      @default(0) @map("purchase_count")
+  deletedAt     DateTime? @map("deleted_at")
+  deletedBy     String?  @map("deleted_by")
+  deleteReason  String?  @map("delete_reason") @db.VarChar(500)
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  company        Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  member         Member?                @relation(fields: [memberId], references: [id], onDelete: SetNull)
-  owner          User                   @relation("ContactOwner", fields: [ownedById], references: [id], onDelete: Restrict)
-  creator        User                   @relation("ContactCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  tagLinks       ContactTagLink[]
-  notes          ContactNote[]
-  attachments    ContactAttachment[]
-  communications ContactCommunication[]
-  deals          Deal[]
-  tasks          Task[]
-  activities     Activity[]
-  sales          Sale[]
+  tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company               Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  member                Member?                @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  owner                 User                   @relation("ContactOwner", fields: [ownedById], references: [id], onDelete: Restrict)
+  creator               User                   @relation("ContactCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tagLinks              ContactTagLink[]
+  notes                 ContactNote[]
+  attachments           ContactAttachment[]
+  communications        ContactCommunication[]
+  deals                 Deal[]
+  tasks                 Task[]
+  activities            Activity[]
+  sales                 Sale[]
+  remarketingSequences  RemarketingSequence[]
 
   @@index([tenantId])
   @@map("contacts")
@@ -1080,20 +1083,28 @@ model Lead {
   @@map("leads")
 }
 
-model Pipeline {
-  id           String    @id @default(uuid()) @map("pipeline_id")
-  tenantId     String    @map("tenant_id")
-  name         String    @db.VarChar(255)
-  stages       Json      // Array of { id, name, order, probability }
-  isDefault    Boolean   @default(false) @map("is_default")
-  deletedAt    DateTime? @map("deleted_at")
-  deletedBy    String?   @map("deleted_by")
-  deleteReason String?   @map("delete_reason") @db.VarChar(500)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+enum PipelineType {
+  GENERAL
+  NEW_SALES
+  REMARKETING
+  REPURCHASE
+}
 
-  tenant          Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  deals           Deal[]
+model Pipeline {
+  id           String       @id @default(uuid()) @map("pipeline_id")
+  tenantId     String       @map("tenant_id")
+  name         String       @db.VarChar(255)
+  type         PipelineType @default(GENERAL)
+  stages       Json         // Array of { id, name, order, probability }
+  isDefault    Boolean      @default(false) @map("is_default")
+  deletedAt    DateTime?    @map("deleted_at")
+  deletedBy    String?      @map("deleted_by")
+  deleteReason String?      @map("delete_reason") @db.VarChar(500)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
+
+  tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  deals             Deal[]
   pipelineWorkflows PipelineWorkflow[]
 
   @@index([tenantId])
@@ -1106,6 +1117,7 @@ enum WorkflowTrigger {
   DEAL_CREATED
   DEAL_WON
   DEAL_LOST
+  PURCHASE_COUNT_CHANGED
 }
 
 enum WorkflowAction {
@@ -1114,6 +1126,10 @@ enum WorkflowAction {
   MOVE_STAGE
   UPDATE_FIELD
   CREATE_ACTIVITY
+  CREATE_DEAL
+  UPDATE_CONTACT_FIELD
+  APPLY_TAG
+  REMOVE_TAG
 }
 
 model PipelineWorkflow {
@@ -1202,6 +1218,7 @@ model Deal {
   tasks      Task[]
   activities Activity[]
   lineItems  DealLineItem[]
+  remarketingSequences RemarketingSequence[]
 
   @@index([tenantId])
   @@index([parentDealId])
@@ -1330,4 +1347,36 @@ model Notification {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("notifications")
+}
+
+// ============================================
+// REMARKETING SEQUENCE (timed nurture)
+// ============================================
+
+enum SequenceStatus {
+  PENDING
+  EXECUTED
+  SKIPPED
+  PAUSED
+}
+
+model RemarketingSequence {
+  id          String         @id @default(uuid()) @map("sequence_id")
+  tenantId    String         @map("tenant_id")
+  contactId   String         @map("contact_id")
+  dealId      String?        @map("deal_id")
+  sequenceDay Int            @map("sequence_day")
+  message     String?        @db.Text
+  scheduledAt DateTime       @map("scheduled_at")
+  executedAt  DateTime?      @map("executed_at")
+  status      SequenceStatus @default(PENDING)
+  createdAt   DateTime       @default(now()) @map("created_at")
+
+  tenant  Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  deal    Deal?   @relation(fields: [dealId], references: [id], onDelete: SetNull)
+
+  @@index([tenantId])
+  @@index([status, scheduledAt])
+  @@map("remarketing_sequences")
 }
