@@ -16,6 +16,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -36,6 +37,9 @@ interface CategoryTableProps {
   subcategoriesByCategory?: Record<string, string[]>;
   onManageSubcategories?: (category: Category) => void;
   totalItems?: number;
+  /** When provided, shows checkbox column and selection UI */
+  selectedCategories?: Set<string>;
+  onSelectionChange?: (selectedIds: Set<string>) => void;
 }
 
 export function CategoryTable({
@@ -48,7 +52,25 @@ export function CategoryTable({
   subcategoriesByCategory = {},
   onManageSubcategories,
   totalItems,
+  selectedCategories = new Set(),
+  onSelectionChange,
 }: CategoryTableProps) {
+  const allSelected =
+    categories.length > 0 &&
+    categories.every((c) => selectedCategories.has(c.id));
+  const handleSelectAll = (checked: boolean) => {
+    if (!onSelectionChange) return;
+    if (checked) onSelectionChange(new Set(categories.map((c) => c.id)));
+    else onSelectionChange(new Set());
+  };
+  const handleSelectOne = (categoryId: string, checked: boolean) => {
+    if (!onSelectionChange) return;
+    const next = new Set(selectedCategories);
+    if (checked) next.add(categoryId);
+    else next.delete(categoryId);
+    onSelectionChange(next);
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -61,6 +83,15 @@ export function CategoryTable({
         <Table>
           <TableHeader>
             <TableRow>
+              {onSelectionChange && (
+                <TableHead className="w-12">
+                  <Checkbox
+                    checked={allSelected}
+                    onCheckedChange={handleSelectAll}
+                    aria-label="Select all categories"
+                  />
+                </TableHead>
+              )}
               <TableHead>Name</TableHead>
               <TableHead>Description</TableHead>
               <TableHead>Subcategories</TableHead>
@@ -73,6 +104,20 @@ export function CategoryTable({
           <TableBody>
             {categories.map((category) => (
               <TableRow key={category.id}>
+                {onSelectionChange && (
+                  <TableCell
+                    className="w-12"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Checkbox
+                      checked={selectedCategories.has(category.id)}
+                      onCheckedChange={(checked) =>
+                        handleSelectOne(category.id, checked === true)
+                      }
+                      aria-label={`Select ${category.name}`}
+                    />
+                  </TableCell>
+                )}
                 <TableCell className="font-medium">{category.name}</TableCell>
                 <TableCell className="text-muted-foreground">
                   {category.description || "-"}
@@ -127,9 +172,7 @@ export function CategoryTable({
                           <>
                             {onManageSubcategories && (
                               <DropdownMenuItem
-                                onClick={() =>
-                                  onManageSubcategories(category)
-                                }
+                                onClick={() => onManageSubcategories(category)}
                               >
                                 <Layers className="mr-2 h-4 w-4" />
                                 Manage subcategories

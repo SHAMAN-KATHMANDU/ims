@@ -42,8 +42,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search } from "lucide-react";
+import { Plus, Search, Trash2, X } from "lucide-react";
 import type { CategoryFormInput } from "../validation";
+import {
+  useCategorySelectionStore,
+  selectSelectedCategoryIds,
+  selectClearSelection,
+  selectSetCategories,
+} from "@/store/category-selection-store";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 export function CategoriesPage() {
   const [listParams, setListParams] = useState<CategoryListParams>({
@@ -111,6 +127,13 @@ export function CategoriesPage() {
     open: false,
     message: "",
   });
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  const selectedCategoryIds = useCategorySelectionStore(
+    selectSelectedCategoryIds,
+  );
+  const setSelectedCategoryIds = useCategorySelectionStore(selectSetCategories);
+  const clearSelection = useCategorySelectionStore(selectClearSelection);
 
   // Edit states
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
@@ -157,9 +180,7 @@ export function CategoriesPage() {
         message?: string;
       };
       const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Failed to save category";
+        err.response?.data?.message || err.message || "Failed to save category";
       setErrorDialog({
         open: true,
         title: "Error Saving Category",
@@ -234,8 +255,26 @@ export function CategoriesPage() {
     setSubcategoryToDelete(null);
   };
 
+  const handleBulkDeleteClick = () => setBulkDeleteOpen(true);
+  const handleBulkDeleteConfirm = async () => {
+    const ids = Array.from(selectedCategoryIds);
+    for (const id of ids) {
+      try {
+        await deleteCategoryMutation.mutateAsync({ id, reason: undefined });
+      } catch {
+        // continue; toast could be shown per error
+      }
+    }
+    toast({
+      title: "Categories deleted",
+      description: `${ids.length} categor${ids.length !== 1 ? "ies" : "y"} deleted.`,
+    });
+    setBulkDeleteOpen(false);
+    clearSelection();
+  };
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div>
         <h1 className="text-3xl font-bold">Categories</h1>
         <p className="text-muted-foreground mt-2">
@@ -253,7 +292,8 @@ export function CategoriesPage() {
             onSubmit={handleCategorySubmit}
             onReset={handleResetCategory}
             isLoading={
-              createCategoryMutation.isPending || updateCategoryMutation.isPending
+              createCategoryMutation.isPending ||
+              updateCategoryMutation.isPending
             }
           />
         )}
@@ -314,6 +354,8 @@ export function CategoriesPage() {
         )}
         onManageSubcategories={handleOpenSubcategoryDialog}
         totalItems={pagination.totalItems}
+        selectedCategories={selectedCategoryIds}
+        onSelectionChange={setSelectedCategoryIds}
       />
 
       <DataTablePagination
@@ -410,6 +452,65 @@ export function CategoriesPage() {
         message={errorDialog.message}
         onGoBack={() => {}}
       />
+
+      {/* Bulk delete confirmation */}
+      {canManageProducts && (
+        <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete selected categories?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete {selectedCategoryIds.size} categor
+                {selectedCategoryIds.size !== 1 ? "ies" : "y"}. This action
+                cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleBulkDeleteConfirm}
+                disabled={deleteCategoryMutation.isPending}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                {deleteCategoryMutation.isPending ? "Deleting..." : "Delete"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {/* Sticky bulk action bar */}
+      {selectedCategoryIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <span className="text-sm font-medium">
+              {selectedCategoryIds.size} item
+              {selectedCategoryIds.size !== 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              {canManageProducts && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDeleteClick}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSelection}
+                className="shrink-0"
+                aria-label="Clear selection"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

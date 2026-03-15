@@ -46,6 +46,7 @@ import {
   FileSpreadsheet,
   FileText,
   Plus,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -367,7 +368,7 @@ export function SalesPage() {
   );
 
   return (
-    <div className="space-y-6 min-w-0 w-full">
+    <div className="space-y-6 min-w-0 w-full pb-24">
       <div>
         <h1 className="text-2xl font-bold sm:text-3xl">Sales</h1>
         <p className="text-muted-foreground mt-2 text-sm sm:text-base">
@@ -515,6 +516,55 @@ export function SalesPage() {
         open={bulkUploadDialog}
         onOpenChange={setBulkUploadDialog}
       />
+
+      {/* Sticky bulk action bar when items selected */}
+      {selectedSaleIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <span className="text-sm font-medium">
+              {selectedSaleIds.size} item{selectedSaleIds.size !== 1 ? "s" : ""}{" "}
+              selected
+            </span>
+            <div className="flex items-center gap-2">
+              {canManageSales && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleExport("excel")}
+                      disabled={salesLoading}
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Download as Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExport("csv")}
+                      disabled={salesLoading}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Download as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSelection}
+                className="shrink-0"
+                aria-label="Clear selection"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

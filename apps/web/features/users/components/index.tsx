@@ -159,9 +159,7 @@ export function UsersPage() {
       toast({
         title: "Error",
         description:
-          error instanceof Error
-            ? error.message
-            : "Failed to change passwords",
+          error instanceof Error ? error.message : "Failed to change passwords",
         variant: "destructive",
       });
       throw error;
@@ -204,7 +202,7 @@ export function UsersPage() {
       allowedRoles={["superAdmin"]}
       message="Only super administrators can access user management."
     >
-      <div className="space-y-6">
+      <div className="space-y-6 pb-24">
         <div>
           <h1 className="text-3xl font-bold">User Management</h1>
           <p className="text-muted-foreground mt-2">
@@ -213,45 +211,8 @@ export function UsersPage() {
         </div>
 
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
+          <div>
             <h2 className="text-xl font-semibold">All Users</h2>
-            {selectedUserIds.size > 0 && (
-              <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5">
-                <span className="text-sm font-medium">
-                  {selectedUserIds.size} selected
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setBulkChangePasswordOpen(true)}
-                  disabled={bulkChangePasswordMutation.isPending}
-                  className="h-7 gap-1.5"
-                >
-                  <KeyRound className="h-3.5 w-3.5" />
-                  Change password
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleBulkDeleteClick}
-                  disabled={deleteUserMutation.isPending}
-                  className="h-7 gap-1.5 text-destructive hover:text-destructive"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Delete
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => clearSelection()}
-                  className="h-7 gap-1.5"
-                  aria-label="Clear selection"
-                >
-                  <X className="h-3.5 w-3.5" />
-                  Clear
-                </Button>
-              </div>
-            )}
           </div>
           {isMobile ? (
             <Button asChild>
@@ -318,6 +279,46 @@ export function UsersPage() {
           onConfirm={handleBulkDelete}
           isDeleting={deleteUserMutation.isPending}
         />
+
+        {/* Sticky bulk action bar when items selected */}
+        {selectedUserIds.size > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+            <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+              <span className="text-sm font-medium">
+                {selectedUserIds.size} item
+                {selectedUserIds.size !== 1 ? "s" : ""} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => setBulkChangePasswordOpen(true)}
+                  disabled={bulkChangePasswordMutation.isPending}
+                >
+                  <KeyRound className="h-4 w-4 mr-2" />
+                  Change password
+                </Button>
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={handleBulkDeleteClick}
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => clearSelection()}
+                  className="shrink-0"
+                  aria-label="Clear selection"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* User Delete Confirmation Dialog */}
         <AlertDialog

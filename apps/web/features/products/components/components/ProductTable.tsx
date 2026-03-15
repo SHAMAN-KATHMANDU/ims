@@ -313,7 +313,7 @@ export function ProductTable({
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
               <Input
                 type="text"
-                placeholder="Search products..."
+                placeholder="Search product name"
                 value={localSearch}
                 onChange={(e) => handleSearchChange(e.target.value)}
                 className="pl-9 pr-9"
@@ -545,201 +545,217 @@ export function ProductTable({
             }
           }}
         >
-          <SheetContent className="overflow-y-auto sm:max-w-xl">
-            <SheetHeader>
-              <SheetTitle>{sheetProduct ? sheetProduct.name : ""}</SheetTitle>
-            </SheetHeader>
+          <SheetContent className="flex flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
             {sheetProduct && (
-              <div className="mt-4 space-y-4">
-                <p className="text-sm text-muted-foreground font-mono">
-                  IMS: {(sheetProduct as { imsCode?: string }).imsCode ?? "—"}
-                </p>
-                {selectedLocationId && selectedLocationName && (
-                  <p className="text-sm font-medium">
-                    Location: {selectedLocationName}
-                  </p>
-                )}
-                <div>
-                  <h4 className="mb-2 font-semibold">Variations</h4>
-                  {!sheetProduct.variations?.length ? (
-                    <p className="text-sm text-muted-foreground">
-                      No variations.
-                    </p>
-                  ) : (
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[56px]">Photo</TableHead>
-                          <TableHead>Variation</TableHead>
-                          {!selectedLocationId && (
-                            <TableHead>Location</TableHead>
-                          )}
-                          <TableHead className="text-right">Stock</TableHead>
-                          {canManageProducts &&
-                            (onEdit || onDeleteVariation) && (
-                              <TableHead className="w-[100px] text-right">
-                                Actions
-                              </TableHead>
+              <>
+                <div className="shrink-0 border-b bg-muted/20 px-5 pt-4 pb-4">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {(sheetProduct as { imsCode?: string }).imsCode && (
+                      <span className="rounded-md border bg-background px-2 py-0.5 font-mono text-xs">
+                        {(sheetProduct as { imsCode?: string }).imsCode}
+                      </span>
+                    )}
+                    {selectedLocationId && selectedLocationName && (
+                      <span className="rounded-md border bg-background px-2 py-0.5 text-xs text-muted-foreground">
+                        {selectedLocationName}
+                      </span>
+                    )}
+                  </div>
+                  <SheetHeader className="mt-2 space-y-0">
+                    <SheetTitle className="text-left text-lg">
+                      {sheetProduct.name}
+                    </SheetTitle>
+                  </SheetHeader>
+                </div>
+                <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+                  <div className="space-y-4">
+                    <h3 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+                      Variations
+                    </h3>
+                    {!sheetProduct.variations?.length ? (
+                      <p className="text-sm text-muted-foreground">
+                        No variations.
+                      </p>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[56px]">Photo</TableHead>
+                            <TableHead>Variation</TableHead>
+                            {!selectedLocationId && (
+                              <TableHead>Location</TableHead>
                             )}
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {sheetProduct.variations.map((variation) => {
-                          const variationLocations =
-                            getLocationsForVariation(variation);
-                          const rowLocId =
-                            rowLocationByVariationId[variation.id] ??
-                            variationLocations[0]?.id ??
-                            "";
+                            <TableHead className="text-right">Stock</TableHead>
+                            {canManageProducts &&
+                              (onEdit || onDeleteVariation) && (
+                                <TableHead className="w-[100px] text-right">
+                                  Actions
+                                </TableHead>
+                              )}
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {sheetProduct.variations.map((variation) => {
+                            const variationLocations =
+                              getLocationsForVariation(variation);
+                            const rowLocId =
+                              rowLocationByVariationId[variation.id] ??
+                              variationLocations[0]?.id ??
+                              "";
 
-                          const stock = selectedLocationId
-                            ? getStockForVariationAtLocation(
-                                variation,
-                                selectedLocationId,
-                              )
-                            : rowLocId
+                            const stock = selectedLocationId
                               ? getStockForVariationAtLocation(
                                   variation,
-                                  rowLocId,
+                                  selectedLocationId,
                                 )
-                              : getVariationTotal(variation);
+                              : rowLocId
+                                ? getStockForVariationAtLocation(
+                                    variation,
+                                    rowLocId,
+                                  )
+                                : getVariationTotal(variation);
 
-                          const variationPhotos =
-                            (
-                              variation as {
-                                photos?: Array<{
-                                  photoUrl: string;
-                                  isPrimary?: boolean;
-                                }>;
-                              }
-                            ).photos ?? [];
-                          const primaryPhoto =
-                            variationPhotos.find((p) => p.isPrimary) ??
-                            variationPhotos[0];
+                            const variationPhotos =
+                              (
+                                variation as {
+                                  photos?: Array<{
+                                    photoUrl: string;
+                                    isPrimary?: boolean;
+                                  }>;
+                                }
+                              ).photos ?? [];
+                            const primaryPhoto =
+                              variationPhotos.find((p) => p.isPrimary) ??
+                              variationPhotos[0];
 
-                          return (
-                            <TableRow key={variation.id}>
-                              <TableCell className="w-[56px] p-1 align-middle">
-                                {primaryPhoto?.photoUrl ? (
-                                  <div className="relative h-12 w-12 rounded border overflow-hidden shrink-0 bg-muted">
-                                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                                    <img
-                                      src={primaryPhoto.photoUrl}
-                                      alt=""
-                                      className="h-full w-full object-cover"
-                                      onError={(e) => {
-                                        e.currentTarget.style.display = "none";
-                                      }}
-                                    />
-                                  </div>
-                                ) : (
-                                  <span className="text-muted-foreground text-xs">
-                                    —
-                                  </span>
-                                )}
-                              </TableCell>
-                              <TableCell className="font-medium">
-                                {getVariationAttributeDisplay(variation) || "—"}
-                              </TableCell>
-                              {!selectedLocationId && (
-                                <TableCell>
-                                  {variationLocations.length > 0 ? (
-                                    <Select
-                                      value={rowLocId || "_none"}
-                                      onValueChange={(value) => {
-                                        if (value === "_none") return;
-                                        setRowLocationByVariationId((prev) => ({
-                                          ...prev,
-                                          [variation.id]: value,
-                                        }));
-                                      }}
-                                    >
-                                      <SelectTrigger className="h-8 text-sm w-[140px]">
-                                        <SelectValue placeholder="Location" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {variationLocations.map((loc) => (
-                                          <SelectItem
-                                            key={loc.id}
-                                            value={loc.id}
-                                          >
-                                            {loc.name}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                            return (
+                              <TableRow key={variation.id}>
+                                <TableCell className="w-[56px] p-1 align-middle">
+                                  {primaryPhoto?.photoUrl ? (
+                                    <div className="relative h-12 w-12 rounded border overflow-hidden shrink-0 bg-muted">
+                                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                                      <img
+                                        src={primaryPhoto.photoUrl}
+                                        alt=""
+                                        className="h-full w-full object-cover"
+                                        onError={(e) => {
+                                          e.currentTarget.style.display =
+                                            "none";
+                                        }}
+                                      />
+                                    </div>
                                   ) : (
-                                    <span className="text-sm text-muted-foreground">
+                                    <span className="text-muted-foreground text-xs">
                                       —
                                     </span>
                                   )}
                                 </TableCell>
-                              )}
-                              <TableCell className="text-right">
-                                {stock}
-                              </TableCell>
-                              {canManageProducts &&
-                                (onEdit || onDeleteVariation) && (
-                                  <TableCell className="text-right">
-                                    <div className="flex items-center justify-end gap-1">
-                                      {onEdit && (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8"
-                                                onClick={() =>
-                                                  onEdit(sheetProduct)
-                                                }
-                                                aria-label="Edit product"
-                                              >
-                                                <Edit2 className="h-4 w-4" />
-                                              </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              Edit product
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      )}
-                                      {onDeleteVariation && (
-                                        <TooltipProvider>
-                                          <Tooltip>
-                                            <TooltipTrigger asChild>
-                                              <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-8 w-8 text-destructive hover:text-destructive"
-                                                onClick={() =>
-                                                  onDeleteVariation(
-                                                    sheetProduct,
-                                                    variation.id,
-                                                  )
-                                                }
-                                                aria-label="Delete variation"
-                                              >
-                                                <Trash2 className="h-4 w-4" />
-                                              </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>
-                                              Delete variation
-                                            </TooltipContent>
-                                          </Tooltip>
-                                        </TooltipProvider>
-                                      )}
-                                    </div>
+                                <TableCell className="font-medium">
+                                  {getVariationAttributeDisplay(variation) ||
+                                    "—"}
+                                </TableCell>
+                                {!selectedLocationId && (
+                                  <TableCell>
+                                    {variationLocations.length > 0 ? (
+                                      <Select
+                                        value={rowLocId || "_none"}
+                                        onValueChange={(value) => {
+                                          if (value === "_none") return;
+                                          setRowLocationByVariationId(
+                                            (prev) => ({
+                                              ...prev,
+                                              [variation.id]: value,
+                                            }),
+                                          );
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 text-sm w-[140px]">
+                                          <SelectValue placeholder="Location" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          {variationLocations.map((loc) => (
+                                            <SelectItem
+                                              key={loc.id}
+                                              value={loc.id}
+                                            >
+                                              {loc.name}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    ) : (
+                                      <span className="text-sm text-muted-foreground">
+                                        —
+                                      </span>
+                                    )}
                                   </TableCell>
                                 )}
-                            </TableRow>
-                          );
-                        })}
-                      </TableBody>
-                    </Table>
-                  )}
+                                <TableCell className="text-right">
+                                  {stock}
+                                </TableCell>
+                                {canManageProducts &&
+                                  (onEdit || onDeleteVariation) && (
+                                    <TableCell className="text-right">
+                                      <div className="flex items-center justify-end gap-1">
+                                        {onEdit && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-8 w-8"
+                                                  onClick={() =>
+                                                    onEdit(sheetProduct)
+                                                  }
+                                                  aria-label="Edit product"
+                                                >
+                                                  <Edit2 className="h-4 w-4" />
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                Edit product
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                        {onDeleteVariation && (
+                                          <TooltipProvider>
+                                            <Tooltip>
+                                              <TooltipTrigger asChild>
+                                                <Button
+                                                  variant="ghost"
+                                                  size="icon"
+                                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                                  onClick={() =>
+                                                    onDeleteVariation(
+                                                      sheetProduct,
+                                                      variation.id,
+                                                    )
+                                                  }
+                                                  aria-label="Delete variation"
+                                                >
+                                                  <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                              </TooltipTrigger>
+                                              <TooltipContent>
+                                                Delete variation
+                                              </TooltipContent>
+                                            </Tooltip>
+                                          </TooltipProvider>
+                                        )}
+                                      </div>
+                                    </TableCell>
+                                  )}
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </SheetContent>
         </Sheet>
@@ -750,6 +766,7 @@ export function ProductTable({
           onPageChange={onPageChange}
           onPageSizeChange={onPageSizeChange}
           isLoading={isLoading || isFetching}
+          itemLabel="products"
         />
       </CardContent>
     </Card>
