@@ -1,6 +1,6 @@
 import api from "@/lib/axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
-import type { PipelineStage } from "./pipeline.service";
+import type { PipelineStage, PipelineType } from "./pipeline.service";
 
 export type DealStatus = "OPEN" | "WON" | "LOST";
 
@@ -34,6 +34,7 @@ export interface Deal {
     firstName: string;
     lastName?: string | null;
     email?: string | null;
+    purchaseCount?: number;
   } | null;
   member?: {
     id: string;
@@ -45,6 +46,7 @@ export interface Deal {
   pipeline?: {
     id: string;
     name: string;
+    type?: PipelineType;
     stages: PipelineStage[];
     isDefault: boolean;
   } | null;

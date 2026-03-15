@@ -47,6 +47,7 @@ describe("PipelineRepository", () => {
         data: {
           tenantId: "t1",
           name: "Sales",
+          type: "GENERAL",
           stages: expect.any(Array),
           isDefault: false,
         },
@@ -77,11 +78,16 @@ describe("PipelineRepository", () => {
     });
   });
 
-  describe("seedDefaultPipelines", () => {
+  describe("seedFrameworkPipelines", () => {
     it("creates 3 pipelines for the tenant", async () => {
-      mockCreate.mockResolvedValue({ id: "p1", name: "Sales Pipeline" });
+      mockFindMany.mockResolvedValue([]);
+      mockCreate.mockResolvedValue({
+        id: "p1",
+        name: "New Sales",
+        type: "NEW_SALES",
+      });
 
-      await pipelineRepository.seedDefaultPipelines("tenant-1");
+      await pipelineRepository.seedFrameworkPipelines("tenant-1");
 
       expect(mockCreate).toHaveBeenCalledTimes(3);
       expect(mockCreate).toHaveBeenNthCalledWith(
@@ -89,7 +95,7 @@ describe("PipelineRepository", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             tenantId: "tenant-1",
-            name: "Sales Pipeline",
+            name: "New Sales",
             isDefault: true,
           }),
         }),
@@ -99,7 +105,7 @@ describe("PipelineRepository", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             tenantId: "tenant-1",
-            name: "Remarketing Pipeline",
+            name: "Remarketing",
             isDefault: false,
           }),
         }),
@@ -109,7 +115,7 @@ describe("PipelineRepository", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             tenantId: "tenant-1",
-            name: "Repurchase Pipeline",
+            name: "Repurchase",
             isDefault: false,
           }),
         }),

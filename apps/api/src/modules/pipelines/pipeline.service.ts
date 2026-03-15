@@ -2,6 +2,7 @@ import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import pipelineRepository from "./pipeline.repository";
 import type { CreatePipelineDto, UpdatePipelineDto } from "./pipeline.schema";
+import type { PipelineType } from "@prisma/client";
 
 export class PipelineService {
   async create(tenantId: string, data: CreatePipelineDto) {
@@ -27,9 +28,55 @@ export class PipelineService {
     return pipelineRepository.create({
       tenantId,
       name: data.name,
+      type: (data as { type?: PipelineType }).type ?? "GENERAL",
       stages,
       isDefault: !!data.isDefault,
     });
+  }
+
+  async seedFramework(tenantId: string) {
+    const pipelines = await pipelineRepository.seedFrameworkPipelines(tenantId);
+
+    const crmSettingsRepo = (
+      await import("@/modules/crm-settings/crm-settings.repository")
+    ).default;
+
+    const journeyTypes = [
+      "New",
+      "Engaging",
+      "Customer",
+      "Lost Lead",
+      "Returning Customer",
+      "VIP Customer",
+      "Cold",
+    ];
+    for (const name of journeyTypes) {
+      try {
+        await crmSettingsRepo.createJourneyType(tenantId, { name });
+      } catch {
+        // Already exists — skip
+      }
+    }
+
+    const contactRepo = (await import("@/modules/contacts/contact.repository"))
+      .default;
+    const tagNames = [
+      "VIP",
+      "Hot Lead",
+      "Follow Up",
+      "Re-engage",
+      "Cold",
+      "Repeat Buyer",
+    ];
+    for (const name of tagNames) {
+      try {
+        await contactRepo.createTag(tenantId, name);
+      } catch {
+        // Already exists — skip
+      }
+    }
+
+    return { pipelines, journeyTypes, tags: tagNames };
   }
 
   async getAll(tenantId: string) {

@@ -57,6 +57,7 @@ import {
   useCreatePipeline,
   useUpdatePipeline,
   useDeletePipeline,
+  useSeedPipelineFramework,
 } from "../../hooks/use-pipelines";
 import {
   useCrmSources,
@@ -264,11 +265,19 @@ function SortableStageItem({
 
 // ── Pipeline Settings ─────────────────────────────────────────────────────────
 
+const PIPELINE_TYPE_LABELS: Record<string, string> = {
+  GENERAL: "General",
+  NEW_SALES: "New Sales",
+  REMARKETING: "Remarketing",
+  REPURCHASE: "Repurchase",
+};
+
 function PipelineSettings() {
   const { data, isLoading } = usePipelines();
   const createMutation = useCreatePipeline();
   const updateMutation = useUpdatePipeline();
   const deleteMutation = useDeletePipeline();
+  const seedMutation = useSeedPipelineFramework();
 
   const [showCreate, setShowCreate] = useState(false);
   const [editPipeline, setEditPipeline] = useState<{
@@ -350,18 +359,32 @@ function PipelineSettings() {
             when creating new deals.
           </CardDescription>
         </div>
-        <Button
-          size="sm"
-          onClick={() => {
-            setShowCreate(true);
-            setNewName("");
-            setCreateStages([
-              { id: crypto.randomUUID(), name: "", order: 0, probability: 0 },
-            ]);
-          }}
-        >
-          <Plus className="h-4 w-4 mr-1" /> New Pipeline
-        </Button>
+        <div className="flex gap-2">
+          {!pipelines.some((p) => p.type && p.type !== "GENERAL") && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => seedMutation.mutate()}
+              disabled={seedMutation.isPending}
+            >
+              {seedMutation.isPending
+                ? "Setting up..."
+                : "Setup Pipeline Framework"}
+            </Button>
+          )}
+          <Button
+            size="sm"
+            onClick={() => {
+              setShowCreate(true);
+              setNewName("");
+              setCreateStages([
+                { id: crypto.randomUUID(), name: "", order: 0, probability: 0 },
+              ]);
+            }}
+          >
+            <Plus className="h-4 w-4 mr-1" /> New Pipeline
+          </Button>
+        </div>
       </CardHeader>
       <CardContent>
         {isLoading ? (
@@ -391,7 +414,19 @@ function PipelineSettings() {
               <TableBody>
                 {pipelines.map((p) => (
                   <TableRow key={p.id}>
-                    <TableCell className="font-medium">{p.name}</TableCell>
+                    <TableCell className="font-medium">
+                      <span className="flex items-center gap-2">
+                        {p.name}
+                        {p.type && p.type !== "GENERAL" && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] px-1.5 py-0"
+                          >
+                            {PIPELINE_TYPE_LABELS[p.type] ?? p.type}
+                          </Badge>
+                        )}
+                      </span>
+                    </TableCell>
                     <TableCell>
                       <div className="flex flex-wrap gap-1">
                         {p.stages.map((s) => (

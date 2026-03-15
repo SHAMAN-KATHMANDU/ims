@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import prisma from "@/config/prisma";
+import type { PipelineType } from "@prisma/client";
 
 const DEFAULT_STAGES = [
   { id: "1", name: "Qualification", order: 1, probability: 10 },
@@ -12,6 +13,7 @@ const DEFAULT_STAGES = [
 export interface CreatePipelineData {
   tenantId: string;
   name: string;
+  type?: PipelineType;
   stages: Array<{
     id: string;
     name: string;
@@ -38,9 +40,16 @@ export class PipelineRepository {
       data: {
         tenantId: data.tenantId,
         name: data.name,
+        type: data.type ?? "GENERAL",
         stages: data.stages,
         isDefault: data.isDefault,
       },
+    });
+  }
+
+  async findByType(tenantId: string, type: PipelineType) {
+    return prisma.pipeline.findFirst({
+      where: { tenantId, type, deletedAt: null },
     });
   }
 
@@ -107,13 +116,13 @@ export class PipelineRepository {
   }
 
   /**
-   * Seed 3 default pipelines for a new tenant.
-   * Called after tenant creation.
+   * Seed the 3 CRM framework pipelines for a tenant.
+   * Returns the created pipelines or skips if they already exist.
    */
-  async seedDefaultPipelines(tenantId: string) {
+  async seedFrameworkPipelines(tenantId: string) {
     const makeStages = (
       names: string[],
-      probabilities: number[] = [],
+      probabilities: number[],
     ): Array<{
       id: string;
       name: string;
@@ -123,56 +132,85 @@ export class PipelineRepository {
       names.map((name, i) => ({
         id: randomUUID(),
         name,
-        order: i,
+        order: i + 1,
         probability: probabilities[i] ?? 0,
       }));
 
-    const salesStages = makeStages(
-      [
-        "New Lead",
-        "Contacted",
-        "Qualified",
-        "Proposal Sent",
-        "Negotiation",
-        "Closed Won",
-        "Closed Lost",
-      ],
-      [0, 5, 15, 40, 70, 100, 0],
-    );
-    const remarketingStages = makeStages([
-      "Identified",
-      "Re-engaged",
-      "Interested",
-      "Offer Sent",
-      "Converted",
-      "Not Interested",
-    ]);
-    const repurchaseStages = makeStages([
-      "Past Customer",
-      "Follow-up Sent",
-      "Considering",
-      "Repeat Purchase",
-      "Churned",
-    ]);
+    const existing = await prisma.pipeline.findMany({
+      where: {
+        tenantId,
+        type: { in: ["NEW_SALES", "REMARKETING", "REPURCHASE"] },
+        deletedAt: null,
+      },
+      select: { type: true },
+    });
+    const existingTypes = new Set(existing.map((p) => p.type));
 
-    await this.create({
-      tenantId,
-      name: "Sales Pipeline",
-      stages: salesStages,
-      isDefault: true,
-    });
-    await this.create({
-      tenantId,
-      name: "Remarketing Pipeline",
-      stages: remarketingStages,
-      isDefault: false,
-    });
-    await this.create({
-      tenantId,
-      name: "Repurchase Pipeline",
-      stages: repurchaseStages,
-      isDefault: false,
-    });
+    const results: Array<{ id: string; name: string; type: PipelineType }> = [];
+
+    if (!existingTypes.has("NEW_SALES")) {
+      const p = await this.create({
+        tenantId,
+        name: "New Sales",
+        type: "NEW_SALES",
+        stages: makeStages(
+          [
+            "New Lead",
+            "Qualifying",
+            "Proposal Sent",
+            "Negotiating",
+            "Closed Won",
+            "Closed Lost",
+          ],
+          [10, 25, 50, 75, 100, 0],
+        ),
+        isDefault: true,
+      });
+      results.push({ id: p.id, name: p.name, type: p.type });
+    }
+
+    if (!existingTypes.has("REMARKETING")) {
+      const p = await this.create({
+        tenantId,
+        name: "Remarketing",
+        type: "REMARKETING",
+        stages: makeStages(
+          [
+            "Post-Purchase Follow-up",
+            "Dormant",
+            "Re-engaged",
+            "Active Interest",
+            "Purchase Intent",
+          ],
+          [20, 5, 30, 50, 80],
+        ),
+        isDefault: false,
+      });
+      results.push({ id: p.id, name: p.name, type: p.type });
+    }
+
+    if (!existingTypes.has("REPURCHASE")) {
+      const p = await this.create({
+        tenantId,
+        name: "Repurchase",
+        type: "REPURCHASE",
+        stages: makeStages(
+          [
+            "Returned",
+            "Needs Assessment",
+            "Loyalty Offer Made",
+            "Negotiating",
+            "Closed Won",
+            "Closed Lost",
+          ],
+          [30, 40, 60, 75, 100, 0],
+        ),
+        isDefault: false,
+      });
+      results.push({ id: p.id, name: p.name, type: p.type });
+    }
+
+    return results;
   }
 }
 

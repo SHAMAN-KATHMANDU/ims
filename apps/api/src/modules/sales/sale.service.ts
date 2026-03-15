@@ -624,6 +624,35 @@ export async function createSale(
       );
       await updateSaleContactId(sale.id, newContact.id);
       finalSale = { ...sale, contactId: newContact.id };
+      resolvedContactId = newContact.id;
+    } catch {
+      // Log but don't fail sale creation
+    }
+  } else if (!resolvedContactId && !member && dto.memberPhone) {
+    try {
+      const newContact = await contactRepository.findOrCreateFromSaleInfo(
+        ctx.tenantId,
+        {
+          phone: dto.memberPhone,
+          name: dto.memberName ?? null,
+        },
+        ctx.userId,
+      );
+      await updateSaleContactId(sale.id, newContact.id);
+      finalSale = { ...sale, contactId: newContact.id };
+      resolvedContactId = newContact.id;
+    } catch {
+      // Log but don't fail sale creation
+    }
+  }
+
+  // Increment purchaseCount on the linked contact and apply loyalty tier
+  if (resolvedContactId) {
+    try {
+      await contactRepository.incrementPurchaseCount(resolvedContactId);
+      const { applyLoyaltyTier } =
+        await import("@/modules/contacts/loyalty.service");
+      await applyLoyaltyTier(resolvedContactId);
     } catch {
       // Log but don't fail sale creation
     }

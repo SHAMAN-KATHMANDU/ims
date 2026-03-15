@@ -8,7 +8,13 @@ import type { CreateDealDto, UpdateDealDto } from "./deal.schema";
 
 const DEAL_INCLUDE = {
   contact: {
-    select: { id: true, firstName: true, lastName: true, email: true },
+    select: {
+      id: true,
+      firstName: true,
+      lastName: true,
+      email: true,
+      purchaseCount: true,
+    },
   },
   member: { select: { id: true, name: true, phone: true, email: true } },
   company: { select: { id: true, name: true } },

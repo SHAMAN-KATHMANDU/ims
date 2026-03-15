@@ -114,6 +114,10 @@ type ActionConfigMap = {
   MOVE_STAGE: import("./workflow.schema").MoveStageConfig;
   UPDATE_FIELD: import("./workflow.schema").UpdateFieldConfig;
   CREATE_ACTIVITY: import("./workflow.schema").CreateActivityConfig;
+  CREATE_DEAL: import("./workflow.schema").CreateDealConfig;
+  UPDATE_CONTACT_FIELD: import("./workflow.schema").UpdateContactFieldConfig;
+  APPLY_TAG: import("./workflow.schema").ApplyTagConfig;
+  REMOVE_TAG: import("./workflow.schema").RemoveTagConfig;
 };
 
 async function executeAction(

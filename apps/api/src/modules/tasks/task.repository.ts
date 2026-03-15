@@ -162,7 +162,7 @@ export class TaskRepository {
   async completeManyByContactId(contactId: string) {
     await prisma.task.updateMany({
       where: { contactId, completed: false, deletedAt: null },
-      data: { completed: true },
+      data: { completed: true, contactId: null },
     });
   }
 

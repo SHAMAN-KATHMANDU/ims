@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -23,6 +24,10 @@ import type {
   UpdateDealData,
   Deal,
 } from "../../services/deal.service";
+import {
+  checkDiscountAuthority,
+  type DiscountAuthorityResult,
+} from "../../services/discount-authority.service";
 import { DealLineItemsSection } from "./DealLineItemsSection";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
@@ -156,6 +161,40 @@ export function DealForm(props: DealFormProps) {
     if (fallback) form.setValue("pipelineId", fallback);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- form is stable; omit to avoid overwriting user selection on identity change
   }, [isEdit, pipelines, defaultPipeline?.id, initialPipelineId]);
+
+  // ── Discount authority check ──────────────────────────────────────────────
+  const pipelineType =
+    isEdit && "deal" in props ? props.deal?.pipeline?.type : undefined;
+  const purchaseCount =
+    isEdit && "deal" in props ? (props.deal?.contact?.purchaseCount ?? 0) : 0;
+  const showDiscountCheck =
+    isEdit && pipelineType && pipelineType !== "GENERAL";
+
+  const [discountPercent, setDiscountPercent] = useState<string>("");
+  const [discountResult, setDiscountResult] =
+    useState<DiscountAuthorityResult | null>(null);
+  const [discountLoading, setDiscountLoading] = useState(false);
+
+  const handleDiscountCheck = useCallback(async () => {
+    const pct = parseFloat(discountPercent);
+    if (!pipelineType || isNaN(pct) || pct <= 0) {
+      setDiscountResult(null);
+      return;
+    }
+    setDiscountLoading(true);
+    try {
+      const result = await checkDiscountAuthority({
+        pipelineType,
+        purchaseCount,
+        discountPercent: pct,
+      });
+      setDiscountResult(result);
+    } catch {
+      setDiscountResult(null);
+    } finally {
+      setDiscountLoading(false);
+    }
+  }, [discountPercent, pipelineType, purchaseCount]);
 
   const handleSubmit = form.handleSubmit(async (values) => {
     if (props.mode === "create") {
@@ -334,6 +373,53 @@ export function DealForm(props: DealFormProps) {
             <p className="text-sm text-destructive mt-1">
               {form.formState.errors.editReason.message}
             </p>
+          )}
+        </div>
+      )}
+
+      {showDiscountCheck && (
+        <div className="rounded-lg border p-3 space-y-2">
+          <Label>Discount Authority Check</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              placeholder="Discount %"
+              value={discountPercent}
+              onChange={(e) => {
+                setDiscountPercent(e.target.value);
+                setDiscountResult(null);
+              }}
+              className="w-32"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={discountLoading || !discountPercent}
+              onClick={handleDiscountCheck}
+            >
+              {discountLoading ? "Checking..." : "Check"}
+            </Button>
+          </div>
+          {discountResult && (
+            <div className="flex items-center gap-2 text-sm">
+              <Badge
+                variant={
+                  discountResult.authority === "AUTO_APPROVED"
+                    ? "default"
+                    : discountResult.authority === "HUMAN_REVIEW"
+                      ? "secondary"
+                      : "destructive"
+                }
+              >
+                {discountResult.authority.replace("_", " ")}
+              </Badge>
+              <span className="text-muted-foreground">
+                {discountResult.reason}
+              </span>
+            </div>
           )}
         </div>
       )}

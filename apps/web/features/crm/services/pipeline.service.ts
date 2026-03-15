@@ -7,9 +7,16 @@ export interface PipelineStage {
   probability?: number;
 }
 
+export type PipelineType =
+  | "GENERAL"
+  | "NEW_SALES"
+  | "REMARKETING"
+  | "REPURCHASE";
+
 export interface Pipeline {
   id: string;
   name: string;
+  type: PipelineType;
   stages: PipelineStage[];
   isDefault: boolean;
   createdAt: string;
@@ -48,4 +55,15 @@ export async function updatePipeline(
 
 export async function deletePipeline(id: string): Promise<void> {
   await api.delete(`/pipelines/${id}`);
+}
+
+export interface SeedFrameworkResult {
+  pipelines: Array<{ id: string; name: string; type: PipelineType }>;
+  journeyTypes: string[];
+  tags: string[];
+}
+
+export async function seedPipelineFramework(): Promise<SeedFrameworkResult> {
+  const res = await api.post("/pipelines/seed-framework");
+  return res.data;
 }

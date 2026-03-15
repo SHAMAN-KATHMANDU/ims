@@ -17,6 +17,7 @@ export interface Contact {
   memberId?: string | null;
   source?: string | null;
   journeyType?: string | null;
+  purchaseCount: number;
   ownedById: string;
   createdById: string;
   createdAt: string;

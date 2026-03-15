@@ -38,6 +38,23 @@ pipelineRouter.post(
 
 /**
  * @swagger
+ * /pipelines/seed-framework:
+ *   post:
+ *     summary: Seed the 3 CRM framework pipelines (New Sales, Remarketing, Repurchase) with default stages, journey types, and tags
+ *     tags: [Pipelines]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       201: { description: Framework seeded }
+ */
+pipelineRouter.post(
+  "/seed-framework",
+  authorizeRoles("admin", "superAdmin"),
+  asyncHandler(pipelineController.seedFramework),
+);
+
+/**
+ * @swagger
  * /pipelines:
  *   get:
  *     summary: Get all pipelines
