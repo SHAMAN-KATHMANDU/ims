@@ -51,6 +51,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Upload,
   Download,
@@ -60,6 +61,9 @@ import {
   Plus,
   ArrowUpDown,
   X,
+  Package,
+  AlertTriangle,
+  Trash2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -73,6 +77,15 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { downloadProducts } from "@/features/products";
 import type {
   ProductFormValues,
@@ -243,6 +256,15 @@ export function ProductPage() {
     isFetching: isProductsFetching,
   } = useProductsPaginated(paginationParams);
 
+  // Low-stock count for summary card
+  const { data: lowStockResponse } = useProductsPaginated({
+    ...paginationParams,
+    lowStock: true,
+    page: 1,
+    limit: 1,
+  });
+  const lowStockCount = lowStockResponse?.pagination?.totalItems ?? 0;
+
   // Extract products and pagination info from response
   const products = productsResponse?.data ?? [];
   const paginationInfo = productsResponse?.pagination;
@@ -376,6 +398,22 @@ export function ProductPage() {
     });
   }, []);
 
+  const handleLowStockFilter = useCallback(() => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      lowStock: true,
+    }));
+  }, []);
+
+  const handleViewAllProducts = useCallback(() => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      lowStock: undefined,
+    }));
+  }, []);
+
   const hasActiveFilters =
     (paginationParams.search ?? "") !== "" ||
     paginationParams.locationId != null ||
@@ -404,6 +442,33 @@ export function ProductPage() {
     (state) => state.setProducts,
   );
 
+  const handleBulkDelete = useCallback(async () => {
+    const ids = Array.from(selectedProductIds);
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    try {
+      for (const id of ids) {
+        await deleteProductMutation.mutateAsync({ id });
+      }
+      clearSelection();
+      setBulkDeleteOpen(false);
+      toast({
+        title: "Products deleted",
+        description: `${ids.length} product${ids.length !== 1 ? "s" : ""} deleted successfully`,
+      });
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Failed to delete some products";
+      toast({
+        title: "Delete failed",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setBulkDeleting(false);
+    }
+  }, [selectedProductIds, deleteProductMutation, clearSelection, toast]);
+
   // Dialog states
   const [productDialog, setProductDialog] = useState(false);
   const [bulkUploadDialog, setBulkUploadDialog] = useState(false);
@@ -420,6 +485,8 @@ export function ProductPage() {
     open: false,
     message: "",
   });
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
   // Edit states
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -1005,7 +1072,7 @@ export function ProductPage() {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div>
         <h1 className="text-3xl font-bold">Products</h1>
         <p className="text-muted-foreground mt-2">
@@ -1020,6 +1087,48 @@ export function ProductPage() {
             </span>
           )}
         </p>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="border border-border/80 bg-muted/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total products
+            </CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold tracking-tight">
+              {paginationInfo?.totalItems ?? 0}
+            </p>
+            <button
+              type="button"
+              onClick={handleViewAllProducts}
+              className="text-xs text-primary hover:underline mt-1 font-medium"
+            >
+              Check products
+            </button>
+          </CardContent>
+        </Card>
+        <Card className="border border-border/80 bg-muted/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Stock at minimum limit
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold tracking-tight">{lowStockCount}</p>
+            <button
+              type="button"
+              onClick={handleLowStockFilter}
+              className="text-xs text-primary hover:underline mt-1 font-medium"
+            >
+              Check products
+            </button>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="space-y-4">
@@ -1384,6 +1493,90 @@ export function ProductPage() {
         open={bulkUploadDialog}
         onOpenChange={setBulkUploadDialog}
       />
+
+      {/* Sticky bulk action bar when items selected */}
+      {selectedProductIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <span className="text-sm font-medium">
+              {selectedProductIds.size} item
+              {selectedProductIds.size !== 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              {canManageProducts && (
+                <>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="secondary" size="sm">
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        onClick={() => handleExport("excel")}
+                        disabled={isProductsLoading}
+                      >
+                        <FileSpreadsheet className="h-4 w-4 mr-2" />
+                        Download as Excel
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => handleExport("csv")}
+                        disabled={isProductsLoading}
+                      >
+                        <FileText className="h-4 w-4 mr-2" />
+                        Download as CSV
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setBulkDeleteOpen(true)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Delete
+                  </Button>
+                </>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSelection}
+                className="shrink-0"
+                aria-label="Clear selection"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete selected products?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedProductIds.size} product
+              {selectedProductIds.size !== 1 ? "s" : ""}. This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={() => handleBulkDelete()}
+              disabled={bulkDeleting}
+            >
+              {bulkDeleting ? "Deleting…" : "Delete"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

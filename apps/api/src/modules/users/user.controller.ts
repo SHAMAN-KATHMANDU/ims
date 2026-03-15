@@ -132,10 +132,9 @@ class UserController {
 
   approveResetRequest = async (req: Request, res: Response) => {
     try {
-      const requestId =
-        Array.isArray(req.params.requestId)
-          ? req.params.requestId[0]
-          : req.params.requestId;
+      const requestId = Array.isArray(req.params.requestId)
+        ? req.params.requestId[0]
+        : req.params.requestId;
       const tenantId = req.user!.tenantId;
       const handledById = req.user!.id;
       const body = ApprovePasswordResetSchema.parse(req.body);
@@ -169,18 +168,18 @@ class UserController {
 
   escalateResetRequest = async (req: Request, res: Response) => {
     try {
-      const requestId =
-        Array.isArray(req.params.requestId)
-          ? req.params.requestId[0]
-          : req.params.requestId;
+      const requestId = Array.isArray(req.params.requestId)
+        ? req.params.requestId[0]
+        : req.params.requestId;
       const tenantId = req.user!.tenantId;
       const result = await this.service.escalateResetRequest(
         requestId!,
         tenantId,
       );
-      return res
-        .status(200)
-        .json({ message: "Request escalated to platform admin", request: result });
+      return res.status(200).json({
+        message: "Request escalated to platform admin",
+        request: result,
+      });
     } catch (error: unknown) {
       const appErr = error as AppError;
       if (appErr.statusCode) {
@@ -197,14 +196,15 @@ class UserController {
 
   rejectResetRequest = async (req: Request, res: Response) => {
     try {
-      const requestId =
-        Array.isArray(req.params.requestId)
-          ? req.params.requestId[0]
-          : req.params.requestId;
+      const requestId = Array.isArray(req.params.requestId)
+        ? req.params.requestId[0]
+        : req.params.requestId;
       const tenantId = req.user!.tenantId;
       const handledById = req.user!.id;
       await this.service.rejectResetRequest(requestId!, tenantId, handledById);
-      return res.status(200).json({ message: "Password reset request rejected" });
+      return res
+        .status(200)
+        .json({ message: "Password reset request rejected" });
     } catch (error: unknown) {
       const appErr = error as AppError;
       if (appErr.statusCode) {

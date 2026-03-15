@@ -34,6 +34,8 @@ export interface DataTablePaginationProps {
   onPageSizeChange?: (pageSize: number) => void;
   pageSizeOptions?: number[];
   isLoading?: boolean;
+  /** Label for the entity (e.g. "products"). Default "items". */
+  itemLabel?: string;
 }
 
 // ============================================
@@ -46,6 +48,7 @@ export function DataTablePagination({
   onPageSizeChange,
   pageSizeOptions = [10, 20, 30, 50],
   isLoading = false,
+  itemLabel = "items",
 }: DataTablePaginationProps) {
   const {
     currentPage,
@@ -65,14 +68,14 @@ export function DataTablePagination({
       {/* Items info */}
       <div className="text-sm text-muted-foreground order-2 sm:order-1">
         {totalItems === 0 ? (
-          "No items"
+          `No ${itemLabel}`
         ) : (
           <>
             Showing{" "}
             <span className="font-medium text-foreground">{startItem}</span> to{" "}
             <span className="font-medium text-foreground">{endItem}</span> of{" "}
             <span className="font-medium text-foreground">{totalItems}</span>{" "}
-            items
+            {itemLabel}
           </>
         )}
       </div>

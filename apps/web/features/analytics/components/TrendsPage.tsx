@@ -114,14 +114,14 @@ export function TrendsPage() {
 
   return (
     <div
-      className="reports-container min-w-0 w-full max-w-full space-y-6"
+      className="reports-container min-w-0 w-full max-w-full space-y-8"
       data-reports
     >
-      <header>
-        <h1 className="text-2xl font-bold text-balance md:text-3xl">
-          Trends & Patterns Analytics
+      <header className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-balance md:text-3xl">
+          Trends & Patterns
         </h1>
-        <p className="text-muted-foreground mt-2 text-sm md:text-base">
+        <p className="text-muted-foreground mt-1 text-sm md:text-base">
           Growth rates, seasonality, cohort retention, and peak patterns
         </p>
       </header>
@@ -167,7 +167,7 @@ export function TrendsPage() {
             <TabsTrigger value="peak">Peak Hours</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="growth" className="space-y-6 mt-6">
+          <TabsContent value="growth" className="space-y-8 mt-8">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -310,7 +310,7 @@ export function TrendsPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="seasonality" className="space-y-6 mt-6">
+          <TabsContent value="seasonality" className="space-y-8 mt-8">
             <Card className="min-w-0">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div>
@@ -360,7 +360,7 @@ export function TrendsPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="cohort" className="space-y-6 mt-6">
+          <TabsContent value="cohort" className="space-y-8 mt-8">
             <Card className="min-w-0">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div>
@@ -461,7 +461,7 @@ export function TrendsPage() {
             </Card>
           </TabsContent>
 
-          <TabsContent value="peak" className="space-y-6 mt-6">
+          <TabsContent value="peak" className="space-y-8 mt-8">
             <Card className="min-w-0">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div>

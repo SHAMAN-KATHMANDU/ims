@@ -55,7 +55,8 @@ class ErrorReportController {
     try {
       if (req.user?.role !== "platformAdmin") {
         return res.status(403).json({
-          message: "Only platform administrators can change error report status",
+          message:
+            "Only platform administrators can change error report status",
         });
       }
       const id = parseId(req);

@@ -79,11 +79,14 @@ export function AnalyticsFilterBar() {
           </Button>
         </PopoverTrigger>
         <PopoverContent
-          className="w-[min(90vw,420px)] max-h-[min(85vh,560px)] overflow-y-auto p-3"
+          className="w-[min(90vw,420px)] max-h-[min(85vh,560px)] overflow-y-auto p-4"
           align="start"
           side="bottom"
           sideOffset={4}
         >
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+            Filter report data
+          </p>
           <div className="grid grid-cols-2 gap-x-4 gap-y-3">
             <p className="text-xs font-medium text-muted-foreground col-span-2">
               Date range

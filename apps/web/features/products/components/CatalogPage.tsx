@@ -54,6 +54,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Upload,
   Download,
@@ -61,6 +63,9 @@ import {
   FileText,
   Filter,
   Plus,
+  Package,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -99,6 +104,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     vendorId: undefined,
     dateFrom: undefined,
     dateTo: undefined,
+    lowStock: undefined,
     sortBy: "dateCreated",
     sortOrder: "desc",
   });
@@ -109,6 +115,15 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     isLoading: isProductsLoading,
     isFetching: isProductsFetching,
   } = useProductsPaginated(paginationParams);
+
+  // Low-stock count for summary card (same filters, lowStock=true, minimal payload)
+  const { data: lowStockResponse } = useProductsPaginated({
+    ...paginationParams,
+    lowStock: true,
+    page: 1,
+    limit: 1,
+  });
+  const lowStockCount = lowStockResponse?.pagination?.totalItems ?? 0;
 
   // Extract products and pagination info from response
   const products = productsResponse?.data ?? [];
@@ -196,6 +211,22 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
       ...prev,
       page: DEFAULT_PAGE,
       dateTo: dateTo || undefined,
+    }));
+  }, []);
+
+  const handleLowStockFilter = useCallback(() => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      lowStock: true,
+    }));
+  }, []);
+
+  const handleViewAllProducts = useCallback(() => {
+    setPaginationParams((prev) => ({
+      ...prev,
+      page: DEFAULT_PAGE,
+      lowStock: undefined,
     }));
   }, []);
 
@@ -777,12 +808,54 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div>
         <h1 className="text-3xl font-bold">Product Catalog</h1>
         <p className="text-muted-foreground mt-2">
           Manage products and their variations
         </p>
+      </div>
+
+      {/* Summary cards */}
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Card className="border border-border/80 bg-muted/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Total products
+            </CardTitle>
+            <Package className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold tracking-tight">
+              {paginationInfo?.totalItems ?? 0}
+            </p>
+            <button
+              type="button"
+              onClick={handleViewAllProducts}
+              className="text-xs text-primary hover:underline mt-1 font-medium"
+            >
+              Check products
+            </button>
+          </CardContent>
+        </Card>
+        <Card className="border border-border/80 bg-muted/30">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Stock at minimum limit
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <p className="text-2xl font-bold tracking-tight">{lowStockCount}</p>
+            <button
+              type="button"
+              onClick={handleLowStockFilter}
+              className="text-xs text-primary hover:underline mt-1 font-medium"
+            >
+              Check products
+            </button>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
@@ -906,7 +979,26 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
               </PopoverTrigger>
               <PopoverContent className="w-80 p-3" align="end">
                 <div className="space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground">
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="lowStock"
+                      checked={paginationParams.lowStock === true}
+                      onCheckedChange={(checked) =>
+                        setPaginationParams((prev) => ({
+                          ...prev,
+                          page: DEFAULT_PAGE,
+                          lowStock: checked === true ? true : undefined,
+                        }))
+                      }
+                    />
+                    <label
+                      htmlFor="lowStock"
+                      className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                    >
+                      Low stock only
+                    </label>
+                  </div>
+                  <p className="text-xs font-medium text-muted-foreground pt-1 border-t">
                     Category & vendor
                   </p>
                   <div className="grid gap-2">
@@ -1061,6 +1153,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         product={viewingProduct}
         open={!!viewingProduct}
         onOpenChange={(open) => !open && setViewingProduct(null)}
+        onEdit={canManageProducts ? handleEditProduct : undefined}
       />
 
       <ProductDeleteDialog
@@ -1104,6 +1197,55 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         open={bulkUploadDialog}
         onOpenChange={setBulkUploadDialog}
       />
+
+      {/* Sticky bulk action bar when items selected */}
+      {selectedProductIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <span className="text-sm font-medium">
+              {selectedProductIds.size} item
+              {selectedProductIds.size !== 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              {canManageProducts && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="secondary" size="sm">
+                      <Download className="h-4 w-4 mr-2" />
+                      Download
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      onClick={() => handleExport("excel")}
+                      disabled={isProductsLoading}
+                    >
+                      <FileSpreadsheet className="h-4 w-4 mr-2" />
+                      Download as Excel
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => handleExport("csv")}
+                      disabled={isProductsLoading}
+                    >
+                      <FileText className="h-4 w-4 mr-2" />
+                      Download as CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSelection}
+                className="shrink-0"
+                aria-label="Clear selection"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

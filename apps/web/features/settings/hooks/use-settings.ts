@@ -84,14 +84,22 @@ export function useApprovePasswordReset() {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   return useMutation({
-    mutationFn: ({ requestId, newPassword }: { requestId: string; newPassword: string }) =>
-      approvePasswordResetRequest(requestId, newPassword),
+    mutationFn: ({
+      requestId,
+      newPassword,
+    }: {
+      requestId: string;
+      newPassword: string;
+    }) => approvePasswordResetRequest(requestId, newPassword),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: passwordResetKeys.all });
       toast({ title: "Password reset approved" });
     },
     onError: (err: Error) => {
-      toast({ title: err.message ?? "Failed to approve", variant: "destructive" });
+      toast({
+        title: err.message ?? "Failed to approve",
+        variant: "destructive",
+      });
     },
   });
 }
@@ -106,7 +114,10 @@ export function useEscalatePasswordReset() {
       toast({ title: "Request escalated to platform admin" });
     },
     onError: (err: Error) => {
-      toast({ title: err.message ?? "Failed to escalate", variant: "destructive" });
+      toast({
+        title: err.message ?? "Failed to escalate",
+        variant: "destructive",
+      });
     },
   });
 }
@@ -121,7 +132,10 @@ export function useRejectPasswordReset() {
       toast({ title: "Request rejected" });
     },
     onError: (err: Error) => {
-      toast({ title: err.message ?? "Failed to reject", variant: "destructive" });
+      toast({
+        title: err.message ?? "Failed to reject",
+        variant: "destructive",
+      });
     },
   });
 }

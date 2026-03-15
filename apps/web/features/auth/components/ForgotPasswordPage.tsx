@@ -45,7 +45,9 @@ export function ForgotPasswordPage({ tenantSlug }: { tenantSlug: string }) {
       setSubmitted(true);
     } catch (error) {
       setSubmitError(
-        error instanceof Error ? error.message : "Request failed. Please try again.",
+        error instanceof Error
+          ? error.message
+          : "Request failed. Please try again.",
       );
     }
   };
@@ -58,8 +60,9 @@ export function ForgotPasswordPage({ tenantSlug }: { tenantSlug: string }) {
             Request Submitted
           </CardTitle>
           <CardDescription className="text-center">
-            If an account exists with that username, a password reset request has
-            been submitted. Contact your administrator to complete the reset.
+            If an account exists with that username, a password reset request
+            has been submitted. Contact your administrator to complete the
+            reset.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -81,7 +84,8 @@ export function ForgotPasswordPage({ tenantSlug }: { tenantSlug: string }) {
           Forgot Password
         </CardTitle>
         <CardDescription className="text-center">
-          Enter your username. Your administrator will process the reset request.
+          Enter your username. Your administrator will process the reset
+          request.
         </CardDescription>
       </CardHeader>
       <CardContent>

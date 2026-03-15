@@ -179,7 +179,10 @@ export function useApprovePlatformResetRequest() {
       toast({ title: "Password reset approved" });
     },
     onError: (err: Error) => {
-      toast({ title: err.message ?? "Failed to approve", variant: "destructive" });
+      toast({
+        title: err.message ?? "Failed to approve",
+        variant: "destructive",
+      });
     },
   });
 }

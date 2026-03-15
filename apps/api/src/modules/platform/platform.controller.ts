@@ -569,8 +569,7 @@ class PlatformController {
 
   getPlatformResetRequests = async (req: Request, res: Response) => {
     try {
-      const requests =
-        await platformService.getPlatformResetRequests();
+      const requests = await platformService.getPlatformResetRequests();
       return res
         .status(200)
         .json({ message: "Password reset requests fetched", requests });
@@ -589,9 +588,13 @@ class PlatformController {
       const requestId = getParam(req, "requestId");
       const handledById = req.user!.id;
       const body = ApprovePlatformResetSchema.parse(req.body);
-      await platformService.approvePlatformResetRequest(requestId, handledById, {
-        newPassword: body.newPassword,
-      });
+      await platformService.approvePlatformResetRequest(
+        requestId,
+        handledById,
+        {
+          newPassword: body.newPassword,
+        },
+      );
       return res
         .status(200)
         .json({ message: "Password reset approved. User can now log in." });

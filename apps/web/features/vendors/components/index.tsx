@@ -50,6 +50,7 @@ import {
   TableRow,
   SortableTableHead,
 } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Search, Eye, X } from "lucide-react";
 import {
@@ -58,6 +59,12 @@ import {
 } from "@/components/ui/data-table-pagination";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useDebounce } from "@/hooks/useDebounce";
+import {
+  useVendorSelectionStore,
+  selectSelectedVendorIds,
+  selectClearSelection,
+  selectSetVendors,
+} from "@/store/vendor-selection-store";
 import { VendorForm } from "./components/VendorForm";
 
 export function VendorPage() {
@@ -91,6 +98,11 @@ export function VendorPage() {
   const [deleteErrorMessage, setDeleteErrorMessage] = useState<string | null>(
     null,
   );
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+
+  const selectedVendorIds = useVendorSelectionStore(selectSelectedVendorIds);
+  const setSelectedVendorIds = useVendorSelectionStore(selectSetVendors);
+  const clearSelection = useVendorSelectionStore(selectClearSelection);
 
   const { data: vendorsResponse, isLoading } = useVendorsPaginated({
     page,
@@ -207,6 +219,42 @@ export function VendorPage() {
     }
   };
 
+  const handleBulkDeleteClick = () => setBulkDeleteOpen(true);
+
+  const handleBulkDeleteConfirm = async () => {
+    const ids = Array.from(selectedVendorIds);
+    const vendorMap = new Map(vendors.map((v) => [v.id, v]));
+    const toDelete = ids.filter(
+      (id) => (vendorMap.get(id)?._count?.products ?? 0) === 0,
+    );
+    const skipped = ids.length - toDelete.length;
+    let deleted = 0;
+    for (const id of toDelete) {
+      try {
+        await deleteMutation.mutateAsync(id);
+        deleted++;
+      } catch {
+        // toast per error or single toast at end
+      }
+    }
+    if (deleted > 0) {
+      toast({
+        title: "Vendors deleted",
+        description: `${deleted} vendor${deleted !== 1 ? "s" : ""} deleted${skipped > 0 ? `. ${skipped} skipped (have products).` : "."}`,
+      });
+    }
+    if (skipped > 0 && deleted === 0) {
+      toast({
+        title: "Cannot delete",
+        description:
+          "Selected vendors have products. Reassign or remove products first.",
+        variant: "destructive",
+      });
+    }
+    setBulkDeleteOpen(false);
+    clearSelection();
+  };
+
   const handlePageSizeChange = useCallback((newSize: number) => {
     setPageSize(newSize);
     setPage(DEFAULT_PAGE);
@@ -229,8 +277,22 @@ export function VendorPage() {
       }
     : null;
 
+  const allVendorsSelected =
+    vendors.length > 0 && vendors.every((v) => selectedVendorIds.has(v.id));
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) setSelectedVendorIds(new Set(vendors.map((v) => v.id)));
+    else clearSelection();
+  };
+  const handleSelectVendor = (vendorId: string, checked: boolean) => {
+    const next = new Set(selectedVendorIds);
+    if (checked) next.add(vendorId);
+    else next.delete(vendorId);
+    setSelectedVendorIds(next);
+  };
+  const tableColumnCount = 7; // checkbox + 6 existing
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       {/* Block delete when vendor has associated products */}
       <AlertDialog
         open={!!deleteBlockedVendor}
@@ -490,6 +552,13 @@ export function VendorPage() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={allVendorsSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Select all vendors"
+                    />
+                  </TableHead>
                   <SortableTableHead
                     sortKey="name"
                     currentSortBy={sortBy}
@@ -512,19 +581,35 @@ export function VendorPage() {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell
+                      colSpan={tableColumnCount}
+                      className="text-center py-8"
+                    >
                       Loading vendors...
                     </TableCell>
                   </TableRow>
                 ) : vendors.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} className="text-center py-8">
+                    <TableCell
+                      colSpan={tableColumnCount}
+                      className="text-center py-8"
+                    >
                       No vendors found.
                     </TableCell>
                   </TableRow>
                 ) : (
                   vendors.map((vendor) => (
                     <TableRow key={vendor.id}>
+                      <TableCell className="w-12">
+                        <Checkbox
+                          checked={selectedVendorIds.has(vendor.id)}
+                          onCheckedChange={(checked) =>
+                            handleSelectVendor(vendor.id, checked === true)
+                          }
+                          aria-label={`Select ${vendor.name}`}
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         <button
                           type="button"
@@ -608,6 +693,61 @@ export function VendorPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Bulk delete confirmation */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete selected vendors?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete {selectedVendorIds.size} vendor
+              {selectedVendorIds.size !== 1 ? "s" : ""}. Vendors with linked
+              products will be skipped. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleBulkDeleteConfirm}
+              disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Sticky bulk action bar */}
+      {selectedVendorIds.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t bg-muted/95 backdrop-blur supports-[backdrop-filter]:bg-muted/80 py-3 px-4 shadow-lg">
+          <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
+            <span className="text-sm font-medium">
+              {selectedVendorIds.size} item
+              {selectedVendorIds.size !== 1 ? "s" : ""} selected
+            </span>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleBulkDeleteClick}
+              >
+                <Trash2 className="h-4 w-4 mr-2" />
+                Delete
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={clearSelection}
+                className="shrink-0"
+                aria-label="Clear selection"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

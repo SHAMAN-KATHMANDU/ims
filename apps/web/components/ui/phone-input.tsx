@@ -44,7 +44,12 @@ function getCountryLabel(country: CountryCode): string {
 
 function FlagIcon({ country }: { country: CountryCode }) {
   if (!hasFlag(country)) return null;
-  const Flag = (Flags as Record<string, React.ComponentType<{ title?: string; className?: string }>>)[country];
+  const Flag = (
+    Flags as Record<
+      string,
+      React.ComponentType<{ title?: string; className?: string }>
+    >
+  )[country];
   if (!Flag) return null;
   return (
     <Flag
@@ -174,7 +179,9 @@ export function PhoneInput({
             >
               <span className="flex items-center gap-1.5 truncate">
                 <FlagIcon country={country} />
-                <span className="text-sm">+{getCountryCallingCode(country)}</span>
+                <span className="text-sm">
+                  +{getCountryCallingCode(country)}
+                </span>
               </span>
               <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
             </Button>

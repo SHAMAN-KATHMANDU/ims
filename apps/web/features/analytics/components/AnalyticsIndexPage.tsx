@@ -78,32 +78,41 @@ export function AnalyticsIndexPage() {
 
   return (
     <div
-      className="reports-container min-w-0 w-full max-w-full space-y-6"
+      className="reports-container min-w-0 w-full max-w-full space-y-8"
       data-reports
     >
-      <header>
-        <h1 className="text-2xl font-bold text-balance md:text-3xl">
+      <header className="space-y-1">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
+          Reports
+        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-balance md:text-3xl">
           Analytics
         </h1>
-        <p className="text-muted-foreground mt-2 text-sm md:text-base">
-          Choose a report to view detailed analytics and metrics.
+        <p className="text-muted-foreground mt-1 text-sm md:text-base max-w-2xl">
+          Choose a report to view detailed analytics and metrics. Key numbers
+          are at a glance; drill into each area for trends and breakdowns.
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <section
+        aria-label="Report categories"
+        className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+      >
         {reports.map((r) => {
           const Icon = r.icon;
           return (
-            <Link key={r.path} href={r.path} className="block min-w-0">
-              <Card className="min-w-0 shadow-sm transition-colors hover:bg-muted/50 h-full">
-                <CardHeader className="flex flex-row items-center gap-2 space-y-0 pb-2">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <Icon className="h-5 w-5 text-primary" />
+            <Link key={r.path} href={r.path} className="block min-w-0 group">
+              <Card className="min-w-0 h-full border border-border/80 shadow-sm transition-all duration-200 hover:border-primary/30 hover:shadow-md group-hover:bg-muted/30">
+                <CardHeader className="flex flex-row items-center gap-3 space-y-0 pb-3 pt-5 px-5">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                    <Icon className="h-5 w-5" />
                   </div>
-                  <CardTitle className="text-lg">{r.title}</CardTitle>
+                  <CardTitle className="text-base font-semibold leading-tight">
+                    {r.title}
+                  </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <CardDescription className="text-sm">
+                <CardContent className="px-5 pb-5 pt-0">
+                  <CardDescription className="text-sm leading-relaxed">
                     {r.description}
                   </CardDescription>
                 </CardContent>
@@ -111,7 +120,7 @@ export function AnalyticsIndexPage() {
             </Link>
           );
         })}
-      </div>
+      </section>
     </div>
   );
 }

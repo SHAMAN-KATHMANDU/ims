@@ -295,14 +295,14 @@ export function SalesRevenuePage() {
 
   return (
     <div
-      className="reports-container min-w-0 w-full max-w-full space-y-6"
+      className="reports-container min-w-0 w-full max-w-full space-y-8"
       data-reports
     >
-      <header>
-        <h1 className="text-2xl font-bold text-balance md:text-3xl">
-          Sales & Revenue Analytics
+      <header className="space-y-1">
+        <h1 className="text-2xl font-bold tracking-tight text-balance md:text-3xl">
+          Sales & Revenue
         </h1>
-        <p className="text-muted-foreground mt-2 text-sm md:text-base">
+        <p className="text-muted-foreground mt-1 text-sm md:text-base">
           Revenue, cash flow, and sales performance
           {isUserRole && " — showing your data only"}
         </p>
@@ -339,19 +339,39 @@ export function SalesRevenuePage() {
       </div>
 
       {!loading && kpis.length > 0 && (
-        <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
-          {kpis.map((k, i) => (
-            <Card key={i} className="min-w-0">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{k.label}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{k.value}</div>
-                <p className="text-xs text-muted-foreground mt-1">{k.sub}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+        <section aria-label="Key metrics" className="space-y-3">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            Key metrics
+          </h2>
+          <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4">
+            {kpis.map((k, i) => {
+              const isPrimary = i < 4;
+              return (
+                <Card key={i} className="min-w-0 border border-border/80">
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">
+                      {k.label}
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div
+                      className={
+                        isPrimary
+                          ? "text-2xl font-bold tracking-tight md:text-3xl"
+                          : "text-xl font-semibold"
+                      }
+                    >
+                      {k.value}
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {k.sub}
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        </section>
       )}
 
       {loading && <Skeleton className="h-64 w-full" />}
@@ -365,7 +385,7 @@ export function SalesRevenuePage() {
             <TabsTrigger value="users">Users</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="overview" className="space-y-6 mt-6">
+          <TabsContent value="overview" className="space-y-8 mt-8">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -832,7 +852,7 @@ export function SalesRevenuePage() {
             )}
           </TabsContent>
 
-          <TabsContent value="locations" className="space-y-6 mt-6">
+          <TabsContent value="locations" className="space-y-8 mt-8">
             <Card className="min-w-0">
               <CardHeader>
                 <div>
@@ -1008,7 +1028,7 @@ export function SalesRevenuePage() {
             )}
           </TabsContent>
 
-          <TabsContent value="credit" className="space-y-6 mt-6">
+          <TabsContent value="credit" className="space-y-8 mt-8">
             <div className="grid gap-4 md:grid-cols-2">
               <Card className="min-w-0">
                 <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
@@ -1111,7 +1131,7 @@ export function SalesRevenuePage() {
             </div>
           </TabsContent>
 
-          <TabsContent value="users" className="space-y-6 mt-6">
+          <TabsContent value="users" className="space-y-8 mt-8">
             <Card className="min-w-0">
               <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-2">
                 <div>
