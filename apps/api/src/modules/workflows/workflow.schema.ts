@@ -13,6 +13,10 @@ export const WORKFLOW_ACTIONS = [
   "MOVE_STAGE",
   "UPDATE_FIELD",
   "CREATE_ACTIVITY",
+  "CREATE_DEAL",
+  "UPDATE_CONTACT_FIELD",
+  "APPLY_TAG",
+  "REMOVE_TAG",
 ] as const;
 
 export const WorkflowTriggerSchema = z.enum(WORKFLOW_TRIGGERS);
@@ -57,12 +61,41 @@ export const CreateActivityConfigSchema = z.object({
 });
 export type CreateActivityConfig = z.infer<typeof CreateActivityConfigSchema>;
 
+export const CreateDealConfigSchema = z.object({
+  pipelineId: z.string().uuid("pipelineId is required"),
+  stageId: z.string().max(100).optional(),
+  title: z.string().max(500).optional(),
+});
+export type CreateDealConfig = z.infer<typeof CreateDealConfigSchema>;
+
+export const UpdateContactFieldConfigSchema = z.object({
+  field: z.string().min(1, "field is required").max(100),
+  value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+});
+export type UpdateContactFieldConfig = z.infer<
+  typeof UpdateContactFieldConfigSchema
+>;
+
+export const ApplyTagConfigSchema = z.object({
+  tag: z.string().min(1, "tag is required").max(100),
+});
+export type ApplyTagConfig = z.infer<typeof ApplyTagConfigSchema>;
+
+export const RemoveTagConfigSchema = z.object({
+  tag: z.string().min(1, "tag is required").max(100),
+});
+export type RemoveTagConfig = z.infer<typeof RemoveTagConfigSchema>;
+
 const ActionConfigByAction = {
   CREATE_TASK: CreateTaskConfigSchema,
   SEND_NOTIFICATION: SendNotificationConfigSchema,
   MOVE_STAGE: MoveStageConfigSchema,
   UPDATE_FIELD: UpdateFieldConfigSchema,
   CREATE_ACTIVITY: CreateActivityConfigSchema,
+  CREATE_DEAL: CreateDealConfigSchema,
+  UPDATE_CONTACT_FIELD: UpdateContactFieldConfigSchema,
+  APPLY_TAG: ApplyTagConfigSchema,
+  REMOVE_TAG: RemoveTagConfigSchema,
 } as const;
 
 /** Validates actionConfig against the schema for the given action. Returns parsed config or throws ZodError. */

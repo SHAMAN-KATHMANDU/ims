@@ -47,6 +47,7 @@ describe("PipelineRepository", () => {
         data: {
           tenantId: "t1",
           name: "Sales",
+          type: "GENERAL",
           stages: expect.any(Array),
           isDefault: false,
         },

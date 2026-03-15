@@ -3,7 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { format } from "date-fns";
-import type { ContactDetail as ContactDetailType } from "../../services/contact.service";
+import type {
+  ContactDetail as ContactDetailType,
+  ContactTag,
+} from "../../services/contact.service";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -385,10 +388,10 @@ export function ContactDetail({
               {tl.tag.name}
             </Badge>
           ))}
-          {allTags
-            ?.filter((t) => !currentTagIds.includes(t.id))
+          {allTags?.tags
+            ?.filter((t: ContactTag) => !currentTagIds.includes(t.id))
             .slice(0, 5)
-            .map((t) => (
+            .map((t: ContactTag) => (
               <Badge
                 key={t.id}
                 variant="outline"
