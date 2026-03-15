@@ -33,6 +33,7 @@ import { usePipelines } from "../../hooks/use-pipelines";
 import { useUsers, type User } from "@/features/users";
 import { LogActivityDialog } from "../components/LogActivityDialog";
 import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/api-error";
 import {
   Dialog,
   DialogContent,
@@ -214,8 +215,11 @@ export function ContactDetail({
       setDealValue("");
       setDealAssignedToId("");
       toast({ title: "Deal created" });
-    } catch {
-      toast({ title: "Failed to create deal", variant: "destructive" });
+    } catch (err) {
+      toast({
+        title: getApiErrorMessage(err, "create deal"),
+        variant: "destructive",
+      });
     }
   };
 
@@ -252,16 +256,19 @@ export function ContactDetail({
     creator: a.creator,
     total: null as number | null,
   }));
-  const saleItems = (contact.sales ?? []).map((s) => ({
-    id: s.id,
-    date: s.createdAt,
-    kind: "sale" as const,
-    label: "SALE",
-    subject: s.saleCode,
-    notes: null,
-    creator: null,
-    total: typeof s.total === "number" ? s.total : Number(s.total),
-  }));
+  const saleItems = (contact.sales ?? []).map((s) => {
+    const total = typeof s.total === "number" ? s.total : Number(s.total ?? 0);
+    return {
+      id: s.id,
+      date: s.createdAt,
+      kind: "sale" as const,
+      label: "SALE",
+      subject: s.saleCode ?? `Sale ${s.id.slice(0, 8)}`,
+      notes: null,
+      creator: null,
+      total,
+    };
+  });
   const timeline = [...commItems, ...activityItems, ...saleItems].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
@@ -410,7 +417,10 @@ export function ContactDetail({
                       {formatCurrency(
                         contact.sales.reduce(
                           (sum, s) =>
-                            sum + (typeof s.total === "number" ? s.total : Number(s.total)),
+                            sum +
+                            (typeof s.total === "number"
+                              ? s.total
+                              : Number(s.total ?? 0)),
                           0,
                         ),
                       )}{" "}
@@ -437,10 +447,7 @@ export function ContactDetail({
                       Last activity
                     </div>
                     <p className="text-sm font-medium">
-                      {format(
-                        new Date(timeline[0]!.date),
-                        "MMM d, h:mm a",
-                      )}
+                      {format(new Date(timeline[0]!.date), "MMM d, h:mm a")}
                     </p>
                   </div>
                 )}
@@ -504,7 +511,11 @@ export function ContactDetail({
               {!contact.source &&
                 !contact.journeyType &&
                 !contact.notes?.length &&
-                !(contact.deals?.length || contact.sales?.length || contact.tasks?.length) && (
+                !(
+                  contact.deals?.length ||
+                  contact.sales?.length ||
+                  contact.tasks?.length
+                ) && (
                   <div className="text-center py-10 text-muted-foreground">
                     <UserIcon className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No overview data yet.</p>
@@ -575,7 +586,7 @@ export function ContactDetail({
                   setLogNoteOpen(open);
                 }}
               >
-                <DialogContent className="sm:max-w-md">
+                <DialogContent className="sm:max-w-md" allowDismiss={false}>
                   <DialogHeader>
                     <DialogTitle>Log Note</DialogTitle>
                   </DialogHeader>
@@ -636,7 +647,10 @@ export function ContactDetail({
                   </h3>
                   <div className="relative space-y-3">
                     {timeline.map((item) => (
-                      <div key={`${item.kind}-${item.id}`} className="flex gap-3">
+                      <div
+                        key={`${item.kind}-${item.id}`}
+                        className="flex gap-3"
+                      >
                         <div className="flex flex-col items-center">
                           <div className="h-7 w-7 rounded-full bg-muted border flex items-center justify-center shrink-0 text-xs">
                             {item.kind === "sale"
@@ -667,12 +681,11 @@ export function ContactDetail({
                             {item.subject && (
                               <p className="text-sm font-medium">
                                 {item.subject}
-                                {item.kind === "sale" &&
-                                  item.total != null && (
-                                    <span className="ml-2 text-muted-foreground font-normal">
-                                      {formatCurrency(item.total)}
-                                    </span>
-                                  )}
+                                {item.kind === "sale" && item.total != null && (
+                                  <span className="ml-2 text-muted-foreground font-normal">
+                                    {formatCurrency(item.total)}
+                                  </span>
+                                )}
                               </p>
                             )}
                             {item.notes && (

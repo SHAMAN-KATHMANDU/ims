@@ -10,6 +10,7 @@ import {
   getDashboardUserSummary,
   getDashboardAdminSummary,
   getDashboardSuperAdminSummary,
+  getTenantUsage,
   DASHBOARD_STALE_TIME_MS,
 } from "../services/dashboard.service";
 import { getPlatformStats } from "@/features/tenants";
@@ -22,6 +23,7 @@ export const dashboardKeys = {
   superAdminSummary: () =>
     [...dashboardKeys.all, "superadmin-summary"] as const,
   platformSummary: () => [...dashboardKeys.all, "platform-summary"] as const,
+  usage: () => [...dashboardKeys.all, "usage"] as const,
 };
 
 export function useDashboardUserSummary() {
@@ -61,5 +63,16 @@ export function useDashboardPlatformSummary() {
     queryFn: getPlatformStats,
     staleTime: DASHBOARD_STALE_TIME_MS,
     enabled: role === "platformAdmin",
+  });
+}
+
+/** Tenant resource usage for "X of Y" display on Users, Locations, Products pages. */
+export function useTenantUsage() {
+  const role = useAuthStore(selectUserRole);
+  return useQuery({
+    queryKey: dashboardKeys.usage(),
+    queryFn: getTenantUsage,
+    staleTime: 60 * 1000, // 1 min
+    enabled: role === "admin" || role === "superAdmin",
   });
 }

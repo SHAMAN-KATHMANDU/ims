@@ -16,6 +16,7 @@ export interface SalePayment {
 export interface SaleItem {
   id: string;
   variationId: string;
+  subVariationId?: string | null;
   quantity: number;
   unitPrice: number;
   discountPercent: number;
@@ -94,6 +95,11 @@ export interface Sale {
   _count?: {
     items: number;
   };
+  parentSaleId?: string | null;
+  revisionNo?: number;
+  isLatest?: boolean;
+  editReason?: string | null;
+  editedAt?: string | null;
 }
 
 export interface SalesListParams {
@@ -123,6 +129,9 @@ export interface CreateSaleItem {
   quantity: number;
   discountId?: string | null;
   promoCode?: string;
+  manualDiscountPercent?: number;
+  manualDiscountAmount?: number;
+  discountReason?: string;
 }
 
 export interface CreateSaleData {

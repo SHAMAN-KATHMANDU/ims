@@ -40,6 +40,7 @@ import {
   selectClearUserSelection,
 } from "@/store/user-selection-store";
 import { RoleGuard } from "@/components/auth/role-guard";
+import { useTenantUsage } from "@/features/dashboard";
 import { useIsMobile } from "@/hooks/useMobile";
 import { UserForm } from "./components/UserForm";
 import { UserTable } from "./components/UserTable";
@@ -71,8 +72,14 @@ export function UsersPage() {
   }, []);
 
   const { data: usersResult, isLoading } = useUsers({ sortBy, sortOrder });
+  const { data: usage } = useTenantUsage();
   const users = usersResult?.users ?? [];
   const totalItems = usersResult?.pagination?.totalItems ?? 0;
+  const usersUsage = usage?.users;
+  const atUserLimit =
+    usersUsage &&
+    usersUsage.limit !== -1 &&
+    usersUsage.used >= usersUsage.limit;
   const createUserMutation = useCreateUser();
   const updateUserMutation = useUpdateUser();
   const deleteUserMutation = useDeleteUser();
@@ -215,11 +222,17 @@ export function UsersPage() {
             <h2 className="text-xl font-semibold">All Users</h2>
           </div>
           {isMobile ? (
-            <Button asChild>
-              <Link href={`${basePath}/users/new`} className="gap-2">
+            atUserLimit ? (
+              <Button disabled className="gap-2">
                 <Plus className="h-4 w-4" /> Add User
-              </Link>
-            </Button>
+              </Button>
+            ) : (
+              <Button asChild>
+                <Link href={`${basePath}/users/new`} className="gap-2">
+                  <Plus className="h-4 w-4" /> Add User
+                </Link>
+              </Button>
+            )
           ) : (
             <>
               <Button
@@ -228,6 +241,7 @@ export function UsersPage() {
                   setUserDialog(true);
                 }}
                 className="gap-2"
+                disabled={atUserLimit}
               >
                 <Plus className="h-4 w-4" /> Add User
               </Button>

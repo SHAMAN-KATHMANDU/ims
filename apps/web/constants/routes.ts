@@ -25,6 +25,13 @@ export function getLoginPath(slug: string): string {
 }
 
 /**
+ * Forgot password path for a tenant (e.g. /ruby/forgot-password).
+ */
+export function getForgotPasswordPath(slug: string): string {
+  return `/${slug.trim()}/forgot-password`;
+}
+
+/**
  * Returns true if pathname is a tenant login route (e.g. /ruby/login).
  */
 export function isLoginPath(pathname: string): boolean {
@@ -32,14 +39,18 @@ export function isLoginPath(pathname: string): boolean {
   return segments.length >= 2 && segments[1] === "login";
 }
 
+const PUBLIC_PATHS = ["login", "forgot-password"];
+
 /**
  * Returns true if pathname is a protected tenant route (e.g. /ruby, /ruby/crm).
- * First segment is the slug; if second is "login" it's not protected.
+ * First segment is the slug; if second is "login" or "forgot-password" it's not protected.
  */
 export function isProtectedPath(pathname: string): boolean {
   const segments = pathname.split("/").filter(Boolean);
   if (segments.length < 1 || !segments[0]) return false;
-  if (segments.length >= 2 && segments[1] === "login") return false;
+  const second = segments[1];
+  if (segments.length >= 2 && second && PUBLIC_PATHS.includes(second))
+    return false;
   return true;
 }
 

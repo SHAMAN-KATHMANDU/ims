@@ -10,6 +10,7 @@ const mockCreateAuditLog = vi.fn();
 
 const mockRepo: AuthRepository = {
   findTenantBySlug: mockFindTenantBySlug,
+  findOrgNameBySlug: vi.fn().mockResolvedValue(null),
   findUserByTenantAndUsername: mockFindUserByTenantAndUsername,
   updateUserLastLogin: mockUpdateUserLastLogin,
   createAuditLog: mockCreateAuditLog,
@@ -17,6 +18,7 @@ const mockRepo: AuthRepository = {
   findTenantById: vi.fn(),
   findUserWithPassword: vi.fn(),
   updateUserPassword: vi.fn(),
+  createPasswordResetRequest: vi.fn(),
 };
 
 const mockBcryptCompare = vi.fn();

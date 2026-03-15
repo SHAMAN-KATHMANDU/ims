@@ -6,6 +6,7 @@ import { SPACE } from "../spacing";
 import { TYPE } from "../typography";
 import { getFontRegular } from "../typography";
 import { drawSectionTitle } from "../layout";
+import { truncateWithEllipsis } from "../utils";
 import { ensureSpace, createPageContext } from "../pagination";
 import type { ReceiptContext } from "../types";
 
@@ -27,21 +28,25 @@ export function drawCustomer(
   doc.font(getFontRegular()).fontSize(TYPE.body);
 
   const textOpts = { lineGap: 0 };
+  const name = truncateWithEllipsis(customerName ?? "", 60);
+  const phone = truncateWithEllipsis(customerPhone ?? "", 40);
+  const address = truncateWithEllipsis(customerAddress ?? "", 100);
+
   if (!customerName && !customerPhone) {
     doc.text("Walk-in Customer", ctx.margin, doc.y, textOpts);
   } else {
     if (customerName && customerName !== "Walk-in Customer") {
-      doc.text(customerName, ctx.margin, doc.y, textOpts);
+      doc.text(name, ctx.margin, doc.y, textOpts);
       doc.moveDown(SPACE.xxs);
     }
     if (customerPhone) {
-      doc.text(customerPhone, ctx.margin, doc.y, textOpts);
+      doc.text(phone, ctx.margin, doc.y, textOpts);
       doc.moveDown(SPACE.xxs);
     }
   }
 
   if (customerAddress) {
-    doc.text(customerAddress, ctx.margin, doc.y, {
+    doc.text(address, ctx.margin, doc.y, {
       width: ctx.usableWidth,
       ...textOpts,
     });

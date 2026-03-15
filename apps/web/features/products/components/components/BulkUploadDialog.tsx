@@ -98,13 +98,12 @@ export function BulkUploadDialog({
           <DialogDescription>
             Upload an Excel or CSV file to create or update products with
             location-based stock. Each row is one variant with its own IMS code
-            and stock. Add attribute columns (e.g.{" "}
-            <strong>Color</strong>, <strong>Size</strong>,{" "}
-            <strong>Material</strong>) directly as headers — any column not
-            matching a predefined field is automatically treated as a product
-            attribute. Include the <strong>Location</strong> column
-            (showroom/warehouse name or ID). Download the template for required
-            columns.
+            and stock. Add attribute columns (e.g. <strong>Color</strong>,{" "}
+            <strong>Size</strong>, <strong>Material</strong>) directly as
+            headers — any column not matching a predefined field is
+            automatically treated as a product attribute. Include the{" "}
+            <strong>Location</strong> column (showroom/warehouse name or ID).
+            Download the template for required columns.
           </DialogDescription>
         </DialogHeader>
       )}
@@ -461,7 +460,7 @@ export function BulkUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh]" allowDismiss={false}>
         {content}
       </DialogContent>
     </Dialog>

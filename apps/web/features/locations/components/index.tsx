@@ -43,6 +43,11 @@ import {
 } from "@/components/ui/select";
 import type { SortOrder } from "@/components/ui/table";
 import { Plus, Search, Trash2, X } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { Label } from "@/components/ui/label";
 import {
   useLocationSelectionStore,
@@ -50,6 +55,7 @@ import {
   selectClearLocationSelection,
 } from "@/store/location-selection-store";
 import { BulkDeleteLocationsDialog } from "./components/BulkDeleteLocationsDialog";
+import { useTenantUsage } from "@/features/dashboard";
 
 export function LocationsPage() {
   const params = useParams();
@@ -79,7 +85,9 @@ export function LocationsPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   // Selection store for bulk actions
-  const selectedLocationIds = useLocationSelectionStore(selectSelectedLocationIds);
+  const selectedLocationIds = useLocationSelectionStore(
+    selectSelectedLocationIds,
+  );
   const clearSelection = useLocationSelectionStore(
     selectClearLocationSelection,
   );
@@ -102,6 +110,12 @@ export function LocationsPage() {
 
   const locations = locationsResponse?.data ?? [];
   const pagination = locationsResponse?.pagination;
+  const { data: usage } = useTenantUsage();
+  const locationsUsage = usage?.locations;
+  const atLocationLimit =
+    locationsUsage &&
+    locationsUsage.limit !== -1 &&
+    locationsUsage.used >= locationsUsage.limit;
 
   // Mutations
   const createLocationMutation = useCreateLocation();
@@ -201,7 +215,9 @@ export function LocationsPage() {
       toast({ title: "Location reactivated successfully" });
     } catch (error: unknown) {
       const message =
-        error instanceof Error ? error.message : "Failed to reactivate location";
+        error instanceof Error
+          ? error.message
+          : "Failed to reactivate location";
       toast({ title: "Error", description: message, variant: "destructive" });
     }
   };
@@ -232,8 +248,8 @@ export function LocationsPage() {
   };
 
   const handleBulkDelete = async (idsToDelete: string[]) => {
-    const activeIds = idsToDelete.filter((id) =>
-      locations.find((l) => l.id === id)?.isActive,
+    const activeIds = idsToDelete.filter(
+      (id) => locations.find((l) => l.id === id)?.isActive,
     );
     if (activeIds.length === 0) return;
     try {
@@ -266,6 +282,15 @@ export function LocationsPage() {
         <h1 className="text-3xl font-bold">Locations</h1>
         <p className="text-muted-foreground mt-2">
           Manage warehouses and showrooms
+          {locationsUsage && (
+            <span className="ml-2 text-sm">
+              (
+              {locationsUsage.limit === -1
+                ? `${locationsUsage.used} locations`
+                : `${locationsUsage.used} of ${locationsUsage.limit} locations`}
+              )
+            </span>
+          )}
         </p>
       </div>
 
@@ -313,27 +338,58 @@ export function LocationsPage() {
             </div>
           </div>
 
-          {canManageLocations &&
-            (isMobile ? (
-              <Button asChild>
-                <Link href={`${basePath}/locations/new`} className="gap-2">
-                  <Plus className="h-4 w-4" />
-                  Add Location
-                </Link>
-              </Button>
-            ) : (
-              <LocationForm
-                open={formOpen}
-                onOpenChange={setFormOpen}
-                editingLocation={editingLocation}
-                onSubmit={handleSubmit}
-                onReset={handleReset}
-                isLoading={
-                  createLocationMutation.isPending ||
-                  updateLocationMutation.isPending
-                }
-              />
-            ))}
+          {canManageLocations && (
+            <div className="flex items-center gap-2 shrink-0">
+              {locationsUsage && (
+                <span
+                  className="text-sm text-muted-foreground tabular-nums"
+                  aria-live="polite"
+                >
+                  {locationsUsage.limit === -1
+                    ? `${locationsUsage.used} locations`
+                    : `${locationsUsage.used} of ${locationsUsage.limit} locations`}
+                </span>
+              )}
+              {isMobile ? (
+                atLocationLimit ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span>
+                        <Button disabled className="gap-2">
+                          <Plus className="h-4 w-4" />
+                          Add Location
+                        </Button>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      Location limit reached for your plan
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <Button asChild>
+                    <Link href={`${basePath}/locations/new`} className="gap-2">
+                      <Plus className="h-4 w-4" />
+                      Add Location
+                    </Link>
+                  </Button>
+                )
+              ) : (
+                <LocationForm
+                  open={formOpen}
+                  onOpenChange={setFormOpen}
+                  editingLocation={editingLocation}
+                  onSubmit={handleSubmit}
+                  onReset={handleReset}
+                  isLoading={
+                    createLocationMutation.isPending ||
+                    updateLocationMutation.isPending
+                  }
+                  addDisabled={atLocationLimit}
+                  addDisabledTooltip="Location limit reached for your plan"
+                />
+              )}
+            </div>
+          )}
         </div>
       </div>
 

@@ -9,14 +9,24 @@ import {
   type CountryCode,
 } from "@/lib/phone";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import * as Flags from "country-flag-icons/react/3x2";
+import { hasFlag } from "country-flag-icons";
 
 const DEFAULT_COUNTRY: CountryCode = "NP";
 
@@ -32,10 +42,27 @@ function getCountryLabel(country: CountryCode): string {
   }
 }
 
+function FlagIcon({ country }: { country: CountryCode }) {
+  if (!hasFlag(country)) return null;
+  const Flag = (
+    Flags as Record<
+      string,
+      React.ComponentType<{ title?: string; className?: string }>
+    >
+  )[country];
+  if (!Flag) return null;
+  return (
+    <Flag
+      title={countryDisplayNames.of(country) ?? country}
+      className="h-4 w-4 rounded-sm object-cover shrink-0"
+    />
+  );
+}
+
 export interface PhoneInputProps {
   /** Current value as E.164 (e.g. +9779841234567). Empty string when no phone. */
   value: string;
-  /** Called with E.164 when valid, or "" when empty/invalid. */
+  /** Called with E.164 when valid, or attempted E.164 when invalid (so form validation can fail). */
   onChange: (e164: string) => void;
   /** Optional. Called when the number input loses focus. */
   onBlur?: () => void;
@@ -66,6 +93,7 @@ export function PhoneInput({
 }: PhoneInputProps) {
   const [country, setCountry] = useState<CountryCode>(defaultCountry);
   const [nationalNumber, setNationalNumber] = useState("");
+  const [countryOpen, setCountryOpen] = useState(false);
   const lastValueRef = useRef<string>(value);
 
   const countryOptions = useMemo(() => {
@@ -75,9 +103,6 @@ export function PhoneInput({
     );
   }, []);
 
-  // Sync from parent value (e.g. edit mode or form reset). When value is ""
-  // only clear if the parent explicitly reset (value went from non-empty to ""),
-  // so we don't wipe the user's digits while they're typing an invalid number.
   useEffect(() => {
     if (value?.trim()) {
       const parsed = parseE164ToCountryAndNational(value);
@@ -95,12 +120,13 @@ export function PhoneInput({
     lastValueRef.current = "";
   }, [value, defaultCountry]);
 
-  const handleCountryChange = (v: string) => {
-    const c = v as CountryCode;
+  const handleCountryChange = (c: CountryCode) => {
     setCountry(c);
+    setCountryOpen(false);
     if (nationalNumber.trim()) {
       const result = parseAndValidatePhone(nationalNumber, c);
       if (result.valid) onChange(result.e164);
+      else onChange(`+${getCountryCallingCode(c)}${nationalNumber}`);
     } else {
       onChange("");
     }
@@ -114,8 +140,11 @@ export function PhoneInput({
       return;
     }
     const result = parseAndValidatePhone(digits, country);
-    if (result.valid) onChange(result.e164);
-    // When invalid, do not call onChange - parent keeps previous value and we keep showing digits
+    if (result.valid) {
+      onChange(result.e164);
+    } else {
+      onChange(`+${getCountryCallingCode(country)}${digits}`);
+    }
   };
 
   const showError = (() => {
@@ -128,30 +157,58 @@ export function PhoneInput({
   })();
 
   return (
-    <div className={cn("space-y-2 min-w-0", className)} id={id}>
+    <div
+      className={cn("space-y-2 min-w-0", className)}
+      id={id}
+      data-slot="phone-input"
+    >
       <div className="flex gap-2 min-w-0">
-        <Select
-          value={country}
-          onValueChange={handleCountryChange}
-          disabled={disabled}
-        >
-          <SelectTrigger
-            className={cn(
-              "w-[100px] shrink-0 text-sm",
-              showError && "border-destructive",
-            )}
-            aria-label="Country"
-          >
-            <SelectValue placeholder="Country" />
-          </SelectTrigger>
-          <SelectContent>
-            {countryOptions.map((c) => (
-              <SelectItem key={c} value={c}>
-                {getCountryLabel(c)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <Popover open={countryOpen} onOpenChange={setCountryOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="outline"
+              role="combobox"
+              aria-expanded={countryOpen}
+              aria-label="Country"
+              disabled={disabled}
+              className={cn(
+                "shrink-0 gap-1.5 min-w-[120px] justify-between px-3",
+                showError && "border-destructive",
+              )}
+            >
+              <span className="flex items-center gap-1.5 truncate">
+                <FlagIcon country={country} />
+                <span className="text-sm">
+                  +{getCountryCallingCode(country)}
+                </span>
+              </span>
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-[240px] p-0" align="start">
+            <Command>
+              <CommandInput placeholder="Search country..." />
+              <CommandList>
+                <CommandEmpty>No country found.</CommandEmpty>
+                <CommandGroup>
+                  {countryOptions.map((c) => (
+                    <CommandItem
+                      key={c}
+                      value={`${getCountryLabel(c)} ${c}`}
+                      onSelect={() => handleCountryChange(c)}
+                    >
+                      <span className="flex items-center gap-2">
+                        <FlagIcon country={c} />
+                        <span className="truncate">{getCountryLabel(c)}</span>
+                      </span>
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </CommandList>
+            </Command>
+          </PopoverContent>
+        </Popover>
         <Input
           id={numberInputId}
           type="tel"
@@ -173,6 +230,7 @@ export function PhoneInput({
         <p
           id={numberInputId ? `${numberInputId}-error` : "phone-error"}
           className="text-sm text-destructive"
+          role="alert"
         >
           {showError}
         </p>

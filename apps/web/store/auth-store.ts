@@ -2,6 +2,7 @@
 
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
+import { fetchCurrentUser } from "@/lib/auth-api";
 import type { AuthUser, TenantInfo } from "@/utils/auth";
 
 // ============================================
@@ -18,6 +19,7 @@ interface AuthState {
   // Actions
   setAuth: (user: AuthUser, token: string, tenant?: TenantInfo | null) => void;
   setTenant: (tenant: TenantInfo) => void;
+  refreshTenant: () => Promise<void>;
   clearAuth: () => void;
   setHydrated: (value: boolean) => void;
 }
@@ -64,6 +66,13 @@ export const useAuthStore = create<AuthState>()(
 
       setTenant: (tenant) => {
         set({ tenant });
+      },
+
+      refreshTenant: async () => {
+        const data = await fetchCurrentUser();
+        if (data?.tenant) {
+          set({ tenant: data.tenant, user: data.user });
+        }
       },
 
       clearAuth: () => {

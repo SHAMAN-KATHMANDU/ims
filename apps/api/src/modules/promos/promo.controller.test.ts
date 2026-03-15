@@ -7,6 +7,7 @@ vi.mock("./promo.service", () => ({
     create: vi.fn(),
     findAll: vi.fn(),
     findById: vi.fn(),
+    findByCode: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
   },
@@ -135,6 +136,39 @@ describe("PromoController", () => {
       await promoController.getAllPromos(req, res);
 
       expect(sendControllerError).toHaveBeenCalled();
+    });
+  });
+
+  describe("getPromoByCode", () => {
+    it("returns 200 with promo on success", async () => {
+      const promo = { id: "p1", code: "SAVE10", products: [] };
+      mockService.findByCode.mockResolvedValue(promo);
+      const req = makeReq({ params: { code: "SAVE10" } });
+      const res = mockRes() as Response;
+
+      await promoController.getPromoByCode(req, res);
+
+      expect(mockService.findByCode).toHaveBeenCalledWith("t1", "SAVE10");
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Promo code fetched successfully",
+          promo,
+        }),
+      );
+    });
+
+    it("returns 404 when promo not found", async () => {
+      mockService.findByCode.mockResolvedValue(null);
+      const req = makeReq({ params: { code: "NOTFOUND" } });
+      const res = mockRes() as Response;
+
+      await promoController.getPromoByCode(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Promo code not found",
+      });
     });
   });
 

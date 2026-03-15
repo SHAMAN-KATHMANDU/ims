@@ -15,5 +15,10 @@ export const SlugSchema = z.object({
     ),
 });
 
+export const ForgotPasswordSchema = z.object({
+  username: z.string().min(1, "Username is required"),
+});
+
 export type LoginInput = z.infer<typeof LoginSchema>;
 export type SlugInput = z.infer<typeof SlugSchema>;
+export type ForgotPasswordInput = z.infer<typeof ForgotPasswordSchema>;

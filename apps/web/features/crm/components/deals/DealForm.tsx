@@ -50,6 +50,7 @@ const editSchema = createSchema.extend({
     .min(0, "Probability must be at least 0")
     .max(100, "Probability must be between 0 and 100"),
   status: z.enum(["OPEN", "WON", "LOST"]),
+  editReason: z.string().max(500).optional().nullable(),
 });
 
 type EditFormValues = z.infer<typeof editSchema>;
@@ -77,6 +78,7 @@ interface DealFormEditProps {
     companyId?: string;
     assignedToId: string;
     stageNames: string[];
+    editReason?: string | null;
   };
   /** Full deal for line items section (products, convert to sale) */
   deal?: Deal;
@@ -121,6 +123,7 @@ export function DealForm(props: DealFormProps) {
           contactId: props.defaultValues.contactId ?? "",
           companyId: props.defaultValues.companyId ?? "",
           assignedToId: props.defaultValues.assignedToId,
+          editReason: props.defaultValues.editReason ?? "",
         }
       : {
           name: "",
@@ -179,6 +182,7 @@ export function DealForm(props: DealFormProps) {
         contactId: values.contactId || null,
         companyId: values.companyId || null,
         assignedToId: values.assignedToId,
+        editReason: values.editReason?.trim() || null,
       });
     }
   });
@@ -235,7 +239,10 @@ export function DealForm(props: DealFormProps) {
               name="stage"
               control={form.control}
               render={({ field }) => (
-                <Select value={field.value ?? ""} onValueChange={field.onChange}>
+                <Select
+                  value={field.value ?? ""}
+                  onValueChange={field.onChange}
+                >
                   <SelectTrigger className="mt-1">
                     <SelectValue placeholder="Select stage" />
                   </SelectTrigger>
@@ -315,6 +322,22 @@ export function DealForm(props: DealFormProps) {
         </div>
       )}
 
+      {isEdit && (
+        <div>
+          <Label>Edit reason (optional)</Label>
+          <Input
+            {...form.register("editReason")}
+            placeholder="Why is this deal being updated?"
+            className="mt-1"
+          />
+          {form.formState.errors.editReason && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.editReason.message}
+            </p>
+          )}
+        </div>
+      )}
+
       <div>
         <Label>Expected Close Date</Label>
         <Input
@@ -390,14 +413,15 @@ export function DealForm(props: DealFormProps) {
         </Select>
       </div>
 
-      {isEdit && "deal" in props && props.deal && "basePath" in props && props.basePath && (
-        <div className="border-t pt-4">
-          <DealLineItemsSection
-            deal={props.deal}
-            basePath={props.basePath}
-          />
-        </div>
-      )}
+      {isEdit &&
+        "deal" in props &&
+        props.deal &&
+        "basePath" in props &&
+        props.basePath && (
+          <div className="border-t pt-4">
+            <DealLineItemsSection deal={props.deal} basePath={props.basePath} />
+          </div>
+        )}
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={props.isLoading}>

@@ -103,6 +103,8 @@ export async function bulkDeleteTasks(
   ids: string[],
   reason?: string,
 ): Promise<{ count: number }> {
-  const res = await api.post("/tasks/bulk-delete", { ids, reason });
+  const res = await api.delete("/tasks/bulk", {
+    data: { ids, reason },
+  });
   return res.data;
 }

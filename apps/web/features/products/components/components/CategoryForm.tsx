@@ -17,10 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import type { Category } from "@/features/products";
-import {
-  CategoryFormSchema,
-  type CategoryFormInput,
-} from "../../validation";
+import { CategoryFormSchema, type CategoryFormInput } from "../../validation";
 
 interface CategoryFormProps {
   open: boolean;
@@ -100,7 +97,7 @@ export function CategoryForm({
           <Plus className="h-4 w-4" /> Add Category
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>
             {editingCategory ? "Edit Category" : "Add Category"}
@@ -109,10 +106,7 @@ export function CategoryForm({
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="cat-name">Name</Label>
-            <Input
-              id="cat-name"
-              {...form.register("name")}
-            />
+            <Input id="cat-name" {...form.register("name")} />
             {form.formState.errors.name && (
               <p className="text-sm text-destructive">
                 {form.formState.errors.name.message}
@@ -121,10 +115,7 @@ export function CategoryForm({
           </div>
           <div className="space-y-2">
             <Label htmlFor="cat-description">Description</Label>
-            <Textarea
-              id="cat-description"
-              {...form.register("description")}
-            />
+            <Textarea id="cat-description" {...form.register("description")} />
           </div>
           {!editingCategory && (
             <div className="space-y-2">
@@ -187,11 +178,7 @@ export function CategoryForm({
               Cancel
             </Button>
             <Button type="submit" disabled={isLoading}>
-              {isLoading
-                ? "Saving..."
-                : editingCategory
-                  ? "Update"
-                  : "Add"}
+              {isLoading ? "Saving..." : editingCategory ? "Update" : "Add"}
             </Button>
           </div>
         </form>

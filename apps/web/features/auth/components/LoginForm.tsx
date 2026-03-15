@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "../hooks/use-auth";
+import { getOrgNameBySlug } from "../services/auth.service";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,8 +15,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import Link from "next/link";
 import { Eye, EyeOff } from "lucide-react";
 import { LoginSchema, type LoginInput } from "../validation";
+import { getForgotPasswordPath } from "@/constants/routes";
 
 /**
  * Login form: username and password. Tenant slug comes from the URL (e.g. /ruby/login)
@@ -25,6 +28,16 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
   const { login } = useAuth();
   const [showPassword, setShowPassword] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [orgName, setOrgName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const slug = tenantSlug?.trim().toLowerCase();
+    if (!slug) {
+      setOrgName(null);
+      return;
+    }
+    getOrgNameBySlug(slug).then(setOrgName);
+  }, [tenantSlug]);
 
   const {
     register,
@@ -54,8 +67,7 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Login failed";
-      const isGenericNotFound =
-        message === "The requested item was not found.";
+      const isGenericNotFound = message === "The requested item was not found.";
       setSubmitError(
         isGenericNotFound
           ? "Organization not found. Please use your organization's login link (e.g. yourapp.com/yourorg/login)."
@@ -68,7 +80,7 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
     <Card className="w-full max-w-md shadow-lg">
       <CardHeader className="space-y-1">
         <CardTitle className="text-2xl font-bold text-center">
-          Welcome Back
+          {orgName ? `Sign in to ${orgName}` : "Welcome Back"}
         </CardTitle>
         <CardDescription className="text-center">
           Enter your credentials to access your dashboard
@@ -135,6 +147,17 @@ export function LoginForm({ tenantSlug }: { tenantSlug: string }) {
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Logging in..." : "Login"}
           </Button>
+
+          {tenantSlug && (
+            <div className="text-center">
+              <Link
+                href={getForgotPasswordPath(tenantSlug)}
+                className="text-sm text-muted-foreground hover:underline"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          )}
         </form>
       </CardContent>
     </Card>

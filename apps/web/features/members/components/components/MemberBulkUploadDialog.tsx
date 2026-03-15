@@ -439,7 +439,7 @@ export function MemberBulkUploadDialog({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
-      <DialogContent className="max-w-3xl max-h-[90vh]">
+      <DialogContent className="max-w-3xl max-h-[90vh]" allowDismiss={false}>
         {content}
       </DialogContent>
     </Dialog>

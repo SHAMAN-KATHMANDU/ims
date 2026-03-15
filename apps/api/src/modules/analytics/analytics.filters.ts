@@ -86,7 +86,10 @@ export type SalesWhereFromFilters = Prisma.SaleWhereInput;
 export function buildSalesWhereFromFilters(
   filters: ParsedAnalyticsFilters,
 ): SalesWhereFromFilters {
-  const where: SalesWhereFromFilters = {};
+  const where: SalesWhereFromFilters = {
+    deletedAt: null,
+    isLatest: true,
+  };
 
   if (filters.locationIds?.length) {
     where.locationId = { in: filters.locationIds };

@@ -5,6 +5,7 @@
  * Do not add React or UI logic.
  */
 
+import axios from "axios";
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
 import {
@@ -183,17 +184,26 @@ export async function updatePromo(
 
 /**
  * Search for a promo by code (for validation in sale flow).
- * Returns the matching promo or null if not found.
+ * Uses case-insensitive exact match; returns only active, tenant-scoped promos.
+ * Returns null only for 404 (not found); rethrows for network/5xx so callers
+ * can show "Error validating" instead of misleading "Promo code not found".
  */
 export async function searchPromoByCode(
   code: string,
 ): Promise<PromoCode | null> {
-  if (!code?.trim()) return null;
-  const result = await getPromos({ search: code.trim(), limit: 1 });
-  const found = result.data?.find(
-    (p) => p.code.toLowerCase() === code.trim().toLowerCase(),
-  );
-  return found ?? null;
+  const trimmed = code?.trim();
+  if (!trimmed) return null;
+  try {
+    const response = await api.get<PromoResponse>(
+      `/promos/by-code/${encodeURIComponent(trimmed)}`,
+    );
+    return response.data.promo;
+  } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    handleApiError(error, "validate promo code");
+  }
 }
 
 export async function deletePromo(id: string): Promise<void> {

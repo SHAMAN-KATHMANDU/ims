@@ -391,7 +391,6 @@ export async function downloadMembers(
     downloadBlobFromResponse(response, defaultFilename);
   } catch (error) {
     handleApiError(error, "download members");
-    throw error;
   }
 }
 
@@ -406,6 +405,5 @@ export async function downloadBulkUploadTemplate(): Promise<void> {
     downloadBlobFromResponse(response, "members_bulk_upload_template.xlsx");
   } catch (error) {
     handleApiError(error, "download template");
-    throw error;
   }
 }

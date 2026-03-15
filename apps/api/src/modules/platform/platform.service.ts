@@ -5,6 +5,7 @@
 
 import bcrypt from "bcryptjs";
 import { DEFAULT_PLAN_LIMITS, PlanTier } from "@repo/shared";
+import passwordResetRepository from "@/modules/users/password-reset.repository";
 import platformRepository, {
   type PlatformRepository,
   type CreateTenantRepoData,
@@ -463,6 +464,42 @@ export class PlatformService {
 
   async deleteTenantPayment(id: string) {
     return this.repo.deleteTenantPayment(id);
+  }
+
+  // ─── Password Reset Requests (escalated) ───────────────────────────────────
+
+  async getPlatformResetRequests() {
+    return passwordResetRepository.findEscalated();
+  }
+
+  async approvePlatformResetRequest(
+    requestId: string,
+    handledById: string,
+    data: { newPassword: string },
+  ) {
+    const req = await passwordResetRepository.findById(requestId);
+    if (!req) {
+      throw Object.assign(new Error("Password reset request not found"), {
+        statusCode: 404,
+      });
+    }
+    if (req.status !== "ESCALATED") {
+      throw Object.assign(
+        new Error(
+          req.status === "PENDING"
+            ? "This request should be handled by tenant superadmin"
+            : "Request has already been handled",
+        ),
+        { statusCode: req.status === "PENDING" ? 403 : 400 },
+      );
+    }
+
+    const hashedPassword = await bcrypt.hash(data.newPassword, BCRYPT_ROUNDS);
+    await passwordResetRepository.approve(
+      requestId,
+      handledById,
+      hashedPassword,
+    );
   }
 }
 

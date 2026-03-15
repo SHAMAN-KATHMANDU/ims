@@ -83,7 +83,6 @@ export async function getDashboardUserSummary(): Promise<DashboardUserSummary> {
     return res.data.data;
   } catch (e) {
     handleApiError(e, "fetch dashboard user summary");
-    throw e;
   }
 }
 
@@ -108,7 +107,23 @@ export async function getDashboardSuperAdminSummary(): Promise<DashboardSuperAdm
     return res.data.data;
   } catch (e) {
     handleApiError(e, "fetch dashboard superadmin summary");
-    throw e;
+  }
+}
+
+export interface TenantUsage {
+  users: { used: number; limit: number };
+  locations: { used: number; limit: number };
+  products: { used: number; limit: number };
+}
+
+export async function getTenantUsage(): Promise<TenantUsage | null> {
+  try {
+    const res = await api.get<TenantUsage>("/dashboard/usage");
+    return res.data;
+  } catch (e) {
+    const err = e as { response?: { status?: number } };
+    if (err.response?.status === 404) return null;
+    handleApiError(e, "fetch tenant usage");
   }
 }
 

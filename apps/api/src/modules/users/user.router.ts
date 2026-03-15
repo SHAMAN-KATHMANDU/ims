@@ -8,6 +8,99 @@ const userRouter = Router();
 
 /**
  * @swagger
+ * /users/password-reset-requests:
+ *   get:
+ *     summary: Get password reset requests (superAdmin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Password reset requests for tenant
+ */
+userRouter.get(
+  "/password-reset-requests",
+  authorizeRoles("superAdmin"),
+  asyncHandler(userController.getPasswordResetRequests),
+);
+
+/**
+ * @swagger
+ * /users/password-reset-requests/{requestId}/approve:
+ *   post:
+ *     summary: Approve password reset (superAdmin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [newPassword]
+ *             properties:
+ *               newPassword: { type: string }
+ *     responses:
+ *       200: { description: Approved }
+ */
+userRouter.post(
+  "/password-reset-requests/:requestId/approve",
+  authorizeRoles("superAdmin"),
+  asyncHandler(userController.approveResetRequest),
+);
+
+/**
+ * @swagger
+ * /users/password-reset-requests/{requestId}/escalate:
+ *   post:
+ *     summary: Escalate password reset to platform admin (superAdmin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Escalated }
+ */
+userRouter.post(
+  "/password-reset-requests/:requestId/escalate",
+  authorizeRoles("superAdmin"),
+  asyncHandler(userController.escalateResetRequest),
+);
+
+/**
+ * @swagger
+ * /users/password-reset-requests/{requestId}/reject:
+ *   post:
+ *     summary: Reject password reset (superAdmin only)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: requestId
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     responses:
+ *       200: { description: Rejected }
+ */
+userRouter.post(
+  "/password-reset-requests/:requestId/reject",
+  authorizeRoles("superAdmin"),
+  asyncHandler(userController.rejectResetRequest),
+);
+
+/**
+ * @swagger
  * /users:
  *   post:
  *     summary: Create a new user

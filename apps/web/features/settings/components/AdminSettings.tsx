@@ -183,7 +183,7 @@ export function AdminSettings() {
                   Add New User
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent allowDismiss={false}>
                 <DialogHeader>
                   <DialogTitle>
                     {editingId ? "Edit User" : "Add New User"}

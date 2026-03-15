@@ -241,4 +241,83 @@ export function enforcePlanFeature(feature: PlanFeature) {
   };
 }
 
+/** Usage + limit for a single resource (used by frontend for "X of Y" display). */
+export interface ResourceUsage {
+  used: number;
+  limit: number; // -1 = unlimited
+}
+
+/** Response shape for GET /dashboard/usage. */
+export interface TenantUsageResponse {
+  users: ResourceUsage;
+  locations: ResourceUsage;
+  products: ResourceUsage;
+}
+
+/**
+ * Get current usage counts and plan limits for the tenant.
+ * Used by frontend to show "X of Y users/locations/products".
+ * Must be called within a request that has gone through resolveTenant.
+ */
+export async function getTenantUsage(
+  tenant: { plan: string; [k: string]: unknown } | null | undefined,
+): Promise<TenantUsageResponse | null> {
+  if (!tenant) return null;
+
+  const plan = tenant.plan as PlanTier;
+  let limits: PlanLimits;
+
+  try {
+    const planLimitRow = await basePrisma.planLimit.findUnique({
+      where: { tier: plan },
+    });
+    if (planLimitRow) {
+      const row = planLimitRow as typeof planLimitRow & {
+        maxCustomers: number;
+      };
+      limits = {
+        maxUsers: row.maxUsers,
+        maxProducts: row.maxProducts,
+        maxLocations: row.maxLocations,
+        maxMembers: row.maxMembers,
+        maxCustomers: row.maxCustomers,
+        bulkUpload: row.bulkUpload,
+        analytics: row.analytics,
+        promoManagement: row.promoManagement,
+        auditLogs: row.auditLogs,
+        apiAccess: row.apiAccess,
+        salesPipeline: row.salesPipeline,
+      };
+    } else {
+      limits = DEFAULT_PLAN_LIMITS[plan] ?? DEFAULT_PLAN_LIMITS.STARTER;
+    }
+  } catch {
+    limits = DEFAULT_PLAN_LIMITS[plan] ?? DEFAULT_PLAN_LIMITS.STARTER;
+  }
+
+  const getLimit = (key: PlanLimitResource): number => {
+    let limit = limits[RESOURCE_TO_LIMIT_KEY[key]] as number;
+    const overrideKey = RESOURCE_TO_TENANT_OVERRIDE[key];
+    const tenantOverride = (
+      tenant as unknown as Record<string, number | null | undefined>
+    )[overrideKey];
+    if (tenantOverride !== undefined && tenantOverride !== null) {
+      limit = tenantOverride;
+    }
+    return limit;
+  };
+
+  const [usersUsed, locationsUsed, productsUsed] = await Promise.all([
+    prisma.user.count(),
+    prisma.location.count(),
+    prisma.product.count(),
+  ]);
+
+  return {
+    users: { used: usersUsed, limit: getLimit("users") },
+    locations: { used: locationsUsed, limit: getLimit("locations") },
+    products: { used: productsUsed, limit: getLimit("products") },
+  };
+}
+
 export default enforcePlanLimits;

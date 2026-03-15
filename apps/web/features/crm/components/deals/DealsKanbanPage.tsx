@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, notFound } from "next/navigation";
 import Link from "next/link";
 import {
   DndContext,
@@ -29,6 +29,8 @@ import {
 import { dealKeys } from "../../hooks/use-deals";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
+import { useFeatureFlag } from "@/features/flags/use-feature-flag";
+import { Feature } from "@repo/shared";
 import { useToast } from "@/hooks/useToast";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
@@ -94,6 +96,8 @@ type DrawerMode = "view" | "new" | "edit" | null;
 export function DealsKanbanPage() {
   const params = useParams();
   const router = useRouter();
+  const salesPipelineEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
+  if (!salesPipelineEnabled) notFound();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const isDesktop = useIsDesktop();
@@ -214,8 +218,14 @@ export function DealsKanbanPage() {
   const handleUpdateDeal = useCallback(
     async (data: UpdateDealData) => {
       if (!selectedDealId) return;
-      await updateDealMutation.mutateAsync({ id: selectedDealId, data });
+      const result = await updateDealMutation.mutateAsync({
+        id: selectedDealId,
+        data,
+      });
       toast({ title: "Deal updated" });
+      if (result?.deal?.id && result.deal.id !== selectedDealId) {
+        setSelectedDealId(result.deal.id);
+      }
       setDrawerMode("view");
     },
     [selectedDealId, updateDealMutation, toast],
@@ -502,6 +512,7 @@ export function DealsKanbanPage() {
               contactId: selectedDealData.deal.contactId ?? undefined,
               companyId: selectedDealData.deal.companyId ?? undefined,
               assignedToId: selectedDealData.deal.assignedToId ?? "",
+              editReason: selectedDealData.deal.editReason ?? null,
               stageNames:
                 (
                   selectedDealData.deal.pipeline as
@@ -811,7 +822,7 @@ function AddPipelineDialog({
     <>
       {triggerWithClick}
       <Dialog open={open} onOpenChange={handleOpenChange}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>New pipeline</DialogTitle>
             <DialogDescription>
@@ -906,7 +917,7 @@ function EditPipelineDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
+      <DialogContent allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>Edit pipeline</DialogTitle>
           <DialogDescription>
@@ -1050,7 +1061,7 @@ function EditPipelineStagesDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md" allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>Edit stages</DialogTitle>
           <DialogDescription>

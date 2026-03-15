@@ -136,7 +136,11 @@ export type { ExcelProductRow } from "./bulkUpload.validation";
 // ─── Variation schema (used in create/update product) ────────────────────────
 const VariationSchema = z.object({
   id: z.string().uuid().optional(),
-  stockQuantity: z.coerce.number().min(0).default(0),
+  stockQuantity: z.coerce
+    .number()
+    .min(0)
+    .max(2147483647, "Stock quantity exceeds maximum allowed value")
+    .default(0),
   /** When editing existing variation stock, specify which location's inventory to update */
   locationId: z.string().uuid().optional(),
   costPriceOverride: z.coerce.number().nullish(),

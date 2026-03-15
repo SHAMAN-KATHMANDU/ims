@@ -488,4 +488,92 @@ saleRouter.get(
   asyncHandler(saleController.getSaleById),
 );
 
+/**
+ * @swagger
+ * /sales/{id}:
+ *   delete:
+ *     summary: Soft delete a sale (restores inventory, decrements promo usage)
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               deleteReason:
+ *                 type: string
+ *                 nullable: true
+ *     responses:
+ *       200:
+ *         description: Sale deleted successfully
+ *       404:
+ *         description: Sale not found or already deleted
+ */
+saleRouter.delete(
+  "/:id",
+  authorizeRoles("user", "admin", "superAdmin"),
+  asyncHandler(saleController.deleteSale),
+);
+
+/**
+ * @swagger
+ * /sales/{id}/edit:
+ *   post:
+ *     summary: Edit sale (creates new revision, restores parent inventory)
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [items]
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 minItems: 1
+ *                 items:
+ *                   type: object
+ *                   required: [variationId, quantity]
+ *                   properties:
+ *                     variationId: { type: string, format: uuid }
+ *                     subVariationId: { type: string, format: uuid, nullable: true }
+ *                     quantity: { type: integer, minimum: 1 }
+ *                     discountId: { type: string, format: uuid, nullable: true }
+ *                     promoCode: { type: string }
+ *               notes: { type: string }
+ *               payments: { type: array, items: { type: object, properties: { method: { enum: [CASH, CARD, CHEQUE, FONEPAY, QR] }, amount: { type: number } } } }
+ *               editReason: { type: string, nullable: true }
+ *     responses:
+ *       200:
+ *         description: Sale updated (new revision created)
+ *       400:
+ *         description: Invalid request or sale is superseded
+ *       404:
+ *         description: Sale not found
+ */
+saleRouter.post(
+  "/:id/edit",
+  authorizeRoles("user", "admin", "superAdmin"),
+  asyncHandler(saleController.editSale),
+);
+
 export default saleRouter;

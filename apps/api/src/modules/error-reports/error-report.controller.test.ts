@@ -62,7 +62,12 @@ describe("ErrorReportController", () => {
       const report = { id: "r1", title: "Bug" };
       mockService.create.mockResolvedValue(report);
       const req = makeReq({
-        user: { id: "u1", tenantId: "t1", role: "platformAdmin", tenantSlug: "acme" },
+        user: {
+          id: "u1",
+          tenantId: "t1",
+          role: "platformAdmin",
+          tenantSlug: "acme",
+        },
         body: { title: "Bug" },
       });
       const res = mockRes() as Response;
@@ -94,7 +99,12 @@ describe("ErrorReportController", () => {
       const result = { data: [], pagination: {} };
       mockService.list.mockResolvedValue(result);
       const req = makeReq({
-        user: { id: "u1", tenantId: "t1", role: "platformAdmin", tenantSlug: "acme" },
+        user: {
+          id: "u1",
+          tenantId: "t1",
+          role: "platformAdmin",
+          tenantSlug: "acme",
+        },
       });
       const res = mockRes() as Response;
 
@@ -120,10 +130,16 @@ describe("ErrorReportController", () => {
   });
 
   describe("updateStatus", () => {
-    it("returns 200 with updated report", async () => {
+    it("returns 200 with updated report when platformAdmin", async () => {
       const report = { id: "r1", status: "RESOLVED" };
       mockService.updateStatus.mockResolvedValue(report);
       const req = makeReq({
+        user: {
+          id: "u1",
+          tenantId: "t1",
+          role: "platformAdmin",
+          tenantSlug: "acme",
+        },
         params: { id: "r1" },
         body: { status: "RESOLVED" },
       });
@@ -132,6 +148,20 @@ describe("ErrorReportController", () => {
       await errorReportController.updateStatus(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("returns 403 when not platformAdmin", async () => {
+      const req = makeReq({
+        user: { id: "u1", tenantId: "t1", role: "admin", tenantSlug: "acme" },
+        params: { id: "r1" },
+        body: { status: "RESOLVED" },
+      });
+      const res = mockRes() as Response;
+
+      await errorReportController.updateStatus(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(mockService.updateStatus).not.toHaveBeenCalled();
     });
   });
 });

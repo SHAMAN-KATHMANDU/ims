@@ -20,6 +20,13 @@ export interface Deal {
   pipelineId: string;
   assignedToId: string;
   leadId?: string | null;
+  revisionNo?: number;
+  isLatest?: boolean;
+  editReason?: string | null;
+  editedAt?: string | null;
+  editedById?: string | null;
+  editedBy?: { id: string; username: string } | null;
+  parentDealId?: string | null;
   createdAt: string;
   updatedAt: string;
   contact?: {
@@ -111,6 +118,7 @@ export interface UpdateDealData {
   memberId?: string | null;
   companyId?: string | null;
   assignedToId?: string;
+  editReason?: string | null;
 }
 
 export async function getDeals(
@@ -173,7 +181,9 @@ export interface AddDealLineItemData {
 export async function addDealLineItem(
   dealId: string,
   data: AddDealLineItemData,
-): Promise<{ item: Deal["lineItems"] extends (infer I)[] | undefined ? I : never }> {
+): Promise<{
+  item: Deal["lineItems"] extends (infer I)[] | undefined ? I : never;
+}> {
   const res = await api.post(`/deals/${dealId}/line-items`, data);
   return res.data;
 }

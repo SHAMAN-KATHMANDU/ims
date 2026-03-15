@@ -136,16 +136,15 @@ export function TaskForm(props: TaskFormProps) {
       <div>
         <Label>Assign To</Label>
         <Select
-          value={form.watch("assignedToId") || "__none__"}
+          value={form.watch("assignedToId") || ""}
           onValueChange={(v) =>
-            form.setValue("assignedToId", v === "__none__" ? undefined : v)
+            form.setValue("assignedToId", v ? v : undefined)
           }
         >
           <SelectTrigger className="mt-1">
             <SelectValue placeholder="Select user" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="__none__">Unassigned</SelectItem>
             {users.map((u) => (
               <SelectItem key={u.id} value={u.id}>
                 {u.username}

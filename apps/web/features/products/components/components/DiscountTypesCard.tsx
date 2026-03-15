@@ -284,7 +284,7 @@ export function DiscountTypesCard() {
       </Card>
 
       <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Edit discount type</DialogTitle>
           </DialogHeader>

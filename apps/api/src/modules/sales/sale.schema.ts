@@ -2,13 +2,44 @@ import { z } from "zod";
 
 const PAYMENT_METHOD = z.enum(["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"]);
 
-const SALE_ITEM_SCHEMA = z.object({
-  variationId: z.string().uuid("Invalid variation ID"),
-  subVariationId: z.string().uuid().nullable().optional(),
-  quantity: z.number().int().positive("Quantity must be positive"),
-  discountId: z.string().uuid().nullable().optional(),
-  promoCode: z.string().optional(),
-});
+const SALE_ITEM_SCHEMA = z
+  .object({
+    variationId: z.string().uuid("Invalid variation ID"),
+    subVariationId: z.string().uuid().nullable().optional(),
+    quantity: z.number().int().positive("Quantity must be positive"),
+    discountId: z.string().uuid().nullable().optional(),
+    promoCode: z.string().optional(),
+    manualDiscountPercent: z.number().min(0).max(100).optional(),
+    manualDiscountAmount: z.number().min(0).optional(),
+    discountReason: z.string().max(500).optional(),
+  })
+  .refine(
+    (data) =>
+      !(
+        data.manualDiscountPercent != null && data.manualDiscountAmount != null
+      ),
+    {
+      message: "Provide either manual discount percent or amount, not both",
+      path: ["manualDiscountAmount"],
+    },
+  )
+  .refine(
+    (data) => {
+      const hasManual =
+        (data.manualDiscountPercent != null &&
+          data.manualDiscountPercent > 0) ||
+        (data.manualDiscountAmount != null && data.manualDiscountAmount > 0);
+      if (!hasManual) return true;
+      return (
+        typeof data.discountReason === "string" &&
+        data.discountReason.trim().length > 0
+      );
+    },
+    {
+      message: "Discount reason is required when applying manual discount",
+      path: ["discountReason"],
+    },
+  );
 
 export const CreateSaleSchema = z.object({
   locationId: z.string().uuid("Location ID is required"),
@@ -141,3 +172,25 @@ export const GetMySalesQuerySchema = z.object({
 });
 
 export type GetMySalesQueryDto = z.infer<typeof GetMySalesQuerySchema>;
+
+export const DeleteSaleSchema = z.object({
+  deleteReason: z.string().max(500).optional().nullable(),
+});
+
+export type DeleteSaleDto = z.infer<typeof DeleteSaleSchema>;
+
+export const EditSaleSchema = z.object({
+  items: z.array(SALE_ITEM_SCHEMA).min(1, "At least one item is required"),
+  notes: z.string().optional(),
+  payments: z
+    .array(
+      z.object({
+        method: PAYMENT_METHOD,
+        amount: z.number().min(0),
+      }),
+    )
+    .optional(),
+  editReason: z.string().max(500).optional().nullable(),
+});
+
+export type EditSaleDto = z.infer<typeof EditSaleSchema>;

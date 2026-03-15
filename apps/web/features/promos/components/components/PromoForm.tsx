@@ -149,9 +149,7 @@ export function PromoForm({
       validFrom: values.validFrom
         ? `${values.validFrom}T00:00:00.000Z`
         : undefined,
-      validTo: values.validTo
-        ? `${values.validTo}T23:59:59.999Z`
-        : undefined,
+      validTo: values.validTo ? `${values.validTo}T23:59:59.999Z` : undefined,
       usageLimit: values.usageLimit ?? undefined,
       isActive: values.isActive,
       productIds: values.productIds,
@@ -184,9 +182,7 @@ export function PromoForm({
             render={({ field }) => (
               <Input
                 {...field}
-                onChange={(e) =>
-                  field.onChange(e.target.value.toUpperCase())
-                }
+                onChange={(e) => field.onChange(e.target.value.toUpperCase())}
                 placeholder="e.g. FESTIVE20"
               />
             )}
@@ -226,7 +222,10 @@ export function PromoForm({
 
       <div className="space-y-1">
         <label className="text-xs font-medium">Description</label>
-        <Input {...form.register("description")} placeholder="Short description for internal use" />
+        <Input
+          {...form.register("description")}
+          placeholder="Short description for internal use"
+        />
       </div>
 
       <div className="grid grid-cols-3 gap-3">
@@ -338,7 +337,10 @@ export function PromoForm({
                 checked={!!field.value}
                 onCheckedChange={field.onChange}
               />
-              <label htmlFor="override-discounts" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="override-discounts"
+                className="text-xs text-muted-foreground"
+              >
                 Override existing discounts
               </label>
             </div>
@@ -354,7 +356,10 @@ export function PromoForm({
                 checked={!!field.value}
                 onCheckedChange={field.onChange}
               />
-              <label htmlFor="allow-stacking" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="allow-stacking"
+                className="text-xs text-muted-foreground"
+              >
                 Allow stacking with discounts
               </label>
             </div>
@@ -370,7 +375,10 @@ export function PromoForm({
                 checked={!!field.value}
                 onCheckedChange={field.onChange}
               />
-              <label htmlFor="promo-active" className="text-xs text-muted-foreground">
+              <label
+                htmlFor="promo-active"
+                className="text-xs text-muted-foreground"
+              >
                 Active
               </label>
             </div>
@@ -392,7 +400,10 @@ export function PromoForm({
                     checked={!!field.value}
                     onCheckedChange={field.onChange}
                   />
-                  <label htmlFor="apply-all" className="text-xs text-muted-foreground">
+                  <label
+                    htmlFor="apply-all"
+                    className="text-xs text-muted-foreground"
+                  >
                     Apply to all products
                   </label>
                 </div>
@@ -410,7 +421,9 @@ export function PromoForm({
           {!applyToAll && (
             <>
               <div className="space-y-1">
-                <label className="text-xs font-medium">Filter by Category</label>
+                <label className="text-xs font-medium">
+                  Filter by Category
+                </label>
                 <div className="flex flex-wrap gap-1">
                   {categories.map((cat) => {
                     const selected = categoryIds.includes(cat.id);
@@ -419,7 +432,9 @@ export function PromoForm({
                         key={cat.id}
                         type="button"
                         className={`px-2 py-0.5 rounded-full text-xs border ${
-                          selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
                         }`}
                         onClick={() => {
                           const exists = categoryIds.includes(cat.id);
@@ -439,7 +454,9 @@ export function PromoForm({
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium">Filter by Subcategory</label>
+                <label className="text-xs font-medium">
+                  Filter by Subcategory
+                </label>
                 <div className="flex flex-wrap gap-1">
                   {allSubcategories.map((sub) => {
                     const selected = subCategories.includes(sub);
@@ -448,7 +465,9 @@ export function PromoForm({
                         key={sub}
                         type="button"
                         className={`px-2 py-0.5 rounded-full text-xs border ${
-                          selected ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                          selected
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground"
                         }`}
                         onClick={() => {
                           const exists = subCategories.includes(sub);
@@ -502,7 +521,9 @@ export function PromoForm({
                   );
                 })}
                 {filteredProducts.length === 0 && (
-                  <p className="text-xs text-muted-foreground">No products available</p>
+                  <p className="text-xs text-muted-foreground">
+                    No products available
+                  </p>
                 )}
               </div>
             </>
@@ -565,7 +586,7 @@ export function PromoForm({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-xl">
+      <DialogContent className="max-w-xl" allowDismiss={false}>
         <DialogHeader>
           <DialogTitle>
             {editingPromo ? "Edit Promo Code" : "Create Promo Code"}

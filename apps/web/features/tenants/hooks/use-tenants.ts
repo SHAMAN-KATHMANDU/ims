@@ -1,6 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useToast } from "@/hooks/useToast";
 import {
   getTenants,
   getTenantById,
@@ -11,12 +12,15 @@ import {
   deactivateTenant,
   createTenantUser,
   resetTenantUserPassword,
+  getPlatformResetRequests,
+  approvePlatformResetRequest,
   type Tenant,
   type CreateTenantData,
   type UpdateTenantData,
   type CreateTenantUserData,
   type PlanTier,
   type SubscriptionStatus,
+  type PlatformPasswordResetRequest,
 } from "../services/tenant.service";
 
 export type {
@@ -26,6 +30,7 @@ export type {
   CreateTenantUserData,
   PlanTier,
   SubscriptionStatus,
+  PlatformPasswordResetRequest,
 };
 
 export const tenantKeys = {
@@ -143,6 +148,41 @@ export function useResetTenantUserPassword() {
     }) => resetTenantUserPassword(tenantId, userId, newPassword),
     onSuccess: (_, { tenantId }) => {
       queryClient.invalidateQueries({ queryKey: tenantKeys.detail(tenantId) });
+    },
+  });
+}
+
+export const platformResetKeys = {
+  all: ["platform", "password-reset-requests"] as const,
+};
+
+export function usePlatformResetRequests() {
+  return useQuery({
+    queryKey: platformResetKeys.all,
+    queryFn: getPlatformResetRequests,
+  });
+}
+
+export function useApprovePlatformResetRequest() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      newPassword,
+    }: {
+      requestId: string;
+      newPassword: string;
+    }) => approvePlatformResetRequest(requestId, newPassword),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: platformResetKeys.all });
+      toast({ title: "Password reset approved" });
+    },
+    onError: (err: Error) => {
+      toast({
+        title: err.message ?? "Failed to approve",
+        variant: "destructive",
+      });
     },
   });
 }

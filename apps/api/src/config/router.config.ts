@@ -42,6 +42,7 @@ import activityRouter from "@/modules/activities/activity.router";
 import notificationRouter from "@/modules/notifications/notification.router";
 import crmRouter from "@/modules/crm/crm.router";
 import crmSettingsRouter from "@/modules/crm-settings/crm-settings.router";
+import workflowRouter from "@/modules/workflows/workflow.router";
 
 const router = Router();
 
@@ -90,5 +91,6 @@ router.use("/activities", activityRouter);
 router.use("/notifications", notificationRouter);
 router.use("/crm", crmRouter);
 router.use("/crm-settings", crmSettingsRouter);
+router.use("/workflows", workflowRouter);
 
 export default router;

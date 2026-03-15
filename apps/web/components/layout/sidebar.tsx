@@ -39,9 +39,16 @@ import {
   Truck,
   PackageCheck,
   ListChecks,
+  KeyRound,
+  Zap,
 } from "lucide-react";
 import { Button } from "../ui/button";
-import { useAuthStore, selectUserRole, selectTenant } from "@/store/auth-store";
+import {
+  useAuthStore,
+  selectUserRole,
+  selectTenant,
+  selectToken,
+} from "@/store/auth-store";
 import {
   useSidebarStore,
   selectSidebarWidth,
@@ -115,6 +122,12 @@ const navSections: NavSection[] = [
         path: "settings/error-reports",
         label: "Error Reports",
         icon: Bug,
+        roles: ["platformAdmin"],
+      },
+      {
+        path: "platform/password-resets",
+        label: "Password Resets",
+        icon: KeyRound,
         roles: ["platformAdmin"],
       },
     ],
@@ -322,6 +335,14 @@ const navSections: NavSection[] = [
         label: "CRM Settings",
         icon: SlidersHorizontal,
         roles: ["admin", "superAdmin"],
+        feature: Feature.SALES_PIPELINE,
+      },
+      {
+        path: "settings/crm/workflows",
+        label: "Workflows",
+        icon: Zap,
+        roles: ["admin", "superAdmin"],
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "users",
@@ -335,6 +356,12 @@ const navSections: NavSection[] = [
         icon: FileText,
         roles: ["superAdmin"],
         feature: Feature.AUDIT_LOGS,
+      },
+      {
+        path: "settings/password-reset",
+        label: "Password Reset Requests",
+        icon: KeyRound,
+        roles: ["superAdmin"],
       },
       {
         path: "admin-controls",
@@ -604,12 +631,20 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   const pathname = usePathname();
   const userRole = useAuthStore(selectUserRole);
   const tenant = useAuthStore(selectTenant);
+  const token = useAuthStore(selectToken);
+  const refreshTenant = useAuthStore((s) => s.refreshTenant);
   const isMobile = useIsMobile();
   const sidebarWidth = useSidebarStore(selectSidebarWidth);
   const setSidebarWidth = useSidebarStore(selectSetSidebarWidth);
   const [resizing, setResizing] = useState(false);
   const startX = useRef(0);
   const startWidth = useRef(0);
+
+  // Refresh tenant (plan, etc.) on mount and token change only.
+  // Avoid refreshing on every pathname change to reduce /auth/me load and latency.
+  useEffect(() => {
+    if (token) refreshTenant();
+  }, [token, refreshTenant]);
 
   useEffect(() => {
     if (!resizing) return;
@@ -801,6 +836,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
           side="left"
           className="w-64 p-0"
           aria-describedby={undefined}
+          allowDismiss
         >
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation Menu</SheetTitle>

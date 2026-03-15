@@ -1,4 +1,14 @@
 import prisma from "@/config/prisma";
+import type { NotificationType } from "@prisma/client";
+
+export interface CreateNotificationData {
+  userId: string;
+  type: NotificationType;
+  title: string;
+  message?: string | null;
+  resourceType?: string | null;
+  resourceId?: string | null;
+}
 
 export interface NotificationListParams {
   userId: string;
@@ -29,6 +39,19 @@ export class NotificationRepository {
   async findById(userId: string, id: string) {
     return prisma.notification.findFirst({
       where: { id, userId },
+    });
+  }
+
+  async create(data: CreateNotificationData) {
+    return prisma.notification.create({
+      data: {
+        userId: data.userId,
+        type: data.type,
+        title: data.title,
+        message: data.message ?? null,
+        resourceType: data.resourceType ?? null,
+        resourceId: data.resourceId ?? null,
+      },
     });
   }
 

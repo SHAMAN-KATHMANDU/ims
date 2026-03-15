@@ -38,7 +38,10 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import type { Location } from "@/features/locations";
 import type { CreateTransferData } from "../../hooks/use-transfers";
-import { CreateTransferSchema, type CreateTransferInput } from "../../validation";
+import {
+  CreateTransferSchema,
+  type CreateTransferInput,
+} from "../../validation";
 
 interface InventoryItem {
   id: string;
@@ -557,7 +560,9 @@ export function TransferForm({
           New Transfer
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">{formContent}</DialogContent>
+      <DialogContent className="max-w-2xl" allowDismiss={false}>
+        {formContent}
+      </DialogContent>
     </Dialog>
   );
 }

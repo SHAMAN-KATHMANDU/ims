@@ -153,16 +153,16 @@ function StageBuilder({
   };
 
   const updateStage = (id: string, name: string) => {
-    onChange(
-      stages.map((s) => (s.id === id ? { ...s, name } : s)),
-    );
+    onChange(stages.map((s) => (s.id === id ? { ...s, name } : s)));
   };
 
   const removeStage = (id: string) => {
-    const filtered = stages.filter((s) => s.id !== id).map((s, i) => ({
-      ...s,
-      order: i,
-    }));
+    const filtered = stages
+      .filter((s) => s.id !== id)
+      .map((s, i) => ({
+        ...s,
+        order: i,
+      }));
     onChange(filtered);
   };
 
@@ -448,7 +448,7 @@ function PipelineSettings() {
 
       {/* Create dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>New Pipeline</DialogTitle>
           </DialogHeader>
@@ -464,10 +464,7 @@ function PipelineSettings() {
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Stages</label>
-              <StageBuilder
-                stages={createStages}
-                onChange={setCreateStages}
-              />
+              <StageBuilder stages={createStages} onChange={setCreateStages} />
             </div>
           </div>
           <DialogFooter>
@@ -495,7 +492,7 @@ function PipelineSettings() {
           if (!open) setEditPipeline(null);
         }}
       >
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Edit Pipeline</DialogTitle>
           </DialogHeader>
@@ -510,10 +507,7 @@ function PipelineSettings() {
             </div>
             <div className="space-y-1.5">
               <label className="text-sm font-medium">Stages</label>
-              <StageBuilder
-                stages={editStages}
-                onChange={setEditStages}
-              />
+              <StageBuilder stages={editStages} onChange={setEditStages} />
             </div>
           </div>
           <DialogFooter>
@@ -668,7 +662,7 @@ function ListSettings({
           if (!open) setEditItem(null);
         }}
       >
-        <DialogContent>
+        <DialogContent allowDismiss={false}>
           <DialogHeader>
             <DialogTitle>Edit {title.replace(/s$/, "")}</DialogTitle>
           </DialogHeader>

@@ -76,4 +76,44 @@ describe("PipelineRepository", () => {
       expect(stages[0]).toMatchObject({ name: "Qualification", order: 1 });
     });
   });
+
+  describe("seedDefaultPipelines", () => {
+    it("creates 3 pipelines for the tenant", async () => {
+      mockCreate.mockResolvedValue({ id: "p1", name: "Sales Pipeline" });
+
+      await pipelineRepository.seedDefaultPipelines("tenant-1");
+
+      expect(mockCreate).toHaveBeenCalledTimes(3);
+      expect(mockCreate).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tenantId: "tenant-1",
+            name: "Sales Pipeline",
+            isDefault: true,
+          }),
+        }),
+      );
+      expect(mockCreate).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tenantId: "tenant-1",
+            name: "Remarketing Pipeline",
+            isDefault: false,
+          }),
+        }),
+      );
+      expect(mockCreate).toHaveBeenNthCalledWith(
+        3,
+        expect.objectContaining({
+          data: expect.objectContaining({
+            tenantId: "tenant-1",
+            name: "Repurchase Pipeline",
+            isDefault: false,
+          }),
+        }),
+      );
+    });
+  });
 });

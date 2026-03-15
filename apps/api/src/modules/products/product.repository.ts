@@ -101,6 +101,7 @@ const PRODUCT_INCLUDE_WITH_INVENTORY = {
         },
       },
       locationInventory: {
+        orderBy: { location: { name: "asc" } },
         select: {
           quantity: true,
           subVariationId: true,
@@ -323,7 +324,9 @@ export class ProductRepository {
   async findAllProducts(
     tenantId: string,
     where: ProductListWhere,
-    orderBy: Prisma.ProductOrderByWithRelationInput,
+    orderBy:
+      | Prisma.ProductOrderByWithRelationInput
+      | Prisma.ProductOrderByWithRelationInput[],
     skip: number,
     take: number,
   ) {

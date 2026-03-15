@@ -40,6 +40,8 @@ interface CategoryTableProps {
   /** When provided, shows checkbox column and selection UI */
   selectedCategories?: Set<string>;
   onSelectionChange?: (selectedIds: Set<string>) => void;
+  /** When set, the matching category row is highlighted (e.g. on duplicate error). */
+  highlightCategoryId?: string | null;
 }
 
 export function CategoryTable({
@@ -54,6 +56,7 @@ export function CategoryTable({
   totalItems,
   selectedCategories = new Set(),
   onSelectionChange,
+  highlightCategoryId,
 }: CategoryTableProps) {
   const allSelected =
     categories.length > 0 &&
@@ -103,7 +106,16 @@ export function CategoryTable({
           </TableHeader>
           <TableBody>
             {categories.map((category) => (
-              <TableRow key={category.id}>
+              <TableRow
+                key={category.id}
+                id={`category-row-${category.id}`}
+                data-category-id={category.id}
+                className={
+                  highlightCategoryId === category.id
+                    ? "bg-amber-100 dark:bg-amber-950/50 animate-pulse"
+                    : undefined
+                }
+              >
                 {onSelectionChange && (
                   <TableCell
                     className="w-12"

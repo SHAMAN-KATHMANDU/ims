@@ -13,3 +13,16 @@ declare module "react-plotly.js" {
   const Plot: any;
   export default Plot;
 }
+
+declare module "country-flag-icons/react/3x2" {
+  import type { ComponentType } from "react";
+  const components: Record<
+    string,
+    ComponentType<{ title?: string; className?: string }>
+  >;
+  export = components;
+}
+
+declare module "country-flag-icons" {
+  export function hasFlag(countryCode: string): boolean;
+}

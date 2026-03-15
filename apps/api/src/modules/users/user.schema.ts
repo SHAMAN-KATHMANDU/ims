@@ -44,3 +44,10 @@ export const UpdateUserSchema = z
 
 export type CreateUserDto = z.infer<typeof CreateUserSchema>;
 export type UpdateUserDto = z.infer<typeof UpdateUserSchema>;
+
+export const ApprovePasswordResetSchema = z.object({
+  newPassword: z.string().min(8, "Password must be at least 8 characters"),
+});
+export type ApprovePasswordResetDto = z.infer<
+  typeof ApprovePasswordResetSchema
+>;
