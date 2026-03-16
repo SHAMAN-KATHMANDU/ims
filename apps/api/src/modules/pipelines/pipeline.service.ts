@@ -1,7 +1,12 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
+import { createPaginationResult } from "@/utils/pagination";
 import pipelineRepository from "./pipeline.repository";
-import type { CreatePipelineDto, UpdatePipelineDto } from "./pipeline.schema";
+import type {
+  CreatePipelineDto,
+  ListPipelinesQueryDto,
+  UpdatePipelineDto,
+} from "./pipeline.schema";
 import type { PipelineType } from "@prisma/client";
 
 export class PipelineService {
@@ -79,8 +84,27 @@ export class PipelineService {
     return { pipelines, journeyTypes, tags: tagNames };
   }
 
-  async getAll(tenantId: string) {
-    return pipelineRepository.findAll(tenantId);
+  async getAll(tenantId: string, query?: ListPipelinesQueryDto) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const search = query?.search;
+    const usePagination =
+      page !== undefined && limit !== undefined && page >= 1 && limit >= 1;
+    if (usePagination) {
+      const [totalItems, pipelines] = await Promise.all([
+        pipelineRepository.count(tenantId, search),
+        pipelineRepository.findAllPaginated(
+          tenantId,
+          (page - 1) * limit,
+          limit,
+          search,
+        ),
+      ]);
+      const result = createPaginationResult(pipelines, totalItems, page, limit);
+      return { pipelines: result.data, pagination: result.pagination };
+    }
+    const pipelines = await pipelineRepository.findAll(tenantId);
+    return { pipelines };
   }
 
   async getById(tenantId: string, id: string) {

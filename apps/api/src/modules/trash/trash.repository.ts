@@ -136,25 +136,50 @@ function getDelegate(model: TrashModelKey): TrashDelegate | undefined {
 }
 
 export class TrashRepository {
-  /** List trashed items across all tenants (platform scope). Optional tenantId filter. */
+  /** List trashed items across all tenants (platform scope). Optional tenantId, search, and deleted date range. */
   async findTrashed(
     entityTypes: TrashEntityConfig[],
     filterTenantId?: string,
+    search?: string,
+    dateFrom?: Date,
+    dateTo?: Date,
   ): Promise<TrashItem[]> {
     const allItems: TrashItem[] = [];
+
+    const deletedAtClause: Record<string, unknown> = { not: null };
+    if (dateFrom) (deletedAtClause as { gte?: Date }).gte = dateFrom;
+    if (dateTo) (deletedAtClause as { lte?: Date }).lte = dateTo;
 
     for (const config of entityTypes) {
       const delegate = getDelegate(config.model);
       if (!delegate) continue;
 
       const where: Record<string, unknown> = {
-        deletedAt: { not: null },
+        deletedAt: deletedAtClause,
       };
       if (filterTenantId) {
         if (config.tenantScope === "category") {
           where.category = { tenantId: filterTenantId };
         } else {
           where.tenantId = filterTenantId;
+        }
+      }
+      if (search && search.trim()) {
+        const term = search.trim();
+        if (config.type === "Contact") {
+          where.OR = [
+            {
+              firstName: { contains: term, mode: "insensitive" as const },
+            },
+            {
+              lastName: { contains: term, mode: "insensitive" as const },
+            },
+          ];
+        } else {
+          (where as Record<string, unknown>)[config.nameField] = {
+            contains: term,
+            mode: "insensitive" as const,
+          };
         }
       }
 

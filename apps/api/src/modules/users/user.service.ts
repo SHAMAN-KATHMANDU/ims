@@ -1,7 +1,10 @@
 import bcrypt from "bcryptjs";
 import { type Role } from "@prisma/client";
 import { createError } from "@/middlewares/errorHandler";
-import { getPaginationParams } from "@/utils/pagination";
+import {
+  getPaginationParams,
+  createPaginationResult,
+} from "@/utils/pagination";
 import userRepository, { UserRepository } from "./user.repository";
 import passwordResetRepository from "./password-reset.repository";
 import type {
@@ -27,7 +30,13 @@ export class UserService {
 
   async findAll(rawQuery: Record<string, unknown>) {
     const query = getPaginationParams(rawQuery);
-    return this.repo.findAll(query);
+    const validRoles: Role[] = ["platformAdmin", "superAdmin", "admin", "user"];
+    const role =
+      typeof rawQuery.role === "string" &&
+      validRoles.includes(rawQuery.role as Role)
+        ? (rawQuery.role as Role)
+        : undefined;
+    return this.repo.findAll({ ...query, role });
   }
 
   async findById(id: string) {
@@ -78,8 +87,30 @@ export class UserService {
     await this.repo.delete(id);
   }
 
-  async getPasswordResetRequests(tenantId: string) {
-    return passwordResetRepository.findForTenant(tenantId);
+  async getPasswordResetRequests(
+    tenantId: string,
+    query?: { page?: number; limit?: number; search?: string },
+  ) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const search = query?.search;
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const requests = await passwordResetRepository.findForTenant(tenantId);
+      return { requests };
+    }
+    const [requests, totalItems] = await Promise.all([
+      passwordResetRepository.findForTenantPaginated(
+        tenantId,
+        (page - 1) * limit,
+        limit,
+        search,
+      ),
+      passwordResetRepository.countForTenant(tenantId, search),
+    ]);
+    const result = createPaginationResult(requests, totalItems, page, limit);
+    return { requests: result.data, pagination: result.pagination };
   }
 
   async approveResetRequest(

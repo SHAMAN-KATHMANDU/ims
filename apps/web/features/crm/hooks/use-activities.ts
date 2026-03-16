@@ -7,27 +7,35 @@ import {
   createActivity,
   deleteActivity,
   type Activity,
+  type GetActivitiesParams,
 } from "../services/activity.service";
 
 export const activityKeys = {
   all: ["activities"] as const,
-  byContact: (contactId: string) =>
-    [...activityKeys.all, "contact", contactId] as const,
-  byDeal: (dealId: string) => [...activityKeys.all, "deal", dealId] as const,
+  byContact: (contactId: string, params?: GetActivitiesParams) =>
+    [...activityKeys.all, "contact", contactId, params] as const,
+  byDeal: (dealId: string, params?: GetActivitiesParams) =>
+    [...activityKeys.all, "deal", dealId, params] as const,
 };
 
-export function useActivitiesByContact(contactId: string) {
+export function useActivitiesByContact(
+  contactId: string,
+  params?: GetActivitiesParams,
+) {
   return useQuery({
-    queryKey: activityKeys.byContact(contactId),
-    queryFn: () => getActivitiesByContact(contactId),
+    queryKey: activityKeys.byContact(contactId, params),
+    queryFn: () => getActivitiesByContact(contactId, params),
     enabled: !!contactId,
   });
 }
 
-export function useActivitiesByDeal(dealId: string) {
+export function useActivitiesByDeal(
+  dealId: string,
+  params?: GetActivitiesParams,
+) {
   return useQuery({
-    queryKey: activityKeys.byDeal(dealId),
-    queryFn: () => getActivitiesByDeal(dealId),
+    queryKey: activityKeys.byDeal(dealId, params),
+    queryFn: () => getActivitiesByDeal(dealId, params),
     enabled: !!dealId,
   });
 }

@@ -12,20 +12,49 @@ export interface CreateNotificationData {
 
 export interface NotificationListParams {
   userId: string;
+  page: number;
   limit: number;
   unreadOnly: boolean;
+  type?: NotificationType;
 }
 
 export class NotificationRepository {
-  async findMany(params: NotificationListParams) {
-    const where: { userId: string; readAt?: null } = { userId: params.userId };
+  async count(params: {
+    userId: string;
+    unreadOnly: boolean;
+    type?: NotificationType;
+  }) {
+    const where: {
+      userId: string;
+      readAt?: null;
+      type?: NotificationType;
+    } = { userId: params.userId };
     if (params.unreadOnly) {
       where.readAt = null;
     }
+    if (params.type) {
+      where.type = params.type;
+    }
+    return prisma.notification.count({ where });
+  }
 
+  async findMany(params: NotificationListParams) {
+    const where: {
+      userId: string;
+      readAt?: null;
+      type?: NotificationType;
+    } = { userId: params.userId };
+    if (params.unreadOnly) {
+      where.readAt = null;
+    }
+    if (params.type) {
+      where.type = params.type;
+    }
+    const skip = (params.page - 1) * params.limit;
     return prisma.notification.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      skip,
       take: params.limit,
     });
   }

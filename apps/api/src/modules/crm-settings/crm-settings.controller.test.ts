@@ -49,7 +49,7 @@ describe("CrmSettingsController", () => {
   describe("getAllSources", () => {
     it("returns 200 with sources on success", async () => {
       const sources = [{ id: "1", name: "Website", createdAt: new Date() }];
-      mockService.getAllSources.mockResolvedValue(sources);
+      mockService.getAllSources.mockResolvedValue({ sources });
       const req = makeReq();
       const res = mockRes() as Response;
 
@@ -169,7 +169,7 @@ describe("CrmSettingsController", () => {
       const journeyTypes = [
         { id: "1", name: "Prospect", createdAt: new Date() },
       ];
-      mockService.getAllJourneyTypes.mockResolvedValue(journeyTypes);
+      mockService.getAllJourneyTypes.mockResolvedValue({ journeyTypes });
       const req = makeReq();
       const res = mockRes() as Response;
 

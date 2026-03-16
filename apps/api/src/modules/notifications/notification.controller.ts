@@ -18,8 +18,12 @@ class NotificationController {
     try {
       const userId = req.user!.id;
       const query = NotificationListQuerySchema.parse(req.query);
-      const notifications = await notificationService.getAll(userId, query);
-      return res.status(200).json({ message: "OK", notifications });
+      const result = await notificationService.getAll(userId, query);
+      return res.status(200).json({
+        message: "OK",
+        notifications: result.notifications,
+        pagination: result.pagination,
+      });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get notifications error");
     }

@@ -1,4 +1,5 @@
 import api from "@/lib/axios";
+import type { PaginationMeta } from "@/lib/apiTypes";
 
 export type ActivityType = "CALL" | "EMAIL" | "MEETING";
 
@@ -19,17 +20,35 @@ export interface Activity {
   creator?: { id: string; username: string };
 }
 
+export interface GetActivitiesParams {
+  page?: number;
+  limit?: number;
+  type?: ActivityType;
+}
+
+export interface ActivitiesResponse {
+  activities: Activity[];
+  pagination?: PaginationMeta;
+}
+
 export async function getActivitiesByContact(
   contactId: string,
-): Promise<{ activities: Activity[] }> {
-  const res = await api.get(`/activities/contact/${contactId}`);
+  params?: GetActivitiesParams,
+): Promise<ActivitiesResponse> {
+  const res = await api.get<ActivitiesResponse>(
+    `/activities/contact/${contactId}`,
+    { params },
+  );
   return res.data;
 }
 
 export async function getActivitiesByDeal(
   dealId: string,
-): Promise<{ activities: Activity[] }> {
-  const res = await api.get(`/activities/deal/${dealId}`);
+  params?: GetActivitiesParams,
+): Promise<ActivitiesResponse> {
+  const res = await api.get<ActivitiesResponse>(`/activities/deal/${dealId}`, {
+    params,
+  });
   return res.data;
 }
 

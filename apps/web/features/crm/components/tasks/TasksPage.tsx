@@ -14,6 +14,7 @@ import {
   useBulkCompleteTasks,
   useBulkDeleteTasks,
 } from "../../hooks/use-tasks";
+import { useUsers } from "@/features/users";
 import { useTaskSelectionStore } from "@/store/task-selection-store";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
@@ -44,6 +45,13 @@ import {
   DataTablePagination,
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/useToast";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
@@ -101,12 +109,18 @@ export function TasksPage() {
         ? true
         : undefined;
 
+  const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
+  const { data: usersResult } = useUsers({ limit: 500 });
+  const users = usersResult?.users ?? [];
+
   const { data, isLoading } = useTasksPaginated({
     page,
     limit: pageSize,
     search: debouncedSearch,
     completed: completedFilter,
     dueToday,
+    assignedToId: assignedToFilter === "all" ? undefined : assignedToFilter,
+    orphaned: orphanedOnly,
   });
 
   const { data: selectedTaskData } = useTask(selectedId ?? "");
@@ -236,6 +250,25 @@ export function TasksPage() {
             <AlertCircle className="h-4 w-4 mr-1" />
             Orphaned
           </Button>
+          <Select
+            value={assignedToFilter}
+            onValueChange={(v) => {
+              setAssignedToFilter(v);
+              setPage(DEFAULT_PAGE);
+            }}
+          >
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Assigned to" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All users</SelectItem>
+              {users.map((u) => (
+                <SelectItem key={u.id} value={u.id}>
+                  {u.username}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -257,7 +290,10 @@ export function TasksPage() {
                     clearSelection();
                   },
                   onError: () =>
-                    toast({ title: "Failed to complete", variant: "destructive" }),
+                    toast({
+                      title: "Failed to complete",
+                      variant: "destructive",
+                    }),
                 });
               }
             }}
@@ -288,11 +324,7 @@ export function TasksPage() {
             <Trash2 className="h-4 w-4 mr-1" />
             Delete
           </Button>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={clearSelection}
-          >
+          <Button size="sm" variant="ghost" onClick={clearSelection}>
             Clear
           </Button>
         </div>
@@ -420,8 +452,7 @@ export function TasksPage() {
               <TableHead className="w-10">
                 <Checkbox
                   checked={
-                    tasks.length > 0 &&
-                    tasks.every((t) => isSelected(t.id))
+                    tasks.length > 0 && tasks.every((t) => isSelected(t.id))
                   }
                   onCheckedChange={(checked) => {
                     if (checked) {

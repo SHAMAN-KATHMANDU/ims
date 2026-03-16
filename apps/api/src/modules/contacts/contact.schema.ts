@@ -22,6 +22,28 @@ export const UpdateTagSchema = z.object({
   name: z.string().min(1, "Tag name is required").max(100),
 });
 
+/** Query for GET /contacts/tags. When both absent, API returns all. */
+export const ListTagsQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === "" ? undefined : Math.max(1, parseInt(v) || 1),
+    ),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === ""
+        ? undefined
+        : Math.min(100, Math.max(1, parseInt(v) || 10)),
+    ),
+  search: z
+    .string()
+    .optional()
+    .transform((s) => (s?.trim() ? s.trim() : undefined)),
+});
+
 export const AddNoteSchema = z.object({
   content: z.string().min(1, "Note content is required"),
 });

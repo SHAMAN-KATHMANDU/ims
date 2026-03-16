@@ -13,6 +13,8 @@ import {
   useDeleteLead,
   useConvertLead,
 } from "../../hooks/use-leads";
+import { useCrmSources } from "../../hooks/use-crm-settings";
+import { useUsers } from "@/features/users";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -94,16 +96,25 @@ export function LeadsPage() {
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [status, setStatus] = useState<string>("__all__");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [assignedToFilter, setAssignedToFilter] = useState<string>("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [convertLeadId, setConvertLeadId] = useState<string | null>(null);
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
+
+  const { data: sourcesData } = useCrmSources();
+  const { data: usersResult } = useUsers({ limit: 500 });
+  const sources = sourcesData?.sources ?? [];
+  const users = usersResult?.users ?? [];
 
   const { data, isLoading } = useLeadsPaginated({
     page,
     limit: pageSize,
     search: debouncedSearch,
     status: status === "__all__" ? undefined : (status as LeadStatus),
+    source: sourceFilter === "all" ? undefined : sourceFilter,
+    assignedToId: assignedToFilter === "all" ? undefined : assignedToFilter,
   });
 
   const { data: leadData } = useLead(selectedId || "");
@@ -212,6 +223,44 @@ export function LeadsPage() {
             {STATUS_OPTIONS.map((s) => (
               <SelectItem key={s} value={s}>
                 {s}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={sourceFilter}
+          onValueChange={(v) => {
+            setSourceFilter(v);
+            setPage(DEFAULT_PAGE);
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-[160px]">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All sources</SelectItem>
+            {sources.map((s) => (
+              <SelectItem key={s.id} value={s.name}>
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={assignedToFilter}
+          onValueChange={(v) => {
+            setAssignedToFilter(v);
+            setPage(DEFAULT_PAGE);
+          }}
+        >
+          <SelectTrigger className="w-full sm:w-[160px]">
+            <SelectValue placeholder="Assigned to" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All users</SelectItem>
+            {users.map((u) => (
+              <SelectItem key={u.id} value={u.id}>
+                {u.username}
               </SelectItem>
             ))}
           </SelectContent>

@@ -23,6 +23,14 @@ workflowRouter.use(authorizeRoles("admin", "superAdmin"));
  *           type: string
  *           format: uuid
  *         description: Filter workflows by pipeline ID
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *         description: Page number (when not filtering by pipelineId)
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 10 }
+ *         description: Items per page (when not filtering by pipelineId)
  *     responses:
  *       200:
  *         description: List of workflows

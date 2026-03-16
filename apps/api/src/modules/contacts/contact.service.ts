@@ -3,6 +3,7 @@ import csvParser from "csv-parser";
 import ExcelJS from "exceljs";
 import { normalizePhoneOptional } from "@/utils/phone";
 import { createError } from "@/middlewares/errorHandler";
+import { createPaginationResult } from "@/utils/pagination";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import contactRepository from "./contact.repository";
 import type {
@@ -88,8 +89,30 @@ export class ContactService {
     });
   }
 
-  async getTags(tenantId: string) {
-    return contactRepository.findTags(tenantId);
+  async getTags(
+    tenantId: string,
+    query?: { page?: number; limit?: number; search?: string },
+  ) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const search = query?.search;
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const tags = await contactRepository.findTags(tenantId);
+      return { tags };
+    }
+    const [tags, totalItems] = await Promise.all([
+      contactRepository.findTagsPaginated(
+        tenantId,
+        (page - 1) * limit,
+        limit,
+        search,
+      ),
+      contactRepository.countTags(tenantId, search),
+    ]);
+    const result = createPaginationResult(tags, totalItems, page, limit);
+    return { tags: result.data, pagination: result.pagination };
   }
 
   async createTag(tenantId: string, name: string) {

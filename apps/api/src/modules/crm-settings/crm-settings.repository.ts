@@ -9,11 +9,44 @@ import type {
 export class CrmSettingsRepository {
   // ── Sources ──────────────────────────────────────────────────────────────
 
+  async countSources(tenantId: string, search?: string) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.crmSource.count({ where });
+  }
+
   async findAllSources(tenantId: string) {
     return prisma.crmSource.findMany({
       where: { tenantId },
       orderBy: { name: "asc" },
       select: { id: true, name: true, createdAt: true },
+    });
+  }
+
+  async findAllSourcesPaginated(
+    tenantId: string,
+    skip: number,
+    take: number,
+    search?: string,
+  ) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.crmSource.findMany({
+      where,
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, createdAt: true },
+      skip,
+      take,
     });
   }
 
@@ -48,11 +81,44 @@ export class CrmSettingsRepository {
 
   // ── Journey Types ─────────────────────────────────────────────────────────
 
+  async countJourneyTypes(tenantId: string, search?: string) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.crmJourneyType.count({ where });
+  }
+
   async findAllJourneyTypes(tenantId: string) {
     return prisma.crmJourneyType.findMany({
       where: { tenantId },
       orderBy: { name: "asc" },
       select: { id: true, name: true, createdAt: true },
+    });
+  }
+
+  async findAllJourneyTypesPaginated(
+    tenantId: string,
+    skip: number,
+    take: number,
+    search?: string,
+  ) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.crmJourneyType.findMany({
+      where,
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, createdAt: true },
+      skip,
+      take,
     });
   }
 

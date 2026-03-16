@@ -51,7 +51,11 @@ import {
   Route,
   Tags,
   GripVertical,
+  Search,
 } from "lucide-react";
+import { useDebounce } from "@/hooks/useDebounce";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import {
   usePipelines,
   useCreatePipeline,
@@ -281,8 +285,20 @@ const PIPELINE_TYPE_LABELS: Record<string, string> = {
   REPURCHASE: "Repurchase",
 };
 
+const DEFAULT_PIPELINE_PAGE_SIZE = 10;
+
 function PipelineSettings() {
-  const { data, isLoading } = usePipelines();
+  const [pipelinePage, setPipelinePage] = useState(DEFAULT_PAGE);
+  const [pipelinePageSize, setPipelinePageSize] = useState(
+    DEFAULT_PIPELINE_PAGE_SIZE,
+  );
+  const [pipelineSearch, setPipelineSearch] = useState("");
+  const debouncedPipelineSearch = useDebounce(pipelineSearch, 300);
+  const { data, isLoading } = usePipelines({
+    page: pipelinePage,
+    limit: pipelinePageSize,
+    search: debouncedPipelineSearch || undefined,
+  });
   const createMutation = useCreatePipeline();
   const updateMutation = useUpdatePipeline();
   const deleteMutation = useDeletePipeline();
@@ -300,6 +316,7 @@ function PipelineSettings() {
   const [editStages, setEditStages] = useState<PipelineStage[]>([]);
 
   const pipelines = data?.pipelines ?? [];
+  const pipelinePagination = data?.pagination;
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -396,6 +413,20 @@ function PipelineSettings() {
         </div>
       </CardHeader>
       <CardContent>
+        <div className="flex flex-wrap items-center gap-4 pb-4">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by name..."
+              value={pipelineSearch}
+              onChange={(e) => {
+                setPipelineSearch(e.target.value);
+                setPipelinePage(DEFAULT_PAGE);
+              }}
+              className="pl-9"
+            />
+          </div>
+        </div>
         {isLoading ? (
           <div className="space-y-2">
             {[1, 2].map((i) => (
@@ -487,6 +518,24 @@ function PipelineSettings() {
               </TableBody>
             </Table>
           </div>
+        )}
+        {pipelinePagination && (
+          <DataTablePagination
+            pagination={{
+              currentPage: pipelinePagination.currentPage,
+              totalPages: pipelinePagination.totalPages,
+              totalItems: pipelinePagination.totalItems,
+              itemsPerPage: pipelinePagination.itemsPerPage,
+              hasNextPage: pipelinePagination.hasNextPage,
+              hasPrevPage: pipelinePagination.hasPrevPage,
+            }}
+            onPageChange={setPipelinePage}
+            onPageSizeChange={(size) => {
+              setPipelinePageSize(size);
+              setPipelinePage(DEFAULT_PAGE);
+            }}
+            isLoading={isLoading}
+          />
         )}
       </CardContent>
 
@@ -590,6 +639,9 @@ interface ListSettingsProps {
   onAdd: (name: string) => void;
   onUpdate: (id: string, name: string) => void;
   onDelete: (id: string) => void;
+  searchValue?: string;
+  onSearchChange?: (value: string) => void;
+  searchPlaceholder?: string;
 }
 
 function ListSettings({
@@ -606,6 +658,9 @@ function ListSettings({
   onAdd,
   onUpdate,
   onDelete,
+  searchValue,
+  onSearchChange,
+  searchPlaceholder,
 }: ListSettingsProps) {
   const [newName, setNewName] = useState("");
   const [editItem, setEditItem] = useState<{ id: string; name: string } | null>(
@@ -632,6 +687,17 @@ function ListSettings({
         <CardDescription>{description}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {onSearchChange != null && searchPlaceholder != null && (
+          <div className="relative max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder={searchPlaceholder}
+              value={searchValue ?? ""}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+        )}
         {/* Add row */}
         <div className="flex gap-2">
           <Input
@@ -735,68 +801,154 @@ function ListSettings({
   );
 }
 
+const DEFAULT_SOURCE_PAGE_SIZE = 10;
+const DEFAULT_JOURNEY_TYPE_PAGE_SIZE = 10;
+const DEFAULT_TAG_PAGE_SIZE = 10;
+
 // ── Source Settings ───────────────────────────────────────────────────────────
 
 function SourceSettings() {
-  const { data, isLoading } = useCrmSources();
+  const [sourcePage, setSourcePage] = useState(DEFAULT_PAGE);
+  const [sourcePageSize, setSourcePageSize] = useState(
+    DEFAULT_SOURCE_PAGE_SIZE,
+  );
+  const [sourceSearch, setSourceSearch] = useState("");
+  const debouncedSourceSearch = useDebounce(sourceSearch, 300);
+  const { data, isLoading } = useCrmSources({
+    page: sourcePage,
+    limit: sourcePageSize,
+    search: debouncedSourceSearch || undefined,
+  });
   const createMutation = useCreateCrmSource();
   const updateMutation = useUpdateCrmSource();
   const deleteMutation = useDeleteCrmSource();
 
   const sources: CrmSource[] = data?.sources ?? [];
+  const sourcePagination = data?.pagination;
 
   return (
-    <ListSettings
-      title="Contact Sources"
-      description="Define where your contacts come from. These appear as options when creating or editing a contact."
-      emptyIcon={<Tag className="h-8 w-8" />}
-      emptyText="No sources yet. Add one above."
-      placeholder="e.g. Website, Referral, Social Media, Walk-in"
-      items={sources}
-      isLoading={isLoading}
-      isCreating={createMutation.isPending}
-      isUpdating={updateMutation.isPending}
-      isDeleting={deleteMutation.isPending}
-      onAdd={(name) => createMutation.mutate(name)}
-      onUpdate={(id, name) => updateMutation.mutate({ id, name })}
-      onDelete={(id) => deleteMutation.mutate(id)}
-    />
+    <>
+      <ListSettings
+        title="Contact Sources"
+        description="Define where your contacts come from. These appear as options when creating or editing a contact."
+        emptyIcon={<Tag className="h-8 w-8" />}
+        emptyText="No sources yet. Add one above."
+        placeholder="e.g. Website, Referral, Social Media, Walk-in"
+        items={sources}
+        isLoading={isLoading}
+        isCreating={createMutation.isPending}
+        isUpdating={updateMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+        onAdd={(name) => createMutation.mutate(name)}
+        onUpdate={(id, name) => updateMutation.mutate({ id, name })}
+        onDelete={(id) => deleteMutation.mutate(id)}
+        searchValue={sourceSearch}
+        onSearchChange={(v) => {
+          setSourceSearch(v);
+          setSourcePage(DEFAULT_PAGE);
+        }}
+        searchPlaceholder="Search sources..."
+      />
+      {sourcePagination && (
+        <DataTablePagination
+          pagination={{
+            currentPage: sourcePagination.currentPage,
+            totalPages: sourcePagination.totalPages,
+            totalItems: sourcePagination.totalItems,
+            itemsPerPage: sourcePagination.itemsPerPage,
+            hasNextPage: sourcePagination.hasNextPage,
+            hasPrevPage: sourcePagination.hasPrevPage,
+          }}
+          onPageChange={setSourcePage}
+          onPageSizeChange={(size) => {
+            setSourcePageSize(size);
+            setSourcePage(DEFAULT_PAGE);
+          }}
+          isLoading={isLoading}
+        />
+      )}
+    </>
   );
 }
 
 // ── Journey Type Settings ─────────────────────────────────────────────────────
 
 function JourneyTypeSettings() {
-  const { data, isLoading } = useCrmJourneyTypes();
+  const [journeyTypePage, setJourneyTypePage] = useState(DEFAULT_PAGE);
+  const [journeyTypePageSize, setJourneyTypePageSize] = useState(
+    DEFAULT_JOURNEY_TYPE_PAGE_SIZE,
+  );
+  const [journeyTypeSearch, setJourneyTypeSearch] = useState("");
+  const debouncedJourneyTypeSearch = useDebounce(journeyTypeSearch, 300);
+  const { data, isLoading } = useCrmJourneyTypes({
+    page: journeyTypePage,
+    limit: journeyTypePageSize,
+    search: debouncedJourneyTypeSearch || undefined,
+  });
   const createMutation = useCreateCrmJourneyType();
   const updateMutation = useUpdateCrmJourneyType();
   const deleteMutation = useDeleteCrmJourneyType();
 
   const journeyTypes: CrmJourneyType[] = data?.journeyTypes ?? [];
+  const journeyTypePagination = data?.pagination;
 
   return (
-    <ListSettings
-      title="Journey Types"
-      description="Define the stages of your customer journey. These appear as options when creating or editing a contact."
-      emptyIcon={<Route className="h-8 w-8" />}
-      emptyText="No journey types yet. Add one above."
-      placeholder="e.g. Prospecting, Qualified, Proposal, Negotiation, Closed"
-      items={journeyTypes}
-      isLoading={isLoading}
-      isCreating={createMutation.isPending}
-      isUpdating={updateMutation.isPending}
-      isDeleting={deleteMutation.isPending}
-      onAdd={(name) => createMutation.mutate(name)}
-      onUpdate={(id, name) => updateMutation.mutate({ id, name })}
-      onDelete={(id) => deleteMutation.mutate(id)}
-    />
+    <>
+      <ListSettings
+        title="Journey Types"
+        description="Define the stages of your customer journey. These appear as options when creating or editing a contact."
+        emptyIcon={<Route className="h-8 w-8" />}
+        emptyText="No journey types yet. Add one above."
+        placeholder="e.g. Prospecting, Qualified, Proposal, Negotiation, Closed"
+        items={journeyTypes}
+        isLoading={isLoading}
+        isCreating={createMutation.isPending}
+        isUpdating={updateMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+        onAdd={(name) => createMutation.mutate(name)}
+        onUpdate={(id, name) => updateMutation.mutate({ id, name })}
+        onDelete={(id) => deleteMutation.mutate(id)}
+        searchValue={journeyTypeSearch}
+        onSearchChange={(v) => {
+          setJourneyTypeSearch(v);
+          setJourneyTypePage(DEFAULT_PAGE);
+        }}
+        searchPlaceholder="Search journey types..."
+      />
+      {journeyTypePagination && (
+        <DataTablePagination
+          pagination={{
+            currentPage: journeyTypePagination.currentPage,
+            totalPages: journeyTypePagination.totalPages,
+            totalItems: journeyTypePagination.totalItems,
+            itemsPerPage: journeyTypePagination.itemsPerPage,
+            hasNextPage: journeyTypePagination.hasNextPage,
+            hasPrevPage: journeyTypePagination.hasPrevPage,
+          }}
+          onPageChange={setJourneyTypePage}
+          onPageSizeChange={(size) => {
+            setJourneyTypePageSize(size);
+            setJourneyTypePage(DEFAULT_PAGE);
+          }}
+          isLoading={isLoading}
+        />
+      )}
+    </>
   );
 }
 
 // ── Tag Settings ──────────────────────────────────────────────────────────────
 
 function TagSettings() {
-  const { data, isLoading } = useContactTags();
+  const [tagPage, setTagPage] = useState(DEFAULT_PAGE);
+  const [tagPageSize, setTagPageSize] = useState(DEFAULT_TAG_PAGE_SIZE);
+  const [tagSearch, setTagSearch] = useState("");
+  const debouncedTagSearch = useDebounce(tagSearch, 300);
+  const { data, isLoading } = useContactTags({
+    page: tagPage,
+    limit: tagPageSize,
+    search: debouncedTagSearch || undefined,
+  });
   const createMutation = useCreateContactTag();
   const updateMutation = useUpdateContactTag();
   const deleteMutation = useDeleteContactTag();
@@ -806,22 +958,49 @@ function TagSettings() {
     name: t.name,
     createdAt: t.createdAt ?? new Date().toISOString(),
   }));
+  const tagPagination = data?.pagination;
 
   return (
-    <ListSettings
-      title="Contact Tags"
-      description="Create tags to categorize contacts. Tags appear when creating or editing a contact."
-      emptyIcon={<Tags className="h-8 w-8" />}
-      emptyText="No tags yet. Add one above."
-      placeholder="e.g. VIP, Lead, Customer, Newsletter"
-      items={tags}
-      isLoading={isLoading}
-      isCreating={createMutation.isPending}
-      isUpdating={updateMutation.isPending}
-      isDeleting={deleteMutation.isPending}
-      onAdd={(name) => createMutation.mutate(name)}
-      onUpdate={(id, name) => updateMutation.mutate({ id, name })}
-      onDelete={(id) => deleteMutation.mutate(id)}
-    />
+    <>
+      <ListSettings
+        title="Contact Tags"
+        description="Create tags to categorize contacts. Tags appear when creating or editing a contact."
+        emptyIcon={<Tags className="h-8 w-8" />}
+        emptyText="No tags yet. Add one above."
+        placeholder="e.g. VIP, Lead, Customer, Newsletter"
+        items={tags}
+        isLoading={isLoading}
+        isCreating={createMutation.isPending}
+        isUpdating={updateMutation.isPending}
+        isDeleting={deleteMutation.isPending}
+        onAdd={(name) => createMutation.mutate(name)}
+        onUpdate={(id, name) => updateMutation.mutate({ id, name })}
+        onDelete={(id) => deleteMutation.mutate(id)}
+        searchValue={tagSearch}
+        onSearchChange={(v) => {
+          setTagSearch(v);
+          setTagPage(DEFAULT_PAGE);
+        }}
+        searchPlaceholder="Search tags..."
+      />
+      {tagPagination && (
+        <DataTablePagination
+          pagination={{
+            currentPage: tagPagination.currentPage,
+            totalPages: tagPagination.totalPages,
+            totalItems: tagPagination.totalItems,
+            itemsPerPage: tagPagination.itemsPerPage,
+            hasNextPage: tagPagination.hasNextPage,
+            hasPrevPage: tagPagination.hasPrevPage,
+          }}
+          onPageChange={setTagPage}
+          onPageSizeChange={(size) => {
+            setTagPageSize(size);
+            setTagPage(DEFAULT_PAGE);
+          }}
+          isLoading={isLoading}
+        />
+      )}
+    </>
   );
 }

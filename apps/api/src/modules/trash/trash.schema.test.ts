@@ -46,6 +46,23 @@ describe("ListTrashQuerySchema", () => {
   it("rejects limit over 100", () => {
     expect(() => ListTrashQuerySchema.parse({ limit: "500" })).toThrow();
   });
+
+  it("accepts search and date range", () => {
+    const result = ListTrashQuerySchema.parse({
+      search: "  foo  ",
+      dateFrom: "2025-01-01",
+      dateTo: "2025-01-31",
+    });
+    expect(result.search).toBe("foo");
+    expect(result.dateFrom).toEqual(new Date("2025-01-01"));
+    expect(result.dateTo).toEqual(new Date("2025-01-31"));
+  });
+
+  it("leaves dateFrom/dateTo undefined when empty", () => {
+    const result = ListTrashQuerySchema.parse({});
+    expect(result.dateFrom).toBeUndefined();
+    expect(result.dateTo).toBeUndefined();
+  });
 });
 
 describe("RestoreItemParamsSchema", () => {

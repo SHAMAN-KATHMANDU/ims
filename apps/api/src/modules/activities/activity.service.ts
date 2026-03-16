@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createPaginationResult } from "@/utils/pagination";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import activityRepository from "./activity.repository";
 import type { CreateActivityDto } from "./activity.schema";
@@ -20,12 +21,76 @@ export class ActivityService {
     });
   }
 
-  async getByContact(tenantId: string, contactId: string) {
-    return activityRepository.findByContact(tenantId, contactId);
+  async getByContact(
+    tenantId: string,
+    contactId: string,
+    query?: {
+      page?: number;
+      limit?: number;
+      type?: "CALL" | "EMAIL" | "MEETING";
+    },
+  ) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const type = query?.type;
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const activities = await activityRepository.findByContact(
+        tenantId,
+        contactId,
+        type,
+      );
+      return { activities };
+    }
+    const [activities, totalItems] = await Promise.all([
+      activityRepository.findByContactPaginated(
+        tenantId,
+        contactId,
+        (page - 1) * limit,
+        limit,
+        type,
+      ),
+      activityRepository.countByContact(tenantId, contactId, type),
+    ]);
+    const result = createPaginationResult(activities, totalItems, page, limit);
+    return { activities: result.data, pagination: result.pagination };
   }
 
-  async getByDeal(tenantId: string, dealId: string) {
-    return activityRepository.findByDeal(tenantId, dealId);
+  async getByDeal(
+    tenantId: string,
+    dealId: string,
+    query?: {
+      page?: number;
+      limit?: number;
+      type?: "CALL" | "EMAIL" | "MEETING";
+    },
+  ) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const type = query?.type;
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const activities = await activityRepository.findByDeal(
+        tenantId,
+        dealId,
+        type,
+      );
+      return { activities };
+    }
+    const [activities, totalItems] = await Promise.all([
+      activityRepository.findByDealPaginated(
+        tenantId,
+        dealId,
+        (page - 1) * limit,
+        limit,
+        type,
+      ),
+      activityRepository.countByDeal(tenantId, dealId, type),
+    ]);
+    const result = createPaginationResult(activities, totalItems, page, limit);
+    return { activities: result.data, pagination: result.pagination };
   }
 
   async getById(tenantId: string, id: string) {

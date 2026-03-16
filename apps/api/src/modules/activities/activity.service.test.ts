@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockCreate = vi.fn();
 const mockFindByContact = vi.fn();
+const mockFindByContactPaginated = vi.fn();
+const mockCountByContact = vi.fn();
 const mockFindByDeal = vi.fn();
+const mockFindByDealPaginated = vi.fn();
+const mockCountByDeal = vi.fn();
 const mockFindById = vi.fn();
 const mockSoftDelete = vi.fn();
 
@@ -10,7 +14,13 @@ vi.mock("./activity.repository", () => ({
   default: {
     create: (...args: unknown[]) => mockCreate(...args),
     findByContact: (...args: unknown[]) => mockFindByContact(...args),
+    findByContactPaginated: (...args: unknown[]) =>
+      mockFindByContactPaginated(...args),
+    countByContact: (...args: unknown[]) => mockCountByContact(...args),
     findByDeal: (...args: unknown[]) => mockFindByDeal(...args),
+    findByDealPaginated: (...args: unknown[]) =>
+      mockFindByDealPaginated(...args),
+    countByDeal: (...args: unknown[]) => mockCountByDeal(...args),
     findById: (...args: unknown[]) => mockFindById(...args),
     softDelete: (...args: unknown[]) => mockSoftDelete(...args),
   },
@@ -79,26 +89,56 @@ describe("ActivityService", () => {
   });
 
   describe("getByContact", () => {
-    it("returns activities for contact", async () => {
+    it("returns activities for contact when no pagination", async () => {
       const activities = [{ id: "a1", contactId: "c1" }];
       mockFindByContact.mockResolvedValue(activities);
 
       const result = await activityService.getByContact(tenantId, "c1");
 
-      expect(result).toEqual(activities);
-      expect(mockFindByContact).toHaveBeenCalledWith(tenantId, "c1");
+      expect(result).toEqual({ activities });
+      expect(mockFindByContact).toHaveBeenCalledWith(tenantId, "c1", undefined);
+    });
+
+    it("returns activities and pagination when page and limit provided", async () => {
+      const activities = [{ id: "a1", contactId: "c1" }];
+      mockFindByContactPaginated.mockResolvedValue(activities);
+      mockCountByContact.mockResolvedValue(1);
+
+      const result = await activityService.getByContact(tenantId, "c1", {
+        page: 1,
+        limit: 10,
+      });
+
+      expect(result.activities).toEqual(activities);
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination?.totalItems).toBe(1);
     });
   });
 
   describe("getByDeal", () => {
-    it("returns activities for deal", async () => {
+    it("returns activities for deal when no pagination", async () => {
       const activities = [{ id: "a1", dealId: "d1" }];
       mockFindByDeal.mockResolvedValue(activities);
 
       const result = await activityService.getByDeal(tenantId, "d1");
 
-      expect(result).toEqual(activities);
-      expect(mockFindByDeal).toHaveBeenCalledWith(tenantId, "d1");
+      expect(result).toEqual({ activities });
+      expect(mockFindByDeal).toHaveBeenCalledWith(tenantId, "d1", undefined);
+    });
+
+    it("returns activities and pagination when page and limit provided", async () => {
+      const activities = [{ id: "a1", dealId: "d1" }];
+      mockFindByDealPaginated.mockResolvedValue(activities);
+      mockCountByDeal.mockResolvedValue(1);
+
+      const result = await activityService.getByDeal(tenantId, "d1", {
+        page: 1,
+        limit: 10,
+      });
+
+      expect(result.activities).toEqual(activities);
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination?.totalItems).toBe(1);
     });
   });
 

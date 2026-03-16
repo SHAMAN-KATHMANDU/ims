@@ -37,7 +37,7 @@ describe("WorkflowService", () => {
       const result = await workflowService.getAll(tenantId);
 
       expect(mockFindAllByTenant).toHaveBeenCalledWith(tenantId);
-      expect(result).toEqual(workflows);
+      expect(result).toEqual({ workflows });
     });
   });
 

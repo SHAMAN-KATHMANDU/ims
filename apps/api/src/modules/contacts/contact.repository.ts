@@ -102,6 +102,8 @@ export class ContactRepository {
     const companyId = query.companyId as string | undefined;
     const tagId = query.tagId as string | undefined;
     const ownerId = query.ownerId as string | undefined;
+    const source = query.source as string | undefined;
+    const journeyType = query.journeyType as string | undefined;
 
     const allowedSortFields = [
       "createdAt",
@@ -127,6 +129,8 @@ export class ContactRepository {
     if (companyId) where.companyId = companyId;
     if (tagId) where.tagLinks = { some: { tagId } };
     if (ownerId) where.ownedById = ownerId;
+    if (source) where.source = source;
+    if (journeyType) where.journeyType = journeyType;
 
     const skip = (page - 1) * limit;
 
@@ -241,11 +245,44 @@ export class ContactRepository {
     });
   }
 
+  async countTags(tenantId: string, search?: string) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.contactTag.count({ where });
+  }
+
   async findTags(tenantId: string) {
     return prisma.contactTag.findMany({
       where: { tenantId },
       orderBy: { name: "asc" },
       select: { id: true, name: true, createdAt: true },
+    });
+  }
+
+  async findTagsPaginated(
+    tenantId: string,
+    skip: number,
+    take: number,
+    search?: string,
+  ) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.contactTag.findMany({
+      where,
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, createdAt: true },
+      skip,
+      take,
     });
   }
 

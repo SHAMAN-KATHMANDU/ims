@@ -10,6 +10,7 @@ import {
   UpdateTagSchema,
   AddNoteSchema,
   AddCommunicationSchema,
+  ListTagsQuerySchema,
 } from "./contact.schema";
 import contactService from "./contact.service";
 
@@ -123,8 +124,16 @@ class ContactController {
   getTags = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const tags = await contactService.getTags(tenantId);
-      return res.status(200).json({ message: "OK", tags });
+      const parsed = ListTagsQuerySchema.safeParse(req.query);
+      const query =
+        parsed.success &&
+        parsed.data &&
+        parsed.data.page != null &&
+        parsed.data.limit != null
+          ? { page: parsed.data.page, limit: parsed.data.limit }
+          : undefined;
+      const result = await contactService.getTags(tenantId, query);
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get tags error");
     }

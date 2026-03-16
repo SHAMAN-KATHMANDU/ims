@@ -5,6 +5,7 @@
 
 import bcrypt from "bcryptjs";
 import { DEFAULT_PLAN_LIMITS, PlanTier } from "@repo/shared";
+import { createPaginationResult } from "@/utils/pagination";
 import passwordResetRepository from "@/modules/users/password-reset.repository";
 import platformRepository, {
   type PlatformRepository,
@@ -66,8 +67,34 @@ export class PlatformService {
     });
   }
 
-  async findAllTenants() {
-    return this.repo.findAllTenants();
+  async findAllTenants(query?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+    plan?: string;
+    subscriptionStatus?: string;
+    isActive?: boolean;
+  }) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const filters = {
+      search: query?.search,
+      plan: query?.plan,
+      subscriptionStatus: query?.subscriptionStatus,
+      isActive: query?.isActive,
+    };
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const tenants = await this.repo.findAllTenants();
+      return { tenants };
+    }
+    const [tenants, totalItems] = await Promise.all([
+      this.repo.findAllTenantsPaginated((page - 1) * limit, limit, filters),
+      this.repo.countTenants(filters),
+    ]);
+    const result = createPaginationResult(tenants, totalItems, page, limit);
+    return { tenants: result.data, pagination: result.pagination };
   }
 
   async findTenantById(id: string) {
@@ -358,8 +385,33 @@ export class PlatformService {
 
   // ─── Subscriptions ─────────────────────────────────────────────────────────
 
-  async listSubscriptions(tenantId?: string) {
-    return this.repo.findAllSubscriptions(tenantId);
+  async listSubscriptions(
+    tenantId?: string,
+    query?: { page?: number; limit?: number },
+  ) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const subscriptions = await this.repo.findAllSubscriptions(tenantId);
+      return { subscriptions };
+    }
+    const [subscriptions, totalItems] = await Promise.all([
+      this.repo.findAllSubscriptionsPaginated(
+        tenantId,
+        (page - 1) * limit,
+        limit,
+      ),
+      this.repo.countSubscriptions(tenantId),
+    ]);
+    const result = createPaginationResult(
+      subscriptions,
+      totalItems,
+      page,
+      limit,
+    );
+    return { subscriptions: result.data, pagination: result.pagination };
   }
 
   async getSubscriptionById(id: string) {
@@ -402,8 +454,33 @@ export class PlatformService {
 
   // ─── Tenant Payments ───────────────────────────────────────────────────────
 
-  async listTenantPayments(tenantId?: string, subscriptionId?: string) {
-    return this.repo.findAllTenantPayments(tenantId, subscriptionId);
+  async listTenantPayments(
+    tenantId?: string,
+    subscriptionId?: string,
+    query?: { page?: number; limit?: number },
+  ) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const payments = await this.repo.findAllTenantPayments(
+        tenantId,
+        subscriptionId,
+      );
+      return { payments };
+    }
+    const [payments, totalItems] = await Promise.all([
+      this.repo.findAllTenantPaymentsPaginated(
+        tenantId,
+        subscriptionId,
+        (page - 1) * limit,
+        limit,
+      ),
+      this.repo.countTenantPayments(tenantId, subscriptionId),
+    ]);
+    const result = createPaginationResult(payments, totalItems, page, limit);
+    return { payments: result.data, pagination: result.pagination };
   }
 
   async getTenantPaymentById(id: string) {
@@ -468,8 +545,30 @@ export class PlatformService {
 
   // ─── Password Reset Requests (escalated) ───────────────────────────────────
 
-  async getPlatformResetRequests() {
-    return passwordResetRepository.findEscalated();
+  async getPlatformResetRequests(query?: {
+    page?: number;
+    limit?: number;
+    search?: string;
+  }) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const search = query?.search;
+    const usePagination =
+      page != null && limit != null && page > 0 && limit > 0;
+    if (!usePagination) {
+      const requests = await passwordResetRepository.findEscalated();
+      return { requests };
+    }
+    const [requests, totalItems] = await Promise.all([
+      passwordResetRepository.findEscalatedPaginated(
+        (page - 1) * limit,
+        limit,
+        search,
+      ),
+      passwordResetRepository.countEscalated(search),
+    ]);
+    const result = createPaginationResult(requests, totalItems, page, limit);
+    return { requests: result.data, pagination: result.pagination };
   }
 
   async approvePlatformResetRequest(

@@ -9,19 +9,21 @@ import {
   deletePipeline,
   seedPipelineFramework,
   type PipelineStage,
+  type GetPipelinesParams,
 } from "../services/pipeline.service";
 
 export const pipelineKeys = {
   all: ["pipelines"] as const,
-  lists: () => [...pipelineKeys.all, "list"] as const,
+  lists: (params?: GetPipelinesParams) =>
+    [...pipelineKeys.all, "list", params] as const,
   details: () => [...pipelineKeys.all, "detail"] as const,
   detail: (id: string) => [...pipelineKeys.details(), id] as const,
 };
 
-export function usePipelines() {
+export function usePipelines(params?: GetPipelinesParams) {
   return useQuery({
-    queryKey: pipelineKeys.lists(),
-    queryFn: () => getPipelines(),
+    queryKey: pipelineKeys.lists(params),
+    queryFn: () => getPipelines(params),
   });
 }
 

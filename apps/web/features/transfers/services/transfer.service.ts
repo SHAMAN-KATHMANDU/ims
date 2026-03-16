@@ -113,6 +113,8 @@ export interface TransferListParams {
   fromLocationId?: string;
   toLocationId?: string;
   locationId?: string; // Either from or to
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -170,6 +172,8 @@ export async function getTransfers(
     fromLocationId,
     toLocationId,
     locationId,
+    dateFrom,
+    dateTo,
     sortBy,
     sortOrder,
   } = params;
@@ -191,6 +195,12 @@ export async function getTransfers(
   }
   if (locationId) {
     queryParams.set("locationId", locationId);
+  }
+  if (dateFrom) {
+    queryParams.set("dateFrom", dateFrom);
+  }
+  if (dateTo) {
+    queryParams.set("dateTo", dateTo);
   }
   if (sortBy) {
     queryParams.set("sortBy", sortBy);

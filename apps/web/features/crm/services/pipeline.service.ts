@@ -1,4 +1,5 @@
 import api from "@/lib/axios";
+import type { PaginationMeta } from "@/lib/apiTypes";
 
 export interface PipelineStage {
   id: string;
@@ -24,8 +25,21 @@ export interface Pipeline {
   _count?: { deals: number };
 }
 
-export async function getPipelines(): Promise<{ pipelines: Pipeline[] }> {
-  const res = await api.get("/pipelines");
+export interface GetPipelinesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface PipelinesResponse {
+  pipelines: Pipeline[];
+  pagination?: PaginationMeta;
+}
+
+export async function getPipelines(
+  params?: GetPipelinesParams,
+): Promise<PipelinesResponse> {
+  const res = await api.get<PipelinesResponse>("/pipelines", { params });
   return res.data;
 }
 

@@ -1,4 +1,5 @@
 import api from "@/lib/axios";
+import type { PaginationMeta } from "@/lib/apiTypes";
 
 export interface CrmSource {
   id: string;
@@ -14,8 +15,23 @@ export interface CrmJourneyType {
 
 // ── Sources ──────────────────────────────────────────────────────────────────
 
-export async function getCrmSources(): Promise<{ sources: CrmSource[] }> {
-  const res = await api.get("/crm-settings/sources");
+export interface GetCrmSourcesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface CrmSourcesResponse {
+  sources: CrmSource[];
+  pagination?: PaginationMeta;
+}
+
+export async function getCrmSources(
+  params?: GetCrmSourcesParams,
+): Promise<CrmSourcesResponse> {
+  const res = await api.get<CrmSourcesResponse>("/crm-settings/sources", {
+    params,
+  });
   return res.data;
 }
 
@@ -40,10 +56,24 @@ export async function deleteCrmSource(id: string): Promise<void> {
 
 // ── Journey Types ─────────────────────────────────────────────────────────────
 
-export async function getCrmJourneyTypes(): Promise<{
+export interface GetCrmJourneyTypesParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface CrmJourneyTypesResponse {
   journeyTypes: CrmJourneyType[];
-}> {
-  const res = await api.get("/crm-settings/journey-types");
+  pagination?: PaginationMeta;
+}
+
+export async function getCrmJourneyTypes(
+  params?: GetCrmJourneyTypesParams,
+): Promise<CrmJourneyTypesResponse> {
+  const res = await api.get<CrmJourneyTypesResponse>(
+    "/crm-settings/journey-types",
+    { params },
+  );
   return res.data;
 }
 

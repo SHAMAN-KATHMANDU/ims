@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
-import { CreatePipelineSchema, UpdatePipelineSchema } from "./pipeline.schema";
+import {
+  CreatePipelineSchema,
+  ListPipelinesQuerySchema,
+  UpdatePipelineSchema,
+} from "./pipeline.schema";
 import pipelineService from "./pipeline.service";
 import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
@@ -40,8 +44,14 @@ class PipelineController {
   getAll = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const pipelines = await pipelineService.getAll(tenantId);
-      return res.status(200).json({ message: "OK", pipelines });
+      const query = ListPipelinesQuerySchema.safeParse(req.query);
+      const parsed = query.success ? query.data : undefined;
+      const result = await pipelineService.getAll(tenantId, parsed);
+      return res.status(200).json({
+        message: "OK",
+        pipelines: result.pipelines,
+        ...(result.pagination && { pagination: result.pagination }),
+      });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get pipelines error");
     }

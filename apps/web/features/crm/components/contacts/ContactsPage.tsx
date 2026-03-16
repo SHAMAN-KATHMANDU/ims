@@ -15,12 +15,23 @@ import {
 } from "../../hooks/use-contacts";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
 import { useContactTags } from "../../hooks/use-contacts";
+import {
+  useCrmSources,
+  useCrmJourneyTypes,
+} from "../../hooks/use-crm-settings";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { CompanyCombobox } from "./CompanyCombobox";
 import { TagCombobox } from "./TagCombobox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Search, Plus, Upload, Download } from "lucide-react";
 import {
   DataTablePagination,
@@ -62,6 +73,8 @@ export function ContactsPage() {
   const [sortOrder] = useState<"asc" | "desc">("desc");
   const [companyId, setCompanyId] = useState<string>("");
   const [tagId, setTagId] = useState<string>("");
+  const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [journeyTypeFilter, setJourneyTypeFilter] = useState<string>("all");
   const [importOpen, setImportOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
@@ -77,14 +90,20 @@ export function ContactsPage() {
     sortOrder,
     companyId: companyId || undefined,
     tagId: tagId || undefined,
+    source: sourceFilter === "all" ? undefined : sourceFilter,
+    journeyType: journeyTypeFilter === "all" ? undefined : journeyTypeFilter,
   });
 
   const { data: contactData } = useContact(selectedId || "");
   const { data: contactToDeleteData } = useContact(deleteId || "");
   const { data: companiesData } = useCompaniesForSelect();
   const { data: tagsData } = useContactTags();
+  const { data: sourcesData } = useCrmSources();
+  const { data: journeyTypesData } = useCrmJourneyTypes();
   const companies = companiesData?.companies ?? [];
   const tags = tagsData?.tags ?? [];
+  const sources = sourcesData?.sources ?? [];
+  const journeyTypes = journeyTypesData?.journeyTypes ?? [];
   const deleteMutation = useDeleteContact();
   const importMutation = useImportContacts();
   const createMutation = useCreateContact();
@@ -277,6 +296,44 @@ export function ContactsPage() {
             setPage(DEFAULT_PAGE);
           }}
         />
+        <Select
+          value={sourceFilter}
+          onValueChange={(v) => {
+            setSourceFilter(v);
+            setPage(DEFAULT_PAGE);
+          }}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Source" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All sources</SelectItem>
+            {sources.map((s) => (
+              <SelectItem key={s.id} value={s.name}>
+                {s.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
+          value={journeyTypeFilter}
+          onValueChange={(v) => {
+            setJourneyTypeFilter(v);
+            setPage(DEFAULT_PAGE);
+          }}
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Journey type" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All journey types</SelectItem>
+            {journeyTypes.map((jt) => (
+              <SelectItem key={jt.id} value={jt.name}>
+                {jt.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <ContactTable
@@ -387,8 +444,7 @@ export function ContactsPage() {
                 </>
               ) : (
                 <>
-                  Type{" "}
-                  <strong>{contactDisplayName}</strong> below to confirm
+                  Type <strong>{contactDisplayName}</strong> below to confirm
                   deletion.
                 </>
               )}

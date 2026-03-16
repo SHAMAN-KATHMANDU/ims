@@ -1,8 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { useDeal, useUpdateDealStage } from "../../hooks/use-deals";
 import { useActivitiesByDeal } from "../../hooks/use-activities";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import { formatCurrency } from "@/lib/format";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -30,13 +33,28 @@ function useStagesFromDeal(deal: Deal | undefined): string[] {
   return deal.pipeline.stages.map((s) => s.name);
 }
 
+const DEFAULT_ACTIVITY_PAGE_SIZE = 10;
+
 export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
+  const [activityPage, setActivityPage] = useState(DEFAULT_PAGE);
+  const [activityPageSize, setActivityPageSize] = useState(
+    DEFAULT_ACTIVITY_PAGE_SIZE,
+  );
+  const [activityTypeFilter, setActivityTypeFilter] = useState<string>("all");
   const { data, isLoading } = useDeal(dealId);
-  const { data: activitiesData } = useActivitiesByDeal(dealId);
+  const { data: activitiesData } = useActivitiesByDeal(dealId, {
+    page: activityPage,
+    limit: activityPageSize,
+    type:
+      activityTypeFilter === "all"
+        ? undefined
+        : (activityTypeFilter as "CALL" | "EMAIL" | "MEETING"),
+  });
   const updateStageMutation = useUpdateDealStage();
 
   const deal = data?.deal;
   const activities = activitiesData?.activities ?? [];
+  const activityPagination = activitiesData?.pagination;
   const stages = useStagesFromDeal(deal);
   const tasks = deal?.tasks ?? [];
 
@@ -148,7 +166,26 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
             />
           </div>
           <div>
-            <h3 className="font-medium mb-2">Recent Activities</h3>
+            <div className="flex items-center justify-between gap-4 mb-2">
+              <h3 className="font-medium">Recent Activities</h3>
+              <Select
+                value={activityTypeFilter}
+                onValueChange={(v) => {
+                  setActivityTypeFilter(v);
+                  setActivityPage(DEFAULT_PAGE);
+                }}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="Type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="CALL">Call</SelectItem>
+                  <SelectItem value="EMAIL">Email</SelectItem>
+                  <SelectItem value="MEETING">Meeting</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {activities.length ? (
               <ul className="space-y-2">
                 {activities.map((a) => (
@@ -167,6 +204,24 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
               </ul>
             ) : (
               <p className="text-muted-foreground text-sm">No activities yet</p>
+            )}
+            {activityPagination && (
+              <DataTablePagination
+                pagination={{
+                  currentPage: activityPagination.currentPage,
+                  totalPages: activityPagination.totalPages,
+                  totalItems: activityPagination.totalItems,
+                  itemsPerPage: activityPagination.itemsPerPage,
+                  hasNextPage: activityPagination.hasNextPage,
+                  hasPrevPage: activityPagination.hasPrevPage,
+                }}
+                onPageChange={setActivityPage}
+                onPageSizeChange={(size) => {
+                  setActivityPageSize(size);
+                  setActivityPage(DEFAULT_PAGE);
+                }}
+                isLoading={false}
+              />
             )}
           </div>
         </TabsContent>

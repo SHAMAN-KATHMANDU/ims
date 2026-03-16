@@ -6,6 +6,7 @@ import {
   CreateUserSchema,
   UpdateUserSchema,
   ApprovePasswordResetSchema,
+  ListPasswordResetRequestsQuerySchema,
 } from "./user.schema";
 import userService, { UserService } from "./user.service";
 
@@ -116,10 +117,24 @@ class UserController {
   getPasswordResetRequests = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const requests = await this.service.getPasswordResetRequests(tenantId);
-      return res
-        .status(200)
-        .json({ message: "Password reset requests fetched", requests });
+      const parsed = ListPasswordResetRequestsQuerySchema.safeParse(req.query);
+      const data = parsed.success ? parsed.data : undefined;
+      const query =
+        data && data.page != null && data.limit != null
+          ? {
+              page: data.page,
+              limit: data.limit,
+              search: data.search,
+            }
+          : undefined;
+      const result = await this.service.getPasswordResetRequests(
+        tenantId,
+        query,
+      );
+      return res.status(200).json({
+        message: "Password reset requests fetched",
+        ...result,
+      });
     } catch (error: unknown) {
       return sendControllerError(
         req,

@@ -29,6 +29,13 @@ import {
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Plus,
   Search,
   Globe,
@@ -66,14 +73,23 @@ export function CompaniesPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
+  const [sortValue, setSortValue] = useState<string>("name-asc");
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
+  const sortBy =
+    sortValue === "name-asc" || sortValue === "name-desc"
+      ? "name"
+      : "createdAt";
+  const sortOrder = sortValue.endsWith("-desc") ? "desc" : "asc";
 
   const { data, isLoading } = useCompaniesPaginated({
     page,
     limit: pageSize,
     search: debouncedSearch,
+    sortBy,
+    sortOrder,
   });
   const { data: selectedCompanyData } = useCompany(selectedId ?? "");
   const createMutation = useCreateCompany();
@@ -171,17 +187,36 @@ export function CompaniesPage() {
         </Button>
       </div>
 
-      <div className="relative flex-1 max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search companies..."
-          value={search}
-          onChange={(e) => {
-            setSearch(e.target.value);
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Search companies..."
+            value={search}
+            onChange={(e) => {
+              setSearch(e.target.value);
+              setPage(DEFAULT_PAGE);
+            }}
+            className="pl-9"
+          />
+        </div>
+        <Select
+          value={sortValue}
+          onValueChange={(v) => {
+            setSortValue(v);
             setPage(DEFAULT_PAGE);
           }}
-          className="pl-9"
-        />
+        >
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Sort" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name-asc">Name (A–Z)</SelectItem>
+            <SelectItem value="name-desc">Name (Z–A)</SelectItem>
+            <SelectItem value="createdAt-desc">Newest first</SelectItem>
+            <SelectItem value="createdAt-asc">Oldest first</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* ── Mobile card list ─────────────────────────────────────────── */}

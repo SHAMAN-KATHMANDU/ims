@@ -35,6 +35,15 @@ export const ListTrashQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(10),
   entityType: entityTypeEnum.optional(),
   tenantId: z.string().uuid().optional(),
+  search: z.string().trim().optional().default(""),
+  dateFrom: z
+    .string()
+    .optional()
+    .transform((v) => (v?.trim() ? new Date(v) : undefined)),
+  dateTo: z
+    .string()
+    .optional()
+    .transform((v) => (v?.trim() ? new Date(v) : undefined)),
 });
 
 export type ListTrashQuery = z.infer<typeof ListTrashQuerySchema>;

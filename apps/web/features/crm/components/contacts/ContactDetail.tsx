@@ -32,6 +32,8 @@ import {
   useUpdateContact,
 } from "../../hooks/use-contacts";
 import { useActivitiesByContact } from "../../hooks/use-activities";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import { useCreateTask } from "../../hooks/use-tasks";
 import { useCreateDeal } from "../../hooks/use-deals";
 import { usePipelines } from "../../hooks/use-pipelines";
@@ -115,8 +117,19 @@ export function ContactDetail({
   const createDealMutation = useCreateDeal();
   const updateContactMutation = useUpdateContact();
 
-  const { data: activitiesData } = useActivitiesByContact(contactId);
+  const [activityPage, setActivityPage] = useState(DEFAULT_PAGE);
+  const [activityPageSize, setActivityPageSize] = useState(10);
+  const [activityTypeFilter, setActivityTypeFilter] = useState<string>("all");
+  const { data: activitiesData } = useActivitiesByContact(contactId, {
+    page: activityPage,
+    limit: activityPageSize,
+    type:
+      activityTypeFilter === "all"
+        ? undefined
+        : (activityTypeFilter as "CALL" | "EMAIL" | "MEETING"),
+  });
   const activities = activitiesData?.activities ?? [];
+  const activityPagination = activitiesData?.pagination;
   const { data: usersResult } = useUsers({ limit: 10 });
   const { data: pipelinesData } = usePipelines();
   const { data: allTags } = useContactTags();
@@ -694,6 +707,28 @@ export function ContactDetail({
                 </DialogContent>
               </Dialog>
 
+              {/* Activity type filter */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Type:</span>
+                <Select
+                  value={activityTypeFilter}
+                  onValueChange={(v) => {
+                    setActivityTypeFilter(v);
+                    setActivityPage(DEFAULT_PAGE);
+                  }}
+                >
+                  <SelectTrigger className="w-[140px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All</SelectItem>
+                    <SelectItem value="CALL">Call</SelectItem>
+                    <SelectItem value="EMAIL">Email</SelectItem>
+                    <SelectItem value="MEETING">Meeting</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Timeline */}
               {timeline.length > 0 ? (
                 <div>
@@ -764,6 +799,24 @@ export function ContactDetail({
                   <MessageSquare className="h-7 w-7 mx-auto mb-2 opacity-30" />
                   <p className="text-sm">No activity logged yet.</p>
                 </div>
+              )}
+              {activityPagination && (
+                <DataTablePagination
+                  pagination={{
+                    currentPage: activityPagination.currentPage,
+                    totalPages: activityPagination.totalPages,
+                    totalItems: activityPagination.totalItems,
+                    itemsPerPage: activityPagination.itemsPerPage,
+                    hasNextPage: activityPagination.hasNextPage,
+                    hasPrevPage: activityPagination.hasPrevPage,
+                  }}
+                  onPageChange={setActivityPage}
+                  onPageSizeChange={(size) => {
+                    setActivityPageSize(size);
+                    setActivityPage(DEFAULT_PAGE);
+                  }}
+                  isLoading={false}
+                />
               )}
             </TabsContent>
 

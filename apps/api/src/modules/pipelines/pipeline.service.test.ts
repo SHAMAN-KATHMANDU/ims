@@ -102,7 +102,7 @@ describe("PipelineService", () => {
 
       const result = await pipelineService.getAll(tenantId);
 
-      expect(result).toEqual(pipelines);
+      expect(result).toEqual({ pipelines });
     });
   });
 

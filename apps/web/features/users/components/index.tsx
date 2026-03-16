@@ -21,8 +21,17 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Trash2, Plus, KeyRound, X } from "lucide-react";
+import { Trash2, Plus, KeyRound, X, Search } from "lucide-react";
 import { useToast } from "@/hooks/useToast";
+import { useDebounce } from "@/hooks/useDebounce";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   useUsers,
   useCreateUser,
@@ -42,12 +51,16 @@ import {
 import { RoleGuard } from "@/components/auth/role-guard";
 import { useTenantUsage } from "@/features/dashboard";
 import { useIsMobile } from "@/hooks/useMobile";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { UserForm } from "./components/UserForm";
 import { UserTable } from "./components/UserTable";
 import { BulkChangePasswordDialog } from "./components/BulkChangePasswordDialog";
 import { BulkDeleteUsersDialog } from "./components/BulkDeleteUsersDialog";
 import type { UserFormValues } from "../validation";
 import { type UserRoleType } from "@repo/shared";
+
+const DEFAULT_PAGE = 1;
+const DEFAULT_PAGE_SIZE = 10;
 
 export function UsersPage() {
   const params = useParams();
@@ -61,6 +74,11 @@ export function UsersPage() {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [sortBy, setSortBy] = useState<string>("username");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
+  const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [search, setSearch] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const debouncedSearch = useDebounce(search, 300);
 
   const selectedUserIds = useUserSelectionStore(selectSelectedUserIds);
   const clearSelection = useUserSelectionStore(selectClearUserSelection);
@@ -71,7 +89,14 @@ export function UsersPage() {
     setSortOrder(order);
   }, []);
 
-  const { data: usersResult, isLoading } = useUsers({ sortBy, sortOrder });
+  const { data: usersResult, isLoading } = useUsers({
+    page,
+    limit: pageSize,
+    sortBy,
+    sortOrder,
+    search: debouncedSearch || undefined,
+    role: roleFilter === "all" ? undefined : roleFilter,
+  });
   const { data: usage } = useTenantUsage();
   const users = usersResult?.users ?? [];
   const totalItems = usersResult?.pagination?.totalItems ?? 0;
@@ -261,6 +286,38 @@ export function UsersPage() {
           <CardHeader>
             <CardTitle>Users</CardTitle>
             <CardDescription>Total: {totalItems}</CardDescription>
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <div className="relative flex-1 min-w-[200px] max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search by username..."
+                  value={search}
+                  onChange={(e) => {
+                    setSearch(e.target.value);
+                    setPage(DEFAULT_PAGE);
+                  }}
+                  className="pl-9"
+                />
+              </div>
+              <Select
+                value={roleFilter}
+                onValueChange={(value) => {
+                  setRoleFilter(value);
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Role" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All roles</SelectItem>
+                  <SelectItem value="platformAdmin">Platform Admin</SelectItem>
+                  <SelectItem value="superAdmin">Super Admin</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="user">User</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </CardHeader>
           <CardContent>
             <UserTable
@@ -274,6 +331,24 @@ export function UsersPage() {
               selectedUsers={selectedUserIds}
               onSelectionChange={setUsers}
             />
+            {usersResult?.pagination && (
+              <DataTablePagination
+                pagination={{
+                  currentPage: usersResult.pagination.currentPage,
+                  totalPages: usersResult.pagination.totalPages,
+                  totalItems: usersResult.pagination.totalItems,
+                  itemsPerPage: usersResult.pagination.itemsPerPage,
+                  hasNextPage: usersResult.pagination.hasNextPage,
+                  hasPrevPage: usersResult.pagination.hasPrevPage,
+                }}
+                onPageChange={setPage}
+                onPageSizeChange={(size) => {
+                  setPageSize(size);
+                  setPage(DEFAULT_PAGE);
+                }}
+                isLoading={isLoading}
+              />
+            )}
           </CardContent>
         </Card>
 

@@ -46,19 +46,111 @@ export class ActivityRepository {
     });
   }
 
-  async findByContact(tenantId: string, contactId: string) {
+  async countByContact(
+    tenantId: string,
+    contactId: string,
+    type?: "CALL" | "EMAIL" | "MEETING",
+  ) {
+    const where: {
+      tenantId: string;
+      contactId: string;
+      type?: "CALL" | "EMAIL" | "MEETING";
+    } = { tenantId, contactId };
+    if (type) where.type = type;
+    return prisma.activity.count({ where });
+  }
+
+  async findByContact(
+    tenantId: string,
+    contactId: string,
+    type?: "CALL" | "EMAIL" | "MEETING",
+  ) {
+    const where: {
+      tenantId: string;
+      contactId: string;
+      type?: "CALL" | "EMAIL" | "MEETING";
+    } = { tenantId, contactId };
+    if (type) where.type = type;
     return prisma.activity.findMany({
-      where: { tenantId, contactId },
+      where,
       orderBy: { activityAt: "desc" },
       include: ACTIVITY_BY_CONTACT_INCLUDE,
     });
   }
 
-  async findByDeal(tenantId: string, dealId: string) {
+  async findByContactPaginated(
+    tenantId: string,
+    contactId: string,
+    skip: number,
+    take: number,
+    type?: "CALL" | "EMAIL" | "MEETING",
+  ) {
+    const where: {
+      tenantId: string;
+      contactId: string;
+      type?: "CALL" | "EMAIL" | "MEETING";
+    } = { tenantId, contactId };
+    if (type) where.type = type;
     return prisma.activity.findMany({
-      where: { tenantId, dealId },
+      where,
+      orderBy: { activityAt: "desc" },
+      include: ACTIVITY_BY_CONTACT_INCLUDE,
+      skip,
+      take,
+    });
+  }
+
+  async countByDeal(
+    tenantId: string,
+    dealId: string,
+    type?: "CALL" | "EMAIL" | "MEETING",
+  ) {
+    const where: {
+      tenantId: string;
+      dealId: string;
+      type?: "CALL" | "EMAIL" | "MEETING";
+    } = { tenantId, dealId };
+    if (type) where.type = type;
+    return prisma.activity.count({ where });
+  }
+
+  async findByDeal(
+    tenantId: string,
+    dealId: string,
+    type?: "CALL" | "EMAIL" | "MEETING",
+  ) {
+    const where: {
+      tenantId: string;
+      dealId: string;
+      type?: "CALL" | "EMAIL" | "MEETING";
+    } = { tenantId, dealId };
+    if (type) where.type = type;
+    return prisma.activity.findMany({
+      where,
       orderBy: { activityAt: "desc" },
       include: ACTIVITY_BY_DEAL_INCLUDE,
+    });
+  }
+
+  async findByDealPaginated(
+    tenantId: string,
+    dealId: string,
+    skip: number,
+    take: number,
+    type?: "CALL" | "EMAIL" | "MEETING",
+  ) {
+    const where: {
+      tenantId: string;
+      dealId: string;
+      type?: "CALL" | "EMAIL" | "MEETING";
+    } = { tenantId, dealId };
+    if (type) where.type = type;
+    return prisma.activity.findMany({
+      where,
+      orderBy: { activityAt: "desc" },
+      include: ACTIVITY_BY_DEAL_INCLUDE,
+      skip,
+      take,
     });
   }
 

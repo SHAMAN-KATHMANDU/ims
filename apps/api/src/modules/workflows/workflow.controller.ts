@@ -16,10 +16,19 @@ class WorkflowController {
       const tenantId = req.user!.tenantId;
       const query = GetWorkflowsQuerySchema.parse(req.query);
       const pipelineId = query.pipelineId;
-      const workflows = pipelineId
-        ? await workflowService.getByPipeline(tenantId, pipelineId)
-        : await workflowService.getAll(tenantId);
-      return res.status(200).json({ message: "OK", workflows });
+      if (pipelineId) {
+        const workflows = await workflowService.getByPipeline(
+          tenantId,
+          pipelineId,
+        );
+        return res.status(200).json({ message: "OK", workflows });
+      }
+      const result = await workflowService.getAll(tenantId, query);
+      return res.status(200).json({
+        message: "OK",
+        workflows: result.workflows,
+        ...(result.pagination && { pagination: result.pagination }),
+      });
     } catch (error: unknown) {
       if (error instanceof ZodError) {
         return res

@@ -7,18 +7,25 @@ import {
   markNotificationRead,
   markAllNotificationsRead,
   deleteAllNotifications,
+  type NotificationType,
 } from "../services/notification.service";
 
 export const notificationKeys = {
   all: ["notifications"] as const,
-  list: (params?: { limit?: number; unreadOnly?: boolean }) =>
-    [...notificationKeys.all, "list", params] as const,
+  list: (params?: {
+    page?: number;
+    limit?: number;
+    unreadOnly?: boolean;
+    type?: NotificationType;
+  }) => [...notificationKeys.all, "list", params] as const,
   unreadCount: () => [...notificationKeys.all, "unreadCount"] as const,
 };
 
 export function useNotifications(params?: {
+  page?: number;
   limit?: number;
   unreadOnly?: boolean;
+  type?: NotificationType;
 }) {
   return useQuery({
     queryKey: notificationKeys.list(params),
