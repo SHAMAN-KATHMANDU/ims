@@ -1,10 +1,14 @@
 import { Router } from "express";
+import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
+import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import promoController from "@/modules/promos/promo.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const promoRouter = Router();
+
+promoRouter.use(enforceEnvFeature(EnvFeature.PROMOTIONS));
 
 /**
  * @swagger

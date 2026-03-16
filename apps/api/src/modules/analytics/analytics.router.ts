@@ -1,12 +1,15 @@
 import { Router } from "express";
+import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
+import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import analyticsController from "@/modules/analytics/analytics.controller";
 import { analyticsCacheMiddleware } from "@/modules/analytics/analyticsCacheMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const analyticsRouter = Router();
 
+analyticsRouter.use(enforceEnvFeature(EnvFeature.ANALYTICS_ADVANCED));
 analyticsRouter.use(enforcePlanFeature("analytics"));
 
 /**

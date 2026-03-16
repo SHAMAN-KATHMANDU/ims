@@ -1,12 +1,20 @@
 "use client";
 
 import { useMemo } from "react";
-import { Feature, type PlanTier, isFeatureAvailable } from "@repo/shared";
+import {
+  Feature,
+  type PlanTier,
+  isFeatureAvailable,
+  type EnvFeature,
+  isEnvFeatureEnabled,
+  parseFeatureFlagsEnv,
+} from "@repo/shared";
 import {
   useAuthStore,
   selectUserRole,
   selectPlanTier,
 } from "@/store/auth-store";
+import { getAppEnv, featureFlagsEnv } from "@/config/env";
 
 /**
  * Plan-gated feature flag evaluation.
@@ -45,4 +53,20 @@ export function usePlanFeatures(): Record<Feature, boolean> {
     }
     return result;
   }, [userRole, plan]);
+}
+
+/** Parsed FEATURE_FLAGS set (comma-separated enabled flags). Cached at module load. */
+const enabledEnvFlagsSet =
+  typeof featureFlagsEnv !== "undefined"
+    ? parseFeatureFlagsEnv(featureFlagsEnv)
+    : undefined;
+
+/**
+ * Env-based feature flag. Uses getAppEnv() and ENV_FEATURE_MATRIX (or NEXT_PUBLIC_FEATURE_FLAGS if set).
+ */
+export function useEnvFeatureFlag(flag: EnvFeature): boolean {
+  return useMemo(
+    () => isEnvFeatureEnabled(flag, getAppEnv(), enabledEnvFlagsSet),
+    [flag],
+  );
 }

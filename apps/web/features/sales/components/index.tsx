@@ -37,7 +37,8 @@ import { NewSaleForm } from "./components/NewSaleForm";
 import { SaleDetail } from "./components/SaleDetail";
 import { SaleBulkUploadDialog } from "./components/SaleBulkUploadDialog";
 import { SalesFilterBar } from "./components/SalesFilterBar";
-import { FeatureGuard } from "@/features/flags";
+import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { Button } from "@/components/ui/button";
 import {
@@ -441,24 +442,26 @@ export function SalesPage() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <FeatureGuard feature={Feature.BULK_UPLOAD_SALES}>
-                {isMobile ? (
-                  <Button variant="outline" asChild>
-                    <Link href={`${basePath}/sales/bulk-upload`}>
+              <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_SALES}>
+                <FeatureGuard feature={Feature.BULK_UPLOAD_SALES}>
+                  {isMobile ? (
+                    <Button variant="outline" asChild>
+                      <Link href={`${basePath}/sales/bulk-upload`}>
+                        <Upload className="h-4 w-4 mr-2" />
+                        Bulk Upload
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      onClick={() => setBulkUploadDialog(true)}
+                    >
                       <Upload className="h-4 w-4 mr-2" />
                       Bulk Upload
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button
-                    variant="outline"
-                    onClick={() => setBulkUploadDialog(true)}
-                  >
-                    <Upload className="h-4 w-4 mr-2" />
-                    Bulk Upload
-                  </Button>
-                )}
-              </FeatureGuard>
+                    </Button>
+                  )}
+                </FeatureGuard>
+              </EnvFeatureGuard>
             </>
           )}
           {canManageSales &&

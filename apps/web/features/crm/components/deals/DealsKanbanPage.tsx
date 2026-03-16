@@ -29,7 +29,8 @@ import {
 import { dealKeys } from "../../hooks/use-deals";
 import { useQueryClient } from "@tanstack/react-query";
 import { useIsDesktop } from "@/hooks/useIsDesktop";
-import { useFeatureFlag } from "@/features/flags/use-feature-flag";
+import { useFeatureFlag, useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { useToast } from "@/hooks/useToast";
 import { formatCurrency } from "@/lib/format";
@@ -103,8 +104,9 @@ type DrawerMode = "view" | "new" | "edit" | null;
 export function DealsKanbanPage() {
   const params = useParams();
   const router = useRouter();
+  const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const salesPipelineEnabled = useFeatureFlag(Feature.SALES_PIPELINE);
-  if (!salesPipelineEnabled) notFound();
+  if (!envDealsEnabled || !salesPipelineEnabled) notFound();
   const workspace = (params?.workspace as string) ?? "admin";
   const basePath = `/${workspace}`;
   const isDesktop = useIsDesktop();

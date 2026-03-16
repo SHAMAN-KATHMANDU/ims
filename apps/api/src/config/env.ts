@@ -11,6 +11,13 @@ import { z } from "zod";
 
 dotenv.config();
 
+const APP_ENV_VALUES = [
+  "development",
+  "staging",
+  "staging-production",
+  "production",
+] as const;
+
 const EnvSchema = z
   .object({
     NODE_ENV: z
@@ -20,6 +27,8 @@ const EnvSchema = z
       .refine((v) => ["development", "staging", "production"].includes(v), {
         message: "NODE_ENV must be development, staging, or production",
       }),
+    APP_ENV: z.string().optional(),
+    FEATURE_FLAGS: z.string().optional(),
     PORT: z
       .string()
       .optional()
@@ -101,6 +110,13 @@ const EnvSchema = z
     const publicApiUrl =
       raw.API_PUBLIC_URL?.trim() ?? "http://localhost:4000/api/v1";
 
+    const appEnvRaw = raw.APP_ENV?.trim() || raw.NODE_ENV || "development";
+    const appEnv = APP_ENV_VALUES.includes(
+      appEnvRaw as (typeof APP_ENV_VALUES)[number],
+    )
+      ? (appEnvRaw as (typeof APP_ENV_VALUES)[number])
+      : "development";
+
     return {
       nodeEnv: raw.NODE_ENV,
       isDev,
@@ -112,6 +128,8 @@ const EnvSchema = z
       databaseUrl: raw.DATABASE_URL ?? "",
       corsOrigin,
       publicApiUrl,
+      appEnv,
+      featureFlags: raw.FEATURE_FLAGS?.trim(),
       features: {} as const,
     };
   });
