@@ -1,18 +1,14 @@
-import { AuthGuard } from "@/components/auth/auth-guard";
-import { UsersPage } from "@/features/users";
-
-export const metadata = { title: "Admin Controls" };
+import { redirect } from "next/navigation";
 
 /**
- * Admin Controls Page
- *
- * Restricted to superAdmin only.
- * Uses AuthGuard with roles for redirect-based protection.
+ * Redirect legacy "System" (admin-controls) to Users.
+ * Users and System were merged into a single "Users" entry in the settings sidebar.
  */
-export default function AdminControlsPage() {
-  return (
-    <AuthGuard roles={["superAdmin"]} unauthorizedPath="/401">
-      <UsersPage />
-    </AuthGuard>
-  );
+export default async function AdminControlsPage({
+  params,
+}: {
+  params: Promise<{ workspace: string }>;
+}) {
+  const { workspace } = await params;
+  redirect(`/${workspace}/users`);
 }
