@@ -35,7 +35,8 @@ export function getAppEnv(): AppEnv {
 }
 
 const apiUrlRaw = process.env.NEXT_PUBLIC_API_URL?.trim();
-if (!isDev && !apiUrlRaw) {
+const isTest = NODE_ENV === "test";
+if (!isDev && !isTest && !apiUrlRaw) {
   throw new Error(
     "NEXT_PUBLIC_API_URL is required in staging and production. Set it in your environment.",
   );
