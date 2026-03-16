@@ -28,7 +28,8 @@ import { MemberTable } from "./components/MemberTable";
 import { MemberForm } from "./components/MemberForm";
 import { MemberDetail } from "./components/MemberDetail";
 import { MemberBulkUploadDialog } from "./components/MemberBulkUploadDialog";
-import { FeatureGuard } from "@/features/flags";
+import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -353,24 +354,26 @@ export function MembersPage() {
             </DropdownMenu>
           )}
           {canManageMembers && (
-            <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
-              {isMobile ? (
-                <Button variant="outline" asChild>
-                  <Link href={`${basePath}/members/bulk-upload`}>
+            <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_PRODUCTS}>
+              <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
+                {isMobile ? (
+                  <Button variant="outline" asChild>
+                    <Link href={`${basePath}/members/bulk-upload`}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Bulk Upload
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkUploadDialog(true)}
+                  >
                     <Upload className="h-4 w-4 mr-2" />
                     Bulk Upload
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setBulkUploadDialog(true)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Bulk Upload
-                </Button>
-              )}
-            </FeatureGuard>
+                  </Button>
+                )}
+              </FeatureGuard>
+            </EnvFeatureGuard>
           )}
           {canManageMembers &&
             (isMobile ? (

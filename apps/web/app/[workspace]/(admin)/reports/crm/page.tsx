@@ -1,6 +1,7 @@
 import { AuthGuard } from "@/components/auth/auth-guard";
 import { WORKSPACE_ROOT } from "@/constants/routes";
-import { FeaturePageGuard } from "@/features/flags";
+import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { CrmReportsPage } from "@/features/crm";
 
@@ -12,13 +13,15 @@ export const metadata = { title: "CRM Reports" };
  */
 export default function ReportsCrmPage() {
   return (
-    <AuthGuard
-      roles={["admin", "superAdmin"]}
-      unauthorizedPath={WORKSPACE_ROOT}
-    >
+    <EnvFeaturePageGuard envFeature={EnvFeature.CRM_REPORTS}>
       <FeaturePageGuard feature={Feature.ANALYTICS_ADVANCED}>
-        <CrmReportsPage />
+        <AuthGuard
+          roles={["admin", "superAdmin"]}
+          unauthorizedPath={WORKSPACE_ROOT}
+        >
+          <CrmReportsPage />
+        </AuthGuard>
       </FeaturePageGuard>
-    </AuthGuard>
+    </EnvFeaturePageGuard>
   );
 }

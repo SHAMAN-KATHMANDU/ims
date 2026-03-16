@@ -36,7 +36,8 @@ import { VariationDeleteDialog } from "./components/dialogs/VariationDeleteDialo
 import { getVariationAttributeDisplay } from "./utils/helpers";
 import { ErrorDialog } from "./components/dialogs/ErrorDialog";
 import { BulkUploadDialog } from "./components/BulkUploadDialog";
-import { FeatureGuard } from "@/features/flags";
+import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { LocationSelector } from "@/components/ui/location-selector";
 import { Button } from "@/components/ui/button";
@@ -890,24 +891,26 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
-            <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
-              {isMobile ? (
-                <Button variant="outline" asChild>
-                  <Link href={`${basePath}/products/bulk-upload`}>
+            <EnvFeatureGuard envFeature={EnvFeature.BULK_UPLOAD_PRODUCTS}>
+              <FeatureGuard feature={Feature.BULK_UPLOAD_PRODUCTS}>
+                {isMobile ? (
+                  <Button variant="outline" asChild>
+                    <Link href={`${basePath}/products/bulk-upload`}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Bulk Upload
+                    </Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="outline"
+                    onClick={() => setBulkUploadDialog(true)}
+                  >
                     <Upload className="h-4 w-4 mr-2" />
                     Bulk Upload
-                  </Link>
-                </Button>
-              ) : (
-                <Button
-                  variant="outline"
-                  onClick={() => setBulkUploadDialog(true)}
-                >
-                  <Upload className="h-4 w-4 mr-2" />
-                  Bulk Upload
-                </Button>
-              )}
-            </FeatureGuard>
+                  </Button>
+                )}
+              </FeatureGuard>
+            </EnvFeatureGuard>
             {isMobile ? (
               <Button asChild>
                 <Link href={`${basePath}/products/new`} className="gap-2">

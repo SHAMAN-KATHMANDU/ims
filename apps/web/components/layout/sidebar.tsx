@@ -55,8 +55,13 @@ import {
   selectSetSidebarWidth,
 } from "@/store/sidebar-store";
 import type { UserRole } from "@/utils/auth";
-import { usePlanFeatures } from "@/features/flags";
-import { Feature } from "@repo/shared";
+import { usePlanFeatures, EnvFeature } from "@/features/flags";
+import {
+  Feature,
+  isEnvFeatureEnabled,
+  parseFeatureFlagsEnv,
+} from "@repo/shared";
+import { getAppEnv, featureFlagsEnv } from "@/config/env";
 import { Badge } from "../ui/badge";
 import { useMemo, useState, useRef, useEffect, useCallback } from "react";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
@@ -84,6 +89,8 @@ interface NavItem {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   roles: UserRole[];
+  /** When set, item is only shown when this env feature is enabled for the environment. */
+  envFeature?: EnvFeature;
   /** When set, item is only shown when this plan feature is enabled for the tenant. */
   feature?: Feature;
   children?: NavItem[];
@@ -151,24 +158,28 @@ const navSections: NavSection[] = [
         label: "Overview",
         icon: LayoutDashboard,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.CRM,
       },
       {
         path: "crm/companies",
         label: "Companies",
         icon: Factory,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.CRM,
       },
       {
         path: "crm/contacts",
         label: "Contacts",
         icon: Contact,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.CRM,
       },
       {
         path: "crm/deals",
         label: "Deals",
         icon: Handshake,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.CRM_DEALS,
         feature: Feature.SALES_PIPELINE,
       },
       {
@@ -176,12 +187,14 @@ const navSections: NavSection[] = [
         label: "Tasks",
         icon: CheckSquare,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.TASKS,
       },
       {
         path: "crm/notifications",
         label: "Notifications",
         icon: Bell,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.NOTIFICATIONS,
       },
     ],
   },
@@ -193,12 +206,14 @@ const navSections: NavSection[] = [
         label: "Sales",
         icon: Receipt,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.SALES,
       },
       {
         path: "sales/user-report",
         label: "User Sales Report",
         icon: ListChecks,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.SALES_USER_REPORT,
       },
     ],
   },
@@ -210,12 +225,14 @@ const navSections: NavSection[] = [
         label: "Catalog",
         icon: Package,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.CATALOG,
       },
       {
         path: "products/promos",
         label: "Promo Codes",
         icon: Ticket,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.PROMO_CODES,
         feature: Feature.PROMO_MANAGEMENT,
       },
       {
@@ -223,6 +240,7 @@ const navSections: NavSection[] = [
         label: "Create Transfer Request",
         icon: ArrowLeftRight,
         roles: ["user", "admin", "superAdmin"],
+        envFeature: EnvFeature.TRANSFER_REQUEST,
       },
     ],
   },
@@ -234,42 +252,49 @@ const navSections: NavSection[] = [
         label: "Products",
         icon: Boxes,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.PRODUCTS,
       },
       {
         path: "products/catalog-settings",
         label: "Catalog Settings",
         icon: Layers,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.CATALOG_SETTINGS,
       },
       {
         path: "locations",
         label: "Locations",
         icon: Warehouse,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.LOCATIONS,
       },
       {
         path: "vendors",
         label: "Vendors",
         icon: Truck,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.VENDORS,
       },
       {
         path: "transfers",
         label: "Transfers",
         icon: PackageCheck,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.TRANSFERS,
       },
       {
         path: "products/discounts",
         label: "Discounts",
         icon: Percent,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.DISCOUNTS,
       },
       {
         path: "promos",
         label: "Promotions",
         icon: Ticket,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.PROMOTIONS,
         feature: Feature.PROMO_MANAGEMENT,
       },
     ],
@@ -282,6 +307,7 @@ const navSections: NavSection[] = [
         label: "Sales & Revenue",
         icon: TrendingUp,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.REPORTS_SALES,
         feature: Feature.ANALYTICS_ADVANCED,
       },
       {
@@ -289,6 +315,7 @@ const navSections: NavSection[] = [
         label: "Inventory & Operations",
         icon: Package,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.REPORTS_INVENTORY,
         feature: Feature.ANALYTICS_ADVANCED,
       },
       {
@@ -296,6 +323,7 @@ const navSections: NavSection[] = [
         label: "Customers & Promotions",
         icon: Users,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.REPORTS_CUSTOMERS,
         feature: Feature.ANALYTICS_ADVANCED,
       },
       {
@@ -303,6 +331,7 @@ const navSections: NavSection[] = [
         label: "Trends",
         icon: LineChart,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.REPORTS_TRENDS,
         feature: Feature.ANALYTICS_ADVANCED,
       },
       {
@@ -310,6 +339,7 @@ const navSections: NavSection[] = [
         label: "Financial",
         icon: DollarSign,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.REPORTS_FINANCIAL,
         feature: Feature.ANALYTICS_ADVANCED,
       },
       {
@@ -317,6 +347,7 @@ const navSections: NavSection[] = [
         label: "CRM Reports",
         icon: PieChart,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.CRM_REPORTS,
         feature: Feature.ANALYTICS_ADVANCED,
       },
     ],
@@ -329,12 +360,14 @@ const navSections: NavSection[] = [
         label: "Settings",
         icon: UserCog,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.SETTINGS,
       },
       {
         path: "settings/crm",
         label: "CRM Settings",
         icon: SlidersHorizontal,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.CRM_SETTINGS,
         feature: Feature.SALES_PIPELINE,
       },
       {
@@ -342,6 +375,7 @@ const navSections: NavSection[] = [
         label: "Workflows",
         icon: Zap,
         roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.CRM_WORKFLOWS,
         feature: Feature.SALES_PIPELINE,
       },
       {
@@ -349,12 +383,14 @@ const navSections: NavSection[] = [
         label: "Users",
         icon: Users,
         roles: ["superAdmin"],
+        envFeature: EnvFeature.USERS_MANAGEMENT,
       },
       {
         path: "settings/logs",
         label: "User Logs",
         icon: FileText,
         roles: ["superAdmin"],
+        envFeature: EnvFeature.AUDIT_LOGS,
         feature: Feature.AUDIT_LOGS,
       },
       {
@@ -362,12 +398,14 @@ const navSections: NavSection[] = [
         label: "Password Reset Requests",
         icon: KeyRound,
         roles: ["superAdmin"],
+        envFeature: EnvFeature.PASSWORD_RESETS,
       },
       {
         path: "admin-controls",
         label: "System",
         icon: Server,
         roles: ["superAdmin"],
+        envFeature: EnvFeature.SYSTEM_ADMIN,
       },
     ],
   },
@@ -691,6 +729,11 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   }, [pathname, basePath]);
 
   const planFeatures = usePlanFeatures();
+  const appEnv = getAppEnv();
+  const enabledEnvFlagsSet = useMemo(
+    () => parseFeatureFlagsEnv(featureFlagsEnv),
+    [],
+  );
 
   const filteredSections = useMemo(() => {
     if (!userRole) return [];
@@ -700,6 +743,11 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
         items: section.items
           .filter((item) => item.roles.includes(userRole))
           .filter(
+            (item) =>
+              !item.envFeature ||
+              isEnvFeatureEnabled(item.envFeature, appEnv, enabledEnvFlagsSet),
+          )
+          .filter(
             (item) => !item.feature || planFeatures[item.feature] === true,
           )
           .map((item) => ({
@@ -708,7 +756,7 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
           })),
       }))
       .filter((section) => section.items.length > 0);
-  }, [userRole, detectedBasePath, planFeatures]);
+  }, [userRole, detectedBasePath, planFeatures, appEnv, enabledEnvFlagsSet]);
 
   const toggleSection = useCallback(
     (sectionTitle: string) => {

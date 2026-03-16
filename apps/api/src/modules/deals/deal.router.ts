@@ -1,12 +1,15 @@
 import { Router } from "express";
+import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
+import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import dealController from "./deal.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const dealRouter = Router();
 
 dealRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+dealRouter.use(enforceEnvFeature(EnvFeature.CRM_DEALS));
 dealRouter.use(enforcePlanFeature("salesPipeline"));
 
 /**

@@ -1,6 +1,8 @@
 import { Router } from "express";
+import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
+import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import auditController from "@/modules/audit/audit.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -52,6 +54,7 @@ const auditRouter = Router();
 auditRouter.get(
   "/",
   authorizeRoles("superAdmin"),
+  enforceEnvFeature(EnvFeature.AUDIT_LOGS),
   enforcePlanFeature("auditLogs"),
   asyncHandler(auditController.getAuditLogs),
 );

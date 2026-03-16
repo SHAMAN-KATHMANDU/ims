@@ -9,11 +9,13 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DealForm } from "@/features/crm";
 import type { UpdateDealData } from "@/features/crm";
-import { useFeatureFlag } from "@/features/flags";
+import { useFeatureFlag, useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 
 export default function EditDealPage() {
-  const allowed = useFeatureFlag(Feature.SALES_PIPELINE);
+  const envAllowed = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const planAllowed = useFeatureFlag(Feature.SALES_PIPELINE);
   const params = useParams();
   const router = useRouter();
   const id = params.id as string;
@@ -25,7 +27,7 @@ export default function EditDealPage() {
   const updateMutation = useUpdateDeal();
   const deal = data?.deal;
 
-  if (!allowed) notFound();
+  if (!envAllowed || !planAllowed) notFound();
 
   const pipeline = deal?.pipeline as
     | { stages?: Array<{ name: string }> }

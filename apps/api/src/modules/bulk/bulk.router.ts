@@ -1,11 +1,28 @@
-import { Router } from "express";
+import { Router, Request, Response, NextFunction } from "express";
+import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
+import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { uploadSingle } from "@/config/multer.config";
 import bulkController from "./bulk.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const bulkRouter = Router();
+
+/** Env gate for bulk upload by type: products/members -> BULK_UPLOAD_PRODUCTS, sales -> BULK_UPLOAD_SALES */
+function enforceBulkUploadEnv(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+): void {
+  const type = (req.params.type ?? req.query.type) as string;
+  const flag =
+    type === "sales"
+      ? EnvFeature.BULK_UPLOAD_SALES
+      : EnvFeature.BULK_UPLOAD_PRODUCTS;
+  const mw = enforceEnvFeature(flag);
+  mw(req, res, next);
+}
 
 /**
  * @swagger
@@ -38,6 +55,7 @@ bulkRouter.post(
   "/upload/:type",
   authorizeRoles("admin", "superAdmin"),
   enforcePlanFeature("bulkUpload"),
+  enforceBulkUploadEnv,
   uploadSingle,
   asyncHandler(bulkController.bulkUpload),
 );
@@ -66,6 +84,7 @@ bulkRouter.get(
   "/template",
   authorizeRoles("admin", "superAdmin"),
   enforcePlanFeature("bulkUpload"),
+  enforceBulkUploadEnv,
   asyncHandler(bulkController.downloadTemplate),
 );
 

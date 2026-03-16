@@ -1,5 +1,6 @@
-import { FeaturePageGuard } from "@/features/flags";
+import { EnvFeaturePageGuard, FeaturePageGuard } from "@/features/flags";
 import { PromoPage } from "@/features/promos";
+import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 
 /**
@@ -8,8 +9,10 @@ import { Feature } from "@repo/shared";
  */
 export default function ProductPromosPage() {
   return (
-    <FeaturePageGuard feature={Feature.PROMO_MANAGEMENT}>
-      <PromoPage readOnly />
-    </FeaturePageGuard>
+    <EnvFeaturePageGuard envFeature={EnvFeature.PROMO_CODES}>
+      <FeaturePageGuard feature={Feature.PROMO_MANAGEMENT}>
+        <PromoPage readOnly />
+      </FeaturePageGuard>
+    </EnvFeaturePageGuard>
   );
 }
