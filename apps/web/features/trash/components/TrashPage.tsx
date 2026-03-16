@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useToast } from "@/hooks/useToast";
+import { useDebounce } from "@/hooks/useDebounce";
 import {
   useTrashItems,
   useRestoreTrashItem,
@@ -39,8 +40,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
-import { Trash2, RotateCcw } from "lucide-react";
+import { Trash2, RotateCcw, Search, X } from "lucide-react";
 import { format } from "date-fns";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { useTenants } from "@/features/tenants/hooks/use-tenants";
@@ -70,19 +72,27 @@ export function TrashPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [entityType, setEntityType] = useState<string>("all");
   const [tenantFilter, setTenantFilter] = useState<string>("all");
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [permanentlyDeleteTarget, setPermanentlyDeleteTarget] = useState<{
     entityType: string;
     id: string;
     name: string;
   } | null>(null);
 
-  const { data: tenants = [] } = useTenants();
+  const { data: tenantsData } = useTenants();
+  const tenants = tenantsData?.tenants ?? [];
 
   const { data: trashResponse, isLoading } = useTrashItems({
     page,
     limit: pageSize,
     entityType: entityType === "all" ? undefined : entityType,
     tenantId: tenantFilter === "all" ? undefined : tenantFilter,
+    search: debouncedSearch || undefined,
+    dateFrom: dateFrom || undefined,
+    dateTo: dateTo || undefined,
   });
 
   const items = trashResponse?.data ?? [];
@@ -132,6 +142,35 @@ export function TrashPage() {
       });
     }
   };
+
+  const handleSearchChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setSearch(e.target.value);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+  const handleDateFromChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setDateFrom(e.target.value);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+  const handleDateToChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setDateTo(e.target.value);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+  const clearAllFilters = useCallback(() => {
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setPage(DEFAULT_PAGE);
+  }, []);
+  const hasActiveFilters = search !== "" || dateFrom !== "" || dateTo !== "";
 
   const trashPagination = {
     currentPage: page,
@@ -191,6 +230,40 @@ export function TrashPage() {
                 ))}
               </SelectContent>
             </Select>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search by name..."
+                value={search}
+                onChange={handleSearchChange}
+                className="pl-9 w-[200px]"
+              />
+            </div>
+            <Input
+              type="date"
+              value={dateFrom}
+              onChange={handleDateFromChange}
+              className="w-[140px]"
+              placeholder="Deleted from"
+            />
+            <Input
+              type="date"
+              value={dateTo}
+              onChange={handleDateToChange}
+              className="w-[140px]"
+              placeholder="Deleted to"
+            />
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={clearAllFilters}
+              >
+                <X className="h-3.5 w-3.5 mr-2" />
+                Clear filters
+              </Button>
+            )}
           </div>
 
           {isLoading ? (

@@ -141,6 +141,21 @@ describe("GetAllTransfersQuerySchema", () => {
     });
     expect(result.sortOrder).toBe("asc");
   });
+
+  it("parses dateFrom and dateTo to Date", () => {
+    const result = GetAllTransfersQuerySchema.parse({
+      dateFrom: "2025-01-15",
+      dateTo: "2025-01-31",
+    });
+    expect(result.dateFrom).toEqual(new Date("2025-01-15"));
+    expect(result.dateTo).toEqual(new Date("2025-01-31"));
+  });
+
+  it("leaves dateFrom/dateTo undefined when empty", () => {
+    const result = GetAllTransfersQuerySchema.parse({});
+    expect(result.dateFrom).toBeUndefined();
+    expect(result.dateTo).toBeUndefined();
+  });
 });
 
 describe("CancelTransferSchema", () => {

@@ -57,10 +57,13 @@ export interface MemberWithSales extends Member {
   }[];
 }
 
+export type MemberStatusFilter = "ACTIVE" | "INACTIVE" | "PROSPECT" | "VIP";
+
 export interface MemberListParams {
   page?: number;
   limit?: number;
   search?: string;
+  memberStatus?: MemberStatusFilter;
   sortBy?: string;
   sortOrder?: "asc" | "desc";
 }
@@ -140,6 +143,7 @@ export async function getMembers(
     page = DEFAULT_PAGE,
     limit = DEFAULT_LIMIT,
     search = "",
+    memberStatus,
     sortBy,
     sortOrder,
   } = params;
@@ -149,6 +153,9 @@ export async function getMembers(
   queryParams.set("limit", String(limit));
   if (search.trim()) {
     queryParams.set("search", search.trim());
+  }
+  if (memberStatus) {
+    queryParams.set("memberStatus", memberStatus);
   }
   if (sortBy) {
     queryParams.set("sortBy", sortBy);

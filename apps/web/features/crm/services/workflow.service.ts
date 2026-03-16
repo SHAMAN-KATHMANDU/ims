@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
+import type { PaginationMeta } from "@/lib/apiTypes";
 
 export type WorkflowTrigger =
   | "STAGE_ENTER"
@@ -54,12 +55,24 @@ export interface UpdateWorkflowInput {
   rules?: CreateWorkflowRuleInput[];
 }
 
+export interface GetWorkflowsParams {
+  pipelineId?: string;
+  page?: number;
+  limit?: number;
+  search?: string;
+  isActive?: boolean;
+}
+
+export interface WorkflowsResponse {
+  workflows: Workflow[];
+  pagination?: PaginationMeta;
+}
+
 export async function getWorkflows(
-  pipelineId?: string,
-): Promise<{ workflows: Workflow[] }> {
+  params?: GetWorkflowsParams,
+): Promise<WorkflowsResponse> {
   try {
-    const params = pipelineId ? { pipelineId } : undefined;
-    const res = await api.get("/workflows", { params });
+    const res = await api.get<WorkflowsResponse>("/workflows", { params });
     return res.data;
   } catch (error) {
     handleApiError(error, "fetch workflows");

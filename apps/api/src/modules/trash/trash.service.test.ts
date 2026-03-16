@@ -56,6 +56,9 @@ describe("TrashService", () => {
       expect(mockFindTrashed).toHaveBeenCalledWith(
         expect.arrayContaining([expect.any(Object)]),
         undefined,
+        undefined,
+        undefined,
+        undefined,
       );
     });
 
@@ -72,7 +75,13 @@ describe("TrashService", () => {
 
       await trashService.list({ page: 1, limit: 10, tenantId: "t1" });
 
-      expect(mockFindTrashed).toHaveBeenCalledWith(expect.any(Array), "t1");
+      expect(mockFindTrashed).toHaveBeenCalledWith(
+        expect.any(Array),
+        "t1",
+        undefined,
+        undefined,
+        undefined,
+      );
     });
   });
 

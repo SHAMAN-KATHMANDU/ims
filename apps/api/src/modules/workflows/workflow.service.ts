@@ -1,9 +1,11 @@
 import { createError } from "@/middlewares/errorHandler";
+import { createPaginationResult } from "@/utils/pagination";
 import workflowRepository from "./workflow.repository";
 import {
   parseActionConfig,
   type CreateWorkflowDto,
   type CreateWorkflowRuleDto,
+  type GetWorkflowsQueryDto,
   type UpdateWorkflowDto,
 } from "./workflow.schema";
 
@@ -23,8 +25,31 @@ function validateRulesActionConfig(
 }
 
 export class WorkflowService {
-  async getAll(tenantId: string) {
-    return workflowRepository.findAllByTenant(tenantId);
+  async getAll(tenantId: string, query?: GetWorkflowsQueryDto) {
+    const page = query?.page;
+    const limit = query?.limit;
+    const usePagination =
+      page !== undefined && limit !== undefined && page >= 1 && limit >= 1;
+    const filters = {
+      search: query?.search,
+      isActive: query?.isActive,
+      pipelineId: query?.pipelineId,
+    };
+    if (usePagination) {
+      const [totalItems, workflows] = await Promise.all([
+        workflowRepository.countByTenant(tenantId, filters),
+        workflowRepository.findAllByTenantPaginated(
+          tenantId,
+          (page - 1) * limit,
+          limit,
+          filters,
+        ),
+      ]);
+      const result = createPaginationResult(workflows, totalItems, page, limit);
+      return { workflows: result.data, pagination: result.pagination };
+    }
+    const workflows = await workflowRepository.findAllByTenant(tenantId);
+    return { workflows };
   }
 
   async getByPipeline(tenantId: string, pipelineId: string) {

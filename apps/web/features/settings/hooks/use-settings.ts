@@ -16,6 +16,7 @@ import {
   approvePasswordResetRequest,
   escalatePasswordResetRequest,
   rejectPasswordResetRequest,
+  type GetPasswordResetRequestsParams,
 } from "@/features/users/services/user.service";
 
 export const auditLogKeys = {
@@ -71,12 +72,16 @@ export function useUpdateErrorReportStatus() {
 
 export const passwordResetKeys = {
   all: ["password-reset-requests"] as const,
+  list: (params?: GetPasswordResetRequestsParams) =>
+    [...passwordResetKeys.all, params] as const,
 };
 
-export function usePasswordResetRequests() {
+export function usePasswordResetRequests(
+  params?: GetPasswordResetRequestsParams,
+) {
   return useQuery({
-    queryKey: passwordResetKeys.all,
-    queryFn: getPasswordResetRequests,
+    queryKey: passwordResetKeys.list(params),
+    queryFn: () => getPasswordResetRequests(params),
   });
 }
 

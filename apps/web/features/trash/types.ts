@@ -16,6 +16,9 @@ export interface TrashListParams {
   limit?: number;
   entityType?: string;
   tenantId?: string;
+  search?: string;
+  dateFrom?: string; // YYYY-MM-DD
+  dateTo?: string; // YYYY-MM-DD
 }
 
 export interface TrashListResponse {

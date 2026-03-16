@@ -11,19 +11,19 @@ import {
 } from "../services/workflow.service";
 import { useToast } from "@/hooks/useToast";
 
+import type { GetWorkflowsParams } from "../services/workflow.service";
+
 export const workflowKeys = {
   all: ["workflows"] as const,
-  lists: (pipelineId?: string) =>
-    pipelineId
-      ? ([...workflowKeys.all, "list", pipelineId] as const)
-      : ([...workflowKeys.all, "list"] as const),
+  lists: (params?: GetWorkflowsParams) =>
+    [...workflowKeys.all, "list", params] as const,
   detail: (id: string) => [...workflowKeys.all, "detail", id] as const,
 };
 
-export function useWorkflows(pipelineId?: string) {
+export function useWorkflows(params?: GetWorkflowsParams) {
   return useQuery({
-    queryKey: workflowKeys.lists(pipelineId),
-    queryFn: () => getWorkflows(pipelineId),
+    queryKey: workflowKeys.lists(params),
+    queryFn: () => getWorkflows(params),
     staleTime: 2 * 60 * 1000,
   });
 }

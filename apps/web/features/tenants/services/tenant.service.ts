@@ -5,6 +5,7 @@
 
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
+import type { PaginationMeta } from "@/lib/apiTypes";
 
 // ============================================
 // Types
@@ -87,8 +88,23 @@ export interface PlatformStats {
 // API
 // ============================================
 
+export interface GetTenantsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  plan?: PlanTier;
+  subscriptionStatus?: SubscriptionStatus;
+  isActive?: boolean;
+}
+
 interface ListTenantsResponse {
   tenants: Tenant[];
+  pagination?: PaginationMeta;
+}
+
+export interface TenantsResponse {
+  tenants: Tenant[];
+  pagination?: PaginationMeta;
 }
 
 interface TenantResponse {
@@ -110,10 +126,17 @@ export async function getPlatformStats(): Promise<PlatformStats> {
   }
 }
 
-export async function getTenants(): Promise<Tenant[]> {
+export async function getTenants(
+  params?: GetTenantsParams,
+): Promise<TenantsResponse> {
   try {
-    const response = await api.get<ListTenantsResponse>("/platform/tenants");
-    return response.data.tenants ?? [];
+    const response = await api.get<ListTenantsResponse>("/platform/tenants", {
+      params,
+    });
+    return {
+      tenants: response.data.tenants ?? [],
+      pagination: response.data.pagination,
+    };
   } catch (error) {
     handleApiError(error, "fetch tenants");
   }
@@ -261,14 +284,29 @@ export interface PlatformPasswordResetRequest {
   tenant: { id: string; name: string; slug: string };
 }
 
-export async function getPlatformResetRequests(): Promise<
-  PlatformPasswordResetRequest[]
-> {
+export interface GetPlatformResetRequestsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface PlatformResetRequestsResponse {
+  requests: PlatformPasswordResetRequest[];
+  pagination?: import("@/lib/apiTypes").PaginationMeta;
+}
+
+export async function getPlatformResetRequests(
+  params?: GetPlatformResetRequestsParams,
+): Promise<PlatformResetRequestsResponse> {
   try {
-    const response = await api.get<{
-      requests: PlatformPasswordResetRequest[];
-    }>("/platform/password-reset-requests");
-    return response.data.requests ?? [];
+    const response = await api.get<PlatformResetRequestsResponse>(
+      "/platform/password-reset-requests",
+      { params },
+    );
+    return {
+      requests: response.data.requests ?? [],
+      pagination: response.data.pagination,
+    };
   } catch (error) {
     handleApiError(error, "fetch platform password reset requests");
   }

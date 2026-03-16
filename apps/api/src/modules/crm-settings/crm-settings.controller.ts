@@ -7,6 +7,8 @@ import {
   UpdateCrmSourceSchema,
   CreateCrmJourneyTypeSchema,
   UpdateCrmJourneyTypeSchema,
+  ListSourcesQuerySchema,
+  ListJourneyTypesQuerySchema,
 } from "./crm-settings.schema";
 import crmSettingsService from "./crm-settings.service";
 
@@ -25,8 +27,19 @@ class CrmSettingsController {
   getAllSources = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const sources = await crmSettingsService.getAllSources(tenantId);
-      return res.status(200).json({ message: "OK", sources });
+      const parsed = ListSourcesQuerySchema.safeParse(req.query);
+      const query =
+        parsed.success &&
+        parsed.data &&
+        parsed.data.page != null &&
+        parsed.data.limit != null
+          ? {
+              page: parsed.data.page,
+              limit: parsed.data.limit,
+            }
+          : undefined;
+      const result = await crmSettingsService.getAllSources(tenantId, query);
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get CRM sources error");
     }
@@ -96,9 +109,22 @@ class CrmSettingsController {
   getAllJourneyTypes = async (req: Request, res: Response) => {
     try {
       const tenantId = req.user!.tenantId;
-      const journeyTypes =
-        await crmSettingsService.getAllJourneyTypes(tenantId);
-      return res.status(200).json({ message: "OK", journeyTypes });
+      const parsed = ListJourneyTypesQuerySchema.safeParse(req.query);
+      const query =
+        parsed.success &&
+        parsed.data &&
+        parsed.data.page != null &&
+        parsed.data.limit != null
+          ? {
+              page: parsed.data.page,
+              limit: parsed.data.limit,
+            }
+          : undefined;
+      const result = await crmSettingsService.getAllJourneyTypes(
+        tenantId,
+        query,
+      );
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
       return sendControllerError(
         req,

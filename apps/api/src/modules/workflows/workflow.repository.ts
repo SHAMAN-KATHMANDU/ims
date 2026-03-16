@@ -4,15 +4,69 @@ import type {
   CreateWorkflowRuleDto,
 } from "./workflow.schema";
 
+const workflowListInclude = {
+  pipeline: { select: { id: true, name: true } },
+  rules: { orderBy: { ruleOrder: "asc" as const } },
+};
+
 export class WorkflowRepository {
+  async countByTenant(
+    tenantId: string,
+    filters?: { search?: string; isActive?: boolean; pipelineId?: string },
+  ): Promise<number> {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+      isActive?: boolean;
+      pipelineId?: string;
+    } = { tenantId };
+    if (filters?.search) {
+      where.name = { contains: filters.search, mode: "insensitive" };
+    }
+    if (filters?.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+    if (filters?.pipelineId) {
+      where.pipelineId = filters.pipelineId;
+    }
+    return basePrisma.pipelineWorkflow.count({ where });
+  }
+
   async findAllByTenant(tenantId: string) {
     return basePrisma.pipelineWorkflow.findMany({
       where: { tenantId },
-      include: {
-        pipeline: { select: { id: true, name: true } },
-        rules: { orderBy: { ruleOrder: "asc" } },
-      },
+      include: workflowListInclude,
       orderBy: { createdAt: "asc" },
+    });
+  }
+
+  async findAllByTenantPaginated(
+    tenantId: string,
+    skip: number,
+    take: number,
+    filters?: { search?: string; isActive?: boolean; pipelineId?: string },
+  ) {
+    const where: {
+      tenantId: string;
+      name?: { contains: string; mode: "insensitive" };
+      isActive?: boolean;
+      pipelineId?: string;
+    } = { tenantId };
+    if (filters?.search) {
+      where.name = { contains: filters.search, mode: "insensitive" };
+    }
+    if (filters?.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+    if (filters?.pipelineId) {
+      where.pipelineId = filters.pipelineId;
+    }
+    return basePrisma.pipelineWorkflow.findMany({
+      where,
+      include: workflowListInclude,
+      orderBy: { createdAt: "asc" },
+      skip,
+      take,
     });
   }
 

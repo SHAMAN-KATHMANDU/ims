@@ -53,13 +53,50 @@ export class PipelineRepository {
     });
   }
 
+  async count(tenantId: string, search?: string) {
+    const where: {
+      tenantId: string;
+      deletedAt: null;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId, deletedAt: null };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.pipeline.count({ where });
+  }
+
   async findAll(tenantId: string) {
     return prisma.pipeline.findMany({
-      where: { tenantId },
+      where: { tenantId, deletedAt: null },
       orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
       include: {
         _count: { select: { deals: true } },
       },
+    });
+  }
+
+  async findAllPaginated(
+    tenantId: string,
+    skip: number,
+    take: number,
+    search?: string,
+  ) {
+    const where: {
+      tenantId: string;
+      deletedAt: null;
+      name?: { contains: string; mode: "insensitive" };
+    } = { tenantId, deletedAt: null };
+    if (search) {
+      where.name = { contains: search, mode: "insensitive" };
+    }
+    return prisma.pipeline.findMany({
+      where,
+      orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
+      include: {
+        _count: { select: { deals: true } },
+      },
+      skip,
+      take,
     });
   }
 

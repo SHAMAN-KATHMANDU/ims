@@ -40,17 +40,42 @@ describe("WorkflowController", () => {
   describe("getAll", () => {
     it("returns 200 with workflows on success (no query)", async () => {
       const workflows = [{ id: "w1", name: "Follow-up", pipelineId: "p1" }];
-      mockService.getAll.mockResolvedValue(workflows);
+      mockService.getAll.mockResolvedValue({ workflows });
       const req = makeReq();
       const res = mockRes() as Response;
 
       await workflowController.getAll(req, res);
 
-      expect(mockService.getAll).toHaveBeenCalledWith("t1");
+      expect(mockService.getAll).toHaveBeenCalledWith("t1", expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({ message: "OK", workflows }),
       );
+    });
+
+    it("returns 200 with workflows and pagination when page/limit provided", async () => {
+      const workflows = [{ id: "w1", name: "Follow-up", pipelineId: "p1" }];
+      const pagination = {
+        currentPage: 1,
+        totalPages: 1,
+        totalItems: 1,
+        itemsPerPage: 10,
+        hasNextPage: false,
+        hasPrevPage: false,
+      };
+      mockService.getAll.mockResolvedValue({ workflows, pagination });
+      const req = makeReq({ query: { page: "1", limit: "10" } });
+      const res = mockRes() as Response;
+
+      await workflowController.getAll(req, res);
+
+      expect(mockService.getAll).toHaveBeenCalledWith("t1", expect.any(Object));
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "OK",
+        workflows,
+        pagination,
+      });
     });
 
     it("returns 200 with workflows when pipelineId query is valid", async () => {
@@ -92,6 +117,32 @@ describe("WorkflowController", () => {
       await workflowController.getAll(req, res);
 
       expect(sendControllerError).toHaveBeenCalled();
+    });
+  });
+
+  describe("getAll pagination", () => {
+    it("passes query with page and limit to service when provided", async () => {
+      mockService.getAll.mockResolvedValue({
+        workflows: [],
+        pagination: {
+          currentPage: 2,
+          totalPages: 5,
+          totalItems: 50,
+          itemsPerPage: 10,
+          hasNextPage: true,
+          hasPrevPage: true,
+        },
+      });
+      const req = makeReq({ query: { page: "2", limit: "10" } });
+      const res = mockRes() as Response;
+
+      await workflowController.getAll(req, res);
+
+      expect(mockService.getAll).toHaveBeenCalledWith("t1", {
+        pipelineId: undefined,
+        page: 2,
+        limit: 10,
+      });
     });
   });
 

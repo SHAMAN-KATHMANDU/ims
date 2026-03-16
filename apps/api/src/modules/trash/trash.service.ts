@@ -19,6 +19,9 @@ export interface ListTrashParams {
   limit?: number;
   entityType?: string;
   tenantId?: string;
+  search?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
 }
 
 export interface ListTrashResult extends PaginationResult<TrashItem> {
@@ -28,7 +31,7 @@ export interface ListTrashResult extends PaginationResult<TrashItem> {
 export class TrashService {
   constructor(private repo: typeof trashRepository) {}
 
-  /** List trashed items across all tenants (platform scope). Optionally filter by entityType and tenantId. */
+  /** List trashed items across all tenants (platform scope). Optionally filter by entityType, tenantId, search, and deleted date range. */
   async list(params: ListTrashParams): Promise<ListTrashResult> {
     const { page, limit } = getPaginationParams(
       params as Record<string, unknown>,
@@ -51,6 +54,9 @@ export class TrashService {
     const allItems = await this.repo.findTrashed(
       entitiesToQuery,
       params.tenantId,
+      params.search?.trim(),
+      params.dateFrom,
+      params.dateTo,
     );
     const totalItems = allItems.length;
     const skip = (page - 1) * limit;

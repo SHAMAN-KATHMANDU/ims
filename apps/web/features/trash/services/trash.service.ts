@@ -16,8 +16,11 @@ export async function getTrashItems(
     if (params?.page) searchParams.set("page", String(params.page));
     if (params?.limit) searchParams.set("limit", String(params.limit));
     if (params?.entityType) searchParams.set("entityType", params.entityType);
-
     if (params?.tenantId) searchParams.set("tenantId", params.tenantId);
+    if (params?.search?.trim())
+      searchParams.set("search", params.search.trim());
+    if (params?.dateFrom) searchParams.set("dateFrom", params.dateFrom);
+    if (params?.dateTo) searchParams.set("dateTo", params.dateTo);
 
     const query = searchParams.toString();
     const url = query ? `/platform/trash?${query}` : "/platform/trash";

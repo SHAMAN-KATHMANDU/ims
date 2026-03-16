@@ -138,6 +138,24 @@ export const UpdateWorkflowSchema = z.object({
 /** Query params for GET /workflows */
 export const GetWorkflowsQuerySchema = z.object({
   pipelineId: z.string().uuid().optional(),
+  page: z
+    .string()
+    .optional()
+    .transform((v) => Math.max(1, parseInt(v || "1") || 1)),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) => Math.min(100, Math.max(1, parseInt(v || "10") || 10))),
+  search: z
+    .string()
+    .optional()
+    .transform((s) => (s?.trim() ? s.trim() : undefined)),
+  isActive: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) =>
+      v === "true" ? true : v === "false" ? false : undefined,
+    ),
 });
 
 /** Route param for workflow id (getById, update, delete) */

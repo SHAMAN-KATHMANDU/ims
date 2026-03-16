@@ -21,6 +21,7 @@ import {
   type ContactListParams,
   type CreateContactData,
   type UpdateContactData,
+  type GetContactTagsParams,
 } from "../services/contact.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 
@@ -31,7 +32,8 @@ export const contactKeys = {
     [...contactKeys.lists(), params] as const,
   details: () => [...contactKeys.all, "detail"] as const,
   detail: (id: string) => [...contactKeys.details(), id] as const,
-  tags: () => [...contactKeys.all, "tags"] as const,
+  tags: (params?: GetContactTagsParams) =>
+    [...contactKeys.all, "tags", params] as const,
 };
 
 export function useContactsPaginated(params: ContactListParams = {}) {
@@ -45,6 +47,8 @@ export function useContactsPaginated(params: ContactListParams = {}) {
       companyId: params.companyId,
       tagId: params.tagId,
       ownerId: params.ownerId,
+      source: params.source,
+      journeyType: params.journeyType,
     }),
     queryFn: () => getContacts(params),
     placeholderData: (prev) => prev,
@@ -59,10 +63,10 @@ export function useContact(id: string) {
   });
 }
 
-export function useContactTags() {
+export function useContactTags(params?: GetContactTagsParams) {
   return useQuery({
-    queryKey: contactKeys.tags(),
-    queryFn: () => getContactTags(),
+    queryKey: contactKeys.tags(params),
+    queryFn: () => getContactTags(params),
   });
 }
 
@@ -98,7 +102,8 @@ export function useCreateContactTag() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => createContactTag(name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.tags() }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] }),
   });
 }
 
@@ -107,7 +112,8 @@ export function useUpdateContactTag() {
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       updateContactTag(id, name),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.tags() }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] }),
   });
 }
 
@@ -115,7 +121,8 @@ export function useDeleteContactTag() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteContactTag(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.tags() }),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] }),
   });
 }
 

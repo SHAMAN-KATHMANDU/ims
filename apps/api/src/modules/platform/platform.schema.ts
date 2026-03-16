@@ -241,3 +241,56 @@ export type CreateSubscriptionDto = z.infer<typeof CreateSubscriptionSchema>;
 export type UpdateSubscriptionDto = z.infer<typeof UpdateSubscriptionSchema>;
 export type CreateTenantPaymentDto = z.infer<typeof CreateTenantPaymentSchema>;
 export type UpdateTenantPaymentDto = z.infer<typeof UpdateTenantPaymentSchema>;
+
+/** Query for GET /platform/tenants. When both absent, API returns all. */
+export const ListTenantsQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === "" ? undefined : Math.max(1, parseInt(v) || 1),
+    ),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === ""
+        ? undefined
+        : Math.min(100, Math.max(1, parseInt(v) || 10)),
+    ),
+  search: z
+    .string()
+    .optional()
+    .transform((s) => (s?.trim() ? s.trim() : undefined)),
+  plan: planTierSchema.optional(),
+  subscriptionStatus: subscriptionStatusSchema.optional(),
+  isActive: z
+    .enum(["true", "false"])
+    .optional()
+    .transform((v) =>
+      v === "true" ? true : v === "false" ? false : undefined,
+    ),
+});
+
+const listPageLimitSchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === "" ? undefined : Math.max(1, parseInt(v) || 1),
+    ),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === ""
+        ? undefined
+        : Math.min(100, Math.max(1, parseInt(v) || 10)),
+    ),
+});
+
+/** Query for GET /platform/subscriptions (page/limit). When both absent, returns all. */
+export const ListSubscriptionsQuerySchema = listPageLimitSchema;
+
+/** Query for GET /platform/payments (page/limit). When both absent, returns all. */
+export const ListTenantPaymentsQuerySchema = listPageLimitSchema;

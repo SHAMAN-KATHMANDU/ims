@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createError } from "@/middlewares/errorHandler";
 
+const mockCount = vi.fn();
 const mockFindMany = vi.fn();
 const mockCountUnread = vi.fn();
 const mockFindById = vi.fn();
@@ -10,6 +11,7 @@ const mockDeleteAll = vi.fn();
 
 vi.mock("./notification.repository", () => ({
   default: {
+    count: (...args: unknown[]) => mockCount(...args),
     findMany: (...args: unknown[]) => mockFindMany(...args),
     countUnread: (...args: unknown[]) => mockCountUnread(...args),
     findById: (...args: unknown[]) => mockFindById(...args),
@@ -29,14 +31,36 @@ describe("NotificationService", () => {
   });
 
   describe("getAll", () => {
-    it("returns notifications from repository", async () => {
-      const notifications = [{ id: "n1", title: "Alert", read: false }];
+    it("returns notifications and pagination from repository", async () => {
+      const notifications = [
+        { id: "n1", title: "Alert", read: false },
+      ] as unknown[];
+      mockCount.mockResolvedValue(1);
       mockFindMany.mockResolvedValue(notifications);
 
-      const result = await notificationService.getAll("u1", { limit: 20 });
-      expect(result).toEqual(notifications);
+      const result = await notificationService.getAll("u1", {
+        page: 1,
+        limit: 20,
+      });
+      expect(result.notifications).toEqual(notifications);
+      expect(result.pagination).toEqual(
+        expect.objectContaining({
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 1,
+          itemsPerPage: 20,
+        }),
+      );
+      expect(mockCount).toHaveBeenCalledWith({
+        userId: "u1",
+        unreadOnly: false,
+      });
       expect(mockFindMany).toHaveBeenCalledWith(
-        expect.objectContaining({ userId: "u1" }),
+        expect.objectContaining({
+          userId: "u1",
+          page: 1,
+          limit: 20,
+        }),
       );
     });
   });

@@ -1,4 +1,5 @@
 import api from "@/lib/axios";
+import type { PaginationMeta } from "@/lib/apiTypes";
 
 export type NotificationType =
   | "TASK_DUE"
@@ -17,11 +18,20 @@ export interface Notification {
   createdAt: string;
 }
 
+export interface NotificationsResponse {
+  notifications: Notification[];
+  pagination: PaginationMeta;
+}
+
 export async function getNotifications(params?: {
+  page?: number;
   limit?: number;
   unreadOnly?: boolean;
-}): Promise<{ notifications: Notification[] }> {
-  const res = await api.get("/notifications", { params });
+  type?: NotificationType;
+}): Promise<NotificationsResponse> {
+  const res = await api.get<NotificationsResponse>("/notifications", {
+    params,
+  });
   return res.data;
 }
 

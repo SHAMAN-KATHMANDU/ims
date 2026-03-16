@@ -27,16 +27,32 @@ import {
   useApprovePlatformResetRequest,
   type PlatformPasswordResetRequest,
 } from "../hooks/use-tenants";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { useDebounce } from "@/hooks/useDebounce";
+import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import { format } from "date-fns";
+import { Search } from "lucide-react";
+
+const DEFAULT_PAGE_SIZE = 10;
 
 export function PlatformResetRequestsPage() {
+  const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [approveDialog, setApproveDialog] = useState<{
     open: boolean;
     request: PlatformPasswordResetRequest | null;
     newPassword: string;
   }>({ open: false, request: null, newPassword: "" });
 
-  const { data: requests = [], isLoading } = usePlatformResetRequests();
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const { data, isLoading } = usePlatformResetRequests({
+    page,
+    limit: pageSize,
+    search: debouncedSearch || undefined,
+  });
+  const requests = data?.requests ?? [];
+  const pagination = data?.pagination;
   const approveMutation = useApprovePlatformResetRequest();
 
   const handleApprove = () => {
@@ -67,7 +83,21 @@ export function PlatformResetRequestsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Escalated Requests</CardTitle>
+          <div className="flex flex-wrap items-center gap-4">
+            <CardTitle className="sr-only">Escalated Requests</CardTitle>
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by username or tenant..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(DEFAULT_PAGE);
+                }}
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -121,6 +151,25 @@ export function PlatformResetRequestsPage() {
           )}
         </CardContent>
       </Card>
+
+      {pagination && (
+        <DataTablePagination
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: pagination.totalPages,
+            totalItems: pagination.totalItems,
+            itemsPerPage: pagination.itemsPerPage,
+            hasNextPage: pagination.hasNextPage,
+            hasPrevPage: pagination.hasPrevPage,
+          }}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(DEFAULT_PAGE);
+          }}
+          isLoading={isLoading}
+        />
+      )}
 
       <Dialog
         open={approveDialog.open}

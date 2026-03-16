@@ -1,33 +1,151 @@
 import { basePrisma } from "@/config/prisma";
 
+const RESET_REQUEST_INCLUDE = {
+  requestedBy: {
+    select: { id: true, username: true, role: true },
+  },
+  tenant: {
+    select: { id: true, name: true, slug: true },
+  },
+} as const;
+
 export class PasswordResetRepository {
+  async countForTenant(tenantId: string, search?: string) {
+    const where: {
+      tenantId: string;
+      status: "PENDING";
+      requestedBy?: { username: { contains: string; mode: "insensitive" } };
+    } = { tenantId, status: "PENDING" };
+    if (search) {
+      where.requestedBy = {
+        username: { contains: search, mode: "insensitive" },
+      };
+    }
+    return basePrisma.passwordResetRequest.count({
+      where,
+    });
+  }
+
   async findForTenant(tenantId: string) {
     return basePrisma.passwordResetRequest.findMany({
       where: { tenantId, status: "PENDING" },
-      include: {
-        requestedBy: {
-          select: { id: true, username: true, role: true },
-        },
-        tenant: {
-          select: { id: true, name: true, slug: true },
-        },
-      },
+      include: RESET_REQUEST_INCLUDE,
       orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findForTenantPaginated(
+    tenantId: string,
+    skip: number,
+    take: number,
+    search?: string,
+  ) {
+    const where: {
+      tenantId: string;
+      status: "PENDING";
+      requestedBy?: { username: { contains: string; mode: "insensitive" } };
+    } = { tenantId, status: "PENDING" };
+    if (search) {
+      where.requestedBy = {
+        username: { contains: search, mode: "insensitive" },
+      };
+    }
+    return basePrisma.passwordResetRequest.findMany({
+      where,
+      include: RESET_REQUEST_INCLUDE,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
+    });
+  }
+
+  async countEscalated(search?: string) {
+    const where: {
+      status: "ESCALATED";
+      OR?: Array<
+        | {
+            requestedBy: {
+              username: { contains: string; mode: "insensitive" };
+            };
+          }
+        | {
+            tenant: {
+              OR: Array<
+                | { name: { contains: string; mode: "insensitive" } }
+                | { slug: { contains: string; mode: "insensitive" } }
+              >;
+            };
+          }
+      >;
+    } = { status: "ESCALATED" };
+    if (search) {
+      where.OR = [
+        {
+          requestedBy: { username: { contains: search, mode: "insensitive" } },
+        },
+        {
+          tenant: {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { slug: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      ];
+    }
+    return basePrisma.passwordResetRequest.count({
+      where,
     });
   }
 
   async findEscalated() {
     return basePrisma.passwordResetRequest.findMany({
       where: { status: "ESCALATED" },
-      include: {
-        requestedBy: {
-          select: { id: true, username: true, role: true },
-        },
-        tenant: {
-          select: { id: true, name: true, slug: true },
-        },
-      },
+      include: RESET_REQUEST_INCLUDE,
       orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findEscalatedPaginated(skip: number, take: number, search?: string) {
+    const where: {
+      status: "ESCALATED";
+      OR?: Array<
+        | {
+            requestedBy: {
+              username: { contains: string; mode: "insensitive" };
+            };
+          }
+        | {
+            tenant: {
+              OR: Array<
+                | { name: { contains: string; mode: "insensitive" } }
+                | { slug: { contains: string; mode: "insensitive" } }
+              >;
+            };
+          }
+      >;
+    } = { status: "ESCALATED" };
+    if (search) {
+      where.OR = [
+        {
+          requestedBy: { username: { contains: search, mode: "insensitive" } },
+        },
+        {
+          tenant: {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { slug: { contains: search, mode: "insensitive" } },
+            ],
+          },
+        },
+      ];
+    }
+    return basePrisma.passwordResetRequest.findMany({
+      where,
+      include: RESET_REQUEST_INCLUDE,
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
     });
   }
 

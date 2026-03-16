@@ -7,6 +7,8 @@ const mockUpdate = vi.fn();
 const mockGetAfterUpdate = vi.fn();
 const mockSoftDelete = vi.fn();
 const mockFindTags = vi.fn();
+const mockFindTagsPaginated = vi.fn();
+const mockCountTags = vi.fn();
 const mockCreateTag = vi.fn();
 const mockAddNote = vi.fn();
 const mockDeleteNote = vi.fn();
@@ -21,6 +23,8 @@ vi.mock("./contact.repository", () => ({
     getAfterUpdate: (...args: unknown[]) => mockGetAfterUpdate(...args),
     softDelete: (...args: unknown[]) => mockSoftDelete(...args),
     findTags: (...args: unknown[]) => mockFindTags(...args),
+    findTagsPaginated: (...args: unknown[]) => mockFindTagsPaginated(...args),
+    countTags: (...args: unknown[]) => mockCountTags(...args),
     createTag: (...args: unknown[]) => mockCreateTag(...args),
     addNote: (...args: unknown[]) => mockAddNote(...args),
     deleteNote: (...args: unknown[]) => mockDeleteNote(...args),
@@ -178,13 +182,29 @@ describe("ContactService", () => {
   });
 
   describe("getTags", () => {
-    it("returns tags", async () => {
+    it("returns tags when no pagination", async () => {
       const tags = [{ id: "t1", name: "VIP" }];
       mockFindTags.mockResolvedValue(tags);
 
       const result = await contactService.getTags(tenantId);
 
-      expect(result).toEqual(tags);
+      expect(result).toEqual({ tags });
+    });
+
+    it("returns tags and pagination when page and limit provided", async () => {
+      const tags = [{ id: "t1", name: "VIP" }];
+      mockFindTagsPaginated.mockResolvedValue(tags);
+      mockCountTags.mockResolvedValue(1);
+
+      const result = await contactService.getTags(tenantId, {
+        page: 1,
+        limit: 10,
+      });
+
+      expect(result.tags).toEqual(tags);
+      expect(result.pagination).toBeDefined();
+      expect(result.pagination?.totalItems).toBe(1);
+      expect(result.pagination?.currentPage).toBe(1);
     });
   });
 

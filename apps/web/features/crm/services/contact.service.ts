@@ -107,6 +107,8 @@ export interface ContactListParams {
   companyId?: string;
   tagId?: string;
   ownerId?: string;
+  source?: string;
+  journeyType?: string;
 }
 
 export interface PaginatedContactsResponse {
@@ -171,8 +173,23 @@ export async function deleteContact(id: string): Promise<void> {
   await api.delete(`/contacts/${id}`);
 }
 
-export async function getContactTags(): Promise<{ tags: ContactTag[] }> {
-  const res = await api.get("/contacts/tags");
+export interface GetContactTagsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface ContactTagsResponse {
+  tags: ContactTag[];
+  pagination?: PaginationMeta;
+}
+
+export async function getContactTags(
+  params?: GetContactTagsParams,
+): Promise<ContactTagsResponse> {
+  const res = await api.get<ContactTagsResponse>("/contacts/tags", {
+    params,
+  });
   return res.data;
 }
 

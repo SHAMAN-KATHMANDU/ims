@@ -45,12 +45,23 @@ describe("NotificationController", () => {
   describe("getAll", () => {
     it("returns 200 with notifications on success", async () => {
       const notifications = [{ id: "1", title: "Test" }];
-      mockService.getAll.mockResolvedValue(notifications);
+      mockService.getAll.mockResolvedValue({
+        notifications,
+        pagination: {
+          currentPage: 1,
+          totalPages: 1,
+          totalItems: 1,
+          itemsPerPage: 20,
+          hasNextPage: false,
+          hasPrevPage: false,
+        },
+      });
       const req = makeReq();
       const res = mockRes() as Response;
 
       await notificationController.getAll(req, res);
 
+      expect(mockService.getAll).toHaveBeenCalledWith("u1", expect.any(Object));
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({ notifications }),

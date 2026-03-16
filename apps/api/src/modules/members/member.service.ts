@@ -67,6 +67,13 @@ export class MemberService {
     };
 
     const where: MemberWhere = { tenantId, deletedAt: null };
+    const memberStatus = rawQuery.memberStatus as string | undefined;
+    if (
+      memberStatus &&
+      ["ACTIVE", "INACTIVE", "PROSPECT", "VIP"].includes(memberStatus)
+    ) {
+      where.memberStatus = memberStatus as MemberWhere["memberStatus"];
+    }
     if (search) {
       where.OR = [
         { phone: { contains: search, mode: "insensitive" } },

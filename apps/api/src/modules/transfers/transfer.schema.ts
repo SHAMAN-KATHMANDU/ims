@@ -53,6 +53,14 @@ export const GetAllTransfersQuerySchema = z.object({
   fromLocationId: z.string().uuid().optional(),
   toLocationId: z.string().uuid().optional(),
   locationId: z.string().uuid().optional(),
+  dateFrom: z
+    .string()
+    .optional()
+    .transform((v) => (v?.trim() ? new Date(v) : undefined)),
+  dateTo: z
+    .string()
+    .optional()
+    .transform((v) => (v?.trim() ? new Date(v) : undefined)),
 });
 
 export type GetAllTransfersQuery = z.infer<typeof GetAllTransfersQuerySchema>;

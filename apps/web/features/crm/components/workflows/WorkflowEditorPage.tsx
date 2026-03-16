@@ -2,6 +2,17 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { useDebounce } from "@/hooks/useDebounce";
+import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import {
   Card,
   CardContent,
@@ -24,7 +35,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Pencil, Trash2, Zap } from "lucide-react";
+import { Plus, Pencil, Trash2, Zap, Search } from "lucide-react";
 import {
   useWorkflows,
   useCreateWorkflow,
@@ -59,8 +70,21 @@ const ACTION_LABELS: Record<WorkflowAction, string> = {
   CREATE_ACTIVITY: "Create activity",
 };
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export default function WorkflowEditorPage() {
-  const { data, isLoading, isError, error } = useWorkflows();
+  const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
+  const [search, setSearch] = useState("");
+  const [isActiveFilter, setIsActiveFilter] = useState<string>("all");
+  const debouncedSearch = useDebounce(search, 300);
+  const { data, isLoading, isError, error } = useWorkflows({
+    page,
+    limit: pageSize,
+    search: debouncedSearch || undefined,
+    isActive:
+      isActiveFilter === "all" ? undefined : isActiveFilter === "active",
+  });
   const { data: pipelinesData } = usePipelines();
   const createMutation = useCreateWorkflow();
   const updateMutation = useUpdateWorkflow();
@@ -70,6 +94,7 @@ export default function WorkflowEditorPage() {
   const [editWorkflow, setEditWorkflow] = useState<Workflow | null>(null);
 
   const workflows = data?.workflows ?? [];
+  const pagination = data?.pagination;
   const pipelines = pipelinesData?.pipelines ?? [];
 
   const resetForm = () => {
@@ -151,6 +176,36 @@ export default function WorkflowEditorPage() {
           </Button>
         </CardHeader>
         <CardContent>
+          <div className="flex flex-wrap items-center gap-4 pb-4">
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(DEFAULT_PAGE);
+                }}
+                className="pl-9"
+              />
+            </div>
+            <Select
+              value={isActiveFilter}
+              onValueChange={(value) => {
+                setIsActiveFilter(value);
+                setPage(DEFAULT_PAGE);
+              }}
+            >
+              <SelectTrigger className="w-[140px]">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="active">Active only</SelectItem>
+                <SelectItem value="inactive">Inactive only</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
           {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
@@ -172,75 +227,97 @@ export default function WorkflowEditorPage() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Pipeline</TableHead>
-                    <TableHead>Rules</TableHead>
-                    <TableHead className="w-24">Active</TableHead>
-                    <TableHead className="w-24 text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {workflows.map((w) => (
-                    <TableRow key={w.id}>
-                      <TableCell className="font-medium">{w.name}</TableCell>
-                      <TableCell>{w.pipeline?.name ?? w.pipelineId}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {w.rules.map((r) => (
-                            <Badge
-                              key={r.id}
-                              variant="secondary"
-                              className="text-xs"
-                            >
-                              {TRIGGER_LABELS[r.trigger]} →{" "}
-                              {ACTION_LABELS[r.action]}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {w.isActive ? (
-                          <Badge variant="default" className="text-xs">
-                            Active
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground text-sm">
-                            Off
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex gap-1 justify-end">
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8"
-                            onClick={() => setEditWorkflow(w)}
-                            aria-label={`Edit workflow ${w.name}`}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-destructive hover:text-destructive"
-                            onClick={() => deleteMutation.mutate(w.id)}
-                            disabled={deleteMutation.isPending}
-                            aria-label={`Delete workflow ${w.name}`}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Pipeline</TableHead>
+                      <TableHead>Rules</TableHead>
+                      <TableHead className="w-24">Active</TableHead>
+                      <TableHead className="w-24 text-right">Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {workflows.map((w) => (
+                      <TableRow key={w.id}>
+                        <TableCell className="font-medium">{w.name}</TableCell>
+                        <TableCell>
+                          {w.pipeline?.name ?? w.pipelineId}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-wrap gap-1">
+                            {w.rules.map((r) => (
+                              <Badge
+                                key={r.id}
+                                variant="secondary"
+                                className="text-xs"
+                              >
+                                {TRIGGER_LABELS[r.trigger]} →{" "}
+                                {ACTION_LABELS[r.action]}
+                              </Badge>
+                            ))}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          {w.isActive ? (
+                            <Badge variant="default" className="text-xs">
+                              Active
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground text-sm">
+                              Off
+                            </span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex gap-1 justify-end">
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() => setEditWorkflow(w)}
+                              aria-label={`Edit workflow ${w.name}`}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8 text-destructive hover:text-destructive"
+                              onClick={() => deleteMutation.mutate(w.id)}
+                              disabled={deleteMutation.isPending}
+                              aria-label={`Delete workflow ${w.name}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {pagination && (
+                <DataTablePagination
+                  pagination={{
+                    currentPage: pagination.currentPage,
+                    totalPages: pagination.totalPages,
+                    totalItems: pagination.totalItems,
+                    itemsPerPage: pagination.itemsPerPage,
+                    hasNextPage: pagination.hasNextPage,
+                    hasPrevPage: pagination.hasPrevPage,
+                  }}
+                  onPageChange={setPage}
+                  onPageSizeChange={(size) => {
+                    setPageSize(size);
+                    setPage(DEFAULT_PAGE);
+                  }}
+                  isLoading={isLoading}
+                />
+              )}
+            </>
           )}
         </CardContent>
       </Card>

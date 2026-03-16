@@ -63,6 +63,7 @@ export function useMembersPaginated(params: MemberListParams = {}) {
     page: params.page ?? DEFAULT_PAGE,
     limit: params.limit ?? DEFAULT_LIMIT,
     search: params.search?.trim() || "",
+    memberStatus: params.memberStatus,
     sortBy: params.sortBy ?? "createdAt",
     sortOrder: params.sortOrder ?? "desc",
   };

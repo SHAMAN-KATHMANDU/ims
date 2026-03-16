@@ -138,7 +138,7 @@ describe("PlatformController", () => {
   describe("listTenants", () => {
     it("returns 200 with tenants on success", async () => {
       const tenants = [{ id: "t1", name: "Acme", slug: "acme" }];
-      mockService.findAllTenants.mockResolvedValue(tenants);
+      mockService.findAllTenants.mockResolvedValue({ tenants });
 
       const req = makeReq();
       const res = mockRes() as Response;
@@ -147,7 +147,9 @@ describe("PlatformController", () => {
 
       expect(mockService.findAllTenants).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-      expect(res.json).toHaveBeenCalledWith({ tenants });
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ tenants }),
+      );
     });
 
     it("calls sendControllerError on error", async () => {

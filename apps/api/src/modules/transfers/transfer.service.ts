@@ -181,6 +181,12 @@ export class TransferService {
         | "CANCELLED";
     if (query.fromLocationId) where.fromLocationId = query.fromLocationId;
     if (query.toLocationId) where.toLocationId = query.toLocationId;
+    if (query.dateFrom || query.dateTo) {
+      where.createdAt = {};
+      if (query.dateFrom)
+        (where.createdAt as { gte?: Date }).gte = query.dateFrom;
+      if (query.dateTo) (where.createdAt as { lte?: Date }).lte = query.dateTo;
+    }
     if (query.locationId) {
       where.OR = [
         { fromLocationId: query.locationId },

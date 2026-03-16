@@ -28,12 +28,15 @@ beforeEach(() => {
 
 describe("tenant.service", () => {
   describe("getTenants", () => {
-    it("calls GET /platform/tenants", async () => {
+    it("calls GET /platform/tenants and returns tenants with optional pagination", async () => {
       mockGet.mockResolvedValue({ data: { tenants: [] } });
 
-      await getTenants();
+      const result = await getTenants();
 
-      expect(mockGet).toHaveBeenCalledWith("/platform/tenants");
+      expect(mockGet).toHaveBeenCalledWith("/platform/tenants", {
+        params: undefined,
+      });
+      expect(result).toEqual({ tenants: [], pagination: undefined });
     });
   });
 

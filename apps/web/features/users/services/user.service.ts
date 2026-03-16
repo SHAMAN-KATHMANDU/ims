@@ -61,6 +61,7 @@ export interface GetAllUsersParams {
   sortBy?: string;
   sortOrder?: "asc" | "desc";
   search?: string;
+  role?: string;
 }
 
 export interface UsersResult {
@@ -82,6 +83,7 @@ export async function getAllUsers(
     if (params?.sortOrder != null)
       queryParams.set("sortOrder", params.sortOrder);
     if (params?.search != null) queryParams.set("search", params.search);
+    if (params?.role != null) queryParams.set("role", params.role);
     const query = queryParams.toString();
     const url = query ? `/users?${query}` : "/users";
     const response = await api.get<UsersResponse>(url);
@@ -208,14 +210,29 @@ export interface PasswordResetRequest {
   tenant: { id: string; name: string; slug: string };
 }
 
-export async function getPasswordResetRequests(): Promise<
-  PasswordResetRequest[]
-> {
+export interface GetPasswordResetRequestsParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+}
+
+export interface PasswordResetRequestsResponse {
+  requests: PasswordResetRequest[];
+  pagination?: import("@/lib/apiTypes").PaginationMeta;
+}
+
+export async function getPasswordResetRequests(
+  params?: GetPasswordResetRequestsParams,
+): Promise<PasswordResetRequestsResponse> {
   try {
-    const response = await api.get<{ requests: PasswordResetRequest[] }>(
+    const response = await api.get<PasswordResetRequestsResponse>(
       "/users/password-reset-requests",
+      { params },
     );
-    return response.data.requests ?? [];
+    return {
+      requests: response.data.requests ?? [],
+      pagination: response.data.pagination,
+    };
   } catch (error) {
     handleApiError(error, "fetch password reset requests");
   }

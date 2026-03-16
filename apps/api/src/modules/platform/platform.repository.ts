@@ -78,6 +78,48 @@ export class PlatformRepository {
     });
   }
 
+  /** Count tenants (excludes system). */
+  async countTenants(filters?: {
+    search?: string;
+    plan?: string;
+    subscriptionStatus?: string;
+    isActive?: boolean;
+  }) {
+    const where = this.buildTenantListWhere(filters);
+    return basePrisma.tenant.count({ where });
+  }
+
+  private buildTenantListWhere(filters?: {
+    search?: string;
+    plan?: string;
+    subscriptionStatus?: string;
+    isActive?: boolean;
+  }): Prisma.TenantWhereInput {
+    const where: Prisma.TenantWhereInput = { slug: { not: "system" } };
+    if (filters?.search) {
+      where.OR = [
+        { name: { contains: filters.search, mode: "insensitive" } },
+        { slug: { contains: filters.search, mode: "insensitive" } },
+      ];
+    }
+    if (filters?.plan) {
+      where.plan = filters.plan as PlanTier;
+    }
+    if (filters?.subscriptionStatus) {
+      where.subscriptionStatus = filters.subscriptionStatus as
+        | "TRIAL"
+        | "ACTIVE"
+        | "PAST_DUE"
+        | "SUSPENDED"
+        | "LOCKED"
+        | "CANCELLED";
+    }
+    if (filters?.isActive !== undefined) {
+      where.isActive = filters.isActive;
+    }
+    return where;
+  }
+
   /** List all tenants with summary stats. Excludes system tenant. */
   async findAllTenants() {
     return basePrisma.tenant.findMany({
@@ -94,6 +136,37 @@ export class PlatformRepository {
           },
         },
       },
+    });
+  }
+
+  /** List tenants with pagination. */
+  async findAllTenantsPaginated(
+    skip: number,
+    take: number,
+    filters?: {
+      search?: string;
+      plan?: string;
+      subscriptionStatus?: string;
+      isActive?: boolean;
+    },
+  ) {
+    const where = this.buildTenantListWhere(filters);
+    return basePrisma.tenant.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      include: {
+        _count: {
+          select: {
+            users: true,
+            products: true,
+            locations: true,
+            members: true,
+            sales: true,
+          },
+        },
+      },
+      skip,
+      take,
     });
   }
 
@@ -565,6 +638,12 @@ export class PlatformRepository {
 
   // ─── Subscriptions ─────────────────────────────────────────────────────────
 
+  async countSubscriptions(tenantId?: string) {
+    return basePrisma.subscription.count({
+      where: tenantId ? { tenantId } : undefined,
+    });
+  }
+
   async findAllSubscriptions(tenantId?: string) {
     return basePrisma.subscription.findMany({
       where: tenantId ? { tenantId } : undefined,
@@ -573,6 +652,23 @@ export class PlatformRepository {
         _count: { select: { payments: true } },
       },
       orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findAllSubscriptionsPaginated(
+    tenantId: string | undefined,
+    skip: number,
+    take: number,
+  ) {
+    return basePrisma.subscription.findMany({
+      where: tenantId ? { tenantId } : undefined,
+      include: {
+        tenant: { select: { id: true, name: true, slug: true } },
+        _count: { select: { payments: true } },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
     });
   }
 
@@ -674,6 +770,15 @@ export class PlatformRepository {
 
   // ─── Tenant Payments ───────────────────────────────────────────────────────
 
+  async countTenantPayments(tenantId?: string, subscriptionId?: string) {
+    return basePrisma.tenantPayment.count({
+      where: {
+        ...(tenantId && { tenantId }),
+        ...(subscriptionId && { subscriptionId }),
+      },
+    });
+  }
+
   async findAllTenantPayments(tenantId?: string, subscriptionId?: string) {
     return basePrisma.tenantPayment.findMany({
       where: {
@@ -687,6 +792,29 @@ export class PlatformRepository {
         },
       },
       orderBy: { createdAt: "desc" },
+    });
+  }
+
+  async findAllTenantPaymentsPaginated(
+    tenantId: string | undefined,
+    subscriptionId: string | undefined,
+    skip: number,
+    take: number,
+  ) {
+    return basePrisma.tenantPayment.findMany({
+      where: {
+        ...(tenantId && { tenantId }),
+        ...(subscriptionId && { subscriptionId }),
+      },
+      include: {
+        tenant: { select: { id: true, name: true, slug: true } },
+        subscription: {
+          select: { id: true, plan: true, billingCycle: true },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+      skip,
+      take,
     });
   }
 

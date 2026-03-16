@@ -21,6 +21,8 @@ import {
   type PlanTier,
   type SubscriptionStatus,
   type PlatformPasswordResetRequest,
+  type GetTenantsParams,
+  type GetPlatformResetRequestsParams,
 } from "../services/tenant.service";
 
 export type {
@@ -35,16 +37,16 @@ export type {
 
 export const tenantKeys = {
   all: ["platform", "tenants"] as const,
-  lists: () => [...tenantKeys.all, "list"] as const,
-  list: () => [...tenantKeys.lists()] as const,
+  lists: (params?: GetTenantsParams) =>
+    [...tenantKeys.all, "list", params] as const,
   details: () => [...tenantKeys.all, "detail"] as const,
   detail: (id: string) => [...tenantKeys.details(), id] as const,
 };
 
-export function useTenants() {
+export function useTenants(params?: GetTenantsParams) {
   return useQuery({
-    queryKey: tenantKeys.list(),
-    queryFn: getTenants,
+    queryKey: tenantKeys.lists(params),
+    queryFn: () => getTenants(params),
   });
 }
 
@@ -61,7 +63,7 @@ export function useCreateTenant() {
   return useMutation({
     mutationFn: createTenant,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tenantKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: tenantKeys.all });
     },
   });
 }
@@ -72,7 +74,7 @@ export function useUpdateTenant() {
     mutationFn: ({ id, data }: { id: string; data: UpdateTenantData }) =>
       updateTenant(id, data),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: tenantKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: tenantKeys.all });
       queryClient.invalidateQueries({ queryKey: tenantKeys.detail(id) });
     },
   });
@@ -91,7 +93,7 @@ export function useChangeTenantPlan() {
       expiresAt?: string | null;
     }) => changeTenantPlan(id, plan, expiresAt),
     onSuccess: (_, { id }) => {
-      queryClient.invalidateQueries({ queryKey: tenantKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: tenantKeys.all });
       queryClient.invalidateQueries({ queryKey: tenantKeys.detail(id) });
     },
   });
@@ -102,7 +104,7 @@ export function useActivateTenant() {
   return useMutation({
     mutationFn: activateTenant,
     onSuccess: (tenant) => {
-      queryClient.invalidateQueries({ queryKey: tenantKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: tenantKeys.all });
       queryClient.invalidateQueries({ queryKey: tenantKeys.detail(tenant.id) });
     },
   });
@@ -113,7 +115,7 @@ export function useDeactivateTenant() {
   return useMutation({
     mutationFn: deactivateTenant,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: tenantKeys.lists() });
+      queryClient.invalidateQueries({ queryKey: tenantKeys.all });
     },
   });
 }
@@ -154,12 +156,16 @@ export function useResetTenantUserPassword() {
 
 export const platformResetKeys = {
   all: ["platform", "password-reset-requests"] as const,
+  list: (params?: GetPlatformResetRequestsParams) =>
+    [...platformResetKeys.all, params] as const,
 };
 
-export function usePlatformResetRequests() {
+export function usePlatformResetRequests(
+  params?: GetPlatformResetRequestsParams,
+) {
   return useQuery({
-    queryKey: platformResetKeys.all,
-    queryFn: getPlatformResetRequests,
+    queryKey: platformResetKeys.list(params),
+    queryFn: () => getPlatformResetRequests(params),
   });
 }
 

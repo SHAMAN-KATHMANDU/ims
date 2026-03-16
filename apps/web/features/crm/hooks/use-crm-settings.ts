@@ -10,20 +10,24 @@ import {
   createCrmJourneyType,
   updateCrmJourneyType,
   deleteCrmJourneyType,
+  type GetCrmSourcesParams,
+  type GetCrmJourneyTypesParams,
 } from "../services/crm-settings.service";
 
 export const crmSettingsKeys = {
   all: ["crm-settings"] as const,
-  sources: () => [...crmSettingsKeys.all, "sources"] as const,
-  journeyTypes: () => [...crmSettingsKeys.all, "journey-types"] as const,
+  sources: (params?: GetCrmSourcesParams) =>
+    [...crmSettingsKeys.all, "sources", params] as const,
+  journeyTypes: (params?: GetCrmJourneyTypesParams) =>
+    [...crmSettingsKeys.all, "journey-types", params] as const,
 };
 
 // ── Sources ──────────────────────────────────────────────────────────────────
 
-export function useCrmSources() {
+export function useCrmSources(params?: GetCrmSourcesParams) {
   return useQuery({
-    queryKey: crmSettingsKeys.sources(),
-    queryFn: getCrmSources,
+    queryKey: crmSettingsKeys.sources(params),
+    queryFn: () => getCrmSources(params),
   });
 }
 
@@ -32,7 +36,9 @@ export function useCreateCrmSource() {
   return useMutation({
     mutationFn: (name: string) => createCrmSource(name),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: crmSettingsKeys.sources() }),
+      qc.invalidateQueries({
+        queryKey: [...crmSettingsKeys.all, "sources"],
+      }),
   });
 }
 
@@ -42,7 +48,9 @@ export function useUpdateCrmSource() {
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       updateCrmSource(id, name),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: crmSettingsKeys.sources() }),
+      qc.invalidateQueries({
+        queryKey: [...crmSettingsKeys.all, "sources"],
+      }),
   });
 }
 
@@ -51,16 +59,18 @@ export function useDeleteCrmSource() {
   return useMutation({
     mutationFn: (id: string) => deleteCrmSource(id),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: crmSettingsKeys.sources() }),
+      qc.invalidateQueries({
+        queryKey: [...crmSettingsKeys.all, "sources"],
+      }),
   });
 }
 
 // ── Journey Types ─────────────────────────────────────────────────────────────
 
-export function useCrmJourneyTypes() {
+export function useCrmJourneyTypes(params?: GetCrmJourneyTypesParams) {
   return useQuery({
-    queryKey: crmSettingsKeys.journeyTypes(),
-    queryFn: getCrmJourneyTypes,
+    queryKey: crmSettingsKeys.journeyTypes(params),
+    queryFn: () => getCrmJourneyTypes(params),
   });
 }
 
@@ -69,7 +79,9 @@ export function useCreateCrmJourneyType() {
   return useMutation({
     mutationFn: (name: string) => createCrmJourneyType(name),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: crmSettingsKeys.journeyTypes() }),
+      qc.invalidateQueries({
+        queryKey: [...crmSettingsKeys.all, "journey-types"],
+      }),
   });
 }
 
@@ -79,7 +91,9 @@ export function useUpdateCrmJourneyType() {
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       updateCrmJourneyType(id, name),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: crmSettingsKeys.journeyTypes() }),
+      qc.invalidateQueries({
+        queryKey: [...crmSettingsKeys.all, "journey-types"],
+      }),
   });
 }
 
@@ -88,6 +102,8 @@ export function useDeleteCrmJourneyType() {
   return useMutation({
     mutationFn: (id: string) => deleteCrmJourneyType(id),
     onSuccess: () =>
-      qc.invalidateQueries({ queryKey: crmSettingsKeys.journeyTypes() }),
+      qc.invalidateQueries({
+        queryKey: [...crmSettingsKeys.all, "journey-types"],
+      }),
   });
 }

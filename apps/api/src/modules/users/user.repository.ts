@@ -49,8 +49,10 @@ export class UserRepository {
     });
   }
 
-  async findAll(query: ReturnType<typeof getPaginationParams>) {
-    const { page, limit, sortBy, sortOrder, search } = query;
+  async findAll(
+    query: ReturnType<typeof getPaginationParams> & { role?: Role },
+  ) {
+    const { page, limit, sortBy, sortOrder, search, role } = query;
 
     const orderBy = getPrismaOrderBy(
       sortBy,
@@ -64,6 +66,10 @@ export class UserRepository {
 
     if (search) {
       where.OR = [{ username: { contains: search, mode: "insensitive" } }];
+    }
+
+    if (role) {
+      where.role = role;
     }
 
     const skip = (page - 1) * limit;

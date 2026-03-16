@@ -1,7 +1,11 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
-import { CreateActivitySchema } from "./activity.schema";
+import {
+  CreateActivitySchema,
+  ListActivitiesByContactQuerySchema,
+  ListActivitiesByDealQuerySchema,
+} from "./activity.schema";
 import activityService from "./activity.service";
 import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
@@ -40,11 +44,20 @@ class ActivityController {
     try {
       const tenantId = req.user!.tenantId;
       const { contactId } = req.params;
-      const activities = await activityService.getByContact(
+      const parsed = ListActivitiesByContactQuerySchema.safeParse(req.query);
+      const data = parsed.success ? parsed.data : undefined;
+      const query =
+        data && data.page != null && data.limit != null
+          ? { page: data.page, limit: data.limit, type: data.type }
+          : data?.type
+            ? { type: data.type }
+            : undefined;
+      const result = await activityService.getByContact(
         tenantId,
         contactId,
+        query,
       );
-      return res.status(200).json({ message: "OK", activities });
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
       return sendControllerError(
         req,
@@ -59,8 +72,16 @@ class ActivityController {
     try {
       const tenantId = req.user!.tenantId;
       const { dealId } = req.params;
-      const activities = await activityService.getByDeal(tenantId, dealId);
-      return res.status(200).json({ message: "OK", activities });
+      const parsed = ListActivitiesByDealQuerySchema.safeParse(req.query);
+      const data = parsed.success ? parsed.data : undefined;
+      const query =
+        data && data.page != null && data.limit != null
+          ? { page: data.page, limit: data.limit, type: data.type }
+          : data?.type
+            ? { type: data.type }
+            : undefined;
+      const result = await activityService.getByDeal(tenantId, dealId, query);
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
       return sendControllerError(
         req,

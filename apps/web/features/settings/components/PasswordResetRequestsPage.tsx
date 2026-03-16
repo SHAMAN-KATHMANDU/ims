@@ -28,17 +28,33 @@ import {
   useEscalatePasswordReset,
   useRejectPasswordReset,
 } from "../hooks/use-settings";
+import { DataTablePagination } from "@/components/ui/data-table-pagination";
+import { useDebounce } from "@/hooks/useDebounce";
+import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import { format } from "date-fns";
+import { Search } from "lucide-react";
 import type { PasswordResetRequest } from "@/features/users/services/user.service";
 
+const DEFAULT_PAGE_SIZE = 10;
+
 export function PasswordResetRequestsPage() {
+  const [page, setPage] = useState(DEFAULT_PAGE);
+  const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [approveDialog, setApproveDialog] = useState<{
     open: boolean;
     request: PasswordResetRequest | null;
     newPassword: string;
   }>({ open: false, request: null, newPassword: "" });
 
-  const { data: requests = [], isLoading } = usePasswordResetRequests();
+  const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
+  const { data, isLoading } = usePasswordResetRequests({
+    page,
+    limit: pageSize,
+    search: debouncedSearch || undefined,
+  });
+  const requests = data?.requests ?? [];
+  const pagination = data?.pagination;
   const approveMutation = useApprovePasswordReset();
   const escalateMutation = useEscalatePasswordReset();
   const rejectMutation = useRejectPasswordReset();
@@ -71,7 +87,21 @@ export function PasswordResetRequestsPage() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Pending Requests</CardTitle>
+          <div className="flex flex-wrap items-center gap-4">
+            <CardTitle className="sr-only">Pending Requests</CardTitle>
+            <div className="relative flex-1 min-w-[200px] max-w-sm">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by username..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(DEFAULT_PAGE);
+                }}
+                className="pl-9"
+              />
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
@@ -151,6 +181,25 @@ export function PasswordResetRequestsPage() {
           )}
         </CardContent>
       </Card>
+
+      {pagination && (
+        <DataTablePagination
+          pagination={{
+            currentPage: pagination.currentPage,
+            totalPages: pagination.totalPages,
+            totalItems: pagination.totalItems,
+            itemsPerPage: pagination.itemsPerPage,
+            hasNextPage: pagination.hasNextPage,
+            hasPrevPage: pagination.hasPrevPage,
+          }}
+          onPageChange={setPage}
+          onPageSizeChange={(size) => {
+            setPageSize(size);
+            setPage(DEFAULT_PAGE);
+          }}
+          isLoading={isLoading}
+        />
+      )}
 
       <Dialog
         open={approveDialog.open}

@@ -18,6 +18,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "../hooks/use-transfers";
+import { useActiveLocations } from "@/features/locations";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { TransferTable } from "./components/TransferTable";
 import { TransferDetail } from "./components/TransferDetail";
@@ -66,8 +67,14 @@ export function TransfersPage() {
   const [statusFilter, setStatusFilter] = useState<TransferStatus | "ALL">(
     "ALL",
   );
+  const [fromLocationId, setFromLocationId] = useState<string>("all");
+  const [toLocationId, setToLocationId] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
   const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const { data: locations = [] } = useActiveLocations();
 
   // Dialog state
   const [selectedTransferId, setSelectedTransferId] = useState<string | null>(
@@ -85,6 +92,10 @@ export function TransfersPage() {
       limit: pageSize,
       search: debouncedSearch,
       status: statusFilter === "ALL" ? undefined : statusFilter,
+      fromLocationId: fromLocationId === "all" ? undefined : fromLocationId,
+      toLocationId: toLocationId === "all" ? undefined : toLocationId,
+      dateFrom: dateFrom || undefined,
+      dateTo: dateTo || undefined,
       sortBy,
       sortOrder,
     });
@@ -116,12 +127,45 @@ export function TransfersPage() {
     setPage(DEFAULT_PAGE);
   }, []);
 
+  const handleFromLocationChange = useCallback((value: string) => {
+    setFromLocationId(value);
+    setPage(DEFAULT_PAGE);
+  }, []);
+  const handleToLocationChange = useCallback((value: string) => {
+    setToLocationId(value);
+    setPage(DEFAULT_PAGE);
+  }, []);
+  const handleDateFromChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setDateFrom(e.target.value);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+  const handleDateToChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      setDateTo(e.target.value);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+
   const clearAllFilters = useCallback(() => {
     setSearch("");
     setStatusFilter("ALL");
+    setFromLocationId("all");
+    setToLocationId("all");
+    setDateFrom("");
+    setDateTo("");
     setPage(DEFAULT_PAGE);
   }, []);
-  const hasActiveFilters = search !== "" || statusFilter !== "ALL";
+  const hasActiveFilters =
+    search !== "" ||
+    statusFilter !== "ALL" ||
+    fromLocationId !== "all" ||
+    toLocationId !== "all" ||
+    dateFrom !== "" ||
+    dateTo !== "";
 
   const handleColumnSort = useCallback(
     (newSortBy: string, newSortOrder: "asc" | "desc") => {
@@ -268,6 +312,49 @@ export function TransfersPage() {
               ))}
             </SelectContent>
           </Select>
+          <Select
+            value={fromLocationId}
+            onValueChange={handleFromLocationChange}
+          >
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="From location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All from locations</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={toLocationId} onValueChange={handleToLocationChange}>
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="To location" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All to locations</SelectItem>
+              {locations.map((loc) => (
+                <SelectItem key={loc.id} value={loc.id}>
+                  {loc.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            type="date"
+            value={dateFrom}
+            onChange={handleDateFromChange}
+            className="w-full sm:w-[140px]"
+            placeholder="From date"
+          />
+          <Input
+            type="date"
+            value={dateTo}
+            onChange={handleDateToChange}
+            className="w-full sm:w-[140px]"
+            placeholder="To date"
+          />
           {hasActiveFilters && (
             <Button
               variant="ghost"

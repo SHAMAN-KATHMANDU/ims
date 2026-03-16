@@ -23,6 +23,7 @@ import {
   DEFAULT_PAGE,
   DEFAULT_LIMIT,
 } from "../hooks/use-members";
+import type { MemberStatusFilter } from "../services/member.service";
 import { useIsMobile } from "@/hooks/useMobile";
 import { MemberTable } from "./components/MemberTable";
 import { MemberForm } from "./components/MemberForm";
@@ -83,10 +84,24 @@ export function MembersPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
+  const [memberStatusFilter, setMemberStatusFilter] = useState<
+    MemberStatusFilter | "all"
+  >("all");
   const [sortBy, setSortBy] = useState<
     "createdAt" | "updatedAt" | "name" | "id"
   >("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+
+  const MEMBER_STATUS_OPTIONS: {
+    value: MemberStatusFilter | "all";
+    label: string;
+  }[] = [
+    { value: "all", label: "All statuses" },
+    { value: "ACTIVE", label: "Active" },
+    { value: "INACTIVE", label: "Inactive" },
+    { value: "PROSPECT", label: "Prospect" },
+    { value: "VIP", label: "VIP" },
+  ];
 
   // Dialog state
   const [formOpen, setFormOpen] = useState(false);
@@ -97,12 +112,16 @@ export function MembersPage() {
   // Clear filters
   const clearAllFilters = useCallback(() => {
     setSearch("");
+    setMemberStatusFilter("all");
     setSortBy("createdAt");
     setSortOrder("desc");
     setPage(DEFAULT_PAGE);
   }, []);
   const hasActiveFilters =
-    search !== "" || sortBy !== "createdAt" || sortOrder !== "desc";
+    search !== "" ||
+    memberStatusFilter !== "all" ||
+    sortBy !== "createdAt" ||
+    sortOrder !== "desc";
 
   // Data fetching with backend sorting
   const { data: membersResponse, isLoading: membersLoading } =
@@ -110,6 +129,8 @@ export function MembersPage() {
       page,
       limit: pageSize,
       search: debouncedSearch,
+      memberStatus:
+        memberStatusFilter === "all" ? undefined : memberStatusFilter,
       sortBy,
       sortOrder,
     });
@@ -136,6 +157,11 @@ export function MembersPage() {
   const updateMemberMutation = useUpdateMember();
 
   // Handlers
+  const handleMemberStatusChange = useCallback((value: string) => {
+    setMemberStatusFilter(value as MemberStatusFilter | "all");
+    setPage(DEFAULT_PAGE);
+  }, []);
+
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearch(e.target.value);
@@ -285,6 +311,21 @@ export function MembersPage() {
               className="pl-9 w-full sm:w-[300px]"
             />
           </div>
+          <Select
+            value={memberStatusFilter}
+            onValueChange={handleMemberStatusChange}
+          >
+            <SelectTrigger className="h-9 w-[160px] shrink-0 gap-2 text-sm">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              {MEMBER_STATUS_OPTIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select
             value={`${sortBy}_${sortOrder}`}
             onValueChange={handleSortChange}

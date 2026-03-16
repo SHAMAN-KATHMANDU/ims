@@ -24,3 +24,28 @@ export type CreateCrmJourneyTypeDto = z.infer<
 export type UpdateCrmJourneyTypeDto = z.infer<
   typeof UpdateCrmJourneyTypeSchema
 >;
+
+/** Query for GET sources/journey-types. When both absent, API returns all. */
+const listQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === "" ? undefined : Math.max(1, parseInt(v) || 1),
+    ),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === ""
+        ? undefined
+        : Math.min(100, Math.max(1, parseInt(v) || 10)),
+    ),
+  search: z
+    .string()
+    .optional()
+    .transform((s) => (s?.trim() ? s.trim() : undefined)),
+});
+
+export const ListSourcesQuerySchema = listQuerySchema;
+export const ListJourneyTypesQuerySchema = listQuerySchema;

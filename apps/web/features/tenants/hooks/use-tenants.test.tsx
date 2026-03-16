@@ -27,7 +27,7 @@ import { useTenants, useCreateTenant } from "./use-tenants";
 describe("useTenants", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetTenants.mockResolvedValue([]);
+    mockGetTenants.mockResolvedValue({ tenants: [] });
   });
 
   it("calls getTenants", async () => {

@@ -22,11 +22,15 @@ export interface UpdateMemberRepoData {
   isActive?: boolean;
 }
 
+const MEMBER_STATUS_VALUES = ["ACTIVE", "INACTIVE", "PROSPECT", "VIP"] as const;
+export type MemberStatusFilter = (typeof MEMBER_STATUS_VALUES)[number];
+
 /** Where clause for member queries (tenant-scoped, non-deleted by default). */
 export interface MemberWhere {
   tenantId: string;
   deletedAt?: Date | null;
   id?: string | { in: string[] };
+  memberStatus?: MemberStatusFilter;
   OR?: Array<{
     phone?: { contains: string; mode: "insensitive" };
     name?: { contains: string; mode: "insensitive" };

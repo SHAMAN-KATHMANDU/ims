@@ -33,6 +33,7 @@ describe("NotificationRepository", () => {
 
       const result = await notificationRepository.findMany({
         userId: "u1",
+        page: 1,
         limit: 20,
         unreadOnly: false,
       });
@@ -40,6 +41,7 @@ describe("NotificationRepository", () => {
       expect(mockFindMany).toHaveBeenCalledWith({
         where: { userId: "u1" },
         orderBy: { createdAt: "desc" },
+        skip: 0,
         take: 20,
       });
       expect(result).toHaveLength(1);

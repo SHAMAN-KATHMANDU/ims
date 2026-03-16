@@ -51,3 +51,25 @@ export const ApprovePasswordResetSchema = z.object({
 export type ApprovePasswordResetDto = z.infer<
   typeof ApprovePasswordResetSchema
 >;
+
+/** Query for GET password reset requests (tenant or platform). When both absent, returns all. */
+export const ListPasswordResetRequestsQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === "" ? undefined : Math.max(1, parseInt(v) || 1),
+    ),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === ""
+        ? undefined
+        : Math.min(100, Math.max(1, parseInt(v) || 10)),
+    ),
+  search: z
+    .string()
+    .optional()
+    .transform((s) => (s?.trim() ? s.trim() : undefined)),
+});

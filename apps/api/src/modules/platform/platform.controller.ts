@@ -21,7 +21,11 @@ import {
   UpdateSubscriptionSchema,
   CreateTenantPaymentSchema,
   UpdateTenantPaymentSchema,
+  ListTenantsQuerySchema,
+  ListSubscriptionsQuerySchema,
+  ListTenantPaymentsQuerySchema,
 } from "./platform.schema";
+import { ListPasswordResetRequestsQuerySchema } from "@/modules/users/user.schema";
 
 function getParam(req: Request, key: string): string {
   const val = req.params[key];
@@ -72,8 +76,21 @@ class PlatformController {
 
   listTenants = async (req: Request, res: Response) => {
     try {
-      const tenants = await platformService.findAllTenants();
-      return res.status(200).json({ tenants });
+      const parsed = ListTenantsQuerySchema.safeParse(req.query);
+      const data = parsed.success ? parsed.data : undefined;
+      const query =
+        data && data.page != null && data.limit != null
+          ? {
+              page: data.page,
+              limit: data.limit,
+              search: data.search,
+              plan: data.plan,
+              subscriptionStatus: data.subscriptionStatus,
+              isActive: data.isActive,
+            }
+          : undefined;
+      const result = await platformService.findAllTenants(query);
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error) {
       return sendControllerError(req, res, error, "List tenants error");
     }
@@ -394,8 +411,16 @@ class PlatformController {
   listSubscriptions = async (req: Request, res: Response) => {
     try {
       const tenantId = req.query.tenantId as string | undefined;
-      const subscriptions = await platformService.listSubscriptions(tenantId);
-      return res.status(200).json({ subscriptions });
+      const parsed = ListSubscriptionsQuerySchema.safeParse(req.query);
+      const query =
+        parsed.success &&
+        parsed.data &&
+        parsed.data.page != null &&
+        parsed.data.limit != null
+          ? { page: parsed.data.page, limit: parsed.data.limit }
+          : undefined;
+      const result = await platformService.listSubscriptions(tenantId, query);
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error) {
       return sendControllerError(req, res, error, "List subscriptions error");
     }
@@ -477,11 +502,20 @@ class PlatformController {
     try {
       const tenantId = req.query.tenantId as string | undefined;
       const subscriptionId = req.query.subscriptionId as string | undefined;
-      const payments = await platformService.listTenantPayments(
+      const parsed = ListTenantPaymentsQuerySchema.safeParse(req.query);
+      const query =
+        parsed.success &&
+        parsed.data &&
+        parsed.data.page != null &&
+        parsed.data.limit != null
+          ? { page: parsed.data.page, limit: parsed.data.limit }
+          : undefined;
+      const result = await platformService.listTenantPayments(
         tenantId,
         subscriptionId,
+        query,
       );
-      return res.status(200).json({ payments });
+      return res.status(200).json({ message: "OK", ...result });
     } catch (error) {
       return sendControllerError(req, res, error, "List tenant payments error");
     }
@@ -569,10 +603,21 @@ class PlatformController {
 
   getPlatformResetRequests = async (req: Request, res: Response) => {
     try {
-      const requests = await platformService.getPlatformResetRequests();
-      return res
-        .status(200)
-        .json({ message: "Password reset requests fetched", requests });
+      const parsed = ListPasswordResetRequestsQuerySchema.safeParse(req.query);
+      const data = parsed.success ? parsed.data : undefined;
+      const query =
+        data && data.page != null && data.limit != null
+          ? {
+              page: data.page,
+              limit: data.limit,
+              search: data.search,
+            }
+          : undefined;
+      const result = await platformService.getPlatformResetRequests(query);
+      return res.status(200).json({
+        message: "Password reset requests fetched",
+        ...result,
+      });
     } catch (error) {
       return sendControllerError(
         req,

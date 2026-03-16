@@ -26,3 +26,25 @@ export const CreateActivitySchema = z
   });
 
 export type CreateActivityDto = z.infer<typeof CreateActivitySchema>;
+
+/** Query for GET activities by contact/deal. When both absent, API returns all. */
+const listActivitiesQuerySchema = z.object({
+  page: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === "" ? undefined : Math.max(1, parseInt(v) || 1),
+    ),
+  limit: z
+    .string()
+    .optional()
+    .transform((v) =>
+      v === undefined || v === ""
+        ? undefined
+        : Math.min(100, Math.max(1, parseInt(v) || 10)),
+    ),
+  type: ActivityTypeSchema.optional(),
+});
+
+export const ListActivitiesByContactQuerySchema = listActivitiesQuerySchema;
+export const ListActivitiesByDealQuerySchema = listActivitiesQuerySchema;
