@@ -75,6 +75,8 @@ import {
   useUpdateContactTag,
   useDeleteContactTag,
 } from "../../hooks/use-contacts";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 import type { PipelineStage } from "../../services/pipeline.service";
 import type {
   CrmSource,
@@ -82,6 +84,9 @@ import type {
 } from "../../services/crm-settings.service";
 
 export default function CrmSettingsPage() {
+  const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
+  const defaultTab = pipelinesTabEnabled ? "pipelines" : "sources";
+
   return (
     <div className="space-y-6">
       <div>
@@ -91,12 +96,14 @@ export default function CrmSettingsPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="pipelines">
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="mb-6 w-full sm:w-auto overflow-x-auto flex-nowrap">
-          <TabsTrigger value="pipelines" className="gap-2 shrink-0">
-            <GitBranch className="h-4 w-4" />
-            Pipelines
-          </TabsTrigger>
+          {pipelinesTabEnabled && (
+            <TabsTrigger value="pipelines" className="gap-2 shrink-0">
+              <GitBranch className="h-4 w-4" />
+              Pipelines
+            </TabsTrigger>
+          )}
           <TabsTrigger value="sources" className="gap-2 shrink-0">
             <Tag className="h-4 w-4" />
             <span className="hidden sm:inline">Contact </span>Sources
@@ -111,9 +118,11 @@ export default function CrmSettingsPage() {
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="pipelines">
-          <PipelineSettings />
-        </TabsContent>
+        {pipelinesTabEnabled && (
+          <TabsContent value="pipelines">
+            <PipelineSettings />
+          </TabsContent>
+        )}
         <TabsContent value="sources">
           <SourceSettings />
         </TabsContent>
