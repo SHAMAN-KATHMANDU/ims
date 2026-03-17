@@ -178,15 +178,25 @@ export function ProductPage() {
     appliedEditFromUrl.current = true;
     const product = productToEditFromUrl;
     setEditingProduct(product);
-    productForm.values.name = product.name;
-    productForm.values.categoryId = product.categoryId;
-    productForm.values.description = product.description || "";
-    productForm.values.length = product.length?.toString() || "";
-    productForm.values.breadth = product.breadth?.toString() || "";
-    productForm.values.height = product.height?.toString() || "";
-    productForm.values.weight = product.weight?.toString() || "";
-    productForm.values.costPrice = product.costPrice.toString();
-    productForm.values.mrp = product.mrp.toString();
+    const categoryId =
+      product.categoryId ??
+      (product as { category?: { id: string } }).category?.id ??
+      "";
+    productForm.setValues({
+      ...productForm.values,
+      imsCode: product.imsCode ?? "",
+      name: product.name,
+      categoryId,
+      subCategory: product.subCategory ?? "",
+      description: product.description ?? "",
+      length: product.length?.toString() ?? "",
+      breadth: product.breadth?.toString() ?? "",
+      height: product.height?.toString() ?? "",
+      weight: product.weight?.toString() ?? "",
+      costPrice: product.costPrice?.toString() ?? "",
+      mrp: product.mrp?.toString() ?? "",
+      vendorId: product.vendorId ?? undefined,
+    });
     if (product.variations?.length) {
       setProductVariations(
         product.variations.map((v) => ({
@@ -810,11 +820,15 @@ export function ProductPage() {
     }
 
     setEditingProduct(product);
+    const categoryId =
+      product.categoryId ??
+      (product as { category?: { id: string } }).category?.id ??
+      "";
     productForm.setValues({
       imsCode: product.imsCode ?? "",
       name: product.name,
-      categoryId: product.categoryId,
-      subCategory: product.subCategory || "",
+      categoryId,
+      subCategory: product.subCategory ?? "",
       description: product.description || "",
       length: product.length?.toString() || "",
       breadth: product.breadth?.toString() || "",
@@ -1210,6 +1224,7 @@ export function ProductPage() {
                     variations={productVariations}
                     discounts={productDiscounts}
                     discountTypes={discountTypes}
+                    onDiscountsChange={setProductDiscounts}
                     attributeTypes={attributeTypes}
                     productAttributeTypeIds={productAttributeTypeIds}
                     onProductAttributeTypeIdsChange={setProductAttributeTypeIds}

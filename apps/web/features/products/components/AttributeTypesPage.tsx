@@ -73,7 +73,8 @@ export function AttributeTypesPage() {
   const [editingType, setEditingType] = useState<AttributeType | null>(null);
   const [typeName, setTypeName] = useState("");
   const [typeCode, setTypeCode] = useState("");
-  const [typeDisplayOrder, setTypeDisplayOrder] = useState(0);
+  /** When creating a new type, optional initial values to add after type is created */
+  const [initialValues, setInitialValues] = useState<string[]>([]);
 
   const [valueDialogOpen, setValueDialogOpen] = useState(false);
   const [selectedTypeForValue, setSelectedTypeForValue] =
@@ -104,7 +105,7 @@ export function AttributeTypesPage() {
     setEditingType(null);
     setTypeName("");
     setTypeCode("");
-    setTypeDisplayOrder(pagination?.totalItems ?? attributeTypes.length);
+    setInitialValues([]);
     setTypeDialogOpen(true);
   };
 
@@ -112,7 +113,6 @@ export function AttributeTypesPage() {
     setEditingType(type);
     setTypeName(type.name);
     setTypeCode(type.code);
-    setTypeDisplayOrder(type.displayOrder);
     setTypeDialogOpen(true);
   };
 
@@ -128,17 +128,28 @@ export function AttributeTypesPage() {
           data: {
             name: typeName.trim(),
             code: typeCode.trim() || undefined,
-            displayOrder: typeDisplayOrder,
           },
         });
         toast({ title: "Attribute type updated" });
       } else {
-        await createTypeMutation.mutateAsync({
+        const newType = await createTypeMutation.mutateAsync({
           name: typeName.trim(),
           code: typeCode.trim() || undefined,
-          displayOrder: typeDisplayOrder,
         });
         toast({ title: "Attribute type created" });
+        const valuesToAdd = initialValues.map((v) => v.trim()).filter(Boolean);
+        for (const value of valuesToAdd) {
+          await createValueMutation.mutateAsync({
+            typeId: newType.id,
+            data: { value },
+          });
+        }
+        if (valuesToAdd.length > 0) {
+          toast({
+            title: `${valuesToAdd.length} value(s) added`,
+            description: `Added: ${valuesToAdd.join(", ")}`,
+          });
+        }
       }
       setTypeDialogOpen(false);
     } catch (e: unknown) {
@@ -290,7 +301,6 @@ export function AttributeTypesPage() {
                   <TableHead className="w-10" />
                   <TableHead>Name</TableHead>
                   <TableHead>Code</TableHead>
-                  <TableHead>Order</TableHead>
                   <TableHead>Values</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -317,7 +327,6 @@ export function AttributeTypesPage() {
                       <TableCell>
                         <Badge variant="secondary">{type.code}</Badge>
                       </TableCell>
-                      <TableCell>{type.displayOrder}</TableCell>
                       <TableCell>
                         {!type.values || type.values.length === 0 ? (
                           <span className="text-muted-foreground text-sm">
@@ -372,7 +381,7 @@ export function AttributeTypesPage() {
                     </TableRow>
                     {expandedTypes.has(type.id) && (
                       <TableRow>
-                        <TableCell colSpan={6} className="bg-muted/30">
+                        <TableCell colSpan={5} className="bg-muted/30">
                           <div className="py-2 pl-8">
                             <p className="text-xs font-medium text-muted-foreground mb-2">
                               Values
@@ -473,17 +482,53 @@ export function AttributeTypesPage() {
                 placeholder="e.g. color, size"
               />
             </div>
-            <div>
-              <Label htmlFor="type-order">Display order</Label>
-              <Input
-                id="type-order"
-                type="number"
-                value={typeDisplayOrder}
-                onChange={(e) =>
-                  setTypeDisplayOrder(Number(e.target.value) || 0)
-                }
-              />
-            </div>
+            {!editingType && (
+              <div className="space-y-2">
+                <Label>Initial values (optional)</Label>
+                <p className="text-xs text-muted-foreground">
+                  Add values now or use &quot;+ Value&quot; after creating the
+                  type.
+                </p>
+                <div className="space-y-2">
+                  {initialValues.map((val, i) => (
+                    <div key={i} className="flex gap-2">
+                      <Input
+                        value={val}
+                        onChange={(e) => {
+                          const next = [...initialValues];
+                          next[i] = e.target.value;
+                          setInitialValues(next);
+                        }}
+                        placeholder="e.g. Red, M, Cotton"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0 text-destructive"
+                        onClick={() =>
+                          setInitialValues(
+                            initialValues.filter((_, idx) => idx !== i),
+                          )
+                        }
+                        aria-label="Remove value"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => setInitialValues([...initialValues, ""])}
+                  >
+                    <Plus className="h-3 w-3" /> Add value
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setTypeDialogOpen(false)}>

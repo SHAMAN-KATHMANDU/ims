@@ -1,104 +1,183 @@
 "use client";
 
 /**
- * Product form tab for discount rows.
- * View-only: discounts are managed from the Discounts page (sidebar).
- * Not the discounts list page – see ../DiscountsTab.tsx for the full page content.
+ * Product form tab for assigning discounts to the product.
+ * User can add/remove discount type + percentage rows; changes are applied on product save.
  */
 
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Trash2, Plus } from "lucide-react";
 import type { ProductDiscountForm } from "../../types";
+
+const emptyDiscountRow = (): ProductDiscountForm => ({
+  discountTypeId: "",
+  discountPercentage: "0",
+  startDate: "",
+  endDate: "",
+  isActive: true,
+});
 
 interface DiscountsTabProps {
   discounts: ProductDiscountForm[];
   discountTypes: Array<{ id: string; name: string }>;
+  onDiscountsChange?: (discounts: ProductDiscountForm[]) => void;
 }
 
-const defaultTypeNames = ["Normal", "Special", "Member", "Wholesale"];
+export function DiscountsTab({
+  discounts,
+  discountTypes,
+  onDiscountsChange,
+}: DiscountsTabProps) {
+  const canEdit = typeof onDiscountsChange === "function";
+  const usedTypeIds = new Set(
+    discounts.map((d) => d.discountTypeId).filter(Boolean),
+  );
 
-export function DiscountsTab({ discounts, discountTypes }: DiscountsTabProps) {
-  const nameById = new Map(discountTypes.map((dt) => [dt.id, dt.name]));
+  const updateRow = (index: number, patch: Partial<ProductDiscountForm>) => {
+    if (!canEdit) return;
+    const next = discounts.map((d, i) =>
+      i === index ? { ...d, ...patch } : d,
+    );
+    onDiscountsChange(next);
+  };
+
+  const removeRow = (index: number) => {
+    if (!canEdit) return;
+    onDiscountsChange(discounts.filter((_, i) => i !== index));
+  };
+
+  const addRow = () => {
+    if (!canEdit) return;
+    onDiscountsChange([...discounts, emptyDiscountRow()]);
+  };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-4">
       <div className="flex justify-between items-center">
         <Label>Discounts</Label>
+        {canEdit && (
+          <Button type="button" variant="outline" size="sm" onClick={addRow}>
+            <Plus className="h-3 w-3 mr-1" /> Add discount
+          </Button>
+        )}
       </div>
-      {discounts.length > 0 ? (
-        <div className="space-y-4 border rounded-lg p-4">
-          {discounts
-            .map((discount, originalIndex) => ({ discount, originalIndex }))
-            .sort((a, b) => {
-              const aIsDefault = defaultTypeNames.includes(
-                nameById.get(a.discount.discountTypeId) ?? "",
-              );
-              const bIsDefault = defaultTypeNames.includes(
-                nameById.get(b.discount.discountTypeId) ?? "",
-              );
-              if (aIsDefault && !bIsDefault) return -1;
-              if (!aIsDefault && bIsDefault) return 1;
-              return 0;
-            })
-            .map(({ discount }) => {
-              const isDefault = defaultTypeNames.includes(
-                nameById.get(discount.discountTypeId) ?? "",
-              );
-              const typeName =
-                nameById.get(discount.discountTypeId) ?? "Unknown";
 
-              return (
-                <div
-                  key={`${discount.discountTypeId}-${discount.discountPercentage}`}
-                  className="space-y-2 border-b pb-4 last:border-b-0 last:pb-0"
-                >
-                  {isDefault && (
-                    <div className="text-xs font-medium text-primary bg-primary/10 px-2 py-1 rounded w-fit">
-                      Default Discount
-                    </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>
-                      <span className="text-muted-foreground text-xs">
-                        Type
-                      </span>
-                      <p className="font-medium">{typeName}</p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">
-                        Discount %
-                      </span>
-                      <p className="font-medium">
-                        {discount.discountPercentage}%
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">
-                        Status
-                      </span>
-                      <p className="font-medium">
-                        {discount.isActive ? "Active" : "Inactive"}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">
-                        Dates
-                      </span>
-                      <p className="font-medium">
-                        {discount.startDate || discount.endDate
-                          ? `${discount.startDate || "—"} to ${discount.endDate || "—"}`
-                          : "—"}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-        </div>
-      ) : (
+      {discounts.length === 0 && !canEdit && (
         <p className="text-sm text-muted-foreground py-4">
-          No discounts assigned. Manage discounts from the Discounts page in the
-          sidebar.
+          No discounts assigned.
         </p>
+      )}
+
+      {discounts.length === 0 && canEdit && (
+        <div className="text-sm text-muted-foreground py-4 space-y-1">
+          <p>
+            No discounts assigned. Add one or more discount types and
+            percentages below; they will be saved with the product.
+          </p>
+          {discountTypes.length === 0 && (
+            <p>
+              Create discount types first from the Discounts page in the
+              sidebar.
+            </p>
+          )}
+        </div>
+      )}
+
+      {discounts.length > 0 && (
+        <div className="space-y-3 border rounded-lg p-4">
+          {discounts.map((discount, index) => (
+            <div
+              key={index}
+              className="flex flex-wrap items-end gap-3 gap-y-2 border-b pb-3 last:border-b-0 last:pb-0"
+            >
+              <div className="flex-1 min-w-[140px] space-y-1">
+                <Label className="text-xs text-muted-foreground">
+                  Discount type
+                </Label>
+                {canEdit ? (
+                  <Select
+                    value={discount.discountTypeId || ""}
+                    onValueChange={(value) =>
+                      updateRow(index, { discountTypeId: value })
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {discountTypes.map((dt) => (
+                        <SelectItem
+                          key={dt.id}
+                          value={dt.id}
+                          disabled={
+                            usedTypeIds.has(dt.id) &&
+                            discount.discountTypeId !== dt.id
+                          }
+                        >
+                          {dt.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <p className="text-sm font-medium py-2">
+                    {discountTypes.find((t) => t.id === discount.discountTypeId)
+                      ?.name ?? "—"}
+                  </p>
+                )}
+              </div>
+              <div className="w-24 space-y-1">
+                <Label className="text-xs text-muted-foreground">%</Label>
+                {canEdit ? (
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    step={0.5}
+                    value={discount.discountPercentage}
+                    onChange={(e) =>
+                      updateRow(index, {
+                        discountPercentage: e.target.value,
+                      })
+                    }
+                    placeholder="0"
+                  />
+                ) : (
+                  <p className="text-sm font-medium py-2">
+                    {discount.discountPercentage}%
+                  </p>
+                )}
+              </div>
+              {canEdit && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="shrink-0 text-destructive"
+                  onClick={() => removeRow(index)}
+                  aria-label="Remove discount"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {canEdit && discounts.length > 0 && (
+        <Button type="button" variant="outline" size="sm" onClick={addRow}>
+          <Plus className="h-3 w-3 mr-1" /> Add discount
+        </Button>
       )}
     </div>
   );

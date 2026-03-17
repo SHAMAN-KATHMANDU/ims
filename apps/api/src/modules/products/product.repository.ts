@@ -426,6 +426,30 @@ export class ProductRepository {
     });
   }
 
+  /** Replace all EAV attributes for a variation (e.g. when changing Size M → S). */
+  setVariationAttributes(
+    variationId: string,
+    attributes: Array<{
+      attributeTypeId: string;
+      attributeValueId: string;
+    }>,
+  ) {
+    return prisma.$transaction(async (tx) => {
+      await tx.productVariationAttribute.deleteMany({
+        where: { variationId },
+      });
+      if (attributes.length > 0) {
+        await tx.productVariationAttribute.createMany({
+          data: attributes.map((a) => ({
+            variationId,
+            attributeTypeId: a.attributeTypeId,
+            attributeValueId: a.attributeValueId,
+          })),
+        });
+      }
+    });
+  }
+
   updateProductVariation(
     id: string,
     data: {

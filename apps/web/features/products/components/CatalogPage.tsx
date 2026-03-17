@@ -446,6 +446,10 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                     isPrimary: p.isPrimary,
                   }))
                 : undefined,
+            attributes:
+              v.attributes && v.attributes.length > 0
+                ? v.attributes
+                : undefined,
           }));
 
           data.discounts = productDiscounts
@@ -557,11 +561,15 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     }
 
     setEditingProduct(product);
+    const categoryId =
+      product.categoryId ??
+      (product as { category?: { id: string } }).category?.id ??
+      "";
     productForm.setValues({
       imsCode: product.imsCode ?? "",
       name: product.name,
-      categoryId: product.categoryId,
-      subCategory: product.subCategory || "",
+      categoryId,
+      subCategory: product.subCategory ?? "",
       description: product.description || "",
       length: product.length?.toString() || "",
       breadth: product.breadth?.toString() || "",
@@ -596,18 +604,22 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
               photoUrl: p.photoUrl,
               isPrimary: p.isPrimary || false,
             })),
-            attributes:
+            attributes: (
               (
                 v as {
                   attributes?: Array<{
-                    attributeTypeId: string;
-                    attributeValueId: string;
+                    attributeTypeId?: string;
+                    attributeValueId?: string;
+                    attributeType?: { id: string };
+                    attributeValue?: { id: string };
                   }>;
                 }
               ).attributes?.map((a) => ({
-                attributeTypeId: a.attributeTypeId,
-                attributeValueId: a.attributeValueId,
-              })) ?? [],
+                attributeTypeId: a.attributeTypeId ?? a.attributeType?.id ?? "",
+                attributeValueId:
+                  a.attributeValueId ?? a.attributeValue?.id ?? "",
+              })) ?? []
+            ).filter((a) => a.attributeTypeId && a.attributeValueId),
           };
         }),
       );
@@ -928,6 +940,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                 variations={productVariations}
                 discounts={productDiscounts}
                 discountTypes={discountTypes}
+                onDiscountsChange={setProductDiscounts}
                 onReset={handleResetProduct}
                 onAddVariation={addVariationToForm}
                 onRemoveVariation={removeVariationFromForm}
