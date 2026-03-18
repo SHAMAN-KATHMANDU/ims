@@ -69,6 +69,10 @@ model Tenant {
   crmJourneyTypes  CrmJourneyType[]
   remarketingSequences RemarketingSequence[]
 
+  // Messaging relations
+  messagingChannels MessagingChannel[]
+  conversations     Conversation[]
+
   @@map("tenants")
 }
 
@@ -101,6 +105,7 @@ model PlanLimit {
   auditLogs       Boolean  @default(false) @map("audit_logs")
   apiAccess       Boolean  @default(false) @map("api_access")
   salesPipeline   Boolean  @default(false) @map("sales_pipeline")
+  messaging       Boolean  @default(false)
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
@@ -231,6 +236,10 @@ model User {
   dealsCreated          Deal[]            @relation("DealCreator")
   dealsEdited           Deal[]            @relation("DealEditedBy")
   leadsCreated          Lead[]            @relation("LeadCreator")
+
+  // Messaging relations
+  assignedConversations Conversation[]    @relation("ConversationAssignedTo")
+  sentMessages          Message[]         @relation("MessageSender")
 
   @@unique([tenantId, username])
   @@map("users")
@@ -993,6 +1002,9 @@ model Contact {
   sales                 Sale[]
   remarketingSequences  RemarketingSequence[]
 
+  // Messaging relations
+  conversations  Conversation[]
+
   @@index([tenantId])
   @@map("contacts")
 }
@@ -1331,6 +1343,7 @@ enum NotificationType {
   TASK_DUE
   DEAL_STAGE_CHANGE
   LEAD_ASSIGNMENT
+  NEW_MESSAGE
 }
 
 model Notification {
@@ -1379,4 +1392,184 @@ model RemarketingSequence {
   @@index([tenantId])
   @@index([status, scheduledAt])
   @@map("remarketing_sequences")
+}
+
+// ============================================
+// MESSAGING SYSTEM
+// ============================================
+
+enum MessagingProvider {
+  FACEBOOK_MESSENGER
+}
+
+enum ChannelStatus {
+  PENDING
+  ACTIVE
+  DISCONNECTED
+  ERROR
+}
+
+enum ConversationStatus {
+  OPEN
+  CLOSED
+  ARCHIVED
+}
+
+enum MessageDirection {
+  INBOUND
+  OUTBOUND
+}
+
+enum MessageStatus {
+  PENDING
+  SENT
+  DELIVERED
+  READ
+  FAILED
+}
+
+enum MessageContentType {
+  TEXT
+  IMAGE
+  VIDEO
+  AUDIO
+  FILE
+  LOCATION
+  POSTBACK
+  STICKER
+}
+
+/// A tenant's connected messaging channel (e.g., a Facebook Page).
+model MessagingChannel {
+  id                 String            @id @default(uuid()) @map("channel_id")
+  tenantId           String            @map("tenant_id")
+  provider           MessagingProvider
+  name               String            @db.VarChar(255)
+  status             ChannelStatus     @default(PENDING)
+
+  /// Facebook Page ID — used for inbound routing.
+  externalId         String            @map("external_id") @db.VarChar(255)
+
+  /// Encrypted per-channel credentials (JSON, encrypted at rest).
+  /// Facebook: { pageAccessToken: "..." }
+  credentialsEnc     String            @map("credentials_enc") @db.Text
+
+  /// Random string for Meta's GET challenge-response verification.
+  webhookVerifyToken String?           @map("webhook_verify_token") @db.VarChar(255)
+
+  /// Non-sensitive provider metadata (page name, category, URL).
+  metadata           Json?
+
+  connectedAt        DateTime?         @map("connected_at")
+  disconnectedAt     DateTime?         @map("disconnected_at")
+  createdAt          DateTime          @default(now()) @map("created_at")
+  updatedAt          DateTime          @updatedAt @map("updated_at")
+
+  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations      Conversation[]
+
+  @@unique([provider, externalId])
+  @@index([tenantId])
+  @@index([externalId])
+  @@map("messaging_channels")
+}
+
+/// A conversation thread between a tenant (via a channel) and an external participant.
+model Conversation {
+  id              String              @id @default(uuid()) @map("conversation_id")
+  tenantId        String              @map("tenant_id")
+  channelId       String              @map("channel_id")
+
+  /// Page-scoped User ID (PSID) for Facebook Messenger.
+  participantId   String              @map("participant_id") @db.VarChar(255)
+
+  /// Resolved display name of the external participant.
+  participantName String?             @map("participant_name") @db.VarChar(255)
+
+  /// Link to IMS Contact (auto-matched or manually linked).
+  contactId       String?             @map("contact_id")
+
+  status          ConversationStatus  @default(OPEN)
+
+  /// User currently assigned to handle this conversation.
+  assignedToId    String?             @map("assigned_to_id")
+
+  /// Timestamp of the last message (for sorting).
+  lastMessageAt   DateTime?           @map("last_message_at")
+
+  /// Snippet of the last message for list views.
+  lastMessageText String?             @map("last_message_text") @db.VarChar(500)
+
+  /// Count of unread inbound messages.
+  unreadCount     Int                 @default(0) @map("unread_count")
+
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  channel         MessagingChannel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  contact         Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo      User?               @relation("ConversationAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages        Message[]
+
+  @@unique([channelId, participantId])
+  @@index([tenantId])
+  @@index([tenantId, status])
+  @@index([lastMessageAt])
+  @@map("conversations")
+}
+
+/// Individual message within a conversation.
+model Message {
+  id                String             @id @default(uuid()) @map("message_id")
+  conversationId    String             @map("conversation_id")
+  direction         MessageDirection
+  status            MessageStatus      @default(PENDING)
+  contentType       MessageContentType @default(TEXT) @map("content_type")
+
+  /// Text content (or caption for media messages).
+  textContent       String?            @map("text_content") @db.Text
+
+  /// Structured media/payload content (provider-agnostic JSON).
+  mediaPayload      Json?              @map("media_payload")
+
+  /// Provider's message ID for deduplication and status tracking.
+  providerMessageId String?            @map("provider_message_id") @db.VarChar(255)
+
+  /// ID of the IMS user who sent this outbound message (null for inbound).
+  sentById          String?            @map("sent_by_id")
+
+  /// Error details if sending failed.
+  errorDetails      Json?              @map("error_details")
+
+  /// Timestamps for delivery tracking.
+  sentAt            DateTime?          @map("sent_at")
+  deliveredAt       DateTime?          @map("delivered_at")
+  readAt            DateTime?          @map("read_at")
+  createdAt         DateTime           @default(now()) @map("created_at")
+
+  conversation      Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sentBy            User?              @relation("MessageSender", fields: [sentById], references: [id], onDelete: SetNull)
+
+  @@index([conversationId, createdAt])
+  @@index([providerMessageId])
+  @@map("messages")
+}
+
+/// Idempotency tracking for inbound webhook events.
+model WebhookEvent {
+  id              String            @id @default(uuid()) @map("event_id")
+
+  /// Provider-assigned event/message ID for deduplication.
+  providerEventId String            @unique @map("provider_event_id") @db.VarChar(255)
+
+  provider        MessagingProvider
+  eventType       String            @db.VarChar(100)
+  processedAt     DateTime          @default(now()) @map("processed_at")
+
+  /// Raw event payload for debugging/replay.
+  rawPayload      Json?             @map("raw_payload")
+
+  @@index([providerEventId])
+  @@map("webhook_events")
 }

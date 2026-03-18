@@ -43,6 +43,10 @@ import notificationRouter from "@/modules/notifications/notification.router";
 import crmRouter from "@/modules/crm/crm.router";
 import crmSettingsRouter from "@/modules/crm-settings/crm-settings.router";
 import workflowRouter from "@/modules/workflows/workflow.router";
+import webhookRouter from "@/modules/webhooks/webhook.router";
+import messagingChannelRouter from "@/modules/messaging-channels/messaging-channel.router";
+import messagingRouter from "@/modules/messaging/messaging.router";
+import trashRouter from "@/modules/trash/trash.router";
 
 const router = Router();
 
@@ -52,6 +56,11 @@ router.get("/", (req: Request, res: Response) => {
     version: getVersion(),
   });
 });
+
+// ============================================
+// Webhook routes (no auth — signature verification only)
+// ============================================
+router.use("/webhooks", webhookRouter);
 
 // ============================================
 // Auth routes (no tenant middleware; tenant from X-Tenant-Slug)
@@ -92,5 +101,8 @@ router.use("/notifications", notificationRouter);
 router.use("/crm", crmRouter);
 router.use("/crm-settings", crmSettingsRouter);
 router.use("/workflows", workflowRouter);
+router.use("/trash", trashRouter);
+router.use("/messaging-channels", messagingChannelRouter);
+router.use("/messaging", messagingRouter);
 
 export default router;
