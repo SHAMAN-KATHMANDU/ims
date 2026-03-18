@@ -12,6 +12,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -189,19 +190,18 @@ export function SalesFilterBar({
             </div>
             <div className="col-span-2 space-y-1">
               <Label className="text-xs">Showroom</Label>
-              <Select value={locationFilter} onValueChange={onLocationChange}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Showroom" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Showrooms</SelectItem>
-                  {showrooms.map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={showrooms.map((l) => ({
+                  value: l.id,
+                  label: l.name,
+                }))}
+                value={locationFilter}
+                onChange={onLocationChange}
+                placeholder="Select showroom"
+                includeAll
+                allLabel="All Showrooms"
+                allValue="ALL"
+              />
             </div>
             <p className="text-xs font-medium text-muted-foreground col-span-2 pt-1">
               Date range

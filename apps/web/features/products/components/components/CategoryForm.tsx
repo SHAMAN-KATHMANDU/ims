@@ -23,6 +23,7 @@ interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingCategory: Category | null;
+  initialSubcategoryNames?: string[];
   onSubmit: (data: CategoryFormInput) => Promise<void>;
   onReset: () => void;
   isLoading?: boolean;
@@ -32,6 +33,7 @@ export function CategoryForm({
   open,
   onOpenChange,
   editingCategory,
+  initialSubcategoryNames,
   onSubmit,
   onReset,
   isLoading = false,
@@ -53,13 +55,13 @@ export function CategoryForm({
       form.reset({
         name: editingCategory.name,
         description: editingCategory.description || "",
-        subcategories: [],
+        subcategories: initialSubcategoryNames ?? [],
       });
     } else if (!open) {
       form.reset({ name: "", description: "", subcategories: [] });
       setSubcategoryInput("");
     }
-  }, [open, editingCategory, form]);
+  }, [open, editingCategory, initialSubcategoryNames, form]);
 
   const handleAddSubcategory = () => {
     const trimmed = subcategoryInput.trim();
@@ -117,55 +119,54 @@ export function CategoryForm({
             <Label htmlFor="cat-description">Description</Label>
             <Textarea id="cat-description" {...form.register("description")} />
           </div>
-          {!editingCategory && (
-            <div className="space-y-2">
-              <Label>Subcategories (optional)</Label>
-              <p className="text-xs text-muted-foreground">
-                Add subcategories for this category. You can also add them later
-                via the Manage subcategories action.
-              </p>
-              {subcategories.length > 0 && (
-                <div className="flex flex-wrap gap-2 mt-1">
-                  {subcategories.map((sub, index) => (
-                    <Badge
-                      key={`${sub}-${index}`}
-                      variant="secondary"
-                      className="flex items-center gap-1"
+          <div className="space-y-2">
+            <Label>Subcategories (optional)</Label>
+            <p className="text-xs text-muted-foreground">
+              {editingCategory
+                ? "Add or remove subcategories for this category."
+                : "Add subcategories for this category. You can also add them later via the Manage subcategories action."}
+            </p>
+            {subcategories.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-1">
+                {subcategories.map((sub, index) => (
+                  <Badge
+                    key={`${sub}-${index}`}
+                    variant="secondary"
+                    className="flex items-center gap-1"
+                  >
+                    <span>{sub}</span>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                      onClick={() => handleRemoveSubcategory(index)}
                     >
-                      <span>{sub}</span>
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground hover:text-destructive"
-                        onClick={() => handleRemoveSubcategory(index)}
-                      >
-                        ×
-                      </button>
-                    </Badge>
-                  ))}
-                </div>
-              )}
-              <div className="flex gap-2 mt-1">
-                <Input
-                  value={subcategoryInput}
-                  onChange={(e) => setSubcategoryInput(e.target.value)}
-                  placeholder="Enter subcategory name"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddSubcategory();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAddSubcategory}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add
-                </Button>
+                      ×
+                    </button>
+                  </Badge>
+                ))}
               </div>
+            )}
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={subcategoryInput}
+                onChange={(e) => setSubcategoryInput(e.target.value)}
+                placeholder="Enter subcategory name"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddSubcategory();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddSubcategory}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add
+              </Button>
             </div>
-          )}
+          </div>
           <div className="flex gap-2 justify-end">
             <Button
               type="button"
