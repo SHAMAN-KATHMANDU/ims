@@ -17,6 +17,7 @@ export async function seedPlanLimits(prisma: PrismaClient): Promise<void> {
       auditLogs: false,
       apiAccess: false,
       salesPipeline: false,
+      messaging: false,
     },
     update: {
       maxUsers: 3,
@@ -30,6 +31,7 @@ export async function seedPlanLimits(prisma: PrismaClient): Promise<void> {
       auditLogs: false,
       apiAccess: false,
       salesPipeline: false,
+      messaging: false,
     },
   });
 
@@ -48,6 +50,7 @@ export async function seedPlanLimits(prisma: PrismaClient): Promise<void> {
       auditLogs: false,
       apiAccess: false,
       salesPipeline: true,
+      messaging: true,
     },
     update: {
       maxUsers: 10,
@@ -61,6 +64,7 @@ export async function seedPlanLimits(prisma: PrismaClient): Promise<void> {
       auditLogs: false,
       apiAccess: false,
       salesPipeline: true,
+      messaging: true,
     },
   });
 
@@ -79,6 +83,7 @@ export async function seedPlanLimits(prisma: PrismaClient): Promise<void> {
       auditLogs: true,
       apiAccess: true,
       salesPipeline: true,
+      messaging: true,
     },
     update: {
       maxUsers: -1,
@@ -92,6 +97,7 @@ export async function seedPlanLimits(prisma: PrismaClient): Promise<void> {
       auditLogs: true,
       apiAccess: true,
       salesPipeline: true,
+      messaging: true,
     },
   });
 
