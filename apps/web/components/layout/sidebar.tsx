@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import {
   Home,
   Package,
+  MessageSquare,
   ChevronLeft,
   ChevronDown,
   Warehouse,
@@ -194,6 +195,18 @@ const navSections: NavSection[] = [
         icon: Bell,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.NOTIFICATIONS,
+      },
+    ],
+  },
+  {
+    title: "MESSAGING",
+    items: [
+      {
+        path: "messaging",
+        label: "Inbox",
+        icon: MessageSquare,
+        roles: ["user", "admin", "superAdmin"],
+        feature: Feature.MESSAGING,
       },
     ],
   },

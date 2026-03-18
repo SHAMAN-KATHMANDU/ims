@@ -42,6 +42,10 @@ const EnvSchema = z
     DATABASE_URL: z.string().optional().default(""),
     CORS_ORIGIN: z.string().optional(),
     API_PUBLIC_URL: z.string().optional(),
+    REDIS_URL: z.string().optional(),
+    META_APP_ID: z.string().optional(),
+    META_APP_SECRET: z.string().optional(),
+    CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
   })
   .transform((raw) => {
     const isDev = raw.NODE_ENV === "development";
@@ -131,6 +135,10 @@ const EnvSchema = z
       appEnv,
       featureFlags: raw.FEATURE_FLAGS?.trim(),
       features: {} as const,
+      redisUrl: raw.REDIS_URL?.trim() ?? "redis://localhost:6379",
+      metaAppId: raw.META_APP_ID?.trim() ?? "",
+      metaAppSecret: raw.META_APP_SECRET?.trim() ?? "",
+      credentialEncryptionKey: raw.CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "",
     };
   });
 

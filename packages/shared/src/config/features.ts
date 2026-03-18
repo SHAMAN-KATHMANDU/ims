@@ -39,6 +39,9 @@ export enum Feature {
 
   // CRM / Sales
   SALES_PIPELINE = "SALES_PIPELINE",
+
+  // Messaging
+  MESSAGING = "MESSAGING",
 }
 
 export interface FeatureDefinition {
@@ -110,6 +113,13 @@ export const FEATURE_REGISTRY: Record<Feature, FeatureDefinition> = {
     minimumPlan: PlanTier.PROFESSIONAL,
     upgradeMessage: "Upgrade to Professional to use sales pipelines and deals.",
   },
+  [Feature.MESSAGING]: {
+    label: "Messaging",
+    description:
+      "Connect Facebook Messenger to communicate with contacts directly",
+    minimumPlan: PlanTier.PROFESSIONAL,
+    upgradeMessage: "Upgrade to Professional to connect messaging channels.",
+  },
 };
 
 /**
@@ -167,6 +177,7 @@ export interface PlanLimits {
   auditLogs: boolean;
   apiAccess: boolean;
   salesPipeline: boolean;
+  messaging: boolean;
 }
 
 /**
@@ -186,6 +197,7 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     auditLogs: false,
     apiAccess: false,
     salesPipeline: false,
+    messaging: false,
   },
   [PlanTier.PROFESSIONAL]: {
     maxUsers: 10,
@@ -199,6 +211,7 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     auditLogs: false,
     apiAccess: false,
     salesPipeline: true,
+    messaging: true,
   },
   [PlanTier.ENTERPRISE]: {
     maxUsers: -1,
@@ -212,5 +225,6 @@ export const DEFAULT_PLAN_LIMITS: Record<PlanTier, PlanLimits> = {
     auditLogs: true,
     apiAccess: true,
     salesPipeline: true,
+    messaging: true,
   },
 };

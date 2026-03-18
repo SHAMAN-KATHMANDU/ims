@@ -135,6 +135,7 @@ export class PlatformService {
           auditLogs: row.auditLogs,
           apiAccess: row.apiAccess,
           salesPipeline: row.salesPipeline,
+          messaging: row.messaging,
         };
       }
     } catch {

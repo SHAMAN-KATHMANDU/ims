@@ -24,6 +24,22 @@ services:
       timeout: 5s
       retries: 5
 
+  dev_redis:
+    image: redis:7-alpine
+    container_name: dev_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - dev_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dev
+
   dev_api:
     image: rpandox/dev-api-ims:dev
     container_name: dev_api
@@ -34,6 +50,8 @@ services:
       - .env
     depends_on:
       dev_db:
+        condition: service_healthy
+      dev_redis:
         condition: service_healthy
     networks:
       - dev
@@ -55,3 +73,4 @@ networks:
 
 volumes:
   dev_db_data:
+  dev_redis_data:

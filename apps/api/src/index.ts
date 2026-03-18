@@ -6,6 +6,12 @@ import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
 import { startRemarketingScheduler } from "@/modules/remarketing/remarketing.scheduler";
+import { setupSocketIO } from "@/config/socket.config";
+
+// Import workers so they start processing jobs
+import "@/queues/inbound-message.worker";
+import "@/queues/outbound-message.worker";
+import "@/queues/status-update.worker";
 
 // Note: dotenv.config() is called in env.ts - do not call it here
 const PORT = env.port;
@@ -55,6 +61,10 @@ const startServer = async () => {
 
     httpServer = http.createServer(app);
 
+    // Set up Socket.IO for real-time messaging
+    setupSocketIO(httpServer);
+    logger.log("Socket.IO server initialized");
+
     httpServer.listen(PORT, HOST, () => {
       logger.log(`Server running on http://${HOST}:${PORT}`);
       logger.log(
@@ -62,6 +72,7 @@ const startServer = async () => {
       );
       startTrashCleanupCron();
       startRemarketingScheduler();
+      logger.log("BullMQ workers started");
       logger.log("Server startup complete");
     });
   } catch (error) {

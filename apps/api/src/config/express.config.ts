@@ -44,6 +44,9 @@ app.use(
   }),
 );
 
+// Webhook routes need raw body for HMAC signature verification — must come before express.json()
+app.use("/api/v1/webhooks", express.raw({ type: "application/json" }));
+
 // Middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
