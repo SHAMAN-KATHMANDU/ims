@@ -69,6 +69,7 @@ import {
   type ProductDiscountListParams,
 } from "@/features/products";
 import { formatCurrency } from "@/lib/format";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { useToast } from "@/hooks/useToast";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -512,63 +513,48 @@ export function DiscountsTab() {
               <div className="grid gap-2">
                 <div className="space-y-1">
                   <Label className="text-xs">Product</Label>
-                  <Select
+                  <SearchableSelect
+                    options={products.map((p) => ({
+                      value: p.id,
+                      label: `${p.name} (${(p as { imsCode?: string }).imsCode ?? "—"})`,
+                    }))}
                     value={params.productId ?? "all"}
-                    onValueChange={(v) => handleFilterChange("productId", v)}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {products.map((p) => (
-                        <SelectItem key={p.id} value={p.id}>
-                          {p.name} ({(p as { imsCode?: string }).imsCode ?? "—"}
-                          )
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => handleFilterChange("productId", v)}
+                    placeholder="Select product"
+                    includeAll
+                    allLabel="All Products"
+                    allValue="all"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Category</Label>
-                  <Select
+                  <SearchableSelect
+                    options={categories.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                    }))}
                     value={params.categoryId ?? "all"}
-                    onValueChange={(v) => handleFilterChange("categoryId", v)}
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {categories.map((c) => (
-                        <SelectItem key={c.id} value={c.id}>
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => handleFilterChange("categoryId", v)}
+                    placeholder="Select category"
+                    includeAll
+                    allLabel="All Categories"
+                    allValue="all"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Discount type</Label>
-                  <Select
+                  <SearchableSelect
+                    options={discountTypes.map((dt) => ({
+                      value: dt.id,
+                      label: dt.name,
+                    }))}
                     value={params.discountTypeId ?? "all"}
-                    onValueChange={(v) =>
-                      handleFilterChange("discountTypeId", v)
-                    }
-                  >
-                    <SelectTrigger className="h-8 text-sm">
-                      <SelectValue placeholder="All" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All</SelectItem>
-                      {discountTypes.map((dt) => (
-                        <SelectItem key={dt.id} value={dt.id}>
-                          {dt.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    onChange={(v) => handleFilterChange("discountTypeId", v)}
+                    placeholder="Select discount type"
+                    includeAll
+                    allLabel="All Types"
+                    allValue="all"
+                  />
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Sort</Label>

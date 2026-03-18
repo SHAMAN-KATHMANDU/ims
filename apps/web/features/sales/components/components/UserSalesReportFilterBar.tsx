@@ -11,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
@@ -25,7 +26,11 @@ import { cn } from "@/lib/utils";
 import type { SaleType } from "../../hooks/use-sales";
 import type { Location } from "@/features/locations";
 
-export type UserReportSortField = "createdAt" | "total" | "subtotal" | "saleCode";
+export type UserReportSortField =
+  | "createdAt"
+  | "total"
+  | "subtotal"
+  | "saleCode";
 export type UserReportSortOrder = "asc" | "desc";
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -113,7 +118,11 @@ export function UserSalesReportFilterBar({
       </Select>
       <Popover>
         <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" className="h-9 gap-2 text-sm shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 text-sm shrink-0"
+          >
             <Filter className="h-4 w-4" />
             Filters
           </Button>
@@ -158,19 +167,18 @@ export function UserSalesReportFilterBar({
             </div>
             <div className="col-span-2 space-y-1">
               <Label className="text-xs">Showroom</Label>
-              <Select value={locationFilter} onValueChange={onLocationChange}>
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="Showroom" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Showrooms</SelectItem>
-                  {showrooms.map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                options={showrooms.map((l) => ({
+                  value: l.id,
+                  label: l.name,
+                }))}
+                value={locationFilter}
+                onChange={onLocationChange}
+                placeholder="Select showroom"
+                includeAll
+                allLabel="All Showrooms"
+                allValue="ALL"
+              />
             </div>
             <p className="text-xs font-medium text-muted-foreground col-span-2 pt-1">
               Date range

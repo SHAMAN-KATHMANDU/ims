@@ -21,12 +21,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { MultiSelectCombobox } from "@/components/ui/multi-select-combobox";
 import { Plus } from "lucide-react";
-import {
-  useProductsPaginated,
-  useProducts,
-  useCategories,
-} from "@/features/products";
+import { useProducts, useCategories } from "@/features/products";
 import type {
   PromoCode,
   CreateOrUpdatePromoData,
@@ -82,31 +79,51 @@ export function PromoForm({
     defaultValues,
   });
 
-  const { data: productsResponse } = useProductsPaginated({
-    page: 1,
-    limit: 10,
-  });
   const { data: allProducts = [] } = useProducts();
   const { data: categories = [] } = useCategories();
 
-  const allSubcategories = useMemo(() => {
+  const categoryIds = form.watch("categoryIds") ?? [];
+  const subCategories = form.watch("subCategories") ?? [];
+  const categoryIdsKey = JSON.stringify(categoryIds);
+  const subCategoriesKey = JSON.stringify(subCategories);
+
+  const filteredSubcategories = useMemo(() => {
+    const products = allProducts ?? [];
+    const filtered =
+      categoryIds.length > 0
+        ? products.filter((p) => categoryIds.includes(p.categoryId))
+        : products;
     const set = new Set<string>();
-    (allProducts ?? []).forEach((p) => {
+    filtered.forEach((p) => {
       if (p.subCategory) set.add(p.subCategory);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [allProducts]);
+    // categoryIdsKey used instead of categoryIds to avoid unstable deps (form.watch returns new array ref each render)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allProducts, categoryIdsKey]);
 
   const filteredProducts = useMemo(() => {
-    const productsBase = productsResponse?.data ?? [];
-    if (!productSearch.trim()) return productsBase;
-    const term = productSearch.toLowerCase();
-    return productsBase.filter(
-      (p) =>
-        p.name.toLowerCase().includes(term) ||
-        (p as { imsCode?: string }).imsCode?.toLowerCase().includes(term),
-    );
-  }, [productsResponse, productSearch]);
+    let products = allProducts ?? [];
+    if (categoryIds.length > 0) {
+      products = products.filter((p) => categoryIds.includes(p.categoryId));
+    }
+    if (subCategories.length > 0) {
+      products = products.filter(
+        (p) => p.subCategory && subCategories.includes(p.subCategory),
+      );
+    }
+    if (productSearch.trim()) {
+      const term = productSearch.toLowerCase();
+      products = products.filter(
+        (p) =>
+          p.name.toLowerCase().includes(term) ||
+          (p as { imsCode?: string }).imsCode?.toLowerCase().includes(term),
+      );
+    }
+    return products;
+    // categoryIdsKey/subCategoriesKey used instead of raw arrays to avoid unstable deps (form.watch returns new refs each render)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [allProducts, categoryIdsKey, subCategoriesKey, productSearch]);
 
   useEffect(() => {
     if (open && editingPromo) {
@@ -167,9 +184,18 @@ export function PromoForm({
   };
 
   const productIds = form.watch("productIds") ?? [];
-  const categoryIds = form.watch("categoryIds") ?? [];
-  const subCategories = form.watch("subCategories") ?? [];
   const applyToAll = form.watch("applyToAll");
+
+  useEffect(() => {
+    if (categoryIds.length === 0) return;
+    const validSubs = new Set(filteredSubcategories);
+    const cleaned = subCategories.filter((s) => validSubs.has(s));
+    if (cleaned.length !== subCategories.length) {
+      form.setValue("subCategories", cleaned);
+    }
+    // categoryIdsKey/subCategoriesKey used instead of raw arrays to avoid unstable deps (form.watch returns new refs each render)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [categoryIdsKey, filteredSubcategories, subCategoriesKey, form]);
 
   const formContent = (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -421,69 +447,31 @@ export function PromoForm({
           {!applyToAll && (
             <>
               <div className="space-y-1">
-                <label className="text-xs font-medium">
-                  Filter by Category
-                </label>
-                <div className="flex flex-wrap gap-1">
-                  {categories.map((cat) => {
-                    const selected = categoryIds.includes(cat.id);
-                    return (
-                      <button
-                        key={cat.id}
-                        type="button"
-                        className={`px-2 py-0.5 rounded-full text-xs border ${
-                          selected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                        onClick={() => {
-                          const exists = categoryIds.includes(cat.id);
-                          form.setValue(
-                            "categoryIds",
-                            exists
-                              ? categoryIds.filter((id) => id !== cat.id)
-                              : [...categoryIds, cat.id],
-                          );
-                        }}
-                      >
-                        {cat.name}
-                      </button>
-                    );
-                  })}
-                </div>
+                <label className="text-xs font-medium">Categories</label>
+                <MultiSelectCombobox
+                  options={categories.map((c) => ({
+                    value: c.id,
+                    label: c.name,
+                  }))}
+                  selected={categoryIds}
+                  onChange={(ids) => form.setValue("categoryIds", ids)}
+                  placeholder="Add categories..."
+                  emptyMessage="No categories found"
+                />
               </div>
 
               <div className="space-y-1">
-                <label className="text-xs font-medium">
-                  Filter by Subcategory
-                </label>
-                <div className="flex flex-wrap gap-1">
-                  {allSubcategories.map((sub) => {
-                    const selected = subCategories.includes(sub);
-                    return (
-                      <button
-                        key={sub}
-                        type="button"
-                        className={`px-2 py-0.5 rounded-full text-xs border ${
-                          selected
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground"
-                        }`}
-                        onClick={() => {
-                          const exists = subCategories.includes(sub);
-                          form.setValue(
-                            "subCategories",
-                            exists
-                              ? subCategories.filter((s) => s !== sub)
-                              : [...subCategories, sub],
-                          );
-                        }}
-                      >
-                        {sub}
-                      </button>
-                    );
-                  })}
-                </div>
+                <label className="text-xs font-medium">Subcategories</label>
+                <MultiSelectCombobox
+                  options={filteredSubcategories.map((s) => ({
+                    value: s,
+                    label: s,
+                  }))}
+                  selected={subCategories}
+                  onChange={(subs) => form.setValue("subCategories", subs)}
+                  placeholder="Add subcategories..."
+                  emptyMessage="No subcategories found"
+                />
               </div>
 
               <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">

@@ -40,6 +40,7 @@ import { EnvFeatureGuard, FeatureGuard } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { LocationSelector } from "@/components/ui/location-selector";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -1020,61 +1021,49 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                   <div className="grid gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs">Category</Label>
-                      <Select
+                      <SearchableSelect
+                        options={categories.map((c) => ({
+                          value: c.id,
+                          label: c.name,
+                        }))}
                         value={paginationParams.categoryId ?? "all"}
-                        onValueChange={handleCategoryChange}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          {categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={handleCategoryChange}
+                        placeholder="Select category"
+                        includeAll
+                        allLabel="All Categories"
+                        allValue="all"
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Subcategory</Label>
-                      <Select
+                      <SearchableSelect
+                        options={(subcategories ?? []).map((s) => ({
+                          value: s,
+                          label: s,
+                        }))}
                         value={paginationParams.subCategory ?? "all"}
-                        onValueChange={handleSubCategoryChange}
+                        onChange={handleSubCategoryChange}
+                        placeholder="Select subcategory"
+                        includeAll
+                        allLabel="All Subcategories"
+                        allValue="all"
                         disabled={!paginationParams.categoryId}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          {subcategories.map((name) => (
-                            <SelectItem key={name} value={name}>
-                              {name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Vendor</Label>
-                      <Select
+                      <SearchableSelect
+                        options={vendors.map((v) => ({
+                          value: v.id,
+                          label: v.name,
+                        }))}
                         value={paginationParams.vendorId ?? "all"}
-                        onValueChange={handleVendorChange}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          {vendors.map((v) => (
-                            <SelectItem key={v.id} value={v.id}>
-                              {v.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={handleVendorChange}
+                        placeholder="Select vendor"
+                        includeAll
+                        allLabel="All Vendors"
+                        allValue="all"
+                      />
                     </div>
                   </div>
                   <p className="text-xs font-medium text-muted-foreground pt-1">

@@ -64,10 +64,6 @@ COPY --from=installer /app .
 COPY apps/api/docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
-# Tag the final image
-LABEL stage="final"
-RUN docker rmi $(docker images -f "label=stage=intermediate" -q) || true
-
 USER nestjs
 
 ENTRYPOINT ["/docker-entrypoint.sh"]
