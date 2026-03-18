@@ -1,4 +1,4 @@
-import prisma from "@/config/prisma";
+import { basePrisma } from "@/config/prisma";
 
 /** Prisma model delegate names (camelCase) for trashable entities. */
 export const TRASH_MODEL_KEYS = [
@@ -129,9 +129,12 @@ interface TrashDelegate {
   delete: (args: { where: { id: string } }) => Promise<unknown>;
 }
 
-/** Get typed delegate for a trash model. */
+/** Get typed delegate for a trash model. Uses basePrisma so platform trash sees all tenants (no tenant/deletedAt injection). */
 function getDelegate(model: TrashModelKey): TrashDelegate | undefined {
-  const client = prisma as unknown as Record<string, TrashDelegate | undefined>;
+  const client = basePrisma as unknown as Record<
+    string,
+    TrashDelegate | undefined
+  >;
   return client[model];
 }
 

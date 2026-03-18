@@ -33,10 +33,19 @@ export function CreateTransferPage() {
   const startTransitMutation = useStartTransit();
   const completeTransferMutation = useCompleteTransfer();
 
-  const fetchLocationInventory = useCallback(async (locationId: string) => {
-    const response = await getLocationInventory(locationId, { limit: 100 });
-    return response.data;
-  }, []);
+  const fetchLocationInventory = useCallback(
+    async (
+      locationId: string,
+      params?: { search?: string; limit?: number },
+    ) => {
+      const response = await getLocationInventory(locationId, {
+        limit: params?.limit ?? 50,
+        search: params?.search ?? "",
+      });
+      return response.data;
+    },
+    [],
+  );
 
   const handleSubmit = useCallback(
     async (

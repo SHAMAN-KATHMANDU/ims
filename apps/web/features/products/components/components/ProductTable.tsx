@@ -265,19 +265,34 @@ export function ProductTable({
     (checked: boolean) => {
       if (!onSelectionChange) return;
 
+      const currentPageIds = new Set(products.map((p) => p.id));
+      const newSelection = new Set(selectedProducts);
+
       if (checked) {
-        const allIds = new Set(products.map((p) => p.id));
-        onSelectionChange(allIds);
+        currentPageIds.forEach((id) => newSelection.add(id));
       } else {
-        onSelectionChange(new Set());
+        currentPageIds.forEach((id) => newSelection.delete(id));
       }
+      onSelectionChange(newSelection);
     },
-    [products, onSelectionChange],
+    [products, selectedProducts, onSelectionChange],
   );
 
-  // Check if all products on current page are selected
+  // Header checkbox: all selected (checked), some selected (indeterminate), none (unchecked)
+  const currentPageSelectedCount = products.filter((p) =>
+    selectedProducts.has(p.id),
+  ).length;
   const allSelected =
-    products.length > 0 && products.every((p) => selectedProducts.has(p.id));
+    products.length > 0 && currentPageSelectedCount === products.length;
+  const someSelected =
+    products.length > 0 &&
+    currentPageSelectedCount > 0 &&
+    currentPageSelectedCount < products.length;
+  const headerChecked = allSelected
+    ? true
+    : someSelected
+      ? "indeterminate"
+      : false;
 
   // Calculate column count for empty state and expanded rows
   // Base columns: IMS Code, Name, Variations, Category, (Cost Price if admin), MRP, (4 discount prices if not admin), Stock = 7 or 10
@@ -341,9 +356,9 @@ export function ProductTable({
               {onSelectionChange && (
                 <TableHead className="w-12">
                   <Checkbox
-                    checked={allSelected}
+                    checked={headerChecked}
                     onCheckedChange={handleSelectAll}
-                    aria-label="Select all products"
+                    aria-label="Select all products on this page"
                   />
                 </TableHead>
               )}

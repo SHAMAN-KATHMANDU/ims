@@ -8,32 +8,31 @@ vi.mock("@/config/prisma", () => {
     update: vi.fn().mockResolvedValue({}),
     delete: vi.fn().mockResolvedValue({}),
   };
-  return {
-    default: {
-      product: delegate,
-      category: delegate,
-      subCategory: delegate,
-      vendor: delegate,
-      member: delegate,
-      location: delegate,
-      promoCode: delegate,
-      company: delegate,
-      contact: delegate,
-      lead: delegate,
-      deal: delegate,
-      task: delegate,
-      activity: delegate,
-      pipeline: delegate,
-    },
+  const delegates = {
+    product: delegate,
+    category: delegate,
+    subCategory: delegate,
+    vendor: delegate,
+    member: delegate,
+    location: delegate,
+    promoCode: delegate,
+    company: delegate,
+    contact: delegate,
+    lead: delegate,
+    deal: delegate,
+    task: delegate,
+    activity: delegate,
+    pipeline: delegate,
   };
+  return { basePrisma: delegates };
 });
 
-import prisma from "@/config/prisma";
+import { basePrisma } from "@/config/prisma";
 
 describe("TrashRepository", () => {
   let repo: TrashRepository;
   const delegate = (
-    prisma as unknown as Record<
+    basePrisma as unknown as Record<
       string,
       {
         findMany: ReturnType<typeof vi.fn>;

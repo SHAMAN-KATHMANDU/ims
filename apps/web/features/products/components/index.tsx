@@ -42,6 +42,7 @@ import { useTenantUsage } from "@/features/dashboard";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 import { LocationSelector } from "@/components/ui/location-selector";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -178,15 +179,25 @@ export function ProductPage() {
     appliedEditFromUrl.current = true;
     const product = productToEditFromUrl;
     setEditingProduct(product);
-    productForm.values.name = product.name;
-    productForm.values.categoryId = product.categoryId;
-    productForm.values.description = product.description || "";
-    productForm.values.length = product.length?.toString() || "";
-    productForm.values.breadth = product.breadth?.toString() || "";
-    productForm.values.height = product.height?.toString() || "";
-    productForm.values.weight = product.weight?.toString() || "";
-    productForm.values.costPrice = product.costPrice.toString();
-    productForm.values.mrp = product.mrp.toString();
+    const categoryId =
+      product.categoryId ??
+      (product as { category?: { id: string } }).category?.id ??
+      "";
+    productForm.setValues({
+      ...productForm.values,
+      imsCode: product.imsCode ?? "",
+      name: product.name,
+      categoryId,
+      subCategory: product.subCategory ?? "",
+      description: product.description ?? "",
+      length: product.length?.toString() ?? "",
+      breadth: product.breadth?.toString() ?? "",
+      height: product.height?.toString() ?? "",
+      weight: product.weight?.toString() ?? "",
+      costPrice: product.costPrice?.toString() ?? "",
+      mrp: product.mrp?.toString() ?? "",
+      vendorId: product.vendorId ?? undefined,
+    });
     if (product.variations?.length) {
       setProductVariations(
         product.variations.map((v) => ({
@@ -810,11 +821,15 @@ export function ProductPage() {
     }
 
     setEditingProduct(product);
+    const categoryId =
+      product.categoryId ??
+      (product as { category?: { id: string } }).category?.id ??
+      "";
     productForm.setValues({
       imsCode: product.imsCode ?? "",
       name: product.name,
-      categoryId: product.categoryId,
-      subCategory: product.subCategory || "",
+      categoryId,
+      subCategory: product.subCategory ?? "",
       description: product.description || "",
       length: product.length?.toString() || "",
       breadth: product.breadth?.toString() || "",
@@ -1210,6 +1225,7 @@ export function ProductPage() {
                     variations={productVariations}
                     discounts={productDiscounts}
                     discountTypes={discountTypes}
+                    onDiscountsChange={setProductDiscounts}
                     attributeTypes={attributeTypes}
                     productAttributeTypeIds={productAttributeTypeIds}
                     onProductAttributeTypeIdsChange={setProductAttributeTypeIds}
@@ -1331,61 +1347,49 @@ export function ProductPage() {
                     </p>
                     <div className="space-y-1">
                       <Label className="text-xs">Category</Label>
-                      <Select
+                      <SearchableSelect
+                        options={categories.map((c) => ({
+                          value: c.id,
+                          label: c.name,
+                        }))}
                         value={paginationParams.categoryId ?? "all"}
-                        onValueChange={handleCategoryChange}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          {categories.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={handleCategoryChange}
+                        placeholder="Select category"
+                        includeAll
+                        allLabel="All Categories"
+                        allValue="all"
+                      />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Subcategory</Label>
-                      <Select
+                      <SearchableSelect
+                        options={(subcategories ?? []).map((s) => ({
+                          value: s,
+                          label: s,
+                        }))}
                         value={paginationParams.subCategory ?? "all"}
-                        onValueChange={handleSubCategoryChange}
+                        onChange={handleSubCategoryChange}
+                        placeholder="Select subcategory"
+                        includeAll
+                        allLabel="All Subcategories"
+                        allValue="all"
                         disabled={!paginationParams.categoryId}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          {subcategories.map((name) => (
-                            <SelectItem key={name} value={name}>
-                              {name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      />
                     </div>
                     <div className="col-span-2 space-y-1">
                       <Label className="text-xs">Vendor</Label>
-                      <Select
+                      <SearchableSelect
+                        options={vendors.map((v) => ({
+                          value: v.id,
+                          label: v.name,
+                        }))}
                         value={paginationParams.vendorId ?? "all"}
-                        onValueChange={handleVendorChange}
-                      >
-                        <SelectTrigger className="h-8 text-sm">
-                          <SelectValue placeholder="All" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">All</SelectItem>
-                          {vendors.map((v) => (
-                            <SelectItem key={v.id} value={v.id}>
-                              {v.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                        onChange={handleVendorChange}
+                        placeholder="Select vendor"
+                        includeAll
+                        allLabel="All Vendors"
+                        allValue="all"
+                      />
                     </div>
                     <p className="text-xs font-medium text-muted-foreground col-span-2 pt-1">
                       Date range

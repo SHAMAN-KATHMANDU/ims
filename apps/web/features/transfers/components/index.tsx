@@ -29,6 +29,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Input } from "@/components/ui/input";
 import {
   AlertDialog,
@@ -312,35 +313,26 @@ export function TransfersPage() {
               ))}
             </SelectContent>
           </Select>
-          <Select
+          <SearchableSelect
+            options={locations.map((l) => ({ value: l.id, label: l.name }))}
             value={fromLocationId}
-            onValueChange={handleFromLocationChange}
-          >
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="From location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All from locations</SelectItem>
-              {locations.map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>
-                  {loc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={toLocationId} onValueChange={handleToLocationChange}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="To location" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All to locations</SelectItem>
-              {locations.map((loc) => (
-                <SelectItem key={loc.id} value={loc.id}>
-                  {loc.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            onChange={handleFromLocationChange}
+            placeholder="From location"
+            includeAll
+            allLabel="All from locations"
+            allValue="all"
+            className="w-full sm:w-[160px]"
+          />
+          <SearchableSelect
+            options={locations.map((l) => ({ value: l.id, label: l.name }))}
+            value={toLocationId}
+            onChange={handleToLocationChange}
+            placeholder="To location"
+            includeAll
+            allLabel="All to locations"
+            allValue="all"
+            className="w-full sm:w-[160px]"
+          />
           <Input
             type="date"
             value={dateFrom}

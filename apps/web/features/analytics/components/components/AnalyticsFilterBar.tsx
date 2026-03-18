@@ -20,7 +20,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Checkbox } from "@/components/ui/checkbox";
+import { MultiSelectCombobox } from "@/components/ui/multi-select-combobox";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { CalendarIcon, Filter, X } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -54,13 +55,6 @@ export function AnalyticsFilterBar() {
   const { data: vendorsData } = useVendorsPaginated({ limit: 10 });
   const vendors = vendorsData?.data ?? [];
   const allLocations = locations;
-
-  const handleLocationToggle = (locationId: string, checked: boolean) => {
-    const next = checked
-      ? [...filters.locationIds, locationId]
-      : filters.locationIds.filter((id) => id !== locationId);
-    setFilters({ locationIds: next });
-  };
 
   const startDate = filters.dateFrom ? new Date(filters.dateFrom) : undefined;
   const endDate = filters.dateTo ? new Date(filters.dateTo) : undefined;
@@ -171,29 +165,16 @@ export function AnalyticsFilterBar() {
               <p className="text-xs font-medium text-muted-foreground">
                 Location
               </p>
-              <div className="max-h-28 overflow-y-auto scrollbar-hide space-y-2 border rounded-md p-2">
-                {allLocations.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">No locations</p>
-                ) : (
-                  allLocations.map((loc) => (
-                    <div key={loc.id} className="flex items-center space-x-2">
-                      <Checkbox
-                        id={`loc-${loc.id}`}
-                        checked={filters.locationIds.includes(loc.id)}
-                        onCheckedChange={(checked) =>
-                          handleLocationToggle(loc.id, checked === true)
-                        }
-                      />
-                      <label
-                        htmlFor={`loc-${loc.id}`}
-                        className="text-sm font-normal cursor-pointer"
-                      >
-                        {loc.name}
-                      </label>
-                    </div>
-                  ))
-                )}
-              </div>
+              <MultiSelectCombobox
+                options={allLocations.map((l) => ({
+                  value: l.id,
+                  label: l.name,
+                }))}
+                selected={filters.locationIds}
+                onChange={(ids) => setFilters({ locationIds: ids })}
+                placeholder="Add locations..."
+                emptyMessage="No locations found"
+              />
             </div>
 
             <div className="space-y-1">
@@ -245,71 +226,59 @@ export function AnalyticsFilterBar() {
                 <p className="text-xs font-medium text-muted-foreground">
                   User
                 </p>
-                <Select
+                <SearchableSelect
+                  options={users.map((u: User) => ({
+                    value: u.id,
+                    label: u.username,
+                  }))}
                   value={filters.userId ?? "all"}
-                  onValueChange={(v) =>
+                  onChange={(v) =>
                     setFilters({ userId: v === "all" ? undefined : v })
                   }
-                >
-                  <SelectTrigger className="h-8 text-sm">
-                    <SelectValue placeholder="All users" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All users</SelectItem>
-                    {users.map((u: User) => (
-                      <SelectItem key={u.id} value={u.id}>
-                        {u.username}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Select user"
+                  includeAll
+                  allLabel="All users"
+                  allValue="all"
+                />
               </div>
             )}
             <div className="space-y-1">
               <p className="text-xs font-medium text-muted-foreground">
                 Category
               </p>
-              <Select
+              <SearchableSelect
+                options={categories.map((c) => ({
+                  value: c.id,
+                  label: c.name,
+                }))}
                 value={filters.categoryId ?? "all"}
-                onValueChange={(v) =>
+                onChange={(v) =>
                   setFilters({ categoryId: v === "all" ? undefined : v })
                 }
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="All categories" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All categories</SelectItem>
-                  {categories.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select category"
+                includeAll
+                allLabel="All categories"
+                allValue="all"
+              />
             </div>
             <div className="col-span-2 space-y-1">
               <p className="text-xs font-medium text-muted-foreground">
                 Vendor
               </p>
-              <Select
+              <SearchableSelect
+                options={vendors.map((v) => ({
+                  value: v.id,
+                  label: v.name,
+                }))}
                 value={filters.vendorId ?? "all"}
-                onValueChange={(v) =>
+                onChange={(v) =>
                   setFilters({ vendorId: v === "all" ? undefined : v })
                 }
-              >
-                <SelectTrigger className="h-8 text-sm">
-                  <SelectValue placeholder="All vendors" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All vendors</SelectItem>
-                  {vendors.map((v) => (
-                    <SelectItem key={v.id} value={v.id}>
-                      {v.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                placeholder="Select vendor"
+                includeAll
+                allLabel="All vendors"
+                allValue="all"
+              />
             </div>
           </div>
         </PopoverContent>

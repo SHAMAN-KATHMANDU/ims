@@ -121,7 +121,7 @@ export function BulkUploadDialog({
         </div>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-4 min-w-0 overflow-hidden">
         {/* File Dropzone */}
         {!hasResult && (
           <div
@@ -177,10 +177,10 @@ export function BulkUploadDialog({
 
         {/* File Rejection Errors */}
         {fileRejections.length > 0 && fileRejections[0] && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+          <Alert variant="destructive" className="overflow-hidden">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <AlertTitle>File rejected</AlertTitle>
-            <AlertDescription>
+            <AlertDescription className="break-words min-w-0">
               {fileRejections[0].errors.map((error) => (
                 <div key={error.code}>
                   {error.code === "file-too-large"
@@ -196,10 +196,10 @@ export function BulkUploadDialog({
 
         {/* Upload Error (e.g. wrong/missing columns) */}
         {bulkUploadMutation.isError && bulkUploadMutation.error ? (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
+          <Alert variant="destructive" className="overflow-hidden">
+            <AlertCircle className="h-4 w-4 shrink-0" />
             <AlertTitle>Upload failed</AlertTitle>
-            <AlertDescription className="space-y-2">
+            <AlertDescription className="space-y-2 break-words overflow-auto max-h-48 min-w-0">
               <p>{(bulkUploadMutation.error as Error).message}</p>
               {(
                 bulkUploadMutation.error as Error & {
@@ -245,178 +245,168 @@ export function BulkUploadDialog({
           </div>
         )}
 
-        {/* Upload Result */}
+        {/* Upload Result — single scrollable box so all four sections fit */}
         {hasResult && uploadResult && (
-          <div className="space-y-4">
-            {/* Summary */}
-            <Alert
-              variant={
-                uploadResult.summary.errors === 0 &&
-                uploadResult.summary.skipped === 0
-                  ? "default"
-                  : "destructive"
-              }
-            >
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Upload Summary</AlertTitle>
-              <AlertDescription>
-                <div className="grid grid-cols-2 gap-4 mt-2">
-                  <div>
-                    <span className="font-medium">Total:</span>{" "}
-                    {uploadResult.summary.total}
-                  </div>
-                  <div className="text-green-600">
-                    <CheckCircle2 className="h-4 w-4 inline mr-1" />
-                    <span className="font-medium">Created:</span>{" "}
-                    {uploadResult.summary.created}
-                  </div>
-                  {(uploadResult.summary.updated ?? 0) > 0 && (
-                    <div className="text-blue-600">
-                      <CheckCircle2 className="h-4 w-4 inline mr-1" />
-                      <span className="font-medium">Updated:</span>{" "}
-                      {uploadResult.summary.updated}
+          <ScrollArea className="max-h-[420px] w-full max-w-full min-w-0 overflow-x-hidden rounded-lg border">
+            <div className="space-y-3 p-3 min-w-0 overflow-hidden">
+              {/* Summary */}
+              <Alert
+                variant={
+                  uploadResult.summary.errors === 0 &&
+                  uploadResult.summary.skipped === 0
+                    ? "default"
+                    : "destructive"
+                }
+              >
+                <AlertCircle className="h-4 w-4 shrink-0" />
+                <AlertTitle>Upload Summary</AlertTitle>
+                <AlertDescription>
+                  <div className="grid grid-cols-2 gap-2 mt-1 text-sm">
+                    <div>
+                      <span className="font-medium">Total:</span>{" "}
+                      {uploadResult.summary.total}
                     </div>
-                  )}
-                  {uploadResult.summary.skipped > 0 && (
-                    <div className="text-yellow-600">
-                      <AlertCircle className="h-4 w-4 inline mr-1" />
-                      <span className="font-medium">Skipped:</span>{" "}
-                      {uploadResult.summary.skipped}
+                    <div className="text-green-600">
+                      <CheckCircle2 className="h-3 w-3 inline mr-1" />
+                      <span className="font-medium">Created:</span>{" "}
+                      {uploadResult.summary.created}
                     </div>
-                  )}
-                  {uploadResult.summary.errors > 0 && (
-                    <div className="text-red-600">
-                      <XCircle className="h-4 w-4 inline mr-1" />
-                      <span className="font-medium">Errors:</span>{" "}
-                      {uploadResult.summary.errors}
-                    </div>
-                  )}
-                </div>
-              </AlertDescription>
-            </Alert>
-
-            {/* Created Products */}
-            {uploadResult.created.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-green-600">
-                  Successfully Created ({uploadResult.created.length})
-                </h4>
-                <ScrollArea className="h-32 rounded-md border p-2">
-                  <div className="space-y-1">
-                    {uploadResult.created.map((product, idx) => (
-                      <div
-                        key={idx}
-                        className="text-xs flex items-center gap-2 text-green-700"
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>
-                          {(product as { imsCode?: string }).imsCode ??
-                            product.name}{" "}
-                          - {product.name} ({product.variationsCount} variation
-                          {product.variationsCount !== 1 ? "s" : ""})
-                        </span>
+                    {(uploadResult.summary.updated ?? 0) > 0 && (
+                      <div className="text-blue-600">
+                        <CheckCircle2 className="h-3 w-3 inline mr-1" />
+                        <span className="font-medium">Updated:</span>{" "}
+                        {uploadResult.summary.updated}
                       </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            )}
-
-            {/* Updated Products (inventory at locations) */}
-            {uploadResult.updated?.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-blue-600">
-                  Inventory Updated ({uploadResult.updated.length})
-                </h4>
-                <ScrollArea className="h-32 rounded-md border p-2">
-                  <div className="space-y-1">
-                    {uploadResult.updated.map((product, idx) => (
-                      <div
-                        key={idx}
-                        className="text-xs flex items-center gap-2 text-blue-700"
-                      >
-                        <CheckCircle2 className="h-3 w-3" />
-                        <span>
-                          {(product as { imsCode?: string }).imsCode ??
-                            product.name}{" "}
-                          - {product.name} at{" "}
-                          {product.locations?.join(", ") ?? "—"} (
-                          {product.inventoryRowsUpdated} row
-                          {product.inventoryRowsUpdated !== 1 ? "s" : ""})
-                        </span>
+                    )}
+                    {uploadResult.summary.skipped > 0 && (
+                      <div className="text-yellow-600">
+                        <AlertCircle className="h-3 w-3 inline mr-1" />
+                        <span className="font-medium">Skipped:</span>{" "}
+                        {uploadResult.summary.skipped}
                       </div>
-                    ))}
+                    )}
+                    {uploadResult.summary.errors > 0 && (
+                      <div className="text-red-600">
+                        <XCircle className="h-3 w-3 inline mr-1" />
+                        <span className="font-medium">Errors:</span>{" "}
+                        {uploadResult.summary.errors}
+                      </div>
+                    )}
                   </div>
-                </ScrollArea>
-              </div>
-            )}
+                </AlertDescription>
+              </Alert>
 
-            {/* Skipped Products */}
-            {uploadResult.skipped.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-yellow-600">
-                  Skipped ({uploadResult.skipped.length})
-                </h4>
-                <ScrollArea className="h-32 rounded-md border p-2">
-                  <div className="space-y-1">
-                    {uploadResult.skipped.map((product, idx) => (
-                      <div
-                        key={idx}
-                        className="text-xs flex items-start gap-2 text-yellow-700"
-                      >
-                        <AlertCircle className="h-3 w-3 mt-0.5" />
-                        <span>
-                          <span className="font-medium">
+              {/* 1. Successfully Created */}
+              {uploadResult.created.length > 0 && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-semibold text-green-600 shrink-0">
+                    Successfully Created ({uploadResult.created.length})
+                  </h4>
+                  <div className="h-16 min-w-0 overflow-y-auto overflow-x-hidden rounded border bg-muted/30 p-2">
+                    <div className="space-y-0.5 text-xs text-green-700 min-w-0">
+                      {uploadResult.created.map((product, idx) => (
+                        <div
+                          key={idx}
+                          className="flex min-w-0 items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="h-3 w-3 shrink-0" />
+                          <span className="min-w-0 truncate">
                             {(product as { imsCode?: string }).imsCode ??
                               product.name}{" "}
-                            - {product.name}
+                            – {product.name} ({product.variationsCount} var
+                            {product.variationsCount !== 1 ? "s" : ""})
                           </span>
-                          : {product.reason}
-                        </span>
-                      </div>
-                    ))}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </ScrollArea>
-              </div>
-            )}
+                </div>
+              )}
 
-            {/* Errors */}
-            {uploadResult.errors.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-red-600">
-                  Validation Errors ({uploadResult.errors.length})
-                </h4>
-                <ScrollArea className="h-48 rounded-md border p-2">
-                  <div className="space-y-1">
-                    {uploadResult.errors.map((error, idx) => (
-                      <div
-                        key={idx}
-                        className="text-xs flex items-start gap-2 text-red-700"
-                      >
-                        <XCircle className="h-3 w-3 mt-0.5" />
-                        <span>
-                          <span className="font-medium">Row {error.row}</span>
-                          {error.field && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              ({error.field})
-                            </span>
-                          )}
-                          : {error.message}
-                          {error.value !== undefined && (
-                            <span className="text-muted-foreground">
-                              {" "}
-                              (Value: {String(error.value)})
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    ))}
+              {/* 2. Inventory Updated */}
+              {uploadResult.updated?.length > 0 && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-semibold text-blue-600 shrink-0">
+                    Inventory Updated ({uploadResult.updated.length})
+                  </h4>
+                  <div className="h-16 min-w-0 overflow-y-auto overflow-x-hidden rounded border bg-muted/30 p-2">
+                    <div className="space-y-0.5 text-xs text-blue-700 min-w-0">
+                      {uploadResult.updated.map((product, idx) => (
+                        <div
+                          key={idx}
+                          className="flex min-w-0 items-center gap-1.5"
+                        >
+                          <CheckCircle2 className="h-3 w-3 shrink-0" />
+                          <span className="min-w-0 truncate">
+                            {(product as { imsCode?: string }).imsCode ??
+                              product.name}{" "}
+                            – {product.name} at{" "}
+                            {product.locations?.join(", ") ?? "—"} (
+                            {product.inventoryRowsUpdated} row
+                            {product.inventoryRowsUpdated !== 1 ? "s" : ""})
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </ScrollArea>
-              </div>
-            )}
-          </div>
+                </div>
+              )}
+
+              {/* 3. Skipped */}
+              {uploadResult.skipped.length > 0 && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-semibold text-yellow-600 shrink-0">
+                    Skipped ({uploadResult.skipped.length})
+                  </h4>
+                  <div className="h-16 min-w-0 overflow-y-auto overflow-x-hidden rounded border bg-muted/30 p-2">
+                    <div className="space-y-0.5 text-xs text-yellow-700 min-w-0">
+                      {uploadResult.skipped.map((product, idx) => (
+                        <div
+                          key={idx}
+                          className="flex min-w-0 items-center gap-1.5"
+                        >
+                          <AlertCircle className="h-3 w-3 shrink-0" />
+                          <span className="min-w-0 truncate">
+                            {(product as { imsCode?: string }).imsCode ??
+                              product.name}{" "}
+                            – {product.name}: {product.reason}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* 4. Validation Errors */}
+              {uploadResult.errors.length > 0 && (
+                <div className="space-y-1">
+                  <h4 className="text-xs font-semibold text-red-600 shrink-0">
+                    Validation Errors ({uploadResult.errors.length})
+                  </h4>
+                  <div className="h-16 min-w-0 overflow-y-auto overflow-x-hidden rounded border bg-muted/30 p-2">
+                    <div className="space-y-0.5 text-xs text-red-700 min-w-0">
+                      {uploadResult.errors.map((error, idx) => (
+                        <div
+                          key={idx}
+                          className="flex min-w-0 items-center gap-1.5"
+                        >
+                          <XCircle className="h-3 w-3 shrink-0" />
+                          <span className="min-w-0 truncate">
+                            Row {error.row}
+                            {error.field ? ` (${error.field})` : ""}:{" "}
+                            {error.message}
+                            {error.value !== undefined &&
+                              ` (${String(error.value)})`}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         )}
 
         {/* Action Buttons */}

@@ -103,7 +103,10 @@ export function GeneralTab({
         <Label htmlFor="categoryId">Category</Label>
         <Select
           value={form.values.categoryId}
-          onValueChange={(value) => form.handleChange("categoryId", value)}
+          onValueChange={(value) => {
+            form.handleChange("categoryId", value);
+            form.handleChange("subCategory", "");
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Select category" />
@@ -122,33 +125,33 @@ export function GeneralTab({
       </div>
       <div className="space-y-2">
         <Label htmlFor="subCategory">Sub-Category (Optional)</Label>
-        {form.values.categoryId && subcategories.length > 0 ? (
-          <Select
-            value={form.values.subCategory || "none"}
-            onValueChange={(value) =>
-              form.handleChange("subCategory", value === "none" ? "" : value)
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select subcategory" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">None</SelectItem>
-              {subcategories.map((sub) => (
-                <SelectItem key={sub} value={sub}>
-                  {sub}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        ) : (
-          <Input
-            id="subCategory"
-            value={form.values.subCategory}
-            onChange={(e) => form.handleChange("subCategory", e.target.value)}
-            placeholder="Enter subcategory (optional)"
-          />
-        )}
+        <Select
+          value={
+            form.values.categoryId ? form.values.subCategory || "none" : ""
+          }
+          onValueChange={(value) =>
+            form.handleChange("subCategory", value === "none" ? "" : value)
+          }
+          disabled={!form.values.categoryId}
+        >
+          <SelectTrigger id="subCategory">
+            <SelectValue
+              placeholder={
+                form.values.categoryId
+                  ? "Select subcategory"
+                  : "Select category first"
+              }
+            />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">None</SelectItem>
+            {subcategories.map((sub) => (
+              <SelectItem key={sub} value={sub}>
+                {sub}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
       {isAdmin && (
         <div className="space-y-2">

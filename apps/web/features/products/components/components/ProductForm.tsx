@@ -33,6 +33,7 @@ interface ProductFormProps {
   variations: ProductVariationForm[];
   discounts: ProductDiscountForm[];
   discountTypes: Array<{ id: string; name: string }>;
+  onDiscountsChange?: (discounts: ProductDiscountForm[]) => void;
   attributeTypes?: AttributeType[];
   productAttributeTypeIds?: string[];
   onProductAttributeTypeIdsChange?: (ids: string[]) => void;
@@ -75,6 +76,7 @@ export function ProductForm({
   variations,
   discounts,
   discountTypes,
+  onDiscountsChange,
   attributeTypes = [],
   productAttributeTypeIds = [],
   onProductAttributeTypeIdsChange,
@@ -299,7 +301,11 @@ export function ProductForm({
           </TabsContent>
 
           <TabsContent value="discounts" className="space-y-4 mt-4">
-            <DiscountsTab discounts={discounts} discountTypes={discountTypes} />
+            <DiscountsTab
+              discounts={discounts}
+              discountTypes={discountTypes}
+              onDiscountsChange={onDiscountsChange}
+            />
           </TabsContent>
         </Tabs>
       </div>

@@ -590,6 +590,20 @@ export class ProductService {
                 await this.repo.createProductSubVariation(existing.id, name);
               }
             }
+            // Sync EAV attributes (e.g. change Size from M to S)
+            if (payload.attributes !== undefined) {
+              const attrs = Array.isArray(payload.attributes)
+                ? payload.attributes.filter(
+                    (
+                      a,
+                    ): a is {
+                      attributeTypeId: string;
+                      attributeValueId: string;
+                    } => Boolean(a?.attributeTypeId && a?.attributeValueId),
+                  )
+                : [];
+              await this.repo.setVariationAttributes(existing.id, attrs);
+            }
             // Update LocationInventory if a specific location was provided
             if (
               payload.locationId &&

@@ -65,7 +65,7 @@ describe("TransferForm", () => {
     ).toBeInTheDocument();
   });
 
-  it("loads inventory when from location selected", async () => {
+  it("fetches inventory when user searches after selecting from location", async () => {
     render(
       <TransferForm
         open={true}
@@ -77,7 +77,6 @@ describe("TransferForm", () => {
       />,
     );
 
-    // Radix Select renders a hidden native select for form participation — use it to avoid portal/scroll issues
     const fromSelects = document.querySelectorAll<HTMLSelectElement>("select");
     const fromSelect = Array.from(fromSelects).find((s) =>
       s.querySelector('option[value="loc1"]'),
@@ -85,9 +84,20 @@ describe("TransferForm", () => {
     expect(fromSelect).toBeTruthy();
     fireEvent.change(fromSelect!, { target: { value: "loc1" } });
 
-    await waitFor(() => {
-      expect(mockGetLocationInventory).toHaveBeenCalledWith("loc1");
-    });
+    const searchInput = screen.getByPlaceholderText(
+      /search by product name, ims code, or category/i,
+    );
+    fireEvent.change(searchInput, { target: { value: "widget" } });
+
+    await waitFor(
+      () => {
+        expect(mockGetLocationInventory).toHaveBeenCalledWith("loc1", {
+          search: "widget",
+          limit: 25,
+        });
+      },
+      { timeout: 500 },
+    );
   });
 
   it("submit button disabled until from, to, and items filled", () => {
