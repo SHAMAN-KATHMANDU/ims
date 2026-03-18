@@ -174,6 +174,9 @@ jobs:
           echo "${IMAGE}:prod" >> "$GITHUB_OUTPUT"
           echo "${IMAGE}:latest" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
+      # GHA cache (cache-from/to) can occasionally return 502 from GitHub.
+      # If builds fail with "failed to parse error response 502", retry first.
+      # To avoid cache-related failures, temporarily comment out cache-from/cache-to.
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -181,8 +184,8 @@ jobs:
           file: ./apps/api/Dockerfile
           push: true
           tags: ${{ steps.tags.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=release-api
+          cache-to: type=gha,mode=min,scope=release-api
 
   build-web:
     name: Build Web (prod)
@@ -218,6 +221,9 @@ jobs:
           echo "${IMAGE}:prod" >> "$GITHUB_OUTPUT"
           echo "${IMAGE}:latest" >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
+      # GHA cache (cache-from/to) can occasionally return 502 from GitHub.
+      # If builds fail with "failed to parse error response 502", retry first.
+      # To avoid cache-related failures, temporarily comment out cache-from/cache-to.
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
@@ -227,8 +233,8 @@ jobs:
           tags: ${{ steps.tags.outputs.tags }}
           build-args: |
             NEXT_PUBLIC_API_URL=${{ steps.prod_ui.outputs.next_public_api_url }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=release-web
+          cache-to: type=gha,mode=min,scope=release-web
 
   create-release:
     name: Create GitHub Release
