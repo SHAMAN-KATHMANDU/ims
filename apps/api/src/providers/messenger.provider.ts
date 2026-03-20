@@ -1,4 +1,6 @@
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 import type {
   MessagingProviderInterface,
   ProviderCredentials,
@@ -90,26 +92,78 @@ export class MessengerProvider implements MessagingProviderInterface {
     return events;
   }
 
+  /**
+   * Sends attachment before text so captions are not lost (single Graph request
+   * cannot include both attachment and text in the way we previously built the body).
+   * Returns the first provider message id (attachment send when media is present).
+   *
+   * When `mediaFilePath` is provided (local file), the file is uploaded directly
+   * via multipart/form-data so Facebook doesn't need to download from our server.
+   * Falls back to URL-based attachment when only `mediaUrl` is provided.
+   */
   async sendMessage(
     credentials: ProviderCredentials,
     payload: SendMessagePayload,
   ): Promise<SendMessageResult> {
-    const url = `${this.GRAPH_API_URL}/me/messages?access_token=${credentials.pageAccessToken}`;
-    const body: any = {
-      recipient: { id: payload.recipientId },
-      messaging_type: "RESPONSE",
-    };
+    const token = credentials.pageAccessToken;
+    const recipientId = payload.recipientId;
 
-    if (payload.text) {
-      body.message = { text: payload.text };
+    let primaryMessageId: string | undefined;
+
+    if (payload.mediaFilePath) {
+      const attachmentResult = await this.postGraphMessageWithFile(
+        token,
+        recipientId,
+        payload.mediaFilePath,
+        payload.mediaType || "image",
+      );
+      primaryMessageId = attachmentResult.message_id;
     } else if (payload.mediaUrl) {
-      body.message = {
+      const attachmentResult = await this.postGraphMessage(token, recipientId, {
         attachment: {
           type: payload.mediaType || "image",
           payload: { url: payload.mediaUrl, is_reusable: true },
         },
-      };
+      });
+      primaryMessageId = attachmentResult.message_id;
     }
+
+    if (payload.text?.trim()) {
+      const textResult = await this.postGraphMessage(token, recipientId, {
+        text: payload.text,
+      });
+      if (!primaryMessageId) {
+        primaryMessageId = textResult.message_id;
+      }
+    }
+
+    if (!primaryMessageId) {
+      throw new Error(
+        "Messenger sendMessage requires non-empty text or mediaUrl",
+      );
+    }
+
+    return { providerMessageId: primaryMessageId };
+  }
+
+  private async postGraphMessage(
+    pageAccessToken: string,
+    recipientId: string,
+    message: {
+      text: string;
+    } | {
+      attachment: {
+        type: string;
+        payload: { url: string; is_reusable: boolean };
+      };
+    },
+  ): Promise<{ message_id: string }> {
+    const url = `${this.GRAPH_API_URL}/me/messages?access_token=${pageAccessToken}`;
+    const body = {
+      recipient: { id: recipientId },
+      messaging_type: "RESPONSE",
+      message,
+    };
 
     const response = await fetch(url, {
       method: "POST",
@@ -118,12 +172,79 @@ export class MessengerProvider implements MessagingProviderInterface {
     });
 
     if (!response.ok) {
-      const err = await response.json();
+      const err = (await response.json()) as unknown;
       throw new Error(`Messenger API error: ${JSON.stringify(err)}`);
     }
 
-    const result = await response.json();
-    return { providerMessageId: result.message_id };
+    const result = (await response.json()) as { message_id: string };
+    return result;
+  }
+
+  /**
+   * Uploads a local file directly to the Send API using multipart/form-data.
+   * This avoids requiring Facebook to download from our server (which fails
+   * when the server isn't publicly accessible or behind NAT/firewall).
+   */
+  private async postGraphMessageWithFile(
+    pageAccessToken: string,
+    recipientId: string,
+    filePath: string,
+    mediaType: string,
+  ): Promise<{ message_id: string }> {
+    const url = `${this.GRAPH_API_URL}/me/messages?access_token=${pageAccessToken}`;
+
+    const fileName = path.basename(filePath);
+    const mimeType = this.guessMimeType(fileName);
+
+    const messageJson = JSON.stringify({
+      attachment: {
+        type: mediaType,
+        payload: { is_reusable: true },
+      },
+    });
+
+    const formData = new FormData();
+    formData.append("recipient", JSON.stringify({ id: recipientId }));
+    formData.append("messaging_type", "RESPONSE");
+    formData.append("message", messageJson);
+    const fileBuffer = fs.readFileSync(filePath);
+    formData.append(
+      "filedata",
+      new Blob([new Uint8Array(fileBuffer)], { type: mimeType }),
+      fileName,
+    );
+
+    const response = await fetch(url, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const err = (await response.json()) as unknown;
+      throw new Error(`Messenger API error: ${JSON.stringify(err)}`);
+    }
+
+    const result = (await response.json()) as { message_id: string };
+    return result;
+  }
+
+  private guessMimeType(fileName: string): string {
+    const ext = path.extname(fileName).toLowerCase();
+    const mimeMap: Record<string, string> = {
+      ".jpg": "image/jpeg",
+      ".jpeg": "image/jpeg",
+      ".png": "image/png",
+      ".gif": "image/gif",
+      ".webp": "image/webp",
+      ".mp4": "video/mp4",
+      ".webm": "video/webm",
+      ".mov": "video/quicktime",
+      ".mp3": "audio/mpeg",
+      ".ogg": "audio/ogg",
+      ".wav": "audio/wav",
+      ".pdf": "application/pdf",
+    };
+    return mimeMap[ext] || "application/octet-stream";
   }
 
   async getParticipantProfile(

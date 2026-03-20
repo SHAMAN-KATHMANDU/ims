@@ -7,8 +7,33 @@ import { getProvider } from "@/providers/provider-factory";
 import { decrypt } from "@/utils/encryption";
 import { getIO } from "@/config/socket.config";
 import { logger } from "@/config/logger";
-import type { MessagingProvider } from "@prisma/client";
+import type { MessagingChannel, MessagingProvider } from "@prisma/client";
 import type { NormalizedInboundEvent } from "@/providers/messaging-provider.interface";
+
+async function resolveParticipantDisplay(
+  provider: MessagingProvider,
+  channel: Pick<MessagingChannel, "credentialsEnc">,
+  participantId: string,
+  eventParticipantName?: string | null,
+): Promise<{ name: string | null; profilePic: string | null }> {
+  try {
+    const providerInstance = getProvider(provider);
+    if (!providerInstance.getParticipantProfile || !channel.credentialsEnc) {
+      return { name: eventParticipantName ?? null, profilePic: null };
+    }
+    const creds = JSON.parse(decrypt(channel.credentialsEnc));
+    const profile = await providerInstance.getParticipantProfile(
+      creds,
+      participantId,
+    );
+    return {
+      name: profile.name ?? eventParticipantName ?? null,
+      profilePic: profile.profilePic ?? null,
+    };
+  } catch {
+    return { name: eventParticipantName ?? null, profilePic: null };
+  }
+}
 
 interface InboundJobData {
   provider: MessagingProvider;
@@ -86,24 +111,16 @@ const inboundWorker = new Worker<InboundJobData>(
           `[InboundWorker] Preview: rawText=${rawText}, contentType=${previewContentType}, messageText=${messageText}`,
         );
 
+        let createdNewConversation = false;
         if (!conversation) {
-          // Fetch participant profile if available
-          let participantName = event.participantName || null;
-          if (!participantName) {
-            try {
-              const providerInstance = getProvider(provider);
-              if (providerInstance.getParticipantProfile) {
-                const creds = JSON.parse(decrypt(channel.credentialsEnc));
-                const profile = await providerInstance.getParticipantProfile(
-                  creds,
-                  event.participantId,
-                );
-                participantName = profile.name || null;
-              }
-            } catch {
-              // Profile fetch is best-effort
-            }
-          }
+          createdNewConversation = true;
+          const { name: participantName, profilePic } =
+            await resolveParticipantDisplay(
+              provider,
+              channel,
+              event.participantId,
+              event.participantName ?? null,
+            );
 
           conversation = await prisma.conversation.create({
             data: {
@@ -111,6 +128,7 @@ const inboundWorker = new Worker<InboundJobData>(
               channelId: channel.id,
               participantId: event.participantId,
               participantName,
+              participantProfilePictureUrl: profilePic,
               status: "OPEN",
               lastMessageAt: new Date(event.timestamp),
               lastMessageText: messageText?.substring(0, 500) || null,
@@ -118,14 +136,43 @@ const inboundWorker = new Worker<InboundJobData>(
             },
           });
         } else {
+          const updateData: {
+            lastMessageAt: Date;
+            lastMessageText: string;
+            unreadCount: { increment: number };
+            status: "OPEN";
+            participantName?: string | null;
+            participantProfilePictureUrl?: string | null;
+          } = {
+            lastMessageAt: new Date(event.timestamp),
+            lastMessageText: messageText?.substring(0, 500) || "New message",
+            unreadCount: { increment: 1 },
+            status: "OPEN",
+          };
+
+          // Backfill name / avatar from provider when missing (e.g. channel connected after thread started)
+          if (
+            !conversation.participantProfilePictureUrl ||
+            !conversation.participantName
+          ) {
+            const { name: pName, profilePic } =
+              await resolveParticipantDisplay(
+                provider,
+                channel,
+                event.participantId,
+                event.participantName ?? null,
+              );
+            if (!conversation.participantName && pName) {
+              updateData.participantName = pName;
+            }
+            if (!conversation.participantProfilePictureUrl && profilePic) {
+              updateData.participantProfilePictureUrl = profilePic;
+            }
+          }
+
           await prisma.conversation.update({
             where: { id: conversation.id },
-            data: {
-              lastMessageAt: new Date(event.timestamp),
-              lastMessageText: messageText?.substring(0, 500) || "New message",
-              unreadCount: { increment: 1 },
-              status: "OPEN",
-            },
+            data: updateData,
           });
         }
 
@@ -168,7 +215,9 @@ const inboundWorker = new Worker<InboundJobData>(
             id: conversation.id,
             lastMessageAt: new Date(event.timestamp),
             lastMessageText: messageText?.substring(0, 500),
-            unreadCount: (conversation.unreadCount || 0) + 1,
+            unreadCount: createdNewConversation
+              ? 1
+              : (conversation.unreadCount ?? 0) + 1,
           });
         }
 

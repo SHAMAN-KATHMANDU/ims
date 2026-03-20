@@ -6,6 +6,17 @@ import type {
   MessageContentType,
 } from "@prisma/client";
 
+const messageReplyToSelect = {
+  id: true,
+  textContent: true,
+  direction: true,
+  contentType: true,
+} as const;
+
+const messageReactionInclude = {
+  user: { select: { id: true, username: true } },
+} as const;
+
 export class MessagingRepository {
   async findConversations(
     tenantId: string,
@@ -17,7 +28,7 @@ export class MessagingRepository {
     page: number,
     limit: number,
   ) {
-    const where: any = { tenantId, ...filters };
+    const where: Record<string, unknown> = { tenantId, ...filters };
     const [conversations, total] = await Promise.all([
       prisma.conversation.findMany({
         where,
@@ -83,7 +94,31 @@ export class MessagingRepository {
       orderBy: { createdAt: "desc" },
       include: {
         sentBy: { select: { id: true, username: true } },
+        reactions: { include: messageReactionInclude },
+        replyTo: { select: messageReplyToSelect },
       },
+    });
+  }
+
+  async findMessageInTenant(tenantId: string, messageId: string) {
+    return prisma.message.findFirst({
+      where: { id: messageId, conversation: { tenantId } },
+      include: {
+        conversation: {
+          select: { id: true, tenantId: true, channelId: true },
+        },
+        sentBy: { select: { id: true, username: true } },
+      },
+    });
+  }
+
+  async findReplyTargetInConversation(
+    conversationId: string,
+    messageId: string,
+  ) {
+    return prisma.message.findFirst({
+      where: { id: messageId, conversationId },
+      select: { id: true },
     });
   }
 
@@ -93,13 +128,74 @@ export class MessagingRepository {
     status: MessageStatus;
     contentType: MessageContentType;
     textContent?: string | null;
-    mediaPayload?: any;
+    mediaPayload?: unknown;
     providerMessageId?: string | null;
     sentById?: string | null;
     sentAt?: Date | null;
     deliveredAt?: Date | null;
+    replyToId?: string | null;
   }) {
-    return prisma.message.create({ data });
+    return prisma.message.create({
+      data,
+      include: {
+        sentBy: { select: { id: true, username: true } },
+        reactions: { include: messageReactionInclude },
+        replyTo: { select: messageReplyToSelect },
+      },
+    });
+  }
+
+  async addReaction(messageId: string, userId: string, emoji: string) {
+    return prisma.messageReaction.upsert({
+      where: {
+        messageId_userId_emoji: { messageId, userId, emoji },
+      },
+      create: { messageId, userId, emoji },
+      update: {},
+      include: messageReactionInclude,
+    });
+  }
+
+  async removeReaction(messageId: string, userId: string, emoji: string) {
+    try {
+      return await prisma.messageReaction.delete({
+        where: {
+          messageId_userId_emoji: { messageId, userId, emoji },
+        },
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async updateMessageText(messageId: string, textContent: string) {
+    return prisma.message.update({
+      where: { id: messageId },
+      data: {
+        textContent,
+        editedAt: new Date(),
+      },
+      include: {
+        sentBy: { select: { id: true, username: true } },
+        reactions: { include: messageReactionInclude },
+        replyTo: { select: messageReplyToSelect },
+      },
+    });
+  }
+
+  async markInboundMessagesRead(conversationId: string) {
+    return prisma.message.updateMany({
+      where: {
+        conversationId,
+        direction: "INBOUND",
+        readAt: null,
+        status: { not: "FAILED" },
+      },
+      data: {
+        readAt: new Date(),
+        status: "READ",
+      },
+    });
   }
 }
 

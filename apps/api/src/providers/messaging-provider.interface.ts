@@ -6,6 +6,8 @@ export interface SendMessagePayload {
   recipientId: string;
   text?: string;
   mediaUrl?: string;
+  /** Absolute path to a local file — used for direct multipart upload to the provider. */
+  mediaFilePath?: string;
   mediaType?: "image" | "video" | "audio" | "file";
 }
 
