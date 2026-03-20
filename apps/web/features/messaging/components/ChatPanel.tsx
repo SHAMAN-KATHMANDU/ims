@@ -1,14 +1,35 @@
 "use client";
 
-import { useEffect, useRef, useMemo, useCallback } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useMemo,
+  useCallback,
+  useState,
+} from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ArrowLeft, MessageSquare } from "lucide-react";
+import { ArrowDown, ArrowLeft, MessageSquare } from "lucide-react";
+import { useAuthStore } from "@/store/auth-store";
 import { useConversation, useMarkRead } from "../hooks/use-conversations";
-import { useMessages } from "../hooks/use-messages";
+import {
+  useMessages,
+  useAddMessageReaction,
+  useRemoveMessageReaction,
+  useEditConversationMessage,
+} from "../hooks/use-messages";
+import type { Message } from "../services/messaging.service";
 import { MessageBubble } from "./MessageBubble";
 import { MessageComposer } from "./MessageComposer";
+import { ParticipantAvatar } from "./ParticipantAvatar";
+import { cn } from "@/lib/utils";
+
+/** Pixels from bottom to count as "stuck" to latest (auto-scroll new messages). */
+const STICK_THRESHOLD_PX = 120;
+/** Show jump-to-latest when further than this from the bottom. */
+const JUMP_BUTTON_THRESHOLD_PX = 200;
 
 interface ChatPanelProps {
   conversationId: string;
@@ -26,14 +47,25 @@ export function ChatPanel({
   const {
     data: msgData,
     isLoading: msgLoading,
+    isFetching,
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
   } = useMessages(conversationId);
   const { mutate: markRead } = useMarkRead();
+  const currentUserId = useAuthStore((s) => s.user?.id ?? "");
+  const addReaction = useAddMessageReaction(conversationId);
+  const removeReaction = useRemoveMessageReaction(conversationId);
+  const editMessage = useEditConversationMessage(conversationId);
+  const [replyTo, setReplyTo] = useState<Message | null>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const didMarkReadRef = useRef<string | null>(null);
-  const prevMessageCountRef = useRef(0);
+  const prevLastMessageIdRef = useRef<string | undefined>(undefined);
+  /** User expects new traffic to stay in view (default true; false after scrolling up). */
+  const stickToBottomRef = useRef(true);
+  /** After sending, keep pinning through refetch (fixes scroll-before-DOM-updates). */
+  const pendingPinAfterOutgoingRef = useRef(false);
+  const [showJumpToLatest, setShowJumpToLatest] = useState(false);
 
   const conversation = convData?.conversation;
 
@@ -45,47 +77,146 @@ export function ChatPanel({
     }
   }, [conversationId, markRead]);
 
+  useEffect(() => {
+    setReplyTo(null);
+  }, [conversationId]);
+
   // Messages come in desc order per page; flatten and reverse for display
   const messages = useMemo(() => {
     if (!msgData?.pages) return [];
     return msgData.pages.flatMap((page) => page).reverse();
   }, [msgData]);
 
-  // Auto-scroll to bottom only on NEW messages (not when loading older)
-  const scrollToBottom = useCallback(() => {
+  const lastMessageId = messages[messages.length - 1]?.id;
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     const el = scrollContainerRef.current;
-    if (el) {
-      el.scrollTop = el.scrollHeight;
-    }
+    if (!el) return;
+    const run = () => {
+      const s = scrollContainerRef.current;
+      if (!s) return;
+      s.scrollTo({ top: s.scrollHeight, behavior });
+    };
+    // Two frames: wait for React paint + layout (e.g. after infinite query refetch)
+    requestAnimationFrame(() => {
+      requestAnimationFrame(run);
+    });
   }, []);
 
-  useEffect(() => {
-    const currentCount = messages.length;
-    const prevCount = prevMessageCountRef.current;
+  const updateScrollDerivedState = useCallback(() => {
+    const el = scrollContainerRef.current;
+    if (!el) return;
+    const distFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    stickToBottomRef.current = distFromBottom <= STICK_THRESHOLD_PX;
+    setShowJumpToLatest(distFromBottom > JUMP_BUTTON_THRESHOLD_PX);
+  }, []);
 
-    // Scroll to bottom on initial load or when new messages arrive at the end
-    if (prevCount === 0 && currentCount > 0) {
-      // Initial load
+  const handleMessagesScroll = useCallback(() => {
+    updateScrollDerivedState();
+  }, [updateScrollDerivedState]);
+
+  // Must run before other layout effects so we don't treat prior thread's last id as baseline
+  useLayoutEffect(() => {
+    prevLastMessageIdRef.current = undefined;
+    stickToBottomRef.current = true;
+    pendingPinAfterOutgoingRef.current = false;
+    setShowJumpToLatest(false);
+  }, [conversationId]);
+
+  // After messages / last id change: auto-scroll if user is pinned to bottom
+  useLayoutEffect(() => {
+    if (msgLoading && messages.length === 0) return;
+    if (messages.length === 0) return;
+
+    const prev = prevLastMessageIdRef.current;
+    const changedLast = lastMessageId !== prev;
+
+    if (prev === undefined && lastMessageId) {
+      prevLastMessageIdRef.current = lastMessageId;
       scrollToBottom();
-    } else if (currentCount > prevCount && prevCount > 0) {
-      // New message added — only scroll if already near bottom
-      const el = scrollContainerRef.current;
-      if (el) {
-        const isNearBottom =
-          el.scrollHeight - el.scrollTop - el.clientHeight < 100;
-        if (isNearBottom) {
-          scrollToBottom();
-        }
-      }
+      updateScrollDerivedState();
+      return;
     }
 
-    prevMessageCountRef.current = currentCount;
-  }, [messages.length, scrollToBottom]);
+    if (!lastMessageId) return;
+
+    if (changedLast && (stickToBottomRef.current || pendingPinAfterOutgoingRef.current)) {
+      prevLastMessageIdRef.current = lastMessageId;
+      scrollToBottom();
+      pendingPinAfterOutgoingRef.current = false;
+      updateScrollDerivedState();
+      return;
+    }
+
+    prevLastMessageIdRef.current = lastMessageId;
+  }, [
+    messages,
+    msgLoading,
+    lastMessageId,
+    scrollToBottom,
+    updateScrollDerivedState,
+  ]);
+
+  // Refetch finished (e.g. after send): if we pinned, scroll now that DOM includes the new row
+  useEffect(() => {
+    if (msgLoading || messages.length === 0) return;
+    if (!isFetching && (stickToBottomRef.current || pendingPinAfterOutgoingRef.current)) {
+      scrollToBottom();
+      if (pendingPinAfterOutgoingRef.current) {
+        pendingPinAfterOutgoingRef.current = false;
+      }
+      updateScrollDerivedState();
+    }
+  }, [
+    isFetching,
+    msgLoading,
+    messages.length,
+    conversationId,
+    scrollToBottom,
+    updateScrollDerivedState,
+  ]);
+
+  const onSendSuccess = useCallback(() => {
+    stickToBottomRef.current = true;
+    pendingPinAfterOutgoingRef.current = true;
+    scrollToBottom();
+  }, [scrollToBottom]);
+
+  const jumpToLatest = useCallback(() => {
+    stickToBottomRef.current = true;
+    pendingPinAfterOutgoingRef.current = false;
+    scrollToBottom("smooth");
+    setShowJumpToLatest(false);
+  }, [scrollToBottom]);
 
   const name =
     conversation?.participantName ||
     conversation?.participantId ||
     "Conversation";
+
+  const handleToggleReaction = useCallback(
+    (messageId: string, emoji: string) => {
+      const msg = messages.find((m) => m.id === messageId);
+      const has = msg?.reactions?.some(
+        (r) => r.userId === currentUserId && r.emoji === emoji,
+      );
+      if (has) {
+        removeReaction.mutate({ messageId, emoji });
+      } else {
+        addReaction.mutate({ messageId, emoji });
+      }
+    },
+    [messages, currentUserId, addReaction, removeReaction],
+  );
+
+  const handleSaveEdit = useCallback(
+    async (messageId: string, text: string) => {
+      await editMessage.mutateAsync({ messageId, text });
+    },
+    [editMessage],
+  );
+
+  const reactionBusy = addReaction.isPending || removeReaction.isPending;
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -100,9 +231,11 @@ export function ChatPanel({
           <Skeleton className="h-5 w-40" />
         ) : (
           <>
-            <div className="flex size-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
-              {name.charAt(0).toUpperCase()}
-            </div>
+            <ParticipantAvatar
+              imageUrl={conversation?.participantProfilePictureUrl}
+              name={name}
+              size="sm"
+            />
             <div className="min-w-0 flex-1">
               <h3 className="truncate text-sm font-medium">{name}</h3>
               {conversation?.channel?.name && (
@@ -124,48 +257,88 @@ export function ChatPanel({
         )}
       </div>
 
-      {/* Messages area - plain div with overflow scroll */}
-      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4">
-        {msgLoading ? (
-          <div className="space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}
-              >
-                <Skeleton className="h-12 w-48 rounded-lg" />
-              </div>
-            ))}
-          </div>
-        ) : messages.length === 0 ? (
-          <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
-            <MessageSquare className="size-10 opacity-40" />
-            <p className="text-sm">No messages yet. Send the first message!</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {hasNextPage && (
-              <div className="flex justify-center">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => fetchNextPage()}
-                  disabled={isFetchingNextPage}
+      {/* Messages area + jump-to-latest */}
+      <div className="relative min-h-0 flex-1">
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleMessagesScroll}
+          className="h-full overflow-y-auto p-4"
+        >
+          {msgLoading ? (
+            <div className="space-y-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div
+                  key={i}
+                  className={`flex ${i % 2 === 0 ? "justify-start" : "justify-end"}`}
                 >
-                  {isFetchingNextPage ? "Loading..." : "Load older messages"}
-                </Button>
-              </div>
+                  <Skeleton className="h-12 w-48 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          ) : messages.length === 0 ? (
+            <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
+              <MessageSquare className="size-10 opacity-40" />
+              <p className="text-sm">No messages yet. Send the first message!</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {hasNextPage && (
+                <div className="flex justify-center">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => fetchNextPage()}
+                    disabled={isFetchingNextPage}
+                  >
+                    {isFetchingNextPage ? "Loading..." : "Load older messages"}
+                  </Button>
+                </div>
+              )}
+              {messages.map((msg) => (
+                <MessageBubble
+                  key={msg.id}
+                  message={msg}
+                  participantAvatarUrl={
+                    conversation?.participantProfilePictureUrl
+                  }
+                  participantDisplayName={name}
+                  currentUserId={currentUserId}
+                  onReply={setReplyTo}
+                  onToggleReaction={handleToggleReaction}
+                  onSaveEdit={handleSaveEdit}
+                  reactionPending={reactionBusy}
+                  editPending={editMessage.isPending}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {showJumpToLatest && messages.length > 0 && !msgLoading && (
+          <Button
+            type="button"
+            size="icon"
+            variant="secondary"
+            className={cn(
+              "absolute bottom-3 right-4 z-10 size-10 rounded-full shadow-md",
+              "border bg-background/95 backdrop-blur-sm",
             )}
-            {messages.map((msg) => (
-              <MessageBubble key={msg.id} message={msg} />
-            ))}
-          </div>
+            onClick={jumpToLatest}
+            aria-label="Scroll to latest messages"
+          >
+            <ArrowDown className="size-5" />
+          </Button>
         )}
       </div>
 
       {/* Composer */}
       <div className="shrink-0">
-        <MessageComposer conversationId={conversationId} />
+        <MessageComposer
+          conversationId={conversationId}
+          onSendSuccess={onSendSuccess}
+          replyTo={replyTo}
+          onClearReply={() => setReplyTo(null)}
+        />
       </div>
     </div>
   );
