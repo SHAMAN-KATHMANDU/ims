@@ -1,20 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useTheme } from "next-themes";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 import { cn } from "@/lib/utils";
-import { Check, CheckCheck, Clock, AlertCircle } from "lucide-react";
+import {
+  Check,
+  CheckCheck,
+  Clock,
+  AlertCircle,
+  ChevronDown,
+  CornerUpLeft,
+  Smile,
+} from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import type { Message, MessageReplySnippet } from "../services/messaging.service";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import type {
+  Message,
+  MessageReplySnippet,
+} from "../services/messaging.service";
 import { resolveMessagingAssetUrl } from "../services/messaging.service";
 import { ParticipantAvatar } from "./ParticipantAvatar";
 import { MessageContextMenu } from "./MessageContextMenu";
-import { ReactionBar } from "./ReactionBar";
+import { ReactionBar, QUICK_REACTION_EMOJIS } from "./ReactionBar";
 import { ReactionPills } from "./ReactionPills";
 
 const TEXT_TRUNCATE_AT = 1000;
+const HOVER_ACTION_DELAY_MS = 400;
 
 const statusIcons: Record<string, React.ReactNode> = {
   PENDING: <Clock className="size-3 text-muted-foreground" />,
@@ -68,6 +98,15 @@ function replyPreviewLabel(replyTo: MessageReplySnippet): string {
   return "Message";
 }
 
+function actionVisibilityClass(showActions: boolean): string {
+  return cn(
+    "transition-opacity duration-150",
+    showActions
+      ? "pointer-events-auto opacity-100"
+      : "pointer-events-none opacity-0 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100",
+  );
+}
+
 interface MessageBubbleProps {
   message: Message;
   participantAvatarUrl?: string | null;
@@ -94,6 +133,14 @@ export function MessageBubble({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(message.textContent ?? "");
+  const [showActions, setShowActions] = useState(false);
+  const [reactPopoverOpen, setReactPopoverOpen] = useState(false);
+  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const { resolvedTheme } = useTheme();
+  const pickerTheme = resolvedTheme === "dark" ? "dark" : "light";
 
   const isOutbound = message.direction === "OUTBOUND";
   const time = message.sentAt || message.createdAt;
@@ -101,8 +148,7 @@ export function MessageBubble({
   const mediaUrl = rawMediaUrl ? resolveMessagingAssetUrl(rawMediaUrl) : null;
 
   const sentByCurrentUser =
-    message.sentById === currentUserId ||
-    message.sentBy?.id === currentUserId;
+    message.sentById === currentUserId || message.sentBy?.id === currentUserId;
 
   const canEdit =
     isOutbound && sentByCurrentUser && message.status !== "FAILED";
@@ -118,6 +164,31 @@ export function MessageBubble({
     setEditText(message.textContent ?? "");
   }, [message.id, message.textContent]);
 
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current !== undefined) {
+        clearTimeout(hoverTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleRowMouseEnter = (): void => {
+    if (hoverTimerRef.current !== undefined) {
+      clearTimeout(hoverTimerRef.current);
+    }
+    hoverTimerRef.current = setTimeout(() => {
+      setShowActions(true);
+    }, HOVER_ACTION_DELAY_MS);
+  };
+
+  const handleRowMouseLeave = (): void => {
+    if (hoverTimerRef.current !== undefined) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = undefined;
+    }
+    setShowActions(false);
+  };
+
   const fullText = message.textContent ?? "";
   const shouldTruncate = fullText.length > TEXT_TRUNCATE_AT;
   const displayText =
@@ -125,7 +196,7 @@ export function MessageBubble({
       ? `${fullText.slice(0, TEXT_TRUNCATE_AT)}…`
       : fullText;
 
-  const handleCopy = async () => {
+  const handleCopy = async (): Promise<void> => {
     try {
       await navigator.clipboard.writeText(copyableText);
       toast.success("Message copied");
@@ -134,17 +205,17 @@ export function MessageBubble({
     }
   };
 
-  const startEdit = () => {
+  const startEdit = (): void => {
     setEditText(message.textContent ?? "");
     setIsEditing(true);
   };
 
-  const cancelEdit = () => {
+  const cancelEdit = (): void => {
     setIsEditing(false);
     setEditText(message.textContent ?? "");
   };
 
-  const saveEdit = async () => {
+  const saveEdit = async (): Promise<void> => {
     const next = editText.trim();
     if (!next) {
       toast.error("Message cannot be empty");
@@ -158,15 +229,143 @@ export function MessageBubble({
     }
   };
 
+  const handleReactFromMenu = (emoji: string): void => {
+    onToggleReaction(message.id, emoji);
+    setMoreMenuOpen(false);
+  };
+
+  const actionButtonClass = cn(
+    "size-7 shrink-0 rounded-full border bg-background/90 shadow-sm backdrop-blur-sm",
+    "text-foreground hover:bg-accent",
+  );
+
+  const messageActionButtons = (
+    <div
+      className={cn(
+        "flex items-center gap-1 self-end pb-1",
+        actionVisibilityClass(showActions),
+      )}
+    >
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className={actionButtonClass}
+        aria-label="Reply"
+        onClick={() => onReply(message)}
+      >
+        <CornerUpLeft className="size-4" />
+      </Button>
+      <Popover open={reactPopoverOpen} onOpenChange={setReactPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={actionButtonClass}
+            aria-label="React"
+            disabled={reactionPending}
+          >
+            <Smile className="size-4" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto border-0 p-0 shadow-lg" align="end">
+          <ReactionBar
+            onSelect={(emoji) => {
+              onToggleReaction(message.id, emoji);
+              setReactPopoverOpen(false);
+            }}
+            disabled={reactionPending}
+          />
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
+
   const bubbleBody = (
     <div
       className={cn(
-        "max-w-[min(75%,36rem)] min-w-0 rounded-lg px-3 py-2 text-sm cursor-context-menu",
+        "relative max-w-[min(75%,36rem)] min-w-0 rounded-lg px-3 py-2 pr-8 pt-1 text-sm cursor-context-menu",
         isOutbound
           ? "bg-primary text-primary-foreground"
           : "bg-muted text-foreground",
       )}
     >
+      <DropdownMenu open={moreMenuOpen} onOpenChange={setMoreMenuOpen}>
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "absolute right-0 top-0 z-10 size-7 rounded-md",
+              isOutbound
+                ? "text-primary-foreground/90 hover:bg-primary-foreground/15 hover:text-primary-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+              actionVisibilityClass(showActions),
+            )}
+            aria-label="Message options"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <ChevronDown className="size-4" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent className="w-48" align="end">
+          <DropdownMenuItem
+            onSelect={() => {
+              onReply(message);
+              setMoreMenuOpen(false);
+            }}
+          >
+            Reply
+          </DropdownMenuItem>
+          {canCopy ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                void handleCopy();
+                setMoreMenuOpen(false);
+              }}
+            >
+              Copy message
+            </DropdownMenuItem>
+          ) : null}
+          {canEdit && !isEditing ? (
+            <DropdownMenuItem
+              onSelect={() => {
+                startEdit();
+                setMoreMenuOpen(false);
+              }}
+            >
+              Edit message
+            </DropdownMenuItem>
+          ) : null}
+          <DropdownMenuSeparator />
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>React</DropdownMenuSubTrigger>
+            <DropdownMenuSubContent className="max-h-[min(24rem,70vh)] w-auto overflow-y-auto p-2">
+              <div className="mb-2 flex flex-wrap gap-1">
+                {QUICK_REACTION_EMOJIS.map((emoji) => (
+                  <DropdownMenuItem
+                    key={emoji}
+                    className="flex size-9 cursor-pointer items-center justify-center rounded-md p-0 text-lg"
+                    onSelect={() => handleReactFromMenu(emoji)}
+                  >
+                    {emoji}
+                  </DropdownMenuItem>
+                ))}
+              </div>
+              <Picker
+                data={data}
+                theme={pickerTheme}
+                onEmojiSelect={(e: { native: string }) =>
+                  handleReactFromMenu(e.native)
+                }
+              />
+            </DropdownMenuSubContent>
+          </DropdownMenuSub>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       {message.replyTo ? (
         <div
           className={cn(
@@ -226,7 +425,7 @@ export function MessageBubble({
       ) : (
         <>
           {message.textContent ? (
-            <div className="whitespace-pre-wrap break-words">
+            <div className="whitespace-pre-wrap wrap-break-word">
               <p>{displayText}</p>
               {shouldTruncate && (
                 <Button
@@ -282,9 +481,7 @@ export function MessageBubble({
           isOutbound ? "justify-end opacity-70" : "text-muted-foreground",
         )}
       >
-        <span>
-          {formatDistanceToNow(new Date(time), { addSuffix: true })}
-        </span>
+        <span>{formatDistanceToNow(new Date(time), { addSuffix: true })}</span>
         {message.editedAt ? (
           <span className={cn(isOutbound && "text-primary-foreground/80")}>
             (edited)
@@ -301,6 +498,8 @@ export function MessageBubble({
         "group flex w-full gap-2",
         isOutbound ? "justify-end" : "justify-start",
       )}
+      onMouseEnter={handleRowMouseEnter}
+      onMouseLeave={handleRowMouseLeave}
     >
       {!isOutbound && (
         <ParticipantAvatar
@@ -310,6 +509,7 @@ export function MessageBubble({
           className="mt-1 shrink-0 self-end"
         />
       )}
+      {isOutbound ? messageActionButtons : null}
       <div
         className={cn(
           "relative flex min-w-0 max-w-full flex-col",
@@ -318,12 +518,12 @@ export function MessageBubble({
       >
         <div
           className={cn(
-            "absolute z-10 mb-1 transition-opacity",
+            "absolute z-10 mb-1 transition-opacity duration-150",
             "bottom-full",
             isOutbound ? "right-0" : "left-0",
-            // Touch / coarse pointers: keep reactions visible (hover is unreliable).
-            "pointer-coarse:pointer-events-auto pointer-coarse:opacity-100",
-            "pointer-fine:pointer-events-none pointer-fine:opacity-0 pointer-fine:group-hover:pointer-events-auto pointer-fine:group-hover:opacity-100",
+            showActions
+              ? "pointer-events-auto opacity-100"
+              : "pointer-events-none opacity-0 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100",
           )}
         >
           <ReactionBar
@@ -351,6 +551,7 @@ export function MessageBubble({
           disabled={reactionPending}
         />
       </div>
+      {!isOutbound ? messageActionButtons : null}
     </div>
   );
 }

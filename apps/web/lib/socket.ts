@@ -21,6 +21,10 @@ function getSocketOrigin(): string {
 
 let socket: Socket | null = null;
 let refCount = 0;
+/** Defers teardown so React Strict Mode (mount → unmount → remount) does not disconnect mid-handshake. */
+let pendingDisconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+const DISCONNECT_DEBOUNCE_MS = 300;
 
 function createSocket(): Socket {
   const origin = getSocketOrigin() || window.location.origin;
@@ -57,6 +61,10 @@ function createSocket(): Socket {
 }
 
 export function acquireSocket(): Socket {
+  if (pendingDisconnectTimer !== null) {
+    clearTimeout(pendingDisconnectTimer);
+    pendingDisconnectTimer = null;
+  }
   if (!socket) {
     socket = createSocket();
   }
@@ -69,8 +77,21 @@ export function acquireSocket(): Socket {
 
 export function releaseSocket(): void {
   refCount = Math.max(0, refCount - 1);
-  if (refCount === 0 && socket) {
+  if (refCount > 0) {
+    return;
+  }
+  if (!socket) {
+    return;
+  }
+  if (pendingDisconnectTimer !== null) {
+    clearTimeout(pendingDisconnectTimer);
+  }
+  pendingDisconnectTimer = setTimeout(() => {
+    pendingDisconnectTimer = null;
+    if (refCount > 0 || !socket) {
+      return;
+    }
     socket.disconnect();
     socket = null;
-  }
+  }, DISCONNECT_DEBOUNCE_MS);
 }

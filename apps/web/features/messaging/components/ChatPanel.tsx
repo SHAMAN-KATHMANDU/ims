@@ -301,7 +301,8 @@ export function ChatPanel({
               </p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-3 pt-12">
+              {/* pt-12: room above first bubble so ReactionBar (bottom-full) is not clipped by overflow-y-auto */}
               {hasNextPage && (
                 <div className="flex justify-center">
                   <Button

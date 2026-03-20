@@ -14,6 +14,32 @@ export class MessengerProvider implements MessagingProviderInterface {
 
   private readonly GRAPH_API_URL = "https://graph.facebook.com/v19.0";
 
+  /**
+   * Meta’s default Messenger “thumbs up / like” stickers are delivered as `image`
+   * attachments (CDN URL). Without this, the inbox shows them as generic photos.
+   * @see https://developers.facebook.com/docs/messenger-platform/reference/webhook-events/messages
+   */
+  private static readonly MESSENGER_LIKE_STICKER_IDS = new Set([
+    "369239263222822",
+    "369239343222814",
+    "369239383222810",
+  ]);
+
+  private static extractMessengerStickerId(message: {
+    sticker_id?: number | string;
+    attachments?: Array<{ payload?: { sticker_id?: number | string } }>;
+  }): string | undefined {
+    const top = message.sticker_id;
+    if (top !== undefined && top !== null) {
+      return String(top);
+    }
+    const p = message.attachments?.[0]?.payload?.sticker_id;
+    if (p !== undefined && p !== null) {
+      return String(p);
+    }
+    return undefined;
+  }
+
   verifyWebhookSignature(
     rawBody: Buffer,
     signature: string,
@@ -47,20 +73,47 @@ export class MessengerProvider implements MessagingProviderInterface {
             typeof event.message.reply_to?.mid === "string"
               ? event.message.reply_to.mid
               : undefined;
-          events.push({
-            eventType: "message",
-            providerEventId: event.message.mid,
-            externalId: pageId,
-            participantId,
-            timestamp,
-            message: {
-              text: event.message.text,
-              contentType: this.mapContentType(event.message),
-              mediaUrl: event.message.attachments?.[0]?.payload?.url,
-              mediaPayload: event.message.attachments?.[0],
-              ...(replyMid ? { replyToProviderMessageId: replyMid } : {}),
-            },
-          });
+
+          const stickerId = MessengerProvider.extractMessengerStickerId(
+            event.message,
+          );
+          const hasNonEmptyText =
+            typeof event.message.text === "string" &&
+            event.message.text.trim().length > 0;
+          const isDefaultLikeSticker =
+            stickerId !== undefined &&
+            MessengerProvider.MESSENGER_LIKE_STICKER_IDS.has(stickerId) &&
+            !hasNonEmptyText;
+
+          if (isDefaultLikeSticker) {
+            events.push({
+              eventType: "message",
+              providerEventId: event.message.mid,
+              externalId: pageId,
+              participantId,
+              timestamp,
+              message: {
+                text: "👍",
+                contentType: "TEXT",
+                ...(replyMid ? { replyToProviderMessageId: replyMid } : {}),
+              },
+            });
+          } else {
+            events.push({
+              eventType: "message",
+              providerEventId: event.message.mid,
+              externalId: pageId,
+              participantId,
+              timestamp,
+              message: {
+                text: event.message.text,
+                contentType: this.mapContentType(event.message),
+                mediaUrl: event.message.attachments?.[0]?.payload?.url,
+                mediaPayload: event.message.attachments?.[0],
+                ...(replyMid ? { replyToProviderMessageId: replyMid } : {}),
+              },
+            });
+          }
         } else if (event.delivery) {
           events.push({
             eventType: "delivery",

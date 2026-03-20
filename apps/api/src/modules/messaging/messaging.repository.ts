@@ -157,6 +157,18 @@ export class MessagingRepository {
     }) as unknown as Promise<MessageWithCreateRelations>;
   }
 
+  /** All reactions from an internal (tenant) user on one message — for replace-on-new semantics. */
+  async findReactionsByInternalUserOnMessage(
+    messageId: string,
+    userId: string,
+  ) {
+    const reactionOwnerKey = `u:${userId}`;
+    return prisma.messageReaction.findMany({
+      where: { messageId, reactionOwnerKey },
+      include: messageReactionInclude,
+    });
+  }
+
   async addReaction(messageId: string, userId: string, emoji: string) {
     const reactionOwnerKey = `u:${userId}`;
     return prisma.messageReaction.upsert({

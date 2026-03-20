@@ -120,10 +120,11 @@ export function useAddMessageReaction(conversationId: string) {
             ) {
               return m;
             }
+            const withoutMine = reactions.filter((r) => r.userId !== user.id);
             return {
               ...m,
               reactions: [
-                ...reactions,
+                ...withoutMine,
                 {
                   id: `optimistic:${messageId}:${emoji}:${user.id}`,
                   emoji,

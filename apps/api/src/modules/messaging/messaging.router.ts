@@ -128,6 +128,9 @@ messagingRouter.get(
  * /messaging/conversations/{id}/messages/{messageId}/reactions:
  *   post:
  *     summary: Add an emoji reaction to a message
+ *     description: >-
+ *       Any other reaction from the same user on this message is removed first
+ *       (one reaction per user per message). Idempotent if the same emoji is sent again.
  *     tags: [Messaging]
  *     security:
  *       - bearerAuth: []

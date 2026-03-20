@@ -320,6 +320,48 @@ export class MessagingService {
       throw createError("Message not found", 404);
     }
 
+    const existingBefore =
+      await messagingRepository.findReactionsByInternalUserOnMessage(
+        messageId,
+        userId,
+      );
+    const others = existingBefore.filter((r) => r.emoji !== emoji);
+
+    for (const r of others) {
+      const removed = await messagingRepository.removeReaction(
+        messageId,
+        userId,
+        r.emoji,
+      );
+      if (!removed) continue;
+
+      try {
+        await syncMessengerReactionToProvider({
+          tenantId,
+          message,
+          mode: "unreact",
+        });
+      } catch (err) {
+        await messagingRepository.addReaction(messageId, userId, r.emoji);
+        if (isAppError(err)) throw err;
+        const detail =
+          err instanceof Error ? err.message : "Provider unreact sync failed";
+        throw createError(detail, 502);
+      }
+
+      emitToTenant(tenantId, "messaging:reaction-removed", {
+        conversationId,
+        messageId,
+        emoji: r.emoji,
+        userId,
+      });
+    }
+
+    if (others.length === 0 && existingBefore.some((r) => r.emoji === emoji)) {
+      const row = existingBefore.find((x) => x.emoji === emoji)!;
+      return serializeMessageReactionForApi(row);
+    }
+
     const reaction = await messagingRepository.addReaction(
       messageId,
       userId,
