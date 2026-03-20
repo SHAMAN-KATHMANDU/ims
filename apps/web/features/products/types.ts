@@ -60,7 +60,7 @@ export interface PaginatedProductsResponse {
 }
 
 export interface CreateProductData {
-  imsCode: string;
+  imsCode?: string;
   name: string;
   categoryId: string;
   description?: string;

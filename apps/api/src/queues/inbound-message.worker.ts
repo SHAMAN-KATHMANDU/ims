@@ -7,8 +7,45 @@ import { getProvider } from "@/providers/provider-factory";
 import { decrypt } from "@/utils/encryption";
 import { getIO } from "@/config/socket.config";
 import { logger } from "@/config/logger";
-import type { MessagingProvider } from "@prisma/client";
+import type { MessagingChannel, MessagingProvider } from "@prisma/client";
 import type { NormalizedInboundEvent } from "@/providers/messaging-provider.interface";
+import messagingRepository from "@/modules/messaging/messaging.repository";
+
+function emitMessagingToTenant(
+  tenantId: string,
+  event: string,
+  payload: Record<string, unknown>,
+): void {
+  const io = getIO();
+  if (io) {
+    io.to(`tenant:${tenantId}`).emit(event, payload);
+  }
+}
+
+async function resolveParticipantDisplay(
+  provider: MessagingProvider,
+  channel: Pick<MessagingChannel, "credentialsEnc">,
+  participantId: string,
+  eventParticipantName?: string | null,
+): Promise<{ name: string | null; profilePic: string | null }> {
+  try {
+    const providerInstance = getProvider(provider);
+    if (!providerInstance.getParticipantProfile || !channel.credentialsEnc) {
+      return { name: eventParticipantName ?? null, profilePic: null };
+    }
+    const creds = JSON.parse(decrypt(channel.credentialsEnc));
+    const profile = await providerInstance.getParticipantProfile(
+      creds,
+      participantId,
+    );
+    return {
+      name: profile.name ?? eventParticipantName ?? null,
+      profilePic: profile.profilePic ?? null,
+    };
+  } catch {
+    return { name: eventParticipantName ?? null, profilePic: null };
+  }
+}
 
 interface InboundJobData {
   provider: MessagingProvider;
@@ -57,7 +94,59 @@ const inboundWorker = new Worker<InboundJobData>(
 
     // 3. Process within tenant context
     await runWithTenant(tenantId, async () => {
-      if (event.eventType === "message" || event.eventType === "postback") {
+      if (event.eventType === "reaction" && event.reaction) {
+        const conversation = await prisma.conversation.findFirst({
+          where: { channelId: channel.id, participantId: event.participantId },
+        });
+        if (conversation) {
+          const targetMessage = await prisma.message.findFirst({
+            where: {
+              conversationId: conversation.id,
+              providerMessageId: event.reaction.targetProviderMessageId,
+            },
+            select: { id: true },
+          });
+          if (targetMessage) {
+            const { action, emoji } = event.reaction;
+            if (action === "react") {
+              const reaction =
+                await messagingRepository.addExternalParticipantReaction(
+                  targetMessage.id,
+                  event.participantId,
+                  emoji,
+                );
+              emitMessagingToTenant(tenantId, "messaging:reaction-added", {
+                conversationId: conversation.id,
+                messageId: targetMessage.id,
+                reaction: {
+                  id: reaction.id,
+                  emoji: reaction.emoji,
+                  userId: `ext:${event.participantId}`,
+                  username: "Contact",
+                },
+              });
+            } else {
+              const removed =
+                await messagingRepository.removeExternalParticipantReaction(
+                  targetMessage.id,
+                  event.participantId,
+                  emoji,
+                );
+              if (removed) {
+                emitMessagingToTenant(tenantId, "messaging:reaction-removed", {
+                  conversationId: conversation.id,
+                  messageId: targetMessage.id,
+                  emoji,
+                  userId: `ext:${event.participantId}`,
+                });
+              }
+            }
+          }
+        }
+      } else if (
+        event.eventType === "message" ||
+        event.eventType === "postback"
+      ) {
         // Upsert conversation
         let conversation = await prisma.conversation.findFirst({
           where: { channelId: channel.id, participantId: event.participantId },
@@ -86,24 +175,16 @@ const inboundWorker = new Worker<InboundJobData>(
           `[InboundWorker] Preview: rawText=${rawText}, contentType=${previewContentType}, messageText=${messageText}`,
         );
 
+        let createdNewConversation = false;
         if (!conversation) {
-          // Fetch participant profile if available
-          let participantName = event.participantName || null;
-          if (!participantName) {
-            try {
-              const providerInstance = getProvider(provider);
-              if (providerInstance.getParticipantProfile) {
-                const creds = JSON.parse(decrypt(channel.credentialsEnc));
-                const profile = await providerInstance.getParticipantProfile(
-                  creds,
-                  event.participantId,
-                );
-                participantName = profile.name || null;
-              }
-            } catch {
-              // Profile fetch is best-effort
-            }
-          }
+          createdNewConversation = true;
+          const { name: participantName, profilePic } =
+            await resolveParticipantDisplay(
+              provider,
+              channel,
+              event.participantId,
+              event.participantName ?? null,
+            );
 
           conversation = await prisma.conversation.create({
             data: {
@@ -111,6 +192,7 @@ const inboundWorker = new Worker<InboundJobData>(
               channelId: channel.id,
               participantId: event.participantId,
               participantName,
+              participantProfilePictureUrl: profilePic,
               status: "OPEN",
               lastMessageAt: new Date(event.timestamp),
               lastMessageText: messageText?.substring(0, 500) || null,
@@ -118,14 +200,42 @@ const inboundWorker = new Worker<InboundJobData>(
             },
           });
         } else {
+          const updateData: {
+            lastMessageAt: Date;
+            lastMessageText: string;
+            unreadCount: { increment: number };
+            status: "OPEN";
+            participantName?: string | null;
+            participantProfilePictureUrl?: string | null;
+          } = {
+            lastMessageAt: new Date(event.timestamp),
+            lastMessageText: messageText?.substring(0, 500) || "New message",
+            unreadCount: { increment: 1 },
+            status: "OPEN",
+          };
+
+          // Backfill name / avatar from provider when missing (e.g. channel connected after thread started)
+          if (
+            !conversation.participantProfilePictureUrl ||
+            !conversation.participantName
+          ) {
+            const { name: pName, profilePic } = await resolveParticipantDisplay(
+              provider,
+              channel,
+              event.participantId,
+              event.participantName ?? null,
+            );
+            if (!conversation.participantName && pName) {
+              updateData.participantName = pName;
+            }
+            if (!conversation.participantProfilePictureUrl && profilePic) {
+              updateData.participantProfilePictureUrl = profilePic;
+            }
+          }
+
           await prisma.conversation.update({
             where: { id: conversation.id },
-            data: {
-              lastMessageAt: new Date(event.timestamp),
-              lastMessageText: messageText?.substring(0, 500) || "New message",
-              unreadCount: { increment: 1 },
-              status: "OPEN",
-            },
+            data: updateData,
           });
         }
 
@@ -134,6 +244,21 @@ const inboundWorker = new Worker<InboundJobData>(
           event.eventType === "postback"
             ? "POSTBACK"
             : (event.message?.contentType as any) || "TEXT";
+
+        let replyToId: string | null = null;
+        if (
+          event.eventType === "message" &&
+          event.message?.replyToProviderMessageId
+        ) {
+          const replyTarget =
+            await messagingRepository.findMessageIdByProviderMessageId(
+              conversation.id,
+              event.message.replyToProviderMessageId,
+            );
+          if (replyTarget) {
+            replyToId = replyTarget.id;
+          }
+        }
 
         const message = await prisma.message.create({
           data: {
@@ -146,6 +271,7 @@ const inboundWorker = new Worker<InboundJobData>(
             providerMessageId: event.providerEventId,
             sentAt: new Date(event.timestamp),
             deliveredAt: new Date(event.timestamp),
+            replyToId,
           },
         });
 
@@ -168,7 +294,9 @@ const inboundWorker = new Worker<InboundJobData>(
             id: conversation.id,
             lastMessageAt: new Date(event.timestamp),
             lastMessageText: messageText?.substring(0, 500),
-            unreadCount: (conversation.unreadCount || 0) + 1,
+            unreadCount: createdNewConversation
+              ? 1
+              : (conversation.unreadCount ?? 0) + 1,
           });
         }
 

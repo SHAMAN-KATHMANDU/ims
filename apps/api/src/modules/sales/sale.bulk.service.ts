@@ -227,7 +227,7 @@ export async function processSaleBulkRows(
           errors.push({
             row: rows.indexOf(itemRow) + 2,
             field: "productImsCode",
-            message: `Product with IMS code "${itemRow.productImsCode}" not found for "${itemRow.productName}"`,
+            message: `Product with product code "${itemRow.productImsCode}" not found for "${itemRow.productName}"`,
             value: itemRow.productImsCode,
           });
           continue;
@@ -317,7 +317,7 @@ const SALES_TEMPLATE_HEADERS = [
   { header: "Showroom", width: 15 },
   { header: "Phone", width: 14 },
   { header: "Sold By", width: 14 },
-  { header: "Product IMS Code", width: 18 },
+  { header: "Product Code", width: 18 },
   { header: "Product Name", width: 22 },
   { header: "Attributes", width: 22 },
   { header: "Quantity", width: 10 },

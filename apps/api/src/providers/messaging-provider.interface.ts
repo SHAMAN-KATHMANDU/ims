@@ -6,7 +6,11 @@ export interface SendMessagePayload {
   recipientId: string;
   text?: string;
   mediaUrl?: string;
+  /** Absolute path to a local file — used for direct multipart upload to the provider. */
+  mediaFilePath?: string;
   mediaType?: "image" | "video" | "audio" | "file";
+  /** Parent message `mid` for Meta Send API `reply_to` (threaded reply). */
+  replyToProviderMessageId?: string;
 }
 
 export interface SendMessageResult {
@@ -15,7 +19,13 @@ export interface SendMessageResult {
 }
 
 export interface NormalizedInboundEvent {
-  eventType: "message" | "delivery" | "read" | "postback" | "unknown";
+  eventType:
+    | "message"
+    | "delivery"
+    | "read"
+    | "postback"
+    | "reaction"
+    | "unknown";
   providerEventId: string;
   externalId: string;
   participantId: string;
@@ -34,6 +44,8 @@ export interface NormalizedInboundEvent {
       | "STICKER";
     mediaUrl?: string;
     mediaPayload?: unknown;
+    /** Messenger `reply_to.mid` when the user replies to a specific message. */
+    replyToProviderMessageId?: string;
   };
 
   delivery?: {
@@ -47,6 +59,13 @@ export interface NormalizedInboundEvent {
   postback?: {
     title: string;
     payload: string;
+  };
+
+  /** Messenger `message_reactions` webhook (participant reacting to a message). */
+  reaction?: {
+    targetProviderMessageId: string;
+    emoji: string;
+    action: "react" | "unreact";
   };
 }
 
@@ -65,6 +84,21 @@ export interface MessagingProviderInterface {
     credentials: ProviderCredentials,
     payload: SendMessagePayload,
   ): Promise<SendMessageResult>;
+
+  /** Meta Send API `sender_action: react` — optional per provider. */
+  reactToMessage?(
+    credentials: ProviderCredentials,
+    recipientPsid: string,
+    targetProviderMessageId: string,
+    emoji: string,
+  ): Promise<void>;
+
+  /** Meta Send API `sender_action: unreact`. */
+  unreactToMessage?(
+    credentials: ProviderCredentials,
+    recipientPsid: string,
+    targetProviderMessageId: string,
+  ): Promise<void>;
 
   getParticipantProfile?(
     credentials: ProviderCredentials,

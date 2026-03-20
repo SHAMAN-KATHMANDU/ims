@@ -67,8 +67,14 @@ export interface ProcessedItem {
 export interface CalculationResult {
   processedItems: ProcessedItem[];
   subtotal: number;
+  /** Total monetary discount from product catalog + manual lines (excludes promo-only portion). */
+  totalProductDiscount: number;
+  /** Total monetary discount after promos (same as sum of line effective discounts). */
   totalDiscount: number;
+  /** Sum of promo-applied discount amounts only (incremental or replacing catalog). */
   totalPromoDiscount: number;
+  /** True if any line had a promo that replaced/won over product discount (not stacking). */
+  promoOverrodeProductDiscount: boolean;
   total: number;
 }
 
@@ -113,8 +119,10 @@ export async function calculateSaleItems(
 ): Promise<CalculationResult> {
   const processedItems: ProcessedItem[] = [];
   let subtotal = 0;
+  let totalProductDiscount = 0;
   let totalDiscount = 0;
   let totalPromoDiscount = 0;
+  let promoOverrodeProductDiscount = false;
 
   for (const item of items) {
     if (!item.variationId || !item.quantity || item.quantity <= 0) {
@@ -239,7 +247,10 @@ export async function calculateSaleItems(
       // Manual discount: skip product discount and promo for this line
     }
 
-    let itemPromoDiscount = 0;
+    type PromoOutcome = "none" | "stack" | "replace";
+    let promoOutcome: PromoOutcome = "none";
+    let productDiscountMoneyBeforePromo = 0;
+
     if (!hasManualPercent && !hasManualAmount) {
       type DiscountRow = (typeof variation.product.discounts)[number] & {
         discountType: { name: string };
@@ -291,6 +302,11 @@ export async function calculateSaleItems(
         }
       }
 
+      productDiscountMoneyBeforePromo = Math.min(
+        itemSubtotal,
+        discountAmount + itemSubtotal * (discountPercent / 100),
+      );
+
       // ── Promo code (only when not using manual discount) ────────────────
 
       if (item.promoCode) {
@@ -334,18 +350,19 @@ export async function calculateSaleItems(
               if (promo.overrideDiscounts) {
                 discountAmount = promoAmt;
                 discountPercent = 0;
+                promoOutcome = "replace";
               } else if (promo.allowStacking) {
                 discountAmount += promoAmt;
+                promoOutcome = "stack";
               } else {
                 const baseTotalDiscount =
                   discountAmount + itemSubtotal * (discountPercent / 100);
                 if (promoAmt > baseTotalDiscount) {
                   discountAmount = promoAmt;
                   discountPercent = 0;
+                  promoOutcome = "replace";
                 }
               }
-
-              itemPromoDiscount = Math.min(promoAmt, itemSubtotal);
             }
           }
         }
@@ -364,7 +381,29 @@ export async function calculateSaleItems(
       ) || 0;
     const lineTotal = itemSubtotal - effectiveDiscount;
 
+    let itemProductDiscount = 0;
+    let itemPromoDiscount = 0;
+    if (hasManualPercent || hasManualAmount) {
+      itemProductDiscount = effectiveDiscount;
+    } else if (promoOutcome === "stack") {
+      itemProductDiscount = Math.min(
+        productDiscountMoneyBeforePromo,
+        effectiveDiscount,
+      );
+      itemPromoDiscount = Math.max(
+        0,
+        Math.round((effectiveDiscount - itemProductDiscount) * 100) / 100,
+      );
+    } else if (promoOutcome === "replace") {
+      itemProductDiscount = 0;
+      itemPromoDiscount = effectiveDiscount;
+      promoOverrodeProductDiscount = true;
+    } else {
+      itemProductDiscount = effectiveDiscount;
+    }
+
     subtotal += itemSubtotal;
+    totalProductDiscount += itemProductDiscount;
     totalDiscount += effectiveDiscount;
     totalPromoDiscount += itemPromoDiscount;
 
@@ -390,8 +429,10 @@ export async function calculateSaleItems(
   return {
     processedItems,
     subtotal: Math.round(subtotal * 100) / 100,
+    totalProductDiscount: Math.round(totalProductDiscount * 100) / 100,
     totalDiscount: Math.round(totalDiscount * 100) / 100,
     totalPromoDiscount: Math.round(totalPromoDiscount * 100) / 100,
+    promoOverrodeProductDiscount,
     total,
   };
 }

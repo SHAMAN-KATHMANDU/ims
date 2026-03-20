@@ -436,7 +436,7 @@ export function VendorPage() {
             <div className="relative">
               <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search products by name or IMS code..."
+                placeholder="Search products by name or product code..."
                 className="pl-8"
                 value={productSearch}
                 onChange={(e) => {
@@ -449,7 +449,7 @@ export function VendorPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>IMS Code</TableHead>
+                    <TableHead>Product Code</TableHead>
                     <TableHead>Name</TableHead>
                     <TableHead className="text-right">MRP</TableHead>
                     <TableHead className="text-right">Cost Price</TableHead>

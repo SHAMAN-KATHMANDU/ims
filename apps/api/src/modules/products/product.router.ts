@@ -23,7 +23,6 @@ const productRouter = Router();
  *           schema:
  *             type: object
  *             required:
- *               - imsCode
  *               - name
  *               - categoryId
  *               - costPrice
@@ -33,7 +32,7 @@ const productRouter = Router();
  *               imsCode:
  *                 type: string
  *                 maxLength: 100
- *                 description: Product-level IMS code (barcode); unique per tenant
+ *                 description: Optional product code (barcode). When omitted, defaults to the new product UUID.
  *                 example: "PRD-001"
  *               name:
  *                 type: string
@@ -73,12 +72,7 @@ const productRouter = Router();
  *                 minItems: 1
  *                 items:
  *                   type: object
- *                   required:
- *                     - imsCode
  *                   properties:
- *                     imsCode:
- *                       type: string
- *                       example: IMS-PHONE-001
  *                     stockQuantity:
  *                       type: number
  *                       default: 0
@@ -232,7 +226,7 @@ productRouter.get(
  * @swagger
  * /products/by-ims:
  *   get:
- *     summary: Get product by IMS code (barcode) for POS – returns product with variations and optional location stock
+ *     summary: Get product by product code (barcode) for POS – returns product with variations and optional location stock
  *     tags: [Products]
  *     security:
  *       - bearerAuth: []
@@ -556,7 +550,7 @@ productRouter.get(
  *               imsCode:
  *                 type: string
  *                 maxLength: 100
- *                 description: Product-level IMS code (barcode); unique per tenant
+ *                 description: Product code (barcode)
  *               name:
  *                 type: string
  *               description:

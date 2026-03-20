@@ -329,12 +329,12 @@ export function EditSaleForm({
         <div className="mt-2 flex gap-2 relative">
           <div className="relative flex-1">
             <Label htmlFor="edit-sale-product-search" className="sr-only">
-              Search products to add by name, IMS code, or category
+              Search products to add by name, product code, or category
             </Label>
             <Input
               id="edit-sale-product-search"
-              title="Search products to add by name, IMS code, or category"
-              placeholder="Search by product name, IMS code, or category..."
+              title="Search products to add by name, product code, or category"
+              placeholder="Search by product name, product code, or category..."
               value={productSearch}
               onChange={(e) => {
                 setProductSearch(e.target.value);
@@ -396,7 +396,7 @@ export function EditSaleForm({
             size="icon"
             onClick={handleAddByIms}
             disabled={scanLoading || !productSearch.trim()}
-            title="Search by IMS code (barcode)"
+            title="Search by product code (barcode)"
           >
             {scanLoading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -207,6 +207,7 @@ const navSections: NavSection[] = [
         icon: MessageSquare,
         roles: ["user", "admin", "superAdmin"],
         feature: Feature.MESSAGING,
+        envFeature: EnvFeature.MESSAGING,
       },
     ],
   },

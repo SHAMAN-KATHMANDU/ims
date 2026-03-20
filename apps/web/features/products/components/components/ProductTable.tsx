@@ -295,7 +295,7 @@ export function ProductTable({
       : false;
 
   // Calculate column count for empty state and expanded rows
-  // Base columns: IMS Code, Name, Variations, Category, (Cost Price if admin), MRP, (4 discount prices if not admin), Stock = 7 or 10
+  // Base columns: Product Code, Name, Variations, Category, (Cost Price if admin), MRP, (4 discount prices if not admin), Stock = 7 or 10
   // Add 1 for checkbox if selection is enabled
   const baseColumnCount = canSeeCostPrice ? 7 : 10;
   const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
@@ -362,7 +362,7 @@ export function ProductTable({
                   />
                 </TableHead>
               )}
-              <TableHead>IMS Code</TableHead>
+              <TableHead>Product Code</TableHead>
               {canSort ? (
                 <SortableTableHead
                   sortKey="name"

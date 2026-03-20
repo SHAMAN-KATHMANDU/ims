@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/select";
 import { Trash2, Plus } from "lucide-react";
 import type { ProductDiscountForm } from "../../types";
+import { calculateDiscountedPrice } from "../../utils/helpers";
+import { formatCurrency } from "@/lib/format";
 
 const emptyDiscountRow = (): ProductDiscountForm => ({
   discountTypeId: "",
@@ -30,14 +32,22 @@ interface DiscountsTabProps {
   discounts: ProductDiscountForm[];
   discountTypes: Array<{ id: string; name: string }>;
   onDiscountsChange?: (discounts: ProductDiscountForm[]) => void;
+  /** MRP from General tab — used to show discounted price next to each percentage row */
+  mrp?: string | number;
 }
 
 export function DiscountsTab({
   discounts,
   discountTypes,
   onDiscountsChange,
+  mrp,
 }: DiscountsTabProps) {
   const canEdit = typeof onDiscountsChange === "function";
+  const mrpNum =
+    mrp === undefined || mrp === null || String(mrp).trim() === ""
+      ? NaN
+      : Number(mrp);
+  const mrpValid = Number.isFinite(mrpNum) && mrpNum > 0;
   const usedTypeIds = new Set(
     discounts.map((d) => d.discountTypeId).filter(Boolean),
   );
@@ -94,7 +104,16 @@ export function DiscountsTab({
 
       {discounts.length > 0 && (
         <div className="space-y-3 border rounded-lg p-4">
-          {discounts.map((discount, index) => (
+          {discounts.map((discount, index) => {
+            const pct = Number(discount.discountPercentage);
+            const pctValid =
+              Number.isFinite(pct) && pct >= 0 && pct <= 100;
+            const priceAfter =
+              mrpValid && pctValid
+                ? calculateDiscountedPrice(mrpNum, pct)
+                : null;
+
+            return (
             <div
               key={index}
               className="flex flex-wrap items-end gap-3 gap-y-2 border-b pb-3 last:border-b-0 last:pb-0"
@@ -157,6 +176,24 @@ export function DiscountsTab({
                   </p>
                 )}
               </div>
+              <div className="min-w-[120px] space-y-1">
+                <Label className="text-xs text-muted-foreground">
+                  After discount
+                </Label>
+                {mrpValid ? (
+                  priceAfter != null ? (
+                    <p className="text-sm font-medium tabular-nums py-2">
+                      {formatCurrency(priceAfter)}
+                    </p>
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-2">—</p>
+                  )
+                ) : (
+                  <p className="text-xs text-muted-foreground py-2">
+                    Set MRP to see amount
+                  </p>
+                )}
+              </div>
               {canEdit && (
                 <Button
                   type="button"
@@ -170,7 +207,8 @@ export function DiscountsTab({
                 </Button>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -275,6 +275,9 @@ export async function previewSale(
       discountId:
         i.discountId && i.discountId !== "none" ? i.discountId : undefined,
       promoCode: i.promoCode,
+      manualDiscountPercent: i.manualDiscountPercent,
+      manualDiscountAmount: i.manualDiscountAmount,
+      discountReason: i.discountReason,
     })),
   });
   return response.data;

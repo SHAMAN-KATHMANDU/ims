@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { useProduct } from "../../hooks/use-products";
 import {
+  calculateDiscountedPrice,
   getVariationAttributeDisplay,
   getVariationTotal,
 } from "../utils/helpers";
@@ -94,7 +95,7 @@ export function ProductDetailSheet({
               {p.name}
             </SheetTitle>
             <SheetDescription className="sr-only">
-              Product IMS code: {p.imsCode}
+              Product code: {p.imsCode}
             </SheetDescription>
           </SheetHeader>
         </div>
@@ -256,7 +257,14 @@ export function ProductDetailSheet({
                           >
                             {d.discountType?.name ?? "Unknown"}{" "}
                             <span className="opacity-80">
-                              {d.discountPercentage}% off
+                              {d.discountPercentage}% off (
+                              {formatCurrency(
+                                calculateDiscountedPrice(
+                                  Number(p.mrp),
+                                  d.discountPercentage,
+                                ),
+                              )}
+                              )
                             </span>
                           </Badge>
                         ))}

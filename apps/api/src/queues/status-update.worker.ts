@@ -43,6 +43,7 @@ const statusWorker = new Worker<StatusJobData>(
               "messaging:message-status",
               {
                 messageId: message.id,
+                conversationId: message.conversationId,
                 status: "DELIVERED",
                 deliveredAt: new Date(event.timestamp),
               },

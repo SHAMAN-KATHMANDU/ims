@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { parseDate } from "@repo/shared";
 import { createError } from "@/middlewares/errorHandler";
 import {
@@ -79,7 +80,7 @@ export class ProductService {
 
   private mapPrismaConflict(err: unknown): never {
     if (isImsCodeConflict(err)) {
-      throw createError("Product with this IMS code already exists", 409);
+      throw createError("Product with this product code already exists", 409);
     }
     const e = err as { code?: string };
     if (e.code === "P2002") {
@@ -140,14 +141,6 @@ export class ProductService {
           isActive: discount.isActive,
         });
       }
-    }
-
-    const existingProduct = await this.repo.findProductIdByTenantAndImsCode(
-      tenantId,
-      data.imsCode,
-    );
-    if (existingProduct) {
-      throw createError("Product with this IMS code already exists", 409);
     }
 
     let warehouseLocation: { id: string } | null = null;
@@ -215,9 +208,19 @@ export class ProductService {
           : undefined,
       }));
 
+    const trimmedIms =
+      data.imsCode !== undefined &&
+      data.imsCode !== null &&
+      data.imsCode.trim() !== ""
+        ? data.imsCode.trim()
+        : undefined;
+    const productId = randomUUID();
+    const imsCodeForCreate = trimmedIms ?? productId;
+
     const createData: ProductCreateData = {
       tenantId,
-      imsCode: data.imsCode,
+      id: productId,
+      imsCode: imsCodeForCreate,
       name: data.name,
       categoryId: category.id,
       description: data.description ?? null,
@@ -496,16 +499,6 @@ export class ProductService {
         };
         err.providedVendorId = data.vendorId;
         throw err;
-      }
-    }
-
-    if (data.imsCode !== undefined) {
-      const other = await this.repo.findProductIdByTenantAndImsCode(
-        tenantId,
-        data.imsCode,
-      );
-      if (other && other.id !== id) {
-        throw createError("Another product already uses this IMS code", 409);
       }
     }
 

@@ -57,6 +57,7 @@ export enum EnvFeature {
   SYSTEM_ADMIN = "SYSTEM_ADMIN",
   PASSWORD_RESETS = "PASSWORD_RESETS",
   TRANSFER_REQUEST = "TRANSFER_REQUEST",
+  MESSAGING = "MESSAGING",
 }
 
 /**
@@ -99,6 +100,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     SYSTEM_ADMIN: true,
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
+    MESSAGING: true,
   },
   staging: {
     CRM: true,
@@ -135,6 +137,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     SYSTEM_ADMIN: true,
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
+    MESSAGING: true,
   },
   "staging-production": {
     CRM: true,
@@ -171,6 +174,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     SYSTEM_ADMIN: true,
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
+    MESSAGING: false,
   },
   production: {
     CRM: true,
@@ -207,6 +211,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     SYSTEM_ADMIN: true,
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
+    MESSAGING: false,
   },
 };
 

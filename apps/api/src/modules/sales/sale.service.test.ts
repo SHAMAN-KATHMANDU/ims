@@ -80,10 +80,61 @@ const mockVariation = {
     name: "Widget",
     imsCode: "P-001",
     mrp: 100,
-    discounts: [],
+    discounts: [] as Array<{
+      id: string;
+      valueType: "FLAT" | "PERCENTAGE";
+      value: number;
+      discountPercentage: number;
+      discountType: { name: string };
+    }>,
   },
   subVariations: [],
 };
+
+function variationWithProductDiscounts(
+  discounts: Array<{
+    id: string;
+    valueType: "FLAT" | "PERCENTAGE";
+    value: number;
+    discountTypeName: string;
+  }>,
+) {
+  return {
+    ...mockVariation,
+    product: {
+      ...mockVariation.product,
+      discounts: discounts.map((d) => ({
+        id: d.id,
+        valueType: d.valueType,
+        value: d.value,
+        discountPercentage: d.value,
+        discountType: { name: d.discountTypeName },
+      })),
+    },
+  };
+}
+
+function activePromo(overrides: {
+  overrideDiscounts?: boolean;
+  allowStacking?: boolean;
+  valueType?: "FLAT" | "PERCENTAGE";
+  value?: number;
+  eligibility?: "ALL" | "MEMBER" | "NON_MEMBER";
+} = {}) {
+  return {
+    isActive: true,
+    validFrom: null as Date | null,
+    validTo: null as Date | null,
+    usageLimit: null as number | null,
+    usageCount: 0,
+    products: [] as Array<{ productId: string }>,
+    eligibility: overrides.eligibility ?? "ALL",
+    valueType: overrides.valueType ?? "FLAT",
+    value: overrides.value ?? 0,
+    overrideDiscounts: overrides.overrideDiscounts ?? false,
+    allowStacking: overrides.allowStacking ?? false,
+  };
+}
 
 describe("SaleService", () => {
   beforeEach(() => {
@@ -174,6 +225,10 @@ describe("SaleService", () => {
       );
 
       expect(result.subtotal).toBe(200);
+      expect(result.totalDiscount).toBe(0);
+      expect(result.totalProductDiscount).toBe(0);
+      expect(result.totalPromoDiscount).toBe(0);
+      expect(result.promoOverrodeProductDiscount).toBe(false);
       expect(result.total).toBe(200);
       expect(result.processedItems).toHaveLength(1);
       expect(result.processedItems[0]).toMatchObject({
@@ -182,6 +237,344 @@ describe("SaleService", () => {
         unitPrice: 100,
         lineTotal: 200,
       });
+    });
+
+    it("catalog FLAT discount: totalProductDiscount equals flat, no promo", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(
+        variationWithProductDiscounts([
+          {
+            id: "d-flat",
+            valueType: "FLAT",
+            value: 15,
+            discountTypeName: "non-member",
+          },
+        ]),
+      );
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(null);
+
+      const result = await calculateSaleItems(
+        [{ variationId: "v1", quantity: 2, discountId: "d-flat" }],
+        "loc1",
+        "GENERAL",
+        "t1",
+      );
+
+      expect(result.subtotal).toBe(200);
+      expect(result.totalDiscount).toBe(15);
+      expect(result.totalProductDiscount).toBe(15);
+      expect(result.totalPromoDiscount).toBe(0);
+      expect(result.promoOverrodeProductDiscount).toBe(false);
+      expect(result.total).toBe(185);
+    });
+
+    it("catalog PERCENTAGE discount applies to line subtotal", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(
+        variationWithProductDiscounts([
+          {
+            id: "d-pct",
+            valueType: "PERCENTAGE",
+            value: 10,
+            discountTypeName: "wholesale",
+          },
+        ]),
+      );
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(null);
+
+      const result = await calculateSaleItems(
+        [{ variationId: "v1", quantity: 2, discountId: "d-pct" }],
+        "loc1",
+        "GENERAL",
+        "t1",
+      );
+
+      expect(result.totalDiscount).toBe(20);
+      expect(result.totalProductDiscount).toBe(20);
+      expect(result.totalPromoDiscount).toBe(0);
+      expect(result.total).toBe(180);
+    });
+
+    it("auto-selects best eligible catalog discount when discountId omitted", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(
+        variationWithProductDiscounts([
+          {
+            id: "d-low",
+            valueType: "FLAT",
+            value: 5,
+            discountTypeName: "non-member",
+          },
+          {
+            id: "d-high",
+            valueType: "FLAT",
+            value: 25,
+            discountTypeName: "wholesale",
+          },
+        ]),
+      );
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(null);
+
+      const result = await calculateSaleItems(
+        [{ variationId: "v1", quantity: 1 }],
+        "loc1",
+        "GENERAL",
+        "t1",
+      );
+
+      expect(result.totalProductDiscount).toBe(25);
+      expect(result.total).toBe(75);
+    });
+
+    it("manual discount percent splits product vs promo (all product)", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(null);
+
+      const result = await calculateSaleItems(
+        [
+          {
+            variationId: "v1",
+            quantity: 2,
+            manualDiscountPercent: 25,
+            discountReason: "VIP",
+          },
+        ],
+        "loc1",
+        "GENERAL",
+        "t1",
+        { userId: "u1", userRole: "admin" },
+      );
+
+      expect(result.totalDiscount).toBe(50);
+      expect(result.totalProductDiscount).toBe(50);
+      expect(result.totalPromoDiscount).toBe(0);
+      expect(result.promoOverrodeProductDiscount).toBe(false);
+      expect(result.total).toBe(150);
+    });
+
+    it("manual discount amount splits product vs promo (all product)", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(null);
+
+      const result = await calculateSaleItems(
+        [
+          {
+            variationId: "v1",
+            quantity: 2,
+            manualDiscountAmount: 42,
+            discountReason: "clearance",
+          },
+        ],
+        "loc1",
+        "GENERAL",
+        "t1",
+        { userId: "u1", userRole: "admin" },
+      );
+
+      expect(result.totalDiscount).toBe(42);
+      expect(result.totalProductDiscount).toBe(42);
+      expect(result.totalPromoDiscount).toBe(0);
+      expect(result.total).toBe(158);
+    });
+
+    it("promo overrideDiscounts: promo replaces catalog; product discount zero; flag set", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(
+        variationWithProductDiscounts([
+          {
+            id: "d1",
+            valueType: "FLAT",
+            value: 10,
+            discountTypeName: "non-member",
+          },
+        ]),
+      );
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(
+        activePromo({ overrideDiscounts: true, value: 50 }),
+      );
+
+      const result = await calculateSaleItems(
+        [
+          {
+            variationId: "v1",
+            quantity: 2,
+            discountId: "d1",
+            promoCode: "MEGA",
+          },
+        ],
+        "loc1",
+        "GENERAL",
+        "t1",
+      );
+
+      expect(result.totalDiscount).toBe(50);
+      expect(result.totalProductDiscount).toBe(0);
+      expect(result.totalPromoDiscount).toBe(50);
+      expect(result.promoOverrodeProductDiscount).toBe(true);
+      expect(result.total).toBe(150);
+    });
+
+    it("promo allowStacking: accumulates product + promo amounts", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(
+        variationWithProductDiscounts([
+          {
+            id: "d1",
+            valueType: "FLAT",
+            value: 10,
+            discountTypeName: "non-member",
+          },
+        ]),
+      );
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(
+        activePromo({ allowStacking: true, value: 20 }),
+      );
+
+      const result = await calculateSaleItems(
+        [
+          {
+            variationId: "v1",
+            quantity: 2,
+            discountId: "d1",
+            promoCode: "STACK",
+          },
+        ],
+        "loc1",
+        "GENERAL",
+        "t1",
+      );
+
+      expect(result.totalDiscount).toBe(30);
+      expect(result.totalProductDiscount).toBe(10);
+      expect(result.totalPromoDiscount).toBe(20);
+      expect(result.promoOverrodeProductDiscount).toBe(false);
+      expect(result.total).toBe(170);
+    });
+
+    it("promo best-deal: promo wins over catalog", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(
+        variationWithProductDiscounts([
+          {
+            id: "d1",
+            valueType: "FLAT",
+            value: 10,
+            discountTypeName: "non-member",
+          },
+        ]),
+      );
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(
+        activePromo({ value: 40 }),
+      );
+
+      const result = await calculateSaleItems(
+        [
+          {
+            variationId: "v1",
+            quantity: 2,
+            discountId: "d1",
+            promoCode: "WIN",
+          },
+        ],
+        "loc1",
+        "GENERAL",
+        "t1",
+      );
+
+      expect(result.totalDiscount).toBe(40);
+      expect(result.totalProductDiscount).toBe(0);
+      expect(result.totalPromoDiscount).toBe(40);
+      expect(result.promoOverrodeProductDiscount).toBe(true);
+      expect(result.total).toBe(160);
+    });
+
+    it("promo best-deal: product wins — totalPromoDiscount is zero", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(
+        variationWithProductDiscounts([
+          {
+            id: "d1",
+            valueType: "FLAT",
+            value: 30,
+            discountTypeName: "non-member",
+          },
+        ]),
+      );
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(
+        activePromo({ value: 10 }),
+      );
+
+      const result = await calculateSaleItems(
+        [
+          {
+            variationId: "v1",
+            quantity: 2,
+            discountId: "d1",
+            promoCode: "LOSE",
+          },
+        ],
+        "loc1",
+        "GENERAL",
+        "t1",
+      );
+
+      expect(result.totalDiscount).toBe(30);
+      expect(result.totalProductDiscount).toBe(30);
+      expect(result.totalPromoDiscount).toBe(0);
+      expect(result.promoOverrodeProductDiscount).toBe(false);
+      expect(result.total).toBe(170);
+    });
+
+    it("manual discount above 20% throws 403 for non-admin when opts provided", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(null);
+
+      await expect(
+        calculateSaleItems(
+          [
+            {
+              variationId: "v1",
+              quantity: 1,
+              manualDiscountPercent: 25,
+              discountReason: "test",
+            },
+          ],
+          "loc1",
+          "GENERAL",
+          "t1",
+          { userId: "u1", userRole: "user" },
+        ),
+      ).rejects.toMatchObject({
+        status: 403,
+        message: expect.stringContaining("20%"),
+      });
+    });
+
+    it("manual discount above 20% allowed for admin when opts provided", async () => {
+      mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockFindPromoByCodeWithProducts.mockResolvedValue(null);
+
+      const result = await calculateSaleItems(
+        [
+          {
+            variationId: "v1",
+            quantity: 1,
+            manualDiscountPercent: 25,
+            discountReason: "approved",
+          },
+        ],
+        "loc1",
+        "GENERAL",
+        "t1",
+        { userId: "u1", userRole: "admin" },
+      );
+
+      expect(result.totalDiscount).toBe(25);
+      expect(result.totalProductDiscount).toBe(25);
     });
   });
 

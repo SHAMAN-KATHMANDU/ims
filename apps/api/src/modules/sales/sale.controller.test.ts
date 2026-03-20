@@ -404,13 +404,15 @@ describe("SaleController", () => {
   });
 
   describe("previewSale", () => {
-    it("returns 200 with subtotal, discount, total", async () => {
+    it("returns 200 with preview fields including productDiscount and override flag", async () => {
       mockPreviewSale.mockResolvedValue({
         processedItems: [],
         subtotal: 100,
+        totalProductDiscount: 5,
         totalDiscount: 10,
-        total: 90,
         totalPromoDiscount: 5,
+        promoOverrodeProductDiscount: false,
+        total: 90,
       });
 
       const req = makeReq({
@@ -432,9 +434,57 @@ describe("SaleController", () => {
       expect(res.json).toHaveBeenCalledWith({
         subtotal: 100,
         discount: 10,
-        total: 90,
+        productDiscount: 5,
         promoDiscount: 5,
+        promoOverrodeProductDiscount: false,
+        total: 90,
       });
+    });
+
+    it("returns 400 on invalid preview body (Zod)", async () => {
+      const req = makeReq({
+        body: {
+          locationId: "not-a-uuid",
+          items: [],
+        },
+      });
+      const res = mockRes() as Response;
+
+      await saleController.previewSale(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(mockPreviewSale).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when preview service rejects invalid showroom", async () => {
+      mockPreviewSale.mockRejectedValue(
+        Object.assign(new Error("Invalid or inactive showroom"), {
+          statusCode: 400,
+        }),
+      );
+
+      const req = makeReq({
+        body: {
+          locationId: "550e8400-e29b-41d4-a716-446655440000",
+          items: [
+            {
+              variationId: "550e8400-e29b-41d4-a716-446655440001",
+              quantity: 1,
+            },
+          ],
+        },
+      });
+      const res = mockRes() as Response;
+
+      await saleController.previewSale(req, res);
+
+      expect(mockPreviewSale).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Invalid or inactive showroom",
+        }),
+      );
     });
   });
 

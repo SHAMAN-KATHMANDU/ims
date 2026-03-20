@@ -200,8 +200,10 @@ class SaleController {
       return res.json({
         subtotal: result.subtotal,
         discount: result.totalDiscount,
-        total: result.total,
+        productDiscount: result.totalProductDiscount,
         promoDiscount: result.totalPromoDiscount,
+        promoOverrodeProductDiscount: result.promoOverrodeProductDiscount,
+        total: result.total,
       });
     } catch (error) {
       if (error instanceof ZodError) {
@@ -656,7 +658,7 @@ class SaleController {
         { header: "Discount", key: "discount", width: 12 },
         { header: "Total", key: "total", width: 12 },
         { header: "Payment Summary", key: "paymentSummary", width: 30 },
-        { header: "Product IMS Code", key: "productImsCode", width: 18 },
+        { header: "Product Code", key: "productImsCode", width: 18 },
         { header: "Product Name", key: "productName", width: 30 },
         { header: "Category", key: "category", width: 18 },
         { header: "Attributes", key: "variation", width: 30 },

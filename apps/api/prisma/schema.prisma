@@ -240,6 +240,7 @@ model User {
   // Messaging relations
   assignedConversations Conversation[]    @relation("ConversationAssignedTo")
   sentMessages          Message[]         @relation("MessageSender")
+  messageReactions      MessageReaction[] @relation("MessageReactions")
 
   @@unique([tenantId, username])
   @@map("users")
@@ -319,7 +320,7 @@ model SubCategory {
 model Product {
   id            String   @id @default(uuid()) @map("product_id")
   tenantId      String   @map("tenant_id")
-  /// Unique per-tenant product barcode / IMS code (scanned at POS to fetch product and choose variation).
+  /// Product code / barcode (POS lookup). Auto-filled with product UUID when omitted on create.
   imsCode       String   @map("ims_code") @db.VarChar(100)
   name          String   @map("product_name") @db.VarChar(255)
   categoryId    String   @map("category_id")
@@ -358,7 +359,6 @@ model Product {
   productAttributeTypes ProductAttributeType[]
   dealLineItems        DealLineItem[]
 
-  @@unique([tenantId, imsCode])
   @@map("products")
 }
 
@@ -1447,15 +1447,15 @@ model MessagingChannel {
   name               String            @db.VarChar(255)
   status             ChannelStatus     @default(PENDING)
 
-  /// Facebook Page ID — used for inbound routing.
-  externalId         String            @map("external_id") @db.VarChar(255)
+  /// Facebook Page ID — used for inbound routing. Null until manual setup step 2 (after webhook verify).
+  externalId         String?           @map("external_id") @db.VarChar(255)
 
   /// Encrypted per-channel credentials (JSON, encrypted at rest).
-  /// Facebook: { pageAccessToken: "..." }
-  credentialsEnc     String            @map("credentials_enc") @db.Text
+  /// Facebook: { pageAccessToken: "..." }. Null until credentials are supplied.
+  credentialsEnc     String?           @map("credentials_enc") @db.Text
 
-  /// Random string for Meta's GET challenge-response verification.
-  webhookVerifyToken String?           @map("webhook_verify_token") @db.VarChar(255)
+  /// Meta GET verification; must be unique when set so webhook challenge resolves the right row.
+  webhookVerifyToken String?           @unique @map("webhook_verify_token") @db.VarChar(255)
 
   /// Non-sensitive provider metadata (page name, category, URL).
   metadata           Json?
@@ -1485,6 +1485,9 @@ model Conversation {
 
   /// Resolved display name of the external participant.
   participantName String?             @map("participant_name") @db.VarChar(255)
+
+  /// Profile picture URL from the messaging provider (e.g. Facebook Graph API).
+  participantProfilePictureUrl String? @map("participant_profile_picture_url") @db.Text
 
   /// Link to IMS Contact (auto-matched or manually linked).
   contactId       String?             @map("contact_id")
@@ -1548,12 +1551,43 @@ model Message {
   readAt            DateTime?          @map("read_at")
   createdAt         DateTime           @default(now()) @map("created_at")
 
+  /// When set, this message was edited in the inbox UI.
+  editedAt          DateTime?          @map("edited_at")
+
+  /// Optional reply reference (same conversation).
+  replyToId         String?            @map("reply_to_id")
+
   conversation      Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
   sentBy            User?              @relation("MessageSender", fields: [sentById], references: [id], onDelete: SetNull)
+  replyTo           Message?           @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies           Message[]          @relation("MessageReplies")
+  reactions         MessageReaction[]
 
   @@index([conversationId, createdAt])
   @@index([providerMessageId])
+  @@index([replyToId])
   @@map("messages")
+}
+
+/// Emoji reaction on a message (dashboard user and/or external Messenger participant).
+model MessageReaction {
+  id        String   @id @default(uuid()) @map("reaction_id")
+  messageId String   @map("message_id")
+  /// Set when the reaction was added from the tenant dashboard API.
+  userId    String?  @map("user_id")
+  /// Set when the reaction came from a Messenger webhook (PSID).
+  externalParticipantId String? @map("external_participant_id") @db.VarChar(255)
+  /// Stable reactor identity: `u:<userId>` or `e:<externalParticipantId>`.
+  reactionOwnerKey String @map("reaction_owner_key") @db.VarChar(200)
+  emoji     String   @db.VarChar(32)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user      User?    @relation("MessageReactions", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, emoji, reactionOwnerKey])
+  @@index([messageId])
+  @@map("message_reactions")
 }
 
 /// Idempotency tracking for inbound webhook events.

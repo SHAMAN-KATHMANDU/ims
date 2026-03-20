@@ -5,7 +5,7 @@
 import { z } from "zod";
 
 export const CreateProductSchema = z.object({
-  imsCode: z.string().min(1, "IMS Code is required").max(50),
+  imsCode: z.string().max(50).optional(),
   name: z.string().min(1, "Name is required").max(200),
   categoryId: z.string().uuid("Invalid category"),
   description: z.string().max(2000).optional(),
@@ -24,7 +24,7 @@ export const CategoryFormSchema = z.object({
 
 /** Form schema for product create/edit - uses string for numeric inputs (coerced on submit) */
 export const ProductFormSchema = z.object({
-  imsCode: z.string().min(1, "IMS code (barcode) is required").max(50),
+  imsCode: z.string().max(50).optional().default(""),
   name: z.string().min(1, "Product name is required").max(200),
   categoryId: z.string().uuid("Invalid category"),
   subCategory: z.string().max(100).optional().default(""),

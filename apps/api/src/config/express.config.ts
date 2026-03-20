@@ -109,6 +109,15 @@ app.use(
   }),
 );
 
+// Public static files (e.g. messaging media under uploads/messaging/)
+app.use(
+  "/uploads",
+  express.static(path.join(process.cwd(), "uploads"), {
+    fallthrough: false,
+    index: false,
+  }),
+);
+
 // API Routes
 app.use("/api/v1", router);
 

@@ -440,7 +440,7 @@ export function TransferForm({
                 <Input
                   value={productSearch}
                   onChange={(e) => setProductSearch(e.target.value)}
-                  placeholder="Search by product name, IMS code, or category..."
+                  placeholder="Search by product name, product code, or category..."
                   className="pl-9"
                   aria-label="Search products to add to transfer"
                 />
@@ -452,7 +452,7 @@ export function TransferForm({
               )}
               {!productSearch.trim() && !loadingInventory && (
                 <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
-                  Search for products by name, IMS code, or category…
+                  Search for products by name, product code, or category…
                 </div>
               )}
               {productSearch.trim() &&
@@ -548,7 +548,7 @@ export function TransferForm({
                 <TableHeader>
                   <TableRow>
                     <TableHead>Product</TableHead>
-                    <TableHead>IMS Code</TableHead>
+                    <TableHead>Product Code</TableHead>
                     <TableHead className="text-right">Quantity</TableHead>
                     <TableHead className="w-[50px]"></TableHead>
                   </TableRow>

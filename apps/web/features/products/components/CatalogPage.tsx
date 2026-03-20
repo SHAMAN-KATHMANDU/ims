@@ -297,8 +297,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   const validateProduct = (values: ProductFormValues) => {
     const errors: Record<string, string> = {};
 
-    if (!(values.imsCode ?? "").trim())
-      errors.imsCode = "IMS code (barcode) is required";
     if (!values.name?.trim()) errors.name = "Product name is required";
     if (!values.categoryId) errors.categoryId = "Category is required";
 
@@ -416,8 +414,8 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
 
         const isEditing = !!editingProduct;
 
+        const imsTrim = (values.imsCode ?? "").trim();
         const data: CreateProductData = {
-          imsCode: (values.imsCode ?? "").trim(),
           name: values.name,
           categoryId: values.categoryId,
           description: values.description,
@@ -430,6 +428,9 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           mrp: mrp,
           vendorId: values.vendorId || undefined,
         };
+        if (imsTrim) {
+          data.imsCode = imsTrim;
+        }
 
         if (isEditing) {
           data.variations = productVariations.map((v) => ({

@@ -33,7 +33,7 @@ export class ProductsPage {
     imsCode?: string;
   }) {
     if (options.imsCode) {
-      await this.page.getByLabel(/ims code|barcode/i).fill(options.imsCode);
+      await this.page.getByLabel(/product code|barcode/i).fill(options.imsCode);
     }
     await this.page.getByLabel(/product name/i).fill(options.name);
     if (options.category) {

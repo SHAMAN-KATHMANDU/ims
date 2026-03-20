@@ -5,10 +5,18 @@ import {
   UpdateConversationSchema,
   ConversationQuerySchema,
   MessageQuerySchema,
+  AddReactionSchema,
+  EditMessageSchema,
 } from "./messaging.schema";
 import messagingService from "./messaging.service";
 import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
+import { env } from "@/config/env";
+import {
+  messagingMediaKind,
+  unlinkSilent,
+  validateMessagingMediaMagicBytes,
+} from "./messaging-upload.validation";
 
 const handleAppError = (res: Response, error: unknown): Response | null => {
   if ((error as AppError).statusCode) {
@@ -136,6 +144,129 @@ class MessagingController {
       return (
         handleAppError(res, error) ??
         sendControllerError(req, res, error, "Mark read error")
+      );
+    }
+  };
+
+  addReaction = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
+      const body = AddReactionSchema.parse(req.body);
+      const reaction = await messagingService.addReaction(
+        tenantId,
+        req.params.id,
+        req.params.messageId,
+        userId,
+        body.emoji,
+      );
+      return res.status(201).json({ message: "Reaction added", reaction });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Add reaction error")
+      );
+    }
+  };
+
+  removeReaction = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
+      let emoji: string;
+      try {
+        emoji = decodeURIComponent(req.params.emoji);
+      } catch {
+        return res.status(400).json({ message: "Invalid emoji in path" });
+      }
+      if (!emoji || emoji.length > 32) {
+        return res.status(400).json({ message: "Invalid emoji" });
+      }
+      await messagingService.removeReaction(
+        tenantId,
+        req.params.id,
+        req.params.messageId,
+        userId,
+        emoji,
+      );
+      return res.status(200).json({ message: "Reaction removed" });
+    } catch (error: unknown) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Remove reaction error")
+      );
+    }
+  };
+
+  editMessage = async (req: Request, res: Response) => {
+    try {
+      const tenantId = req.user!.tenantId;
+      const userId = req.user!.id;
+      const body = EditMessageSchema.parse(req.body);
+      const message = await messagingService.editMessage(
+        tenantId,
+        req.params.id,
+        req.params.messageId,
+        userId,
+        body.text,
+      );
+      return res.status(200).json({ message: "Message updated", data: message });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Edit message error")
+      );
+    }
+  };
+
+  uploadMedia = async (req: Request, res: Response) => {
+    const tenantId = req.user!.tenantId;
+    const conversationId = req.params.id;
+    const file = req.file;
+
+    try {
+      await messagingService.getConversation(tenantId, conversationId);
+
+      if (!file?.path) {
+        return res.status(400).json({ message: "File is required (field: file)" });
+      }
+
+      const verified = await validateMessagingMediaMagicBytes(file.path);
+      if (!verified) {
+        unlinkSilent(file.path);
+        return res.status(400).json({
+          message:
+            "File content does not match an allowed image or video type.",
+        });
+      }
+
+      const relativeUrl = `/uploads/messaging/${file.filename}`;
+      const absoluteUrl = `${env.publicServerOrigin}${relativeUrl}`;
+      const mediaType = messagingMediaKind(verified.mime);
+
+      return res.status(201).json({
+        message: "Upload complete",
+        url: absoluteUrl,
+        mediaType,
+        relativeUrl,
+      });
+    } catch (error: unknown) {
+      if (file?.path) {
+        unlinkSilent(file.path);
+      }
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Messaging upload error")
       );
     }
   };

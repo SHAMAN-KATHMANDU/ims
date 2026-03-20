@@ -68,6 +68,7 @@ import {
   UserRound,
   X,
   Lock,
+  AlertCircle,
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
 
@@ -699,22 +700,6 @@ export function NewSaleForm({
     setItems(items.filter((_, i) => i !== index));
   };
 
-  // All totals come from the backend preview for consistency
-  const subtotal =
-    previewResult?.subtotal ??
-    Math.round(
-      items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0) *
-        100,
-    ) / 100;
-  const totalDiscount = previewResult?.discount ?? 0;
-  const promoDiscount = previewResult?.promoDiscount ?? 0;
-  const expectedTotal =
-    previewResult?.total ??
-    Math.max(
-      0,
-      Math.round((subtotal - totalDiscount - promoDiscount) * 100) / 100,
-    );
-
   const getItemDiscountDisplay = (item: SaleItem): number => {
     if (discountMode !== "individual") return 0;
     const itemSub = item.unitPrice * item.quantity;
@@ -733,6 +718,43 @@ export function NewSaleForm({
     return disc.valueType === "FLAT"
       ? Math.min(disc.value, itemSub)
       : itemSub * (disc.value / 100);
+  };
+
+  // All totals come from the backend preview for consistency
+  const subtotal =
+    previewResult?.subtotal ??
+    Math.round(
+      items.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0) *
+        100,
+    ) / 100;
+  const totalDiscountAll = previewResult?.discount ?? 0;
+  const promoDiscount = previewResult?.promoDiscount ?? 0;
+  const localProductDiscountSum =
+    Math.round(
+      items.reduce((sum, item) => sum + getItemDiscountDisplay(item), 0) * 100,
+    ) / 100;
+  const productDiscountDisplay =
+    previewResult != null
+      ? (previewResult.productDiscount != null
+          ? previewResult.productDiscount
+          : Math.max(
+              0,
+              Math.round((totalDiscountAll - promoDiscount) * 100) / 100,
+            ))
+      : localProductDiscountSum;
+  const expectedTotal =
+    previewResult?.total ??
+    Math.max(
+      0,
+      Math.round(
+        (subtotal - productDiscountDisplay - promoDiscount) * 100,
+      ) / 100,
+    );
+
+  const handleRemovePromo = () => {
+    setPromoCode("");
+    setPromoCodeError(null);
+    setItems((prev) => prev.map((i) => ({ ...i, promoCode: undefined })));
   };
 
   const totalPayment =
@@ -1237,7 +1259,7 @@ export function NewSaleForm({
                                   handleBarcodeScan();
                                 }
                               }}
-                              placeholder="Search by product name, IMS code (barcode), category..."
+                              placeholder="Search by product name, product code (barcode), category..."
                               className="pl-9"
                             />
                           </div>
@@ -1332,7 +1354,7 @@ export function NewSaleForm({
                             </div>
                           ) : !productSearch.trim() ? (
                             <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
-                              Search for products by name, IMS code (barcode),
+                              Search for products by name, product code (barcode),
                               or category...
                             </div>
                           ) : filteredInventory.length === 0 ? (
@@ -1602,6 +1624,15 @@ export function NewSaleForm({
                                       </SelectContent>
                                     </Select>
                                   )}
+                                {discountMode === "individual" &&
+                                  (item.manualDiscountPercent ?? 0) <= 0 &&
+                                  (item.manualDiscountAmount ?? 0) <= 0 &&
+                                  getItemDiscountDisplay(item) > 0 && (
+                                    <p className="text-xs text-green-600 font-mono mt-1">
+                                      Discount amount: −
+                                      {formatCurrency(getItemDiscountDisplay(item))}
+                                    </p>
+                                  )}
 
                                 {/* Enterprise: manual discount per line */}
                                 {discountMode === "individual" && (
@@ -1682,6 +1713,18 @@ export function NewSaleForm({
                                           setItems(next);
                                         }}
                                       />
+                                      {discountMode === "individual" &&
+                                        ((item.manualDiscountPercent ?? 0) > 0 ||
+                                          (item.manualDiscountAmount ?? 0) >
+                                            0) &&
+                                        getItemDiscountDisplay(item) > 0 && (
+                                          <p className="w-full basis-full text-xs text-green-600 font-mono">
+                                            Line discount: −
+                                            {formatCurrency(
+                                              getItemDiscountDisplay(item),
+                                            )}
+                                          </p>
+                                        )}
                                       {((item.manualDiscountPercent ?? 0) > 0 ||
                                         (item.manualDiscountAmount ?? 0) >
                                           0) && (
@@ -1759,9 +1802,12 @@ export function NewSaleForm({
                           <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">
                               Discount
+                              <span className="block text-[10px] font-normal text-muted-foreground/80">
+                                Catalog / manual
+                              </span>
                             </span>
                             <span className="font-mono font-semibold text-green-600">
-                              -{formatCurrency(totalDiscount)}
+                              -{formatCurrency(productDiscountDisplay)}
                             </span>
                           </div>
                           {previewResult?.promoDiscount != null &&
@@ -1775,6 +1821,19 @@ export function NewSaleForm({
                                 </span>
                               </div>
                             )}
+                          {previewResult?.promoOverrodeProductDiscount && (
+                            <div
+                              className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-200"
+                              role="status"
+                            >
+                              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                              <span>
+                                Promo applied — product discount overwritten.
+                                You can remove the promo to restore catalog
+                                discounts.
+                              </span>
+                            </div>
+                          )}
                           <div className="flex justify-between items-center pt-2 border-t">
                             <span className="font-semibold">Total</span>
                             <span className="text-xl font-bold font-mono">
@@ -1793,26 +1852,40 @@ export function NewSaleForm({
                       <>
                         {/* Promo Code */}
                         <FormSection title="Promo Code">
-                          <div className="relative">
-                            <Input
-                              value={promoCode}
-                              onChange={(e) =>
-                                setPromoCode(e.target.value.toUpperCase())
-                              }
-                              placeholder="Enter promo code..."
-                              className="uppercase"
-                              disabled={promoCodeValidating}
-                            />
-                            {promoCodeValidating && (
-                              <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                            )}
-                            {promoCode &&
-                              !promoCodeError &&
-                              !promoCodeValidating && (
-                                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-green-600">
-                                  Applied
-                                </span>
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <Input
+                                value={promoCode}
+                                onChange={(e) =>
+                                  setPromoCode(e.target.value.toUpperCase())
+                                }
+                                placeholder="Enter promo code..."
+                                className="uppercase pr-24"
+                                disabled={promoCodeValidating}
+                              />
+                              {promoCodeValidating && (
+                                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
                               )}
+                              {promoCode &&
+                                !promoCodeError &&
+                                !promoCodeValidating && (
+                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-green-600">
+                                    Applied
+                                  </span>
+                                )}
+                            </div>
+                            {(promoCode.trim().length > 0 ||
+                              items.some((i) => i.promoCode)) && (
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="shrink-0"
+                                onClick={handleRemovePromo}
+                              >
+                                Remove promo
+                              </Button>
+                            )}
                           </div>
                           {promoCodeError && (
                             <p className="text-xs text-destructive mt-2">

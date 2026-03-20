@@ -27,6 +27,12 @@ export class MessagingChannelRepository {
     });
   }
 
+  async findByWebhookVerifyToken(webhookVerifyToken: string) {
+    return prisma.messagingChannel.findFirst({
+      where: { webhookVerifyToken },
+    });
+  }
+
   async create(data: {
     tenantId: string;
     provider: MessagingProvider;
@@ -46,14 +52,36 @@ export class MessagingChannelRepository {
     });
   }
 
+  /** Step 1 (manual dev): persist verify token only so Meta GET /webhooks can succeed before page token exists. */
+  async createPendingWebhookVerify(data: {
+    tenantId: string;
+    provider: MessagingProvider;
+    webhookVerifyToken: string;
+  }) {
+    return prisma.messagingChannel.create({
+      data: {
+        tenant: { connect: { id: data.tenantId } },
+        provider: data.provider,
+        name: "Messenger (pending webhook verification)",
+        externalId: null,
+        credentialsEnc: null,
+        webhookVerifyToken: data.webhookVerifyToken,
+        status: "PENDING",
+        connectedAt: null,
+      },
+    });
+  }
+
   async update(
     id: string,
     data: Partial<{
       name: string;
       status: ChannelStatus;
+      externalId: string;
       credentialsEnc: string;
       metadata: any;
       disconnectedAt: Date | null;
+      connectedAt: Date | null;
     }>,
   ) {
     return prisma.messagingChannel.update({

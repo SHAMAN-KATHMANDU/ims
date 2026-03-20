@@ -141,7 +141,7 @@ export function TransferDetail({
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
-                        <TableHead>IMS Code</TableHead>
+                        <TableHead>Product Code</TableHead>
                         <TableHead className="text-right">Quantity</TableHead>
                       </TableRow>
                     </TableHeader>

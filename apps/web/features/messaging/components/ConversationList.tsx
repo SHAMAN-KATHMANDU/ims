@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -32,7 +32,18 @@ export function ConversationList({
     limit: 50,
   });
 
-  const conversations = data?.conversations ?? [];
+  const sortedConversations = useMemo(() => {
+    const conversations = data?.conversations ?? [];
+    return [...conversations].sort((a, b) => {
+      const ta = a.lastMessageAt
+        ? new Date(a.lastMessageAt).getTime()
+        : Number.NEGATIVE_INFINITY;
+      const tb = b.lastMessageAt
+        ? new Date(b.lastMessageAt).getTime()
+        : Number.NEGATIVE_INFINITY;
+      return tb - ta;
+    });
+  }, [data?.conversations]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -75,13 +86,13 @@ export function ConversationList({
               </div>
             ))}
           </div>
-        ) : conversations.length === 0 ? (
+        ) : sortedConversations.length === 0 ? (
           <div className="flex flex-col items-center justify-center gap-2 px-4 py-12 text-center text-muted-foreground">
             <MessageSquare className="size-10 opacity-40" />
             <p className="text-sm">No conversations yet</p>
           </div>
         ) : (
-          conversations.map((conv) => (
+          sortedConversations.map((conv) => (
             <ConversationItem
               key={conv.id}
               conversation={conv}

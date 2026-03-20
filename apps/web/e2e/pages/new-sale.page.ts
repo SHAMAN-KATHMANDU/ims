@@ -31,7 +31,7 @@ export class NewSalePage {
 
   async addProductBySearch(productNameOrCode: string) {
     const searchInput = this.page.getByPlaceholder(
-      /search by product name|ims code|barcode/i,
+      /search by product name|product code|barcode/i,
     );
     await searchInput.fill(productNameOrCode);
     const addBtn = this.page.getByRole("button", { name: /^add$/i }).first();

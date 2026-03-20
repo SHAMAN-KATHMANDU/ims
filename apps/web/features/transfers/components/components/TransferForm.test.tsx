@@ -85,7 +85,7 @@ describe("TransferForm", () => {
     fireEvent.change(fromSelect!, { target: { value: "loc1" } });
 
     const searchInput = screen.getByPlaceholderText(
-      /search by product name, ims code, or category/i,
+      /search by product name, product code, or category/i,
     );
     fireEvent.change(searchInput, { target: { value: "widget" } });
 

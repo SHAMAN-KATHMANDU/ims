@@ -76,12 +76,12 @@ export function GeneralTab({
   return (
     <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="imsCode">IMS Code (Barcode)</Label>
+        <Label htmlFor="imsCode">Product Code</Label>
         <Input
           id="imsCode"
           value={form.values.imsCode}
           onChange={(e) => form.handleChange("imsCode", e.target.value)}
-          placeholder="e.g. SHIRT-001"
+          placeholder="e.g. SHIRT-001 (optional — defaults to product ID)"
         />
         {form.errors.imsCode && (
           <p className="text-sm text-destructive">{form.errors.imsCode}</p>
