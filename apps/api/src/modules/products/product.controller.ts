@@ -169,7 +169,7 @@ class ProductController {
         req,
         res,
         error,
-        "Get product by IMS code error",
+        "Get product by product code error",
       );
     }
   };
@@ -571,7 +571,7 @@ class ProductController {
       });
 
       const columns = [
-        { header: "IMS Code", key: "imsCode", width: 15 },
+        { header: "Product Code", key: "imsCode", width: 15 },
         { header: "Product Name", key: "name", width: 30 },
         { header: "Category", key: "category", width: 20 },
         { header: "Description", key: "description", width: 40 },

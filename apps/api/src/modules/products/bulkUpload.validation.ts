@@ -29,10 +29,12 @@ export const KNOWN_HEADER_FIELDS = [
  */
 export const excelProductRowSchema = z.object({
   imsCode: z
-    .union([z.string(), z.number()])
-    .transform((val) => String(val).trim())
-    .refine((val) => val !== "" && val !== "-", {
-      message: "IMS CODE is required",
+    .union([z.string(), z.number(), z.null(), z.undefined()])
+    .optional()
+    .transform((val) => {
+      if (val === null || val === undefined) return null;
+      const str = String(val).trim();
+      return str === "" || str === "-" ? null : str;
     }),
 
   location: z
@@ -173,7 +175,14 @@ export const productBulkFields = [...KNOWN_HEADER_FIELDS] as string[];
 
 /** Header mappings for product bulk file (Excel/CSV). */
 export const productBulkHeaderMappings: Record<string, string[]> = {
-  imsCode: ["imscode", "ims_code", "ims"],
+  imsCode: [
+    "imscode",
+    "ims_code",
+    "ims",
+    "productcode",
+    "product_code",
+    "product code",
+  ],
   location: ["location", "locationname", "location_id", "locationid"],
   category: ["category"],
   subCategory: ["subcategory", "sub-category", "sub_category"],
@@ -191,7 +200,6 @@ export const productBulkHeaderMappings: Record<string, string[]> = {
 
 /** Required columns for product bulk upload. */
 export const productBulkRequiredColumns = [
-  "imsCode",
   "location",
   "category",
   "name",
@@ -209,6 +217,6 @@ export function getProductBulkParseOptions(): BulkParseOptions<ExcelProductRow> 
     skipExcelRows: 2,
     collectDynamicAttributes: true,
     missingColumnsHint:
-      "Please ensure your file has headers: IMS Code, Location, Category, Name of Product, Cost Price, Final SP. Any extra columns (e.g. Color, Size, Material) will be treated as product attributes.",
+      "Please ensure your file has headers: Location, Category, Name of Product, Cost Price, Final SP. Optional: Product Code (barcode). Any extra columns (e.g. Color, Size, Material) will be treated as product attributes.",
   };
 }

@@ -527,8 +527,6 @@ export function ProductPage() {
   const validateProduct = (values: ProductFormValues) => {
     const errors: Record<string, string> = {};
 
-    if (!(values.imsCode ?? "").trim())
-      errors.imsCode = "IMS code (barcode) is required";
     if (!values.name?.trim()) errors.name = "Product name is required";
     if (!values.categoryId) errors.categoryId = "Category is required";
 
@@ -663,8 +661,8 @@ export function ProductPage() {
 
         const isEditing = !!editingProduct;
 
+        const imsTrim = (values.imsCode ?? "").trim();
         const data: CreateProductData = {
-          imsCode: (values.imsCode ?? "").trim(),
           name: values.name,
           categoryId: values.categoryId,
           subCategory: values.subCategory || undefined,
@@ -677,6 +675,9 @@ export function ProductPage() {
           mrp: mrp,
           vendorId: values.vendorId || undefined,
         };
+        if (imsTrim) {
+          data.imsCode = imsTrim;
+        }
 
         if (productAttributeTypeIds.length > 0) {
           data.attributeTypeIds = productAttributeTypeIds;
@@ -926,17 +927,11 @@ export function ProductPage() {
 
   // Variation handlers
   const addVariationToForm = () => {
-    if (productAttributeTypeIds.length === 0) {
-      toast({
-        title: "Select attribute types first",
-        description:
-          "Select at least one attribute type for the product (e.g. Color, Size) before adding a variation.",
-        variant: "destructive",
-      });
-      return;
-    }
-    setProductVariations([
-      ...productVariations,
+    // Match CatalogPage: allow a default stock-only variation when the product
+    // has no attribute types. Submit validation still enforces attributes when
+    // `productAttributeTypeIds` is non-empty.
+    setProductVariations((prev) => [
+      ...prev,
       {
         stockQuantity: "0",
         subVariants: [],

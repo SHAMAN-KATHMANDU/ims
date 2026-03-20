@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import ExcelJS from "exceljs";
 import productRepository from "./product.repository";
 import type { ExcelProductRow } from "./bulkUpload.validation";
@@ -366,9 +367,16 @@ export async function processProductBulkRows(
         });
       }
 
+      const productId = randomUUID();
+      const imsCodeForProduct =
+        firstRow.imsCode != null && firstRow.imsCode.trim() !== ""
+          ? firstRow.imsCode.trim()
+          : productId;
+
       const product = await productRepository.createProductWithVariations({
+        id: productId,
         tenantId,
-        imsCode: firstRow.imsCode.trim(),
+        imsCode: imsCodeForProduct,
         name: firstRow.name,
         categoryId: categoryId!,
         description: firstRow.description || null,
@@ -453,7 +461,7 @@ export async function processProductBulkRows(
         message: err.message || "Error creating product",
       });
       skipped.push({
-        imsCode: firstRow.imsCode,
+        imsCode: firstRow.imsCode ?? "",
         name: firstRow.name,
         reason: err.message || "Error creating product",
       });
@@ -464,7 +472,7 @@ export async function processProductBulkRows(
 }
 
 const PRODUCT_TEMPLATE_HEADERS = [
-  { header: "IMS Code", width: 15 },
+  { header: "Product Code", width: 15 },
   { header: "Location", width: 22 },
   { header: "Category", width: 18 },
   { header: "Sub-Category", width: 15 },
@@ -484,7 +492,7 @@ const PRODUCT_TEMPLATE_HEADERS = [
 ];
 
 const PRODUCT_TEMPLATE_REQUIRED_OPTIONAL = [
-  "Required",
+  "Optional",
   "Required",
   "Required",
   "Optional",
@@ -563,12 +571,12 @@ export async function buildProductBulkTemplate(): Promise<Buffer> {
   const instructions = [
     ["Attribute Columns", "Rename 'Attribute 1', 'Attribute 2', etc. to actual attribute names like 'Color', 'Size', 'Material'."],
     ["Adding More Attributes", "Add more columns after 'Attribute 3' with your attribute names as headers."],
-    ["Dynamic Detection", "Any column header not matching a predefined field (IMS Code, Location, Category, etc.) is automatically treated as a product attribute."],
-    ["Same IMS Code", "Multiple rows can share the same IMS Code if the product name is the same. Each row becomes a separate variation."],
-    ["New Product Name", "If the product name changes, the system treats it as a new product even with the same IMS Code."],
+    ["Dynamic Detection", "Any column header not matching a predefined field (Product Code, Location, Category, etc.) is automatically treated as a product attribute."],
+    ["Same Product Code", "Multiple rows can share the same product code if the product name is the same. Each row becomes a separate variation."],
+    ["New Product Name", "If the product name changes, the system treats it as a new product even with the same product code."],
     ["Attributes Reuse", "If an attribute (e.g. 'Color') already exists in the system, it will be reused — not duplicated."],
     ["Values Reuse", "If a value (e.g. 'Red' for 'Color') already exists, it will be reused — not duplicated."],
-    ["Example", "IMS Code: 1001 | Name: T-Shirt | Color: Red | Size: L → creates product T-Shirt with Color=Red, Size=L variation."],
+    ["Example", "Product Code: 1001 | Name: T-Shirt | Color: Red | Size: L → creates product T-Shirt with Color=Red, Size=L variation."],
   ];
   instructions.forEach((row) => instructionSheet.addRow(row));
 

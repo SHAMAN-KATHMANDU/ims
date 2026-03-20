@@ -104,7 +104,7 @@ export const GetProductDiscountsListQuerySchema = GetListQuerySchema.extend({
 export const GetProductByImsQuerySchema = z.object({
   imsCode: z
     .string()
-    .min(1, "imsCode is required")
+    .min(1, "Product code is required")
     .transform((v) => v.trim()),
   locationId: z.string().uuid().optional(),
 });
@@ -193,11 +193,17 @@ const DiscountSchema = z.object({
 });
 
 export const CreateProductSchema = z.object({
-  imsCode: z
-    .string({ required_error: "Product IMS code (barcode) is required" })
-    .min(1, "Product IMS code is required")
-    .max(100, "IMS code must be at most 100 characters")
-    .transform((v) => v.trim()),
+  imsCode: z.preprocess(
+    (val) => {
+      if (val === undefined || val === null) return undefined;
+      const s = String(val).trim();
+      return s === "" ? undefined : s;
+    },
+    z
+      .string()
+      .max(100, "Product code must be at most 100 characters")
+      .optional(),
+  ),
   name: z
     .string({ required_error: "Product name is required" })
     .min(1, "Product name is required"),
@@ -224,7 +230,7 @@ export const CreateProductSchema = z.object({
 export const UpdateProductSchema = z.object({
   imsCode: z
     .string()
-    .min(1, "IMS code cannot be empty")
+    .min(1, "Product code cannot be empty")
     .max(100)
     .transform((v) => v.trim())
     .optional(),

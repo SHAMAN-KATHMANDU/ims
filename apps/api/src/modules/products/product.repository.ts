@@ -33,6 +33,8 @@ export interface ProductCreateDiscountInput {
 }
 
 export interface ProductCreateData {
+  /** When set, used as product id (e.g. so imsCode can default to this id). */
+  id?: string;
   tenantId: string;
   imsCode: string;
   name: string;
@@ -143,7 +145,7 @@ export class ProductRepository {
     });
   }
 
-  // Product - lookup by IMS code (product-level barcode for POS)
+  // Product - lookup by product code (product-level barcode for POS)
   findByTenantAndImsCode(
     tenantId: string,
     imsCode: string,
@@ -826,13 +828,19 @@ export class ProductRepository {
 
   findProductByTenantAndImsOrName(
     tenantId: string,
-    imsCode: string,
+    imsCode: string | null | undefined,
     name: string,
   ) {
+    const nameTrim = name.trim();
+    const codeTrim = imsCode?.trim() ?? "";
+    const orFilter: Prisma.ProductWhereInput[] =
+      codeTrim.length > 0
+        ? [{ imsCode: codeTrim }, { name: nameTrim }]
+        : [{ name: nameTrim }];
     return prisma.product.findFirst({
       where: {
         tenantId,
-        OR: [{ imsCode: imsCode.trim() }, { name: name.trim() }],
+        OR: orFilter,
       },
       include: { variations: true },
     });

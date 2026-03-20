@@ -59,7 +59,7 @@ product/
 
 ### Form Tabs
 
-- **GeneralTab.tsx**: Basic product information (IMS Code, Name, Category, Description, Prices)
+- **GeneralTab.tsx**: Basic product information (Product Code, Name, Category, Description, Prices)
 - **DimensionsTab.tsx**: Product dimensions (Length, Breadth, Height, Weight)
 - **VariationsTab.tsx**: Product variations with photos
 - **DiscountsTab.tsx**: Product discounts with date pickers and toggle switches

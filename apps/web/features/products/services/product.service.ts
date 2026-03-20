@@ -130,7 +130,8 @@ export interface PaginatedProductsResponse {
 }
 
 export interface CreateProductData {
-  imsCode: string;
+  /** When omitted, API sets product code to the new product id. */
+  imsCode?: string;
   name: string;
   categoryId: string;
   description?: string;
@@ -352,14 +353,14 @@ export async function getProductById(id: string): Promise<Product> {
 }
 
 /**
- * Get product by IMS code (barcode) for POS – returns product with variations and optional location stock
+ * Get product by product code (barcode) for POS – returns product with variations and optional location stock
  */
 export async function getProductByImsCode(
   imsCode: string,
   options?: { locationId?: string },
 ): Promise<Product> {
   if (!imsCode?.trim()) {
-    throw new Error("IMS code is required");
+    throw new Error("Product code is required");
   }
   const params = new URLSearchParams({ imsCode: imsCode.trim() });
   if (options?.locationId) params.set("locationId", options.locationId);
@@ -374,9 +375,6 @@ export async function getProductByImsCode(
  */
 export async function createProduct(data: CreateProductData): Promise<Product> {
   // Validation
-  if (!(data.imsCode ?? "").trim()) {
-    throw new Error("Product IMS code (barcode) is required");
-  }
   if (!data.name?.trim()) {
     throw new Error("Product name is required");
   }

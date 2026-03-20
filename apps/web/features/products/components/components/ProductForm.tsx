@@ -305,6 +305,7 @@ export function ProductForm({
               discounts={discounts}
               discountTypes={discountTypes}
               onDiscountsChange={onDiscountsChange}
+              mrp={form.values.mrp}
             />
           </TabsContent>
         </Tabs>

@@ -74,7 +74,7 @@ export function VariationDeleteDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Delete variation?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will permanently delete variation{" "}
+              This will permanently delete the variation with product code{" "}
               <strong>{variationImsCode}</strong> from &quot;{productName}
               &quot;. The product and its other variations will not be affected.
             </AlertDialogDescription>
