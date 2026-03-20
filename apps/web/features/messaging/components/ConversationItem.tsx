@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import type { Conversation } from "../services/messaging.service";
+import { ParticipantAvatar } from "./ParticipantAvatar";
 
 interface ConversationItemProps {
   conversation: Conversation;
@@ -27,10 +28,11 @@ export function ConversationItem({
         isSelected && "bg-muted",
       )}
     >
-      {/* Avatar placeholder */}
-      <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-medium text-primary">
-        {name.charAt(0).toUpperCase()}
-      </div>
+      <ParticipantAvatar
+        imageUrl={conversation.participantProfilePictureUrl}
+        name={name}
+        size="md"
+      />
 
       <div className="min-w-0 flex-1">
         <div className="flex items-center justify-between gap-2">

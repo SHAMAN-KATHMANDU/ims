@@ -4,11 +4,30 @@ import { env } from "@/config/env";
 import { encrypt } from "@/utils/encryption";
 import messagingChannelRepository from "./messaging-channel.repository";
 import type {
+  CompleteManualConnectDto,
   ConnectChannelDto,
+  RegisterManualWebhookVerifyDto,
   UpdateChannelDto,
 } from "./messaging-channel.schema";
 
 const GRAPH_API = "https://graph.facebook.com/v19.0";
+
+async function subscribeFacebookPageToWebhooks(
+  pageId: string,
+  pageAccessToken: string,
+): Promise<void> {
+  const subscribeRes = await fetch(
+    `${GRAPH_API}/${pageId}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_deliveries,message_reads&access_token=${pageAccessToken}`,
+    { method: "POST" },
+  );
+  if (!subscribeRes.ok) {
+    const err = await subscribeRes.json();
+    throw createError(
+      `Failed to subscribe page to webhooks: ${err.error?.message || "Unknown"}`,
+      400,
+    );
+  }
+}
 
 export class MessagingChannelService {
   async getAll(tenantId: string) {
@@ -92,17 +111,7 @@ export class MessagingChannelService {
     }
 
     // 5. Subscribe the page to webhook events
-    const subscribeRes = await fetch(
-      `${GRAPH_API}/${pageId}/subscribed_apps?subscribed_fields=messages,messaging_postbacks,message_deliveries,message_reads&access_token=${pageAccessToken}`,
-      { method: "POST" },
-    );
-    if (!subscribeRes.ok) {
-      const err = await subscribeRes.json();
-      throw createError(
-        `Failed to subscribe page to webhooks: ${err.error?.message || "Unknown"}`,
-        400,
-      );
-    }
+    await subscribeFacebookPageToWebhooks(pageId, pageAccessToken);
 
     // 6. Generate verify token, encrypt credentials, create channel
     const webhookVerifyToken = crypto.randomBytes(32).toString("hex");
@@ -119,6 +128,85 @@ export class MessagingChannelService {
         pageName: page.name,
         pageCategory: page.category,
       },
+    });
+  }
+
+  /**
+   * Development-only step 1: store webhook verify token only so Meta's GET verification
+   * can pass before any page token is saved.
+   */
+  async registerManualWebhookVerify(
+    tenantId: string,
+    dto: RegisterManualWebhookVerifyDto,
+  ) {
+    const tokenInUse = await messagingChannelRepository.findByWebhookVerifyToken(
+      dto.webhookVerifyToken,
+    );
+    if (tokenInUse) {
+      throw createError(
+        "This verify token is already used by another channel. Choose a different string.",
+        409,
+      );
+    }
+
+    return messagingChannelRepository.createPendingWebhookVerify({
+      tenantId,
+      provider: "FACEBOOK_MESSENGER",
+      webhookVerifyToken: dto.webhookVerifyToken,
+    });
+  }
+
+  /**
+   * Development-only step 2: subscribe page and persist credentials after webhook is verified in Meta.
+   */
+  async completeManualConnect(
+    tenantId: string,
+    channelId: string,
+    dto: CompleteManualConnectDto,
+  ) {
+    const channel = await messagingChannelRepository.findById(
+      tenantId,
+      channelId,
+    );
+    if (!channel) throw createError("Channel not found", 404);
+
+    if (channel.externalId != null || channel.credentialsEnc != null) {
+      throw createError(
+        "This channel already has page credentials. Disconnect and start over if you need a new setup.",
+        400,
+      );
+    }
+    if (!channel.webhookVerifyToken) {
+      throw createError(
+        "Channel is missing webhook verification — register the verify token first.",
+        400,
+      );
+    }
+
+    const existing = await messagingChannelRepository.findByExternalId(
+      "FACEBOOK_MESSENGER",
+      dto.pageId,
+    );
+    if (existing && existing.id !== channelId) {
+      throw createError(
+        "This Facebook page is already connected to another channel",
+        409,
+      );
+    }
+
+    await subscribeFacebookPageToWebhooks(dto.pageId, dto.pageAccessToken);
+
+    const credentialsEnc = encrypt(
+      JSON.stringify({ pageAccessToken: dto.pageAccessToken }),
+    );
+
+    return messagingChannelRepository.update(channelId, {
+      externalId: dto.pageId,
+      name: dto.pageName,
+      credentialsEnc,
+      metadata: { pageName: dto.pageName },
+      status: "ACTIVE",
+      connectedAt: new Date(),
     });
   }
 
