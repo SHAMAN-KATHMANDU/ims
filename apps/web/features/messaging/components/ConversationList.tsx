@@ -32,21 +32,18 @@ export function ConversationList({
     limit: 50,
   });
 
-  const conversations = data?.conversations ?? [];
-
-  const sortedConversations = useMemo(
-    () =>
-      [...conversations].sort((a, b) => {
-        const ta = a.lastMessageAt
-          ? new Date(a.lastMessageAt).getTime()
-          : Number.NEGATIVE_INFINITY;
-        const tb = b.lastMessageAt
-          ? new Date(b.lastMessageAt).getTime()
-          : Number.NEGATIVE_INFINITY;
-        return tb - ta;
-      }),
-    [conversations],
-  );
+  const sortedConversations = useMemo(() => {
+    const conversations = data?.conversations ?? [];
+    return [...conversations].sort((a, b) => {
+      const ta = a.lastMessageAt
+        ? new Date(a.lastMessageAt).getTime()
+        : Number.NEGATIVE_INFINITY;
+      const tb = b.lastMessageAt
+        ? new Date(b.lastMessageAt).getTime()
+        : Number.NEGATIVE_INFINITY;
+      return tb - ta;
+    });
+  }, [data?.conversations]);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">

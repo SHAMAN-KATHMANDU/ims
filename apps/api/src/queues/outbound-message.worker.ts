@@ -72,6 +72,9 @@ const outboundWorker = new Worker<OutboundJobData>(
     // Load message, conversation, and channel
     const message = await basePrisma.message.findUnique({
       where: { id: messageId },
+      include: {
+        replyTo: { select: { providerMessageId: true } },
+      },
     });
     if (!message) {
       logger.warn(`[OutboundWorker] Message ${messageId} not found`);
@@ -106,15 +109,27 @@ const outboundWorker = new Worker<OutboundJobData>(
     const provider = getProvider(channel.provider);
 
     try {
-      const payload = message.mediaPayload as { url?: string; type?: unknown } | null;
+      const payload = message.mediaPayload as {
+        url?: string;
+        type?: unknown;
+      } | null;
       const rawUrl = payload?.url;
       const localFilePath = resolveLocalFilePath(rawUrl);
+      const replyToProviderMessageId =
+        message.replyTo?.providerMessageId ?? undefined;
+      if (message.replyToId && !replyToProviderMessageId) {
+        logger.warn(
+          `[OutboundWorker] Message ${messageId} has replyToId but parent has no providerMessageId; Meta reply thread omitted`,
+        );
+      }
+
       const result = await provider.sendMessage(credentials, {
         recipientId: conversation.participantId,
         text: message.textContent || undefined,
         mediaUrl: localFilePath ? undefined : resolveOutboundMediaUrl(rawUrl),
         mediaFilePath: localFilePath,
         mediaType: normalizeProviderMediaType(payload?.type),
+        ...(replyToProviderMessageId ? { replyToProviderMessageId } : {}),
       });
 
       // Update message status to SENT

@@ -18,6 +18,25 @@ import {
   type SendMessageData,
 } from "../services/messaging.service";
 import { conversationKeys } from "./use-conversations";
+import { useAuthStore } from "@/store/auth-store";
+
+function mapMessagePagesInCache(
+  old: InfiniteData<Message[]> | undefined,
+  messageId: string,
+  updater: (m: Message) => Message,
+): InfiniteData<Message[]> | undefined {
+  if (!old?.pages?.length) return old;
+  let found = false;
+  const pages = old.pages.map((page) =>
+    page.map((m) => {
+      if (m.id !== messageId) return m;
+      found = true;
+      return updater(m);
+    }),
+  );
+  if (!found) return old;
+  return { ...old, pages };
+}
 
 export const messageKeys = {
   all: ["messages"] as const,
@@ -73,26 +92,58 @@ export function useUploadMessagingMedia(conversationId: string) {
     mutationFn: (args: {
       file: File;
       onProgress?: (percent: number) => void;
-    }) =>
-      uploadMessagingMedia(conversationId, args.file, args.onProgress),
+    }) => uploadMessagingMedia(conversationId, args.file, args.onProgress),
   });
 }
 
 export function useAddMessageReaction(conversationId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      messageId,
-      emoji,
-    }: {
-      messageId: string;
-      emoji: string;
-    }) => addMessageReaction(conversationId, messageId, emoji),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: messageKeys.list(conversationId) });
+    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
+      addMessageReaction(conversationId, messageId, emoji),
+    onMutate: async ({ messageId, emoji }) => {
+      await qc.cancelQueries({ queryKey: messageKeys.list(conversationId) });
+      const previous = qc.getQueryData<InfiniteData<Message[]>>(
+        messageKeys.list(conversationId),
+      );
+      const user = useAuthStore.getState().user;
+      if (!user) {
+        return { previous };
+      }
+      qc.setQueryData<InfiniteData<Message[]>>(
+        messageKeys.list(conversationId),
+        (old) =>
+          mapMessagePagesInCache(old, messageId, (m) => {
+            const reactions = m.reactions ?? [];
+            if (
+              reactions.some((r) => r.userId === user.id && r.emoji === emoji)
+            ) {
+              return m;
+            }
+            return {
+              ...m,
+              reactions: [
+                ...reactions,
+                {
+                  id: `optimistic:${messageId}:${emoji}:${user.id}`,
+                  emoji,
+                  userId: user.id,
+                  user: { id: user.id, username: user.username },
+                },
+              ],
+            };
+          }),
+      );
+      return { previous };
     },
-    onError: (e: Error) => {
+    onError: (e: Error, _vars, context) => {
+      if (context?.previous !== undefined) {
+        qc.setQueryData(messageKeys.list(conversationId), context.previous);
+      }
       toast.error(e.message ?? "Could not add reaction");
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: messageKeys.list(conversationId) });
     },
   });
 }
@@ -100,18 +151,37 @@ export function useAddMessageReaction(conversationId: string) {
 export function useRemoveMessageReaction(conversationId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      messageId,
-      emoji,
-    }: {
-      messageId: string;
-      emoji: string;
-    }) => removeMessageReaction(conversationId, messageId, emoji),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: messageKeys.list(conversationId) });
+    mutationFn: ({ messageId, emoji }: { messageId: string; emoji: string }) =>
+      removeMessageReaction(conversationId, messageId, emoji),
+    onMutate: async ({ messageId, emoji }) => {
+      await qc.cancelQueries({ queryKey: messageKeys.list(conversationId) });
+      const previous = qc.getQueryData<InfiniteData<Message[]>>(
+        messageKeys.list(conversationId),
+      );
+      const user = useAuthStore.getState().user;
+      if (!user) {
+        return { previous };
+      }
+      qc.setQueryData<InfiniteData<Message[]>>(
+        messageKeys.list(conversationId),
+        (old) =>
+          mapMessagePagesInCache(old, messageId, (m) => ({
+            ...m,
+            reactions: (m.reactions ?? []).filter(
+              (r) => !(r.userId === user.id && r.emoji === emoji),
+            ),
+          })),
+      );
+      return { previous };
     },
-    onError: (e: Error) => {
+    onError: (e: Error, _vars, context) => {
+      if (context?.previous !== undefined) {
+        qc.setQueryData(messageKeys.list(conversationId), context.previous);
+      }
       toast.error(e.message ?? "Could not remove reaction");
+    },
+    onSettled: () => {
+      void qc.invalidateQueries({ queryKey: messageKeys.list(conversationId) });
     },
   });
 }
@@ -119,13 +189,8 @@ export function useRemoveMessageReaction(conversationId: string) {
 export function useEditConversationMessage(conversationId: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      messageId,
-      text,
-    }: {
-      messageId: string;
-      text: string;
-    }) => editConversationMessage(conversationId, messageId, text),
+    mutationFn: ({ messageId, text }: { messageId: string; text: string }) =>
+      editConversationMessage(conversationId, messageId, text),
     onSuccess: (updated) => {
       qc.setQueryData<InfiniteData<Message[]>>(
         messageKeys.list(conversationId),

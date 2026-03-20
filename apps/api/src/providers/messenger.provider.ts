@@ -43,6 +43,10 @@ export class MessengerProvider implements MessagingProviderInterface {
         const timestamp = event.timestamp;
 
         if (event.message && !event.message.is_echo) {
+          const replyMid =
+            typeof event.message.reply_to?.mid === "string"
+              ? event.message.reply_to.mid
+              : undefined;
           events.push({
             eventType: "message",
             providerEventId: event.message.mid,
@@ -54,6 +58,7 @@ export class MessengerProvider implements MessagingProviderInterface {
               contentType: this.mapContentType(event.message),
               mediaUrl: event.message.attachments?.[0]?.payload?.url,
               mediaPayload: event.message.attachments?.[0],
+              ...(replyMid ? { replyToProviderMessageId: replyMid } : {}),
             },
           });
         } else if (event.delivery) {
@@ -86,6 +91,44 @@ export class MessengerProvider implements MessagingProviderInterface {
               payload: event.postback.payload,
             },
           });
+        } else if (event.reaction) {
+          const r = event.reaction as {
+            mid?: string;
+            action?: string;
+            emoji?: string;
+            reaction?: string;
+          };
+          const targetMid = typeof r.mid === "string" ? r.mid : "";
+          if (!targetMid) continue;
+
+          const actionRaw = String(r.action ?? "").toLowerCase();
+          const action: "react" | "unreact" =
+            actionRaw === "unreact" ? "unreact" : "react";
+
+          let emoji =
+            typeof r.emoji === "string" && r.emoji.length > 0 ? r.emoji : "";
+          if (!emoji && typeof r.reaction === "string") {
+            emoji = MessengerProvider.mapMessengerReactionKeywordToEmoji(
+              r.reaction,
+            );
+          }
+          if (!emoji) {
+            emoji = "👍";
+          }
+
+          const dedupeKey = `${targetMid}_${action}_${emoji}_${timestamp}_${participantId}`;
+          events.push({
+            eventType: "reaction",
+            providerEventId: `reaction_${pageId}_${dedupeKey}`,
+            externalId: pageId,
+            participantId,
+            timestamp,
+            reaction: {
+              targetProviderMessageId: targetMid,
+              emoji,
+              action,
+            },
+          });
         }
       }
     }
@@ -107,6 +150,7 @@ export class MessengerProvider implements MessagingProviderInterface {
   ): Promise<SendMessageResult> {
     const token = credentials.pageAccessToken;
     const recipientId = payload.recipientId;
+    const replyMid = payload.replyToProviderMessageId;
 
     let primaryMessageId: string | undefined;
 
@@ -116,22 +160,31 @@ export class MessengerProvider implements MessagingProviderInterface {
         recipientId,
         payload.mediaFilePath,
         payload.mediaType || "image",
+        replyMid,
       );
       primaryMessageId = attachmentResult.message_id;
     } else if (payload.mediaUrl) {
-      const attachmentResult = await this.postGraphMessage(token, recipientId, {
-        attachment: {
-          type: payload.mediaType || "image",
-          payload: { url: payload.mediaUrl, is_reusable: true },
+      const attachmentResult = await this.postGraphMessage(
+        token,
+        recipientId,
+        {
+          attachment: {
+            type: payload.mediaType || "image",
+            payload: { url: payload.mediaUrl, is_reusable: true },
+          },
         },
-      });
+        replyMid,
+      );
       primaryMessageId = attachmentResult.message_id;
     }
 
     if (payload.text?.trim()) {
-      const textResult = await this.postGraphMessage(token, recipientId, {
-        text: payload.text,
-      });
+      const textResult = await this.postGraphMessage(
+        token,
+        recipientId,
+        { text: payload.text },
+        replyMid,
+      );
       if (!primaryMessageId) {
         primaryMessageId = textResult.message_id;
       }
@@ -146,24 +199,89 @@ export class MessengerProvider implements MessagingProviderInterface {
     return { providerMessageId: primaryMessageId };
   }
 
+  /**
+   * @see https://developers.facebook.com/docs/messenger-platform/send-messages/sender-actions
+   */
+  async reactToMessage(
+    credentials: ProviderCredentials,
+    recipientPsid: string,
+    targetProviderMessageId: string,
+    emoji: string,
+  ): Promise<void> {
+    const token = credentials.pageAccessToken;
+    const url = `${this.GRAPH_API_URL}/me/messages?access_token=${token}`;
+    const body = {
+      recipient: { id: recipientPsid },
+      sender_action: "react",
+      payload: {
+        message_id: targetProviderMessageId,
+        reaction: emoji,
+      },
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const err = (await response.json()) as unknown;
+      throw new Error(`Messenger react error: ${JSON.stringify(err)}`);
+    }
+  }
+
+  async unreactToMessage(
+    credentials: ProviderCredentials,
+    recipientPsid: string,
+    targetProviderMessageId: string,
+  ): Promise<void> {
+    const token = credentials.pageAccessToken;
+    const url = `${this.GRAPH_API_URL}/me/messages?access_token=${token}`;
+    const body = {
+      recipient: { id: recipientPsid },
+      sender_action: "unreact",
+      payload: {
+        message_id: targetProviderMessageId,
+      },
+    };
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+    if (!response.ok) {
+      const err = (await response.json()) as unknown;
+      throw new Error(`Messenger unreact error: ${JSON.stringify(err)}`);
+    }
+  }
+
   private async postGraphMessage(
     pageAccessToken: string,
     recipientId: string,
-    message: {
-      text: string;
-    } | {
-      attachment: {
-        type: string;
-        payload: { url: string; is_reusable: boolean };
-      };
-    },
+    message:
+      | {
+          text: string;
+        }
+      | {
+          attachment: {
+            type: string;
+            payload: { url: string; is_reusable: boolean };
+          };
+        },
+    replyToMid?: string,
   ): Promise<{ message_id: string }> {
     const url = `${this.GRAPH_API_URL}/me/messages?access_token=${pageAccessToken}`;
-    const body = {
+    const body: Record<string, unknown> = {
       recipient: { id: recipientId },
       messaging_type: "RESPONSE",
       message,
     };
+    if (replyToMid) {
+      body.reply_to = { mid: replyToMid };
+    }
 
     const response = await fetch(url, {
       method: "POST",
@@ -190,6 +308,7 @@ export class MessengerProvider implements MessagingProviderInterface {
     recipientId: string,
     filePath: string,
     mediaType: string,
+    replyToMid?: string,
   ): Promise<{ message_id: string }> {
     const url = `${this.GRAPH_API_URL}/me/messages?access_token=${pageAccessToken}`;
 
@@ -206,6 +325,9 @@ export class MessengerProvider implements MessagingProviderInterface {
     const formData = new FormData();
     formData.append("recipient", JSON.stringify({ id: recipientId }));
     formData.append("messaging_type", "RESPONSE");
+    if (replyToMid) {
+      formData.append("reply_to", JSON.stringify({ mid: replyToMid }));
+    }
     formData.append("message", messageJson);
     const fileBuffer = fs.readFileSync(filePath);
     formData.append(
@@ -259,6 +381,22 @@ export class MessengerProvider implements MessagingProviderInterface {
       name: [data.first_name, data.last_name].filter(Boolean).join(" "),
       profilePic: data.profile_pic,
     };
+  }
+
+  /** Messenger sends `reaction` text when `emoji` is missing (e.g. legacy clients). */
+  private static mapMessengerReactionKeywordToEmoji(keyword: string): string {
+    const k = keyword.toLowerCase().trim();
+    const map: Record<string, string> = {
+      love: "❤️",
+      like: "👍",
+      smile: "😊",
+      angry: "😠",
+      sad: "😢",
+      wow: "😮",
+      dislike: "👎",
+      other: "❓",
+    };
+    return map[k] ?? "👍";
   }
 
   private mapContentType(

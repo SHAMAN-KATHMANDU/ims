@@ -68,7 +68,7 @@ export function ManualConnectDialog({
       step1Form.reset({ webhookVerifyToken: "" });
       step2Form.reset({ pageId: "", pageName: "", pageAccessToken: "" });
     }
-  }, [open, resumeChannelId]);
+  }, [open, resumeChannelId, step1Form, step2Form]);
 
   const onStep1Submit = step1Form.handleSubmit(async (values) => {
     const channel = await registerVerify.mutateAsync({
@@ -117,9 +117,9 @@ export function ManualConnectDialog({
               </>
             ) : (
               <>
-                <strong>Step 2:</strong> After Meta confirms webhook verification,
-                enter your Page ID, name, and page access token to subscribe and
-                activate the channel.
+                <strong>Step 2:</strong> After Meta confirms webhook
+                verification, enter your Page ID, name, and page access token to
+                subscribe and activate the channel.
               </>
             )}
           </DialogDescription>
@@ -233,7 +233,9 @@ export function ManualConnectDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="manual-connect-page-token">Page access token</Label>
+              <Label htmlFor="manual-connect-page-token">
+                Page access token
+              </Label>
               <Input
                 id="manual-connect-page-token"
                 type="password"
@@ -256,8 +258,8 @@ export function ManualConnectDialog({
                 </p>
               )}
               <p className="text-xs text-muted-foreground">
-                From Meta Developer → Messenger → Access tokens (generate for your
-                page).
+                From Meta Developer → Messenger → Access tokens (generate for
+                your page).
               </p>
             </div>
 

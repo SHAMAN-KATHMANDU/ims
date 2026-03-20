@@ -4,6 +4,7 @@ import type {
   MessageDirection,
   MessageStatus,
   MessageContentType,
+  Prisma,
 } from "@prisma/client";
 
 const messageReplyToSelect = {
@@ -16,6 +17,16 @@ const messageReplyToSelect = {
 const messageReactionInclude = {
   user: { select: { id: true, username: true } },
 } as const;
+
+const messageCreateInclude = {
+  sentBy: { select: { id: true, username: true } },
+  reactions: { include: messageReactionInclude },
+  replyTo: { select: messageReplyToSelect },
+} as const;
+
+export type MessageWithCreateRelations = Prisma.MessageGetPayload<{
+  include: typeof messageCreateInclude;
+}>;
 
 export class MessagingRepository {
   async findConversations(
@@ -105,7 +116,12 @@ export class MessagingRepository {
       where: { id: messageId, conversation: { tenantId } },
       include: {
         conversation: {
-          select: { id: true, tenantId: true, channelId: true },
+          select: {
+            id: true,
+            tenantId: true,
+            channelId: true,
+            participantId: true,
+          },
         },
         sentBy: { select: { id: true, username: true } },
       },
@@ -134,38 +150,106 @@ export class MessagingRepository {
     sentAt?: Date | null;
     deliveredAt?: Date | null;
     replyToId?: string | null;
-  }) {
+  }): Promise<MessageWithCreateRelations> {
     return prisma.message.create({
       data,
-      include: {
-        sentBy: { select: { id: true, username: true } },
-        reactions: { include: messageReactionInclude },
-        replyTo: { select: messageReplyToSelect },
-      },
-    });
+      include: messageCreateInclude,
+    }) as unknown as Promise<MessageWithCreateRelations>;
   }
 
   async addReaction(messageId: string, userId: string, emoji: string) {
+    const reactionOwnerKey = `u:${userId}`;
     return prisma.messageReaction.upsert({
       where: {
-        messageId_userId_emoji: { messageId, userId, emoji },
+        messageId_emoji_reactionOwnerKey: {
+          messageId,
+          emoji,
+          reactionOwnerKey,
+        },
       },
-      create: { messageId, userId, emoji },
+      create: {
+        messageId,
+        userId,
+        emoji,
+        reactionOwnerKey,
+      },
       update: {},
       include: messageReactionInclude,
     });
   }
 
   async removeReaction(messageId: string, userId: string, emoji: string) {
+    const reactionOwnerKey = `u:${userId}`;
     try {
       return await prisma.messageReaction.delete({
         where: {
-          messageId_userId_emoji: { messageId, userId, emoji },
+          messageId_emoji_reactionOwnerKey: {
+            messageId,
+            emoji,
+            reactionOwnerKey,
+          },
         },
       });
     } catch {
       return null;
     }
+  }
+
+  async addExternalParticipantReaction(
+    messageId: string,
+    externalParticipantId: string,
+    emoji: string,
+  ) {
+    const reactionOwnerKey = `e:${externalParticipantId}`;
+    return prisma.messageReaction.upsert({
+      where: {
+        messageId_emoji_reactionOwnerKey: {
+          messageId,
+          emoji,
+          reactionOwnerKey,
+        },
+      },
+      create: {
+        messageId,
+        userId: null,
+        externalParticipantId,
+        emoji,
+        reactionOwnerKey,
+      },
+      update: {},
+      include: messageReactionInclude,
+    });
+  }
+
+  async removeExternalParticipantReaction(
+    messageId: string,
+    externalParticipantId: string,
+    emoji: string,
+  ) {
+    const reactionOwnerKey = `e:${externalParticipantId}`;
+    try {
+      return await prisma.messageReaction.delete({
+        where: {
+          messageId_emoji_reactionOwnerKey: {
+            messageId,
+            emoji,
+            reactionOwnerKey,
+          },
+        },
+      });
+    } catch {
+      return null;
+    }
+  }
+
+  async findMessageIdByProviderMessageId(
+    conversationId: string,
+    providerMessageId: string,
+  ) {
+    return prisma.message.findFirst({
+      where: { conversationId, providerMessageId },
+      select: { id: true },
+    });
   }
 
   async updateMessageText(messageId: string, textContent: string) {

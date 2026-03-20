@@ -140,7 +140,10 @@ export function ChatPanel({
 
     if (!lastMessageId) return;
 
-    if (changedLast && (stickToBottomRef.current || pendingPinAfterOutgoingRef.current)) {
+    if (
+      changedLast &&
+      (stickToBottomRef.current || pendingPinAfterOutgoingRef.current)
+    ) {
       prevLastMessageIdRef.current = lastMessageId;
       scrollToBottom();
       pendingPinAfterOutgoingRef.current = false;
@@ -160,7 +163,10 @@ export function ChatPanel({
   // Refetch finished (e.g. after send): if we pinned, scroll now that DOM includes the new row
   useEffect(() => {
     if (msgLoading || messages.length === 0) return;
-    if (!isFetching && (stickToBottomRef.current || pendingPinAfterOutgoingRef.current)) {
+    if (
+      !isFetching &&
+      (stickToBottomRef.current || pendingPinAfterOutgoingRef.current)
+    ) {
       scrollToBottom();
       if (pendingPinAfterOutgoingRef.current) {
         pendingPinAfterOutgoingRef.current = false;
@@ -216,7 +222,19 @@ export function ChatPanel({
     [editMessage],
   );
 
-  const reactionBusy = addReaction.isPending || removeReaction.isPending;
+  const reactionPendingForMessage = useCallback(
+    (messageId: string) =>
+      (addReaction.isPending &&
+        addReaction.variables?.messageId === messageId) ||
+      (removeReaction.isPending &&
+        removeReaction.variables?.messageId === messageId),
+    [
+      addReaction.isPending,
+      addReaction.variables?.messageId,
+      removeReaction.isPending,
+      removeReaction.variables?.messageId,
+    ],
+  );
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -278,7 +296,9 @@ export function ChatPanel({
           ) : messages.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-2 text-center text-muted-foreground">
               <MessageSquare className="size-10 opacity-40" />
-              <p className="text-sm">No messages yet. Send the first message!</p>
+              <p className="text-sm">
+                No messages yet. Send the first message!
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -306,7 +326,7 @@ export function ChatPanel({
                   onReply={setReplyTo}
                   onToggleReaction={handleToggleReaction}
                   onSaveEdit={handleSaveEdit}
-                  reactionPending={reactionBusy}
+                  reactionPending={reactionPendingForMessage(msg.id)}
                   editPending={editMessage.isPending}
                 />
               ))}

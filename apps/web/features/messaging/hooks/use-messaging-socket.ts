@@ -10,6 +10,16 @@ import type {
   ConversationListResponse,
 } from "../services/messaging.service";
 
+/** Coalesce rapid socket events + reduce races with mutation-driven invalidation. */
+const MESSAGE_LIST_INVALIDATION_DEBOUNCE_MS = 150;
+
+const isDevRuntime = process.env.NODE_ENV === "development";
+
+function debugMessagingSocket(event: string, payload: unknown): void {
+  if (!isDevRuntime) return;
+  console.debug(`[MessagingSocket] ${event}`, payload);
+}
+
 function sortConversationsByLastMessageAtDesc(
   conversations: Conversation[],
 ): Conversation[] {
@@ -29,11 +39,51 @@ export function useMessagingSocket() {
 
   useEffect(() => {
     const socket = acquireSocket();
+    const messageInvalidationTimers = new Map<
+      string,
+      ReturnType<typeof setTimeout>
+    >();
+
+    const scheduleInvalidateMessageList = (
+      conversationId: string,
+      sourceEvent: string,
+      payload?: unknown,
+    ) => {
+      debugMessagingSocket(sourceEvent, {
+        conversationId,
+        ...(payload !== undefined ? { payload } : {}),
+      });
+      const existing = messageInvalidationTimers.get(conversationId);
+      if (existing !== undefined) {
+        clearTimeout(existing);
+      }
+      const tid = setTimeout(() => {
+        messageInvalidationTimers.delete(conversationId);
+        void qc.invalidateQueries({
+          queryKey: messageKeys.list(conversationId),
+        });
+      }, MESSAGE_LIST_INVALIDATION_DEBOUNCE_MS);
+      messageInvalidationTimers.set(conversationId, tid);
+    };
+
+    const onSocketConnect = () => {
+      if (isDevRuntime) {
+        console.debug("[MessagingSocket] connected", { id: socket.id });
+      }
+    };
+
+    const onSocketDisconnect = (reason: string) => {
+      if (isDevRuntime) {
+        console.debug("[MessagingSocket] disconnected", { reason });
+      }
+    };
 
     const onNewMessage = (data: { conversationId: string }) => {
-      qc.invalidateQueries({
-        queryKey: messageKeys.list(data.conversationId),
-      });
+      scheduleInvalidateMessageList(
+        data.conversationId,
+        "messaging:new-message",
+        data,
+      );
     };
 
     const onConversationUpdated = (data: {
@@ -69,7 +119,7 @@ export function useMessagingSocket() {
                   lastMessageAt: lastMessageAtIso,
                   lastMessageText:
                     data.lastMessageText !== undefined
-                      ? data.lastMessageText ?? null
+                      ? (data.lastMessageText ?? null)
                       : c.lastMessageText,
                   ...(data.unreadCount !== undefined
                     ? { unreadCount: data.unreadCount }
@@ -94,35 +144,49 @@ export function useMessagingSocket() {
       conversationId?: string;
     }) => {
       if (data.conversationId) {
-        qc.invalidateQueries({
-          queryKey: messageKeys.list(data.conversationId),
-        });
+        scheduleInvalidateMessageList(
+          data.conversationId,
+          "messaging:message-status",
+          data,
+        );
         return;
       }
       // Legacy payloads without conversationId: refresh all cached message threads.
       if (data.messageId) {
+        debugMessagingSocket("messaging:message-status (all lists)", data);
         void qc.invalidateQueries({ queryKey: messageKeys.lists() });
       }
     };
 
-    const invalidateMessages = (conversationId: string) => {
-      qc.invalidateQueries({
-        queryKey: messageKeys.list(conversationId),
-      });
-    };
-
     const onReactionAdded = (data: { conversationId: string }) => {
-      invalidateMessages(data.conversationId);
+      scheduleInvalidateMessageList(
+        data.conversationId,
+        "messaging:reaction-added",
+        data,
+      );
     };
 
     const onReactionRemoved = (data: { conversationId: string }) => {
-      invalidateMessages(data.conversationId);
+      scheduleInvalidateMessageList(
+        data.conversationId,
+        "messaging:reaction-removed",
+        data,
+      );
     };
 
     const onMessageEdited = (data: { conversationId: string }) => {
-      invalidateMessages(data.conversationId);
+      scheduleInvalidateMessageList(
+        data.conversationId,
+        "messaging:message-edited",
+        data,
+      );
     };
 
+    socket.on("connect", onSocketConnect);
+    socket.on("disconnect", onSocketDisconnect);
+    if (socket.connected) {
+      onSocketConnect();
+    }
     socket.on("messaging:new-message", onNewMessage);
     socket.on("messaging:conversation-updated", onConversationUpdated);
     socket.on("messaging:message-status", onMessageStatus);
@@ -131,6 +195,12 @@ export function useMessagingSocket() {
     socket.on("messaging:message-edited", onMessageEdited);
 
     return () => {
+      for (const tid of messageInvalidationTimers.values()) {
+        clearTimeout(tid);
+      }
+      messageInvalidationTimers.clear();
+      socket.off("connect", onSocketConnect);
+      socket.off("disconnect", onSocketDisconnect);
       socket.off("messaging:new-message", onNewMessage);
       socket.off("messaging:conversation-updated", onConversationUpdated);
       socket.off("messaging:message-status", onMessageStatus);

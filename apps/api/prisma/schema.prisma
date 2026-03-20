@@ -1569,18 +1569,23 @@ model Message {
   @@map("messages")
 }
 
-/// Emoji reaction on a message (tenant users only).
+/// Emoji reaction on a message (dashboard user and/or external Messenger participant).
 model MessageReaction {
   id        String   @id @default(uuid()) @map("reaction_id")
   messageId String   @map("message_id")
-  userId    String   @map("user_id")
+  /// Set when the reaction was added from the tenant dashboard API.
+  userId    String?  @map("user_id")
+  /// Set when the reaction came from a Messenger webhook (PSID).
+  externalParticipantId String? @map("external_participant_id") @db.VarChar(255)
+  /// Stable reactor identity: `u:<userId>` or `e:<externalParticipantId>`.
+  reactionOwnerKey String @map("reaction_owner_key") @db.VarChar(200)
   emoji     String   @db.VarChar(32)
   createdAt DateTime @default(now()) @map("created_at")
 
   message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user      User     @relation("MessageReactions", fields: [userId], references: [id], onDelete: Cascade)
+  user      User?    @relation("MessageReactions", fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([messageId, userId, emoji])
+  @@unique([messageId, emoji, reactionOwnerKey])
   @@index([messageId])
   @@map("message_reactions")
 }

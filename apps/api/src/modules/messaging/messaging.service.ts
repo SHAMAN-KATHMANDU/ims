@@ -1,13 +1,13 @@
-import type {
-  ConversationStatus,
-  MessageContentType,
-} from "@prisma/client";
+import type { ConversationStatus, MessageContentType } from "@prisma/client";
 import { env } from "@/config/env";
-import { createError } from "@/middlewares/errorHandler";
+import { createError, type AppError } from "@/middlewares/errorHandler";
 import { getIO } from "@/config/socket.config";
 import { outboundQueue } from "@/queues/queue.config";
+import { getProvider } from "@/providers/provider-factory";
+import { decrypt } from "@/utils/encryption";
 import messagingChannelRepository from "@/modules/messaging-channels/messaging-channel.repository";
 import messagingRepository from "./messaging.repository";
+import type { ProviderCredentials } from "@/providers/messaging-provider.interface";
 import type {
   SendMessageDto,
   UpdateConversationDto,
@@ -18,7 +18,9 @@ import type {
 /**
  * Strip NUL and other non-printable control characters (keep tab, LF, CR).
  */
-export function sanitizeMessageText(text: string | undefined): string | undefined {
+export function sanitizeMessageText(
+  text: string | undefined,
+): string | undefined {
   if (text === undefined) return undefined;
   return [...text]
     .filter((ch) => {
@@ -56,6 +58,12 @@ function mapMediaTypeToContentType(
   }
 }
 
+function isAppError(err: unknown): err is AppError {
+  return (
+    err instanceof Error && typeof (err as AppError).statusCode === "number"
+  );
+}
+
 function emitToTenant(
   tenantId: string,
   event: string,
@@ -64,6 +72,92 @@ function emitToTenant(
   const io = getIO();
   if (io) {
     io.to(`tenant:${tenantId}`).emit(event, payload);
+  }
+}
+
+/** API/frontend expects `user` + `userId` for every reaction row. */
+function serializeMessageReactionForApi(r: {
+  id: string;
+  messageId: string;
+  userId: string | null;
+  externalParticipantId: string | null;
+  reactionOwnerKey: string;
+  emoji: string;
+  createdAt: Date;
+  user: { id: string; username: string } | null;
+}): Omit<typeof r, "reactionOwnerKey"> & { userId: string } {
+  const { reactionOwnerKey: _ownerKey, ...rest } = r;
+  void _ownerKey;
+  if (rest.user && rest.userId) {
+    return { ...rest, userId: rest.userId };
+  }
+  if (rest.externalParticipantId) {
+    const ext = rest.externalParticipantId;
+    return {
+      ...rest,
+      userId: `ext:${ext}`,
+      user: { id: `ext:${ext}`, username: "Contact" },
+    };
+  }
+  return {
+    ...rest,
+    userId: rest.userId ?? "",
+    user: rest.user ?? { id: "", username: "Unknown" },
+  };
+}
+
+type MessageForReactionSync = NonNullable<
+  Awaited<ReturnType<typeof messagingRepository.findMessageInTenant>>
+>;
+
+async function syncMessengerReactionToProvider(params: {
+  tenantId: string;
+  message: MessageForReactionSync;
+  mode: "react" | "unreact";
+  emoji?: string;
+}): Promise<void> {
+  const { tenantId, message, mode, emoji } = params;
+  if (!message.providerMessageId) {
+    return;
+  }
+
+  const channel = await messagingChannelRepository.findById(
+    tenantId,
+    message.conversation.channelId,
+  );
+  if (!channel || channel.status !== "ACTIVE" || !channel.credentialsEnc) {
+    return;
+  }
+
+  let credentials: ProviderCredentials;
+  try {
+    credentials = JSON.parse(
+      decrypt(channel.credentialsEnc),
+    ) as ProviderCredentials;
+  } catch {
+    throw createError("Channel credentials unavailable", 500);
+  }
+
+  const provider = getProvider(channel.provider);
+  const recipientPsid = message.conversation.participantId;
+
+  if (mode === "react" && emoji) {
+    if (provider.reactToMessage) {
+      await provider.reactToMessage(
+        credentials,
+        recipientPsid,
+        message.providerMessageId,
+        emoji,
+      );
+    }
+  } else if (mode === "unreact") {
+    if (provider.unreactToMessage) {
+      await provider.unreactToMessage(
+        credentials,
+        recipientPsid,
+        message.providerMessageId,
+      );
+    }
   }
 }
 
@@ -116,11 +210,15 @@ export class MessagingService {
     );
     if (!conversation) throw createError("Conversation not found", 404);
 
-    return messagingRepository.findMessages(
+    const messages = await messagingRepository.findMessages(
       conversationId,
       query.cursor,
       query.limit,
     );
+    return messages.map((m) => ({
+      ...m,
+      reactions: m.reactions.map(serializeMessageReactionForApi),
+    }));
   }
 
   async sendMessage(
@@ -150,7 +248,10 @@ export class MessagingService {
           dto.replyToId,
         );
       if (!replyTarget) {
-        throw createError("Reply target message not found in this conversation", 400);
+        throw createError(
+          "Reply target message not found in this conversation",
+          400,
+        );
       }
     }
 
@@ -178,7 +279,10 @@ export class MessagingService {
       channelId: conversation.channelId,
     });
 
-    return message;
+    return {
+      ...message,
+      reactions: message.reactions.map(serializeMessageReactionForApi),
+    };
   }
 
   async markRead(tenantId: string, conversationId: string) {
@@ -222,18 +326,33 @@ export class MessagingService {
       emoji,
     );
 
+    try {
+      await syncMessengerReactionToProvider({
+        tenantId,
+        message,
+        mode: "react",
+        emoji,
+      });
+    } catch (err) {
+      await messagingRepository.removeReaction(messageId, userId, emoji);
+      if (isAppError(err)) throw err;
+      const detail =
+        err instanceof Error ? err.message : "Provider reaction sync failed";
+      throw createError(detail, 502);
+    }
+
     emitToTenant(tenantId, "messaging:reaction-added", {
       conversationId,
       messageId,
       reaction: {
         id: reaction.id,
         emoji: reaction.emoji,
-        userId: reaction.userId,
-        username: reaction.user.username,
+        userId: reaction.userId!,
+        username: reaction.user!.username,
       },
     });
 
-    return reaction;
+    return serializeMessageReactionForApi(reaction);
   }
 
   async removeReaction(
@@ -258,6 +377,20 @@ export class MessagingService {
     );
     if (!removed) {
       throw createError("Reaction not found", 404);
+    }
+
+    try {
+      await syncMessengerReactionToProvider({
+        tenantId,
+        message,
+        mode: "unreact",
+      });
+    } catch (err) {
+      await messagingRepository.addReaction(messageId, userId, emoji);
+      if (isAppError(err)) throw err;
+      const detail =
+        err instanceof Error ? err.message : "Provider unreact sync failed";
+      throw createError(detail, 502);
     }
 
     emitToTenant(tenantId, "messaging:reaction-removed", {
@@ -316,7 +449,10 @@ export class MessagingService {
       editedAt: updated.editedAt?.toISOString() ?? null,
     });
 
-    return updated;
+    return {
+      ...updated,
+      reactions: updated.reactions.map(serializeMessageReactionForApi),
+    };
   }
 }
 

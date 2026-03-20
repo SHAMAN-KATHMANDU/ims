@@ -78,6 +78,8 @@ export interface MessageReaction {
   emoji: string;
   userId: string;
   user: { id: string; username: string };
+  /** Present when reaction came from Messenger (not a tenant user). */
+  externalParticipantId?: string | null;
 }
 
 export interface MessageReplySnippet {
@@ -243,9 +245,10 @@ export async function editConversationMessage(
 
 export async function getMessagingChannels(): Promise<MessagingChannel[]> {
   try {
-    const res = await api.get<{ message: string; channels: MessagingChannel[] }>(
-      "/messaging-channels",
-    );
+    const res = await api.get<{
+      message: string;
+      channels: MessagingChannel[];
+    }>("/messaging-channels");
     return res.data.channels ?? [];
   } catch (error) {
     throw handleApiError(error, "getMessagingChannels");

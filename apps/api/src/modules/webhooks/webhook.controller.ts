@@ -45,7 +45,11 @@ export async function receive(req: Request, res: Response) {
   let statusCount = 0;
 
   for (const event of events) {
-    if (event.eventType === "message" || event.eventType === "postback") {
+    if (
+      event.eventType === "message" ||
+      event.eventType === "postback" ||
+      event.eventType === "reaction"
+    ) {
       await inboundQueue.add("inbound", {
         provider: providerEnum,
         event,
