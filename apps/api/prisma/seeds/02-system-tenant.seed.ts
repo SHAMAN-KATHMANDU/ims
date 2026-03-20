@@ -1,5 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
-import { hashPassword } from "./utils";
+import { hashPassword, verifyPassword } from "./utils";
 
 export interface SystemTenantResult {
   systemTenantId: string;
@@ -8,7 +8,8 @@ export interface SystemTenantResult {
 
 /**
  * Create system tenant (slug: system) and platform admin user if not exist.
- * Idempotent: uses findUnique/findFirst and only creates when missing.
+ * If platform admin exists, updates password when SEED_PLATFORM_ADMIN_PASSWORD
+ * no longer matches the stored hash (so changing .env and re-seeding applies).
  */
 export async function seedSystemTenant(
   prisma: PrismaClient,
@@ -30,6 +31,8 @@ export async function seedSystemTenant(
       },
     });
     console.log("  ✓ System tenant created");
+  } else {
+    console.log("  ⏭️ System tenant already exists — not recreating");
   }
 
   let platformAdmin = await prisma.user.findFirst({
@@ -49,6 +52,25 @@ export async function seedSystemTenant(
       },
     });
     console.log(`  ✓ Platform admin created: ${platformAdminUsername}`);
+  } else {
+    const matches = await verifyPassword(
+      platformAdminPassword,
+      platformAdmin.password,
+    );
+    if (!matches) {
+      const hashedPassword = await hashPassword(platformAdminPassword);
+      platformAdmin = await prisma.user.update({
+        where: { id: platformAdmin.id },
+        data: { password: hashedPassword },
+      });
+      console.log(
+        `  ✓ Platform admin password updated from env (${platformAdminUsername})`,
+      );
+    } else {
+      console.log(
+        `  ⏭️ Platform admin unchanged (${platformAdminUsername}) — password already matches env`,
+      );
+    }
   }
 
   return {

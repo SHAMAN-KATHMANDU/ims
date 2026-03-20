@@ -18,6 +18,7 @@ export async function seedProducts(
   for (let i = 0; i < PRODUCT_SPECS.length; i++) {
     const spec = PRODUCT_SPECS[i];
     const imsCode = `${prefix}-P${String(i + 1).padStart(3, "0")}`;
+    const productId = deterministicId("product", `${ctx.tenantId}:${imsCode}`);
     const categoryId = ctx.categoryIds[spec.category];
     const subCategoryId =
       ctx.subCategoryIds[`${spec.category}:${spec.subCategory}`];
@@ -29,10 +30,9 @@ export async function seedProducts(
     if (!categoryId) throw new Error(`Missing category: ${spec.category}`);
 
     const product = await prisma.product.upsert({
-      where: {
-        tenantId_imsCode: { tenantId: ctx.tenantId, imsCode },
-      },
+      where: { id: productId },
       create: {
+        id: productId,
         tenantId: ctx.tenantId,
         imsCode,
         name: spec.name,
@@ -47,6 +47,7 @@ export async function seedProducts(
         createdById,
       },
       update: {
+        imsCode,
         name: spec.name,
         categoryId,
         subCategory: spec.subCategory,

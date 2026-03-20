@@ -29,6 +29,14 @@ export async function hashPassword(plain: string): Promise<string> {
   return bcrypt.hash(plain, BCRYPT_ROUNDS);
 }
 
+/** True if plain text matches a bcrypt hash (same rounds as hashPassword). */
+export async function verifyPassword(
+  plain: string,
+  hash: string,
+): Promise<boolean> {
+  return bcrypt.compare(plain, hash);
+}
+
 /**
  * Current period for subscriptions: start = now, end = +1 month.
  */

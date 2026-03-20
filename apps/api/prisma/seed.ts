@@ -8,6 +8,6 @@
  *   SEED_TENANTS   - for minimal/production: slug:Name or slug:Name:password (comma-separated)
  *   SEED_DEMO      - false to skip demo tenant when profile=all
  *   SEED_PLATFORM_ADMIN_USERNAME
- *   SEED_PLATFORM_ADMIN_PASSWORD
+ *   SEED_PLATFORM_ADMIN_PASSWORD — also syncs existing platform admin password when it differs
  */
 import "./seeds/index";
