@@ -42,7 +42,7 @@ export const errorHandler = (
     const statusCode = 400;
     const message =
       err.code === "LIMIT_FILE_SIZE"
-        ? "File is too large. Maximum size is 10MB."
+        ? "File is too large for this upload."
         : err.code === "LIMIT_UNEXPECTED_FILE"
           ? "Invalid file upload. Expected a single file."
           : err.message;

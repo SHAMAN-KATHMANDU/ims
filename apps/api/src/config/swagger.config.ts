@@ -158,6 +158,11 @@ const swaggerDefinition: SwaggerDefinition = {
         properties: {
           id: { type: "string", format: "uuid" },
           tenantId: { type: "string", format: "uuid" },
+          imsCode: {
+            type: "string",
+            description:
+              "Product code (barcode) for POS; equals product id when not set on create.",
+          },
           name: { type: "string" },
           categoryId: { type: "string", format: "uuid" },
           subCategory: { type: "string", nullable: true },
@@ -183,7 +188,6 @@ const swaggerDefinition: SwaggerDefinition = {
           id: { type: "string", format: "uuid" },
           tenantId: { type: "string", format: "uuid" },
           productId: { type: "string", format: "uuid" },
-          imsCode: { type: "string" },
           costPriceOverride: { type: "number", nullable: true },
           mrpOverride: { type: "number", nullable: true },
           finalSpOverride: { type: "number", nullable: true },
@@ -250,6 +254,41 @@ const swaggerDefinition: SwaggerDefinition = {
           createdAt: { type: "string", format: "date-time" },
           updatedAt: { type: "string", format: "date-time" },
         },
+      },
+      SalePreviewResponse: {
+        type: "object",
+        description:
+          "POST /sales/preview — totals after catalog/manual discounts and promos",
+        properties: {
+          subtotal: { type: "number" },
+          discount: {
+            type: "number",
+            description: "Total discount amount (product + promo)",
+          },
+          productDiscount: {
+            type: "number",
+            description:
+              "Monetary discount from catalog/manual lines only (excludes promo-only portion)",
+          },
+          promoDiscount: {
+            type: "number",
+            description: "Monetary amount attributed to applied promo codes",
+          },
+          promoOverrodeProductDiscount: {
+            type: "boolean",
+            description:
+              "True when a promo replaced or beat product discount (non-stacking)",
+          },
+          total: { type: "number" },
+        },
+        required: [
+          "subtotal",
+          "discount",
+          "productDiscount",
+          "promoDiscount",
+          "promoOverrodeProductDiscount",
+          "total",
+        ],
       },
       Promo: {
         type: "object",
@@ -888,6 +927,11 @@ const swaggerDefinition: SwaggerDefinition = {
     {
       name: "Workflows",
       description: "Pipeline workflow automation (triggers and actions)",
+    },
+    {
+      name: "Messaging",
+      description:
+        "Messenger channels (OAuth or manual dev connect) and inbox integration",
     },
   ],
 };

@@ -121,6 +121,9 @@ const EnvSchema = z
       ? (appEnvRaw as (typeof APP_ENV_VALUES)[number])
       : "development";
 
+    /** Base origin for static assets (uploads); strip /api/v1 from API_PUBLIC_URL */
+    const publicServerOrigin = publicApiUrl.replace(/\/api\/v1\/?$/, "");
+
     return {
       nodeEnv: raw.NODE_ENV,
       isDev,
@@ -132,6 +135,8 @@ const EnvSchema = z
       databaseUrl: raw.DATABASE_URL ?? "",
       corsOrigin,
       publicApiUrl,
+      publicServerOrigin:
+        publicServerOrigin.length > 0 ? publicServerOrigin : "http://localhost:4000",
       appEnv,
       featureFlags: raw.FEATURE_FLAGS?.trim(),
       features: {} as const,

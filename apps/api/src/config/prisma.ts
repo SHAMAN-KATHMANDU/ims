@@ -20,7 +20,8 @@
 import { PrismaClient } from "@prisma/client";
 import { getTenantId } from "./tenantContext";
 
-const basePrisma = new PrismaClient();
+/** Explicit typing so delegates (e.g. `message`) always match the generated client in IDEs/monorepos. */
+const basePrisma: PrismaClient = new PrismaClient();
 
 /**
  * Models that have a tenantId column and should be auto-scoped.
@@ -130,9 +131,11 @@ const prisma = basePrisma.$extends({
       async create({ model, args, query }) {
         const tenantId = getTenantId();
         if (tenantId && isTenantScoped(model)) {
-          // Only inject if tenantId is not already provided
           const data = args.data as Record<string, unknown>;
-          if (!data.tenantId) {
+          const hasTenantId = data.tenantId != null && data.tenantId !== "";
+          const hasTenantRelation =
+            data.tenant != null && typeof data.tenant === "object";
+          if (!hasTenantId && !hasTenantRelation) {
             (args.data as Record<string, unknown>).tenantId = tenantId;
           }
         }

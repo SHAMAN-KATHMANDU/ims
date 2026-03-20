@@ -5,6 +5,7 @@ import dbConnect from "@/config/dbConnect";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
+import { startUploadCleanupCron } from "@/jobs/uploadCleanup";
 import { startRemarketingScheduler } from "@/modules/remarketing/remarketing.scheduler";
 import { setupSocketIO } from "@/config/socket.config";
 
@@ -26,6 +27,16 @@ const startServer = async () => {
     logger.log("Starting server...");
     logger.log(`Environment: ${env.nodeEnv}`);
     logger.log(`Port: ${PORT}, Host: ${HOST}`);
+
+    const metaMessagingConfigured =
+      Boolean(env.metaAppId) && Boolean(env.metaAppSecret);
+    const publicOriginLooksLocal =
+      /localhost|127\.0\.0\.1|\[::1\]/i.test(env.publicServerOrigin);
+    if (metaMessagingConfigured && publicOriginLooksLocal) {
+      logger.warn(
+        "Messaging: API_PUBLIC_URL resolves to a local origin. Facebook Messenger cannot download outbound media from localhost; set API_PUBLIC_URL to a public HTTPS URL for image/video delivery to users.",
+      );
+    }
 
     // Validate environment configuration
     if (env.isProd || env.isStaging) {
@@ -71,6 +82,7 @@ const startServer = async () => {
         `CORS origins: ${Array.isArray(env.corsOrigin) ? env.corsOrigin.join(", ") : env.corsOrigin}`,
       );
       startTrashCleanupCron();
+      startUploadCleanupCron();
       startRemarketingScheduler();
       logger.log("BullMQ workers started");
       logger.log("Server startup complete");
