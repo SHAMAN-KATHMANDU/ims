@@ -35,7 +35,7 @@ function parseDateValue(
  * Zod schema for Excel row data validation.
  * Column headers are matched case-insensitively.
  *
- * Required: Showroom, Sold by, Product IMS code, Product Name, Quantity, MRP, Final amount
+ * Required: Showroom, Sold by, Product Code, Product Name, Quantity, MRP, Final amount
  * Optional: SN, sale_id, Date of sale, Phone number, Attributes/Variation, Discount, Payment method
  */
 export const excelSaleRowSchema = z.object({
@@ -101,7 +101,7 @@ export const excelSaleRowSchema = z.object({
     .union([z.string(), z.number()])
     .transform((val) => String(val).trim())
     .refine((val) => val !== "" && val !== "-", {
-      message: "Product IMS code is required",
+      message: "Product code is required",
     }),
 
   productName: z
@@ -222,6 +222,9 @@ export const saleBulkHeaderMappings: Record<string, string[]> = {
   productImsCode: [
     "productimscode",
     "product_ims_code",
+    "productcode",
+    "product_code",
+    "product code",
     "imscode",
     "ims_code",
     "ims",
@@ -274,6 +277,6 @@ export function getSaleBulkParseOptions(): BulkParseOptions<ExcelSaleRow> {
     fields: [...saleBulkFields],
     skipExcelRows: 1,
     missingColumnsHint:
-      "Required: Showroom, Sold by, Product IMS code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
+      "Required: Showroom, Sold by, Product Code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
   };
 }

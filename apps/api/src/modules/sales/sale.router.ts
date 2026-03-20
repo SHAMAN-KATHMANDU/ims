@@ -148,7 +148,11 @@ saleRouter.post(
  *                       type: string
  *     responses:
  *       200:
- *         description: Returns subtotal, discount, total, promoDiscount
+ *         description: Returns subtotal, discount (total off), productDiscount, promoDiscount, promoOverrodeProductDiscount, total
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SalePreviewResponse'
  */
 saleRouter.post(
   "/preview",

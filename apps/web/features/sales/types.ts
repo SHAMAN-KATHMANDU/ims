@@ -23,6 +23,9 @@ export interface SaleItem {
   discountAmount?: number;
   totalMrp?: number;
   lineTotal: number;
+  manualDiscountPercent?: number | null;
+  manualDiscountAmount?: number | null;
+  discountReason?: string | null;
   variation: {
     id: string;
     product: {
@@ -176,9 +179,14 @@ export interface DailySalesStat {
 
 export interface SalePreviewResponse {
   subtotal: number;
+  /** Total discount (product/catalog/manual + promo). */
   discount: number;
-  total: number;
+  /** Product/catalog/manual discount only (excludes promo-only portion). */
+  productDiscount?: number;
   promoDiscount?: number;
+  /** True when a promo replaced or beat product discount on at least one line. */
+  promoOverrodeProductDiscount?: boolean;
+  total: number;
 }
 
 export interface SaleBulkUploadError {
