@@ -123,9 +123,9 @@ describe("ProductController", () => {
       expect(mockService.create).not.toHaveBeenCalled();
     });
 
-    it("returns 409 when IMS code conflict", async () => {
+    it("returns 409 when product code conflict", async () => {
       mockService.create.mockRejectedValue(
-        makeAppError("Product with this IMS code already exists", 409),
+        makeAppError("Product with this product code already exists", 409),
       );
       const req = makeReq({
         body: {

@@ -448,6 +448,13 @@ describe("CreateProductSchema - valid inputs", () => {
       mrp: 0.02,
       variations: [{ stockQuantity: 0 }],
     },
+    {
+      name: "No explicit product code",
+      categoryId: VALID_UUID,
+      costPrice: 10,
+      mrp: 15,
+      variations: [{ stockQuantity: 1 }],
+    },
   ];
 
   validCases.forEach((input, i) => {
@@ -461,7 +468,7 @@ describe("CreateProductSchema - valid inputs", () => {
 describe("CreateProductSchema - invalid inputs", () => {
   const invalidCases = [
     {
-      imsCode: "",
+      imsCode: "A".repeat(101),
       name: "X",
       categoryId: VALID_UUID,
       costPrice: 1,

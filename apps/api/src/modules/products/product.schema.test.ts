@@ -120,6 +120,12 @@ describe("CreateProductSchema", () => {
     ).toThrow();
   });
 
+  it("accepts product without imsCode (optional)", () => {
+    const { imsCode: _omit, ...withoutIms } = minimalValidProduct;
+    const result = CreateProductSchema.parse(withoutIms);
+    expect(result.imsCode).toBeUndefined();
+  });
+
   it("trims product imsCode", () => {
     const result = CreateProductSchema.parse({
       ...minimalValidProduct,
@@ -344,17 +350,16 @@ describe("excelProductRowSchema (bulk upload)", () => {
     expect(result.dynamicAttributes).toEqual({ Color: "Red", Size: "L" });
   });
 
-  it("rejects missing IMS code", () => {
-    expect(() =>
-      excelProductRowSchema.parse({
-        imsCode: "",
-        location: "A",
-        category: "Cat",
-        name: "Prod",
-        costPrice: 10,
-        finalSP: 20,
-      }),
-    ).toThrow();
+  it("treats empty product code as null (optional)", () => {
+    const result = excelProductRowSchema.parse({
+      imsCode: "",
+      location: "A",
+      category: "Cat",
+      name: "Prod",
+      costPrice: 10,
+      finalSP: 20,
+    });
+    expect(result.imsCode).toBeNull();
   });
 
   it("coerces quantity to integer", () => {
