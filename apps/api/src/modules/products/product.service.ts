@@ -11,6 +11,7 @@ import productRepository, {
   type ProductRepository,
   type ProductCreateData,
   type ProductListWhere,
+  type ProductStockSortFilters,
 } from "./product.repository";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import type {
@@ -31,6 +32,7 @@ const ALLOWED_PRODUCT_SORT_FIELDS = [
   "mrp",
   "vendorId",
   "id",
+  "imsCode",
 ];
 const ALLOWED_DISCOUNT_SORT_FIELDS = [
   "id",
@@ -344,6 +346,54 @@ export class ProductService {
       lowStock,
     } = params;
 
+    let lowStockVariationIds: string[] = [];
+    if (lowStock) {
+      lowStockVariationIds =
+        await this.repo.getLowStockVariationIds(LOW_STOCK_THRESHOLD);
+    }
+
+    const skip = (page - 1) * limit;
+
+    if (sortBy?.toLowerCase() === "totalstock") {
+      const dateToEnd = dateTo
+        ? (() => {
+            const to = new Date(dateTo);
+            to.setHours(23, 59, 59, 999);
+            return to;
+          })()
+        : undefined;
+      const stockFilters: ProductStockSortFilters = {
+        tenantId,
+        search,
+        categoryId,
+        subCategoryId,
+        subCategory,
+        vendorId,
+        dateFrom: dateFrom ? new Date(dateFrom) : undefined,
+        dateTo: dateToEnd,
+        locationId,
+        lowStock,
+        lowStockVariationIds,
+      };
+      const { products, totalItems } =
+        await this.repo.findAllProductsByTotalStock(
+          stockFilters,
+          sortOrder,
+          skip,
+          limit,
+        );
+      const paginationResult = createPaginationResult(
+        products,
+        totalItems,
+        page,
+        limit,
+      );
+      return {
+        ...paginationResult,
+        locationId: locationId ?? null,
+      };
+    }
+
     let orderBy: Prisma.ProductOrderByWithRelationInput = getPrismaOrderBy(
       sortBy,
       sortOrder,
@@ -360,6 +410,7 @@ export class ProductService {
         ? [...orderBy, { id: "asc" as const }]
         : [orderBy, { id: "asc" as const }];
 
+    // List filters — keep aligned with ProductRepository.buildProductListWhereSql (totalStock sort path).
     const where: ProductListWhere = {};
     if (search) {
       where.OR = [
@@ -392,12 +443,6 @@ export class ProductService {
       }
     }
 
-    let lowStockVariationIds: string[] = [];
-    if (lowStock) {
-      lowStockVariationIds =
-        await this.repo.getLowStockVariationIds(LOW_STOCK_THRESHOLD);
-    }
-
     if (locationId || lowStock) {
       if (locationId && lowStock && lowStockVariationIds.length > 0) {
         where.variations = {
@@ -425,7 +470,6 @@ export class ProductService {
       }
     }
 
-    const skip = (page - 1) * limit;
     const { products, totalItems } = await this.repo.findAllProducts(
       tenantId,
       where,

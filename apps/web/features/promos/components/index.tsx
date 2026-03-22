@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Search } from "lucide-react";
+import { format } from "date-fns";
 import {
   DataTablePagination,
   type PaginationState,
@@ -91,6 +92,20 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
   const handleSearchChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       setSearch(e.target.value);
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
+
+  const handlePromoColumnSort = useCallback(
+    (by: string, order: "asc" | "desc" | "none") => {
+      if (order === "none") {
+        setSortBy("createdAt");
+        setSortOrder("desc");
+      } else {
+        setSortBy(by);
+        setSortOrder(order);
+      }
       setPage(DEFAULT_PAGE);
     },
     [],
@@ -246,11 +261,7 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                     sortKey="code"
                     currentSortBy={sortBy}
                     currentSortOrder={sortOrder}
-                    onSort={(by, order) => {
-                      setSortBy(by);
-                      setSortOrder(order);
-                      setPage(DEFAULT_PAGE);
-                    }}
+                    onSort={handlePromoColumnSort}
                   >
                     Code
                   </SortableTableHead>
@@ -258,6 +269,30 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                   <TableHead>Value</TableHead>
                   <TableHead>Eligibility</TableHead>
                   <TableHead>Usage</TableHead>
+                  <SortableTableHead
+                    sortKey="createdAt"
+                    currentSortBy={sortBy}
+                    currentSortOrder={sortOrder}
+                    onSort={handlePromoColumnSort}
+                  >
+                    Created
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="validFrom"
+                    currentSortBy={sortBy}
+                    currentSortOrder={sortOrder}
+                    onSort={handlePromoColumnSort}
+                  >
+                    Valid from
+                  </SortableTableHead>
+                  <SortableTableHead
+                    sortKey="validTo"
+                    currentSortBy={sortBy}
+                    currentSortOrder={sortOrder}
+                    onSort={handlePromoColumnSort}
+                  >
+                    Valid to
+                  </SortableTableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
@@ -265,13 +300,13 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
               <TableBody>
                 {isLoading ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6">
+                    <TableCell colSpan={10} className="text-center py-6">
                       Loading promo codes...
                     </TableCell>
                   </TableRow>
                 ) : promos.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center py-6">
+                    <TableCell colSpan={10} className="text-center py-6">
                       <p className="text-muted-foreground">
                         No promo codes found
                       </p>
@@ -308,6 +343,19 @@ export function PromoPage({ readOnly: readOnlyProp }: PromoPageProps) {
                         {promo.usageLimit
                           ? `${promo.usageCount}/${promo.usageLimit}`
                           : `${promo.usageCount} used`}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        {format(new Date(promo.createdAt), "MMM d, yyyy")}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        {promo.validFrom
+                          ? format(new Date(promo.validFrom), "MMM d, yyyy")
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        {promo.validTo
+                          ? format(new Date(promo.validTo), "MMM d, yyyy")
+                          : "—"}
                       </TableCell>
                       <TableCell>
                         <Badge

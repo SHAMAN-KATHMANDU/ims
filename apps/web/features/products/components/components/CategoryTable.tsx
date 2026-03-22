@@ -15,7 +15,9 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
+import { format } from "date-fns";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import {
@@ -29,6 +31,9 @@ import type { Category } from "@/features/products";
 
 interface CategoryTableProps {
   categories: Category[];
+  sortBy?: string;
+  sortOrder?: "asc" | "desc" | "none";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   canManageProducts: boolean;
   onEdit: (category: Category) => void;
   onDelete: (category: Category) => void;
@@ -46,6 +51,9 @@ interface CategoryTableProps {
 
 export function CategoryTable({
   categories,
+  sortBy,
+  sortOrder,
+  onSort,
   canManageProducts,
   onEdit,
   onDelete,
@@ -58,6 +66,7 @@ export function CategoryTable({
   onSelectionChange,
   highlightCategoryId,
 }: CategoryTableProps) {
+  const canSort = Boolean(onSort);
   const allSelected =
     categories.length > 0 &&
     categories.every((c) => selectedCategories.has(c.id));
@@ -95,9 +104,32 @@ export function CategoryTable({
                   />
                 </TableHead>
               )}
-              <TableHead>Name</TableHead>
+              {canSort ? (
+                <SortableTableHead
+                  sortKey="name"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Name
+                </SortableTableHead>
+              ) : (
+                <TableHead>Name</TableHead>
+              )}
               <TableHead>Description</TableHead>
               <TableHead>Subcategories</TableHead>
+              {canSort ? (
+                <SortableTableHead
+                  sortKey="createdAt"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Created
+                </SortableTableHead>
+              ) : (
+                <TableHead>Created</TableHead>
+              )}
               <TableHead>Status</TableHead>
               {canManageProducts && (
                 <TableHead className="text-right">Actions</TableHead>
@@ -150,6 +182,11 @@ export function CategoryTable({
                   ) : (
                     <span>-</span>
                   )}
+                </TableCell>
+                <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                  {category.createdAt
+                    ? format(new Date(category.createdAt), "MMM d, yyyy")
+                    : "—"}
                 </TableCell>
                 <TableCell>
                   {category.deletedAt ? (

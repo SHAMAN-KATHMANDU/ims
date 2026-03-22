@@ -53,6 +53,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Trash2, Edit, Plus, Search, Eye, X } from "lucide-react";
+import { format } from "date-fns";
 import {
   DataTablePagination,
   type PaginationState,
@@ -289,7 +290,21 @@ export function VendorPage() {
     else next.delete(vendorId);
     setSelectedVendorIds(next);
   };
-  const tableColumnCount = 7; // checkbox + 6 existing
+  const tableColumnCount = 8;
+
+  const handleVendorColumnSort = useCallback(
+    (by: string, order: "asc" | "desc" | "none") => {
+      if (order === "none") {
+        setSortBy("name");
+        setSortOrder("asc");
+      } else {
+        setSortBy(by);
+        setSortOrder(order);
+      }
+      setPage(DEFAULT_PAGE);
+    },
+    [],
+  );
 
   return (
     <div className="space-y-6 pb-24">
@@ -563,11 +578,7 @@ export function VendorPage() {
                     sortKey="name"
                     currentSortBy={sortBy}
                     currentSortOrder={sortOrder}
-                    onSort={(by, order) => {
-                      setSortBy(by);
-                      setSortOrder(order);
-                      setPage(DEFAULT_PAGE);
-                    }}
+                    onSort={handleVendorColumnSort}
                   >
                     Name
                   </SortableTableHead>
@@ -575,6 +586,14 @@ export function VendorPage() {
                   <TableHead>Phone</TableHead>
                   <TableHead>Address</TableHead>
                   <TableHead className="text-center">Products</TableHead>
+                  <SortableTableHead
+                    sortKey="createdAt"
+                    currentSortBy={sortBy}
+                    currentSortOrder={sortOrder}
+                    onSort={handleVendorColumnSort}
+                  >
+                    Created
+                  </SortableTableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
@@ -647,6 +666,9 @@ export function VendorPage() {
                         <Badge variant="outline">
                           {vendor._count?.products ?? 0}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                        {format(new Date(vendor.createdAt), "MMM d, yyyy")}
                       </TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">

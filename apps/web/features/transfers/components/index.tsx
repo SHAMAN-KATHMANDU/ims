@@ -169,9 +169,14 @@ export function TransfersPage() {
     dateTo !== "";
 
   const handleColumnSort = useCallback(
-    (newSortBy: string, newSortOrder: "asc" | "desc") => {
-      setSortBy(newSortBy);
-      setSortOrder(newSortOrder);
+    (newSortBy: string, newSortOrder: "asc" | "desc" | "none") => {
+      if (newSortOrder === "none") {
+        setSortBy("createdAt");
+        setSortOrder("desc");
+      } else {
+        setSortBy(newSortBy);
+        setSortOrder(newSortOrder);
+      }
       setPage(DEFAULT_PAGE);
     },
     [],

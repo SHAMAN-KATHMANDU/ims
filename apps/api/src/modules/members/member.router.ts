@@ -74,7 +74,7 @@ memberRouter.post(
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [createdAt, updatedAt, name, id]
+ *           enum: [createdAt, updatedAt, name, id, phone]
  *         description: Sort field. createdAt = date added.
  *       - in: query
  *         name: sortOrder

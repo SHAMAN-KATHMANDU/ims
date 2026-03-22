@@ -70,6 +70,8 @@ import type {
   CreateTaskData,
   UpdateTaskData,
 } from "../../services/task.service";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 
 type TaskFilterTab = "all" | "incomplete" | "complete";
 type DrawerMode = "new" | "edit" | null;
@@ -81,6 +83,7 @@ export function TasksPage() {
   const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isDesktop = useIsDesktop();
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -396,7 +399,7 @@ export function TasksPage() {
                     </span>
                   </Link>
                 )}
-                {task.deal && (
+                {dealsEnabled && task.deal && (
                   <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
                     <span className="text-primary hover:underline">
                       {task.deal.name}
@@ -467,7 +470,7 @@ export function TasksPage() {
               <TableHead>Due Date</TableHead>
               <TableHead>Assigned To</TableHead>
               <TableHead>Contact</TableHead>
-              <TableHead>Deal</TableHead>
+              {dealsEnabled && <TableHead>Deal</TableHead>}
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -491,9 +494,11 @@ export function TasksPage() {
                   <TableCell>
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-24" />
-                  </TableCell>
+                  {dealsEnabled && (
+                    <TableCell>
+                      <Skeleton className="h-4 w-24" />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Skeleton className="h-4 w-16" />
                   </TableCell>
@@ -505,7 +510,7 @@ export function TasksPage() {
             ) : tasks.length === 0 ? (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={dealsEnabled ? 8 : 7}
                   className="text-center py-8 text-muted-foreground"
                 >
                   No tasks found
@@ -543,17 +548,19 @@ export function TasksPage() {
                       </Link>
                     )}
                   </TableCell>
-                  <TableCell>
-                    {task.deal ? (
-                      <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
-                        <span className="text-primary hover:underline">
-                          {task.deal.name}
-                        </span>
-                      </Link>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
+                  {dealsEnabled && (
+                    <TableCell>
+                      {task.deal ? (
+                        <Link href={`${basePath}/crm/deals/${task.deal.id}`}>
+                          <span className="text-primary hover:underline">
+                            {task.deal.name}
+                          </span>
+                        </Link>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     {task.completed ? (
                       <span className="text-muted-foreground">Done</span>

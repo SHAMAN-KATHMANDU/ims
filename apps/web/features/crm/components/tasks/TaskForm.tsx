@@ -20,6 +20,8 @@ import type {
   CreateTaskData,
   UpdateTaskData,
 } from "../../services/task.service";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -63,8 +65,12 @@ type TaskFormProps = TaskFormCreateProps | TaskFormEditProps;
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function TaskForm(props: TaskFormProps) {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   const { data: contactsData } = useContactsPaginated({ limit: 100 });
-  const { data: dealsData } = useDealsPaginated({ limit: 100 });
+  const { data: dealsData } = useDealsPaginated(
+    { limit: 100 },
+    { enabled: dealsEnabled },
+  );
   const { data: usersResult } = useUsers({ limit: 10 });
 
   const contacts = contactsData?.data ?? [];
@@ -102,7 +108,7 @@ export function TaskForm(props: TaskFormProps) {
         title: values.title,
         dueDate: emptyToUndefined(values.dueDate),
         contactId: emptyToUndefined(values.contactId),
-        dealId: emptyToUndefined(values.dealId),
+        dealId: dealsEnabled ? emptyToUndefined(values.dealId) : undefined,
         assignedToId: emptyToUndefined(values.assignedToId),
       });
     } else {
@@ -176,27 +182,29 @@ export function TaskForm(props: TaskFormProps) {
         </Select>
       </div>
 
-      <div>
-        <Label>Deal</Label>
-        <Select
-          value={form.watch("dealId") ?? "__none__"}
-          onValueChange={(v) =>
-            form.setValue("dealId", v === "__none__" ? undefined : v)
-          }
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select deal" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">—</SelectItem>
-            {deals.map((d) => (
-              <SelectItem key={d.id} value={d.id}>
-                {d.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      {dealsEnabled && (
+        <div>
+          <Label>Deal</Label>
+          <Select
+            value={form.watch("dealId") ?? "__none__"}
+            onValueChange={(v) =>
+              form.setValue("dealId", v === "__none__" ? undefined : v)
+            }
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue placeholder="Select deal" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__none__">—</SelectItem>
+              {deals.map((d) => (
+                <SelectItem key={d.id} value={d.id}>
+                  {d.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={props.isLoading}>

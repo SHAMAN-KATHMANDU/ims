@@ -36,6 +36,12 @@ export interface UseFormReturn<T> {
   reset: () => void;
   /** Set multiple form values at once (e.g. when loading a product for edit). Triggers re-render. */
   setValues: (values: Partial<T> | T) => void;
+  /** Product wizard: run RHF validation for these fields (optional; adapter-only). */
+  triggerValidation?: (fields?: (keyof T)[]) => Promise<boolean>;
+  /** Product wizard: user clicked Next on this tab — allow inline errors for that step (adapter-only). */
+  recordWizardValidationAttempt?: (tab: string) => void;
+  /** Product wizard: show all step errors (e.g. final submit failed cross-tab validation). */
+  revealAllWizardValidationErrors?: () => void;
 }
 
 /**

@@ -97,8 +97,8 @@ transferRouter.post(
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [id, transferCode, status, createdAt, approvedAt, completedAt]
- *         description: Sort field (default createdAt)
+ *           enum: [id, transferCode, status, createdAt, approvedAt, completedAt, fromLocationName, toLocationName]
+ *         description: Sort field (default createdAt). fromLocationName and toLocationName sort by related location name.
  *       - in: query
  *         name: sortOrder
  *         schema: { type: string, enum: [asc, desc] }

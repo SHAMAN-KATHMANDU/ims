@@ -23,6 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
 import {
   useAddContactNote,
   useDeleteContactNote,
@@ -91,6 +93,7 @@ export function ContactDetail({
   onClose: _onClose,
 }: ContactDetailProps) {
   const { toast } = useToast();
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
 
   const [noteContent, setNoteContent] = useState("");
   const [logActivityType, setLogActivityType] = useState<
@@ -362,7 +365,7 @@ export function ContactDetail({
               {contact.phone}
             </a>
           )}
-          {openDeal && (
+          {dealsEnabled && openDeal && (
             <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300">
               <Handshake className="h-3 w-3" />
               {openDeal.stage}
@@ -424,37 +427,41 @@ export function ContactDetail({
         <Tabs defaultValue="overview" className="flex flex-col h-full">
           <div className="border-b">
             <TabsList className="h-9 bg-transparent p-0 gap-0 w-full justify-start overflow-x-auto scrollbar-none flex-nowrap">
-              {[
-                { value: "overview", label: "Overview", icon: UserIcon },
-                { value: "activity", label: "Activity", icon: MessageSquare },
-                { value: "tasks", label: "Tasks", icon: CheckSquare },
-                { value: "deals", label: "Deals", icon: Handshake },
-                { value: "notes", label: "Notes", icon: FileText },
-                { value: "files", label: "Files", icon: Paperclip },
-              ].map(({ value, label, icon: Icon }) => (
-                <TabsTrigger
-                  key={value}
-                  value={value}
-                  className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 sm:px-3 h-9 text-xs font-medium shrink-0"
-                >
-                  <Icon className="h-3.5 w-3.5 sm:mr-1.5" />
-                  <span className="hidden sm:inline">{label}</span>
-                  {value === "tasks" &&
-                    contact.tasks &&
-                    contact.tasks.length > 0 && (
-                      <span className="ml-1 text-xs bg-muted rounded-full px-1.5 py-0.5 leading-none">
-                        {contact.tasks.filter((t) => !t.completed).length}
-                      </span>
-                    )}
-                  {value === "deals" &&
-                    contact.deals &&
-                    contact.deals.length > 0 && (
-                      <span className="ml-1 text-xs bg-muted rounded-full px-1.5 py-0.5 leading-none">
-                        {contact.deals.length}
-                      </span>
-                    )}
-                </TabsTrigger>
-              ))}
+              {(
+                [
+                  { value: "overview", label: "Overview", icon: UserIcon },
+                  { value: "activity", label: "Activity", icon: MessageSquare },
+                  { value: "tasks", label: "Tasks", icon: CheckSquare },
+                  { value: "deals", label: "Deals", icon: Handshake },
+                  { value: "notes", label: "Notes", icon: FileText },
+                  { value: "files", label: "Files", icon: Paperclip },
+                ] as const
+              )
+                .filter((t) => dealsEnabled || t.value !== "deals")
+                .map(({ value, label, icon: Icon }) => (
+                  <TabsTrigger
+                    key={value}
+                    value={value}
+                    className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none px-2 sm:px-3 h-9 text-xs font-medium shrink-0"
+                  >
+                    <Icon className="h-3.5 w-3.5 sm:mr-1.5" />
+                    <span className="hidden sm:inline">{label}</span>
+                    {value === "tasks" &&
+                      contact.tasks &&
+                      contact.tasks.length > 0 && (
+                        <span className="ml-1 text-xs bg-muted rounded-full px-1.5 py-0.5 leading-none">
+                          {contact.tasks.filter((t) => !t.completed).length}
+                        </span>
+                      )}
+                    {value === "deals" &&
+                      contact.deals &&
+                      contact.deals.length > 0 && (
+                        <span className="ml-1 text-xs bg-muted rounded-full px-1.5 py-0.5 leading-none">
+                          {contact.deals.length}
+                        </span>
+                      )}
+                  </TabsTrigger>
+                ))}
             </TabsList>
           </div>
 
@@ -463,7 +470,7 @@ export function ContactDetail({
             <TabsContent value="overview" className="mt-0 p-6 space-y-5">
               {/* Summary cards */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {contact.deals && contact.deals.length > 0 && (
+                {dealsEnabled && contact.deals && contact.deals.length > 0 && (
                   <div className="rounded-lg border bg-card p-3">
                     <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                       <Handshake className="h-3 w-3" />
@@ -945,119 +952,123 @@ export function ContactDetail({
             </TabsContent>
 
             {/* ── DEALS ────────────────────────────────────────────────── */}
-            <TabsContent value="deals" className="mt-0 p-6 space-y-5">
-              {/* Create deal form */}
-              <div className="rounded-lg border bg-card">
-                <div className="px-4 py-3 border-b">
-                  <h3 className="text-sm font-semibold">New Deal</h3>
-                </div>
-                <form onSubmit={handleCreateDeal} className="p-4 space-y-3">
-                  <Input
-                    placeholder="Deal name *"
-                    value={dealName}
-                    onChange={(e) => setDealName(e.target.value)}
-                    className="text-sm"
-                  />
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">
-                        Value
-                      </Label>
-                      <div className="relative mt-1">
-                        <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={dealValue}
-                          onChange={(e) => setDealValue(e.target.value)}
-                          min={0}
-                          className="pl-7 text-sm"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <Label className="text-xs text-muted-foreground">
-                        Assign To
-                      </Label>
-                      <Select
-                        value={dealAssignedToId || "__none__"}
-                        onValueChange={(v) =>
-                          setDealAssignedToId(v === "__none__" ? "" : v)
-                        }
-                      >
-                        <SelectTrigger className="mt-1 text-sm">
-                          <SelectValue placeholder="Unassigned" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__none__">Unassigned</SelectItem>
-                          {users.map((u) => (
-                            <SelectItem key={u.id} value={u.id}>
-                              {u.username}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+            {dealsEnabled && (
+              <TabsContent value="deals" className="mt-0 p-6 space-y-5">
+                {/* Create deal form */}
+                <div className="rounded-lg border bg-card">
+                  <div className="px-4 py-3 border-b">
+                    <h3 className="text-sm font-semibold">New Deal</h3>
                   </div>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={!dealName.trim() || createDealMutation.isPending}
-                    className="w-full"
-                  >
-                    <Plus className="h-4 w-4 mr-1" />
-                    {createDealMutation.isPending
-                      ? "Creating..."
-                      : "Create Deal"}
-                  </Button>
-                </form>
-              </div>
-
-              {/* Deal list */}
-              {contact.deals && contact.deals.length > 0 ? (
-                <div className="space-y-2">
-                  {contact.deals.map((d) => (
-                    <Link key={d.id} href={`${basePath}/crm/deals/${d.id}`}>
-                      <div className="rounded-lg border bg-card p-3 hover:bg-muted/50 transition-colors cursor-pointer">
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <p className="text-sm font-medium truncate">
-                              {d.name}
-                            </p>
-                            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-                              <DollarSign className="h-3 w-3" />
-                              {formatCurrency(d.value)}
-                            </p>
-                          </div>
-                          <div className="flex flex-col items-end gap-1 shrink-0">
-                            <Badge
-                              variant={
-                                d.status === "WON"
-                                  ? "default"
-                                  : d.status === "LOST"
-                                    ? "destructive"
-                                    : "secondary"
-                              }
-                              className="text-xs"
-                            >
-                              {d.status}
-                            </Badge>
-                            <span className="text-xs text-muted-foreground">
-                              {d.stage}
-                            </span>
-                          </div>
+                  <form onSubmit={handleCreateDeal} className="p-4 space-y-3">
+                    <Input
+                      placeholder="Deal name *"
+                      value={dealName}
+                      onChange={(e) => setDealName(e.target.value)}
+                      className="text-sm"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <Label className="text-xs text-muted-foreground">
+                          Value
+                        </Label>
+                        <div className="relative mt-1">
+                          <DollarSign className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                          <Input
+                            type="number"
+                            placeholder="0"
+                            value={dealValue}
+                            onChange={(e) => setDealValue(e.target.value)}
+                            min={0}
+                            className="pl-7 text-sm"
+                          />
                         </div>
                       </div>
-                    </Link>
-                  ))}
+                      <div>
+                        <Label className="text-xs text-muted-foreground">
+                          Assign To
+                        </Label>
+                        <Select
+                          value={dealAssignedToId || "__none__"}
+                          onValueChange={(v) =>
+                            setDealAssignedToId(v === "__none__" ? "" : v)
+                          }
+                        >
+                          <SelectTrigger className="mt-1 text-sm">
+                            <SelectValue placeholder="Unassigned" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">Unassigned</SelectItem>
+                            {users.map((u) => (
+                              <SelectItem key={u.id} value={u.id}>
+                                {u.username}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={
+                        !dealName.trim() || createDealMutation.isPending
+                      }
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-1" />
+                      {createDealMutation.isPending
+                        ? "Creating..."
+                        : "Create Deal"}
+                    </Button>
+                  </form>
                 </div>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Handshake className="h-7 w-7 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No deals yet.</p>
-                </div>
-              )}
-            </TabsContent>
+
+                {/* Deal list */}
+                {contact.deals && contact.deals.length > 0 ? (
+                  <div className="space-y-2">
+                    {contact.deals.map((d) => (
+                      <Link key={d.id} href={`${basePath}/crm/deals/${d.id}`}>
+                        <div className="rounded-lg border bg-card p-3 hover:bg-muted/50 transition-colors cursor-pointer">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {d.name}
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+                                <DollarSign className="h-3 w-3" />
+                                {formatCurrency(d.value)}
+                              </p>
+                            </div>
+                            <div className="flex flex-col items-end gap-1 shrink-0">
+                              <Badge
+                                variant={
+                                  d.status === "WON"
+                                    ? "default"
+                                    : d.status === "LOST"
+                                      ? "destructive"
+                                      : "secondary"
+                                }
+                                className="text-xs"
+                              >
+                                {d.status}
+                              </Badge>
+                              <span className="text-xs text-muted-foreground">
+                                {d.stage}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Handshake className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No deals yet.</p>
+                  </div>
+                )}
+              </TabsContent>
+            )}
 
             {/* ── NOTES ────────────────────────────────────────────────── */}
             <TabsContent value="notes" className="mt-0 p-6 space-y-4">

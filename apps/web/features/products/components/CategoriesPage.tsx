@@ -67,6 +67,8 @@ export function CategoriesPage() {
     limit: DEFAULT_LIMIT,
     search: "",
     status: "all",
+    sortBy: "name",
+    sortOrder: "asc",
   });
   const [searchInput, setSearchInput] = useState("");
   const debouncedSearch = useDebounce(searchInput, 300);
@@ -100,6 +102,27 @@ export function CategoriesPage() {
   const handlePageSizeChange = useCallback((limit: number) => {
     setListParams((prev) => ({ ...prev, page: DEFAULT_PAGE, limit }));
   }, []);
+
+  const handleCategorySort = useCallback(
+    (sortBy: string, sortOrder: "asc" | "desc" | "none") => {
+      if (sortOrder === "none") {
+        setListParams((prev) => ({
+          ...prev,
+          page: DEFAULT_PAGE,
+          sortBy: "name",
+          sortOrder: "asc",
+        }));
+        return;
+      }
+      setListParams((prev) => ({
+        ...prev,
+        page: DEFAULT_PAGE,
+        sortBy,
+        sortOrder,
+      }));
+    },
+    [],
+  );
 
   const handleStatusChange = useCallback((status: CategoryStatusFilter) => {
     setListParams((prev) => ({ ...prev, page: DEFAULT_PAGE, status }));
@@ -393,6 +416,9 @@ export function CategoriesPage() {
 
       <CategoryTable
         categories={categories}
+        sortBy={listParams.sortBy}
+        sortOrder={listParams.sortOrder}
+        onSort={handleCategorySort}
         canManageProducts={canManageProducts}
         onEdit={handleEditCategory}
         onDelete={setCategoryToDelete}

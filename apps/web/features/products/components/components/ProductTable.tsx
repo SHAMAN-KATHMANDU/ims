@@ -74,8 +74,8 @@ interface ProductTableProps {
   canSeeCostPrice: boolean;
   canManageProducts: boolean;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
-  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
+  sortOrder?: "asc" | "desc" | "none";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onEdit: (product: Product) => void;
   onDelete: (product: Product) => void;
   onDeleteVariation?: (product: Product, variationId: string) => void;
@@ -362,7 +362,18 @@ export function ProductTable({
                   />
                 </TableHead>
               )}
-              <TableHead>Product Code</TableHead>
+              {canSort ? (
+                <SortableTableHead
+                  sortKey="imsCode"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Product Code
+                </SortableTableHead>
+              ) : (
+                <TableHead>Product Code</TableHead>
+              )}
               {canSort ? (
                 <SortableTableHead
                   sortKey="name"
@@ -377,8 +388,31 @@ export function ProductTable({
               )}
               <TableHead>Variations</TableHead>
               <TableHead>Category</TableHead>
-              {canSeeCostPrice && <TableHead>Cost Price</TableHead>}
-              <TableHead>MRP</TableHead>
+              {canSeeCostPrice &&
+                (canSort ? (
+                  <SortableTableHead
+                    sortKey="costPrice"
+                    currentSortBy={sortBy}
+                    currentSortOrder={sortOrder}
+                    onSort={onSort!}
+                  >
+                    Cost Price
+                  </SortableTableHead>
+                ) : (
+                  <TableHead>Cost Price</TableHead>
+                ))}
+              {canSort ? (
+                <SortableTableHead
+                  sortKey="mrp"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  MRP
+                </SortableTableHead>
+              ) : (
+                <TableHead>MRP</TableHead>
+              )}
               {!canSeeCostPrice && (
                 <>
                   <TableHead>Normal Price</TableHead>
@@ -387,7 +421,18 @@ export function ProductTable({
                   <TableHead>Wholesale Price</TableHead>
                 </>
               )}
-              <TableHead>Stock</TableHead>
+              {canSort ? (
+                <SortableTableHead
+                  sortKey="totalStock"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Stock
+                </SortableTableHead>
+              ) : (
+                <TableHead>Stock</TableHead>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>

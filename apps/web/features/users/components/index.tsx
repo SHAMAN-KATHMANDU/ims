@@ -84,10 +84,18 @@ export function UsersPage() {
   const clearSelection = useUserSelectionStore(selectClearUserSelection);
   const setUsers = useUserSelectionStore((s) => s.setUsers);
 
-  const handleColumnSort = useCallback((by: string, order: "asc" | "desc") => {
-    setSortBy(by);
-    setSortOrder(order);
-  }, []);
+  const handleColumnSort = useCallback(
+    (by: string, order: "asc" | "desc" | "none") => {
+      if (order === "none") {
+        setSortBy("username");
+        setSortOrder("asc");
+        return;
+      }
+      setSortBy(by);
+      setSortOrder(order);
+    },
+    [],
+  );
 
   const { data: usersResult, isLoading } = useUsers({
     page,

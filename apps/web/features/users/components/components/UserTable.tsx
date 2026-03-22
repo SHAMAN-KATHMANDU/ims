@@ -20,8 +20,8 @@ interface UserTableProps {
   users: User[];
   isLoading?: boolean;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
-  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
+  sortOrder?: "asc" | "desc" | "none";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
   selectedUsers?: Set<string>;

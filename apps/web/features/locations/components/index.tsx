@@ -41,7 +41,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import type { SortOrder } from "@/components/ui/table";
 import { Plus, Search, Trash2, X } from "lucide-react";
 import {
   Tooltip,
@@ -74,7 +73,7 @@ export function LocationsPage() {
   const [typeFilter, setTypeFilter] = useState<LocationType | "all">("all");
   const [statusFilter, setStatusFilter] = useState<LocationStatusFilter>("all");
   const [sortBy, setSortBy] = useState<string>("name");
-  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
 
   // Dialog states
   const [formOpen, setFormOpen] = useState(false);
@@ -143,9 +142,14 @@ export function LocationsPage() {
   }, []);
 
   const handleSort = useCallback(
-    (newSortBy: string, newSortOrder: SortOrder) => {
-      setSortBy(newSortBy);
-      setSortOrder(newSortOrder);
+    (newSortBy: string, newSortOrder: "asc" | "desc" | "none") => {
+      if (newSortOrder === "none") {
+        setSortBy("name");
+        setSortOrder("asc");
+      } else {
+        setSortBy(newSortBy);
+        setSortOrder(newSortOrder);
+      }
       setPage(DEFAULT_PAGE);
     },
     [],

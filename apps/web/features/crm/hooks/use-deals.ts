@@ -13,6 +13,7 @@ import {
   removeDealLineItem,
   convertDealToSale,
   type Deal,
+  type PaginatedDealsResponse,
   type DealListParams,
   type CreateDealData,
   type UpdateDealData,
@@ -37,7 +38,10 @@ export const dealKeys = {
   detail: (id: string) => [...dealKeys.details(), id] as const,
 };
 
-export function useDealsPaginated(params: DealListParams = {}) {
+export function useDealsPaginated(
+  params: DealListParams = {},
+  options?: { enabled?: boolean },
+) {
   return useQuery({
     queryKey: dealKeys.list({
       page: params.page ?? DEFAULT_PAGE,
@@ -52,7 +56,8 @@ export function useDealsPaginated(params: DealListParams = {}) {
       contactId: params.contactId,
     }),
     queryFn: () => getDeals(params),
-    placeholderData: (prev) => prev,
+    placeholderData: (prev: PaginatedDealsResponse | undefined) => prev,
+    enabled: options?.enabled ?? true,
   });
 }
 

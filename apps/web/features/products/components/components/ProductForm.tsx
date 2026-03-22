@@ -113,7 +113,7 @@ export function ProductForm({
   const canGoNext = currentTabIndex < tabs.length - 1;
   const canGoPrev = currentTabIndex > 0;
 
-  const handleNext = (e?: React.MouseEvent<HTMLButtonElement>) => {
+  const handleNext = async (e?: React.MouseEvent<HTMLButtonElement>) => {
     e?.preventDefault();
     e?.stopPropagation();
     if (!canGoNext) return;
@@ -122,6 +122,16 @@ export function ProductForm({
     let validationErrors: Record<string, string> | null = null;
 
     if (dialogTab === "general") {
+      form.recordWizardValidationAttempt?.("general");
+      const zodOk = await form.triggerValidation?.([
+        "name",
+        "categoryId",
+        "imsCode",
+        "costPrice",
+        "mrp",
+      ]);
+      if (zodOk === false) return;
+
       const errs = validateProduct?.(values);
       if (errs) {
         const generalKeys = [
@@ -135,6 +145,9 @@ export function ProductForm({
         if (hasGeneralError) validationErrors = errs;
       }
     } else if (dialogTab === "dimensions") {
+      form.recordWizardValidationAttempt?.("dimensions");
+      await form.triggerValidation?.(["length", "breadth", "height", "weight"]);
+
       const dimKeys = ["length", "breadth", "height", "weight"] as const;
       const dimErrors: Record<string, string> = {};
       for (const key of dimKeys) {
@@ -149,6 +162,7 @@ export function ProductForm({
       }
       if (Object.keys(dimErrors).length > 0) validationErrors = dimErrors;
     } else if (dialogTab === "variations") {
+      form.recordWizardValidationAttempt?.("variations");
       const errs = validateProduct?.(values);
       if (errs) {
         const hasVariationError =
@@ -192,7 +206,7 @@ export function ProductForm({
         // Only submit if we're on the last tab (discounts)
         if (dialogTab !== "discounts") {
           e.preventDefault();
-          handleNext();
+          await handleNext();
           return;
         }
 
@@ -204,6 +218,7 @@ export function ProductForm({
           const validationErrors = validateProduct(form.values);
 
           if (validationErrors) {
+            form.revealAllWizardValidationErrors?.();
             // Find the first tab with errors
             let errorTab = "general";
             if (

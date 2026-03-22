@@ -5,15 +5,17 @@ import { ArrowDownIcon, ArrowUpIcon, ArrowUpDownIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-export type SortOrder = "asc" | "desc";
+/** `none` clears column sort (parent resets to its default sort). */
+export type SortOrder = "asc" | "desc" | "none";
 
 export interface SortableTableHeadProps extends React.ComponentProps<
   typeof TableHead
 > {
   sortKey: string;
   currentSortBy?: string;
+  /** When omitted, inactive columns show neutral sort icon. */
   currentSortOrder?: SortOrder;
-  onSort: (sortBy: string, sortOrder: SortOrder) => void;
+  onSort: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   children: React.ReactNode;
 }
 
@@ -100,13 +102,20 @@ function SortableTableHead({
   className,
   ...props
 }: SortableTableHeadProps) {
-  const isActive = currentSortBy === sortKey;
+  const isActive =
+    currentSortBy === sortKey &&
+    currentSortOrder !== undefined &&
+    currentSortOrder !== "none";
   const handleClick = () => {
-    if (isActive && currentSortOrder === "asc") {
-      onSort(sortKey, "desc");
-    } else {
+    if (!isActive) {
       onSort(sortKey, "asc");
+      return;
     }
+    if (currentSortOrder === "asc") {
+      onSort(sortKey, "desc");
+      return;
+    }
+    onSort(sortKey, "none");
   };
   return (
     <TableHead
@@ -121,12 +130,12 @@ function SortableTableHead({
         {children}
         {isActive ? (
           currentSortOrder === "asc" ? (
-            <ArrowUpIcon className="h-4 w-4 shrink-0 opacity-70" />
+            <ArrowUpIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
           ) : (
-            <ArrowDownIcon className="h-4 w-4 shrink-0 opacity-70" />
+            <ArrowDownIcon className="h-3.5 w-3.5 shrink-0 opacity-70" />
           )
         ) : (
-          <ArrowUpDownIcon className="h-4 w-4 shrink-0 opacity-40" />
+          <ArrowUpDownIcon className="h-3.5 w-3.5 shrink-0 opacity-40" />
         )}
       </button>
     </TableHead>

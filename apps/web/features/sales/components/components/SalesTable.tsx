@@ -27,8 +27,8 @@ interface SalesTableProps {
   sales: Sale[];
   isLoading?: boolean;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
-  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
+  sortOrder?: "asc" | "desc" | "none";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onView: (sale: Sale) => void;
   currentPage?: number;
   itemsPerPage?: number;
@@ -89,8 +89,8 @@ export function SalesTable({
   const allSelected =
     sales.length > 0 && sales.every((s) => selectedSales.has(s.id));
 
-  // Calculate column count for empty state (S.N. + optional checkbox + Credit + rest)
-  const baseColumnCount = 10; // S.N., Sale Code, Type, Credit, Location, Customer, Total, Payment Method, Date, Actions
+  // S.N., Sale Code, Type, Credit, Location, Customer, Total, Subtotal, Discount, Payment, Date, Actions
+  const baseColumnCount = 12;
   const columnCount = onSelectionChange ? baseColumnCount + 1 : baseColumnCount;
 
   if (isLoading) {
@@ -111,6 +111,8 @@ export function SalesTable({
               <TableHead>Location</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right">Subtotal</TableHead>
+              <TableHead className="text-right">Discount</TableHead>
               <TableHead>Payment Method</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -144,6 +146,12 @@ export function SalesTable({
                 </TableCell>
                 <TableCell className="text-right">
                   <Skeleton className="h-4 w-20 ml-auto" />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Skeleton className="h-4 w-16 ml-auto" />
+                </TableCell>
+                <TableCell className="text-right">
+                  <Skeleton className="h-4 w-16 ml-auto" />
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-4 w-20" />
@@ -180,6 +188,8 @@ export function SalesTable({
               <TableHead>Location</TableHead>
               <TableHead>Customer</TableHead>
               <TableHead className="text-right">Total</TableHead>
+              <TableHead className="text-right">Subtotal</TableHead>
+              <TableHead className="text-right">Discount</TableHead>
               <TableHead>Payment Method</TableHead>
               <TableHead>Date</TableHead>
               <TableHead className="text-right">Actions</TableHead>
@@ -224,7 +234,18 @@ export function SalesTable({
             ) : (
               <TableHead>Sale Code</TableHead>
             )}
-            <TableHead>Type</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="type"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+              >
+                Type
+              </SortableTableHead>
+            ) : (
+              <TableHead>Type</TableHead>
+            )}
             <TableHead>Credit</TableHead>
             <TableHead>Location</TableHead>
             <TableHead>Customer</TableHead>
@@ -240,6 +261,32 @@ export function SalesTable({
               </SortableTableHead>
             ) : (
               <TableHead className="text-right">Total</TableHead>
+            )}
+            {canSort ? (
+              <SortableTableHead
+                sortKey="subtotal"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+                className="text-right"
+              >
+                Subtotal
+              </SortableTableHead>
+            ) : (
+              <TableHead className="text-right">Subtotal</TableHead>
+            )}
+            {canSort ? (
+              <SortableTableHead
+                sortKey="discount"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+                className="text-right"
+              >
+                Discount
+              </SortableTableHead>
+            ) : (
+              <TableHead className="text-right">Discount</TableHead>
             )}
             <TableHead>Payment Method</TableHead>
             {canSort ? (
@@ -350,6 +397,12 @@ export function SalesTable({
                 </TableCell>
                 <TableCell className="text-right font-medium">
                   {formatCurrency(Number(sale.total))}
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">
+                  {formatCurrency(Number(sale.subtotal))}
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">
+                  {formatCurrency(Number(sale.discount))}
                 </TableCell>
                 <TableCell>
                   <Badge variant="outline">

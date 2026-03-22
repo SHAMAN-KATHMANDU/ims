@@ -22,8 +22,8 @@ interface MemberTableProps {
   members: Member[];
   isLoading?: boolean;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
-  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
+  sortOrder?: "asc" | "desc" | "none";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onView: (member: Member) => void;
   onEdit: (member: Member) => void;
   // Selection props
@@ -178,7 +178,18 @@ export function MemberTable({
                 />
               </TableHead>
             )}
-            <TableHead>Phone</TableHead>
+            {canSort ? (
+              <SortableTableHead
+                sortKey="phone"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort!}
+              >
+                Phone
+              </SortableTableHead>
+            ) : (
+              <TableHead>Phone</TableHead>
+            )}
             {canSort ? (
               <SortableTableHead
                 sortKey="name"

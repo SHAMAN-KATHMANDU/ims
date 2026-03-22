@@ -87,9 +87,7 @@ export function MembersPage() {
   const [memberStatusFilter, setMemberStatusFilter] = useState<
     MemberStatusFilter | "all"
   >("all");
-  const [sortBy, setSortBy] = useState<
-    "createdAt" | "updatedAt" | "name" | "id"
-  >("createdAt");
+  const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   const MEMBER_STATUS_OPTIONS: {
@@ -225,19 +223,24 @@ export function MembersPage() {
     createMemberMutation.isPending || updateMemberMutation.isPending;
 
   const handleSortChange = useCallback((value: string) => {
-    const [field, order] = value.split("_") as [
-      "createdAt" | "updatedAt" | "name" | "id",
-      "asc" | "desc",
-    ];
+    // Same `field_order` convention as products sort Select (underscore; last segment is asc|desc).
+    const i = value.lastIndexOf("_");
+    const field = i === -1 ? value : value.slice(0, i);
+    const order = (i === -1 ? "desc" : value.slice(i + 1)) as "asc" | "desc";
     setSortBy(field);
     setSortOrder(order);
     setPage(DEFAULT_PAGE);
   }, []);
 
   const handleColumnSort = useCallback(
-    (newSortBy: string, newSortOrder: "asc" | "desc") => {
-      setSortBy(newSortBy as "createdAt" | "updatedAt" | "name" | "id");
-      setSortOrder(newSortOrder);
+    (newSortBy: string, newSortOrder: "asc" | "desc" | "none") => {
+      if (newSortOrder === "none") {
+        setSortBy("createdAt");
+        setSortOrder("desc");
+      } else {
+        setSortBy(newSortBy);
+        setSortOrder(newSortOrder);
+      }
       setPage(DEFAULT_PAGE);
     },
     [],
@@ -341,6 +344,8 @@ export function MembersPage() {
               <SelectItem value="createdAt_asc">Date (oldest first)</SelectItem>
               <SelectItem value="name_asc">Name (A–Z)</SelectItem>
               <SelectItem value="name_desc">Name (Z–A)</SelectItem>
+              <SelectItem value="phone_asc">Phone (A–Z)</SelectItem>
+              <SelectItem value="phone_desc">Phone (Z–A)</SelectItem>
               <SelectItem value="updatedAt_desc">
                 Updated (newest first)
               </SelectItem>
