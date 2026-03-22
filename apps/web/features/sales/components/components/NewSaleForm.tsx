@@ -258,9 +258,7 @@ export function NewSaleForm({
   });
 
   useEffect(() => {
-    validationForm.setValue("locationId", locationId, {
-      shouldValidate: true,
-    });
+    validationForm.setValue("locationId", locationId);
   }, [locationId, validationForm]);
 
   useEffect(() => {
@@ -271,7 +269,6 @@ export function NewSaleForm({
         subVariationId: i.subVariationId ?? null,
         quantity: i.quantity,
       })),
-      { shouldValidate: true },
     );
   }, [items, validationForm]);
 
@@ -735,20 +732,19 @@ export function NewSaleForm({
     ) / 100;
   const productDiscountDisplay =
     previewResult != null
-      ? (previewResult.productDiscount != null
-          ? previewResult.productDiscount
-          : Math.max(
-              0,
-              Math.round((totalDiscountAll - promoDiscount) * 100) / 100,
-            ))
+      ? previewResult.productDiscount != null
+        ? previewResult.productDiscount
+        : Math.max(
+            0,
+            Math.round((totalDiscountAll - promoDiscount) * 100) / 100,
+          )
       : localProductDiscountSum;
   const expectedTotal =
     previewResult?.total ??
     Math.max(
       0,
-      Math.round(
-        (subtotal - productDiscountDisplay - promoDiscount) * 100,
-      ) / 100,
+      Math.round((subtotal - productDiscountDisplay - promoDiscount) * 100) /
+        100,
     );
 
   const handleRemovePromo = () => {
@@ -1354,8 +1350,8 @@ export function NewSaleForm({
                             </div>
                           ) : !productSearch.trim() ? (
                             <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
-                              Search for products by name, product code (barcode),
-                              or category...
+                              Search for products by name, product code
+                              (barcode), or category...
                             </div>
                           ) : filteredInventory.length === 0 ? (
                             <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
@@ -1630,7 +1626,9 @@ export function NewSaleForm({
                                   getItemDiscountDisplay(item) > 0 && (
                                     <p className="text-xs text-green-600 font-mono mt-1">
                                       Discount amount: −
-                                      {formatCurrency(getItemDiscountDisplay(item))}
+                                      {formatCurrency(
+                                        getItemDiscountDisplay(item),
+                                      )}
                                     </p>
                                   )}
 
@@ -1714,7 +1712,8 @@ export function NewSaleForm({
                                         }}
                                       />
                                       {discountMode === "individual" &&
-                                        ((item.manualDiscountPercent ?? 0) > 0 ||
+                                        ((item.manualDiscountPercent ?? 0) >
+                                          0 ||
                                           (item.manualDiscountAmount ?? 0) >
                                             0) &&
                                         getItemDiscountDisplay(item) > 0 && (
