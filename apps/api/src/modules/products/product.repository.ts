@@ -911,7 +911,14 @@ export class ProductRepository {
   }
 
   /**
-   * WHERE clause for product list (stock sort path) — must stay aligned with ProductService.findAll filters.
+   * WHERE clause for product list (stock sort path).
+   *
+   * **Coupling — keep in sync with ORM:** The Prisma `where` in `ProductService.findAll`
+   * (search OR on imsCode/name/description/category name, categoryId, subCategoryId,
+   * subCategory string match, vendorId, dateCreated range, and variations +
+   * locationInventory / lowStock variation IDs) must mirror this SQL. When list filters
+   * change, update **both** this builder and the ORM branch in `findAll`, or stock-sorted
+   * pages will return different rows than other sort modes.
    */
   private buildProductListWhereSql(f: ProductStockSortFilters): Prisma.Sql {
     const clauses: Prisma.Sql[] = [
@@ -996,8 +1003,15 @@ export class ProductRepository {
   }
 
   /**
-   * Total stock per product matches frontend getVariationTotal/getTotalStock:
-   * per variation: COALESCE(SUM(location_inventory.quantity), stock_quantity); then sum over variations.
+   * Paginated product list ordered by aggregated total stock (all variations).
+   *
+   * **Performance:** Uses a correlated subquery evaluated per matching row before pagination.
+   * For very large catalogs, monitor query latency (APM, `EXPLAIN ANALYZE`). If this path is
+   * hot, consider a denormalized `total_stock` on `products` (maintained by triggers or a job)
+   * and sort on that column instead of computing per request.
+   *
+   * **Stock definition** matches frontend getVariationTotal/getTotalStock: per variation,
+   * COALESCE(SUM(location_inventory.quantity), stock_quantity); then sum over variations.
    */
   async findAllProductsByTotalStock(
     filters: ProductStockSortFilters,

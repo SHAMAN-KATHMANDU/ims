@@ -559,12 +559,13 @@ export function DiscountsTab() {
                 <div className="space-y-1">
                   <Label className="text-xs">Sort</Label>
                   <Select
-                    value={`${params.sortBy ?? "createdAt"}-${params.sortOrder ?? "desc"}`}
+                    value={`${params.sortBy ?? "createdAt"}_${params.sortOrder ?? "desc"}`}
                     onValueChange={(v) => {
-                      const [sortBy, sortOrder] = v.split("-") as [
-                        string,
-                        "asc" | "desc",
-                      ];
+                      const i = v.lastIndexOf("_");
+                      const sortBy = i === -1 ? v : v.slice(0, i);
+                      const sortOrder = (i === -1 ? "desc" : v.slice(i + 1)) as
+                        | "asc"
+                        | "desc";
                       handleSortChange(sortBy, sortOrder);
                     }}
                   >
@@ -572,26 +573,26 @@ export function DiscountsTab() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="createdAt-desc">
+                      <SelectItem value="createdAt_desc">
                         Newest first
                       </SelectItem>
-                      <SelectItem value="createdAt-asc">
+                      <SelectItem value="createdAt_asc">
                         Oldest first
                       </SelectItem>
-                      <SelectItem value="productName-asc">
+                      <SelectItem value="productName_asc">
                         Product A–Z
                       </SelectItem>
-                      <SelectItem value="productName-desc">
+                      <SelectItem value="productName_desc">
                         Product Z–A
                       </SelectItem>
-                      <SelectItem value="discountTypeName-asc">
+                      <SelectItem value="discountTypeName_asc">
                         Type A–Z
                       </SelectItem>
-                      <SelectItem value="discountTypeName-desc">
+                      <SelectItem value="discountTypeName_desc">
                         Type Z–A
                       </SelectItem>
-                      <SelectItem value="value-desc">Value high–low</SelectItem>
-                      <SelectItem value="value-asc">Value low–high</SelectItem>
+                      <SelectItem value="value_desc">Value high–low</SelectItem>
+                      <SelectItem value="value_asc">Value low–high</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

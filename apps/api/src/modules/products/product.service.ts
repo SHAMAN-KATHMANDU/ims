@@ -410,6 +410,7 @@ export class ProductService {
         ? [...orderBy, { id: "asc" as const }]
         : [orderBy, { id: "asc" as const }];
 
+    // List filters — keep aligned with ProductRepository.buildProductListWhereSql (totalStock sort path).
     const where: ProductListWhere = {};
     if (search) {
       where.OR = [

@@ -1102,9 +1102,9 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                   <div className="space-y-1">
                     <Label className="text-xs">Sort</Label>
                     <Select
-                      value={`${paginationParams.sortBy ?? "dateCreated"}-${paginationParams.sortOrder ?? "desc"}`}
+                      value={`${paginationParams.sortBy ?? "dateCreated"}_${paginationParams.sortOrder ?? "desc"}`}
                       onValueChange={(v) => {
-                        const i = v.lastIndexOf("-");
+                        const i = v.lastIndexOf("_");
                         const sortBy = i === -1 ? v : v.slice(0, i);
                         const sortOrder = (
                           i === -1 ? "desc" : v.slice(i + 1)
@@ -1116,26 +1116,26 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="dateCreated-desc">
+                        <SelectItem value="dateCreated_desc">
                           Newest first
                         </SelectItem>
-                        <SelectItem value="dateCreated-asc">
+                        <SelectItem value="dateCreated_asc">
                           Oldest first
                         </SelectItem>
-                        <SelectItem value="name-asc">Name A–Z</SelectItem>
-                        <SelectItem value="name-desc">Name Z–A</SelectItem>
-                        <SelectItem value="mrp-desc">MRP high–low</SelectItem>
-                        <SelectItem value="mrp-asc">MRP low–high</SelectItem>
-                        <SelectItem value="vendorname-asc">
+                        <SelectItem value="name_asc">Name A–Z</SelectItem>
+                        <SelectItem value="name_desc">Name Z–A</SelectItem>
+                        <SelectItem value="mrp_desc">MRP high–low</SelectItem>
+                        <SelectItem value="mrp_asc">MRP low–high</SelectItem>
+                        <SelectItem value="vendorname_asc">
                           Vendor A–Z
                         </SelectItem>
-                        <SelectItem value="vendorname-desc">
+                        <SelectItem value="vendorname_desc">
                           Vendor Z–A
                         </SelectItem>
-                        <SelectItem value="totalStock-asc">
+                        <SelectItem value="totalStock_asc">
                           Stock low–high
                         </SelectItem>
-                        <SelectItem value="totalStock-desc">
+                        <SelectItem value="totalStock_desc">
                           Stock high–low
                         </SelectItem>
                       </SelectContent>

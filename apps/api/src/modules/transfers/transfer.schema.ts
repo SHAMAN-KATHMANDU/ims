@@ -31,6 +31,14 @@ export const TransferStatusEnum = z.enum([
 ]);
 export type TransferStatus = z.infer<typeof TransferStatusEnum>;
 
+/**
+ * Sort fields accepted by `getPrismaOrderBy` (flat Prisma model keys on `Transfer`).
+ *
+ * **Relation sorts (not in this list):** `fromLocationName` and `toLocationName` are valid
+ * `sortBy` query values (see transfer router Swagger) but map to nested orderBy
+ * `{ fromLocation: { name } }` / `{ toLocation: { name } }` in `TransferService.findAll`
+ * because `getPrismaOrderBy` only emits top-level field keys.
+ */
 export const ALLOWED_SORT_FIELDS = [
   "id",
   "transferCode",

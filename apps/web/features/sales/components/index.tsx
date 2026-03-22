@@ -217,7 +217,8 @@ export function SalesPage() {
   }, []);
 
   const handleSortChange = useCallback((value: string) => {
-    const i = value.indexOf("_");
+    // Same `field_order` convention as products sort Select (underscore; last segment is asc|desc).
+    const i = value.lastIndexOf("_");
     const field = i === -1 ? value : value.slice(0, i);
     const order = (i === -1 ? "desc" : value.slice(i + 1)) as "asc" | "desc";
     setSortBy(field);
