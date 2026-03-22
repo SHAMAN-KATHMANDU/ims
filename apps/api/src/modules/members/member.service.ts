@@ -18,7 +18,13 @@ import {
 import { parseBulkFile, type ValidationError } from "@/utils/bulkParse";
 import ExcelJS from "exceljs";
 
-const ALLOWED_SORT_FIELDS = ["createdAt", "updatedAt", "name", "id"] as const;
+const ALLOWED_SORT_FIELDS = [
+  "createdAt",
+  "updatedAt",
+  "name",
+  "id",
+  "phone",
+] as const;
 
 export interface BulkUploadResult {
   created: { id: string; phone: string; name: string | null }[];

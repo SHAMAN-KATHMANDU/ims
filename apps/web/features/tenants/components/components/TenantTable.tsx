@@ -1,5 +1,6 @@
 "use client";
 
+import { useMemo, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   Table,
@@ -8,6 +9,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  SortableTableHead,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +48,41 @@ export function TenantTable({
   basePath,
   onDeactivate,
 }: TenantTableProps) {
+  const [sortBy, setSortBy] = useState<string>("");
+  const [sortOrder, setSortOrder] = useState<"asc" | "desc" | "none">("none");
+
+  const handleSort = useCallback(
+    (key: string, order: "asc" | "desc" | "none") => {
+      if (order === "none") {
+        setSortBy("");
+        setSortOrder("none");
+        return;
+      }
+      setSortBy(key);
+      setSortOrder(order);
+    },
+    [],
+  );
+
+  const displayTenants = useMemo(() => {
+    if (sortOrder === "none" || !sortBy) return tenants;
+    const dir = sortOrder === "asc" ? 1 : -1;
+    return [...tenants].sort((a, b) => {
+      if (sortBy === "name") {
+        return (
+          dir * a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+        );
+      }
+      if (sortBy === "plan") {
+        return dir * String(a.plan).localeCompare(String(b.plan));
+      }
+      if (sortBy === "subscriptionStatus") {
+        return dir * a.subscriptionStatus.localeCompare(b.subscriptionStatus);
+      }
+      return 0;
+    });
+  }, [tenants, sortBy, sortOrder]);
+
   if (isLoading) {
     return (
       <div className="rounded-md border">
@@ -110,17 +147,38 @@ export function TenantTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Name</TableHead>
+            <SortableTableHead
+              sortKey="name"
+              currentSortBy={sortBy || undefined}
+              currentSortOrder={sortOrder}
+              onSort={handleSort}
+            >
+              Name
+            </SortableTableHead>
             <TableHead>Slug</TableHead>
-            <TableHead>Plan</TableHead>
-            <TableHead>Status</TableHead>
+            <SortableTableHead
+              sortKey="plan"
+              currentSortBy={sortBy || undefined}
+              currentSortOrder={sortOrder}
+              onSort={handleSort}
+            >
+              Plan
+            </SortableTableHead>
+            <SortableTableHead
+              sortKey="subscriptionStatus"
+              currentSortBy={sortBy || undefined}
+              currentSortOrder={sortOrder}
+              onSort={handleSort}
+            >
+              Status
+            </SortableTableHead>
             <TableHead>Users</TableHead>
             <TableHead>Products</TableHead>
             <TableHead className="w-[70px]">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tenants.map((tenant) => (
+          {displayTenants.map((tenant) => (
             <TableRow key={tenant.id}>
               <TableCell className="font-medium">{tenant.name}</TableCell>
               <TableCell className="font-mono text-sm">{tenant.slug}</TableCell>

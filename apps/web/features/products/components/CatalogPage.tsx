@@ -233,7 +233,16 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   }, []);
 
   const handleSortChange = useCallback(
-    (sortBy: string, sortOrder: "asc" | "desc") => {
+    (sortBy: string, sortOrder: "asc" | "desc" | "none") => {
+      if (sortOrder === "none") {
+        setPaginationParams((prev) => ({
+          ...prev,
+          page: DEFAULT_PAGE,
+          sortBy: "dateCreated",
+          sortOrder: "desc",
+        }));
+        return;
+      }
       setPaginationParams((prev) => ({
         ...prev,
         page: DEFAULT_PAGE,
@@ -1095,10 +1104,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                     <Select
                       value={`${paginationParams.sortBy ?? "dateCreated"}-${paginationParams.sortOrder ?? "desc"}`}
                       onValueChange={(v) => {
-                        const [sortBy, sortOrder] = v.split("-") as [
-                          string,
-                          "asc" | "desc",
-                        ];
+                        const i = v.lastIndexOf("-");
+                        const sortBy = i === -1 ? v : v.slice(0, i);
+                        const sortOrder = (
+                          i === -1 ? "desc" : v.slice(i + 1)
+                        ) as "asc" | "desc";
                         handleSortChange(sortBy, sortOrder);
                       }}
                     >
@@ -1121,6 +1131,12 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                         </SelectItem>
                         <SelectItem value="vendorname-desc">
                           Vendor Z–A
+                        </SelectItem>
+                        <SelectItem value="totalStock-asc">
+                          Stock low–high
+                        </SelectItem>
+                        <SelectItem value="totalStock-desc">
+                          Stock high–low
                         </SelectItem>
                       </SelectContent>
                     </Select>

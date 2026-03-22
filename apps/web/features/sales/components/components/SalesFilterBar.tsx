@@ -28,7 +28,13 @@ import { cn } from "@/lib/utils";
 import type { SaleType } from "../../hooks/use-sales";
 import type { Location } from "@/features/locations";
 
-export type SalesSortField = "createdAt" | "total" | "subtotal" | "saleCode";
+export type SalesSortField =
+  | "createdAt"
+  | "total"
+  | "subtotal"
+  | "discount"
+  | "saleCode"
+  | "type";
 export type SalesSortOrder = "asc" | "desc";
 
 const SORT_OPTIONS: { value: string; label: string }[] = [
@@ -38,6 +44,10 @@ const SORT_OPTIONS: { value: string; label: string }[] = [
   { value: "total_asc", label: "Total (low to high)" },
   { value: "subtotal_desc", label: "Subtotal (high to low)" },
   { value: "subtotal_asc", label: "Subtotal (low to high)" },
+  { value: "discount_desc", label: "Discount (high to low)" },
+  { value: "discount_asc", label: "Discount (low to high)" },
+  { value: "type_asc", label: "Type (A–Z)" },
+  { value: "type_desc", label: "Type (Z–A)" },
   { value: "saleCode_asc", label: "Sale code (A–Z)" },
   { value: "saleCode_desc", label: "Sale code (Z–A)" },
 ];
@@ -63,7 +73,7 @@ export interface SalesFilterBarProps {
   onCreditChange: (value: string) => void;
   locationFilter: string;
   onLocationChange: (value: string) => void;
-  sortBy: SalesSortField;
+  sortBy: SalesSortField | string;
   sortOrder: SalesSortOrder;
   onSortChange: (value: string) => void;
   startDate: Date | undefined;

@@ -43,8 +43,8 @@ interface TransferTableProps {
   isLoading?: boolean;
   canManage: boolean;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
-  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
+  sortOrder?: "asc" | "desc" | "none";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onView: (transfer: Transfer) => void;
   onApprove: (transfer: Transfer) => void;
   onStartTransit: (transfer: Transfer) => void;
@@ -159,7 +159,22 @@ export function TransferTable({
                 >
                   Transfer Code
                 </SortableTableHead>
-                <TableHead>Route</TableHead>
+                <SortableTableHead
+                  sortKey="fromLocationName"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  From
+                </SortableTableHead>
+                <SortableTableHead
+                  sortKey="toLocationName"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  To
+                </SortableTableHead>
                 <TableHead>Items</TableHead>
                 <SortableTableHead
                   sortKey="status"
@@ -181,7 +196,8 @@ export function TransferTable({
             ) : (
               <>
                 <TableHead>Transfer Code</TableHead>
-                <TableHead>Route</TableHead>
+                <TableHead>From</TableHead>
+                <TableHead>To</TableHead>
                 <TableHead>Items</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
@@ -196,16 +212,14 @@ export function TransferTable({
               <TableCell className="font-mono font-medium">
                 {transfer.transferCode}
               </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2 text-sm">
-                  <span className="font-medium">
-                    {transfer.fromLocation.name}
-                  </span>
-                  <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                  <span className="font-medium">
-                    {transfer.toLocation.name}
-                  </span>
-                </div>
+              <TableCell className="font-medium text-sm">
+                {transfer.fromLocation.name}
+              </TableCell>
+              <TableCell className="font-medium text-sm">
+                <span className="inline-flex items-center gap-1.5">
+                  <ArrowRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                  {transfer.toLocation.name}
+                </span>
               </TableCell>
               <TableCell>{transfer._count?.items || 0}</TableCell>
               <TableCell>

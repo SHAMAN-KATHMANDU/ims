@@ -165,7 +165,7 @@ export class TransferRepository {
     where: TransferWhere,
     skip: number,
     take: number,
-    orderBy: Record<string, "asc" | "desc">,
+    orderBy: Prisma.TransferOrderByWithRelationInput,
   ) {
     return prisma.transfer.findMany({
       where,

@@ -1,5 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
 import { getPrismaOrderBy, createPaginationResult } from "@/utils/pagination";
+import type { Prisma } from "@prisma/client";
 import transferRepository, {
   type TransferRepository,
   type TransferWhere,
@@ -167,9 +168,18 @@ export class TransferService {
   }
 
   async findAll(tenantId: string, query: GetAllTransfersQuery) {
-    const orderBy = getPrismaOrderBy(query.sortBy, query.sortOrder, [
-      ...ALLOWED_SORT_FIELDS,
-    ]) ?? { createdAt: "desc" };
+    let orderBy: Prisma.TransferOrderByWithRelationInput = getPrismaOrderBy(
+      query.sortBy,
+      query.sortOrder,
+      [...ALLOWED_SORT_FIELDS],
+    ) ?? { createdAt: "desc" };
+
+    const sb = query.sortBy?.toLowerCase();
+    if (sb === "fromlocationname") {
+      orderBy = { fromLocation: { name: query.sortOrder } };
+    } else if (sb === "tolocationname") {
+      orderBy = { toLocation: { name: query.sortOrder } };
+    }
 
     const where: TransferWhere = { tenantId };
     if (query.status)

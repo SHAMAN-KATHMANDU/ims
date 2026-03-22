@@ -4,7 +4,22 @@ import {
   createPaginationResult,
   getPrismaOrderBy,
 } from "@/utils/pagination";
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+
+/** Filters for raw SQL product list when ordering by aggregated stock (mirrors ProductService.findAll). */
+export interface ProductStockSortFilters {
+  tenantId: string;
+  search?: string;
+  categoryId?: string;
+  subCategoryId?: string;
+  subCategory?: string;
+  vendorId?: string;
+  dateFrom?: Date;
+  dateTo?: Date;
+  locationId?: string;
+  lowStock?: boolean;
+  lowStockVariationIds?: string[];
+}
 
 // ─── Types for repository inputs ────────────────────────────────────────────
 
@@ -893,6 +908,154 @@ export class ProductRepository {
       data: { attributeTypeId, value, displayOrder: 0 },
       select: { id: true },
     });
+  }
+
+  /**
+   * WHERE clause for product list (stock sort path) — must stay aligned with ProductService.findAll filters.
+   */
+  private buildProductListWhereSql(f: ProductStockSortFilters): Prisma.Sql {
+    const clauses: Prisma.Sql[] = [
+      Prisma.sql`p.tenant_id = ${f.tenantId}::uuid`,
+      Prisma.sql`p.deleted_at IS NULL`,
+    ];
+    if (f.categoryId) {
+      clauses.push(Prisma.sql`p.category_id = ${f.categoryId}::uuid`);
+    }
+    if (f.subCategoryId) {
+      clauses.push(Prisma.sql`p.sub_category_id = ${f.subCategoryId}::uuid`);
+    }
+    if (f.subCategory && !f.subCategoryId) {
+      clauses.push(
+        Prisma.sql`LOWER(TRIM(COALESCE(p.sub_category, ''))) = LOWER(TRIM(${f.subCategory}))`,
+      );
+    }
+    if (f.vendorId) {
+      clauses.push(Prisma.sql`p.vendor_id = ${f.vendorId}::uuid`);
+    }
+    if (f.dateFrom) {
+      clauses.push(Prisma.sql`p.date_created >= ${f.dateFrom}`);
+    }
+    if (f.dateTo) {
+      clauses.push(Prisma.sql`p.date_created <= ${f.dateTo}`);
+    }
+    if (f.search?.trim()) {
+      const pattern = `%${f.search.trim()}%`;
+      clauses.push(Prisma.sql`(
+        p.ims_code ILIKE ${pattern}
+        OR p.product_name ILIKE ${pattern}
+        OR COALESCE(p.description, '') ILIKE ${pattern}
+        OR EXISTS (
+          SELECT 1 FROM categories cat
+          WHERE cat.category_id = p.category_id
+            AND cat.tenant_id = p.tenant_id
+            AND cat.deleted_at IS NULL
+            AND cat.category_name ILIKE ${pattern}
+        )
+      )`);
+    }
+
+    const lowIds = f.lowStockVariationIds ?? [];
+    if (f.locationId || f.lowStock) {
+      if (f.locationId && f.lowStock && lowIds.length > 0) {
+        const idList = Prisma.join(
+          lowIds.map((id) => Prisma.sql`${id}::uuid`),
+          ", ",
+        );
+        clauses.push(Prisma.sql`EXISTS (
+          SELECT 1 FROM product_variations v
+          INNER JOIN location_inventory li ON li.variation_id = v.variation_id
+          WHERE v.product_id = p.product_id
+            AND v.variation_id IN (${idList})
+            AND li.location_id = ${f.locationId}::uuid
+            AND li.quantity > 0
+        )`);
+      } else if (f.locationId) {
+        clauses.push(Prisma.sql`EXISTS (
+          SELECT 1 FROM product_variations v2
+          INNER JOIN location_inventory li2 ON li2.variation_id = v2.variation_id
+          WHERE v2.product_id = p.product_id
+            AND li2.location_id = ${f.locationId}::uuid
+            AND li2.quantity > 0
+        )`);
+      } else if (f.lowStock && lowIds.length > 0) {
+        const idList = Prisma.join(
+          lowIds.map((id) => Prisma.sql`${id}::uuid`),
+          ", ",
+        );
+        clauses.push(Prisma.sql`EXISTS (
+          SELECT 1 FROM product_variations v3
+          WHERE v3.product_id = p.product_id
+            AND v3.variation_id IN (${idList})
+        )`);
+      } else if (f.lowStock) {
+        clauses.push(Prisma.sql`FALSE`);
+      }
+    }
+
+    return Prisma.join(clauses, " AND ");
+  }
+
+  /**
+   * Total stock per product matches frontend getVariationTotal/getTotalStock:
+   * per variation: COALESCE(SUM(location_inventory.quantity), stock_quantity); then sum over variations.
+   */
+  async findAllProductsByTotalStock(
+    filters: ProductStockSortFilters,
+    sortOrder: "asc" | "desc",
+    skip: number,
+    take: number,
+  ): Promise<{
+    products: Prisma.ProductGetPayload<{
+      include: typeof PRODUCT_INCLUDE_WITH_INVENTORY;
+    }>[];
+    totalItems: number;
+  }> {
+    const whereSql = this.buildProductListWhereSql(filters);
+    const stockSubquery = Prisma.sql`(
+      SELECT COALESCE(SUM(
+        COALESCE(
+          (SELECT SUM(li.quantity)::bigint FROM location_inventory li WHERE li.variation_id = v.variation_id),
+          v.stock_quantity::bigint
+        )
+      ), 0)::bigint
+      FROM product_variations v
+      WHERE v.product_id = p.product_id
+    )`;
+    const orderDir = sortOrder === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
+
+    const [countRows, idRows] = await Promise.all([
+      prisma.$queryRaw<[{ count: bigint }]>`
+        SELECT COUNT(*)::bigint AS count FROM products p WHERE ${whereSql}
+      `,
+      prisma.$queryRaw<{ product_id: string }[]>`
+        SELECT p.product_id
+        FROM products p
+        WHERE ${whereSql}
+        ORDER BY (${stockSubquery}) ${orderDir}, p.product_id ASC
+        LIMIT ${take} OFFSET ${skip}
+      `,
+    ]);
+
+    const totalItems = Number(countRows[0]?.count ?? 0n);
+    const orderedIds = idRows.map((r) => r.product_id);
+    if (orderedIds.length === 0) {
+      return { products: [], totalItems };
+    }
+
+    const productsUnordered = await prisma.product.findMany({
+      where: {
+        id: { in: orderedIds },
+        tenantId: filters.tenantId,
+        deletedAt: null,
+      },
+      include: PRODUCT_INCLUDE_WITH_INVENTORY,
+    });
+    const orderMap = new Map(orderedIds.map((id, i) => [id, i]));
+    const products = [...productsUnordered].sort(
+      (a, b) => (orderMap.get(a.id) ?? 0) - (orderMap.get(b.id) ?? 0),
+    );
+
+    return { products, totalItems };
   }
 }
 

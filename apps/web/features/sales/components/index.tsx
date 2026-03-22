@@ -101,9 +101,7 @@ export function SalesPage() {
   const [userFilter, setUserFilter] = useState<string | undefined>(undefined);
   const [startDate, setStartDate] = useState<Date | undefined>();
   const [endDate, setEndDate] = useState<Date | undefined>();
-  const [sortBy, setSortBy] = useState<
-    "createdAt" | "total" | "subtotal" | "saleCode"
-  >("createdAt");
+  const [sortBy, setSortBy] = useState<string>("createdAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
 
   // Apply URL search params once on mount (e.g. from dashboard/analytics links)
@@ -219,19 +217,23 @@ export function SalesPage() {
   }, []);
 
   const handleSortChange = useCallback((value: string) => {
-    const [field, order] = value.split("_") as [
-      "createdAt" | "total" | "subtotal" | "saleCode",
-      "asc" | "desc",
-    ];
+    const i = value.indexOf("_");
+    const field = i === -1 ? value : value.slice(0, i);
+    const order = (i === -1 ? "desc" : value.slice(i + 1)) as "asc" | "desc";
     setSortBy(field);
     setSortOrder(order);
     setPage(DEFAULT_PAGE);
   }, []);
 
   const handleColumnSort = useCallback(
-    (newSortBy: string, newSortOrder: "asc" | "desc") => {
-      setSortBy(newSortBy as "createdAt" | "total" | "subtotal" | "saleCode");
-      setSortOrder(newSortOrder);
+    (newSortBy: string, newSortOrder: "asc" | "desc" | "none") => {
+      if (newSortOrder === "none") {
+        setSortBy("createdAt");
+        setSortOrder("desc");
+      } else {
+        setSortBy(newSortBy);
+        setSortOrder(newSortOrder);
+      }
       setPage(DEFAULT_PAGE);
     },
     [],

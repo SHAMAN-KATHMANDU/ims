@@ -28,6 +28,7 @@ import {
   Warehouse,
   Store,
 } from "lucide-react";
+import { format } from "date-fns";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Location } from "../../hooks/use-locations";
 
@@ -36,8 +37,8 @@ interface LocationTableProps {
   isLoading?: boolean;
   canManage: boolean;
   sortBy?: string;
-  sortOrder?: "asc" | "desc";
-  onSort?: (sortBy: string, sortOrder: "asc" | "desc") => void;
+  sortOrder?: "asc" | "desc" | "none";
+  onSort?: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onEdit: (location: Location) => void;
   onDelete: (location: Location) => void;
   onRestore?: (location: Location) => void;
@@ -103,6 +104,7 @@ export function LocationTable({
               )}
               <TableHead>Name</TableHead>
               <TableHead>Type</TableHead>
+              <TableHead>Created</TableHead>
               <TableHead>Default warehouse</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>Status</TableHead>
@@ -119,6 +121,9 @@ export function LocationTable({
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
                 </TableCell>
                 <TableCell>
                   <Skeleton className="h-4 w-16" />
@@ -187,11 +192,20 @@ export function LocationTable({
                 >
                   Type
                 </SortableTableHead>
+                <SortableTableHead
+                  sortKey="createdAt"
+                  currentSortBy={sortBy}
+                  currentSortOrder={sortOrder}
+                  onSort={onSort!}
+                >
+                  Created
+                </SortableTableHead>
               </>
             ) : (
               <>
                 <TableHead>Name</TableHead>
                 <TableHead>Type</TableHead>
+                <TableHead>Created</TableHead>
               </>
             )}
             <TableHead>Default warehouse</TableHead>
@@ -236,6 +250,9 @@ export function LocationTable({
                 >
                   {location.type}
                 </Badge>
+              </TableCell>
+              <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                {format(new Date(location.createdAt), "MMM d, yyyy")}
               </TableCell>
               <TableCell>
                 {location.type === "WAREHOUSE" && location.isDefaultWarehouse

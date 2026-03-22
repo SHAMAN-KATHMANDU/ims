@@ -176,8 +176,8 @@ productRouter.post(
  *         name: sortBy
  *         schema:
  *           type: string
- *           enum: [dateCreated, dateModified, name, imsCode, costPrice, mrp, vendorId, id]
- *         description: Sort field. dateCreated = date added. Use vendorName for vendor name (relation sort).
+ *           enum: [dateCreated, dateModified, name, imsCode, costPrice, mrp, vendorId, id, totalStock, vendorname]
+ *         description: Sort field. dateCreated = date added. Use vendorname for vendor name (relation sort). totalStock sorts by aggregated stock (location inventory + variation fallback).
  *       - in: query
  *         name: sortOrder
  *         schema: { type: string, enum: [asc, desc] }
