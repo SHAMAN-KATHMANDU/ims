@@ -1,0 +1,146 @@
+# Dev stack for EC2 -- uses images from Docker Hub (tag :dev).
+# Watchtower (see watchtower.yml) polls every 30s for new :dev images and restarts dev_web / dev_api.
+#
+# One-time host setup:
+#   mkdir -p /home/ubuntu/backups
+#
+# Usage:
+#   ./up.sh      -- start everything
+#   ./down.sh    -- stop everything
+#   ./restart.sh -- restart all or a specific service
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  dev_db:
+    image: postgres:16
+    container_name: dev_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ims}
+    volumes:
+      - dev_db_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    ports:
+      - "5432:5432"
+    networks:
+      - dev
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================
+  # Automated Database Backups (daily; same pattern as prod)
+  # Backups stored in /home/ubuntu/backups (bind mount).
+  # Offsite copy: ./setup-backups.sh then cron runs ./backup-s3.sh
+  # ============================================
+  dev_db_backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: dev_db_backup
+    restart: unless-stopped
+    depends_on:
+      dev_db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: dev_db
+      POSTGRES_DB: ${POSTGRES_DB:-ims}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_EXTRA_OPTS: "--clean --if-exists --no-owner --no-privileges"
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 3
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - dev_db_backups:/backups
+    networks:
+      - dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ============================================
+  # Redis (BullMQ queues + Socket.IO adapter)
+  # ============================================
+  dev_redis:
+    image: redis:7-alpine
+    container_name: dev_redis
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - dev_redis_data:/data
+    networks:
+      - dev
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # API Server
+  # ============================================
+  dev_api:
+    image: rpandox/dev-api-ims:dev
+    container_name: dev_api
+    restart: unless-stopped
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    depends_on:
+      dev_db:
+        condition: service_healthy
+      dev_redis:
+        condition: service_healthy
+    networks:
+      - dev
+    healthcheck:
+      test:
+        ["CMD-SHELL", "wget -q --spider http://localhost:4000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Web Frontend
+  # ============================================
+  dev_web:
+    image: rpandox/dev-web-ims:dev
+    container_name: dev_web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    depends_on:
+      dev_api:
+        condition: service_healthy
+    networks:
+      - dev
+
+networks:
+  dev:
+    driver: bridge
+    name: ims-dev
+
+volumes:
+  dev_db_data:
+  dev_redis_data:
+  dev_db_backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/ubuntu/backups
