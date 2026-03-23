@@ -124,13 +124,21 @@ Run all scripts from `/home/ubuntu/deploy/` (they resolve their own directory au
 
 ### Database seed (`./seed.sh`)
 
-On EC2, **`./seed.sh` is the supported way** to seed Postgres inside Docker. It runs `npx prisma db seed` from `apps/api` in the API container with `SEED_ORCHESTRATED=1`.
+On EC2, **`./seed.sh` is the supported way** to seed Postgres inside Docker. It runs `node prisma/seed.js --orchestrated` from `apps/api` in the API container and **inlines** `SEED_INCLUDE_*` / `SEED_MODE` / optional `SEED_MINIMAL_TENANTS_B64` in the shell command so choices are not dropped (some Docker setups do not apply `docker compose exec -e` to the seed process; platform credentials still come from the container `.env` via Compose `env_file`).
 
 - **Always created:** plan limits + platform admin (`SEED_PLATFORM_ADMIN_USERNAME` / `SEED_PLATFORM_ADMIN_PASSWORD` in `.env`).
 - **Optional (prompts):** full `test1` / `test2` data, minimal `ruby` tenant, full `demo` tenant, and an optional comma-separated minimal tenant list (`slug:Name` or `slug:Name:password`).
 - **Prod:** same prompts after you type `yes` to proceed; read warnings before including sample tenants.
 
 Local or CI without this script can still use `pnpm --filter api prisma:seed` (legacy `SEED_PROFILE` / `SEED_MODE` — see `apps/api/prisma/seed.ts`).
+
+**Remove sample tenants by slug (FK-safe):** do not use raw `prisma.tenant.delete()` — `transfer_logs.user_id` is `Restrict` and will fail. After pulling an image that includes `apps/api/prisma/delete-tenants-by-slug.cjs`:
+
+```bash
+docker compose exec prod_api sh -c 'cd /app/apps/api && node prisma/delete-tenants-by-slug.cjs test1 test2 demo ruby'
+```
+
+Local: `pnpm --filter api delete-tenants -- test1 test2 demo ruby`
 
 ---
 

@@ -85,20 +85,14 @@ echo -e "${COLOR_YELLOW}Optional minimal tenants (slug:Name or slug:Name:passwor
 echo -e "${COLOR_YELLOW}Leave empty to skip. Default admin password when omitted: ChangeMe123!${COLOR_RESET}"
 read -r -p "Minimal tenants: " MINIMAL_LINE
 
-step "Running prisma db seed (orchestrated)..."
+MINIMAL_B64=""
+if [[ -n "${MINIMAL_LINE// /}" ]]; then
+  MINIMAL_B64="$(printf '%s' "$MINIMAL_LINE" | base64 | tr -d '\n')"
+fi
 
-docker compose exec \
-  -e SEED_ORCHESTRATED=1 \
-  -e SEED_MODE=development \
-  -e SEED_INCLUDE_TEST="${INCLUDE_TEST}" \
-  -e SEED_INCLUDE_RUBY="${INCLUDE_RUBY}" \
-  -e SEED_INCLUDE_DEMO="${INCLUDE_DEMO}" \
-  -e SEED_MINIMAL_TENANTS="${MINIMAL_LINE}" \
-  -e SEED_TENANT_PASSWORD="${SEED_TENANT_PASSWORD:-ChangeMe123!}" \
-  -e SEED_PLATFORM_ADMIN_USERNAME="${SEED_PLATFORM_ADMIN_USERNAME:-platform}" \
-  -e SEED_PLATFORM_ADMIN_PASSWORD="${SEED_PLATFORM_ADMIN_PASSWORD}" \
-  dev_api \
-  sh -c "cd /app/apps/api && npx prisma db seed"
+step "Running prisma seed (orchestrated)..."
+docker compose exec -T dev_api \
+  sh -c "cd /app/apps/api && SEED_MODE=development SEED_INCLUDE_TEST=${INCLUDE_TEST} SEED_INCLUDE_RUBY=${INCLUDE_RUBY} SEED_INCLUDE_DEMO=${INCLUDE_DEMO} SEED_MINIMAL_TENANTS_B64=\"${MINIMAL_B64}\" node prisma/seed.js --orchestrated"
 
 divider
 success "Seed complete!"

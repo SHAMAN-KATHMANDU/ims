@@ -1,15 +1,26 @@
-import type { PrismaClient } from "@prisma/client";
+#!/usr/bin/env node
+/**
+ * Delete tenants by slug and all dependent rows (FK-safe order).
+ * Keep in sync with prisma/seeds/cleanup.ts → deleteTenantBySlug.
+ *
+ * Usage (from apps/api):
+ *   node prisma/delete-tenants-by-slug.cjs test1 test2 demo ruby
+ *
+ * Docker (deploy/prod):
+ *   docker compose exec prod_api sh -c 'cd /app/apps/api && node prisma/delete-tenants-by-slug.cjs test1 test2 demo ruby'
+ */
+const { PrismaClient } = require("@prisma/client");
 
 /**
- * Delete a tenant and all its data by slug.
- * Order respects FK constraints (children before parents).
+ * @param {import("@prisma/client").PrismaClient} prisma
+ * @param {string} slug
  */
-export async function deleteTenantBySlug(
-  prisma: PrismaClient,
-  slug: string,
-): Promise<void> {
+async function deleteTenantBySlug(prisma, slug) {
   const existing = await prisma.tenant.findUnique({ where: { slug } });
-  if (!existing) return;
+  if (!existing) {
+    console.log(`skip (not found): ${slug}`);
+    return;
+  }
   const tid = existing.id;
 
   await prisma.transferLog.deleteMany({
@@ -100,8 +111,6 @@ export async function deleteTenantBySlug(
     .findMany({ where: { tenantId: tid }, select: { id: true } })
     .then((r) => r.map((u) => u.id));
   if (userIds.length > 0) {
-    // TransferLog.user is onDelete: Restrict — remove any log rows still pointing at
-    // tenant users (e.g. edge cases missed by the transfer-scoped delete above).
     await prisma.transferLog.deleteMany({
       where: { userId: { in: userIds } },
     });
@@ -155,4 +164,26 @@ export async function deleteTenantBySlug(
   await prisma.passwordResetRequest.deleteMany({ where: { tenantId: tid } });
   await prisma.user.deleteMany({ where: { tenantId: tid } });
   await prisma.tenant.delete({ where: { id: tid } });
+  console.log(`deleted tenant: ${slug}`);
 }
+
+async function main() {
+  const slugs = process.argv.slice(2).filter(Boolean);
+  if (slugs.length === 0) {
+    console.error("Usage: node prisma/delete-tenants-by-slug.cjs <slug> [slug ...]");
+    process.exit(1);
+  }
+  const prisma = new PrismaClient();
+  try {
+    for (const slug of slugs) {
+      await deleteTenantBySlug(prisma, slug);
+    }
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+main().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});

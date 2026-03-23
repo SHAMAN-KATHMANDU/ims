@@ -48,6 +48,44 @@ function envFlagTrue(key: string): boolean {
   return process.env[key] === "true";
 }
 
+/** Deploy scripts pass UTF-8 CSV as base64 (SEED_MINIMAL_TENANTS_B64) to avoid shell quoting issues. */
+function orchestratedMinimalTenantsCsv(): string | undefined {
+  const b64 = process.env.SEED_MINIMAL_TENANTS_B64?.trim();
+  if (b64) {
+    try {
+      const decoded = Buffer.from(b64, "base64").toString("utf8").trim();
+      return decoded || undefined;
+    } catch {
+      console.warn(
+        "  ⚠️ SEED_MINIMAL_TENANTS_B64 is invalid base64, ignoring.",
+      );
+      return undefined;
+    }
+  }
+  const plain = process.env.SEED_MINIMAL_TENANTS?.trim();
+  return plain || undefined;
+}
+
+function logSeedDriver(): void {
+  const orchestrated = process.env.SEED_ORCHESTRATED === "1";
+  const mode = process.env.SEED_MODE ?? "development";
+  if (orchestrated) {
+    const minimalSrc = process.env.SEED_MINIMAL_TENANTS_B64?.trim()
+      ? "b64"
+      : process.env.SEED_MINIMAL_TENANTS?.trim()
+        ? "plain"
+        : "none";
+    console.log(
+      `[seed] driver=orchestrated mode=${mode} include_test=${process.env.SEED_INCLUDE_TEST ?? "unset"} include_ruby=${process.env.SEED_INCLUDE_RUBY ?? "unset"} include_demo=${process.env.SEED_INCLUDE_DEMO ?? "unset"} minimal=${minimalSrc}`,
+    );
+  } else {
+    const profile = process.env.SEED_PROFILE ?? "all";
+    console.log(
+      `[seed] driver=legacy profile=${profile} mode=${mode} SEED_ORCHESTRATED=${process.env.SEED_ORCHESTRATED ?? "unset"}`,
+    );
+  }
+}
+
 async function seedMinimalTenant(
   slug: string,
   name: string,
@@ -209,8 +247,8 @@ async function seedPlatformAndPlanLimits(): Promise<void> {
 }
 
 /**
- * Deploy `seed.sh` path: flags set by shell only. Ignores SEED_PROFILE.
- * Order: optional minimal CSV → test1/test2 → ruby → demo.
+ * Deploy `./seed.sh` path: run `node prisma/seed.js --orchestrated` with env set by the shell.
+ * Ignores SEED_PROFILE. Order: optional minimal CSV → test1/test2 → ruby → demo.
  */
 async function runOrchestratedSeed(): Promise<void> {
   const modeLabel = process.env.SEED_MODE ?? "development";
@@ -224,9 +262,9 @@ async function runOrchestratedSeed(): Promise<void> {
   const tenantPassword = process.env.SEED_TENANT_PASSWORD ?? "ChangeMe123!";
 
   await seedMinimalTenantsFromCommaList(
-    process.env.SEED_MINIMAL_TENANTS,
+    orchestratedMinimalTenantsCsv(),
     tenantPassword,
-    "Seeding minimal tenants from SEED_MINIMAL_TENANTS...",
+    "Seeding minimal tenants (SEED_MINIMAL_TENANTS_B64 or SEED_MINIMAL_TENANTS)...",
   );
 
   if (envFlagTrue("SEED_INCLUDE_TEST")) {
@@ -335,6 +373,7 @@ async function runLegacySeed(): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  logSeedDriver();
   if (process.env.SEED_ORCHESTRATED === "1") {
     await runOrchestratedSeed();
   } else {
