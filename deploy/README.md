@@ -21,7 +21,7 @@ deploy/
 │   ├── status.sh          # Container status + resource usage
 │   ├── health.sh          # Quick web + API health probe
 │   ├── setup-nginx.sh     # Install nginx/certbot + HTTPS
-│   └── seed.sh            # Seed the database
+│   └── seed.sh            # Interactive DB seed (orchestrated via Prisma)
 └── prod/              # Production EC2 — copy this folder to the prod server
     ├── functions.sh       # Bash helpers (sourced by all scripts in this folder)
     ├── docker-compose.yml # App stack + automated daily DB backups
@@ -36,7 +36,7 @@ deploy/
     ├── status.sh          # Container status + resource usage + backup info
     ├── health.sh          # Quick web + API health probe
     ├── setup-nginx.sh     # Install nginx/certbot + HTTPS
-    ├── seed.sh            # Seed the database (production mode)
+    ├── seed.sh            # Interactive DB seed (same flow as dev; confirm before prompts)
     └── backup-db.sh       # On-demand manual database backup
 ```
 
@@ -96,22 +96,33 @@ sudo ./setup-nginx.sh  # install nginx + HTTPS
 
 Run all scripts from `/home/ubuntu/deploy/` (they resolve their own directory automatically):
 
-| Script           | Usage                     | Description                                              |
-| ---------------- | ------------------------- | -------------------------------------------------------- |
-| `setup.sh`       | `./setup.sh`              | First-time setup: .env, docker login, validation         |
-| `up.sh`          | `./up.sh`                 | Start app stack + watchtower                             |
-| `down.sh`        | `./down.sh`               | Stop everything (volumes preserved)                      |
-| `down.sh`        | `./down.sh --volumes`     | Stop + delete volumes (**data loss!**)                   |
-| `restart.sh`     | `./restart.sh`            | Restart all services                                     |
-| `restart.sh`     | `./restart.sh api`        | Restart one service (api/web/db/redis/backup/watchtower) |
-| `logs.sh`        | `./logs.sh`               | Last 100 lines from all services                         |
-| `logs.sh`        | `./logs.sh api -f`        | Follow API logs                                          |
-| `logs.sh`        | `./logs.sh api --tail 50` | Last 50 lines from API                                   |
-| `status.sh`      | `./status.sh`             | Container status + CPU/mem + disk usage                  |
-| `health.sh`      | `./health.sh`             | Quick health probe (exits 0=pass, 1=fail)                |
-| `setup-nginx.sh` | `sudo ./setup-nginx.sh`   | Install nginx + certbot + HTTPS certs                    |
-| `seed.sh`        | `./seed.sh`               | Seed the database                                        |
-| `backup-db.sh`   | `./backup-db.sh`          | On-demand manual backup **(prod only)**                  |
+| Script           | Usage                     | Description                                                   |
+| ---------------- | ------------------------- | ------------------------------------------------------------- |
+| `setup.sh`       | `./setup.sh`              | First-time setup: .env, docker login, validation              |
+| `up.sh`          | `./up.sh`                 | Start app stack + watchtower                                  |
+| `down.sh`        | `./down.sh`               | Stop everything (volumes preserved)                           |
+| `down.sh`        | `./down.sh --volumes`     | Stop + delete volumes (**data loss!**)                        |
+| `restart.sh`     | `./restart.sh`            | Restart all services                                          |
+| `restart.sh`     | `./restart.sh api`        | Restart one service (api/web/db/redis/backup/watchtower)      |
+| `logs.sh`        | `./logs.sh`               | Last 100 lines from all services                              |
+| `logs.sh`        | `./logs.sh api -f`        | Follow API logs                                               |
+| `logs.sh`        | `./logs.sh api --tail 50` | Last 50 lines from API                                        |
+| `status.sh`      | `./status.sh`             | Container status + CPU/mem + disk usage                       |
+| `health.sh`      | `./health.sh`             | Quick health probe (exits 0=pass, 1=fail)                     |
+| `setup-nginx.sh` | `sudo ./setup-nginx.sh`   | Install nginx + certbot + HTTPS certs                         |
+| `seed.sh`        | `./seed.sh`               | Interactive DB seed (see below)                               |
+| `seed.sh`        | `./seed.sh --reset`       | **Dev only** — `prisma migrate reset` then seed (destructive) |
+| `backup-db.sh`   | `./backup-db.sh`          | On-demand manual backup **(prod only)**                       |
+
+### Database seed (`./seed.sh`)
+
+On EC2, **`./seed.sh` is the supported way** to seed Postgres inside Docker. It runs `npx prisma db seed` from `apps/api` in the API container with `SEED_ORCHESTRATED=1`.
+
+- **Always created:** plan limits + platform admin (`SEED_PLATFORM_ADMIN_USERNAME` / `SEED_PLATFORM_ADMIN_PASSWORD` in `.env`).
+- **Optional (prompts):** full `test1` / `test2` data, minimal `ruby` tenant, full `demo` tenant, and an optional comma-separated minimal tenant list (`slug:Name` or `slug:Name:password`).
+- **Prod:** same prompts after you type `yes` to proceed; read warnings before including sample tenants.
+
+Local or CI without this script can still use `pnpm --filter api prisma:seed` (legacy `SEED_PROFILE` / `SEED_MODE` — see `apps/api/prisma/seed.ts`).
 
 ---
 
@@ -211,6 +222,16 @@ Every var consumed by the API is documented in `.env.example`. Critical vars tha
 | `META_APP_ID`               | Meta App ID from the App Dashboard               |
 | `META_APP_SECRET`           | Verifies `X-Hub-Signature-256` on webhook POSTs  |
 | `CREDENTIAL_ENCRYPTION_KEY` | AES-256-GCM key for stored channel access tokens |
+
+**Database seed (`.env` on EC2):**
+
+| Variable                       | Description                                                                                                                       |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `SEED_PLATFORM_ADMIN_PASSWORD` | **Required** for `./seed.sh` — platform admin password                                                                            |
+| `SEED_PLATFORM_ADMIN_USERNAME` | Optional (default `platform`)                                                                                                     |
+| `SEED_TENANT_PASSWORD`         | Default admin password for minimal tenants when the list omits `:password` (optional; script defaults to `ChangeMe123!` if unset) |
+
+`SEED_MODE`, `SEED_PROFILE`, and `SEED_TENANTS` are **not** used by `./seed.sh`; they apply only to legacy `pnpm prisma:seed` / local runs.
 
 ---
 

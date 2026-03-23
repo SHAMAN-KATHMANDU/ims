@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
 # =============================================================================
 # deploy/dev/seed.sh
-# Run the Prisma database seed for the dev/stage environment.
-# Reads SEED_* vars from .env (loaded by docker compose env_file).
+# Orchestrated Prisma seed for dev/stage (EC2). Run from this folder.
+#
+# Always seeds: plan limits + platform admin (credentials from .env).
+# Optional blocks: chosen interactively (type "yes" to include).
 #
 # Usage:
-#   ./seed.sh          -- run with SEED_MODE from .env
-#   ./seed.sh --reset  -- drop + re-create all data (WARNING: destructive)
+#   ./seed.sh          -- interactive seed
+#   ./seed.sh --reset  -- drop + re-create all data (WARNING), then interactive seed
 # =============================================================================
 set -euo pipefail
 
@@ -24,13 +26,20 @@ if [[ "${1:-}" == "--reset" ]]; then
   RESET_MODE=true
 fi
 
+# -----------------------------------------------------------------------------
+# Prompts: type "yes" to include
+# -----------------------------------------------------------------------------
+prompt_include() {
+  local prompt_text="$1"
+  echo -e "${COLOR_YELLOW}${prompt_text}${COLOR_RESET}"
+  read -r -p "Type 'yes' to include, anything else to skip: " answer
+  [[ "$answer" == "yes" ]]
+}
+
 step "Database Seed (Dev/Stage)"
 divider
 
-# -----------------------------------------------------------------------------
-# Check API container is running
-# -----------------------------------------------------------------------------
-if ! docker compose ps dev_api | grep -q "Up\|running"; then
+if ! docker compose ps dev_api | grep -qE "Up|running"; then
   error "dev_api container is not running. Start the stack first with ./up.sh"
   exit 1
 fi
@@ -39,29 +48,67 @@ if $RESET_MODE; then
   warn "Reset mode: this will DROP all data and re-seed from scratch."
   confirm_action "Destroy all dev data and re-seed?"
   step "Resetting database..."
-  docker compose exec dev_api sh -c "node /app/apps/api/node_modules/prisma/build/index.js migrate reset --force --schema=/app/apps/api/prisma/schema.prisma"
+  docker compose exec dev_api sh -c "cd /app/apps/api && npx prisma migrate reset --force"
   success "Database reset"
 fi
 
-# -----------------------------------------------------------------------------
-# Run seed
-# -----------------------------------------------------------------------------
-step "Running prisma:seed..."
-# Pass seed vars from .env into the container via -e flags
 set -a
 # shellcheck source=/dev/null
 source .env
 set +a
 
+if [[ -z "${SEED_PLATFORM_ADMIN_PASSWORD:-}" ]]; then
+  error "SEED_PLATFORM_ADMIN_PASSWORD is not set in .env (required for seed)."
+  exit 1
+fi
+
+info "Plan limits and platform admin are always seeded."
+info "Optional tenants are chosen below."
+echo ""
+
+INCLUDE_TEST="false"
+if prompt_include "Seed full sample data for test tenants test1 and test2?"; then
+  INCLUDE_TEST="true"
+fi
+
+INCLUDE_RUBY="false"
+if prompt_include "Seed minimal tenant ruby (Ruby)?"; then
+  INCLUDE_RUBY="true"
+fi
+
+INCLUDE_DEMO="false"
+if prompt_include "Seed full demo tenant (slug demo, password demo)?"; then
+  INCLUDE_DEMO="true"
+fi
+
+echo -e "${COLOR_YELLOW}Optional minimal tenants (slug:Name or slug:Name:password, comma-separated).${COLOR_RESET}"
+echo -e "${COLOR_YELLOW}Leave empty to skip. Default admin password when omitted: ChangeMe123!${COLOR_RESET}"
+read -r -p "Minimal tenants: " MINIMAL_LINE
+
+step "Running prisma db seed (orchestrated)..."
+
 docker compose exec \
-  -e SEED_MODE="${SEED_MODE:-production}" \
-  -e SEED_PLATFORM_ADMIN_USERNAME="${SEED_PLATFORM_ADMIN_USERNAME:-platform}" \
-  -e SEED_PLATFORM_ADMIN_PASSWORD="${SEED_PLATFORM_ADMIN_PASSWORD:-}" \
-  -e SEED_TENANTS="${SEED_TENANTS:-}" \
+  -e SEED_ORCHESTRATED=1 \
+  -e SEED_MODE=development \
+  -e SEED_INCLUDE_TEST="${INCLUDE_TEST}" \
+  -e SEED_INCLUDE_RUBY="${INCLUDE_RUBY}" \
+  -e SEED_INCLUDE_DEMO="${INCLUDE_DEMO}" \
+  -e SEED_MINIMAL_TENANTS="${MINIMAL_LINE}" \
   -e SEED_TENANT_PASSWORD="${SEED_TENANT_PASSWORD:-ChangeMe123!}" \
+  -e SEED_PLATFORM_ADMIN_USERNAME="${SEED_PLATFORM_ADMIN_USERNAME:-platform}" \
+  -e SEED_PLATFORM_ADMIN_PASSWORD="${SEED_PLATFORM_ADMIN_PASSWORD}" \
   dev_api \
-  sh -c "cd /app && node apps/api/node_modules/prisma/build/index.js db seed --schema=apps/api/prisma/schema.prisma"
+  sh -c "cd /app/apps/api && npx prisma db seed"
 
 divider
 success "Seed complete!"
+echo ""
+echo "Summary:"
+echo "  Platform admin: ${SEED_PLATFORM_ADMIN_USERNAME:-platform}"
+echo "  Test tenants (test1, test2): ${INCLUDE_TEST}"
+echo "  Ruby minimal: ${INCLUDE_RUBY}"
+echo "  Demo tenant: ${INCLUDE_DEMO}"
+if [[ -n "${MINIMAL_LINE// /}" ]]; then
+  echo "  Minimal list: ${MINIMAL_LINE}"
+fi
 echo ""
