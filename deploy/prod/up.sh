@@ -63,7 +63,7 @@ echo ""
 docker compose ps
 echo ""
 echo "Endpoints:"
-echo "  Web: http://localhost:3000  (nginx -> https://www.shamanyantra.com)"
+echo "  Web: http://localhost:3000  (nginx -> https://app.shamanyantra.com)"
 echo "  API: http://localhost:4000  (nginx -> https://api.shamanyantra.com)"
 echo "  API health: http://localhost:4000/health"
 echo ""

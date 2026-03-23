@@ -4,7 +4,7 @@
 # Install and configure nginx + Let's Encrypt HTTPS for the production EC2.
 #
 # Domains:
-#   www.shamanyantra.com   -> web (port 3000)
+#   app.shamanyantra.com   -> web (port 3000)
 #   api.shamanyantra.com   -> api (port 4000)
 #
 # Prerequisites:
@@ -19,7 +19,7 @@ source "${SCRIPT_DIR}/functions.sh"
 
 require_root
 
-WEB_DOMAIN="www.shamanyantra.com"
+WEB_DOMAIN="app.shamanyantra.com"
 API_DOMAIN="api.shamanyantra.com"
 NGINX_CONF_NAME="ims-prod"
 NGINX_AVAILABLE="/etc/nginx/sites-available/${NGINX_CONF_NAME}.conf"
