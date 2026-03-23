@@ -55,4 +55,5 @@ echo ""
 
 divider
 info "Run './health.sh' for a quick web + API health probe."
+info "S3 offsite: ./setup-backups.sh (once), then tail -f /home/ubuntu/backups/s3-sync.log"
 echo ""

@@ -21,6 +21,8 @@ deploy/
 │   ├── status.sh          # Container status + resource usage
 │   ├── health.sh          # Quick web + API health probe
 │   ├── setup-nginx.sh     # Install nginx/certbot + HTTPS
+│   ├── setup-backups.sh   # One-time: AWS CLI + cron for nightly S3 offsite sync
+│   ├── backup-s3.sh       # Sync DB dumps (+ dev: .env) to S3 (cron or manual)
 │   └── seed.sh            # Interactive DB seed (orchestrated via Prisma)
 └── prod/              # Production EC2 — copy this folder to the prod server
     ├── functions.sh       # Bash helpers (sourced by all scripts in this folder)
@@ -36,6 +38,8 @@ deploy/
     ├── status.sh          # Container status + resource usage + backup info
     ├── health.sh          # Quick web + API health probe
     ├── setup-nginx.sh     # Install nginx/certbot + HTTPS
+    ├── setup-backups.sh   # One-time: AWS CLI + cron for nightly S3 offsite sync
+    ├── backup-s3.sh       # Sync DB dumps, uploads volume, .env to S3 (cron or manual)
     ├── seed.sh            # Interactive DB seed (same flow as dev; confirm before prompts)
     └── backup-db.sh       # On-demand manual database backup
 ```
@@ -76,6 +80,7 @@ cd /home/ubuntu/deploy
 ./health.sh            # verify everything is running
 ./seed.sh              # seed the database (first time only)
 sudo ./setup-nginx.sh  # install nginx + HTTPS
+./setup-backups.sh     # optional: S3 offsite backups (needs IAM instance profile on EC2)
 ```
 
 ### Production setup
@@ -88,6 +93,7 @@ cd /home/ubuntu/deploy
 ./health.sh            # verify everything is running
 ./seed.sh              # seed the database (first time only)
 sudo ./setup-nginx.sh  # install nginx + HTTPS
+./setup-backups.sh     # optional: S3 offsite backups (needs IAM instance profile on EC2)
 ```
 
 ---
@@ -96,23 +102,25 @@ sudo ./setup-nginx.sh  # install nginx + HTTPS
 
 Run all scripts from `/home/ubuntu/deploy/` (they resolve their own directory automatically):
 
-| Script           | Usage                     | Description                                                   |
-| ---------------- | ------------------------- | ------------------------------------------------------------- |
-| `setup.sh`       | `./setup.sh`              | First-time setup: .env, docker login, validation              |
-| `up.sh`          | `./up.sh`                 | Start app stack + watchtower                                  |
-| `down.sh`        | `./down.sh`               | Stop everything (volumes preserved)                           |
-| `down.sh`        | `./down.sh --volumes`     | Stop + delete volumes (**data loss!**)                        |
-| `restart.sh`     | `./restart.sh`            | Restart all services                                          |
-| `restart.sh`     | `./restart.sh api`        | Restart one service (api/web/db/redis/backup/watchtower)      |
-| `logs.sh`        | `./logs.sh`               | Last 100 lines from all services                              |
-| `logs.sh`        | `./logs.sh api -f`        | Follow API logs                                               |
-| `logs.sh`        | `./logs.sh api --tail 50` | Last 50 lines from API                                        |
-| `status.sh`      | `./status.sh`             | Container status + CPU/mem + disk usage                       |
-| `health.sh`      | `./health.sh`             | Quick health probe (exits 0=pass, 1=fail)                     |
-| `setup-nginx.sh` | `sudo ./setup-nginx.sh`   | Install nginx + certbot + HTTPS certs                         |
-| `seed.sh`        | `./seed.sh`               | Interactive DB seed (see below)                               |
-| `seed.sh`        | `./seed.sh --reset`       | **Dev only** — `prisma migrate reset` then seed (destructive) |
-| `backup-db.sh`   | `./backup-db.sh`          | On-demand manual backup **(prod only)**                       |
+| Script             | Usage                             | Description                                                                                 |
+| ------------------ | --------------------------------- | ------------------------------------------------------------------------------------------- |
+| `setup.sh`         | `./setup.sh`                      | First-time setup: .env, docker login, validation                                            |
+| `up.sh`            | `./up.sh`                         | Start app stack + watchtower                                                                |
+| `down.sh`          | `./down.sh`                       | Stop everything (volumes preserved)                                                         |
+| `down.sh`          | `./down.sh --volumes`             | Stop + delete volumes (**data loss!**)                                                      |
+| `restart.sh`       | `./restart.sh`                    | Restart all services                                                                        |
+| `restart.sh`       | `./restart.sh api`                | Restart one service (api/web/db/redis/backup/watchtower)                                    |
+| `logs.sh`          | `./logs.sh`                       | Last 100 lines from all services                                                            |
+| `logs.sh`          | `./logs.sh api -f`                | Follow API logs                                                                             |
+| `logs.sh`          | `./logs.sh api --tail 50`         | Last 50 lines from API                                                                      |
+| `status.sh`        | `./status.sh`                     | Container status + CPU/mem + disk usage                                                     |
+| `health.sh`        | `./health.sh`                     | Quick health probe (exits 0=pass, 1=fail)                                                   |
+| `setup-nginx.sh`   | `sudo ./setup-nginx.sh`           | Install nginx + certbot + HTTPS certs                                                       |
+| `seed.sh`          | `./seed.sh`                       | Interactive DB seed (see below)                                                             |
+| `seed.sh`          | `./seed.sh --reset`               | **Dev only** — `prisma migrate reset` then seed (destructive)                               |
+| `backup-db.sh`     | `./backup-db.sh`                  | On-demand manual DB dump **(prod only)** → `/home/ubuntu/backups`                           |
+| `setup-backups.sh` | `./setup-backups.sh`              | **Dev & prod** — install `awscli`, verify IAM, cron @ 02:00 for `./backup-s3.sh`            |
+| `backup-s3.sh`     | `BACKUPS_BUCKET=b ./backup-s3.sh` | **Dev & prod** — push local backups to S3 (see [Offsite backups (S3)](#offsite-backups-s3)) |
 
 ### Database seed (`./seed.sh`)
 
@@ -175,32 +183,82 @@ Both `dev/nginx.conf` and `prod/nginx.conf` handle these paths on the API server
 
 ---
 
-## Database Backups (Production)
+## Database Backups
 
-Production has **two** backup mechanisms:
+### Local backups (dev & prod)
 
-### 1. Automated (daily) — via `prod_db_backup` container
+Both stacks include a **`postgres-backup-local`** sidecar (`dev_db_backup` / `prod_db_backup`) that writes scheduled dumps to the host.
 
-Included in `prod/docker-compose.yml`. Runs `pg_dump` on a daily cron schedule — no host crontab needed.
+| Env  | Container        | Host path               |
+| ---- | ---------------- | ----------------------- |
+| Dev  | `dev_db_backup`  | `/home/ubuntu/backups/` |
+| Prod | `prod_db_backup` | `/home/ubuntu/backups/` |
 
-- **Retention**: 7 daily + 4 weekly + 3 monthly
-- **Location**: `/home/ubuntu/backups/` (host bind mount — survives `docker compose down --volumes`)
+- **Retention** (container default): 7 daily + 4 weekly + 3 monthly
 - **Format**: gzipped SQL (`.sql.gz`)
+- **Survives** `docker compose down --volumes` (bind mount on the EC2 disk — not in the DB volume)
 
-### 2. On-demand (manual) — via `backup-db.sh`
+**Prod only — extra manual dumps:** run `./backup-db.sh` before migrations or risky deploys (keeps last 14 manual files in the same directory).
 
-Use before migrations or risky deployments:
-
-```bash
-./backup-db.sh
-```
-
-### Restore from backup
+### Restore from a local `.sql.gz` (prod example)
 
 ```bash
+cd /home/ubuntu/deploy
 gunzip -c /home/ubuntu/backups/<backup-file>.sql.gz | \
   docker compose exec -T prod_db psql -U postgres -d ims
 ```
+
+(Use `dev_db` instead of `prod_db` on staging.)
+
+---
+
+## Offsite backups (S3)
+
+Nightly **offsite** sync is optional. Scripts live in each deploy folder: `setup-backups.sh` (one-time) and `backup-s3.sh` (actual sync).
+
+### Prerequisites
+
+- EC2 **IAM instance profile** with permission to write to the backup bucket (e.g. Terraform attaches `ims-ec2-backup-profile`).
+- **S3 bucket** (default name: `ims-shaman-backups`, override with `BACKUPS_BUCKET`).
+- **Region** defaults to `ap-south-1` (`AWS_DEFAULT_REGION`).
+
+### One-time setup (dev or prod)
+
+```bash
+cd /home/ubuntu/deploy
+./setup-backups.sh
+```
+
+This installs `awscli` if needed, runs `aws sts get-caller-identity`, chmods `backup-s3.sh`, and adds a **daily cron at 02:00** that logs to `/home/ubuntu/backups/s3-sync.log`.
+
+**Test immediately:**
+
+```bash
+cd /home/ubuntu/deploy
+BACKUPS_BUCKET=ims-shaman-backups ./backup-s3.sh
+tail -f /home/ubuntu/backups/s3-sync.log   # after first cron run
+```
+
+### What `backup-s3.sh` uploads
+
+| Prefix (under bucket)     | Contents                                                                                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `dev/db/` or `prod/db/`   | Everything under `/home/ubuntu/backups/` except `s3-sync.log` (`aws s3 sync` with `--delete`)                  |
+| `prod/uploads/`           | Docker volume **`prod_uploads`** (API file uploads) — **prod script only**                                     |
+| `dev/env/` or `prod/env/` | Timestamped copy of `/home/ubuntu/deploy/.env` (`.env.YYYYMMDD-HHMMSS`); keeps last **30** env snapshots in S3 |
+
+**Dev** `backup-s3.sh` syncs **DB dumps + `.env` only** (no uploads volume).
+
+**Prod** `backup-s3.sh` additionally syncs the **`prod_uploads`** named volume mount (resolves `deploy_prod_uploads` or any `*prod_uploads` volume).
+
+### Environment overrides (optional)
+
+You can set these when running the script or in the cron line (see `setup-backups.sh`):
+
+| Variable             | Default              | Purpose                 |
+| -------------------- | -------------------- | ----------------------- |
+| `BACKUPS_BUCKET`     | `ims-shaman-backups` | Target S3 bucket        |
+| `AWS_DEFAULT_REGION` | `ap-south-1`         | AWS region for CLI / S3 |
 
 ---
 
@@ -233,21 +291,30 @@ Every var consumed by the API is documented in `.env.example`. Critical vars tha
 
 `SEED_MODE`, `SEED_PROFILE`, and `SEED_TENANTS` are **not** used by `./seed.sh`; they apply only to legacy `pnpm prisma:seed` / local runs.
 
+**S3 offsite backup (EC2 host / cron only — not consumed by the API):**
+
+| Variable             | Default              | Description                                                                 |
+| -------------------- | -------------------- | --------------------------------------------------------------------------- |
+| `BACKUPS_BUCKET`     | `ims-shaman-backups` | Set in cron by `setup-backups.sh` or override when testing `./backup-s3.sh` |
+| `AWS_DEFAULT_REGION` | `ap-south-1`         | Region for `aws s3 sync` / `aws s3 cp`                                      |
+
 ---
 
 ## Troubleshooting
 
-| Symptom                         | Fix                                                                                                  |
-| ------------------------------- | ---------------------------------------------------------------------------------------------------- |
-| Containers exit on start        | `./logs.sh api` — check for missing env vars in `.env`                                               |
-| API returns 401 on webhook POST | `META_APP_SECRET` wrong/missing, or `proxy_request_buffering` is on — re-run `sudo ./setup-nginx.sh` |
-| Socket.IO connections fail      | Check `location /ws/` has `Upgrade`/`Connection` headers in nginx; `./logs.sh api -f` for errors     |
-| Uploads > 1MB return 413        | nginx `client_max_body_size` not applied — re-run `sudo ./setup-nginx.sh`                            |
-| Watchtower can't pull images    | Run `docker login` on the EC2 instance                                                               |
-| Nginx 502 Bad Gateway           | Containers not running on `localhost:3000`/`4000` — check `./status.sh`                              |
-| 301 redirect loop (Cloudflare)  | nginx uses `X-Forwarded-Proto` to avoid double-redirect; set Cloudflare to "Full" SSL mode           |
-| Certbot fails                   | DNS A records must point to this EC2's public IP before certbot runs                                 |
-| `Network ims-dev not found`     | Run `./up.sh` first to create the network, then Watchtower connects to it                            |
+| Symptom                         | Fix                                                                                                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Containers exit on start        | `./logs.sh api` — check for missing env vars in `.env`                                                                                                             |
+| API returns 401 on webhook POST | `META_APP_SECRET` wrong/missing, or `proxy_request_buffering` is on — re-run `sudo ./setup-nginx.sh`                                                               |
+| Socket.IO connections fail      | Check `location /ws/` has `Upgrade`/`Connection` headers in nginx; `./logs.sh api -f` for errors                                                                   |
+| Uploads > 1MB return 413        | nginx `client_max_body_size` not applied — re-run `sudo ./setup-nginx.sh`                                                                                          |
+| Watchtower can't pull images    | Run `docker login` on the EC2 instance                                                                                                                             |
+| Nginx 502 Bad Gateway           | Containers not running on `localhost:3000`/`4000` — check `./status.sh`                                                                                            |
+| 301 redirect loop (Cloudflare)  | nginx uses `X-Forwarded-Proto` to avoid double-redirect; set Cloudflare to "Full" SSL mode                                                                         |
+| Certbot fails                   | DNS A records must point to this EC2's public IP before certbot runs                                                                                               |
+| `Network ims-dev not found`     | Run `./up.sh` first to create the network, then Watchtower connects to it                                                                                          |
+| S3 backup / `aws` errors        | Ensure IAM instance profile is attached; run `aws sts get-caller-identity`. Check `tail -f /home/ubuntu/backups/s3-sync.log`                                       |
+| `prod_uploads` not syncing      | **Prod:** stack must have created the volume; run `./backup-s3.sh` after `./up.sh`. Volume name may differ — script tries `deploy_prod_uploads` or `*prod_uploads` |
 
 ---
 

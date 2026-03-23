@@ -186,25 +186,38 @@ docker compose -f docker-compose.prod.yml up -d
 
 ## 6. Nginx + HTTPS (Optional)
 
-See [deploy/README.md](../deploy/README.md) section 7 for Nginx reverse proxy and Let’s Encrypt setup on both staging and prod.
+See [deploy/README.md](../deploy/README.md) for **Nginx**, **Let’s Encrypt** (`setup-nginx.sh`), and the full **script reference**.
 
 ---
 
-## 7. Checklist: First Deploy
+## 7. Offsite backups (S3, optional)
 
-| Step                     | Staging | Production |
-| ------------------------ | ------- | ---------- |
-| SSH + `docker login`     | [ ]     | [ ]        |
-| Copy `deploy/` folder    | [ ]     | [ ]        |
-| Create `.env`            | [ ]     | [ ]        |
-| Start app stack          | [ ]     | [ ]        |
-| Start Watchtower         | [ ]     | [ ]        |
-| Verify `docker ps`       | [ ]     | [ ]        |
-| Nginx + HTTPS (optional) | [ ]     | [ ]        |
+After the stack is running and `/home/ubuntu/backups` exists:
+
+1. Attach an EC2 **IAM instance profile** that can write to your backup bucket (see infra / Terraform).
+2. On the server: `cd /home/ubuntu/deploy && ./setup-backups.sh`
+3. Optional test: `./backup-s3.sh`
+
+Full details: [deploy/README.md — Offsite backups (S3)](../deploy/README.md#offsite-backups-s3).
 
 ---
 
-## 8. Troubleshooting
+## 8. Checklist: First Deploy
+
+| Step                          | Staging | Production |
+| ----------------------------- | ------- | ---------- |
+| SSH + `docker login`          | [ ]     | [ ]        |
+| Copy `deploy/` folder         | [ ]     | [ ]        |
+| Create `.env`                 | [ ]     | [ ]        |
+| Start app stack               | [ ]     | [ ]        |
+| Start Watchtower              | [ ]     | [ ]        |
+| Verify `docker ps`            | [ ]     | [ ]        |
+| Nginx + HTTPS (optional)      | [ ]     | [ ]        |
+| S3 offsite backups (optional) | [ ]     | [ ]        |
+
+---
+
+## 9. Troubleshooting
 
 | Issue                  | Check                                                                              |
 | ---------------------- | ---------------------------------------------------------------------------------- |
