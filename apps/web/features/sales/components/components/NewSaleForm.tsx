@@ -57,7 +57,8 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { FormSection } from "@/components/ui/form-section";
+import { Card, CardContent } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
 import {
   Plus,
   Minus,
@@ -71,6 +72,25 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
+
+function SaleSection({
+  title,
+  className,
+  children,
+}: {
+  title: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className={cn("mb-6 last:mb-0", className)}>
+      <h2 className="text-sm font-semibold text-foreground border-l-2 border-primary pl-3 mb-4">
+        {title}
+      </h2>
+      {children}
+    </div>
+  );
+}
 
 interface ProductDiscount {
   id: string;
@@ -953,16 +973,22 @@ export function NewSaleForm({
       }}
     >
       {inline ? (
-        <div className="px-6 pt-6 pb-4 shrink-0 border-b border-border/50">
-          <h1 className="text-2xl font-bold font-mono tracking-tight">
+        <div className="px-6 pt-6 pb-4 shrink-0 border-b border-border bg-card/50">
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             New Sale
           </h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Select showroom, add lines, then complete payment.
+          </p>
         </div>
       ) : (
-        <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b border-border/50">
-          <DialogTitle className="text-2xl font-bold font-mono tracking-tight">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b border-border bg-card/50">
+          <DialogTitle className="text-2xl font-semibold tracking-tight text-foreground">
             New Sale
           </DialogTitle>
+          <p className="text-sm text-muted-foreground font-normal pt-1">
+            Select showroom, add lines, then complete payment.
+          </p>
         </DialogHeader>
       )}
 
@@ -1021,1030 +1047,1072 @@ export function NewSaleForm({
                 {/* Left Panel: Location, Customer, Products */}
                 <div className="space-y-6">
                   {/* Location & Customer Panel */}
-                  <div className="form-panel">
-                    <FormSection title="Location & Customer">
-                      <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground">
-                            Showroom *
-                          </Label>
-                          <Controller
-                            name="locationId"
-                            control={validationForm.control}
-                            render={({ field }) => (
-                              <div
-                                className={
-                                  items.length > 0
-                                    ? "cursor-pointer [&_button]:pointer-events-none"
-                                    : ""
-                                }
-                                onClick={
-                                  items.length > 0
-                                    ? () => setShowClearCartConfirm(true)
-                                    : undefined
-                                }
-                              >
-                                <Select
-                                  value={field.value}
-                                  onValueChange={(v) => {
-                                    field.onChange(v);
-                                    setLocationId(v);
-                                  }}
-                                  onOpenChange={(open) => {
-                                    if (!open) field.onBlur();
-                                  }}
-                                  disabled={items.length > 0}
+                  <Card className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+                    <CardContent className="pt-6">
+                      <SaleSection title="Location & Customer">
+                        <div className="grid gap-4 sm:grid-cols-2">
+                          <div className="space-y-2">
+                            <Label className="text-xs font-medium text-muted-foreground">
+                              Showroom *
+                            </Label>
+                            <Controller
+                              name="locationId"
+                              control={validationForm.control}
+                              render={({ field }) => (
+                                <div
+                                  className={
+                                    items.length > 0
+                                      ? "cursor-pointer [&_button]:pointer-events-none"
+                                      : ""
+                                  }
+                                  onClick={
+                                    items.length > 0
+                                      ? () => setShowClearCartConfirm(true)
+                                      : undefined
+                                  }
                                 >
-                                  <SelectTrigger className="bg-surface border-border/50">
-                                    {items.length > 0 ? (
-                                      <span className="flex items-center gap-2">
-                                        <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                  <Select
+                                    value={field.value}
+                                    onValueChange={(v) => {
+                                      field.onChange(v);
+                                      setLocationId(v);
+                                    }}
+                                    onOpenChange={(open) => {
+                                      if (!open) field.onBlur();
+                                    }}
+                                    disabled={items.length > 0}
+                                  >
+                                    <SelectTrigger className="bg-background border-border">
+                                      {items.length > 0 ? (
+                                        <span className="flex items-center gap-2">
+                                          <Lock className="h-4 w-4 shrink-0 text-muted-foreground" />
+                                          <SelectValue placeholder="Select showroom" />
+                                        </span>
+                                      ) : (
                                         <SelectValue placeholder="Select showroom" />
-                                      </span>
+                                      )}
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      {showrooms.map((loc) => (
+                                        <SelectItem key={loc.id} value={loc.id}>
+                                          {loc.name}
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  {items.length > 0 && (
+                                    <p className="text-xs text-muted-foreground mt-1">
+                                      Clear cart to change showroom
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            />
+                            {validationForm.formState.errors.locationId && (
+                              <p className="text-sm text-destructive">
+                                {
+                                  validationForm.formState.errors.locationId
+                                    .message
+                                }
+                              </p>
+                            )}
+                          </div>
+
+                          {/* CRM Contact (primary customer selection) */}
+                          <div className="space-y-2">
+                            <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                              <UserRound className="h-3 w-3" />
+                              Customer (Contact)
+                            </Label>
+                            {contactId ? (
+                              <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/40 text-sm">
+                                <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
+                                <span className="flex-1 truncate">
+                                  {contactOptions.find(
+                                    (c) => c.id === contactId,
+                                  )
+                                    ? `${contactOptions.find((c) => c.id === contactId)!.firstName}${contactOptions.find((c) => c.id === contactId)!.lastName ? ` ${contactOptions.find((c) => c.id === contactId)!.lastName}` : ""}`
+                                    : "Contact linked"}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setContactId(null);
+                                    setContactSearch("");
+                                  }}
+                                  aria-label="Remove contact"
+                                  className="text-muted-foreground hover:text-foreground"
+                                >
+                                  <X className="h-4 w-4" />
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                                <Input
+                                  value={contactSearch}
+                                  onChange={(e) => {
+                                    setContactSearch(e.target.value);
+                                    setShowContactDropdown(true);
+                                  }}
+                                  onFocus={() => setShowContactDropdown(true)}
+                                  onBlur={() =>
+                                    setTimeout(
+                                      () => setShowContactDropdown(false),
+                                      200,
+                                    )
+                                  }
+                                  placeholder="Search contacts by name, email, phone..."
+                                  className="pl-9 bg-background border-border"
+                                />
+                                {showContactDropdown && (
+                                  <div className="absolute z-50 top-full mt-1 w-full bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
+                                    {contactOptions.length === 0 ? (
+                                      <div className="p-3 text-sm text-muted-foreground text-center">
+                                        No contacts found
+                                      </div>
                                     ) : (
-                                      <SelectValue placeholder="Select showroom" />
+                                      contactOptions.map((c) => (
+                                        <button
+                                          key={c.id}
+                                          type="button"
+                                          className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
+                                          onMouseDown={() => {
+                                            setContactId(c.id);
+                                            setContactSearch("");
+                                            setShowContactDropdown(false);
+                                          }}
+                                        >
+                                          <span className="font-medium">
+                                            {c.firstName}
+                                            {c.lastName ? ` ${c.lastName}` : ""}
+                                          </span>
+                                          {(c.email || c.phone) && (
+                                            <span className="text-xs text-muted-foreground">
+                                              {c.email ?? c.phone}
+                                            </span>
+                                          )}
+                                        </button>
+                                      ))
                                     )}
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    {showrooms.map((loc) => (
-                                      <SelectItem key={loc.id} value={loc.id}>
-                                        {loc.name}
-                                      </SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                {items.length > 0 && (
-                                  <p className="text-xs text-muted-foreground mt-1">
-                                    Clear cart to change showroom
-                                  </p>
+                                  </div>
                                 )}
                               </div>
                             )}
-                          />
-                          {validationForm.formState.errors.locationId && (
-                            <p className="text-sm text-destructive">
-                              {
-                                validationForm.formState.errors.locationId
-                                  .message
-                              }
-                            </p>
-                          )}
+                          </div>
                         </div>
 
-                        {/* CRM Contact (primary customer selection) */}
-                        <div className="space-y-2">
-                          <Label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
-                            <UserRound className="h-3 w-3" />
-                            Customer (Contact)
+                        {/* Phone (walk-in or from contact) */}
+                        <div className="mt-4 space-y-2">
+                          <Label className="text-xs font-medium text-muted-foreground">
+                            Phone (optional — for walk-in or member lookup)
                           </Label>
-                          {contactId ? (
-                            <div className="flex items-center gap-2 p-2 rounded-md border bg-muted/40 text-sm">
-                              <UserRound className="h-4 w-4 text-muted-foreground shrink-0" />
-                              <span className="flex-1 truncate">
-                                {contactOptions.find((c) => c.id === contactId)
-                                  ? `${contactOptions.find((c) => c.id === contactId)!.firstName}${contactOptions.find((c) => c.id === contactId)!.lastName ? ` ${contactOptions.find((c) => c.id === contactId)!.lastName}` : ""}`
-                                  : "Contact linked"}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setContactId(null);
-                                  setContactSearch("");
-                                }}
-                                aria-label="Remove contact"
-                                className="text-muted-foreground hover:text-foreground"
-                              >
-                                <X className="h-4 w-4" />
-                              </button>
-                            </div>
-                          ) : (
-                            <div className="relative">
-                              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                              <Input
-                                value={contactSearch}
-                                onChange={(e) => {
-                                  setContactSearch(e.target.value);
-                                  setShowContactDropdown(true);
-                                }}
-                                onFocus={() => setShowContactDropdown(true)}
-                                onBlur={() =>
-                                  setTimeout(
-                                    () => setShowContactDropdown(false),
-                                    200,
-                                  )
-                                }
-                                placeholder="Search contacts by name, email, phone..."
-                                className="pl-9 bg-surface border-border/50"
-                              />
-                              {showContactDropdown && (
-                                <div className="absolute z-50 top-full mt-1 w-full bg-background border rounded-md shadow-md max-h-48 overflow-y-auto">
-                                  {contactOptions.length === 0 ? (
-                                    <div className="p-3 text-sm text-muted-foreground text-center">
-                                      No contacts found
-                                    </div>
-                                  ) : (
-                                    contactOptions.map((c) => (
-                                      <button
-                                        key={c.id}
-                                        type="button"
-                                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted flex flex-col"
-                                        onMouseDown={() => {
-                                          setContactId(c.id);
-                                          setContactSearch("");
-                                          setShowContactDropdown(false);
-                                        }}
-                                      >
-                                        <span className="font-medium">
-                                          {c.firstName}
-                                          {c.lastName ? ` ${c.lastName}` : ""}
-                                        </span>
-                                        {(c.email || c.phone) && (
-                                          <span className="text-xs text-muted-foreground">
-                                            {c.email ?? c.phone}
-                                          </span>
-                                        )}
-                                      </button>
-                                    ))
-                                  )}
-                                </div>
+                          <PhoneInput
+                            value={memberPhone}
+                            onChange={setMemberPhone}
+                            numberInputId="customer-phone"
+                            placeholder="e.g. 9800000000"
+                            className="[&_input]:bg-background [&_input]:border-border"
+                          />
+                          {memberPhone && (
+                            <div className="flex items-center gap-2 flex-wrap mt-2">
+                              {checkingMember ? (
+                                <span className="text-xs text-muted-foreground">
+                                  Checking...
+                                </span>
+                              ) : memberCheck?.isMember ? (
+                                <Badge
+                                  variant="secondary"
+                                  className="text-xs font-medium uppercase px-2 py-0.5 bg-primary/15 text-primary border border-primary/25"
+                                >
+                                  Member
+                                </Badge>
+                              ) : (
+                                <Input
+                                  type="text"
+                                  value={memberName}
+                                  onChange={(e) =>
+                                    setMemberName(e.target.value)
+                                  }
+                                  placeholder="Customer name (optional)"
+                                  className="h-8 text-sm bg-background border-border"
+                                />
                               )}
                             </div>
                           )}
                         </div>
-                      </div>
 
-                      {/* Phone (walk-in or from contact) */}
-                      <div className="mt-4 space-y-2">
-                        <Label className="text-xs font-medium text-muted-foreground">
-                          Phone (optional — for walk-in or member lookup)
-                        </Label>
-                        <PhoneInput
-                          value={memberPhone}
-                          onChange={setMemberPhone}
-                          numberInputId="customer-phone"
-                          placeholder="e.g. 9800000000"
-                          className="[&_input]:bg-surface [&_input]:border-border/50"
-                        />
-                        {memberPhone && (
-                          <div className="flex items-center gap-2 flex-wrap mt-2">
-                            {checkingMember ? (
-                              <span className="text-xs text-muted-foreground">
-                                Checking...
-                              </span>
-                            ) : memberCheck?.isMember ? (
-                              <Badge className="bg-[#00FF94] text-[#0A0E27] text-xs font-mono font-bold uppercase px-2 py-0.5">
-                                Member
-                              </Badge>
-                            ) : (
-                              <Input
-                                type="text"
-                                value={memberName}
-                                onChange={(e) => setMemberName(e.target.value)}
-                                placeholder="Customer name (optional)"
-                                className="h-8 text-sm bg-surface border-border/50"
-                              />
-                            )}
-                          </div>
+                        <div className="flex items-center gap-3 mt-4">
+                          <Checkbox
+                            id="credit-sale"
+                            checked={isCreditSale}
+                            disabled={!memberPhone.trim() && !contactId}
+                            onCheckedChange={(c) => setIsCreditSale(c === true)}
+                            className="border-border opacity-100 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:opacity-100 disabled:opacity-50"
+                          />
+                          <Label
+                            htmlFor="credit-sale"
+                            className="text-sm font-normal cursor-pointer"
+                          >
+                            Credit Sale (Pay Later)
+                          </Label>
+                        </div>
+                        {!memberPhone.trim() && !contactId && (
+                          <p className="text-xs text-muted-foreground mt-2 ml-7">
+                            Select a contact or enter customer phone to enable
+                            credit sale.
+                          </p>
                         )}
-                      </div>
-
-                      <div className="flex items-center gap-3 mt-4">
-                        <Checkbox
-                          id="credit-sale"
-                          checked={isCreditSale}
-                          disabled={!memberPhone.trim() && !contactId}
-                          onCheckedChange={(c) => setIsCreditSale(c === true)}
-                          className="border-border opacity-100 data-[state=checked]:bg-primary data-[state=checked]:border-primary data-[state=checked]:opacity-100 disabled:opacity-50"
-                        />
-                        <Label
-                          htmlFor="credit-sale"
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          Credit Sale (Pay Later)
-                        </Label>
-                      </div>
-                      {!memberPhone.trim() && !contactId && (
-                        <p className="text-xs text-muted-foreground mt-2 ml-7">
-                          Select a contact or enter customer phone to enable
-                          credit sale.
-                        </p>
-                      )}
-                    </FormSection>
-                  </div>
+                      </SaleSection>
+                    </CardContent>
+                  </Card>
 
                   {/* Products Search */}
-                  <div className="form-panel">
-                    <FormSection title="Add Product">
-                      {!locationId ? (
-                        <p className="text-sm text-muted-foreground py-4">
-                          Select a showroom above to add products.
-                        </p>
-                      ) : (
-                        <div className="space-y-3">
-                          <div className="relative">
-                            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                            <Input
-                              value={productSearch}
-                              onChange={(e) => {
-                                setProductSearch(e.target.value);
-                                if (scannedProduct) setScannedProduct(null);
-                              }}
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  handleBarcodeScan();
-                                }
-                              }}
-                              placeholder="Search by product name, product code (barcode), category..."
-                              className="pl-9"
-                            />
-                          </div>
-                          {scanLoading && (
-                            <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                              Looking up barcode…
-                            </div>
-                          )}
-                          {scannedProduct && (
-                            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-sm">
-                                  Scanned: {scannedProduct.name}
-                                </span>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 text-xs"
-                                  onClick={() => setScannedProduct(null)}
-                                >
-                                  <X className="h-3 w-3 mr-1" />
-                                  Clear
-                                </Button>
-                              </div>
-                              <div className="text-xs text-muted-foreground font-mono">
-                                {scannedProduct.imsCode}
-                              </div>
-                              <div className="space-y-1.5 max-h-48 overflow-y-auto">
-                                {(() => {
-                                  const addableRows = getAddableRowsFromProduct(
-                                    scannedProduct,
-                                    locationId,
-                                  );
-                                  if (addableRows.length === 0) {
-                                    return (
-                                      <p className="text-sm text-muted-foreground py-2">
-                                        No stock at this location
-                                      </p>
-                                    );
+                  <Card className="rounded-xl border border-border bg-card text-card-foreground shadow-sm">
+                    <CardContent className="pt-6">
+                      <SaleSection title="Add Product">
+                        {!locationId ? (
+                          <p className="text-sm text-muted-foreground py-4">
+                            Select a showroom above to add products.
+                          </p>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="relative">
+                              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                              <Input
+                                value={productSearch}
+                                onChange={(e) => {
+                                  setProductSearch(e.target.value);
+                                  if (scannedProduct) setScannedProduct(null);
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    handleBarcodeScan();
                                   }
-                                  return addableRows.map((row, idx) => {
-                                    const label = getVariationLabel(
-                                      row.variation,
-                                    );
-                                    const subLabel = row.subVariation?.name;
-                                    const displayLabel =
-                                      [
-                                        label !== "—" ? label : "Default",
-                                        subLabel,
-                                      ]
-                                        .filter(Boolean)
-                                        .join(" / ") || "Default";
-                                    return (
-                                      <div
-                                        key={`${row.variation.id}-${row.subVariation?.id ?? "v"}-${idx}`}
-                                        className="flex items-center justify-between py-1.5 px-2 rounded bg-background border text-sm"
-                                      >
-                                        <span>
-                                          {displayLabel}
-                                          <span className="text-muted-foreground text-xs ml-2">
-                                            Stock: {row.quantity}
+                                }}
+                                placeholder="Search by product name, product code (barcode), category..."
+                                className="pl-9"
+                              />
+                            </div>
+                            {scanLoading && (
+                              <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                                Looking up barcode…
+                              </div>
+                            )}
+                            {scannedProduct && (
+                              <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium text-sm">
+                                    Scanned: {scannedProduct.name}
+                                  </span>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 text-xs"
+                                    onClick={() => setScannedProduct(null)}
+                                  >
+                                    <X className="h-3 w-3 mr-1" />
+                                    Clear
+                                  </Button>
+                                </div>
+                                <div className="text-xs text-muted-foreground font-mono tabular-nums">
+                                  {scannedProduct.imsCode}
+                                </div>
+                                <div className="space-y-1.5 max-h-48 overflow-y-auto">
+                                  {(() => {
+                                    const addableRows =
+                                      getAddableRowsFromProduct(
+                                        scannedProduct,
+                                        locationId,
+                                      );
+                                    if (addableRows.length === 0) {
+                                      return (
+                                        <p className="text-sm text-muted-foreground py-2">
+                                          No stock at this location
+                                        </p>
+                                      );
+                                    }
+                                    return addableRows.map((row, idx) => {
+                                      const label = getVariationLabel(
+                                        row.variation,
+                                      );
+                                      const subLabel = row.subVariation?.name;
+                                      const displayLabel =
+                                        [
+                                          label !== "—" ? label : "Default",
+                                          subLabel,
+                                        ]
+                                          .filter(Boolean)
+                                          .join(" / ") || "Default";
+                                      return (
+                                        <div
+                                          key={`${row.variation.id}-${row.subVariation?.id ?? "v"}-${idx}`}
+                                          className="flex items-center justify-between py-1.5 px-2 rounded bg-background border text-sm"
+                                        >
+                                          <span>
+                                            {displayLabel}
+                                            <span className="text-muted-foreground text-xs ml-2">
+                                              Stock: {row.quantity}
+                                            </span>
                                           </span>
-                                        </span>
+                                          <Button
+                                            type="button"
+                                            size="sm"
+                                            disabled={row.quantity < 1}
+                                            onClick={() =>
+                                              handleAddVariationFromScan(
+                                                scannedProduct,
+                                                row.variation,
+                                                row.subVariation,
+                                                row.quantity,
+                                              )
+                                            }
+                                          >
+                                            <Plus className="h-3 w-3 mr-1" />
+                                            Add
+                                          </Button>
+                                        </div>
+                                      );
+                                    });
+                                  })()}
+                                </div>
+                              </div>
+                            )}
+                            {inventoryLoading ? (
+                              <div className="flex justify-center py-4">
+                                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                              </div>
+                            ) : !productSearch.trim() ? (
+                              <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
+                                Search for products by name, product code
+                                (barcode), or category...
+                              </div>
+                            ) : filteredInventory.length === 0 ? (
+                              <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
+                                No products found. Try a different search term.
+                              </div>
+                            ) : (
+                              <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
+                                {filteredInventory.map((inv) => {
+                                  const attrLabel =
+                                    inv.variation.attributes
+                                      ?.map((a) => a.attributeValue.value)
+                                      .join(" / ") || "";
+                                  const variantLabel = [
+                                    attrLabel,
+                                    inv.subVariation?.name,
+                                  ]
+                                    .filter(Boolean)
+                                    .join(" / ");
+                                  return (
+                                    <div
+                                      key={inv.id}
+                                      className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
+                                      onClick={() => {
+                                        handleAddItem(inv);
+                                        setProductSearch("");
+                                      }}
+                                    >
+                                      <div className="flex-1 min-w-0">
+                                        <div className="font-medium text-sm">
+                                          {inv.variation.product.name}
+                                          {variantLabel && (
+                                            <span className="text-muted-foreground font-normal ml-1.5">
+                                              — {variantLabel}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-xs text-muted-foreground font-mono tabular-nums mt-0.5">
+                                          {inv.variation.product.imsCode}
+                                          {inv.variation.product.category
+                                            ?.name && (
+                                            <span className="ml-2">
+                                              •{" "}
+                                              {
+                                                inv.variation.product.category
+                                                  .name
+                                              }
+                                            </span>
+                                          )}
+                                        </div>
+                                      </div>
+                                      <div className="ml-4 flex items-center gap-4 shrink-0">
+                                        <div className="text-right">
+                                          <div className="font-semibold text-sm">
+                                            {formatCurrency(
+                                              Number(inv.variation.product.mrp),
+                                            )}
+                                          </div>
+                                          <div className="text-xs text-muted-foreground">
+                                            Stock: {inv.quantity}
+                                          </div>
+                                        </div>
                                         <Button
                                           type="button"
                                           size="sm"
-                                          disabled={row.quantity < 1}
-                                          onClick={() =>
-                                            handleAddVariationFromScan(
-                                              scannedProduct,
-                                              row.variation,
-                                              row.subVariation,
-                                              row.quantity,
-                                            )
-                                          }
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAddItem(inv);
+                                            setProductSearch("");
+                                          }}
                                         >
-                                          <Plus className="h-3 w-3 mr-1" />
+                                          <Plus className="h-4 w-4 mr-1" />
                                           Add
                                         </Button>
                                       </div>
-                                    );
-                                  });
-                                })()}
+                                    </div>
+                                  );
+                                })}
                               </div>
-                            </div>
-                          )}
-                          {inventoryLoading ? (
-                            <div className="flex justify-center py-4">
-                              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                            </div>
-                          ) : !productSearch.trim() ? (
-                            <div className="p-8 text-center text-sm text-muted-foreground border rounded-lg border-dashed">
-                              Search for products by name, product code
-                              (barcode), or category...
-                            </div>
-                          ) : filteredInventory.length === 0 ? (
-                            <div className="p-4 text-center text-sm text-muted-foreground border rounded-lg">
-                              No products found. Try a different search term.
-                            </div>
-                          ) : (
-                            <div className="border rounded-lg divide-y max-h-[400px] overflow-y-auto">
-                              {filteredInventory.map((inv) => {
-                                const attrLabel =
-                                  inv.variation.attributes
-                                    ?.map((a) => a.attributeValue.value)
-                                    .join(" / ") || "";
-                                const variantLabel = [
-                                  attrLabel,
-                                  inv.subVariation?.name,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" / ");
-                                return (
-                                  <div
-                                    key={inv.id}
-                                    className="flex items-center justify-between p-3 hover:bg-muted/50 transition-colors cursor-pointer"
-                                    onClick={() => {
-                                      handleAddItem(inv);
-                                      setProductSearch("");
-                                    }}
-                                  >
-                                    <div className="flex-1 min-w-0">
-                                      <div className="font-medium text-sm">
-                                        {inv.variation.product.name}
-                                        {variantLabel && (
-                                          <span className="text-muted-foreground font-normal ml-1.5">
-                                            — {variantLabel}
-                                          </span>
-                                        )}
-                                      </div>
-                                      <div className="text-xs text-muted-foreground font-mono mt-0.5">
-                                        {inv.variation.product.imsCode}
-                                        {inv.variation.product.category
-                                          ?.name && (
-                                          <span className="ml-2">
-                                            •{" "}
-                                            {
-                                              inv.variation.product.category
-                                                .name
-                                            }
-                                          </span>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <div className="ml-4 flex items-center gap-4 shrink-0">
-                                      <div className="text-right">
-                                        <div className="font-semibold text-sm">
-                                          {formatCurrency(
-                                            Number(inv.variation.product.mrp),
-                                          )}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                          Stock: {inv.quantity}
-                                        </div>
-                                      </div>
-                                      <Button
-                                        type="button"
-                                        size="sm"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleAddItem(inv);
-                                          setProductSearch("");
-                                        }}
-                                      >
-                                        <Plus className="h-4 w-4 mr-1" />
-                                        Add
-                                      </Button>
-                                    </div>
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </FormSection>
-                  </div>
+                            )}
+                          </div>
+                        )}
+                      </SaleSection>
+                    </CardContent>
+                  </Card>
                 </div>
 
                 {/* Right Panel: Cart, Summary, Promo, Payment — always visible to prevent layout shift */}
                 <div className="space-y-6 lg:sticky lg:top-4 lg:self-start">
                   {/* Cart Panel */}
-                  <div className="form-panel flex flex-col">
-                    <FormSection title="Shopping Cart">
-                      {validationForm.formState.errors.items && (
-                        <p className="text-sm text-destructive mb-2">
-                          {validationForm.formState.errors.items.message}
-                        </p>
-                      )}
-                      {items.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center py-12">
-                          <div className="text-muted-foreground text-sm">
-                            Cart is empty
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-1">
-                            Add products to get started
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {/* Discount Mode */}
-                          <div className="space-y-3 mb-4">
-                            <div className="flex gap-2">
-                              <Button
-                                type="button"
-                                variant={
-                                  discountMode === "individual"
-                                    ? "default"
-                                    : "outline"
-                                }
-                                size="sm"
-                                onClick={() => setDiscountMode("individual")}
-                                className="flex-1 text-xs"
-                              >
-                                Per Item
-                              </Button>
-                              <Button
-                                type="button"
-                                variant={
-                                  discountMode === "aggregate"
-                                    ? "default"
-                                    : "outline"
-                                }
-                                size="sm"
-                                onClick={() => setDiscountMode("aggregate")}
-                                className="flex-1 text-xs"
-                              >
-                                Whole Sale
-                              </Button>
+                  <Card className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col">
+                    <CardContent className="pt-6 flex flex-col flex-1">
+                      <SaleSection title="Shopping Cart">
+                        {validationForm.formState.errors.items && (
+                          <p className="text-sm text-destructive mb-2">
+                            {validationForm.formState.errors.items.message}
+                          </p>
+                        )}
+                        {items.length === 0 ? (
+                          <div className="flex flex-col items-center justify-center py-12">
+                            <div className="text-muted-foreground text-sm">
+                              Cart is empty
                             </div>
-                            {discountMode === "aggregate" && (
-                              <div className="space-y-2 p-3 bg-muted/30 border rounded-lg">
-                                <Label className="text-xs font-medium">
-                                  Aggregate Discount (Flat Amount)
-                                </Label>
-                                <div className="flex items-center gap-2">
-                                  <Input
-                                    type="number"
-                                    min={0}
-                                    step={0.01}
-                                    value={aggregateDiscountAmount || ""}
-                                    onChange={(e) => {
-                                      const val = Number(e.target.value);
-                                      setAggregateDiscountAmount(
-                                        val >= 0 ? val : 0,
-                                      );
-                                    }}
-                                    placeholder="0.00"
-                                    className="h-9"
-                                  />
-                                  {aggregateDiscountAmount > 0 && (
-                                    <div className="text-sm font-semibold text-green-600 whitespace-nowrap">
-                                      -{formatCurrency(aggregateDiscountAmount)}
-                                    </div>
-                                  )}
-                                </div>
-                                {aggregateDiscountAmount > subtotal && (
-                                  <p className="text-xs text-destructive">
-                                    Discount cannot exceed subtotal
-                                  </p>
-                                )}
-                              </div>
-                            )}
+                            <div className="text-xs text-muted-foreground mt-1">
+                              Add products to get started
+                            </div>
                           </div>
-
-                          {/* Cart Items */}
-                          <div
-                            ref={cartItemsRef}
-                            className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
-                          >
-                            {items.map((item, index) => (
-                              <div
-                                key={`${item.variationId}-${item.subVariationId ?? "v"}-${index}`}
-                                className="bg-muted/30 border rounded-lg p-4 space-y-3"
-                              >
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="font-semibold text-sm">
-                                      {item.productName}
-                                      {item.attributeLabel && (
-                                        <span className="text-muted-foreground font-normal ml-1.5">
-                                          — {item.attributeLabel}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="text-xs text-muted-foreground font-mono mt-1">
-                                      {item.imsCode}
-                                      {item.subVariationName
-                                        ? ` / ${item.subVariationName}`
-                                        : ""}
-                                    </div>
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                    onClick={() => handleRemoveItem(index)}
-                                  >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                  </Button>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-7 w-7 border-border/50"
-                                    onClick={() =>
-                                      handleQuantityChange(index, -1)
-                                    }
-                                    disabled={item.quantity <= 1}
-                                  >
-                                    <Minus className="h-3 w-3" />
-                                  </Button>
-                                  <span className="w-10 text-center font-mono font-semibold">
-                                    {item.quantity}
-                                  </span>
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="icon"
-                                    className="h-7 w-7 border-border/50"
-                                    onClick={() =>
-                                      handleQuantityChange(index, 1)
-                                    }
-                                    disabled={item.quantity >= item.maxQuantity}
-                                  >
-                                    <Plus className="h-3 w-3" />
-                                  </Button>
-                                </div>
-
-                                {discountMode === "individual" &&
-                                  !item.manualDiscountPercent &&
-                                  !item.manualDiscountAmount &&
-                                  item.availableDiscounts &&
-                                  item.availableDiscounts.length > 0 && (
-                                    <Select
-                                      value={item.selectedDiscountId ?? "none"}
-                                      onValueChange={(value) => {
-                                        const next = [...items];
-                                        const row = next[index];
-                                        if (row) row.selectedDiscountId = value;
-                                        setItems(next);
+                        ) : (
+                          <>
+                            {/* Discount Mode */}
+                            <div className="space-y-3 mb-4">
+                              <div className="flex gap-2">
+                                <Button
+                                  type="button"
+                                  variant={
+                                    discountMode === "individual"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() => setDiscountMode("individual")}
+                                  className="flex-1 text-xs"
+                                >
+                                  Per Item
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant={
+                                    discountMode === "aggregate"
+                                      ? "default"
+                                      : "outline"
+                                  }
+                                  size="sm"
+                                  onClick={() => setDiscountMode("aggregate")}
+                                  className="flex-1 text-xs"
+                                >
+                                  Whole Sale
+                                </Button>
+                              </div>
+                              {discountMode === "aggregate" && (
+                                <div className="space-y-2 p-3 bg-muted/30 border rounded-lg">
+                                  <Label className="text-xs font-medium">
+                                    Aggregate Discount (Flat Amount)
+                                  </Label>
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      step={0.01}
+                                      value={aggregateDiscountAmount || ""}
+                                      onChange={(e) => {
+                                        const val = Number(e.target.value);
+                                        setAggregateDiscountAmount(
+                                          val >= 0 ? val : 0,
+                                        );
                                       }}
-                                    >
-                                      <SelectTrigger className="h-8 text-xs">
-                                        <SelectValue placeholder="Select discount" />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        <SelectItem value="none">
-                                          No Discount
-                                        </SelectItem>
-                                        {item.availableDiscounts.map((d) => (
-                                          <SelectItem key={d.id} value={d.id}>
-                                            {formatDiscountLabel(d)}
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
-                                  )}
-                                {discountMode === "individual" &&
-                                  (item.manualDiscountPercent ?? 0) <= 0 &&
-                                  (item.manualDiscountAmount ?? 0) <= 0 &&
-                                  getItemDiscountDisplay(item) > 0 && (
-                                    <p className="text-xs text-green-600 font-mono mt-1">
-                                      Discount amount: −
-                                      {formatCurrency(
-                                        getItemDiscountDisplay(item),
-                                      )}
+                                      placeholder="0.00"
+                                      className="h-9"
+                                    />
+                                    {aggregateDiscountAmount > 0 && (
+                                      <div className="text-sm font-semibold text-green-600 dark:text-green-500 tabular-nums whitespace-nowrap">
+                                        -
+                                        {formatCurrency(
+                                          aggregateDiscountAmount,
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                  {aggregateDiscountAmount > subtotal && (
+                                    <p className="text-xs text-destructive">
+                                      Discount cannot exceed subtotal
                                     </p>
                                   )}
-
-                                {/* Enterprise: manual discount per line */}
-                                {discountMode === "individual" && (
-                                  <div className="space-y-1.5 text-xs">
-                                    <span className="text-muted-foreground">
-                                      Manual discount:
-                                    </span>
-                                    <div className="flex flex-wrap gap-2">
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        max={100}
-                                        step={0.5}
-                                        placeholder="%"
-                                        className="h-7 w-16 text-xs"
-                                        value={item.manualDiscountPercent ?? ""}
-                                        onChange={(e) => {
-                                          const v = e.target.value;
-                                          const num =
-                                            v === ""
-                                              ? undefined
-                                              : Math.min(
-                                                  100,
-                                                  Math.max(0, Number(v) || 0),
-                                                );
-                                          const next = [...items];
-                                          const row = next[index];
-                                          if (row) {
-                                            row.manualDiscountPercent = num;
-                                            if (num != null)
-                                              row.manualDiscountAmount =
-                                                undefined;
-                                            if (!num)
-                                              row.discountReason = undefined;
-                                          }
-                                          setItems(next);
-                                        }}
-                                      />
-                                      <span className="text-muted-foreground self-center">
-                                        or
-                                      </span>
-                                      <Input
-                                        type="number"
-                                        min={0}
-                                        step={0.01}
-                                        placeholder="Amount"
-                                        className="h-7 w-20 text-xs"
-                                        value={item.manualDiscountAmount ?? ""}
-                                        onChange={(e) => {
-                                          const v = e.target.value;
-                                          const num =
-                                            v === ""
-                                              ? undefined
-                                              : Math.max(0, Number(v) || 0);
-                                          const next = [...items];
-                                          const row = next[index];
-                                          if (row) {
-                                            row.manualDiscountAmount = num;
-                                            if (num != null)
-                                              row.manualDiscountPercent =
-                                                undefined;
-                                            if (!num)
-                                              row.discountReason = undefined;
-                                          }
-                                          setItems(next);
-                                        }}
-                                      />
-                                      <Input
-                                        placeholder="Reason (required)"
-                                        className="h-7 flex-1 min-w-[120px] text-xs"
-                                        value={item.discountReason ?? ""}
-                                        onChange={(e) => {
-                                          const next = [...items];
-                                          const row = next[index];
-                                          if (row)
-                                            row.discountReason =
-                                              e.target.value || undefined;
-                                          setItems(next);
-                                        }}
-                                      />
-                                      {discountMode === "individual" &&
-                                        ((item.manualDiscountPercent ?? 0) >
-                                          0 ||
-                                          (item.manualDiscountAmount ?? 0) >
-                                            0) &&
-                                        getItemDiscountDisplay(item) > 0 && (
-                                          <p className="w-full basis-full text-xs text-green-600 font-mono">
-                                            Line discount: −
-                                            {formatCurrency(
-                                              getItemDiscountDisplay(item),
-                                            )}
-                                          </p>
-                                        )}
-                                      {((item.manualDiscountPercent ?? 0) > 0 ||
-                                        (item.manualDiscountAmount ?? 0) >
-                                          0) && (
-                                        <Button
-                                          type="button"
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 text-xs text-muted-foreground"
-                                          onClick={() => {
-                                            const next = [...items];
-                                            const row = next[index];
-                                            if (row) {
-                                              row.manualDiscountPercent =
-                                                undefined;
-                                              row.manualDiscountAmount =
-                                                undefined;
-                                              row.discountReason = undefined;
-                                            }
-                                            setItems(next);
-                                          }}
-                                        >
-                                          Clear
-                                        </Button>
-                                      )}
-                                    </div>
-                                  </div>
-                                )}
-
-                                <div className="flex justify-between items-center pt-2 border-t">
-                                  <span className="text-xs text-muted-foreground">
-                                    Line Total
-                                  </span>
-                                  <div className="text-right">
-                                    <div className="font-bold font-mono">
-                                      {formatCurrency(
-                                        item.unitPrice * item.quantity,
-                                      )}
-                                    </div>
-                                    {discountMode === "individual" &&
-                                      getItemDiscountDisplay(item) > 0 && (
-                                        <div className="text-xs text-green-600 font-mono">
-                                          -
-                                          {formatCurrency(
-                                            getItemDiscountDisplay(item),
-                                          )}
-                                        </div>
-                                      )}
-                                  </div>
                                 </div>
-                              </div>
-                            ))}
-                          </div>
-                        </>
-                      )}
-                    </FormSection>
-                  </div>
+                              )}
+                            </div>
 
-                  <div className="form-panel flex flex-col">
-                    {/* Order Summary — placeholder when empty */}
-                    <FormSection title="Order Summary">
-                      {items.length === 0 ? (
-                        <p className="text-sm text-muted-foreground py-4 text-center">
-                          Add products to see total
-                        </p>
-                      ) : (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Subtotal
-                            </span>
-                            <span className="font-mono font-semibold">
-                              {formatCurrency(subtotal)}
-                            </span>
-                          </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-muted-foreground">
-                              Discount
-                              <span className="block text-[10px] font-normal text-muted-foreground/80">
-                                Catalog / manual
-                              </span>
-                            </span>
-                            <span className="font-mono font-semibold text-green-600">
-                              -{formatCurrency(productDiscountDisplay)}
-                            </span>
-                          </div>
-                          {previewResult?.promoDiscount != null &&
-                            previewResult.promoDiscount > 0 && (
-                              <div className="flex justify-between text-sm">
-                                <span className="text-muted-foreground">
-                                  Promo
-                                </span>
-                                <span className="font-mono font-semibold text-green-600">
-                                  -{formatCurrency(previewResult.promoDiscount)}
-                                </span>
-                              </div>
-                            )}
-                          {previewResult?.promoOverrodeProductDiscount && (
+                            {/* Cart Items */}
                             <div
-                              className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-200"
-                              role="status"
+                              ref={cartItemsRef}
+                              className="space-y-3 max-h-[400px] overflow-y-auto pr-2"
                             >
-                              <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                              <span>
-                                Promo applied — product discount overwritten.
-                                You can remove the promo to restore catalog
-                                discounts.
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex justify-between items-center pt-2 border-t">
-                            <span className="font-semibold">Total</span>
-                            <span className="text-xl font-bold font-mono">
-                              {previewLoading ? (
-                                <Loader2 className="h-5 w-5 animate-spin" />
-                              ) : (
-                                formatCurrency(expectedTotal)
-                              )}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </FormSection>
-
-                    {items.length > 0 && (
-                      <>
-                        {/* Promo Code */}
-                        <FormSection title="Promo Code">
-                          <div className="flex gap-2">
-                            <div className="relative flex-1">
-                              <Input
-                                value={promoCode}
-                                onChange={(e) =>
-                                  setPromoCode(e.target.value.toUpperCase())
-                                }
-                                placeholder="Enter promo code..."
-                                className="uppercase pr-24"
-                                disabled={promoCodeValidating}
-                              />
-                              {promoCodeValidating && (
-                                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
-                              )}
-                              {promoCode &&
-                                !promoCodeError &&
-                                !promoCodeValidating && (
-                                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-green-600">
-                                    Applied
-                                  </span>
-                                )}
-                            </div>
-                            {(promoCode.trim().length > 0 ||
-                              items.some((i) => i.promoCode)) && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="shrink-0"
-                                onClick={handleRemovePromo}
-                              >
-                                Remove promo
-                              </Button>
-                            )}
-                          </div>
-                          {promoCodeError && (
-                            <p className="text-xs text-destructive mt-2">
-                              {promoCodeError}
-                            </p>
-                          )}
-                        </FormSection>
-
-                        {/* Payment */}
-                        <FormSection title="Payment">
-                          <div className="flex gap-2">
-                            <Select
-                              value={selectedPaymentMethod}
-                              onValueChange={(v) =>
-                                setSelectedPaymentMethod(v as PaymentMethod)
-                              }
-                            >
-                              <SelectTrigger className="w-[120px]">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="CASH">Cash</SelectItem>
-                                <SelectItem value="CARD">Card</SelectItem>
-                                <SelectItem value="CHEQUE">Cheque</SelectItem>
-                                <SelectItem value="FONEPAY">Fonepay</SelectItem>
-                                <SelectItem value="QR">QR</SelectItem>
-                              </SelectContent>
-                            </Select>
-                            <Input
-                              type="number"
-                              min={0}
-                              step={0.01}
-                              value={paymentAmount}
-                              onChange={(e) => setPaymentAmount(e.target.value)}
-                              placeholder={
-                                remainingAmount > 0
-                                  ? `Remaining: ${formatCurrency(remainingAmount)}`
-                                  : "Amount..."
-                              }
-                              className="flex-1"
-                              onKeyDown={(e) =>
-                                e.key === "Enter" &&
-                                (e.preventDefault(), handleAddPayment())
-                              }
-                            />
-                            <Button
-                              type="button"
-                              variant="secondary"
-                              size="sm"
-                              onClick={handleAddPayment}
-                              disabled={
-                                !paymentAmount || Number(paymentAmount) <= 0
-                              }
-                            >
-                              Add
-                            </Button>
-                            {remainingAmount > 0.01 && (
-                              <Button
-                                type="button"
-                                size="sm"
-                                onClick={handleAddRemaining}
-                              >
-                                Pay Full
-                              </Button>
-                            )}
-                          </div>
-                          {payments.length > 0 && (
-                            <div className="mt-3 space-y-2 max-h-[150px] overflow-y-auto">
-                              {payments.map((p) => (
+                              {items.map((item, index) => (
                                 <div
-                                  key={p.id}
-                                  className="flex items-center justify-between p-2 bg-muted rounded border"
+                                  key={`${item.variationId}-${item.subVariationId ?? "v"}-${index}`}
+                                  className="bg-muted/30 border rounded-lg p-4 space-y-3"
                                 >
-                                  <Badge variant="outline" className="text-xs">
-                                    {p.method}
-                                  </Badge>
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-bold font-mono">
-                                      {formatCurrency(p.amount)}
-                                    </span>
+                                  <div className="flex items-start justify-between">
+                                    <div className="flex-1 min-w-0">
+                                      <div className="font-semibold text-sm">
+                                        {item.productName}
+                                        {item.attributeLabel && (
+                                          <span className="text-muted-foreground font-normal ml-1.5">
+                                            — {item.attributeLabel}
+                                          </span>
+                                        )}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground font-mono tabular-nums mt-1">
+                                        {item.imsCode}
+                                        {item.subVariationName
+                                          ? ` / ${item.subVariationName}`
+                                          : ""}
+                                      </div>
+                                    </div>
                                     <Button
                                       type="button"
                                       variant="ghost"
                                       size="icon"
-                                      className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
-                                      onClick={() => handleRemovePayment(p.id)}
+                                      className="h-6 w-6 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      onClick={() => handleRemoveItem(index)}
                                     >
-                                      <Trash2 className="h-3 w-3" />
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
+                                  </div>
+
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-7 w-7 border-border/50"
+                                      onClick={() =>
+                                        handleQuantityChange(index, -1)
+                                      }
+                                      disabled={item.quantity <= 1}
+                                    >
+                                      <Minus className="h-3 w-3" />
+                                    </Button>
+                                    <span className="w-10 text-center tabular-nums font-semibold text-foreground">
+                                      {item.quantity}
+                                    </span>
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="icon"
+                                      className="h-7 w-7 border-border/50"
+                                      onClick={() =>
+                                        handleQuantityChange(index, 1)
+                                      }
+                                      disabled={
+                                        item.quantity >= item.maxQuantity
+                                      }
+                                    >
+                                      <Plus className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+
+                                  {discountMode === "individual" &&
+                                    !item.manualDiscountPercent &&
+                                    !item.manualDiscountAmount &&
+                                    item.availableDiscounts &&
+                                    item.availableDiscounts.length > 0 && (
+                                      <Select
+                                        value={
+                                          item.selectedDiscountId ?? "none"
+                                        }
+                                        onValueChange={(value) => {
+                                          const next = [...items];
+                                          const row = next[index];
+                                          if (row)
+                                            row.selectedDiscountId = value;
+                                          setItems(next);
+                                        }}
+                                      >
+                                        <SelectTrigger className="h-8 text-xs">
+                                          <SelectValue placeholder="Select discount" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="none">
+                                            No Discount
+                                          </SelectItem>
+                                          {item.availableDiscounts.map((d) => (
+                                            <SelectItem key={d.id} value={d.id}>
+                                              {formatDiscountLabel(d)}
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    )}
+                                  {discountMode === "individual" &&
+                                    (item.manualDiscountPercent ?? 0) <= 0 &&
+                                    (item.manualDiscountAmount ?? 0) <= 0 &&
+                                    getItemDiscountDisplay(item) > 0 && (
+                                      <p className="text-xs text-green-600 dark:text-green-500 tabular-nums font-medium mt-1">
+                                        Discount amount: −
+                                        {formatCurrency(
+                                          getItemDiscountDisplay(item),
+                                        )}
+                                      </p>
+                                    )}
+
+                                  {/* Enterprise: manual discount per line */}
+                                  {discountMode === "individual" && (
+                                    <div className="space-y-1.5 text-xs">
+                                      <span className="text-muted-foreground">
+                                        Manual discount:
+                                      </span>
+                                      <div className="flex flex-wrap gap-2">
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          max={100}
+                                          step={0.5}
+                                          placeholder="%"
+                                          className="h-7 w-16 text-xs"
+                                          value={
+                                            item.manualDiscountPercent ?? ""
+                                          }
+                                          onChange={(e) => {
+                                            const v = e.target.value;
+                                            const num =
+                                              v === ""
+                                                ? undefined
+                                                : Math.min(
+                                                    100,
+                                                    Math.max(0, Number(v) || 0),
+                                                  );
+                                            const next = [...items];
+                                            const row = next[index];
+                                            if (row) {
+                                              row.manualDiscountPercent = num;
+                                              if (num != null)
+                                                row.manualDiscountAmount =
+                                                  undefined;
+                                              if (!num)
+                                                row.discountReason = undefined;
+                                            }
+                                            setItems(next);
+                                          }}
+                                        />
+                                        <span className="text-muted-foreground self-center">
+                                          or
+                                        </span>
+                                        <Input
+                                          type="number"
+                                          min={0}
+                                          step={0.01}
+                                          placeholder="Amount"
+                                          className="h-7 w-20 text-xs"
+                                          value={
+                                            item.manualDiscountAmount ?? ""
+                                          }
+                                          onChange={(e) => {
+                                            const v = e.target.value;
+                                            const num =
+                                              v === ""
+                                                ? undefined
+                                                : Math.max(0, Number(v) || 0);
+                                            const next = [...items];
+                                            const row = next[index];
+                                            if (row) {
+                                              row.manualDiscountAmount = num;
+                                              if (num != null)
+                                                row.manualDiscountPercent =
+                                                  undefined;
+                                              if (!num)
+                                                row.discountReason = undefined;
+                                            }
+                                            setItems(next);
+                                          }}
+                                        />
+                                        <Input
+                                          placeholder="Reason (required)"
+                                          className="h-7 flex-1 min-w-[120px] text-xs"
+                                          value={item.discountReason ?? ""}
+                                          onChange={(e) => {
+                                            const next = [...items];
+                                            const row = next[index];
+                                            if (row)
+                                              row.discountReason =
+                                                e.target.value || undefined;
+                                            setItems(next);
+                                          }}
+                                        />
+                                        {discountMode === "individual" &&
+                                          ((item.manualDiscountPercent ?? 0) >
+                                            0 ||
+                                            (item.manualDiscountAmount ?? 0) >
+                                              0) &&
+                                          getItemDiscountDisplay(item) > 0 && (
+                                            <p className="w-full basis-full text-xs text-green-600 dark:text-green-500 tabular-nums font-medium">
+                                              Line discount: −
+                                              {formatCurrency(
+                                                getItemDiscountDisplay(item),
+                                              )}
+                                            </p>
+                                          )}
+                                        {((item.manualDiscountPercent ?? 0) >
+                                          0 ||
+                                          (item.manualDiscountAmount ?? 0) >
+                                            0) && (
+                                          <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-7 text-xs text-muted-foreground"
+                                            onClick={() => {
+                                              const next = [...items];
+                                              const row = next[index];
+                                              if (row) {
+                                                row.manualDiscountPercent =
+                                                  undefined;
+                                                row.manualDiscountAmount =
+                                                  undefined;
+                                                row.discountReason = undefined;
+                                              }
+                                              setItems(next);
+                                            }}
+                                          >
+                                            Clear
+                                          </Button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  <div className="flex justify-between items-center pt-2 border-t">
+                                    <span className="text-xs text-muted-foreground">
+                                      Line Total
+                                    </span>
+                                    <div className="text-right">
+                                      <div className="font-bold tabular-nums text-foreground">
+                                        {formatCurrency(
+                                          item.unitPrice * item.quantity,
+                                        )}
+                                      </div>
+                                      {discountMode === "individual" &&
+                                        getItemDiscountDisplay(item) > 0 && (
+                                          <div className="text-xs text-green-600 dark:text-green-500 tabular-nums font-medium">
+                                            -
+                                            {formatCurrency(
+                                              getItemDiscountDisplay(item),
+                                            )}
+                                          </div>
+                                        )}
+                                    </div>
                                   </div>
                                 </div>
                               ))}
                             </div>
-                          )}
-                          <p className="text-xs text-muted-foreground mt-2">
-                            Total:{" "}
-                            <span className="font-semibold font-mono">
-                              {formatCurrency(totalPayment)}
-                            </span>
-                            {Math.abs(expectedTotal - totalPayment) > 0.01 && (
-                              <span className="text-warning ml-1">
-                                · Must match {formatCurrency(expectedTotal)}
-                              </span>
-                            )}
+                          </>
+                        )}
+                      </SaleSection>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-xl border border-border bg-card text-card-foreground shadow-sm flex flex-col">
+                    <CardContent className="pt-6 flex flex-col flex-1">
+                      <SaleSection title="Order Summary">
+                        {items.length === 0 ? (
+                          <p className="text-sm text-muted-foreground py-4 text-center">
+                            Add products to see total
                           </p>
-                        </FormSection>
-
-                        {/* Notes */}
-                        <FormSection title="Notes" className="mt-4">
-                          <Textarea
-                            value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
-                            placeholder="Add notes for this sale..."
-                            rows={3}
-                            className="resize-none"
-                          />
-                        </FormSection>
-
-                        {/* Validation Error — only show when !isCreditSale && payments.length > 0 */}
-                        {!isCreditSale &&
-                          payments.length > 0 &&
-                          Math.abs(expectedTotal - totalPayment) > 0.01 && (
-                            <div className="bg-destructive/10 border border-destructive rounded-lg p-3 text-sm text-destructive mt-4">
-                              Payment mismatch: {formatCurrency(totalPayment)}{" "}
-                              paid, {formatCurrency(expectedTotal)} required
+                        ) : (
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                Subtotal
+                              </span>
+                              <span className="tabular-nums font-semibold text-foreground">
+                                {formatCurrency(subtotal)}
+                              </span>
                             </div>
-                          )}
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">
+                                Discount
+                                <span className="block text-[10px] font-normal text-muted-foreground/80">
+                                  Catalog / manual
+                                </span>
+                              </span>
+                              <span className="tabular-nums font-semibold text-green-600 dark:text-green-500">
+                                -{formatCurrency(productDiscountDisplay)}
+                              </span>
+                            </div>
+                            {previewResult?.promoDiscount != null &&
+                              previewResult.promoDiscount > 0 && (
+                                <div className="flex justify-between text-sm">
+                                  <span className="text-muted-foreground">
+                                    Promo
+                                  </span>
+                                  <span className="tabular-nums font-semibold text-green-600 dark:text-green-500">
+                                    -
+                                    {formatCurrency(
+                                      previewResult.promoDiscount,
+                                    )}
+                                  </span>
+                                </div>
+                              )}
+                            {previewResult?.promoOverrodeProductDiscount && (
+                              <div
+                                className="flex items-start gap-1.5 rounded-md border border-amber-500/30 bg-amber-500/10 px-2 py-1.5 text-xs text-amber-800 dark:text-amber-200"
+                                role="status"
+                              >
+                                <AlertCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                                <span>
+                                  Promo applied — product discount overwritten.
+                                  You can remove the promo to restore catalog
+                                  discounts.
+                                </span>
+                              </div>
+                            )}
+                            <div className="flex justify-between items-center pt-2 border-t">
+                              <span className="font-semibold">Total</span>
+                              <span className="text-xl font-bold tabular-nums text-foreground">
+                                {previewLoading ? (
+                                  <Loader2 className="h-5 w-5 animate-spin" />
+                                ) : (
+                                  formatCurrency(expectedTotal)
+                                )}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </SaleSection>
 
-                        {/* Complete Sale Button */}
-                        <Button
-                          type="button"
-                          disabled={
-                            isLoading ||
-                            !locationId ||
-                            items.length === 0 ||
-                            (!isCreditSale &&
-                              (totalPayment <= 0 ||
-                                Math.abs(totalPayment - expectedTotal) > 0.01))
-                          }
-                          className="w-full mt-6 font-semibold h-11"
-                          onClick={() => {
-                            completeSaleClickedRef.current = true;
-                            formRef.current?.requestSubmit();
-                          }}
-                        >
-                          {isLoading ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Creating...
-                            </>
-                          ) : (
-                            <>
-                              <ShoppingCart className="mr-2 h-4 w-4" />
-                              Complete Sale
-                            </>
-                          )}
-                        </Button>
-                      </>
-                    )}
-                  </div>
+                      {items.length > 0 && (
+                        <>
+                          {/* Promo Code */}
+                          <SaleSection title="Promo Code">
+                            <div className="flex gap-2">
+                              <div className="relative flex-1">
+                                <Input
+                                  value={promoCode}
+                                  onChange={(e) =>
+                                    setPromoCode(e.target.value.toUpperCase())
+                                  }
+                                  placeholder="Enter promo code..."
+                                  className="uppercase pr-24"
+                                  disabled={promoCodeValidating}
+                                />
+                                {promoCodeValidating && (
+                                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" />
+                                )}
+                                {promoCode &&
+                                  !promoCodeError &&
+                                  !promoCodeValidating && (
+                                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-semibold text-green-600">
+                                      Applied
+                                    </span>
+                                  )}
+                              </div>
+                              {(promoCode.trim().length > 0 ||
+                                items.some((i) => i.promoCode)) && (
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="shrink-0"
+                                  onClick={handleRemovePromo}
+                                >
+                                  Remove promo
+                                </Button>
+                              )}
+                            </div>
+                            {promoCodeError && (
+                              <p className="text-xs text-destructive mt-2">
+                                {promoCodeError}
+                              </p>
+                            )}
+                          </SaleSection>
+
+                          {/* Payment */}
+                          <SaleSection title="Payment">
+                            <div className="flex gap-2">
+                              <Select
+                                value={selectedPaymentMethod}
+                                onValueChange={(v) =>
+                                  setSelectedPaymentMethod(v as PaymentMethod)
+                                }
+                              >
+                                <SelectTrigger className="w-[120px]">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="CASH">Cash</SelectItem>
+                                  <SelectItem value="CARD">Card</SelectItem>
+                                  <SelectItem value="CHEQUE">Cheque</SelectItem>
+                                  <SelectItem value="FONEPAY">
+                                    Fonepay
+                                  </SelectItem>
+                                  <SelectItem value="QR">QR</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="number"
+                                min={0}
+                                step={0.01}
+                                value={paymentAmount}
+                                onChange={(e) =>
+                                  setPaymentAmount(e.target.value)
+                                }
+                                placeholder={
+                                  remainingAmount > 0
+                                    ? `Remaining: ${formatCurrency(remainingAmount)}`
+                                    : "Amount..."
+                                }
+                                className="flex-1"
+                                onKeyDown={(e) =>
+                                  e.key === "Enter" &&
+                                  (e.preventDefault(), handleAddPayment())
+                                }
+                              />
+                              <Button
+                                type="button"
+                                variant="secondary"
+                                size="sm"
+                                onClick={handleAddPayment}
+                                disabled={
+                                  !paymentAmount || Number(paymentAmount) <= 0
+                                }
+                              >
+                                Add
+                              </Button>
+                              {remainingAmount > 0.01 && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  onClick={handleAddRemaining}
+                                >
+                                  Pay Full
+                                </Button>
+                              )}
+                            </div>
+                            {payments.length > 0 && (
+                              <div className="mt-3 space-y-2 max-h-[150px] overflow-y-auto">
+                                {payments.map((p) => (
+                                  <div
+                                    key={p.id}
+                                    className="flex items-center justify-between p-2 bg-muted rounded border"
+                                  >
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs"
+                                    >
+                                      {p.method}
+                                    </Badge>
+                                    <div className="flex items-center gap-2">
+                                      <span className="font-bold tabular-nums text-foreground">
+                                        {formatCurrency(p.amount)}
+                                      </span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-5 w-5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                        onClick={() =>
+                                          handleRemovePayment(p.id)
+                                        }
+                                      >
+                                        <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-2">
+                              Total:{" "}
+                              <span className="font-semibold tabular-nums text-foreground">
+                                {formatCurrency(totalPayment)}
+                              </span>
+                              {Math.abs(expectedTotal - totalPayment) >
+                                0.01 && (
+                                <span className="text-warning ml-1">
+                                  · Must match {formatCurrency(expectedTotal)}
+                                </span>
+                              )}
+                            </p>
+                          </SaleSection>
+
+                          {/* Notes */}
+                          <SaleSection title="Notes" className="mt-2">
+                            <Textarea
+                              value={notes}
+                              onChange={(e) => setNotes(e.target.value)}
+                              placeholder="Add notes for this sale..."
+                              rows={3}
+                              className="resize-none"
+                            />
+                          </SaleSection>
+
+                          {/* Validation Error — only show when !isCreditSale && payments.length > 0 */}
+                          {!isCreditSale &&
+                            payments.length > 0 &&
+                            Math.abs(expectedTotal - totalPayment) > 0.01 && (
+                              <div className="bg-destructive/10 border border-destructive rounded-lg p-3 text-sm text-destructive mt-4">
+                                Payment mismatch: {formatCurrency(totalPayment)}{" "}
+                                paid, {formatCurrency(expectedTotal)} required
+                              </div>
+                            )}
+
+                          {/* Complete Sale Button */}
+                          <Button
+                            type="button"
+                            disabled={
+                              isLoading ||
+                              !locationId ||
+                              items.length === 0 ||
+                              (!isCreditSale &&
+                                (totalPayment <= 0 ||
+                                  Math.abs(totalPayment - expectedTotal) >
+                                    0.01))
+                            }
+                            className="w-full mt-6 font-semibold h-11"
+                            onClick={() => {
+                              completeSaleClickedRef.current = true;
+                              formRef.current?.requestSubmit();
+                            }}
+                          >
+                            {isLoading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Creating...
+                              </>
+                            ) : (
+                              <>
+                                <ShoppingCart className="mr-2 h-4 w-4" />
+                                Complete Sale
+                              </>
+                            )}
+                          </Button>
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
             </div>

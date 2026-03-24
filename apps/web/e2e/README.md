@@ -38,13 +38,29 @@ Login, sale creation, and product CRUD tests require the full stack:
    pnpm --filter web test:e2e
    ```
 
+### Port-collision safe run
+
+Playwright starts its own web server. To avoid collisions with an already running local app on `3000`, run E2E on a dedicated port:
+
+```bash
+PLAYWRIGHT_PORT=3100 pnpm --filter web exec playwright test e2e/crm/contact-flow.spec.ts
+```
+
+If you manage your own web server manually, set `BASE_URL` to match it:
+
+```bash
+BASE_URL=http://localhost:3200 pnpm --filter web exec playwright test e2e/crm
+```
+
 ## Environment
 
-| Variable          | Default   | Description               |
-| ----------------- | --------- | ------------------------- |
-| `E2E_TENANT_SLUG` | `test1`   | Tenant slug for E2E flows |
-| `E2E_USERNAME`    | `admin`   | Username (from seed)      |
-| `E2E_PASSWORD`    | `test123` | Password (from seed)      |
+| Variable          | Default                        | Description                                |
+| ----------------- | ------------------------------ | ------------------------------------------ |
+| `E2E_TENANT_SLUG` | `test1`                        | Tenant slug for E2E flows                  |
+| `E2E_USERNAME`    | `admin`                        | Username (from seed)                       |
+| `E2E_PASSWORD`    | `test123`                      | Password (from seed)                       |
+| `PLAYWRIGHT_PORT` | `3100`                         | Port used by Playwright web server startup |
+| `BASE_URL`        | derived from `PLAYWRIGHT_PORT` | Explicit base URL for manual server runs   |
 
 ## Test Structure
 

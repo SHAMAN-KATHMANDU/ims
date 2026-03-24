@@ -20,6 +20,14 @@ describe("CreatePipelineSchema", () => {
     expect(result.isDefault).toBe(true);
   });
 
+  it("accepts optional pipeline type", () => {
+    const result = CreatePipelineSchema.parse({
+      name: "Repurchase",
+      type: "REPURCHASE",
+    });
+    expect(result.type).toBe("REPURCHASE");
+  });
+
   it("rejects empty name", () => {
     expect(() => CreatePipelineSchema.parse({ name: "" })).toThrow();
   });

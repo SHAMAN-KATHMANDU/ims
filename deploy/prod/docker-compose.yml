@@ -1,0 +1,156 @@
+# Prod stack for EC2 -- uses images from Docker Hub (tag :prod).
+# Watchtower (see watchtower.yml) polls every 30s for new :prod images and restarts prod_web / prod_api.
+# Automated DB backups run daily via prod_db_backup (prodrigestivill/postgres-backup-local).
+#
+# One-time host setup:
+#   mkdir -p /home/ubuntu/backups
+#
+# Usage:
+#   ./up.sh      -- start everything
+#   ./down.sh    -- stop everything
+#   ./restart.sh -- restart all or a specific service
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  prod_db:
+    image: postgres:16
+    container_name: prod_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-ims}
+    volumes:
+      - prod_db_data:/var/lib/postgresql/data
+    expose:
+      - "5432"
+    networks:
+      - prod
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ============================================
+  # Automated Database Backups
+  # Runs pg_dump on a daily cron schedule inside the container.
+  # Retention: 7 daily + 4 weekly + 3 monthly.
+  # Backups stored in /home/ubuntu/backups (bind mount -- survives docker down --volumes).
+  # For on-demand manual backup: ./backup-db.sh
+  # ============================================
+  prod_db_backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: prod_db_backup
+    restart: always
+    depends_on:
+      prod_db:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: prod_db
+      POSTGRES_DB: ${POSTGRES_DB:-ims}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_EXTRA_OPTS: "--clean --if-exists --no-owner --no-privileges"
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 3
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - prod_db_backups:/backups
+    networks:
+      - prod
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+
+  # ============================================
+  # Redis (BullMQ queues + Socket.IO adapter)
+  # ============================================
+  prod_redis:
+    image: redis:7-alpine
+    container_name: prod_redis
+    restart: always
+    volumes:
+      - prod_redis_data:/data
+    expose:
+      - "6379"
+    networks:
+      - prod
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================
+  # API Server
+  # ============================================
+  prod_api:
+    image: rpandox/dev-api-ims:prod
+    container_name: prod_api
+    restart: always
+    ports:
+      - "4000:4000"
+    env_file:
+      - .env
+    volumes:
+      - prod_uploads:/app/uploads
+    depends_on:
+      prod_db:
+        condition: service_healthy
+      prod_redis:
+        condition: service_healthy
+    networks:
+      - prod
+    # node:20-alpine API image has no wget/curl — use Node for the probe
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================
+  # Web Frontend
+  # ============================================
+  prod_web:
+    image: rpandox/dev-web-ims:prod
+    container_name: prod_web
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      prod_api:
+        condition: service_healthy
+    networks:
+      - prod
+
+networks:
+  prod:
+    driver: bridge
+    name: ims-prod
+
+volumes:
+  prod_db_data:
+  prod_redis_data:
+  prod_uploads:
+  prod_db_backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/ubuntu/backups

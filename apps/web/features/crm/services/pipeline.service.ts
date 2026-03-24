@@ -20,6 +20,8 @@ export interface Pipeline {
   type: PipelineType;
   stages: PipelineStage[];
   isDefault: boolean;
+  closedWonStageName?: string | null;
+  closedLostStageName?: string | null;
   createdAt: string;
   updatedAt: string;
   _count?: { deals: number };
@@ -50,10 +52,33 @@ export async function getPipelineById(
   return res.data;
 }
 
+export interface CrmPipelineTemplateDTO {
+  templateId: string;
+  name: string;
+  description: string;
+  type: PipelineType;
+  stageNames: string[];
+  probabilities: number[];
+  suggestAsDefault: boolean;
+  closedWonStageName?: string;
+  closedLostStageName?: string;
+}
+
+export async function getPipelineTemplates(): Promise<{
+  message: string;
+  templates: CrmPipelineTemplateDTO[];
+}> {
+  const res = await api.get("/pipelines/templates");
+  return res.data;
+}
+
 export async function createPipeline(data: {
   name: string;
+  type?: PipelineType;
   stages?: PipelineStage[];
   isDefault?: boolean;
+  closedWonStageName?: string | null;
+  closedLostStageName?: string | null;
 }): Promise<{ pipeline: Pipeline }> {
   const res = await api.post("/pipelines", data);
   return res.data;
@@ -61,7 +86,13 @@ export async function createPipeline(data: {
 
 export async function updatePipeline(
   id: string,
-  data: { name?: string; stages?: PipelineStage[]; isDefault?: boolean },
+  data: {
+    name?: string;
+    stages?: PipelineStage[];
+    isDefault?: boolean;
+    closedWonStageName?: string | null;
+    closedLostStageName?: string | null;
+  },
 ): Promise<{ pipeline: Pipeline }> {
   const res = await api.put(`/pipelines/${id}`, data);
   return res.data;

@@ -4,6 +4,17 @@ import { createError } from "@/middlewares/errorHandler";
 const mockFindDefaultPipeline = vi.fn();
 const mockCreate = vi.fn();
 const mockFindById = vi.fn();
+const mockCreateDealRevision = vi.fn();
+const mockExecuteWorkflowRules = vi.fn().mockResolvedValue(undefined);
+
+vi.mock("@/modules/workflows/workflow.engine", () => ({
+  executeWorkflowRules: (...args: unknown[]) =>
+    mockExecuteWorkflowRules(...args),
+}));
+
+vi.mock("@/modules/pipeline-transitions/pipeline-transition.service", () => ({
+  default: { handleDealEvent: vi.fn().mockResolvedValue(undefined) },
+}));
 
 vi.mock("./deal.repository", () => ({
   default: {
@@ -11,9 +22,10 @@ vi.mock("./deal.repository", () => ({
       mockFindDefaultPipeline(...args),
     create: (...args: unknown[]) => mockCreate(...args),
     findById: (...args: unknown[]) => mockFindById(...args),
+    getPipelineClosingStageNames: vi.fn().mockResolvedValue(null),
     findAll: vi.fn(),
     findKanban: vi.fn(),
-    createDealRevision: vi.fn(),
+    createDealRevision: (...args: unknown[]) => mockCreateDealRevision(...args),
     createDeleteRevision: vi.fn(),
     createNotification: vi.fn(),
   },
@@ -48,6 +60,75 @@ describe("DealService", () => {
 
       await expect(dealService.getById("t1", "missing")).rejects.toMatchObject(
         createError("Deal not found", 404),
+      );
+    });
+  });
+
+  const baseDealRow = {
+    id: "d1",
+    tenantId: "t1",
+    pipelineId: "p1",
+    stage: "Lead",
+    assignedToId: "u1",
+    createdById: "u1",
+    status: "OPEN" as const,
+    contactId: null as string | null,
+    memberId: null as string | null,
+  };
+
+  describe("updateStage", () => {
+    it("returns existing deal without revision when same pipeline and same stage", async () => {
+      mockFindById.mockResolvedValue({ ...baseDealRow });
+
+      const result = await dealService.updateStage(
+        "t1",
+        "d1",
+        { stage: "Lead" },
+        "u1",
+      );
+
+      expect(result).toEqual(expect.objectContaining({ stage: "Lead" }));
+      expect(mockCreateDealRevision).not.toHaveBeenCalled();
+    });
+
+    it("runs STAGE_EXIT with source rules pipeline then revision when moving to another pipeline", async () => {
+      mockFindById.mockResolvedValue({ ...baseDealRow });
+      mockFindDefaultPipeline.mockResolvedValue({
+        id: "p2",
+        stages: [{ id: "st2", name: "Qualification", probability: 5 }],
+      });
+      mockCreateDealRevision.mockResolvedValue({
+        ...baseDealRow,
+        id: "d1-rev",
+        pipelineId: "p2",
+        stage: "Qualification",
+      });
+
+      await dealService.updateStage(
+        "t1",
+        "d1",
+        { stage: "Qualification", pipelineId: "p2" },
+        "u1",
+      );
+
+      expect(mockExecuteWorkflowRules).toHaveBeenCalledWith(
+        expect.objectContaining({
+          trigger: "STAGE_EXIT",
+          deal: expect.objectContaining({ pipelineId: "p1", stage: "Lead" }),
+          previousStage: "Lead",
+        }),
+        { rulesPipelineId: "p1" },
+      );
+      expect(mockCreateDealRevision).toHaveBeenCalledWith(
+        "d1",
+        "t1",
+        expect.objectContaining({
+          pipelineId: "p2",
+          stage: "Qualification",
+          probability: 5,
+        }),
+        "u1",
+        null,
       );
     });
   });

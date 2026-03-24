@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { CRM_PIPELINE_TEMPLATES } from "@repo/shared";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
   CreatePipelineSchema,
@@ -22,7 +24,7 @@ const handleAppError = (res: Response, error: unknown): Response | null => {
 class PipelineController {
   create = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = CreatePipelineSchema.parse(req.body);
       const pipeline = await pipelineService.create(tenantId, body);
       return res
@@ -43,7 +45,7 @@ class PipelineController {
 
   getAll = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const query = ListPipelinesQuerySchema.safeParse(req.query);
       const parsed = query.success ? query.data : undefined;
       const result = await pipelineService.getAll(tenantId, parsed);
@@ -57,9 +59,40 @@ class PipelineController {
     }
   };
 
+  listTemplates = async (req: Request, res: Response) => {
+    try {
+      const templates = CRM_PIPELINE_TEMPLATES.map(
+        ({
+          templateId,
+          name,
+          description,
+          type,
+          stageNames,
+          probabilities,
+          suggestAsDefault,
+          closedWonStageName,
+          closedLostStageName,
+        }) => ({
+          templateId,
+          name,
+          description,
+          type,
+          stageNames,
+          probabilities: [...probabilities],
+          suggestAsDefault,
+          closedWonStageName,
+          closedLostStageName,
+        }),
+      );
+      return res.status(200).json({ message: "OK", templates });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List pipeline templates");
+    }
+  };
+
   getById = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = req.params;
       const pipeline = await pipelineService.getById(tenantId, id);
       return res.status(200).json({ message: "OK", pipeline });
@@ -73,7 +106,7 @@ class PipelineController {
 
   update = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = req.params;
       const body = UpdatePipelineSchema.parse(req.body);
       const pipeline = await pipelineService.update(tenantId, id, body);
@@ -95,7 +128,7 @@ class PipelineController {
 
   seedFramework = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const result = await pipelineService.seedFramework(tenantId);
       return res.status(201).json({
         message: "Pipeline framework seeded successfully",
@@ -111,8 +144,7 @@ class PipelineController {
 
   delete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const { id } = req.params;
       const deleteBody = DeleteBodySchema.parse(req.body ?? {});
       const ip = typeof req.ip === "string" ? req.ip : undefined;

@@ -14,6 +14,7 @@ import {
   type UpdateLeadData,
 } from "../services/lead.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+import { crmKeys } from "./use-crm";
 
 export const leadKeys = {
   all: ["leads"] as const,
@@ -52,7 +53,10 @@ export function useCreateLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateLeadData) => createLead(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: leadKeys.lists() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: leadKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+    },
   });
 }
 
@@ -64,6 +68,7 @@ export function useUpdateLead() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: leadKeys.lists() });
       qc.invalidateQueries({ queryKey: leadKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }
@@ -72,7 +77,10 @@ export function useDeleteLead() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteLead(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: leadKeys.lists() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: leadKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+    },
   });
 }
 
@@ -96,6 +104,7 @@ export function useConvertLead() {
       qc.invalidateQueries({ queryKey: leadKeys.detail(id) });
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["deals"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }
@@ -108,6 +117,7 @@ export function useAssignLead() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: leadKeys.lists() });
       qc.invalidateQueries({ queryKey: leadKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }

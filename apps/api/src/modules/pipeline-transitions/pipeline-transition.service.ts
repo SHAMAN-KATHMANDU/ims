@@ -8,6 +8,7 @@
 import type { PipelineType } from "@prisma/client";
 import prisma from "@/config/prisma";
 import { logger } from "@/config/logger";
+import contactRepository from "@/modules/contacts/contact.repository";
 import remarketingService from "@/modules/remarketing/remarketing.service";
 import type {
   DealContext,
@@ -460,21 +461,22 @@ export class PipelineTransitionService {
     createdById: string;
     name: string;
   }) {
-    return prisma.deal.create({
-      data: {
-        tenantId: data.tenantId,
+    const { default: dealService } =
+      await import("@/modules/deals/deal.service");
+    return dealService.create(
+      data.tenantId,
+      {
         name: data.name,
         value: 0,
         stage: data.stage,
         probability: data.probability,
-        status: "OPEN",
         contactId: data.contactId,
         memberId: data.memberId,
         pipelineId: data.pipelineId,
         assignedToId: data.assignedToId,
-        createdById: data.createdById,
       },
-    });
+      data.createdById,
+    );
   }
 
   private async updateContactJourneyAndTags(
@@ -485,48 +487,39 @@ export class PipelineTransitionService {
       removeTags?: string[];
     },
   ) {
-    if (updates.journeyType) {
-      await prisma.contact.update({
-        where: { id: contactId },
-        data: { journeyType: updates.journeyType },
-      });
-    }
-
     const contact = await prisma.contact.findUnique({
       where: { id: contactId },
       select: { tenantId: true },
     });
     if (!contact) return;
 
+    if (updates.journeyType) {
+      await contactRepository.updateContactByWorkflow(
+        contact.tenantId,
+        contactId,
+        {
+          journeyType: updates.journeyType,
+        },
+      );
+    }
+
     if (updates.addTags?.length) {
       for (const tagName of updates.addTags) {
-        const tag = await prisma.contactTag.findUnique({
-          where: {
-            tenantId_name: { tenantId: contact.tenantId, name: tagName },
-          },
-        });
-        if (tag) {
-          await prisma.contactTagLink.upsert({
-            where: { contactId_tagId: { contactId, tagId: tag.id } },
-            create: { contactId, tagId: tag.id },
-            update: {},
-          });
-        }
+        await contactRepository.linkExistingTagToContact(
+          contact.tenantId,
+          contactId,
+          tagName,
+        );
       }
     }
 
     if (updates.removeTags?.length) {
       for (const tagName of updates.removeTags) {
-        const tag = await prisma.contactTag.findUnique({
-          where: {
-            tenantId_name: { tenantId: contact.tenantId, name: tagName },
-          },
-        });
-        if (tag) {
-          await prisma.contactTagLink.deleteMany({
-            where: { contactId, tagId: tag.id },
-          });
-        }
+        await contactRepository.unlinkTagFromContact(
+          contact.tenantId,
+          contactId,
+          tagName,
+        );
       }
     }
   }

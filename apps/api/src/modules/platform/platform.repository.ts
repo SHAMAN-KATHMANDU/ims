@@ -3,7 +3,6 @@
  * All cross-tenant operations use basePrisma (unscoped).
  */
 
-import { randomUUID } from "crypto";
 import { basePrisma } from "@/config/prisma";
 import type { PlanTier } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
@@ -241,76 +240,6 @@ export class PlatformRepository {
           data: { tenantId: tenant.id, name },
         });
       }
-
-      // Default pipelines (same transaction — avoids partially initialized tenant)
-      const makeStages = (
-        names: string[],
-        probabilities: number[] = [],
-      ): Array<{
-        id: string;
-        name: string;
-        order: number;
-        probability: number;
-      }> =>
-        names.map((name, i) => ({
-          id: randomUUID(),
-          name,
-          order: i,
-          probability: probabilities[i] ?? 0,
-        }));
-
-      const salesStages = makeStages(
-        [
-          "New Lead",
-          "Contacted",
-          "Qualified",
-          "Proposal Sent",
-          "Negotiation",
-          "Closed Won",
-          "Closed Lost",
-        ],
-        [0, 5, 15, 40, 70, 100, 0],
-      );
-      const remarketingStages = makeStages([
-        "Identified",
-        "Re-engaged",
-        "Interested",
-        "Offer Sent",
-        "Converted",
-        "Not Interested",
-      ]);
-      const repurchaseStages = makeStages([
-        "Past Customer",
-        "Follow-up Sent",
-        "Considering",
-        "Repeat Purchase",
-        "Churned",
-      ]);
-
-      await tx.pipeline.create({
-        data: {
-          tenantId: tenant.id,
-          name: "Sales Pipeline",
-          stages: salesStages,
-          isDefault: true,
-        },
-      });
-      await tx.pipeline.create({
-        data: {
-          tenantId: tenant.id,
-          name: "Remarketing Pipeline",
-          stages: remarketingStages,
-          isDefault: false,
-        },
-      });
-      await tx.pipeline.create({
-        data: {
-          tenantId: tenant.id,
-          name: "Repurchase Pipeline",
-          stages: repurchaseStages,
-          isDefault: false,
-        },
-      });
 
       return {
         tenant,

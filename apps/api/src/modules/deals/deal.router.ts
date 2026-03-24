@@ -185,9 +185,15 @@ dealRouter.put("/:id", asyncHandler(dealController.update));
  *         application/json:
  *           schema:
  *             type: object
- *             required: [stageId]
+ *             required: [stage]
  *             properties:
- *               stageId: { type: string, format: uuid }
+ *               stage:
+ *                 type: string
+ *                 description: Target stage name or stage id (matches pipeline stages JSON)
+ *               pipelineId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Optional. When set and different from the deal’s current pipeline, moves the deal to that pipeline and the given stage.
  *     responses:
  *       200: { description: Stage updated }
  */

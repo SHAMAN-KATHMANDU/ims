@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import {
@@ -26,7 +27,7 @@ class CrmSettingsController {
 
   getAllSources = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const parsed = ListSourcesQuerySchema.safeParse(req.query);
       const query =
         parsed.success &&
@@ -47,7 +48,7 @@ class CrmSettingsController {
 
   createSource = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = CreateCrmSourceSchema.parse(req.body);
       const source = await crmSettingsService.createSource(tenantId, body);
       return res
@@ -68,7 +69,7 @@ class CrmSettingsController {
 
   updateSource = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = UpdateCrmSourceSchema.parse(req.body);
       const source = await crmSettingsService.updateSource(
         tenantId,
@@ -93,7 +94,7 @@ class CrmSettingsController {
 
   deleteSource = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       await crmSettingsService.deleteSource(tenantId, req.params.id);
       return res.status(200).json({ message: "Source deleted successfully" });
     } catch (error: unknown) {
@@ -108,7 +109,7 @@ class CrmSettingsController {
 
   getAllJourneyTypes = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const parsed = ListJourneyTypesQuerySchema.safeParse(req.query);
       const query =
         parsed.success &&
@@ -137,7 +138,7 @@ class CrmSettingsController {
 
   createJourneyType = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = CreateCrmJourneyTypeSchema.parse(req.body);
       const journeyType = await crmSettingsService.createJourneyType(
         tenantId,
@@ -161,7 +162,7 @@ class CrmSettingsController {
 
   updateJourneyType = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = UpdateCrmJourneyTypeSchema.parse(req.body);
       const journeyType = await crmSettingsService.updateJourneyType(
         tenantId,
@@ -186,7 +187,7 @@ class CrmSettingsController {
 
   deleteJourneyType = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       await crmSettingsService.deleteJourneyType(tenantId, req.params.id);
       return res
         .status(200)

@@ -7,7 +7,6 @@ import type {
   ListPipelinesQueryDto,
   UpdatePipelineDto,
 } from "./pipeline.schema";
-import type { PipelineType } from "@prisma/client";
 
 export class PipelineService {
   async create(tenantId: string, data: CreatePipelineDto) {
@@ -33,9 +32,11 @@ export class PipelineService {
     return pipelineRepository.create({
       tenantId,
       name: data.name,
-      type: (data as { type?: PipelineType }).type ?? "GENERAL",
+      type: data.type ?? "GENERAL",
       stages,
       isDefault: !!data.isDefault,
+      closedWonStageName: data.closedWonStageName ?? undefined,
+      closedLostStageName: data.closedLostStageName ?? undefined,
     });
   }
 
@@ -132,6 +133,12 @@ export class PipelineService {
       }>;
     }
     if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;
+    if (data.closedWonStageName !== undefined) {
+      updateData.closedWonStageName = data.closedWonStageName;
+    }
+    if (data.closedLostStageName !== undefined) {
+      updateData.closedLostStageName = data.closedLostStageName;
+    }
 
     return pipelineRepository.update(id, updateData);
   }

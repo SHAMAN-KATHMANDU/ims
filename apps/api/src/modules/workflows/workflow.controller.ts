@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import {
@@ -13,7 +14,7 @@ import workflowService from "./workflow.service";
 class WorkflowController {
   getAll = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const query = GetWorkflowsQuerySchema.parse(req.query);
       const pipelineId = query.pipelineId;
       if (pipelineId) {
@@ -41,7 +42,7 @@ class WorkflowController {
 
   getById = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = WorkflowIdParamSchema.parse(req.params);
       const workflow = await workflowService.getById(tenantId, id);
       return res.status(200).json({ message: "OK", workflow });
@@ -61,7 +62,7 @@ class WorkflowController {
 
   create = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = CreateWorkflowSchema.parse(req.body);
       const workflow = await workflowService.create(tenantId, body);
       return res
@@ -83,7 +84,7 @@ class WorkflowController {
 
   update = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = WorkflowIdParamSchema.parse(req.params);
       const body = UpdateWorkflowSchema.parse(req.body);
       const workflow = await workflowService.update(tenantId, id, body);
@@ -106,7 +107,7 @@ class WorkflowController {
 
   delete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = WorkflowIdParamSchema.parse(req.params);
       await workflowService.delete(tenantId, id);
       return res.status(200).json({ message: "Workflow deleted successfully" });

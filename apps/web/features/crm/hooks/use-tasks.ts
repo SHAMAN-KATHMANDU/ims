@@ -17,6 +17,7 @@ import {
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { contactKeys } from "./use-contacts";
 import { dealKeys } from "./use-deals";
+import { crmKeys } from "./use-crm";
 
 export const taskKeys = {
   all: ["tasks"] as const,
@@ -60,6 +61,7 @@ export function useCreateTask() {
     mutationFn: (data: CreateTaskData) => createTask(data),
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
       if (variables.contactId) {
         qc.refetchQueries({
           queryKey: contactKeys.detail(variables.contactId),
@@ -83,6 +85,7 @@ export function useUpdateTask() {
     onSuccess: (data, { id, data: updateData }) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
       const contactId =
         (data as { task?: { contactId?: string | null } })?.task?.contactId ??
         updateData?.contactId;
@@ -103,6 +106,7 @@ export function useCompleteTask() {
     onSuccess: (data, id) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
       const contactId = (data as { task?: { contactId?: string | null } })?.task
         ?.contactId;
       if (contactId) {
@@ -119,7 +123,10 @@ export function useDeleteTask() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteTask(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.lists() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+    },
   });
 }
 
@@ -127,7 +134,10 @@ export function useBulkCompleteTasks() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (ids: string[]) => bulkCompleteTasks(ids),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.lists() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+    },
   });
 }
 
@@ -136,6 +146,9 @@ export function useBulkDeleteTasks() {
   return useMutation({
     mutationFn: ({ ids, reason }: { ids: string[]; reason?: string }) =>
       bulkDeleteTasks(ids, reason),
-    onSuccess: () => qc.invalidateQueries({ queryKey: taskKeys.lists() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+    },
   });
 }

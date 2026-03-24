@@ -1,207 +1,331 @@
-# Deploy to EC2 (Dev and Prod)
+# Deploy
 
-Copy this folder to each EC2 instance, create a `.env` file, then start the app stack and Watchtower.
+Server deployment configs and scripts for Dev/Stage and Production EC2 instances.
 
-**See [docs/SERVER-DEPLOYMENT.md](../docs/SERVER-DEPLOYMENT.md)** for the full server deployment guide (tag-based CI/CD, rollback, troubleshooting).
+Each environment folder is **fully self-contained** — SCP only the folder you need:
 
-## Prerequisites
+```
+deploy/
+├── README.md
+├── dev/               # Dev/Stage EC2 — copy this folder to the dev server
+│   ├── functions.sh       # Bash helpers (sourced by all scripts in this folder)
+│   ├── docker-compose.yml # App stack: postgres, redis, api, web
+│   ├── watchtower.yml     # Auto-pull :dev images every 30s
+│   ├── nginx.conf         # Reverse proxy with webhook + WebSocket support
+│   ├── .env.example       # Comprehensive env template
+│   ├── setup.sh           # First-time setup
+│   ├── up.sh              # Start everything
+│   ├── down.sh            # Stop everything
+│   ├── restart.sh         # Restart one or all services
+│   ├── logs.sh            # View / follow container logs
+│   ├── status.sh          # Container status + resource usage
+│   ├── health.sh          # Quick web + API health probe
+│   ├── setup-nginx.sh     # Install nginx/certbot + HTTPS
+│   ├── setup-backups.sh   # One-time: AWS CLI + cron for nightly S3 offsite sync
+│   ├── backup-s3.sh       # Sync DB dumps (+ dev: .env) to S3 (cron or manual)
+│   └── seed.sh            # Interactive DB seed (orchestrated via Prisma)
+└── prod/              # Production EC2 — copy this folder to the prod server
+    ├── functions.sh       # Bash helpers (sourced by all scripts in this folder)
+    ├── docker-compose.yml # App stack + automated daily DB backups
+    ├── watchtower.yml     # Auto-pull :prod images every 30s
+    ├── nginx.conf         # Reverse proxy with webhook + WebSocket support
+    ├── .env.example       # Comprehensive env template
+    ├── setup.sh           # First-time setup
+    ├── up.sh              # Start everything
+    ├── down.sh            # Stop everything
+    ├── restart.sh         # Restart one or all services
+    ├── logs.sh            # View / follow container logs
+    ├── status.sh          # Container status + resource usage + backup info
+    ├── health.sh          # Quick web + API health probe
+    ├── setup-nginx.sh     # Install nginx/certbot + HTTPS
+    ├── setup-backups.sh   # One-time: AWS CLI + cron for nightly S3 offsite sync
+    ├── backup-s3.sh       # Sync DB dumps, uploads volume, .env to S3 (cron or manual)
+    ├── seed.sh            # Interactive DB seed (same flow as dev; confirm before prompts)
+    └── backup-db.sh       # On-demand manual database backup
+```
 
-- Terraform has been applied and you have the **dev** and **prod** EC2 public IPs and SSH key path (see [infra/README.md](../infra/README.md)).
-- Docker Hub images exist (e.g. after the first CI run): `rpandox/dev-api-ims:dev`, `rpandox/dev-web-ims:dev`, and same with `:prod`.
+**Deployment is pull-based.** GitHub Actions builds and pushes Docker images to Docker Hub. Watchtower on each EC2 polls for new images and restarts containers automatically — no SSH from CI required.
 
-## 1. Log in to Docker Hub on each EC2 (once)
+---
 
-So Watchtower can pull your images (if they are private):
+## Quick Start
+
+### Prerequisites
+
+- Terraform applied, EC2 instances running, SSH key available
+- Docker Hub images pushed (happens automatically after first CI run)
+- DNS A records pointing to EC2 public IPs
+
+### Copy deploy files to EC2
+
+Each folder is self-contained — copy only the environment you need:
+
+```bash
+# Dev/Stage EC2 — copy only the dev/ folder
+scp -i ~/.ssh/ims-aws -r deploy/dev/ ubuntu@<DEV_EC2_IP>:/home/ubuntu/deploy
+
+# Prod EC2 — copy only the prod/ folder
+scp -i ~/.ssh/ims-aws -r deploy/prod/ ubuntu@<PROD_EC2_IP>:/home/ubuntu/deploy
+```
+
+The files land at `/home/ubuntu/deploy/` on each server.
+
+### Dev/Stage setup
 
 ```bash
 ssh -i ~/.ssh/ims-aws ubuntu@<DEV_EC2_IP>
-docker login
-# Enter Docker Hub username and password (or access token), then exit.
-```
-
-Repeat for the prod instance.
-
-## 2. Copy deploy files to EC2
-
-From your **local machine** (in the repo root):
-
-```bash
-# Dev
-scp -i ~/.ssh/ims-aws -r deploy/ ubuntu@43.204.67.93:/home/ubuntu/deploy
-
-# Prod
-scp -i ~/.ssh/ims-aws -r deploy/ ubuntu@<PROD_EC2_IP>:/home/ubuntu/deploy
-```
-
-## 3. Create `.env` on each instance
-
-SSH into **dev**:
-
-```bash
-ssh -i ~/.ssh/ims-aws ubuntu@<DEV_EC2_IP>
 cd /home/ubuntu/deploy
-cp .env.example .env
-nano .env   # or vim: set POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL (host dev_db for dev)
+./setup.sh             # creates .env, docker login
+./up.sh                # starts postgres + redis + api + web + watchtower
+./health.sh            # verify everything is running
+./seed.sh              # seed the database (first time only)
+sudo ./setup-nginx.sh  # install nginx + HTTPS
+./setup-backups.sh     # optional: S3 offsite backups (needs IAM instance profile on EC2)
 ```
 
-For **dev**, `DATABASE_URL` must use hostname `dev_db` and the same password as `POSTGRES_PASSWORD`.  
-For **prod**, use hostname `prod_db` and strong passwords.
-
-## 4. Start the stack on Dev EC2
-
-On the **dev** instance:
+### Production setup
 
 ```bash
+ssh -i ~/.ssh/ims-aws ubuntu@<PROD_EC2_IP>
 cd /home/ubuntu/deploy
-docker compose -f docker-compose.dev.yml up -d
-docker compose -f docker-compose.dev.yml -f watchtower.dev.yml up -d
+./setup.sh             # creates .env, docker login, creates /home/ubuntu/backups
+./up.sh                # starts postgres + redis + api + web + backup + watchtower
+./health.sh            # verify everything is running
+./seed.sh              # seed the database (first time only)
+sudo ./setup-nginx.sh  # install nginx + HTTPS
+./setup-backups.sh     # optional: S3 offsite backups (needs IAM instance profile on EC2)
 ```
 
-Check:
+---
+
+## Script Reference
+
+Run all scripts from `/home/ubuntu/deploy/` (they resolve their own directory automatically):
+
+| Script             | Usage                             | Description                                                                                 |
+| ------------------ | --------------------------------- | ------------------------------------------------------------------------------------------- |
+| `setup.sh`         | `./setup.sh`                      | First-time setup: .env, docker login, validation                                            |
+| `up.sh`            | `./up.sh`                         | Start app stack + watchtower                                                                |
+| `down.sh`          | `./down.sh`                       | Stop everything (volumes preserved)                                                         |
+| `down.sh`          | `./down.sh --volumes`             | Stop + delete volumes (**data loss!**)                                                      |
+| `restart.sh`       | `./restart.sh`                    | Restart all services                                                                        |
+| `restart.sh`       | `./restart.sh api`                | Restart one service (api/web/db/redis/backup/watchtower)                                    |
+| `logs.sh`          | `./logs.sh`                       | Last 100 lines from all services                                                            |
+| `logs.sh`          | `./logs.sh api -f`                | Follow API logs                                                                             |
+| `logs.sh`          | `./logs.sh api --tail 50`         | Last 50 lines from API                                                                      |
+| `status.sh`        | `./status.sh`                     | Container status + CPU/mem + disk usage                                                     |
+| `health.sh`        | `./health.sh`                     | Quick health probe (exits 0=pass, 1=fail)                                                   |
+| `setup-nginx.sh`   | `sudo ./setup-nginx.sh`           | Install nginx + certbot + HTTPS certs                                                       |
+| `seed.sh`          | `./seed.sh`                       | Interactive DB seed (see below)                                                             |
+| `seed.sh`          | `./seed.sh --reset`               | **Dev only** — `prisma migrate reset` then seed (destructive)                               |
+| `backup-db.sh`     | `./backup-db.sh`                  | On-demand manual DB dump **(prod only)** → `/home/ubuntu/backups`                           |
+| `setup-backups.sh` | `./setup-backups.sh`              | **Dev & prod** — install `awscli`, verify IAM, cron @ 02:00 for `./backup-s3.sh`            |
+| `backup-s3.sh`     | `BACKUPS_BUCKET=b ./backup-s3.sh` | **Dev & prod** — push local backups to S3 (see [Offsite backups (S3)](#offsite-backups-s3)) |
+
+### Database seed (`./seed.sh`)
+
+On EC2, **`./seed.sh` is the supported way** to seed Postgres inside Docker. It runs `node prisma/seed.js --orchestrated` from `apps/api` in the API container and **inlines** `SEED_INCLUDE_*` / `SEED_MODE` / optional `SEED_MINIMAL_TENANTS_B64` in the shell command so choices are not dropped (some Docker setups do not apply `docker compose exec -e` to the seed process; platform credentials still come from the container `.env` via Compose `env_file`).
+
+- **Always created:** plan limits + platform admin (`SEED_PLATFORM_ADMIN_USERNAME` / `SEED_PLATFORM_ADMIN_PASSWORD` in `.env`).
+- **Optional (prompts):** full `test1` / `test2` data, minimal `ruby` tenant, full `demo` tenant, and an optional comma-separated minimal tenant list (`slug:Name` or `slug:Name:password`).
+- **Prod:** same prompts after you type `yes` to proceed; read warnings before including sample tenants.
+
+Local or CI without this script can still use `pnpm --filter api prisma:seed` (legacy `SEED_PROFILE` / `SEED_MODE` — see `apps/api/prisma/seed.ts`).
+
+**Remove sample tenants by slug (FK-safe):** do not use raw `prisma.tenant.delete()` — `transfer_logs.user_id` is `Restrict` and will fail. After pulling an image that includes `apps/api/prisma/delete-tenants-by-slug.cjs`:
 
 ```bash
-docker ps
-curl -s http://localhost:3000 | head
-curl -s http://localhost:4000/health
+docker compose exec prod_api sh -c 'cd /app/apps/api && node prisma/delete-tenants-by-slug.cjs test1 test2 demo ruby'
 ```
 
-## 5. Start the stack on Prod EC2
+Local: `pnpm --filter api delete-tenants -- test1 test2 demo ruby`
 
-On the **prod** instance:
+---
 
-```bash
-cd /home/ubuntu/deploy
-docker compose -f docker-compose.prod.yml up -d
-docker compose -f docker-compose.prod.yml -f watchtower.prod.yml up -d
-docker ps
+## Watchtower: Auto-Deploy Flow
+
+```
+Developer merges PR → GitHub Actions builds :dev image → pushes to Docker Hub
+                                                               ↓
+                                              Watchtower on dev EC2 polls every 30s
+                                              Detects new :dev image → pulls → restarts dev_api / dev_web
 ```
 
-## 6. Watchtower behavior
-
-- **Dev**: Watchtower polls every 30s for new `rpandox/dev-api-ims:dev` and `rpandox/dev-web-ims:dev` images; when it finds an update, it pulls and restarts only `dev_web` and/or `dev_api`.
-- **Prod**: Same for `:prod` and containers `prod_web` / `prod_api`.
-
-So if only the frontend changes, CI pushes only the web image; Watchtower restarts only the web container on the matching environment.
-
-## 7. Setup Nginx Reverse Proxy with HTTPS (Let's Encrypt)
-
-### On PROD EC2:
-
-1. **Install Nginx and Certbot:**
-
-   ```bash
-   sudo apt update
-   sudo apt install -y nginx certbot python3-certbot-nginx
-   ```
-
-2. **Copy Nginx config:**
-
-   ```bash
-   sudo cp /home/ubuntu/deploy/nginx-prod.conf /etc/nginx/sites-available/ims-prod.conf
-   sudo ln -s /etc/nginx/sites-available/ims-prod.conf /etc/nginx/sites-enabled/ims-prod.conf
-   ```
-
-3. **Test and reload Nginx:**
-
-   ```bash
-   sudo nginx -t
-   sudo systemctl reload nginx
-   ```
-
-4. **Ensure DNS A records point to this EC2's public IP:**
-   - `ims.shamankathmandu.com` → prod EC2 IP
-   - `api.shamankathmandu.com` → prod EC2 IP
-
-5. **Get HTTPS certificates:**
-
-   ```bash
-   sudo certbot --nginx -d ims.shamankathmandu.com -d api.shamankathmandu.com
-   ```
-
-   Certbot will automatically configure HTTPS and redirect HTTP → HTTPS.
-
-### On DEV/STAGE EC2:
-
-1. **Install Nginx and Certbot (same as above):**
-
-   ```bash
-   sudo apt update
-   sudo apt install -y nginx certbot python3-certbot-nginx
-   ```
-
-2. **Copy Nginx config:**
-
-   ```bash
-   sudo cp /home/ubuntu/deploy/nginx-stage.conf /etc/nginx/sites-available/ims-stage.conf
-   sudo ln -s /etc/nginx/sites-available/ims-stage.conf /etc/nginx/sites-enabled/ims-stage.conf
-   ```
-
-3. **Test and reload Nginx:**
-
-   ```bash
-   sudo nginx -t
-   sudo systemctl reload nginx
-   ```
-
-4. **Ensure DNS A records point to this EC2's public IP:**
-   - `stage-ims.shamankathmandu.com` → dev EC2 IP
-   - `stage-api.shamankathmandu.com` → dev EC2 IP
-
-5. **Get HTTPS certificates:**
-
-   ```bash
-   sudo certbot --nginx -d stage-ims.shamankathmandu.com -d stage-api.shamankathmandu.com
-   ```
-
-### Verify:
-
-- **Prod**: Visit `https://ims.shamankathmandu.com` and `https://api.shamankathmandu.com`
-- **Dev**: Visit `https://stage-ims.shamankathmandu.com` and `https://stage-api.shamankathmandu.com`
-
-All should show valid HTTPS certificates (Let's Encrypt) and load your apps.
-
-## 8. Production Database Seed
-
-Run a minimal seed (platform admin + tenants only). The seed uses `SEED_MODE=production` to skip demo data.
-
-**From your local machine** (recommended — requires DB access via tunnel or direct connection):
-
-```bash
-cd apps/api
-
-# Set DATABASE_URL to prod (use SSH tunnel if DB isn't publicly reachable)
-# ssh -L 5433:localhost:5432 ubuntu@<PROD_EC2_IP>
-# DATABASE_URL=postgresql://postgres:PASSWORD@localhost:5433/ims
-
-SEED_MODE=production \
-SEED_PLATFORM_ADMIN_PASSWORD=your-secure-password \
-SEED_TENANTS=acme:Acme Corp,ruby:Ruby Store \
-SEED_TENANT_PASSWORD=ChangeMe123! \
-pnpm prisma:seed
+```
+ops/release tag → GitHub Actions builds :prod image → pushes to Docker Hub
+                                                               ↓
+                                              Watchtower on prod EC2 polls every 30s
+                                              Detects new :prod image → pulls → restarts prod_api / prod_web
 ```
 
-**From prod EC2** (if the API image includes ts-node; otherwise use local):
+Watchtower only restarts `dev_api` / `dev_web` (or `prod_api` / `prod_web`). It never touches the database, Redis, or backup containers.
+
+---
+
+## Nginx: What's Proxied
+
+Both `dev/nginx.conf` and `prod/nginx.conf` handle these paths on the API server block:
+
+| Path                  | Notes                                                                                                            |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `/api/v1/webhooks/`   | Facebook Messenger webhooks. `proxy_request_buffering off` — raw body preserved for HMAC signature verification. |
+| `/ws/`                | Socket.IO WebSocket. HTTP upgrade headers + 24h timeouts.                                                        |
+| `/` (everything else) | REST API, Swagger, uploads, health. `client_max_body_size 15m` for uploads.                                      |
+
+### Facebook Messenger Webhook Setup
+
+1. After `sudo ./setup-nginx.sh` completes, your webhook URL is:
+   - **Dev/Stage**: `https://stage-api.shamankathmandu.com/api/v1/webhooks/messenger`
+   - **Prod**: `https://api.shamanyantra.com/api/v1/webhooks/messenger`
+
+2. In the [Meta App Dashboard](https://developers.facebook.com/apps/):
+   - Go to **Messenger → Webhooks**
+   - Set **Callback URL** to the URL above
+   - Set **Verify Token** to the per-channel token (generated when connecting a Messenger channel in the app)
+   - Subscribe to: `messages`, `messaging_postbacks`, `message_deliveries`, `message_reads`
+
+3. Set `META_APP_ID` and `META_APP_SECRET` in `.env`, then restart the API:
+   ```bash
+   ./restart.sh api
+   ```
+
+---
+
+## Database Backups
+
+### Local backups (dev & prod)
+
+Both stacks include a **`postgres-backup-local`** sidecar (`dev_db_backup` / `prod_db_backup`) that writes scheduled dumps to the host.
+
+| Env  | Container        | Host path               |
+| ---- | ---------------- | ----------------------- |
+| Dev  | `dev_db_backup`  | `/home/ubuntu/backups/` |
+| Prod | `prod_db_backup` | `/home/ubuntu/backups/` |
+
+- **Retention** (container default): 7 daily + 4 weekly + 3 monthly
+- **Format**: gzipped SQL (`.sql.gz`)
+- **Survives** `docker compose down --volumes` (bind mount on the EC2 disk — not in the DB volume)
+
+**Prod only — extra manual dumps:** run `./backup-db.sh` before migrations or risky deploys (keeps last 14 manual files in the same directory).
+
+### Restore from a local `.sql.gz` (prod example)
 
 ```bash
 cd /home/ubuntu/deploy
-# Ensure .env has SEED_MODE=production, SEED_TENANTS, etc.
-
-docker compose -f docker-compose.prod.yml run --rm prod_api pnpm prisma:seed
+gunzip -c /home/ubuntu/backups/<backup-file>.sql.gz | \
+  docker compose exec -T prod_db psql -U postgres -d ims
 ```
 
-**Production seed creates:**
+(Use `dev_db` instead of `prod_db` on staging.)
 
-- System tenant + platform admin
-- Minimal tenants from `SEED_TENANTS` (format: `slug:Name` or `slug:Name:password`)
-- Default CRM pipeline
+---
 
-**Skips:** test1, test2, Ruby demo tenants with full products/sales data.
+## Offsite backups (S3)
+
+Nightly **offsite** sync is optional. Scripts live in each deploy folder: `setup-backups.sh` (one-time) and `backup-s3.sh` (actual sync).
+
+### Prerequisites
+
+- EC2 **IAM instance profile** with permission to write to the backup bucket (e.g. Terraform attaches `ims-ec2-backup-profile`).
+- **S3 bucket** (default name: `ims-shaman-backups`, override with `BACKUPS_BUCKET`).
+- **Region** defaults to `ap-south-1` (`AWS_DEFAULT_REGION`).
+
+### One-time setup (dev or prod)
+
+```bash
+cd /home/ubuntu/deploy
+./setup-backups.sh
+```
+
+This installs `awscli` if needed, runs `aws sts get-caller-identity`, chmods `backup-s3.sh`, and adds a **daily cron at 02:00** that logs to `/home/ubuntu/backups/s3-sync.log`.
+
+**Test immediately:**
+
+```bash
+cd /home/ubuntu/deploy
+BACKUPS_BUCKET=ims-shaman-backups ./backup-s3.sh
+tail -f /home/ubuntu/backups/s3-sync.log   # after first cron run
+```
+
+### What `backup-s3.sh` uploads
+
+| Prefix (under bucket)     | Contents                                                                                                       |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `dev/db/` or `prod/db/`   | Everything under `/home/ubuntu/backups/` except `s3-sync.log` (`aws s3 sync` with `--delete`)                  |
+| `prod/uploads/`           | Docker volume **`prod_uploads`** (API file uploads) — **prod script only**                                     |
+| `dev/env/` or `prod/env/` | Timestamped copy of `/home/ubuntu/deploy/.env` (`.env.YYYYMMDD-HHMMSS`); keeps last **30** env snapshots in S3 |
+
+**Dev** `backup-s3.sh` syncs **DB dumps + `.env` only** (no uploads volume).
+
+**Prod** `backup-s3.sh` additionally syncs the **`prod_uploads`** named volume mount (resolves `deploy_prod_uploads` or any `*prod_uploads` volume).
+
+### Environment overrides (optional)
+
+You can set these when running the script or in the cron line (see `setup-backups.sh`):
+
+| Variable             | Default              | Purpose                 |
+| -------------------- | -------------------- | ----------------------- |
+| `BACKUPS_BUCKET`     | `ims-shaman-backups` | Target S3 bucket        |
+| `AWS_DEFAULT_REGION` | `ap-south-1`         | AWS region for CLI / S3 |
+
+---
+
+## Environment Variables
+
+Every var consumed by the API is documented in `.env.example`. Critical vars that cause an **immediate API exit** if missing in staging/production:
+
+| Variable         | Description                                                     |
+| ---------------- | --------------------------------------------------------------- |
+| `DATABASE_URL`   | Prisma connection string — host must be the docker service name |
+| `JWT_SECRET`     | Auth token signing key                                          |
+| `CORS_ORIGIN`    | Allowed CORS origin (must match the web domain)                 |
+| `API_PUBLIC_URL` | Public API base URL (Swagger + media links for Messenger)       |
+
+**Facebook Messenger specific:**
+
+| Variable                    | Description                                      |
+| --------------------------- | ------------------------------------------------ |
+| `META_APP_ID`               | Meta App ID from the App Dashboard               |
+| `META_APP_SECRET`           | Verifies `X-Hub-Signature-256` on webhook POSTs  |
+| `CREDENTIAL_ENCRYPTION_KEY` | AES-256-GCM key for stored channel access tokens |
+
+**Database seed (`.env` on EC2):**
+
+| Variable                       | Description                                                                                                                       |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------- |
+| `SEED_PLATFORM_ADMIN_PASSWORD` | **Required** for `./seed.sh` — platform admin password                                                                            |
+| `SEED_PLATFORM_ADMIN_USERNAME` | Optional (default `platform`)                                                                                                     |
+| `SEED_TENANT_PASSWORD`         | Default admin password for minimal tenants when the list omits `:password` (optional; script defaults to `ChangeMe123!` if unset) |
+
+`SEED_MODE`, `SEED_PROFILE`, and `SEED_TENANTS` are **not** used by `./seed.sh`; they apply only to legacy `pnpm prisma:seed` / local runs.
+
+**S3 offsite backup (EC2 host / cron only — not consumed by the API):**
+
+| Variable             | Default              | Description                                                                 |
+| -------------------- | -------------------- | --------------------------------------------------------------------------- |
+| `BACKUPS_BUCKET`     | `ims-shaman-backups` | Set in cron by `setup-backups.sh` or override when testing `./backup-s3.sh` |
+| `AWS_DEFAULT_REGION` | `ap-south-1`         | Region for `aws s3 sync` / `aws s3 cp`                                      |
+
+---
 
 ## Troubleshooting
 
-- **Containers exit**: Run `docker compose -f docker-compose.dev.yml logs` (or prod) and fix `.env` (e.g. wrong `DATABASE_URL`).
-- **Watchtower can’t pull**: Ensure `docker login` was run on that EC2 and the repo is public or the token has pull permission.
-- **Network not found**: Start the app stack first (`docker-compose.dev.yml` or `docker-compose.prod.yml`), then start the watchtower compose so the `deploy_dev` / `deploy_prod` network exists.
-- **Nginx 502 Bad Gateway**: Ensure Docker containers are running (`docker ps`) and listening on `localhost:3000` (web) and `localhost:4000` (api).
-- **Certbot fails**: Ensure DNS A records are correct and pointing to the EC2 instance's public IP. Wait a few minutes after DNS changes.
-- **301 redirect loop (e.g. behind Cloudflare)**: If the site is behind Cloudflare (or another proxy), the proxy sends HTTPS traffic to your server as HTTP. Nginx then redirects to HTTPS again, so the browser gets a 301 to the same URL and loops. Fix: use the updated `nginx-stage.conf` / `nginx-prod.conf` from this repo (they only redirect when `X-Forwarded-Proto` is not `https`). If certbot already modified your config, add at the top of the `http` block (in `/etc/nginx/nginx.conf` or in the same file): `map $http_x_forwarded_proto $forwarded_proto { default $http_x_forwarded_proto; '' $scheme; }` and in each **port 80** `server` block replace the line `return 301 https://...` with: `if ($forwarded_proto != "https") { return 301 https://$host$request_uri; }` and use `proxy_set_header X-Forwarded-Proto $forwarded_proto;` in `location /`. Then `sudo nginx -t && sudo systemctl reload nginx`.
+| Symptom                         | Fix                                                                                                                                                                |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Containers exit on start        | `./logs.sh api` — check for missing env vars in `.env`                                                                                                             |
+| API returns 401 on webhook POST | `META_APP_SECRET` wrong/missing, or `proxy_request_buffering` is on — re-run `sudo ./setup-nginx.sh`                                                               |
+| Socket.IO connections fail      | Check `location /ws/` has `Upgrade`/`Connection` headers in nginx; `./logs.sh api -f` for errors                                                                   |
+| Uploads > 1MB return 413        | nginx `client_max_body_size` not applied — re-run `sudo ./setup-nginx.sh`                                                                                          |
+| Watchtower can't pull images    | Run `docker login` on the EC2 instance                                                                                                                             |
+| Nginx 502 Bad Gateway           | Containers not running on `localhost:3000`/`4000` — check `./status.sh`                                                                                            |
+| 301 redirect loop (Cloudflare)  | nginx uses `X-Forwarded-Proto` to avoid double-redirect; set Cloudflare to "Full" SSL mode                                                                         |
+| Certbot fails                   | DNS A records must point to this EC2's public IP before certbot runs                                                                                               |
+| `Network ims-dev not found`     | Run `./up.sh` first to create the network, then Watchtower connects to it                                                                                          |
+| S3 backup / `aws` errors        | Ensure IAM instance profile is attached; run `aws sts get-caller-identity`. Check `tail -f /home/ubuntu/backups/s3-sync.log`                                       |
+| `prod_uploads` not syncing      | **Prod:** stack must have created the volume; run `./backup-s3.sh` after `./up.sh`. Volume name may differ — script tries `deploy_prod_uploads` or `*prod_uploads` |
+
+---
+
+## Full Deployment Guide
+
+See [docs/SERVER-DEPLOYMENT.md](../docs/SERVER-DEPLOYMENT.md) for CI/CD pipeline details, rollback procedures, and infra setup.

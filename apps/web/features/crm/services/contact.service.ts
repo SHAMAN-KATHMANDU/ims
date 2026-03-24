@@ -13,6 +13,8 @@ export interface Contact {
   lastName?: string | null;
   email?: string | null;
   phone?: string | null;
+  gender?: string | null;
+  birthDate?: string | null;
   companyId?: string | null;
   memberId?: string | null;
   source?: string | null;
@@ -121,6 +123,8 @@ export interface CreateContactData {
   lastName?: string;
   email?: string;
   phone?: string;
+  gender?: string | null;
+  birthDate?: string | null;
   companyId?: string;
   memberId?: string;
   tagIds?: string[];
@@ -133,6 +137,8 @@ export interface UpdateContactData {
   lastName?: string;
   email?: string;
   phone?: string;
+  gender?: string | null;
+  birthDate?: string | null;
   companyId?: string;
   memberId?: string;
   tagIds?: string[];

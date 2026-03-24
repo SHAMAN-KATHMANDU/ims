@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
@@ -13,8 +14,7 @@ import taskService from "./task.service";
 class TaskController {
   create = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = CreateTaskSchema.parse(req.body);
       const task = await taskService.create(tenantId, body, userId);
       return res
@@ -37,7 +37,7 @@ class TaskController {
 
   getAll = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const result = await taskService.getAll(
         tenantId,
         req.query as Record<string, unknown>,
@@ -50,7 +50,7 @@ class TaskController {
 
   getById = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const task = await taskService.getById(tenantId, req.params.id);
       return res.status(200).json({ message: "OK", task });
     } catch (error: unknown) {
@@ -65,7 +65,7 @@ class TaskController {
 
   update = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = UpdateTaskSchema.parse(req.body);
       const task = await taskService.update(tenantId, req.params.id, body);
       return res
@@ -88,7 +88,7 @@ class TaskController {
 
   complete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const task = await taskService.complete(tenantId, req.params.id);
       return res.status(200).json({ message: "Task completed", task });
     } catch (error: unknown) {
@@ -103,7 +103,7 @@ class TaskController {
 
   bulkComplete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = BulkIdsSchema.parse(req.body);
       const result = await taskService.bulkComplete(tenantId, body.ids);
       return res
@@ -126,8 +126,7 @@ class TaskController {
 
   bulkDelete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = BulkIdsSchema.parse(req.body);
       const ip = typeof req.ip === "string" ? req.ip : undefined;
       const userAgent = req.get("user-agent");
@@ -157,8 +156,7 @@ class TaskController {
 
   delete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;

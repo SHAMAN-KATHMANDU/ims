@@ -23,8 +23,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useEnvFeatureFlag } from "@/features/flags";
+import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import {
   useAddContactNote,
   useDeleteContactNote,
@@ -93,7 +94,9 @@ export function ContactDetail({
   onClose: _onClose,
 }: ContactDetailProps) {
   const { toast } = useToast();
-  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
+  const dealsEnabled = envDealsEnabled && salesPipelinePlan;
 
   const [noteContent, setNoteContent] = useState("");
   const [logActivityType, setLogActivityType] = useState<
@@ -365,6 +368,16 @@ export function ContactDetail({
               {contact.phone}
             </a>
           )}
+          {contact.gender && (
+            <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-background border text-muted-foreground">
+              {contact.gender}
+            </span>
+          )}
+          {contact.birthDate && (
+            <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-background border text-muted-foreground">
+              Born {new Date(contact.birthDate).toLocaleDateString()}
+            </span>
+          )}
           {dealsEnabled && openDeal && (
             <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300">
               <Handshake className="h-3 w-3" />
@@ -587,7 +600,7 @@ export function ContactDetail({
                 !contact.journeyType &&
                 !contact.notes?.length &&
                 !(
-                  contact.deals?.length ||
+                  (dealsEnabled && contact.deals?.length) ||
                   contact.sales?.length ||
                   contact.tasks?.length
                 ) && (

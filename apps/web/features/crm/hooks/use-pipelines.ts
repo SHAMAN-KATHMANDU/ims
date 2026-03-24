@@ -4,11 +4,13 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   getPipelines,
   getPipelineById,
+  getPipelineTemplates,
   createPipeline,
   updatePipeline,
   deletePipeline,
   seedPipelineFramework,
   type PipelineStage,
+  type PipelineType,
   type GetPipelinesParams,
 } from "../services/pipeline.service";
 
@@ -16,6 +18,7 @@ export const pipelineKeys = {
   all: ["pipelines"] as const,
   lists: (params?: GetPipelinesParams) =>
     [...pipelineKeys.all, "list", params] as const,
+  templates: () => [...pipelineKeys.all, "templates"] as const,
   details: () => [...pipelineKeys.all, "detail"] as const,
   detail: (id: string) => [...pipelineKeys.details(), id] as const,
 };
@@ -24,6 +27,14 @@ export function usePipelines(params?: GetPipelinesParams) {
   return useQuery({
     queryKey: pipelineKeys.lists(params),
     queryFn: () => getPipelines(params),
+  });
+}
+
+export function usePipelineTemplates() {
+  return useQuery({
+    queryKey: pipelineKeys.templates(),
+    queryFn: () => getPipelineTemplates(),
+    staleTime: 60 * 60 * 1000,
   });
 }
 
@@ -40,8 +51,11 @@ export function useCreatePipeline() {
   return useMutation({
     mutationFn: (data: {
       name: string;
+      type?: PipelineType;
       stages?: PipelineStage[];
       isDefault?: boolean;
+      closedWonStageName?: string | null;
+      closedLostStageName?: string | null;
     }) => createPipeline(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: pipelineKeys.lists() }),
   });
@@ -55,7 +69,13 @@ export function useUpdatePipeline() {
       data,
     }: {
       id: string;
-      data: { name?: string; stages?: PipelineStage[]; isDefault?: boolean };
+      data: {
+        name?: string;
+        stages?: PipelineStage[];
+        isDefault?: boolean;
+        closedWonStageName?: string | null;
+        closedLostStageName?: string | null;
+      };
     }) => updatePipeline(id, data),
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: pipelineKeys.lists() });

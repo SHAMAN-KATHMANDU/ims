@@ -26,6 +26,8 @@ export const UpdateDealSchema = CreateDealSchema.partial().extend({
 
 export const UpdateDealStageSchema = z.object({
   stage: z.string().min(1, "Stage is required"),
+  /** When set and different from the deal’s current pipeline, moves the deal to this pipeline and the given stage. */
+  pipelineId: z.string().uuid().optional(),
 });
 
 export const AddDealLineItemSchema = z.object({

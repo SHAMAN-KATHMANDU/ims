@@ -9,9 +9,11 @@ import workflowRepository from "./workflow.repository";
 import taskRepository from "@/modules/tasks/task.repository";
 import notificationRepository from "@/modules/notifications/notification.repository";
 import dealRepository from "@/modules/deals/deal.repository";
+import contactRepository from "@/modules/contacts/contact.repository";
 import activityRepository from "@/modules/activities/activity.repository";
 import { parseActionConfig } from "./workflow.schema";
 import { logger } from "@/config/logger";
+import { shouldSkipWorkflowRules } from "./workflow-execution-context";
 
 export interface DealContext {
   id: string;
@@ -21,6 +23,7 @@ export interface DealContext {
   status: string;
   contactId: string | null;
   memberId: string | null;
+  companyId: string | null;
   assignedToId: string;
   createdById: string;
 }
@@ -30,6 +33,11 @@ export interface WorkflowEvent {
   deal: DealContext;
   previousStage?: string;
   userId?: string;
+}
+
+export interface ExecuteWorkflowRulesOptions {
+  /** Load rules for this pipeline instead of `event.deal.pipelineId` (e.g. STAGE_EXIT on source pipeline before cross-pipeline move). */
+  rulesPipelineId?: string;
 }
 
 const UUID_REGEX =
@@ -48,10 +56,25 @@ function resolveStageName(stages: unknown, triggerStageId: string): string {
 
 export async function executeWorkflowRules(
   event: WorkflowEvent,
+  options?: ExecuteWorkflowRulesOptions,
 ): Promise<void> {
+  if (shouldSkipWorkflowRules()) {
+    logger.warn(
+      "Skipping workflow rules: max nesting depth reached",
+      undefined,
+      {
+        dealId: event.deal.id,
+        tenantId: event.deal.tenantId,
+        trigger: event.trigger,
+      },
+    );
+    return;
+  }
+
+  const rulesPipelineId = options?.rulesPipelineId ?? event.deal.pipelineId;
   const rules = await workflowRepository.findActiveRulesByPipeline(
     event.deal.tenantId,
-    event.deal.pipelineId,
+    rulesPipelineId,
   );
 
   for (const rule of rules) {
@@ -136,6 +159,41 @@ async function executeAction(
       dueDate.setDate(dueDate.getDate() + dueDateDays);
       const assigneeId = c.assigneeId ?? deal.assignedToId;
 
+      let dealIdForTask: string | null = deal.id;
+      const link = c.taskDealLink;
+      if (link?.mode === "OPEN_DEAL_IN_PIPELINE") {
+        if (!deal.contactId) {
+          logger.warn(
+            "CREATE_TASK OPEN_DEAL_IN_PIPELINE skipped: deal has no contact",
+            undefined,
+            { dealId: deal.id, tenantId: deal.tenantId },
+          );
+          dealIdForTask = null;
+        } else {
+          const open =
+            await dealRepository.findLatestOpenDealForContactInPipeline(
+              deal.tenantId,
+              deal.contactId,
+              link.targetPipelineId,
+              link.stageName ?? null,
+            );
+          if (!open) {
+            logger.warn(
+              "CREATE_TASK OPEN_DEAL_IN_PIPELINE: no matching open deal; task created without deal",
+              undefined,
+              {
+                contactId: deal.contactId,
+                pipelineId: link.targetPipelineId,
+                tenantId: deal.tenantId,
+              },
+            );
+            dealIdForTask = null;
+          } else {
+            dealIdForTask = open.id;
+          }
+        }
+      }
+
       await taskRepository.create(
         deal.tenantId,
         {
@@ -143,7 +201,8 @@ async function executeAction(
           dueDate: dueDate.toISOString(),
           contactId: deal.contactId,
           memberId: deal.memberId,
-          dealId: deal.id,
+          dealId: dealIdForTask,
+          companyId: c.companyId ?? deal.companyId ?? null,
           assignedToId: assigneeId,
         },
         assigneeId,
@@ -170,7 +229,16 @@ async function executeAction(
 
     case "MOVE_STAGE": {
       const c = config as ActionConfigMap["MOVE_STAGE"];
-      await dealRepository.updateStage(deal.id, c.targetStageId, deal.tenantId);
+      const { default: dealService } =
+        await import("@/modules/deals/deal.service");
+      const actorUserId = event.userId ?? deal.createdById ?? deal.assignedToId;
+      await dealService.updateStageFromAutomation(
+        deal.tenantId,
+        deal.id,
+        c.targetStageId,
+        actorUserId,
+        c.targetPipelineId,
+      );
       break;
     }
 
@@ -218,6 +286,103 @@ async function executeAction(
         dealId: deal.id,
         createdById: deal.createdById,
       });
+      break;
+    }
+
+    case "CREATE_DEAL": {
+      const c = config as ActionConfigMap["CREATE_DEAL"];
+      const pipeline = await dealRepository.findDefaultPipeline(
+        deal.tenantId,
+        c.pipelineId,
+      );
+      if (!pipeline || pipeline.id !== c.pipelineId) {
+        logger.warn(
+          "CREATE_DEAL skipped: pipeline not found or mismatch",
+          undefined,
+          {
+            tenantId: deal.tenantId,
+            pipelineId: c.pipelineId,
+          },
+        );
+        break;
+      }
+      const stages = pipeline.stages;
+      let stageName: string;
+      let probability = 0;
+      if (c.stageId) {
+        stageName = resolveStageName(stages, c.stageId);
+        const isUuid = UUID_REGEX.test(c.stageId);
+        const row = Array.isArray(stages)
+          ? (
+              stages as Array<{
+                id?: string;
+                name: string;
+                probability?: number;
+              }>
+            ).find((s) => (isUuid ? s.id === c.stageId : s.name === stageName))
+          : undefined;
+        probability = Number(row?.probability ?? 0);
+      } else if (Array.isArray(stages) && stages.length > 0) {
+        const first = stages[0] as { name: string; probability?: number };
+        stageName = String(first.name);
+        probability = Number(first.probability ?? 0);
+      } else {
+        stageName = "Qualification";
+      }
+      const { default: dealService } =
+        await import("@/modules/deals/deal.service");
+      const actorUserId = event.userId ?? deal.createdById;
+      await dealService.create(
+        deal.tenantId,
+        {
+          name: c.title?.trim() || "New deal",
+          value: 0,
+          stage: stageName,
+          probability: Number.isFinite(probability)
+            ? Math.min(100, Math.max(0, probability))
+            : 0,
+          contactId: deal.contactId,
+          memberId: deal.memberId,
+          pipelineId: pipeline.id,
+          assignedToId: deal.assignedToId,
+        },
+        actorUserId,
+      );
+      break;
+    }
+
+    case "UPDATE_CONTACT_FIELD": {
+      const c = config as ActionConfigMap["UPDATE_CONTACT_FIELD"];
+      if (!deal.contactId) break;
+      const patch =
+        c.field === "source" ? { source: c.value } : { journeyType: c.value };
+      await contactRepository.updateContactByWorkflow(
+        deal.tenantId,
+        deal.contactId,
+        patch,
+      );
+      break;
+    }
+
+    case "APPLY_TAG": {
+      const c = config as ActionConfigMap["APPLY_TAG"];
+      if (!deal.contactId) break;
+      await contactRepository.linkExistingTagToContact(
+        deal.tenantId,
+        deal.contactId,
+        c.tag.trim(),
+      );
+      break;
+    }
+
+    case "REMOVE_TAG": {
+      const c = config as ActionConfigMap["REMOVE_TAG"];
+      if (!deal.contactId) break;
+      await contactRepository.unlinkTagFromContact(
+        deal.tenantId,
+        deal.contactId,
+        c.tag.trim(),
+      );
       break;
     }
 
