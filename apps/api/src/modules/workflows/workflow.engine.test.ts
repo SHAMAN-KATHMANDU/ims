@@ -3,15 +3,24 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mockFindActiveRulesByPipeline = vi.fn();
 const mockTaskCreate = vi.fn();
 const mockNotificationCreate = vi.fn();
-const mockDealUpdateStage = vi.fn();
 const mockDealUpdate = vi.fn();
 const mockActivityCreate = vi.fn();
+const mockUpdateStageFromAutomation = vi.fn();
+
+const { mockShouldSkipWorkflowRules } = vi.hoisted(() => ({
+  mockShouldSkipWorkflowRules: vi.fn().mockReturnValue(false),
+}));
 
 vi.mock("./workflow.repository", () => ({
   default: {
     findActiveRulesByPipeline: (...args: unknown[]) =>
       mockFindActiveRulesByPipeline(...args),
   },
+}));
+vi.mock("./workflow-execution-context", () => ({
+  shouldSkipWorkflowRules: () => mockShouldSkipWorkflowRules(),
+  MAX_WORKFLOW_NESTING_DEPTH: 5,
+  runWithIncreasedWorkflowNestingDepth: async <T>(fn: () => Promise<T>) => fn(),
 }));
 vi.mock("@/modules/tasks/task.repository", () => ({
   default: { create: (...args: unknown[]) => mockTaskCreate(...args) },
@@ -21,15 +30,20 @@ vi.mock("@/modules/notifications/notification.repository", () => ({
 }));
 vi.mock("@/modules/deals/deal.repository", () => ({
   default: {
-    updateStage: (...args: unknown[]) => mockDealUpdateStage(...args),
     update: (...args: unknown[]) => mockDealUpdate(...args),
+  },
+}));
+vi.mock("@/modules/deals/deal.service", () => ({
+  default: {
+    updateStageFromAutomation: (...args: unknown[]) =>
+      mockUpdateStageFromAutomation(...args),
   },
 }));
 vi.mock("@/modules/activities/activity.repository", () => ({
   default: { create: (...args: unknown[]) => mockActivityCreate(...args) },
 }));
 vi.mock("@/config/logger", () => ({
-  logger: { error: vi.fn() },
+  logger: { error: vi.fn(), warn: vi.fn() },
 }));
 
 import { executeWorkflowRules } from "./workflow.engine";
@@ -42,6 +56,7 @@ const baseDeal = {
   status: "OPEN",
   contactId: "c1",
   memberId: null,
+  companyId: null as string | null,
   assignedToId: "u1",
   createdById: "u1",
 };
@@ -63,7 +78,7 @@ describe("WorkflowEngine", () => {
       expect(mockFindActiveRulesByPipeline).toHaveBeenCalledWith("t1", "p1");
       expect(mockTaskCreate).not.toHaveBeenCalled();
       expect(mockNotificationCreate).not.toHaveBeenCalled();
-      expect(mockDealUpdateStage).not.toHaveBeenCalled();
+      expect(mockUpdateStageFromAutomation).not.toHaveBeenCalled();
       expect(mockActivityCreate).not.toHaveBeenCalled();
     });
 
@@ -156,15 +171,94 @@ describe("WorkflowEngine", () => {
           workflow: { pipeline: { stages: [] } },
         },
       ]);
-      mockDealUpdateStage.mockResolvedValue({});
+      mockUpdateStageFromAutomation.mockResolvedValue(undefined);
 
       await executeWorkflowRules({
         trigger: "STAGE_ENTER",
         deal: { ...baseDeal, stage: "Proposal" },
         previousStage: "Qualification",
+        userId: "u1",
       });
 
-      expect(mockDealUpdateStage).toHaveBeenCalledWith("deal-1", "Won", "t1");
+      expect(mockUpdateStageFromAutomation).toHaveBeenCalledWith(
+        "t1",
+        "deal-1",
+        "Won",
+        "u1",
+        undefined,
+      );
+    });
+
+    it("executes MOVE_STAGE with targetPipelineId", async () => {
+      mockFindActiveRulesByPipeline.mockResolvedValue([
+        {
+          id: "r1",
+          trigger: "STAGE_ENTER",
+          triggerStageId: "Proposal",
+          action: "MOVE_STAGE",
+          actionConfig: {
+            targetStageId: "Lead",
+            targetPipelineId: "550e8400-e29b-41d4-a716-446655440002",
+          },
+          workflow: { pipeline: { stages: [] } },
+        },
+      ]);
+      mockUpdateStageFromAutomation.mockResolvedValue(undefined);
+
+      await executeWorkflowRules({
+        trigger: "STAGE_ENTER",
+        deal: { ...baseDeal, stage: "Proposal" },
+        previousStage: "Qualification",
+        userId: "u1",
+      });
+
+      expect(mockUpdateStageFromAutomation).toHaveBeenCalledWith(
+        "t1",
+        "deal-1",
+        "Lead",
+        "u1",
+        "550e8400-e29b-41d4-a716-446655440002",
+      );
+    });
+
+    it("loads rules from rulesPipelineId when provided", async () => {
+      mockFindActiveRulesByPipeline.mockResolvedValue([]);
+
+      await executeWorkflowRules(
+        {
+          trigger: "STAGE_EXIT",
+          deal: baseDeal,
+          previousStage: "Lead",
+          userId: "u1",
+        },
+        { rulesPipelineId: "p-source" },
+      );
+
+      expect(mockFindActiveRulesByPipeline).toHaveBeenCalledWith(
+        "t1",
+        "p-source",
+      );
+    });
+
+    it("does not load rules when max workflow nesting depth is reached", async () => {
+      mockShouldSkipWorkflowRules.mockReturnValueOnce(true);
+      mockFindActiveRulesByPipeline.mockResolvedValue([
+        {
+          id: "r1",
+          trigger: "DEAL_CREATED",
+          triggerStageId: null,
+          action: "CREATE_TASK",
+          actionConfig: { taskTitle: "Task", dueDateDays: 1 },
+        },
+      ]);
+
+      await executeWorkflowRules({
+        trigger: "DEAL_CREATED",
+        deal: baseDeal,
+      });
+
+      expect(mockFindActiveRulesByPipeline).not.toHaveBeenCalled();
+      expect(mockTaskCreate).not.toHaveBeenCalled();
     });
 
     it("matches STAGE_ENTER when triggerStageId is stage ID and pipeline stages resolve to name", async () => {

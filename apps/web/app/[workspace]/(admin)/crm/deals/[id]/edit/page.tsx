@@ -62,6 +62,7 @@ export default function EditDealPage() {
               defaultValues={{
                 name: deal.name,
                 value: Number(deal.value),
+                pipelineId: deal.pipelineId,
                 stage: deal.stage,
                 probability: deal.probability,
                 expectedCloseDate: deal.expectedCloseDate

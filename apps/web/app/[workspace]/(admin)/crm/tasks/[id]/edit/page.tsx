@@ -76,7 +76,10 @@ export default function EditTaskPage() {
                   : "",
                 contactId: task.contactId ?? undefined,
                 dealId: task.dealId ?? undefined,
+                companyId: task.companyId ?? undefined,
                 assignedToId: task.assignedToId ?? undefined,
+                priority: task.priority,
+                status: task.status,
               }}
               onSubmit={handleSubmit}
               onCancel={() => router.push(`${basePath}/crm/tasks`)}

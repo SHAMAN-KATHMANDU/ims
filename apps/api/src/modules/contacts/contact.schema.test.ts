@@ -25,6 +25,16 @@ describe("CreateContactSchema", () => {
     expect(result.email).toBe("john@example.com");
   });
 
+  it("accepts optional profile fields", () => {
+    const result = CreateContactSchema.parse({
+      firstName: "Jane",
+      gender: "Female",
+      birthDate: "1990-05-15",
+    });
+    expect(result.gender).toBe("Female");
+    expect(result.birthDate).toBe("1990-05-15");
+  });
+
   it("rejects empty firstName", () => {
     expect(() => CreateContactSchema.parse({ firstName: "" })).toThrow();
   });

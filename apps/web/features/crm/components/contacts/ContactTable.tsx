@@ -18,6 +18,7 @@ interface ContactTableProps {
   contacts: Contact[];
   isLoading: boolean;
   basePath: string;
+  dealsEnabled: boolean;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -27,6 +28,7 @@ export function ContactTable({
   contacts,
   isLoading,
   basePath: _basePath,
+  dealsEnabled,
   onView,
   onEdit,
   onDelete,
@@ -52,7 +54,7 @@ export function ContactTable({
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Company</TableHead>
-                <TableHead>Deal Stage</TableHead>
+                {dealsEnabled && <TableHead>Deal Stage</TableHead>}
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -68,9 +70,11 @@ export function ContactTable({
                   <TableCell>
                     <Skeleton className="h-4 w-24" />
                   </TableCell>
-                  <TableCell>
-                    <Skeleton className="h-4 w-8" />
-                  </TableCell>
+                  {dealsEnabled && (
+                    <TableCell>
+                      <Skeleton className="h-4 w-8" />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Skeleton className="h-8 w-20 ml-auto" />
                   </TableCell>
@@ -107,7 +111,7 @@ export function ContactTable({
                 >
                   {fullName}
                 </button>
-                {openDealStage && (
+                {dealsEnabled && openDealStage && (
                   <Badge variant="outline" className="text-xs shrink-0">
                     {openDealStage}
                   </Badge>
@@ -190,7 +194,7 @@ export function ContactTable({
               <TableHead>Phone</TableHead>
               <TableHead>Company</TableHead>
               <TableHead>Tags</TableHead>
-              <TableHead>Deal Stage</TableHead>
+              {dealsEnabled && <TableHead>Deal Stage</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -214,15 +218,17 @@ export function ContactTable({
                   <TableCell>
                     {c.tagLinks?.map((l) => l.tag.name).join(", ") || "—"}
                   </TableCell>
-                  <TableCell>
-                    {openDealStage ? (
-                      <Badge variant="outline" className="text-xs">
-                        {openDealStage}
-                      </Badge>
-                    ) : (
-                      "—"
-                    )}
-                  </TableCell>
+                  {dealsEnabled && (
+                    <TableCell>
+                      {openDealStage ? (
+                        <Badge variant="outline" className="text-xs">
+                          {openDealStage}
+                        </Badge>
+                      ) : (
+                        "—"
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">
                     <Button
                       variant="ghost"

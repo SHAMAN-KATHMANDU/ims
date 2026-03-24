@@ -21,6 +21,7 @@ import {
 } from "../services/deal.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { contactKeys } from "./use-contacts";
+import { crmKeys } from "./use-crm";
 
 type DealsKanbanData = {
   pipeline: unknown;
@@ -83,6 +84,7 @@ export function useCreateDeal() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
       if (variables.contactId) {
         qc.invalidateQueries({
           queryKey: contactKeys.detail(variables.contactId),
@@ -99,8 +101,9 @@ export function useUpdateDeal() {
       updateDeal(id, data),
     onSuccess: (result, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
-      qc.invalidateQueries({ queryKey: dealKeys.kanban() });
+      qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
       qc.invalidateQueries({ queryKey: dealKeys.detail(variables.id) });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
       if (result?.deal?.id && result.deal.id !== variables.id) {
         qc.invalidateQueries({ queryKey: dealKeys.detail(result.deal.id) });
       }
@@ -114,15 +117,22 @@ export function useUpdateDealStage() {
     mutationFn: ({
       id,
       stage,
-      pipelineId: _pipelineId,
+      targetPipelineId,
     }: {
       id: string;
       stage: string;
-      pipelineId?: string;
-    }) => updateDealStage(id, stage),
-    onMutate: async ({ id, stage, pipelineId }) => {
-      if (!pipelineId) return undefined;
-      const queryKey = dealKeys.kanban(pipelineId);
+      /** Kanban board pipeline id (for optimistic updates on the active board). */
+      boardPipelineId?: string;
+      /** When set, API moves the deal to this pipeline (skip optimistic cross-board update). */
+      targetPipelineId?: string;
+    }) =>
+      updateDealStage(id, {
+        stage,
+        ...(targetPipelineId ? { pipelineId: targetPipelineId } : {}),
+      }),
+    onMutate: async ({ id, stage, boardPipelineId, targetPipelineId }) => {
+      if (targetPipelineId || !boardPipelineId) return undefined;
+      const queryKey = dealKeys.kanban(boardPipelineId);
       await qc.cancelQueries({ queryKey });
       const prev = qc.getQueryData<DealsKanbanData>(queryKey);
       if (!prev?.stages) return { prev, queryKey };
@@ -148,6 +158,7 @@ export function useUpdateDealStage() {
     onSettled: (data, _error, variables) => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
       if (variables?.id)
         qc.invalidateQueries({ queryKey: dealKeys.detail(variables.id) });
       if (data?.deal?.id && data.deal.id !== variables?.id)
@@ -163,6 +174,7 @@ export function useDeleteDeal() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }
@@ -175,6 +187,7 @@ export function useAddDealLineItem(dealId: string) {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }
@@ -187,6 +200,7 @@ export function useRemoveDealLineItem(dealId: string) {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }
@@ -199,6 +213,7 @@ export function useConvertDealToSale(dealId: string) {
       qc.invalidateQueries({ queryKey: dealKeys.detail(dealId) });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: [...dealKeys.all, "kanban"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
     },
   });
 }

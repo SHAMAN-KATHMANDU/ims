@@ -182,6 +182,54 @@ describe("DealRepository", () => {
       expect(result).toEqual(newDeal);
     });
 
+    it("uses updates.pipelineId on new revision when provided", async () => {
+      const parent = {
+        id: "parent-1",
+        tenantId: "t1",
+        name: "Deal",
+        value: 100,
+        stage: "Lead",
+        probability: 50,
+        status: "OPEN" as const,
+        expectedCloseDate: null,
+        closedAt: null,
+        lostReason: null,
+        contactId: null,
+        memberId: null,
+        companyId: null,
+        pipelineId: "p1",
+        assignedToId: "u1",
+        createdById: "u1",
+        leadId: null,
+        revisionNo: 1,
+        lineItems: [] as [],
+      };
+      const newDeal = { id: "new-1", pipelineId: "p2", revisionNo: 2 };
+      txDealFindFirst.mockResolvedValue(parent);
+      txDealUpdate.mockResolvedValue(undefined);
+      txDealCreate.mockResolvedValue(newDeal);
+
+      await dealRepository.createDealRevision(
+        "parent-1",
+        "t1",
+        {
+          pipelineId: "p2",
+          stage: "Qualification",
+        },
+        "u1",
+        null,
+      );
+
+      expect(txDealCreate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            pipelineId: "p2",
+            stage: "Qualification",
+          }),
+        }),
+      );
+    });
+
     it("returns null when parent deal not found", async () => {
       txDealFindFirst.mockResolvedValue(null);
 

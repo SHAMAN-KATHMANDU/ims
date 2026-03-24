@@ -1,11 +1,13 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import taskController from "./task.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const taskRouter = Router();
 
 taskRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+taskRouter.use(enforcePlanFeature("salesPipeline"));
 
 /**
  * @swagger

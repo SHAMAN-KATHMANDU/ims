@@ -38,6 +38,9 @@ import {
   type PaginationState,
 } from "@/components/ui/data-table-pagination";
 import { downloadBlob } from "@/lib/downloadBlob";
+import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
+import { Feature } from "@repo/shared";
 import { ContactTable } from "./ContactTable";
 import { ContactDetail } from "./ContactDetail";
 import { ContactForm } from "./ContactForm";
@@ -64,6 +67,9 @@ export function ContactsPage() {
   const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isDesktop = useIsDesktop();
+  const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
+  const dealsEnabled = envDealsEnabled && salesPipelinePlan;
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -185,6 +191,14 @@ export function ContactsPage() {
       : "";
   const dealCount = contactToDelete?.deals?.length ?? 0;
   const taskCount = contactToDelete?.tasks?.length ?? 0;
+  const deleteImpactSummary = (() => {
+    const parts: string[] = [];
+    if (dealsEnabled) {
+      parts.push(`${dealCount} deal${dealCount !== 1 ? "s" : ""}`);
+    }
+    parts.push(`${taskCount} task${taskCount !== 1 ? "s" : ""}`);
+    return parts.join(" and ");
+  })();
   const canConfirmDelete =
     deleteConfirmStep === 2 &&
     deleteConfirmName.trim().toLowerCase() ===
@@ -340,6 +354,7 @@ export function ContactsPage() {
         contacts={contacts}
         isLoading={isLoading}
         basePath={basePath}
+        dealsEnabled={dealsEnabled}
         onView={openView}
         onEdit={openEdit}
         onDelete={(id) => openDeleteDialog(id)}
@@ -438,9 +453,8 @@ export function ContactsPage() {
                 <>
                   Are you sure you want to delete{" "}
                   <strong>{contactDisplayName || "this contact"}</strong>? This
-                  will affect {dealCount} deal{dealCount !== 1 ? "s" : ""} and{" "}
-                  {taskCount} task{taskCount !== 1 ? "s" : ""}. Incomplete tasks
-                  will be marked as done.
+                  will affect {deleteImpactSummary}. Incomplete tasks will be
+                  marked as done.
                 </>
               ) : (
                 <>

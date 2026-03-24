@@ -1,12 +1,23 @@
 import { z } from "zod";
 
+const TaskPrioritySchema = z.enum(["LOW", "MEDIUM", "HIGH"]);
+const TaskWorkflowStatusSchema = z.enum([
+  "OPEN",
+  "IN_PROGRESS",
+  "DONE",
+  "CANCELLED",
+]);
+
 export const CreateTaskSchema = z.object({
   title: z.string().min(1, "Task title is required").max(255),
   dueDate: z.string().optional().nullable(),
   contactId: z.string().uuid().optional().nullable(),
   memberId: z.string().uuid().optional().nullable(),
   dealId: z.string().uuid().optional().nullable(),
+  companyId: z.string().uuid().optional().nullable(),
   assignedToId: z.string().uuid().optional().nullable(),
+  priority: TaskPrioritySchema.optional(),
+  status: TaskWorkflowStatusSchema.optional(),
 });
 
 export const UpdateTaskSchema = CreateTaskSchema.partial().extend({

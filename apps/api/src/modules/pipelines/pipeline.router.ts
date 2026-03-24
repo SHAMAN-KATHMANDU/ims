@@ -83,6 +83,24 @@ pipelineRouter.get("/", asyncHandler(pipelineController.getAll));
 
 /**
  * @swagger
+ * /pipelines/templates:
+ *   get:
+ *     summary: List CRM pipeline templates (metadata and stage definitions)
+ *     description: Read-only catalog for onboarding; create pipelines via POST /pipelines with stages from a template.
+ *     tags: [Pipelines]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Template list
+ */
+pipelineRouter.get(
+  "/templates",
+  asyncHandler(pipelineController.listTemplates),
+);
+
+/**
+ * @swagger
  * /pipelines/{id}:
  *   get:
  *     summary: Get pipeline by ID

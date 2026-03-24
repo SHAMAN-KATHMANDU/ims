@@ -1,11 +1,13 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import crmController from "./crm.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const crmRouter = Router();
 
 crmRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+crmRouter.use(enforcePlanFeature("salesPipeline"));
 
 /**
  * @swagger

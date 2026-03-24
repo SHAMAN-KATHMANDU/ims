@@ -168,6 +168,35 @@ export class DealRepository {
     });
   }
 
+  async getPipelineClosingStageNames(pipelineId: string, tenantId: string) {
+    return prisma.pipeline.findFirst({
+      where: { id: pipelineId, tenantId, deletedAt: null },
+      select: { closedWonStageName: true, closedLostStageName: true },
+    });
+  }
+
+  /** Latest open deal for a contact in a pipeline (optional stage filter). */
+  async findLatestOpenDealForContactInPipeline(
+    tenantId: string,
+    contactId: string,
+    pipelineId: string,
+    stageName?: string | null,
+  ) {
+    return prisma.deal.findFirst({
+      where: {
+        tenantId,
+        contactId,
+        pipelineId,
+        status: "OPEN",
+        deletedAt: null,
+        isLatest: true,
+        ...(stageName ? { stage: stageName } : {}),
+      },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    });
+  }
+
   async findDefaultPipeline(tenantId: string, pipelineId?: string | null) {
     if (pipelineId) {
       const byId = await prisma.pipeline.findFirst({
@@ -343,6 +372,10 @@ export class DealRepository {
           ? (updates.companyId ?? null)
           : parent.companyId;
       const assignedToId = updates.assignedToId ?? parent.assignedToId;
+      const pipelineId =
+        updates.pipelineId !== undefined && updates.pipelineId !== null
+          ? updates.pipelineId
+          : parent.pipelineId;
 
       await tx.deal.update({
         where: { id: parentDealId },
@@ -363,7 +396,7 @@ export class DealRepository {
           contactId,
           memberId,
           companyId,
-          pipelineId: parent.pipelineId,
+          pipelineId,
           assignedToId,
           createdById: parent.createdById,
           leadId: parent.leadId,

@@ -150,7 +150,7 @@ export function DealsKanbanPage() {
       updateStageMutation.mutate({
         id: dealId,
         stage: newStage,
-        pipelineId: pipelineId || undefined,
+        boardPipelineId: pipelineId || undefined,
       });
     },
     [updateStageMutation, pipelineId],
@@ -519,6 +519,7 @@ export function DealsKanbanPage() {
             defaultValues={{
               name: selectedDealData.deal.name,
               value: Number(selectedDealData.deal.value),
+              pipelineId: selectedDealData.deal.pipelineId,
               stage: selectedDealData.deal.stage,
               probability: selectedDealData.deal.probability,
               expectedCloseDate: selectedDealData.deal.expectedCloseDate
@@ -923,14 +924,33 @@ function EditPipelineDialog({
 }) {
   const [name, setName] = useState(pipeline.name);
   const [isDefault, setIsDefault] = useState(pipeline.isDefault);
+  const [closedWonStageName, setClosedWonStageName] = useState(
+    () => pipeline.closedWonStageName ?? "",
+  );
+  const [closedLostStageName, setClosedLostStageName] = useState(
+    () => pipeline.closedLostStageName ?? "",
+  );
   const updatePipeline = useUpdatePipeline();
 
   useEffect(() => {
     if (open) {
       setName(pipeline.name);
       setIsDefault(pipeline.isDefault);
+      setClosedWonStageName(pipeline.closedWonStageName ?? "");
+      setClosedLostStageName(pipeline.closedLostStageName ?? "");
     }
-  }, [open, pipeline.name, pipeline.isDefault]);
+  }, [
+    open,
+    pipeline.name,
+    pipeline.isDefault,
+    pipeline.closedWonStageName,
+    pipeline.closedLostStageName,
+  ]);
+
+  const stageNames = useMemo(
+    () => normalizeStages(pipeline.stages).map((s) => s.name),
+    [pipeline.stages],
+  );
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
@@ -938,7 +958,19 @@ function EditPipelineDialog({
       const trimmed = name.trim();
       if (!trimmed) return;
       updatePipeline.mutate(
-        { id: pipeline.id, data: { name: trimmed, isDefault } },
+        {
+          id: pipeline.id,
+          data: {
+            name: trimmed,
+            isDefault,
+            closedWonStageName: closedWonStageName.trim()
+              ? closedWonStageName.trim()
+              : null,
+            closedLostStageName: closedLostStageName.trim()
+              ? closedLostStageName.trim()
+              : null,
+          },
+        },
         {
           onSuccess: () => {
             onSuccess();
@@ -947,7 +979,16 @@ function EditPipelineDialog({
         },
       );
     },
-    [pipeline.id, name, isDefault, updatePipeline, onSuccess, onOpenChange],
+    [
+      pipeline.id,
+      name,
+      isDefault,
+      closedWonStageName,
+      closedLostStageName,
+      updatePipeline,
+      onSuccess,
+      onOpenChange,
+    ],
   );
 
   return (
@@ -956,7 +997,8 @@ function EditPipelineDialog({
         <DialogHeader>
           <DialogTitle>Edit pipeline</DialogTitle>
           <DialogDescription>
-            Change the pipeline name or default setting.
+            Change the pipeline name, default setting, or which stage name is
+            set when a deal is marked won/lost (optional).
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -968,6 +1010,52 @@ function EditPipelineDialog({
               onChange={(e) => setName(e.target.value)}
               placeholder="Pipeline name"
             />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="edit-pipeline-won-stage">Closed won stage</Label>
+              <Select
+                value={closedWonStageName || "__none__"}
+                onValueChange={(v) =>
+                  setClosedWonStageName(v === "__none__" ? "" : v)
+                }
+              >
+                <SelectTrigger id="edit-pipeline-won-stage">
+                  <SelectValue placeholder="No auto stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No auto stage</SelectItem>
+                  {stageNames.map((sn) => (
+                    <SelectItem key={`won-${sn}`} value={sn}>
+                      {sn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-pipeline-lost-stage">
+                Closed lost stage
+              </Label>
+              <Select
+                value={closedLostStageName || "__none__"}
+                onValueChange={(v) =>
+                  setClosedLostStageName(v === "__none__" ? "" : v)
+                }
+              >
+                <SelectTrigger id="edit-pipeline-lost-stage">
+                  <SelectValue placeholder="No auto stage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">No auto stage</SelectItem>
+                  {stageNames.map((sn) => (
+                    <SelectItem key={`lost-${sn}`} value={sn}>
+                      {sn}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div className="flex items-center space-x-2">
             <Checkbox

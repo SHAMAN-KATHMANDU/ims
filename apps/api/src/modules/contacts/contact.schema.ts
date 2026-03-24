@@ -1,16 +1,19 @@
 import { z } from "zod";
+import { ContactProfileFieldsSchema } from "@repo/shared";
 
-export const CreateContactSchema = z.object({
-  firstName: z.string().min(1, "First name is required").max(255),
-  lastName: z.string().max(255).optional(),
-  email: z.string().email("Invalid email").optional().or(z.literal("")),
-  phone: z.string().optional(),
-  companyId: z.string().uuid().optional().nullable(),
-  memberId: z.string().uuid().optional().nullable(),
-  tagIds: z.array(z.string().uuid()).optional(),
-  source: z.string().max(100).optional().nullable(),
-  journeyType: z.string().max(100).optional().nullable(),
-});
+export const CreateContactSchema = z
+  .object({
+    firstName: z.string().min(1, "First name is required").max(255),
+    lastName: z.string().max(255).optional(),
+    email: z.string().email("Invalid email").optional().or(z.literal("")),
+    phone: z.string().optional(),
+    companyId: z.string().uuid().optional().nullable(),
+    memberId: z.string().uuid().optional().nullable(),
+    tagIds: z.array(z.string().uuid()).optional(),
+    source: z.string().max(100).optional().nullable(),
+    journeyType: z.string().max(100).optional().nullable(),
+  })
+  .merge(ContactProfileFieldsSchema);
 
 export const UpdateContactSchema = CreateContactSchema.partial();
 

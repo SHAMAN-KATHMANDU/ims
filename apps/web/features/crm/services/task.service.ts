@@ -1,20 +1,27 @@
 import api from "@/lib/axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
 
+export type TaskPriority = "LOW" | "MEDIUM" | "HIGH";
+export type TaskWorkflowStatus = "OPEN" | "IN_PROGRESS" | "DONE" | "CANCELLED";
+
 export interface Task {
   id: string;
   title: string;
   dueDate?: string | null;
   completed: boolean;
+  status: TaskWorkflowStatus;
+  priority: TaskPriority;
   contactId?: string | null;
   memberId?: string | null;
   dealId?: string | null;
+  companyId?: string | null;
   assignedToId?: string | null;
   createdAt: string;
   updatedAt: string;
   contact?: { id: string; firstName: string; lastName?: string | null } | null;
   member?: { id: string; name: string | null; phone: string } | null;
   deal?: { id: string; name: string } | null;
+  company?: { id: string; name: string } | null;
   assignedTo?: { id: string; username: string } | null;
 }
 
@@ -43,7 +50,10 @@ export interface CreateTaskData {
   contactId?: string | null;
   memberId?: string | null;
   dealId?: string | null;
+  companyId?: string | null;
   assignedToId?: string;
+  priority?: TaskPriority;
+  status?: TaskWorkflowStatus;
 }
 
 export interface UpdateTaskData {
@@ -53,7 +63,10 @@ export interface UpdateTaskData {
   contactId?: string | null;
   memberId?: string | null;
   dealId?: string | null;
+  companyId?: string | null;
   assignedToId?: string;
+  priority?: TaskPriority;
+  status?: TaskWorkflowStatus;
 }
 
 export async function getTasks(

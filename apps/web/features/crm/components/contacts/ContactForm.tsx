@@ -23,17 +23,20 @@ import {
 } from "../../hooks/use-crm-settings";
 import { useToast } from "@/hooks/useToast";
 import type { CreateContactData } from "../../services/contact.service";
+import { ContactProfileFieldsSchema } from "@repo/shared";
 
-const schema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  companyId: z.string().optional(),
-  tagIds: z.array(z.string()).optional(),
-  source: z.string().optional(),
-  journeyType: z.string().optional(),
-});
+const schema = z
+  .object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    phone: z.string().optional(),
+    companyId: z.string().optional(),
+    tagIds: z.array(z.string()).optional(),
+    source: z.string().optional(),
+    journeyType: z.string().optional(),
+  })
+  .merge(ContactProfileFieldsSchema);
 
 type FormValues = z.infer<typeof schema>;
 
@@ -76,6 +79,9 @@ export function ContactForm({
   const sources = sourcesData?.sources ?? [];
   const journeyTypes = journeyTypesData?.journeyTypes ?? [];
 
+  const toDateInput = (iso?: string | null) =>
+    iso && iso.length >= 10 ? iso.slice(0, 10) : "";
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     mode: "onBlur",
@@ -84,6 +90,8 @@ export function ContactForm({
       lastName: defaultValues?.lastName ?? "",
       email: defaultValues?.email ?? "",
       phone: defaultValues?.phone ?? "",
+      gender: defaultValues?.gender ?? "",
+      birthDate: toDateInput(defaultValues?.birthDate),
       companyId: defaultValues?.companyId ?? "",
       tagIds: defaultValues?.tagIds ?? [],
       source: defaultValues?.source ?? "",
@@ -104,6 +112,8 @@ export function ContactForm({
       lastName: defaultValues.lastName ?? "",
       email: defaultValues.email ?? "",
       phone: defaultValues.phone ?? "",
+      gender: defaultValues.gender ?? "",
+      birthDate: toDateInput(defaultValues.birthDate),
       companyId: defaultValues.companyId ?? "",
       tagIds: defaultValues.tagIds ?? [],
       source: defaultValues.source ?? "",
@@ -119,6 +129,10 @@ export function ContactForm({
           lastName: values.lastName || undefined,
           email: values.email || undefined,
           phone: values.phone?.trim() || undefined,
+          gender: values.gender?.trim() || null,
+          birthDate: values.birthDate?.trim()
+            ? new Date(values.birthDate.trim()).toISOString()
+            : null,
           companyId: values.companyId || undefined,
           tagIds: values.tagIds,
           source: values.source || undefined,
@@ -173,6 +187,26 @@ export function ContactForm({
           numberInputId="contact-phone"
           className="mt-1"
         />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="gender">Gender</Label>
+          <Input
+            id="gender"
+            placeholder="Optional"
+            {...form.register("gender")}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor="birthDate">Birth date</Label>
+          <Input
+            id="birthDate"
+            type="date"
+            {...form.register("birthDate")}
+            className="mt-1"
+          />
+        </div>
       </div>
       <div>
         <Label>Company</Label>

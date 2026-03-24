@@ -15,13 +15,15 @@ import {
 } from "@/components/ui/select";
 import { useContactsPaginated } from "../../hooks/use-contacts";
 import { useDealsPaginated } from "../../hooks/use-deals";
+import { useCompaniesForSelect } from "../../hooks/use-companies";
 import { useUsers } from "@/features/users";
 import type {
   CreateTaskData,
   UpdateTaskData,
 } from "../../services/task.service";
-import { useEnvFeatureFlag } from "@/features/flags";
+import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
+import { Feature } from "@repo/shared";
 
 // ── Schema ────────────────────────────────────────────────────────────────────
 
@@ -30,7 +32,10 @@ const schema = z.object({
   dueDate: z.string().optional(),
   contactId: z.string().optional(),
   dealId: z.string().optional(),
+  companyId: z.string().optional(),
   assignedToId: z.string().optional(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
+  status: z.enum(["OPEN", "IN_PROGRESS", "DONE", "CANCELLED"]).optional(),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -53,7 +58,10 @@ interface TaskFormEditProps {
     dueDate?: string;
     contactId?: string;
     dealId?: string;
+    companyId?: string;
     assignedToId?: string;
+    priority?: "LOW" | "MEDIUM" | "HIGH";
+    status?: "OPEN" | "IN_PROGRESS" | "DONE" | "CANCELLED";
   };
   onSubmit: (data: UpdateTaskData) => Promise<void>;
   onCancel: () => void;
@@ -65,16 +73,20 @@ type TaskFormProps = TaskFormCreateProps | TaskFormEditProps;
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function TaskForm(props: TaskFormProps) {
-  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
+  const dealsEnabled = envDealsEnabled && salesPipelinePlan;
   const { data: contactsData } = useContactsPaginated({ limit: 100 });
   const { data: dealsData } = useDealsPaginated(
     { limit: 100 },
     { enabled: dealsEnabled },
   );
+  const { data: companiesData } = useCompaniesForSelect();
   const { data: usersResult } = useUsers({ limit: 10 });
 
   const contacts = contactsData?.data ?? [];
   const deals = dealsData?.data ?? [];
+  const companies = companiesData?.companies ?? [];
   const users = usersResult?.users ?? [];
 
   const isEdit = props.mode === "edit";
@@ -88,12 +100,18 @@ export function TaskForm(props: TaskFormProps) {
           dueDate: props.defaultValues.dueDate ?? "",
           contactId: props.defaultValues.contactId ?? "",
           dealId: props.defaultValues.dealId ?? "",
+          companyId: props.defaultValues.companyId ?? "",
           assignedToId: props.defaultValues.assignedToId ?? "",
+          priority: props.defaultValues.priority ?? "MEDIUM",
+          status: props.defaultValues.status ?? "OPEN",
         }
       : {
           title: "",
           dealId: props.defaultDealId ?? "",
           contactId: props.defaultContactId ?? "",
+          companyId: "",
+          priority: "MEDIUM",
+          status: "OPEN",
         },
   });
 
@@ -109,7 +127,10 @@ export function TaskForm(props: TaskFormProps) {
         dueDate: emptyToUndefined(values.dueDate),
         contactId: emptyToUndefined(values.contactId),
         dealId: dealsEnabled ? emptyToUndefined(values.dealId) : undefined,
+        companyId: emptyToNull(values.companyId),
         assignedToId: emptyToUndefined(values.assignedToId),
+        priority: values.priority,
+        status: values.status,
       });
     } else {
       await props.onSubmit({
@@ -117,7 +138,10 @@ export function TaskForm(props: TaskFormProps) {
         dueDate: emptyToNull(values.dueDate),
         contactId: emptyToNull(values.contactId),
         dealId: emptyToNull(values.dealId),
+        companyId: emptyToNull(values.companyId),
         assignedToId: emptyToUndefined(values.assignedToId),
+        priority: values.priority,
+        status: values.status,
       });
     }
   });
@@ -205,6 +229,73 @@ export function TaskForm(props: TaskFormProps) {
           </Select>
         </div>
       )}
+
+      <div>
+        <Label>Company</Label>
+        <Select
+          value={form.watch("companyId") || "__none__"}
+          onValueChange={(v) =>
+            form.setValue("companyId", v === "__none__" ? undefined : v)
+          }
+        >
+          <SelectTrigger className="mt-1">
+            <SelectValue placeholder="Select company" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="__none__">—</SelectItem>
+            {companies.map((c) => (
+              <SelectItem key={c.id} value={c.id}>
+                {c.name}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label>Priority</Label>
+          <Select
+            value={form.watch("priority") ?? "MEDIUM"}
+            onValueChange={(v) =>
+              form.setValue("priority", v as "LOW" | "MEDIUM" | "HIGH")
+            }
+          >
+            <SelectTrigger className="mt-1">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="LOW">Low</SelectItem>
+              <SelectItem value="MEDIUM">Medium</SelectItem>
+              <SelectItem value="HIGH">High</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        {isEdit && (
+          <div>
+            <Label>Status</Label>
+            <Select
+              value={form.watch("status") ?? "OPEN"}
+              onValueChange={(v) =>
+                form.setValue(
+                  "status",
+                  v as "OPEN" | "IN_PROGRESS" | "DONE" | "CANCELLED",
+                )
+              }
+            >
+              <SelectTrigger className="mt-1">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="OPEN">Open</SelectItem>
+                <SelectItem value="IN_PROGRESS">In progress</SelectItem>
+                <SelectItem value="DONE">Done</SelectItem>
+                <SelectItem value="CANCELLED">Cancelled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+      </div>
 
       <div className="flex gap-2 pt-2">
         <Button type="submit" disabled={props.isLoading}>

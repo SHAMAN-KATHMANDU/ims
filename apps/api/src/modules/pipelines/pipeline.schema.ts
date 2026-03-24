@@ -7,16 +7,28 @@ const StageSchema = z.object({
   probability: z.number().optional().default(0),
 });
 
+const PipelineTypeSchema = z.enum([
+  "GENERAL",
+  "NEW_SALES",
+  "REMARKETING",
+  "REPURCHASE",
+]);
+
 export const CreatePipelineSchema = z.object({
   name: z.string().min(1, "Pipeline name is required").max(255).trim(),
+  type: PipelineTypeSchema.optional(),
   stages: z.array(StageSchema).optional(),
   isDefault: z.boolean().optional(),
+  closedWonStageName: z.string().max(100).optional().nullable(),
+  closedLostStageName: z.string().max(100).optional().nullable(),
 });
 
 export const UpdatePipelineSchema = z.object({
   name: z.string().min(1).max(255).trim().optional(),
   stages: z.array(StageSchema).optional(),
   isDefault: z.boolean().optional(),
+  closedWonStageName: z.string().max(100).optional().nullable(),
+  closedLostStageName: z.string().max(100).optional().nullable(),
 });
 
 /** Query params for GET /pipelines. When both page and limit are absent, API returns all (no pagination). */

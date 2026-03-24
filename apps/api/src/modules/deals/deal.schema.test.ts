@@ -35,7 +35,21 @@ describe("UpdateDealStageSchema", () => {
     expect(result.stage).toBe("Proposal");
   });
 
+  it("accepts optional pipelineId", () => {
+    const result = UpdateDealStageSchema.parse({
+      stage: "Qualification",
+      pipelineId: "550e8400-e29b-41d4-a716-446655440000",
+    });
+    expect(result.pipelineId).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
   it("rejects empty stage", () => {
     expect(() => UpdateDealStageSchema.parse({ stage: "" })).toThrow();
+  });
+
+  it("rejects invalid pipelineId", () => {
+    expect(() =>
+      UpdateDealStageSchema.parse({ stage: "A", pipelineId: "not-uuid" }),
+    ).toThrow();
   });
 });

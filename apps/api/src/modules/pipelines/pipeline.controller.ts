@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { CRM_PIPELINE_TEMPLATES } from "@repo/shared";
 import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
@@ -55,6 +56,37 @@ class PipelineController {
       });
     } catch (error: unknown) {
       return sendControllerError(req, res, error, "Get pipelines error");
+    }
+  };
+
+  listTemplates = async (req: Request, res: Response) => {
+    try {
+      const templates = CRM_PIPELINE_TEMPLATES.map(
+        ({
+          templateId,
+          name,
+          description,
+          type,
+          stageNames,
+          probabilities,
+          suggestAsDefault,
+          closedWonStageName,
+          closedLostStageName,
+        }) => ({
+          templateId,
+          name,
+          description,
+          type,
+          stageNames,
+          probabilities: [...probabilities],
+          suggestAsDefault,
+          closedWonStageName,
+          closedLostStageName,
+        }),
+      );
+      return res.status(200).json({ message: "OK", templates });
+    } catch (error: unknown) {
+      return sendControllerError(req, res, error, "List pipeline templates");
     }
   };
 

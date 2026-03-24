@@ -1,9 +1,13 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import crmSettingsController from "./crm-settings.controller";
 
 const crmSettingsRouter = Router();
+
+crmSettingsRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+crmSettingsRouter.use(enforcePlanFeature("salesPipeline"));
 
 /**
  * @swagger
@@ -18,7 +22,6 @@ const crmSettingsRouter = Router();
  */
 crmSettingsRouter.get(
   "/sources",
-  authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(crmSettingsController.getAllSources),
 );
 
@@ -112,7 +115,6 @@ crmSettingsRouter.delete(
  */
 crmSettingsRouter.get(
   "/journey-types",
-  authorizeRoles("user", "admin", "superAdmin"),
   asyncHandler(crmSettingsController.getAllJourneyTypes),
 );
 

@@ -1,32 +1,29 @@
 import { z } from "zod";
+import { WORKFLOW_TRIGGER_VALUES, WORKFLOW_ACTION_VALUES } from "@repo/shared";
 
-export const WORKFLOW_TRIGGERS = [
-  "STAGE_ENTER",
-  "STAGE_EXIT",
-  "DEAL_CREATED",
-  "DEAL_WON",
-  "DEAL_LOST",
-] as const;
-export const WORKFLOW_ACTIONS = [
-  "CREATE_TASK",
-  "SEND_NOTIFICATION",
-  "MOVE_STAGE",
-  "UPDATE_FIELD",
-  "CREATE_ACTIVITY",
-  "CREATE_DEAL",
-  "UPDATE_CONTACT_FIELD",
-  "APPLY_TAG",
-  "REMOVE_TAG",
-] as const;
+export const WORKFLOW_TRIGGERS = WORKFLOW_TRIGGER_VALUES;
+export const WORKFLOW_ACTIONS = WORKFLOW_ACTION_VALUES;
 
-export const WorkflowTriggerSchema = z.enum(WORKFLOW_TRIGGERS);
-export const WorkflowActionSchema = z.enum(WORKFLOW_ACTIONS);
+export const WorkflowTriggerSchema = z.enum(WORKFLOW_TRIGGER_VALUES);
+export const WorkflowActionSchema = z.enum(WORKFLOW_ACTION_VALUES);
+
+export const TaskDealLinkSchema = z.discriminatedUnion("mode", [
+  z.object({ mode: z.literal("CURRENT_DEAL") }),
+  z.object({
+    mode: z.literal("OPEN_DEAL_IN_PIPELINE"),
+    targetPipelineId: z.string().uuid(),
+    stageName: z.string().max(100).optional(),
+  }),
+]);
+export type TaskDealLink = z.infer<typeof TaskDealLinkSchema>;
 
 // Per-action config schemas for validation and security
 export const CreateTaskConfigSchema = z.object({
   taskTitle: z.string().max(500).optional(),
   dueDateDays: z.number().int().min(0).max(365).optional(),
   assigneeId: z.string().uuid().optional(),
+  companyId: z.string().uuid().optional(),
+  taskDealLink: TaskDealLinkSchema.optional(),
 });
 export type CreateTaskConfig = z.infer<typeof CreateTaskConfigSchema>;
 
@@ -41,6 +38,8 @@ export type SendNotificationConfig = z.infer<
 
 export const MoveStageConfigSchema = z.object({
   targetStageId: z.string().min(1, "targetStageId is required").max(100),
+  /** When set, moves the deal to this pipeline and stage; when omitted, only stage changes within the current pipeline. */
+  targetPipelineId: z.string().uuid().optional(),
 });
 export type MoveStageConfig = z.infer<typeof MoveStageConfigSchema>;
 
@@ -68,9 +67,11 @@ export const CreateDealConfigSchema = z.object({
 });
 export type CreateDealConfig = z.infer<typeof CreateDealConfigSchema>;
 
+/** Only safe CRM fields — do not allow arbitrary Prisma keys. */
+export const UPDATE_CONTACT_FIELD_ALLOWED = ["source", "journeyType"] as const;
 export const UpdateContactFieldConfigSchema = z.object({
-  field: z.string().min(1, "field is required").max(100),
-  value: z.union([z.string(), z.number(), z.boolean(), z.null()]),
+  field: z.enum(UPDATE_CONTACT_FIELD_ALLOWED),
+  value: z.union([z.string(), z.null()]),
 });
 export type UpdateContactFieldConfig = z.infer<
   typeof UpdateContactFieldConfigSchema
