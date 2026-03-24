@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
@@ -16,8 +17,7 @@ import { checkDiscountAuthority } from "./discount-authority.service";
 class DealController {
   create = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = CreateDealSchema.parse(req.body);
       const deal = await dealService.create(tenantId, body, userId);
       return res
@@ -40,7 +40,7 @@ class DealController {
 
   getAll = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const result = await dealService.getAll(
         tenantId,
         req.query as Record<string, unknown>,
@@ -53,7 +53,7 @@ class DealController {
 
   getByPipeline = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const pipelineId = req.query.pipelineId as string | undefined;
       const result = await dealService.getByPipeline(tenantId, pipelineId);
       return res.status(200).json({ message: "OK", ...result });
@@ -74,7 +74,7 @@ class DealController {
 
   getById = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const deal = await dealService.getById(tenantId, req.params.id);
       return res.status(200).json({ message: "OK", deal });
     } catch (error: unknown) {
@@ -89,8 +89,7 @@ class DealController {
 
   update = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = UpdateDealSchema.parse(req.body);
       const deal = await dealService.update(
         tenantId,
@@ -118,8 +117,7 @@ class DealController {
 
   updateStage = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = UpdateDealStageSchema.parse(req.body);
       const deal = await dealService.updateStage(
         tenantId,
@@ -145,7 +143,7 @@ class DealController {
 
   addLineItem = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = AddDealLineItemSchema.parse(req.body);
       const item = await dealService.addLineItem(tenantId, req.params.id, body);
       return res.status(201).json({ message: "Line item added", item });
@@ -166,7 +164,7 @@ class DealController {
 
   removeLineItem = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const lineItemId = req.params.lineItemId;
       await dealService.removeLineItem(tenantId, req.params.id, lineItemId);
       return res.status(200).json({ message: "Line item removed" });
@@ -182,8 +180,7 @@ class DealController {
 
   convertToSale = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = ConvertDealToSaleSchema.parse(req.body);
       const sale = await dealService.convertToSale(
         tenantId,
@@ -228,8 +225,7 @@ class DealController {
 
   delete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;

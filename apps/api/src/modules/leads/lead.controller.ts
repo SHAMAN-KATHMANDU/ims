@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
   CreateLeadSchema,
@@ -23,8 +24,7 @@ const handleAppError = (res: Response, error: unknown): Response | null => {
 class LeadController {
   create = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
-      const tenantId = req.user!.tenantId;
+      const { userId, tenantId } = getAuthContext(req);
       const body = CreateLeadSchema.parse(req.body);
       const lead = await leadService.create(tenantId, userId, body);
       return res
@@ -45,7 +45,7 @@ class LeadController {
 
   getAll = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const result = await leadService.getAll(tenantId, req.query);
       return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
@@ -55,7 +55,7 @@ class LeadController {
 
   getById = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = req.params;
       const lead = await leadService.getById(tenantId, id);
       return res.status(200).json({ message: "OK", lead });
@@ -69,7 +69,7 @@ class LeadController {
 
   update = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = req.params;
       const body = UpdateLeadSchema.parse(req.body);
       const lead = await leadService.update(tenantId, id, body);
@@ -91,8 +91,7 @@ class LeadController {
 
   delete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const { id } = req.params;
       const deleteBody = DeleteBodySchema.parse(req.body ?? {});
       const ip = typeof req.ip === "string" ? req.ip : undefined;
@@ -114,8 +113,7 @@ class LeadController {
 
   convert = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
-      const tenantId = req.user!.tenantId;
+      const { userId, tenantId } = getAuthContext(req);
       const { id } = req.params;
       const body = ConvertLeadSchema.parse(req.body);
       const { lead, contact, deal } = await leadService.convert(
@@ -145,8 +143,7 @@ class LeadController {
 
   assign = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
-      const tenantId = req.user!.tenantId;
+      const { userId, tenantId } = getAuthContext(req);
       const { id } = req.params;
       const body = AssignLeadSchema.parse(req.body);
       const lead = await leadService.assign(tenantId, userId, id, body);

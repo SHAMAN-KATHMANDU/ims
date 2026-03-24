@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import { CreateCompanySchema, UpdateCompanySchema } from "./company.schema";
 import companyService from "./company.service";
@@ -18,7 +19,7 @@ const handleAppError = (res: Response, error: unknown): Response | null => {
 class CompanyController {
   create = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = CreateCompanySchema.parse(req.body);
       const company = await companyService.create(tenantId, body);
       return res
@@ -39,7 +40,7 @@ class CompanyController {
 
   getAll = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const result = await companyService.getAll(tenantId, req.query);
       return res.status(200).json({ message: "OK", ...result });
     } catch (error: unknown) {
@@ -49,7 +50,7 @@ class CompanyController {
 
   getById = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = req.params;
       const company = await companyService.getById(tenantId, id);
       return res.status(200).json({ message: "OK", company });
@@ -63,7 +64,7 @@ class CompanyController {
 
   update = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = req.params;
       const body = UpdateCompanySchema.parse(req.body);
       const company = await companyService.update(tenantId, id, body);
@@ -85,8 +86,7 @@ class CompanyController {
 
   delete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const { id } = req.params;
       const deleteBody = DeleteBodySchema.parse(req.body ?? {});
       const ip = typeof req.ip === "string" ? req.ip : undefined;
@@ -108,7 +108,7 @@ class CompanyController {
 
   listForSelect = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const companies = await companyService.listForSelect(tenantId);
       return res.status(200).json({ message: "OK", companies });
     } catch (error: unknown) {
