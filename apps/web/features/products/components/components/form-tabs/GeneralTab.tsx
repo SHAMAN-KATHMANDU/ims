@@ -19,7 +19,18 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
-import { Info } from "lucide-react";
+import {
+  Info,
+  Tag,
+  FolderTree,
+  ListTree,
+  Truck,
+  MapPin,
+  FileText,
+  Coins,
+  IndianRupee,
+} from "lucide-react";
+import { MrpBelowCostConfirmDialog } from "../dialogs/MrpBelowCostConfirmDialog";
 import type { ProductFormValues } from "../../types";
 import type { Category } from "@/features/products";
 import type { UseFormReturn } from "@/hooks/useForm";
@@ -49,6 +60,7 @@ export function GeneralTab({
   onMrpBelowCpAcceptedChange,
 }: GeneralTabProps) {
   const [showMrpBelowCpWarning, setShowMrpBelowCpWarning] = useState(false);
+  const [mrpConfirmDialogOpen, setMrpConfirmDialogOpen] = useState(false);
   const isAdmin = useAuthStore(selectIsAdmin);
 
   useEffect(() => {
@@ -88,7 +100,10 @@ export function GeneralTab({
         )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="name">Product Name</Label>
+        <Label htmlFor="name" className="flex items-center gap-2">
+          <Tag className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+          Product Name
+        </Label>
         <Input
           id="name"
           value={form.values.name}
@@ -100,7 +115,13 @@ export function GeneralTab({
         )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="categoryId">Category</Label>
+        <Label htmlFor="categoryId" className="flex items-center gap-2">
+          <FolderTree
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+          Category
+        </Label>
         <Select
           value={form.values.categoryId}
           onValueChange={(value) => {
@@ -108,7 +129,7 @@ export function GeneralTab({
             form.handleChange("subCategory", "");
           }}
         >
-          <SelectTrigger>
+          <SelectTrigger id="categoryId">
             <SelectValue placeholder="Select category" />
           </SelectTrigger>
           <SelectContent>
@@ -124,7 +145,13 @@ export function GeneralTab({
         )}
       </div>
       <div className="space-y-2">
-        <Label htmlFor="subCategory">Sub-Category (Optional)</Label>
+        <Label htmlFor="subCategory" className="flex items-center gap-2">
+          <ListTree
+            className="h-4 w-4 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+          Sub-Category (Optional)
+        </Label>
         <Select
           value={
             form.values.categoryId ? form.values.subCategory || "none" : ""
@@ -155,14 +182,20 @@ export function GeneralTab({
       </div>
       {isAdmin && (
         <div className="space-y-2">
-          <Label htmlFor="vendorId">Vendor (Optional)</Label>
+          <Label htmlFor="vendorId" className="flex items-center gap-2">
+            <Truck
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            Vendor (Optional)
+          </Label>
           <Select
             value={form.values.vendorId ?? "none"}
             onValueChange={(value) =>
               form.handleChange("vendorId", value === "none" ? "" : value)
             }
           >
-            <SelectTrigger>
+            <SelectTrigger id="vendorId">
               <SelectValue placeholder="Select vendor" />
             </SelectTrigger>
             <SelectContent>
@@ -178,7 +211,13 @@ export function GeneralTab({
       )}
       {isCreating && onDefaultLocationChange && (
         <div className="space-y-2">
-          <Label>Default location for new stock</Label>
+          <Label className="flex items-center gap-2">
+            <MapPin
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            Default location for new stock
+          </Label>
           <LocationSelector
             value={defaultLocationId ?? "all"}
             onChange={(id) =>
@@ -196,7 +235,13 @@ export function GeneralTab({
       )}
       <div className="space-y-2">
         <div className="flex items-center gap-1.5">
-          <Label htmlFor="description">Product Description</Label>
+          <Label htmlFor="description" className="flex items-center gap-2">
+            <FileText
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            Product Description
+          </Label>
           <Tooltip>
             <TooltipTrigger asChild>
               <Info
@@ -217,7 +262,13 @@ export function GeneralTab({
       </div>
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
-          <Label htmlFor="costPrice">Cost Price</Label>
+          <Label htmlFor="costPrice" className="flex items-center gap-2">
+            <Coins
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            Cost Price
+          </Label>
           <NumericInput
             id="costPrice"
             value={form.values.costPrice}
@@ -232,7 +283,13 @@ export function GeneralTab({
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="mrp">MRP</Label>
+          <Label htmlFor="mrp" className="flex items-center gap-2">
+            <IndianRupee
+              className="h-4 w-4 shrink-0 text-muted-foreground"
+              aria-hidden
+            />
+            MRP
+          </Label>
           <NumericInput
             id="mrp"
             value={form.values.mrp}
@@ -254,15 +311,20 @@ export function GeneralTab({
                 variant="outline"
                 size="sm"
                 className="h-7 shrink-0 border-amber-300 text-amber-800 hover:bg-amber-100 dark:border-amber-800 dark:text-amber-200 dark:hover:bg-amber-950"
-                onClick={() => {
-                  onMrpBelowCpAcceptedChange?.(true);
-                  setShowMrpBelowCpWarning(false);
-                }}
+                onClick={() => setMrpConfirmDialogOpen(true)}
               >
-                Accept anyway
+                Confirm pricing
               </Button>
             </div>
           )}
+          <MrpBelowCostConfirmDialog
+            open={mrpConfirmDialogOpen}
+            onOpenChange={setMrpConfirmDialogOpen}
+            onConfirm={() => {
+              onMrpBelowCpAcceptedChange?.(true);
+              setShowMrpBelowCpWarning(false);
+            }}
+          />
         </div>
       </div>
     </div>

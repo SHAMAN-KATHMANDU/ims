@@ -85,6 +85,9 @@ export function TransfersPage() {
   const [transferToCancel, setTransferToCancel] = useState<Transfer | null>(
     null,
   );
+  const [fulfillingTransferId, setFulfillingTransferId] = useState<
+    string | null
+  >(null);
 
   // Data fetching
   const { data: transfersResponse, isLoading: transfersLoading } =
@@ -231,6 +234,32 @@ export function TransfersPage() {
     }
   };
 
+  const handleApproveAndFulfill = async (transfer: Transfer) => {
+    setFulfillingTransferId(transfer.id);
+    try {
+      await approveTransferMutation.mutateAsync(transfer.id);
+      await startTransitMutation.mutateAsync(transfer.id);
+      await completeTransferMutation.mutateAsync(transfer.id);
+      toast({
+        title: "Transfer completed",
+        description:
+          "Stock was deducted from the source location and added at the destination.",
+      });
+    } catch (error: unknown) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to approve and move stock";
+      toast({
+        title: "Error",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setFulfillingTransferId(null);
+    }
+  };
+
   const handleCancelClick = (transfer: Transfer) => {
     setTransferToCancel(transfer);
     setCancelDialogOpen(true);
@@ -274,6 +303,11 @@ export function TransfersPage() {
     await handleComplete(selectedTransfer);
   };
 
+  const handleDetailApproveAndFulfill = async () => {
+    if (!selectedTransfer) return;
+    await handleApproveAndFulfill(selectedTransfer);
+  };
+
   const handleDetailCancel = () => {
     if (!selectedTransfer) return;
     setSelectedTransferId(null);
@@ -285,6 +319,10 @@ export function TransfersPage() {
     startTransitMutation.isPending ||
     completeTransferMutation.isPending ||
     cancelTransferMutation.isPending;
+
+  const isDetailFulfilling =
+    fulfillingTransferId !== null &&
+    fulfillingTransferId === selectedTransferId;
 
   return (
     <div className="space-y-6">
@@ -384,6 +422,8 @@ export function TransfersPage() {
         onSort={handleColumnSort}
         onView={handleView}
         onApprove={handleApprove}
+        onApproveAndFulfill={handleApproveAndFulfill}
+        fulfillingTransferId={fulfillingTransferId}
         onStartTransit={handleStartTransit}
         onComplete={handleComplete}
         onCancel={handleCancelClick}
@@ -417,10 +457,14 @@ export function TransfersPage() {
         isLoading={transferLoading}
         canManage={isAdmin}
         onApprove={handleDetailApprove}
+        onApproveAndFulfill={
+          isAdmin ? handleDetailApproveAndFulfill : undefined
+        }
         onStartTransit={handleDetailStartTransit}
         onComplete={handleDetailComplete}
         onCancel={handleDetailCancel}
         actionLoading={isActionLoading}
+        fulfilling={isDetailFulfilling}
       />
 
       {/* Cancel Confirmation Dialog */}

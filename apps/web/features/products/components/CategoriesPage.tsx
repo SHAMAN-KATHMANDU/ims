@@ -165,9 +165,6 @@ export function CategoriesPage() {
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
   const { data: selectedSubcategories = [], refetch: refetchSelectedSubs } =
     useCategorySubcategories(selectedCategory?.id || "");
-  const { data: editingSubcategories = [] } = useCategorySubcategories(
-    editingCategory?.id ?? "",
-  );
   const createSubcategoryMutation = useCreateSubcategory();
   const deleteSubcategoryMutation = useDeleteSubcategory();
 
@@ -178,27 +175,6 @@ export function CategoriesPage() {
           id: editingCategory.id,
           data: { name: values.name, description: values.description },
         });
-        const currentSubs = (values.subcategories ?? [])
-          .map((n) => n?.trim())
-          .filter(Boolean);
-        const added = currentSubs.filter(
-          (n) => !editingSubcategories.includes(n),
-        );
-        const removed = editingSubcategories.filter(
-          (n) => !currentSubs.includes(n),
-        );
-        for (const name of added) {
-          await createSubcategoryMutation.mutateAsync({
-            categoryId: editingCategory.id,
-            name,
-          });
-        }
-        for (const name of removed) {
-          await deleteSubcategoryMutation.mutateAsync({
-            categoryId: editingCategory.id,
-            name,
-          });
-        }
         toast({ title: "Category updated successfully" });
       } else {
         const result = await createCategoryMutation.mutateAsync({
@@ -359,9 +335,6 @@ export function CategoriesPage() {
             open={categoryDialog}
             onOpenChange={setCategoryDialog}
             editingCategory={editingCategory}
-            initialSubcategoryNames={
-              editingCategory ? editingSubcategories : undefined
-            }
             onSubmit={handleCategorySubmit}
             onReset={handleResetCategory}
             isLoading={
