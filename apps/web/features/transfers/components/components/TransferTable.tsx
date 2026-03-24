@@ -26,6 +26,7 @@ import {
   XCircle,
   ArrowRight,
   Package,
+  PackageCheck,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -47,6 +48,8 @@ interface TransferTableProps {
   onSort?: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onView: (transfer: Transfer) => void;
   onApprove: (transfer: Transfer) => void;
+  onApproveAndFulfill?: (transfer: Transfer) => void;
+  fulfillingTransferId?: string | null;
   onStartTransit: (transfer: Transfer) => void;
   onComplete: (transfer: Transfer) => void;
   onCancel: (transfer: Transfer) => void;
@@ -80,6 +83,8 @@ export function TransferTable({
   onSort,
   onView,
   onApprove,
+  onApproveAndFulfill,
+  fulfillingTransferId,
   onStartTransit,
   onComplete,
   onCancel,
@@ -246,10 +251,22 @@ export function TransferTable({
                     {canManage && (
                       <>
                         <DropdownMenuSeparator />
+                        {canApprove(transfer) && onApproveAndFulfill && (
+                          <DropdownMenuItem
+                            disabled={fulfillingTransferId === transfer.id}
+                            onClick={() => onApproveAndFulfill(transfer)}
+                          >
+                            <PackageCheck className="mr-2 h-4 w-4" />
+                            Approve &amp; move stock
+                          </DropdownMenuItem>
+                        )}
                         {canApprove(transfer) && (
-                          <DropdownMenuItem onClick={() => onApprove(transfer)}>
+                          <DropdownMenuItem
+                            disabled={fulfillingTransferId === transfer.id}
+                            onClick={() => onApprove(transfer)}
+                          >
                             <CheckCircle className="mr-2 h-4 w-4" />
-                            Approve
+                            Approve only
                           </DropdownMenuItem>
                         )}
                         {canStartTransit(transfer) && (

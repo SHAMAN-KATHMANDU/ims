@@ -227,6 +227,13 @@ export class ProductRepository {
     });
   }
 
+  findTenantName(tenantId: string) {
+    return prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { name: true },
+    });
+  }
+
   // Product - create
   createProduct(data: ProductCreateData) {
     return prisma.product.create({

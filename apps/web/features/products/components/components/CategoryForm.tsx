@@ -23,7 +23,6 @@ interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingCategory: Category | null;
-  initialSubcategoryNames?: string[];
   onSubmit: (data: CategoryFormInput) => Promise<void>;
   onReset: () => void;
   isLoading?: boolean;
@@ -33,7 +32,6 @@ export function CategoryForm({
   open,
   onOpenChange,
   editingCategory,
-  initialSubcategoryNames,
   onSubmit,
   onReset,
   isLoading = false,
@@ -55,13 +53,13 @@ export function CategoryForm({
       form.reset({
         name: editingCategory.name,
         description: editingCategory.description || "",
-        subcategories: initialSubcategoryNames ?? [],
+        subcategories: [],
       });
     } else if (!open) {
       form.reset({ name: "", description: "", subcategories: [] });
       setSubcategoryInput("");
     }
-  }, [open, editingCategory, initialSubcategoryNames, form]);
+  }, [open, editingCategory, form]);
 
   const handleAddSubcategory = () => {
     const trimmed = subcategoryInput.trim();
@@ -119,54 +117,67 @@ export function CategoryForm({
             <Label htmlFor="cat-description">Description</Label>
             <Textarea id="cat-description" {...form.register("description")} />
           </div>
-          <div className="space-y-2">
-            <Label>Subcategories (optional)</Label>
+          {editingCategory && (
             <p className="text-xs text-muted-foreground">
-              {editingCategory
-                ? "Add or remove subcategories for this category."
-                : "Add subcategories for this category. You can also add them later via the Manage subcategories action."}
+              To add or remove subcategories, use{" "}
+              <span className="font-medium text-foreground">
+                Manage subcategories
+              </span>{" "}
+              on this category in the table below.
             </p>
-            {subcategories.length > 0 && (
-              <div className="flex flex-wrap gap-2 mt-1">
-                {subcategories.map((sub, index) => (
-                  <Badge
-                    key={`${sub}-${index}`}
-                    variant="secondary"
-                    className="flex items-center gap-1"
-                  >
-                    <span>{sub}</span>
-                    <button
-                      type="button"
-                      className="text-xs text-muted-foreground hover:text-destructive"
-                      onClick={() => handleRemoveSubcategory(index)}
+          )}
+          {!editingCategory && (
+            <div className="space-y-2">
+              <Label>Subcategories (optional)</Label>
+              <p className="text-xs text-muted-foreground">
+                Add subcategories now, or add them later using{" "}
+                <span className="font-medium text-foreground">
+                  Manage subcategories
+                </span>{" "}
+                on the category row.
+              </p>
+              {subcategories.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {subcategories.map((sub, index) => (
+                    <Badge
+                      key={`${sub}-${index}`}
+                      variant="secondary"
+                      className="flex items-center gap-1"
                     >
-                      ×
-                    </button>
-                  </Badge>
-                ))}
+                      <span>{sub}</span>
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground hover:text-destructive"
+                        onClick={() => handleRemoveSubcategory(index)}
+                      >
+                        ×
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
+              )}
+              <div className="flex gap-2 mt-1">
+                <Input
+                  value={subcategoryInput}
+                  onChange={(e) => setSubcategoryInput(e.target.value)}
+                  placeholder="Enter subcategory name"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleAddSubcategory();
+                    }
+                  }}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleAddSubcategory}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Add
+                </Button>
               </div>
-            )}
-            <div className="flex gap-2 mt-1">
-              <Input
-                value={subcategoryInput}
-                onChange={(e) => setSubcategoryInput(e.target.value)}
-                placeholder="Enter subcategory name"
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    handleAddSubcategory();
-                  }
-                }}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleAddSubcategory}
-              >
-                <Plus className="h-4 w-4 mr-1" /> Add
-              </Button>
             </div>
-          </div>
+          )}
           <div className="flex gap-2 justify-end">
             <Button
               type="button"
