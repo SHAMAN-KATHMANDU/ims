@@ -15,6 +15,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
 import { useContactTags, useCreateContactTag } from "../../hooks/use-contacts";
 import {
@@ -78,6 +86,8 @@ export function ContactForm({
   const tags = displayTags;
   const sources = sourcesData?.sources ?? [];
   const journeyTypes = journeyTypesData?.journeyTypes ?? [];
+  const [addTagOpen, setAddTagOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
 
   const toDateInput = (iso?: string | null) =>
     iso && iso.length >= 10 ? iso.slice(0, 10) : "";
@@ -120,6 +130,39 @@ export function ContactForm({
       journeyType: defaultValues.journeyType ?? "",
     });
   }, [defaultValues, form]);
+
+  const handleAddTagDialogChange = (open: boolean) => {
+    setAddTagOpen(open);
+    if (!open) setNewTagName("");
+  };
+
+  const handleCreateTag = async () => {
+    const trimmed = newTagName.trim();
+    if (!trimmed) {
+      toast({
+        title: "Enter a tag name",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const result = await createTagMutation.mutateAsync(trimmed);
+      const current = form.getValues("tagIds") ?? [];
+      if (result?.tag && !current.includes(result.tag.id)) {
+        setOptimisticTags((prev) => [
+          ...prev.filter((t) => t.id !== result.tag.id),
+          { id: result.tag.id, name: result.tag.name },
+        ]);
+        form.setValue("tagIds", [...current, result.tag.id]);
+      }
+      handleAddTagDialogChange(false);
+    } catch {
+      toast({
+        title: "Failed to create tag",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <form
@@ -301,33 +344,58 @@ export function ContactForm({
           })}
           <button
             type="button"
-            onClick={async () => {
-              const name = window.prompt("New tag name");
-              if (!name?.trim()) return;
-              try {
-                const result = await createTagMutation.mutateAsync(name.trim());
-                const current = form.watch("tagIds") ?? [];
-                if (result?.tag && !current.includes(result.tag.id)) {
-                  setOptimisticTags((prev) => [
-                    ...prev.filter((t) => t.id !== result.tag.id),
-                    { id: result.tag.id, name: result.tag.name },
-                  ]);
-                  form.setValue("tagIds", [...current, result.tag.id]);
-                }
-              } catch {
-                toast({
-                  title: "Failed to create tag",
-                  variant: "destructive",
-                });
-              }
-            }}
+            onClick={() => setAddTagOpen(true)}
             disabled={createTagMutation.isPending}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed rounded px-2 py-1"
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed rounded-md px-3 py-1.5"
           >
             + Add tag
           </button>
         </div>
       </div>
+
+      <Dialog open={addTagOpen} onOpenChange={handleAddTagDialogChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New tag</DialogTitle>
+            <DialogDescription>
+              Create a tag you can assign to this contact. It will be available
+              for all contacts in your workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="new-contact-tag-name">Tag name</Label>
+            <Input
+              id="new-contact-tag-name"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder="e.g. VIP, Newsletter"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleCreateTag();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleAddTagDialogChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleCreateTag()}
+              disabled={createTagMutation.isPending}
+            >
+              {createTagMutation.isPending ? "Creating…" : "Create tag"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel
