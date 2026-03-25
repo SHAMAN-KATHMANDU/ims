@@ -34,6 +34,7 @@ import {
 } from "./sale.repository";
 import contactRepository from "@/modules/contacts/contact.repository";
 import memberRepository from "@/modules/members/member.repository";
+import tenantSettingsService from "@/modules/tenant-settings/tenant-settings.service";
 
 // ── Shared types ──────────────────────────────────────────────────────────
 
@@ -479,6 +480,34 @@ export interface GetAllSalesParams {
   userId?: string;
 }
 
+interface SalePaymentInput {
+  method: string;
+  amount: number;
+}
+
+async function validatePaymentMethods(
+  tenantId: string,
+  payments?: SalePaymentInput[],
+): Promise<void> {
+  if (!payments?.length) return;
+  for (const payment of payments) {
+    await tenantSettingsService.assertMethodAllowed(
+      tenantId,
+      payment.method.trim().toUpperCase(),
+    );
+  }
+}
+
+function normalizePayments(
+  payments?: SalePaymentInput[],
+): SalePaymentInput[] | undefined {
+  if (!payments) return undefined;
+  return payments.map((payment) => ({
+    ...payment,
+    method: payment.method.trim().toUpperCase(),
+  }));
+}
+
 export async function createSale(
   ctx: CreateSaleContext,
   dto: {
@@ -489,10 +518,7 @@ export async function createSale(
     isCreditSale?: boolean;
     items: SaleItemInput[];
     notes?: string;
-    payments?: Array<{
-      method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
-      amount: number;
-    }>;
+    payments?: SalePaymentInput[];
   },
 ) {
   const location = await findLocationById(dto.locationId);
@@ -592,12 +618,15 @@ export async function createSale(
     }
   }
 
+  const normalizedPayments = normalizePayments(dto.payments);
+  await validatePaymentMethods(ctx.tenantId, normalizedPayments);
   const creditSale = dto.isCreditSale === true;
 
-  if (!creditSale && dto.payments && dto.payments.length > 0) {
+  if (!creditSale && normalizedPayments && normalizedPayments.length > 0) {
     const paymentSum =
       Math.round(
-        dto.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) * 100,
+        normalizedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0) *
+          100,
       ) / 100;
     if (Math.abs(paymentSum - total) > 0.01) {
       throw Object.assign(
@@ -639,7 +668,7 @@ export async function createSale(
       discountReason: item.discountReason,
       discountApprovedById: item.discountApprovedById,
     })),
-    payments: dto.payments,
+    payments: normalizedPayments,
   });
 
   if (member) {
@@ -741,10 +770,7 @@ export async function editSale(
   dto: {
     items: SaleItemInput[];
     notes?: string;
-    payments?: Array<{
-      method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
-      amount: number;
-    }>;
+    payments?: SalePaymentInput[];
     editReason?: string | null;
   },
   userRole?: string,
@@ -786,11 +812,14 @@ export async function editSale(
     if (!code || promoCodesUsed.has(code)) continue;
     promoCodesUsed.add(code);
   }
+  const normalizedPayments = normalizePayments(dto.payments);
+  await validatePaymentMethods(sale.tenantId, normalizedPayments);
   const creditSale = sale.isCreditSale;
-  if (!creditSale && dto.payments && dto.payments.length > 0) {
+  if (!creditSale && normalizedPayments && normalizedPayments.length > 0) {
     const paymentSum =
       Math.round(
-        dto.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0) * 100,
+        normalizedPayments.reduce((sum, p) => sum + Number(p.amount || 0), 0) *
+          100,
       ) / 100;
     const totalNum = Number(total);
     if (Math.abs(paymentSum - totalNum) > 0.01) {
@@ -837,7 +866,7 @@ export async function editSale(
       discountReason: p.discountReason,
       discountApprovedById: p.discountApprovedById,
     })),
-    payments: dto.payments,
+    payments: normalizedPayments,
     parentSaleId: saleId,
     editedById: userId,
     editReason: dto.editReason ?? null,
@@ -1044,9 +1073,14 @@ export async function addPayment(
     });
   }
 
+  await tenantSettingsService.assertMethodAllowed(
+    sale.tenantId,
+    dto.method.trim().toUpperCase(),
+  );
+
   const payment = await createSalePayment({
     saleId,
-    method: dto.method as "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR",
+    method: dto.method.trim().toUpperCase(),
     amount: dto.amount,
   });
 
@@ -1190,10 +1224,7 @@ export class SaleService {
       isCreditSale?: boolean;
       items: SaleItemInput[];
       notes?: string;
-      payments?: Array<{
-        method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
-        amount: number;
-      }>;
+      payments?: SalePaymentInput[];
     },
   ) {
     return createSale(ctx, dto);
@@ -1245,10 +1276,7 @@ export class SaleService {
     dto: {
       items: SaleItemInput[];
       notes?: string;
-      payments?: Array<{
-        method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
-        amount: number;
-      }>;
+      payments?: SalePaymentInput[];
       editReason?: string | null;
     },
     userRole?: string,

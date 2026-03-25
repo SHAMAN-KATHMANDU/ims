@@ -14,3 +14,9 @@ export {
   type ErrorReportsListParams,
   type PaginatedErrorReportsResponse,
 } from "./error-report.service";
+export {
+  getTenantPaymentMethods,
+  updateTenantPaymentMethods,
+  type TenantPaymentMethodConfig,
+  type PaymentMethodsResponse,
+} from "./payment-methods.service";

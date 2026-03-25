@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 import {
   getPipelines,
   getPipelineById,
@@ -23,18 +25,25 @@ export const pipelineKeys = {
   detail: (id: string) => [...pipelineKeys.details(), id] as const,
 };
 
-export function usePipelines(params?: GetPipelinesParams) {
+export function usePipelines(
+  params?: GetPipelinesParams,
+  options?: { enabled?: boolean },
+) {
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   return useQuery({
     queryKey: pipelineKeys.lists(params),
     queryFn: () => getPipelines(params),
+    enabled: pipelinesEnabled && (options?.enabled ?? true),
   });
 }
 
-export function usePipelineTemplates() {
+export function usePipelineTemplates(options?: { enabled?: boolean }) {
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   return useQuery({
     queryKey: pipelineKeys.templates(),
     queryFn: () => getPipelineTemplates(),
     staleTime: 60 * 60 * 1000,
+    enabled: pipelinesEnabled && (options?.enabled ?? true),
   });
 }
 

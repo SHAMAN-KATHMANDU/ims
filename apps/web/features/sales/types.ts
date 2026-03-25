@@ -6,7 +6,7 @@ import type { PaginationMeta } from "@/lib/apiTypes";
 
 export type SaleType = "GENERAL" | "MEMBER";
 
-export type PaymentMethod = "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+export type PaymentMethod = string;
 
 export interface SalePayment {
   method: PaymentMethod;

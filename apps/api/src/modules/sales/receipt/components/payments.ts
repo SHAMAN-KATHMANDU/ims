@@ -41,8 +41,36 @@ export function drawPayments(
   }
 
   if (sale.payments && sale.payments.length > 0) {
+    const settingsRecord =
+      sale.tenant?.settings && typeof sale.tenant.settings === "object"
+        ? (sale.tenant.settings as Record<string, unknown>)
+        : {};
+    const configuredMethods = Array.isArray(settingsRecord.paymentMethods)
+      ? settingsRecord.paymentMethods
+      : [];
+    const paymentMethodLabelMap = new Map(
+      configuredMethods
+        .map((method) =>
+          method && typeof method === "object"
+            ? (method as Record<string, unknown>)
+            : null,
+        )
+        .filter(
+          (
+            method,
+          ): method is {
+            code: string;
+            label: string;
+          } =>
+            method !== null &&
+            typeof method.code === "string" &&
+            typeof method.label === "string",
+        )
+        .map((method) => [method.code.toUpperCase(), method.label]),
+    );
     for (const p of sale.payments) {
-      const method = String(p.method).toUpperCase();
+      const methodCode = String(p.method).toUpperCase();
+      const method = paymentMethodLabelMap.get(methodCode) ?? methodCode;
       drawKeyValueRow(doc, method, fmtCurrency(p.amount), ctx);
     }
   }

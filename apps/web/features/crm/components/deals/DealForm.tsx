@@ -29,6 +29,9 @@ import {
   type DiscountAuthorityResult,
 } from "../../services/discount-authority.service";
 import { DealLineItemsSection } from "./DealLineItemsSection";
+import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
+import { Feature } from "@repo/shared";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -100,7 +103,12 @@ type DealFormProps = DealFormCreateProps | DealFormEditProps;
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function DealForm(props: DealFormProps) {
-  const { data: pipelinesData } = usePipelines();
+  const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
+  const dealsEnabled = envDealsEnabled && salesPipelinePlan;
+  const { data: pipelinesData } = usePipelines(undefined, {
+    enabled: dealsEnabled,
+  });
   const { data: contactsData } = useContactsPaginated({ limit: 10 });
   const { data: companiesData } = useCompaniesForSelect();
   const { data: usersResult } = useUsers({ limit: 10 });

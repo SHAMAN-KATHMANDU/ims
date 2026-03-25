@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 import {
   getWorkflows,
   createWorkflow,
@@ -20,11 +22,16 @@ export const workflowKeys = {
   detail: (id: string) => [...workflowKeys.all, "detail", id] as const,
 };
 
-export function useWorkflows(params?: GetWorkflowsParams) {
+export function useWorkflows(
+  params?: GetWorkflowsParams,
+  options?: { enabled?: boolean },
+) {
+  const workflowsEnabled = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
   return useQuery({
     queryKey: workflowKeys.lists(params),
     queryFn: () => getWorkflows(params),
     staleTime: 2 * 60 * 1000,
+    enabled: workflowsEnabled && (options?.enabled ?? true),
   });
 }
 

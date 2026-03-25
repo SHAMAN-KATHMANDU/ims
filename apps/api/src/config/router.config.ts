@@ -47,6 +47,7 @@ import webhookRouter from "@/modules/webhooks/webhook.router";
 import messagingChannelRouter from "@/modules/messaging-channels/messaging-channel.router";
 import messagingRouter from "@/modules/messaging/messaging.router";
 import trashRouter from "@/modules/trash/trash.router";
+import tenantSettingsRouter from "@/modules/tenant-settings/tenant-settings.router";
 
 const router = Router();
 
@@ -100,6 +101,7 @@ router.use("/activities", activityRouter);
 router.use("/notifications", notificationRouter);
 router.use("/crm", crmRouter);
 router.use("/crm-settings", crmSettingsRouter);
+router.use("/tenant-settings", tenantSettingsRouter);
 router.use("/workflows", workflowRouter);
 router.use("/trash", trashRouter);
 router.use("/messaging-channels", messagingChannelRouter);

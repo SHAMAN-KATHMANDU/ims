@@ -802,18 +802,10 @@ model SaleItem {
 // PAYMENT & PROMO MODELS
 // ============================================
 
-enum PaymentMethod {
-  CASH
-  CARD
-  CHEQUE
-  FONEPAY
-  QR
-}
-
 model SalePayment {
   id        String        @id @default(uuid()) @map("payment_id")
   saleId    String        @map("sale_id")
-  method    PaymentMethod
+  method    String        @db.VarChar(32)
   amount    Decimal       @db.Decimal(12, 2)
   createdAt DateTime      @default(now()) @map("created_at")
 

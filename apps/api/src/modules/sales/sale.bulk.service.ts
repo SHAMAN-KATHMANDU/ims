@@ -12,6 +12,7 @@ import {
   createMember,
   createSaleBulk,
 } from "./sale.repository";
+import tenantSettingsService from "@/modules/tenant-settings/tenant-settings.service";
 
 export interface ProcessSaleBulkContext {
   tenantId: string;
@@ -46,6 +47,14 @@ export async function processSaleBulkRows(
   const created: ProcessSaleBulkResult["created"] = [];
   const skipped: ProcessSaleBulkResult["skipped"] = [];
   const errors: ValidationError[] = [];
+
+  const { paymentMethods } =
+    await tenantSettingsService.getPaymentMethods(tenantId);
+  const enabledMethodCodes = new Set(
+    paymentMethods
+      .filter((method) => method.enabled)
+      .map((method) => method.code),
+  );
 
   const saleGroups = new Map<
     string,
@@ -269,9 +278,21 @@ export async function processSaleBulkRows(
           (method): method is string => method !== null && method !== undefined,
         );
       const paymentMethod =
-        paymentMethods.length > 0
-          ? (paymentMethods[0] as "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR")
-          : "CASH";
+        paymentMethods.length > 0 ? paymentMethods[0] : "CASH";
+
+      if (!enabledMethodCodes.has(paymentMethod)) {
+        errors.push({
+          row: rows.indexOf(firstRow) + 2,
+          field: "paymentMethod",
+          message: `Unsupported payment method "${paymentMethod}" for this tenant`,
+          value: paymentMethod,
+        });
+        skipped.push({
+          saleId: group.saleId,
+          reason: `Unsupported payment method "${paymentMethod}"`,
+        });
+        continue;
+      }
 
       const sale = await createSaleBulk({
         tenantId,
@@ -341,7 +362,7 @@ const SALES_TEMPLATE_REQUIRED_OPTIONAL = [
   "Required",
   "Optional",
   "Required",
-  "Optional (CASH, CARD, CHEQUE, FONEPAY, QR)",
+  "Optional (e.g. CASH, CARD, BANK_TRANSFER)",
 ];
 
 /** Build the sales bulk upload Excel template. Returns buffer. */

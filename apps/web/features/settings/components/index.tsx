@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,8 +16,13 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { changePassword } from "@/features/users";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
 import { useAuthStore, selectUser } from "@/store/auth-store";
+import {
+  useTenantPaymentMethods,
+  useUpdateTenantPaymentMethods,
+  type TenantPaymentMethodConfig,
+} from "..";
 
 // Zod schema for password change validation
 const passwordSchema = z
@@ -46,6 +51,15 @@ export function SettingsPage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [newMethodLabel, setNewMethodLabel] = useState("");
+  const [newMethodCode, setNewMethodCode] = useState("");
+  const [draftMethods, setDraftMethods] = useState<TenantPaymentMethodConfig[]>(
+    [],
+  );
+  const [hasHydratedDraft, setHasHydratedDraft] = useState(false);
+
+  const paymentMethodsQuery = useTenantPaymentMethods();
+  const updatePaymentMethodsMutation = useUpdateTenantPaymentMethods();
 
   const {
     register,
@@ -90,6 +104,158 @@ export function SettingsPage() {
         variant: "destructive",
       });
     }
+  };
+
+  useEffect(() => {
+    if (!hasHydratedDraft && paymentMethodsQuery.data?.paymentMethods) {
+      setDraftMethods(paymentMethodsQuery.data.paymentMethods);
+      setHasHydratedDraft(true);
+    }
+  }, [hasHydratedDraft, paymentMethodsQuery.data?.paymentMethods]);
+
+  const sortByOrder = (methods: TenantPaymentMethodConfig[]) =>
+    [...methods].sort((a, b) => a.order - b.order);
+
+  const setMethods = (next: TenantPaymentMethodConfig[]) => {
+    setDraftMethods(
+      sortByOrder(next).map((method, index) => ({ ...method, order: index })),
+    );
+  };
+
+  const addPaymentMethod = () => {
+    const label = newMethodLabel.trim();
+    const code = newMethodCode.trim().toUpperCase();
+    if (!label || !code) return;
+    if (!/^[A-Z0-9_]{2,32}$/.test(code)) {
+      toast({
+        title: "Invalid code",
+        description: "Use uppercase letters, numbers, or underscores only.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (draftMethods.some((method) => method.code === code)) {
+      toast({
+        title: "Duplicate code",
+        description: "Payment method code already exists.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setMethods([
+      ...draftMethods,
+      {
+        id: `pm_${crypto.randomUUID()}`,
+        code,
+        label,
+        enabled: true,
+        order: draftMethods.length,
+      },
+    ]);
+    setNewMethodLabel("");
+    setNewMethodCode("");
+  };
+
+  const moveMethod = (index: number, direction: -1 | 1) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= draftMethods.length) return;
+    const next = [...draftMethods];
+    const [method] = next.splice(index, 1);
+    if (!method) return;
+    next.splice(nextIndex, 0, method);
+    setMethods(next);
+  };
+
+  const removeMethod = (id: string) => {
+    const target = draftMethods.find((method) => method.id === id);
+    if (!target) return;
+    const enabledCount = draftMethods.filter((method) => method.enabled).length;
+    if (target.enabled && enabledCount <= 1) {
+      toast({
+        title: "Cannot remove",
+        description: "At least one enabled payment method is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setMethods(draftMethods.filter((method) => method.id !== id));
+  };
+
+  const toggleEnabled = (id: string) => {
+    const target = draftMethods.find((method) => method.id === id);
+    if (!target) return;
+    const enabledCount = draftMethods.filter((method) => method.enabled).length;
+    if (target.enabled && enabledCount <= 1) {
+      toast({
+        title: "Cannot disable",
+        description: "At least one enabled payment method is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setMethods(
+      draftMethods.map((method) =>
+        method.id === id ? { ...method, enabled: !method.enabled } : method,
+      ),
+    );
+  };
+
+  const updateLabel = (id: string, label: string) => {
+    setMethods(
+      draftMethods.map((method) =>
+        method.id === id ? { ...method, label } : method,
+      ),
+    );
+  };
+
+  const updateCode = (id: string, code: string) => {
+    const normalized = code.toUpperCase().replace(/[^A-Z0-9_]/g, "");
+    setMethods(
+      draftMethods.map((method) =>
+        method.id === id ? { ...method, code: normalized } : method,
+      ),
+    );
+  };
+
+  const savePaymentMethods = () => {
+    const hasEnabled = draftMethods.some((method) => method.enabled);
+    if (!hasEnabled) {
+      toast({
+        title: "Cannot save",
+        description: "At least one enabled payment method is required.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const duplicateCodes = new Set<string>();
+    for (const method of draftMethods) {
+      if (!method.label.trim() || !method.code.trim()) {
+        toast({
+          title: "Cannot save",
+          description: "Each payment method needs both label and code.",
+          variant: "destructive",
+        });
+        return;
+      }
+      if (!/^[A-Z0-9_]{2,32}$/.test(method.code)) {
+        toast({
+          title: "Invalid code",
+          description: `Invalid method code: ${method.code}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      if (duplicateCodes.has(method.code)) {
+        toast({
+          title: "Duplicate code",
+          description: `Duplicate method code: ${method.code}`,
+          variant: "destructive",
+        });
+        return;
+      }
+      duplicateCodes.add(method.code);
+    }
+    updatePaymentMethodsMutation.mutate(draftMethods);
   };
 
   return (
@@ -265,6 +431,105 @@ export function SettingsPage() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="shadow-sm">
+        <CardHeader>
+          <CardTitle>Sales Payment Methods</CardTitle>
+          <CardDescription>
+            Customize payment options for this workspace. These options appear
+            in New Sale.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2">
+            <Input
+              placeholder="Label (e.g. Bank Transfer)"
+              value={newMethodLabel}
+              onChange={(e) => setNewMethodLabel(e.target.value)}
+            />
+            <Input
+              placeholder="Code (e.g. BANK_TRANSFER)"
+              value={newMethodCode}
+              onChange={(e) =>
+                setNewMethodCode(
+                  e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, ""),
+                )
+              }
+            />
+            <Button type="button" onClick={addPaymentMethod} className="gap-2">
+              <Plus className="h-4 w-4" />
+              Add
+            </Button>
+          </div>
+
+          {paymentMethodsQuery.isLoading ? (
+            <p className="text-sm text-muted-foreground">Loading methods...</p>
+          ) : (
+            <div className="space-y-2">
+              {draftMethods.map((method, index) => (
+                <div
+                  key={method.id}
+                  className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto_auto_auto_auto] gap-2 items-center border rounded-md p-2"
+                >
+                  <Input
+                    value={method.label}
+                    onChange={(e) => updateLabel(method.id, e.target.value)}
+                  />
+                  <Input
+                    value={method.code}
+                    onChange={(e) => updateCode(method.id, e.target.value)}
+                  />
+                  <Button
+                    type="button"
+                    variant={method.enabled ? "default" : "outline"}
+                    onClick={() => toggleEnabled(method.id)}
+                  >
+                    {method.enabled ? "Enabled" : "Disabled"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => moveMethod(index, -1)}
+                    disabled={index === 0}
+                  >
+                    <ArrowUp className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => moveMethod(index, 1)}
+                    disabled={index === draftMethods.length - 1}
+                  >
+                    <ArrowDown className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="icon"
+                    onClick={() => removeMethod(method.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={savePaymentMethods}
+              disabled={updatePaymentMethodsMutation.isPending}
+            >
+              {updatePaymentMethodsMutation.isPending
+                ? "Saving..."
+                : "Save Payment Methods"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
