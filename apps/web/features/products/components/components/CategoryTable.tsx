@@ -26,7 +26,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Edit2, RotateCcw, Trash2, Layers, MoreHorizontal } from "lucide-react";
+import { Edit2, RotateCcw, Trash2, MoreHorizontal } from "lucide-react";
 import type { Category } from "@/features/products";
 
 interface CategoryTableProps {
@@ -40,7 +40,6 @@ interface CategoryTableProps {
   onRestore?: (category: Category) => void;
   isRestoring?: boolean;
   subcategoriesByCategory?: Record<string, string[]>;
-  onManageSubcategories?: (category: Category) => void;
   totalItems?: number;
   /** When provided, shows checkbox column and selection UI */
   selectedCategories?: Set<string>;
@@ -60,7 +59,6 @@ export function CategoryTable({
   onRestore,
   isRestoring = false,
   subcategoriesByCategory = {},
-  onManageSubcategories,
   totalItems,
   selectedCategories = new Set(),
   onSelectionChange,
@@ -219,14 +217,6 @@ export function CategoryTable({
                           )
                         ) : (
                           <>
-                            {onManageSubcategories && (
-                              <DropdownMenuItem
-                                onClick={() => onManageSubcategories(category)}
-                              >
-                                <Layers className="mr-2 h-4 w-4" />
-                                Manage subcategories
-                              </DropdownMenuItem>
-                            )}
                             <DropdownMenuItem onClick={() => onEdit(category)}>
                               <Edit2 className="mr-2 h-4 w-4" />
                               Edit

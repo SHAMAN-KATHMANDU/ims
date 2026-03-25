@@ -32,7 +32,7 @@ const productRouter = Router();
  *               imsCode:
  *                 type: string
  *                 maxLength: 100
- *                 description: Optional product code (barcode). When omitted, defaults to the new product UUID.
+ *                 description: Optional product code (barcode). When omitted, server assigns {workspaceSlug}-{categoryInitial}{subCategoryInitial?}{nextNumber} unique per tenant.
  *                 example: "PRD-001"
  *               name:
  *                 type: string

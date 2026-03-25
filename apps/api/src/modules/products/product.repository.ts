@@ -5,6 +5,7 @@ import {
   getPrismaOrderBy,
 } from "@/utils/pagination";
 import { Prisma } from "@prisma/client";
+import { maxNumericSuffixForPrefix } from "./ims-code";
 
 /** Filters for raw SQL product list when ordering by aggregated stock (mirrors ProductService.findAll). */
 export interface ProductStockSortFilters {
@@ -227,11 +228,26 @@ export class ProductRepository {
     });
   }
 
-  findTenantName(tenantId: string) {
+  findTenantSlugAndName(tenantId: string) {
     return prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { name: true },
+      select: { slug: true, name: true },
     });
+  }
+
+  async getMaxImsCodeNumericSuffix(tenantId: string, prefix: string) {
+    const rows = await prisma.product.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        imsCode: { startsWith: prefix },
+      },
+      select: { imsCode: true },
+    });
+    return maxNumericSuffixForPrefix(
+      rows.map((r) => r.imsCode),
+      prefix,
+    );
   }
 
   // Product - create

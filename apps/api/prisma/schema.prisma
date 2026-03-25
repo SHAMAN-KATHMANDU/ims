@@ -320,7 +320,7 @@ model SubCategory {
 model Product {
   id            String   @id @default(uuid()) @map("product_id")
   tenantId      String   @map("tenant_id")
-  /// Product code / barcode (POS lookup). Auto-filled with product UUID when omitted on create.
+  /// Product code / barcode (POS lookup). When omitted on create, auto-filled as {tenantSlug}-{categoryLetter}{subCategoryLetter?}{seq}.
   imsCode       String   @map("ims_code") @db.VarChar(100)
   name          String   @map("product_name") @db.VarChar(255)
   categoryId    String   @map("category_id")

@@ -26,6 +26,11 @@ interface CategoryFormProps {
   onSubmit: (data: CategoryFormInput) => Promise<void>;
   onReset: () => void;
   isLoading?: boolean;
+  /** Persisted subcategories from API (edit mode only). */
+  serverSubcategories?: string[];
+  isLoadingServerSubcategories?: boolean;
+  /** Removing a persisted sub opens delete confirmation in parent. */
+  onRemoveServerSubcategory?: (name: string) => void;
 }
 
 export function CategoryForm({
@@ -35,6 +40,9 @@ export function CategoryForm({
   onSubmit,
   onReset,
   isLoading = false,
+  serverSubcategories = [],
+  isLoadingServerSubcategories = false,
+  onRemoveServerSubcategory,
 }: CategoryFormProps) {
   const [subcategoryInput, setSubcategoryInput] = useState("");
 
@@ -61,15 +69,26 @@ export function CategoryForm({
     }
   }, [open, editingCategory, form]);
 
+  const pendingSubcategories = form.watch("subcategories") ?? [];
+
   const handleAddSubcategory = () => {
     const trimmed = subcategoryInput.trim();
     const current = form.getValues("subcategories") ?? [];
-    if (!trimmed || current.includes(trimmed)) return;
+    const serverSet = new Set(
+      (serverSubcategories ?? []).map((s) => s.toLowerCase()),
+    );
+    if (
+      !trimmed ||
+      current.includes(trimmed) ||
+      serverSet.has(trimmed.toLowerCase())
+    ) {
+      return;
+    }
     form.setValue("subcategories", [...current, trimmed]);
     setSubcategoryInput("");
   };
 
-  const handleRemoveSubcategory = (index: number) => {
+  const handleRemovePendingSubcategory = (index: number) => {
     const current = form.getValues("subcategories") ?? [];
     form.setValue(
       "subcategories",
@@ -82,8 +101,6 @@ export function CategoryForm({
     onOpenChange(false);
     onReset();
   });
-
-  const subcategories = form.watch("subcategories") ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -118,66 +135,94 @@ export function CategoryForm({
             <Textarea id="cat-description" {...form.register("description")} />
           </div>
           {editingCategory && (
-            <p className="text-xs text-muted-foreground">
-              To add or remove subcategories, use{" "}
-              <span className="font-medium text-foreground">
-                Manage subcategories
-              </span>{" "}
-              on this category in the table below.
-            </p>
-          )}
-          {!editingCategory && (
             <div className="space-y-2">
-              <Label>Subcategories (optional)</Label>
-              <p className="text-xs text-muted-foreground">
-                Add subcategories now, or add them later using{" "}
-                <span className="font-medium text-foreground">
-                  Manage subcategories
-                </span>{" "}
-                on the category row.
-              </p>
-              {subcategories.length > 0 && (
+              <Label>Current subcategories</Label>
+              {isLoadingServerSubcategories ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : serverSubcategories.length > 0 ? (
                 <div className="flex flex-wrap gap-2 mt-1">
-                  {subcategories.map((sub, index) => (
+                  {serverSubcategories.map((sub) => (
                     <Badge
-                      key={`${sub}-${index}`}
+                      key={sub}
                       variant="secondary"
                       className="flex items-center gap-1"
                     >
                       <span>{sub}</span>
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground hover:text-destructive"
-                        onClick={() => handleRemoveSubcategory(index)}
-                      >
-                        ×
-                      </button>
+                      {onRemoveServerSubcategory && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground hover:text-destructive"
+                          onClick={() => onRemoveServerSubcategory(sub)}
+                        >
+                          ×
+                        </button>
+                      )}
                     </Badge>
                   ))}
                 </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No subcategories yet
+                </p>
               )}
-              <div className="flex gap-2 mt-1">
-                <Input
-                  value={subcategoryInput}
-                  onChange={(e) => setSubcategoryInput(e.target.value)}
-                  placeholder="Enter subcategory name"
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter") {
-                      e.preventDefault();
-                      handleAddSubcategory();
-                    }
-                  }}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleAddSubcategory}
-                >
-                  <Plus className="h-4 w-4 mr-1" /> Add
-                </Button>
-              </div>
             </div>
           )}
+          <div className="space-y-2">
+            <Label>
+              {editingCategory
+                ? "Add subcategories (saved on Update)"
+                : "Subcategories (optional)"}
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              {editingCategory
+                ? "New names are created when you click Update. Remove existing subcategories with × (confirmation required)."
+                : "Add subcategories now, or add them later by editing the category."}
+            </p>
+            {pendingSubcategories.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-1">
+                {pendingSubcategories.map((sub, index) => (
+                  <Badge
+                    key={`${sub}-${index}`}
+                    variant="secondary"
+                    className="flex items-center gap-1"
+                  >
+                    <span>{sub}</span>
+                    <button
+                      type="button"
+                      className="text-xs text-muted-foreground hover:text-destructive"
+                      onClick={() => handleRemovePendingSubcategory(index)}
+                    >
+                      ×
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+            <div className="flex gap-2 mt-1">
+              <Input
+                value={subcategoryInput}
+                onChange={(e) => setSubcategoryInput(e.target.value)}
+                placeholder="Enter subcategory name"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleAddSubcategory();
+                  }
+                }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleAddSubcategory}
+              >
+                <Plus className="h-4 w-4 mr-1" /> Add
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Note: Subcategories are assigned to products. Create or edit a
+              product in this category and set its subcategory field.
+            </p>
+          </div>
           <div className="flex gap-2 justify-end">
             <Button
               type="button"

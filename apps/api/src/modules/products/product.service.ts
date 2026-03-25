@@ -14,8 +14,9 @@ import productRepository, {
   type ProductStockSortFilters,
 } from "./product.repository";
 import {
-  defaultImsCodeCandidates,
+  buildImsCodePrefix,
   isProductImsCodeTenantUniqueViolation,
+  sanitizeSlugForImsCode,
 } from "./ims-code";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import type {
@@ -249,13 +250,14 @@ export class ProductService {
         throw this.mapPrismaConflict(err);
       }
     } else {
-      const tenantRow = await this.repo.findTenantName(tenantId);
-      const tenantName = tenantRow?.name ?? "";
-      const gen = defaultImsCodeCandidates(tenantName, productId);
+      const tenantRow = await this.repo.findTenantSlugAndName(tenantId);
+      const slug = sanitizeSlugForImsCode(tenantRow?.slug ?? "");
+      const prefix = buildImsCodePrefix(slug, category.name, data.subCategory);
+      let n =
+        (await this.repo.getMaxImsCodeNumericSuffix(tenantId, prefix)) + 1;
       let lastErr: unknown;
       for (let attempt = 0; attempt < 40; attempt++) {
-        const { value: candidate } = gen.next();
-        if (candidate === undefined) break;
+        const candidate = `${prefix}${n}`;
         try {
           product = await this.repo.createProduct(buildCreateData(candidate));
           lastErr = undefined;
@@ -265,6 +267,7 @@ export class ProductService {
           if (!isImsCodeConflict(err)) {
             throw this.mapPrismaConflict(err);
           }
+          n += 1;
         }
       }
       if (product === undefined) {

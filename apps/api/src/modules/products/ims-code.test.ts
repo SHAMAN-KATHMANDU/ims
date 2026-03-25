@@ -1,46 +1,98 @@
 import { describe, it, expect } from "vitest";
 import {
-  initialsFromTenantName,
-  buildDefaultImsCode,
-  defaultImsCodeCandidates,
+  escapeRegex,
+  firstImsCodeLetter,
+  sanitizeSlugForImsCode,
+  buildImsCodePrefix,
+  maxNumericSuffixForPrefix,
+  isProductImsCodeTenantUniqueViolation,
 } from "./ims-code";
 
 describe("ims-code", () => {
-  describe("initialsFromTenantName", () => {
-    it("uses first letter of each word for multi-word names", () => {
-      expect(initialsFromTenantName("Acme Corp")).toBe("AC");
-      expect(initialsFromTenantName("Foo Bar Baz")).toBe("FBB");
-    });
-
-    it("uses first two letters for single word", () => {
-      expect(initialsFromTenantName("Acme")).toBe("AC");
-    });
-
-    it("returns XX for empty", () => {
-      expect(initialsFromTenantName("")).toBe("XX");
-      expect(initialsFromTenantName("   ")).toBe("XX");
-    });
-
-    it("pads single-character token", () => {
-      expect(initialsFromTenantName("A")).toBe("AX");
+  describe("escapeRegex", () => {
+    it("escapes metacharacters", () => {
+      expect(escapeRegex("a.b")).toBe("a\\.b");
+      expect(escapeRegex("x[1]")).toBe("x\\[1\\]");
     });
   });
 
-  describe("buildDefaultImsCode", () => {
-    it("combines initials and last 3 hex chars of uuid (no hyphens)", () => {
-      const id = "aaaaaaaa-bbbb-4ccc-dddd-eeeeeeeeabcd";
-      expect(buildDefaultImsCode("Acme Corp", id, 3)).toBe("ACBCD");
+  describe("firstImsCodeLetter", () => {
+    it("returns first alnum uppercased", () => {
+      expect(firstImsCodeLetter("Electronics")).toBe("E");
+      expect(firstImsCodeLetter("shirts")).toBe("S");
+      expect(firstImsCodeLetter("9mm")).toBe("9");
+    });
+
+    it("skips leading non-alnum", () => {
+      expect(firstImsCodeLetter("  (Foo)")).toBe("F");
+    });
+
+    it("returns X when none", () => {
+      expect(firstImsCodeLetter("")).toBe("X");
+      expect(firstImsCodeLetter("   ")).toBe("X");
+      expect(firstImsCodeLetter("@@@")).toBe("X");
     });
   });
 
-  describe("defaultImsCodeCandidates", () => {
-    it("starts with suffix length 3 then lengthens", () => {
-      const id = "00000000-0000-4000-8000-00000000abcd";
-      const gen = defaultImsCodeCandidates("Hi There", id);
-      const first = gen.next().value!;
-      const second = gen.next().value!;
-      expect(first.endsWith("BCD")).toBe(true);
-      expect(second.length).toBeGreaterThan(first.length);
+  describe("sanitizeSlugForImsCode", () => {
+    it("keeps alnum lowercased", () => {
+      expect(sanitizeSlugForImsCode("Acme-Corp")).toBe("acmecorp");
+      expect(sanitizeSlugForImsCode("demo")).toBe("demo");
+    });
+
+    it("falls back to tenant when empty", () => {
+      expect(sanitizeSlugForImsCode("")).toBe("tenant");
+      expect(sanitizeSlugForImsCode("---")).toBe("tenant");
+    });
+  });
+
+  describe("buildImsCodePrefix", () => {
+    it("builds slug-category without subcategory", () => {
+      expect(buildImsCodePrefix("demo", "Products", null)).toBe("demo-P");
+      expect(buildImsCodePrefix("demo", "Products", undefined)).toBe("demo-P");
+      expect(buildImsCodePrefix("demo", "Products", "   ")).toBe("demo-P");
+    });
+
+    it("appends subcategory letter when present", () => {
+      expect(buildImsCodePrefix("demo", "Products", "Shirts")).toBe("demo-PS");
+    });
+  });
+
+  describe("maxNumericSuffixForPrefix", () => {
+    it("returns 0 when no match", () => {
+      expect(maxNumericSuffixForPrefix([], "demo-P")).toBe(0);
+      expect(
+        maxNumericSuffixForPrefix(["demo-Px1", "uuid-here"], "demo-P"),
+      ).toBe(0);
+    });
+
+    it("returns max trailing digits for exact prefix pattern", () => {
+      expect(
+        maxNumericSuffixForPrefix(["demo-P1", "demo-P10", "demo-P2"], "demo-P"),
+      ).toBe(10);
+    });
+
+    it("does not treat longer prefix codes as shorter prefix", () => {
+      expect(
+        maxNumericSuffixForPrefix(["demo-Ps1", "demo-Ps2"], "demo-P"),
+      ).toBe(0);
+    });
+  });
+
+  describe("isProductImsCodeTenantUniqueViolation", () => {
+    it("returns true for P2002 on tenant and ims", () => {
+      expect(
+        isProductImsCodeTenantUniqueViolation({
+          code: "P2002",
+          meta: { target: ["tenant_id", "ims_code"] },
+        }),
+      ).toBe(true);
+    });
+
+    it("returns false for other errors", () => {
+      expect(isProductImsCodeTenantUniqueViolation({ code: "P2025" })).toBe(
+        false,
+      );
     });
   });
 });
