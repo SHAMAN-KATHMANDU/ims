@@ -632,15 +632,17 @@ export function PromoForm({
         </DialogTrigger>
       )}
       <DialogContent
-        className="max-h-[min(90vh,900px)] max-w-2xl overflow-y-auto"
+        className="z-60 max-h-[min(90vh,900px)] max-w-2xl overflow-hidden p-0"
         allowDismiss={false}
       >
-        <DialogHeader className="space-y-1 pr-6">
+        <DialogHeader className="space-y-1 px-6 pt-6">
           <DialogTitle>
             {editingPromo ? "Edit Promo Code" : "Create Promo Code"}
           </DialogTitle>
         </DialogHeader>
-        {formContent}
+        <div className="max-h-[calc(min(90vh,900px)-4.5rem)] overflow-y-auto px-6 pb-6">
+          {formContent}
+        </div>
       </DialogContent>
     </Dialog>
   );

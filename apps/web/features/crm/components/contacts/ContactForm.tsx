@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
@@ -322,21 +323,23 @@ export function ContactForm({
           {tags.map((tag) => {
             const current = form.watch("tagIds") ?? [];
             const checked = current.includes(tag.id);
+            const checkboxId = `contact-tag-${tag.id}`;
             return (
               <label
                 key={tag.id}
                 className="flex items-center gap-1.5 text-sm cursor-pointer"
+                htmlFor={checkboxId}
               >
-                <input
-                  type="checkbox"
+                <Checkbox
+                  id={checkboxId}
                   checked={checked}
-                  onChange={(e) => {
-                    const next = e.target.checked
+                  onCheckedChange={(nextChecked) => {
+                    const isChecked = nextChecked === true;
+                    const next = isChecked
                       ? [...current, tag.id]
                       : current.filter((id) => id !== tag.id);
                     form.setValue("tagIds", next);
                   }}
-                  className="rounded"
                 />
                 {tag.name}
               </label>
