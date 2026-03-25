@@ -23,6 +23,7 @@ const mockUpdateMemberAggregation = vi.fn();
 const mockFindSaleById = vi.fn();
 const mockFindSaleWithPaymentsOnly = vi.fn();
 const mockCreateSalePayment = vi.fn();
+const mockAssertMethodAllowed = vi.fn();
 
 vi.mock("./sale.repository", () => ({
   findVariationWithDiscounts: (...args: unknown[]) =>
@@ -63,6 +64,13 @@ vi.mock("@/utils/phone", () => ({
     phone === "+9779812345678"
       ? { valid: true, e164: "+9779812345678" }
       : { valid: false, message: "Invalid phone" },
+}));
+
+vi.mock("@/modules/tenant-settings/tenant-settings.service", () => ({
+  default: {
+    assertMethodAllowed: (...args: unknown[]) =>
+      mockAssertMethodAllowed(...args),
+  },
 }));
 
 const ctx = { tenantId: "t1", userId: "u1" };
@@ -114,13 +122,15 @@ function variationWithProductDiscounts(
   };
 }
 
-function activePromo(overrides: {
-  overrideDiscounts?: boolean;
-  allowStacking?: boolean;
-  valueType?: "FLAT" | "PERCENTAGE";
-  value?: number;
-  eligibility?: "ALL" | "MEMBER" | "NON_MEMBER";
-} = {}) {
+function activePromo(
+  overrides: {
+    overrideDiscounts?: boolean;
+    allowStacking?: boolean;
+    valueType?: "FLAT" | "PERCENTAGE";
+    value?: number;
+    eligibility?: "ALL" | "MEMBER" | "NON_MEMBER";
+  } = {},
+) {
   return {
     isActive: true,
     validFrom: null as Date | null,
@@ -139,6 +149,7 @@ function activePromo(overrides: {
 describe("SaleService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockAssertMethodAllowed.mockResolvedValue(undefined);
   });
 
   describe("calculateSaleItems", () => {
@@ -666,6 +677,28 @@ describe("SaleService", () => {
       });
     });
 
+    it("throws 400 when payment method is not allowed", async () => {
+      mockFindLocationById.mockResolvedValue(showroomLocation);
+      mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockAssertMethodAllowed.mockRejectedValue(
+        Object.assign(new Error("Unsupported payment method: IME_PAY"), {
+          statusCode: 400,
+        }),
+      );
+
+      await expect(
+        createSale(ctx, {
+          locationId: "loc1",
+          items: [{ variationId: "v1", quantity: 1 }],
+          payments: [{ method: "IME_PAY", amount: 100 }],
+        }),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining("Unsupported payment method"),
+        statusCode: 400,
+      });
+    });
+
     it("creates sale and deducts inventory on success", async () => {
       mockFindLocationById.mockResolvedValue(showroomLocation);
       mockFindVariationWithDiscounts.mockResolvedValue(mockVariation);
@@ -769,6 +802,7 @@ describe("SaleService", () => {
     it("throws 400 when payment exceeds balance due", async () => {
       mockFindSaleWithPaymentsOnly.mockResolvedValue({
         id: "s1",
+        tenantId: "t1",
         isCreditSale: true,
         total: 100,
         payments: [{ amount: 50 }],
@@ -782,9 +816,32 @@ describe("SaleService", () => {
       });
     });
 
+    it("throws 400 when payment method is not allowed", async () => {
+      mockFindSaleWithPaymentsOnly.mockResolvedValue({
+        id: "s1",
+        tenantId: "t1",
+        isCreditSale: true,
+        total: 100,
+        payments: [],
+      });
+      mockAssertMethodAllowed.mockRejectedValue(
+        Object.assign(new Error("Unsupported payment method: IME_PAY"), {
+          statusCode: 400,
+        }),
+      );
+
+      await expect(
+        addPayment("s1", { method: "IME_PAY", amount: 50 }),
+      ).rejects.toMatchObject({
+        message: expect.stringContaining("Unsupported payment method"),
+        statusCode: 400,
+      });
+    });
+
     it("creates payment when valid", async () => {
       const creditSale = {
         id: "s1",
+        tenantId: "t1",
         isCreditSale: true,
         total: 100,
         payments: [],

@@ -11,10 +11,17 @@ export {
   errorReportKeys,
 } from "./hooks/use-settings";
 export {
+  useTenantPaymentMethods,
+  useUpdateTenantPaymentMethods,
+  paymentMethodsKeys,
+} from "./hooks/use-payment-methods";
+export {
   getAuditLogs,
   getErrorReports,
   createErrorReport,
   updateErrorReportStatus,
+  getTenantPaymentMethods,
+  updateTenantPaymentMethods,
 } from "./services";
 export type {
   AuditLogEntry,
@@ -25,4 +32,6 @@ export type {
   CreateErrorReportData,
   ErrorReportsListParams,
   PaginatedErrorReportsResponse,
+  TenantPaymentMethodConfig,
+  PaymentMethodsResponse,
 } from "./services";

@@ -119,9 +119,15 @@ export function DealsKanbanPage() {
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [selectedDealId, setSelectedDealId] = useState<string | null>(null);
 
-  const { data, isLoading } = useDealsKanban(pipelineId || undefined);
-  const { data: pipelinesData } = usePipelines();
-  const { data: selectedDealData } = useDeal(selectedDealId ?? "");
+  const { data, isLoading } = useDealsKanban(pipelineId || undefined, {
+    enabled: envDealsEnabled && salesPipelineEnabled,
+  });
+  const { data: pipelinesData } = usePipelines(undefined, {
+    enabled: envDealsEnabled && salesPipelineEnabled,
+  });
+  const { data: selectedDealData } = useDeal(selectedDealId ?? "", {
+    enabled: envDealsEnabled && salesPipelineEnabled && !!selectedDealId,
+  });
   const updateStageMutation = useUpdateDealStage();
   const deleteDealMutation = useDeleteDeal();
   const createDealMutation = useCreateDeal();

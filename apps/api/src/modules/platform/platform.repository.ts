@@ -7,6 +7,26 @@ import { basePrisma } from "@/config/prisma";
 import type { PlanTier } from "@prisma/client";
 import type { Prisma } from "@prisma/client";
 
+const DEFAULT_TENANT_PAYMENT_METHODS = [
+  { id: "pm_cash", code: "CASH", label: "Cash", enabled: true, order: 0 },
+  { id: "pm_card", code: "CARD", label: "Card", enabled: true, order: 1 },
+  {
+    id: "pm_cheque",
+    code: "CHEQUE",
+    label: "Cheque",
+    enabled: true,
+    order: 2,
+  },
+  {
+    id: "pm_fonepay",
+    code: "FONEPAY",
+    label: "Fonepay",
+    enabled: true,
+    order: 3,
+  },
+  { id: "pm_qr", code: "QR", label: "QR", enabled: true, order: 4 },
+];
+
 // ─── Tenant ─────────────────────────────────────────────────────────────────
 
 export interface CreateTenantRepoData {
@@ -184,6 +204,9 @@ export class PlatformRepository {
           isTrial: tenantData.isTrial,
           trialEndsAt: tenantData.trialEndsAt,
           subscriptionStatus: tenantData.subscriptionStatus,
+          settings: {
+            paymentMethods: DEFAULT_TENANT_PAYMENT_METHODS,
+          },
         },
       });
 

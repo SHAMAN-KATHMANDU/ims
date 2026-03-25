@@ -79,7 +79,7 @@ const saleRouter = Router();
  *                   properties:
  *                     method:
  *                       type: string
- *                       enum: [CASH, CARD, CHEQUE, FONEPAY, QR]
+ *                       description: Tenant-configured payment method code (e.g. CASH, CARD, BANK_TRANSFER)
  *                     amount:
  *                       type: number
  *                       minimum: 0
@@ -416,7 +416,7 @@ saleRouter.get(
  *             properties:
  *               method:
  *                 type: string
- *                 enum: [CASH, CARD, CHEQUE, FONEPAY, QR]
+ *                 description: Tenant-configured payment method code
  *               amount:
  *                 type: number
  *     responses:
@@ -564,7 +564,7 @@ saleRouter.delete(
  *                     discountId: { type: string, format: uuid, nullable: true }
  *                     promoCode: { type: string }
  *               notes: { type: string }
- *               payments: { type: array, items: { type: object, properties: { method: { enum: [CASH, CARD, CHEQUE, FONEPAY, QR] }, amount: { type: number } } } }
+ *               payments: { type: array, items: { type: object, properties: { method: { type: string }, amount: { type: number } } } }
  *               editReason: { type: string, nullable: true }
  *     responses:
  *       200:

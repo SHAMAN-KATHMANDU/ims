@@ -137,7 +137,9 @@ export function ContactDetail({
   const activities = activitiesData?.activities ?? [];
   const activityPagination = activitiesData?.pagination;
   const { data: usersResult } = useUsers({ limit: 10 });
-  const { data: pipelinesData } = usePipelines();
+  const { data: pipelinesData } = usePipelines(undefined, {
+    enabled: dealsEnabled,
+  });
   const { data: allTags } = useContactTags();
   const users: User[] = usersResult?.users ?? [];
   const pipelines = pipelinesData?.pipelines ?? [];

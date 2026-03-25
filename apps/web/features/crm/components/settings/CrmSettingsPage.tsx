@@ -290,18 +290,24 @@ const PIPELINE_TYPE_LABELS: Record<string, string> = {
 const DEFAULT_PIPELINE_PAGE_SIZE = 10;
 
 function PipelineSettings() {
+  const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const [pipelinePage, setPipelinePage] = useState(DEFAULT_PAGE);
   const [pipelinePageSize, setPipelinePageSize] = useState(
     DEFAULT_PIPELINE_PAGE_SIZE,
   );
   const [pipelineSearch, setPipelineSearch] = useState("");
   const debouncedPipelineSearch = useDebounce(pipelineSearch, 300);
-  const { data, isLoading } = usePipelines({
-    page: pipelinePage,
-    limit: pipelinePageSize,
-    search: debouncedPipelineSearch || undefined,
+  const { data, isLoading } = usePipelines(
+    {
+      page: pipelinePage,
+      limit: pipelinePageSize,
+      search: debouncedPipelineSearch || undefined,
+    },
+    { enabled: pipelinesTabEnabled },
+  );
+  const { data: templatesPayload } = usePipelineTemplates({
+    enabled: pipelinesTabEnabled,
   });
-  const { data: templatesPayload } = usePipelineTemplates();
   const createMutation = useCreatePipeline();
   const updateMutation = useUpdatePipeline();
   const deleteMutation = useDeletePipeline();

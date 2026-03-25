@@ -72,6 +72,15 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { useTenantPaymentMethods } from "@/features/settings";
+
+const DEFAULT_PAYMENT_METHODS = [
+  { code: "CASH", label: "Cash", enabled: true, order: 0 },
+  { code: "CARD", label: "Card", enabled: true, order: 1 },
+  { code: "CHEQUE", label: "Cheque", enabled: true, order: 2 },
+  { code: "FONEPAY", label: "Fonepay", enabled: true, order: 3 },
+  { code: "QR", label: "QR", enabled: true, order: 4 },
+] as const;
 
 function SaleSection({
   title,
@@ -224,7 +233,7 @@ interface SaleItem {
   discountReason?: string;
 }
 
-type PaymentMethod = "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+type PaymentMethod = string;
 
 interface PaymentEntry {
   id: string;
@@ -250,6 +259,22 @@ export function NewSaleForm({
   isLoading,
   inline = false,
 }: NewSaleFormProps) {
+  const { data: paymentMethodsResult } = useTenantPaymentMethods();
+  const enabledPaymentMethods = useMemo(() => {
+    const methods =
+      paymentMethodsResult?.paymentMethods ?? DEFAULT_PAYMENT_METHODS;
+    return [...methods]
+      .filter((method) => method.enabled)
+      .sort((a, b) => a.order - b.order);
+  }, [paymentMethodsResult?.paymentMethods]);
+  const paymentMethodLabelMap = useMemo(
+    () =>
+      new Map(
+        enabledPaymentMethods.map((method) => [method.code, method.label]),
+      ),
+    [enabledPaymentMethods],
+  );
+
   // Form state
   const [locationId, setLocationId] = useState("");
   const [memberPhone, setMemberPhone] = useState("");
@@ -264,7 +289,7 @@ export function NewSaleForm({
   const prevItemsLengthRef = useRef(items.length);
   const [isCreditSale, setIsCreditSale] = useState(false);
   const [selectedPaymentMethod, setSelectedPaymentMethod] =
-    useState<PaymentMethod>("CASH");
+    useState<PaymentMethod>(enabledPaymentMethods[0]?.code ?? "CASH");
   const [paymentAmount, setPaymentAmount] = useState("");
   const [promoCode, setPromoCode] = useState("");
   const [promoCodeError, setPromoCodeError] = useState<string | null>(null);
@@ -438,6 +463,16 @@ export function NewSaleForm({
   const [previewResult, setPreviewResult] =
     useState<SalePreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+
+  useEffect(() => {
+    if (enabledPaymentMethods.length === 0) return;
+    const selectedExists = enabledPaymentMethods.some(
+      (method) => method.code === selectedPaymentMethod,
+    );
+    if (!selectedExists) {
+      setSelectedPaymentMethod(enabledPaymentMethods[0]?.code ?? "CASH");
+    }
+  }, [enabledPaymentMethods, selectedPaymentMethod]);
 
   // Clear items, inventory, search when location changes
   const prevLocationIdRef = useRef(locationId);
@@ -917,7 +952,7 @@ export function NewSaleForm({
     setProductSearch("");
     setPayments([]);
     setIsCreditSale(false);
-    setSelectedPaymentMethod("CASH");
+    setSelectedPaymentMethod(enabledPaymentMethods[0]?.code ?? "CASH");
     setPaymentAmount("");
     setDiscountMode("individual");
     setAggregateDiscountId("none");
@@ -943,7 +978,7 @@ export function NewSaleForm({
       setProductSearch("");
       setPayments([]);
       setIsCreditSale(false);
-      setSelectedPaymentMethod("CASH");
+      setSelectedPaymentMethod(enabledPaymentMethods[0]?.code ?? "CASH");
       setPaymentAmount("");
       setDiscountMode("individual");
       setAggregateDiscountId("none");
@@ -1962,13 +1997,14 @@ export function NewSaleForm({
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="CASH">Cash</SelectItem>
-                                  <SelectItem value="CARD">Card</SelectItem>
-                                  <SelectItem value="CHEQUE">Cheque</SelectItem>
-                                  <SelectItem value="FONEPAY">
-                                    Fonepay
-                                  </SelectItem>
-                                  <SelectItem value="QR">QR</SelectItem>
+                                  {enabledPaymentMethods.map((method) => (
+                                    <SelectItem
+                                      key={method.code}
+                                      value={method.code}
+                                    >
+                                      {method.label}
+                                    </SelectItem>
+                                  ))}
                                 </SelectContent>
                               </Select>
                               <Input
@@ -2022,7 +2058,8 @@ export function NewSaleForm({
                                       variant="outline"
                                       className="text-xs"
                                     >
-                                      {p.method}
+                                      {paymentMethodLabelMap.get(p.method) ??
+                                        p.method}
                                     </Badge>
                                     <div className="flex items-center gap-2">
                                       <span className="font-bold tabular-nums text-foreground">

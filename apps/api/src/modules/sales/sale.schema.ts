@@ -1,6 +1,14 @@
 import { z } from "zod";
 
-const PAYMENT_METHOD = z.enum(["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"]);
+const PAYMENT_METHOD = z
+  .string()
+  .trim()
+  .min(1, "Payment method is required")
+  .max(32, "Payment method must be at most 32 characters")
+  .regex(
+    /^[A-Z0-9_]+$/,
+    "Payment method must use uppercase letters, numbers, or underscores",
+  );
 
 const SALE_ITEM_SCHEMA = z
   .object({

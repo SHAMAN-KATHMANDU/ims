@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 import {
   getDeals,
   getDealsKanban,
@@ -43,6 +45,7 @@ export function useDealsPaginated(
   params: DealListParams = {},
   options?: { enabled?: boolean },
 ) {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   return useQuery({
     queryKey: dealKeys.list({
       page: params.page ?? DEFAULT_PAGE,
@@ -58,22 +61,28 @@ export function useDealsPaginated(
     }),
     queryFn: () => getDeals(params),
     placeholderData: (prev: PaginatedDealsResponse | undefined) => prev,
-    enabled: options?.enabled ?? true,
+    enabled: dealsEnabled && (options?.enabled ?? true),
   });
 }
 
-export function useDealsKanban(pipelineId?: string) {
+export function useDealsKanban(
+  pipelineId?: string,
+  options?: { enabled?: boolean },
+) {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   return useQuery({
     queryKey: dealKeys.kanban(pipelineId),
     queryFn: () => getDealsKanban(pipelineId),
+    enabled: dealsEnabled && (options?.enabled ?? true),
   });
 }
 
-export function useDeal(id: string) {
+export function useDeal(id: string, options?: { enabled?: boolean }) {
+  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
   return useQuery({
     queryKey: dealKeys.detail(id),
     queryFn: () => getDealById(id),
-    enabled: !!id,
+    enabled: dealsEnabled && !!id && (options?.enabled ?? true),
   });
 }
 

@@ -173,12 +173,11 @@ export const excelSaleRowSchema = z.object({
     .refine(
       (val) => {
         if (val === null) return true;
-        const validMethods = ["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"];
-        return validMethods.includes(val);
+        return /^[A-Z0-9_]{2,32}$/.test(val);
       },
       {
         message:
-          "Payment method must be one of: CASH, CARD, CHEQUE, FONEPAY, QR",
+          "Payment method must be uppercase letters/numbers/underscore (2-32 chars)",
       },
     ),
 });
@@ -277,6 +276,6 @@ export function getSaleBulkParseOptions(): BulkParseOptions<ExcelSaleRow> {
     fields: [...saleBulkFields],
     skipExcelRows: 1,
     missingColumnsHint:
-      "Required: Showroom, Sold by, Product Code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (CASH, CARD, CHEQUE, FONEPAY, QR).",
+      "Required: Showroom, Sold by, Product Code, Product Name, Quantity, MRP, Final amount. Optional: SN, sale_id, Date of sale, Phone number, Attributes, Discount, Payment method (e.g. CASH, CARD, BANK_TRANSFER).",
   };
 }

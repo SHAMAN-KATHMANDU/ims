@@ -100,7 +100,7 @@ class SaleController {
           notes: body.notes,
           payments: body.payments as
             | Array<{
-                method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+                method: string;
                 amount: number;
               }>
             | undefined,
@@ -152,7 +152,7 @@ class SaleController {
       const body = EditSaleSchema.parse(req.body);
       const payments = body.payments as
         | Array<{
-            method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+            method: string;
             amount: number;
           }>
         | undefined;
