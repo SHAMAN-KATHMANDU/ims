@@ -46,6 +46,23 @@ const EnvSchema = z
     META_APP_ID: z.string().optional(),
     META_APP_SECRET: z.string().optional(),
     CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    AI_REPLY_PROVIDER: z
+      .enum(["OPENAI_RESPONSES", "OPENAI_COMPAT_CHAT", "GEMINI_API"])
+      .optional()
+      .default("GEMINI_API"),
+    AI_REPLY_MODEL: z.string().optional().default("gemini-2.5-flash"),
+    AI_REPLY_API_KEY: z.string().optional().default(""),
+    AI_REPLY_BASE_URL: z
+      .string()
+      .optional()
+      .default("https://generativelanguage.googleapis.com/v1beta"),
+    AI_REPLY_ENABLED_DEFAULT: z
+      .string()
+      .optional()
+      .default("false")
+      .transform((v) => v.toLowerCase() === "true"),
+    BRAINTRUST_API_KEY: z.string().optional().default(""),
+    BRAINTRUST_PROJECT_NAME: z.string().optional().default("IMS AI Replies"),
   })
   .transform((raw) => {
     const isDev = raw.NODE_ENV === "development";
@@ -136,7 +153,9 @@ const EnvSchema = z
       corsOrigin,
       publicApiUrl,
       publicServerOrigin:
-        publicServerOrigin.length > 0 ? publicServerOrigin : "http://localhost:4000",
+        publicServerOrigin.length > 0
+          ? publicServerOrigin
+          : "http://localhost:4000",
       appEnv,
       featureFlags: raw.FEATURE_FLAGS?.trim(),
       features: {} as const,
@@ -144,6 +163,13 @@ const EnvSchema = z
       metaAppId: raw.META_APP_ID?.trim() ?? "",
       metaAppSecret: raw.META_APP_SECRET?.trim() ?? "",
       credentialEncryptionKey: raw.CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "",
+      aiReplyProvider: raw.AI_REPLY_PROVIDER,
+      aiReplyModel: raw.AI_REPLY_MODEL.trim(),
+      aiReplyApiKey: raw.AI_REPLY_API_KEY.trim(),
+      aiReplyBaseUrl: raw.AI_REPLY_BASE_URL.trim(),
+      aiReplyEnabledDefault: raw.AI_REPLY_ENABLED_DEFAULT,
+      braintrustApiKey: raw.BRAINTRUST_API_KEY.trim(),
+      braintrustProjectName: raw.BRAINTRUST_PROJECT_NAME.trim(),
     };
   });
 

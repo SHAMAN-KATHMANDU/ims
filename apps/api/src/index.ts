@@ -4,6 +4,7 @@ import { basePrisma as prisma } from "@/config/prisma";
 import dbConnect from "@/config/dbConnect";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
+import "@/config/braintrust";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
 import { startUploadCleanupCron } from "@/jobs/uploadCleanup";
 import { startRemarketingScheduler } from "@/modules/remarketing/remarketing.scheduler";
@@ -13,6 +14,7 @@ import { setupSocketIO } from "@/config/socket.config";
 import "@/queues/inbound-message.worker";
 import "@/queues/outbound-message.worker";
 import "@/queues/status-update.worker";
+import "@/queues/ai-reply.worker";
 
 // Note: dotenv.config() is called in env.ts - do not call it here
 const PORT = env.port;
@@ -30,8 +32,9 @@ const startServer = async () => {
 
     const metaMessagingConfigured =
       Boolean(env.metaAppId) && Boolean(env.metaAppSecret);
-    const publicOriginLooksLocal =
-      /localhost|127\.0\.0\.1|\[::1\]/i.test(env.publicServerOrigin);
+    const publicOriginLooksLocal = /localhost|127\.0\.0\.1|\[::1\]/i.test(
+      env.publicServerOrigin,
+    );
     if (metaMessagingConfigured && publicOriginLooksLocal) {
       logger.warn(
         "Messaging: API_PUBLIC_URL resolves to a local origin. Facebook Messenger cannot download outbound media from localhost; set API_PUBLIC_URL to a public HTTPS URL for image/video delivery to users.",

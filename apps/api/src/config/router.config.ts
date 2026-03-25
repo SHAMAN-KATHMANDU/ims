@@ -47,6 +47,7 @@ import webhookRouter from "@/modules/webhooks/webhook.router";
 import messagingChannelRouter from "@/modules/messaging-channels/messaging-channel.router";
 import messagingRouter from "@/modules/messaging/messaging.router";
 import trashRouter from "@/modules/trash/trash.router";
+import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
 
 const router = Router();
 
@@ -104,5 +105,6 @@ router.use("/workflows", workflowRouter);
 router.use("/trash", trashRouter);
 router.use("/messaging-channels", messagingChannelRouter);
 router.use("/messaging", messagingRouter);
+router.use("/ai-settings", aiSettingsRouter);
 
 export default router;

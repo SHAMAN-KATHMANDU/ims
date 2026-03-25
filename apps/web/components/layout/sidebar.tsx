@@ -41,6 +41,7 @@ import {
   ListChecks,
   KeyRound,
   Zap,
+  BrainCircuit,
 } from "lucide-react";
 import { Button } from "../ui/button";
 import {
@@ -390,6 +391,13 @@ const navSections: NavSection[] = [
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.CRM_WORKFLOWS,
         feature: Feature.SALES_PIPELINE,
+      },
+      {
+        path: "settings/ai",
+        label: "AI Settings",
+        icon: BrainCircuit,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.MESSAGING,
       },
       {
         path: "users",
