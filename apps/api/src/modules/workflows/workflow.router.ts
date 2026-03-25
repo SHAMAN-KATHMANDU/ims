@@ -1,11 +1,13 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import workflowController from "./workflow.controller";
 
 const workflowRouter = Router();
 
 workflowRouter.use(authorizeRoles("admin", "superAdmin"));
+workflowRouter.use(enforcePlanFeature("salesPipeline"));
 
 /**
  * @swagger

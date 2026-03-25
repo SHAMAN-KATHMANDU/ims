@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
 import {
   CreateActivitySchema,
@@ -22,8 +23,7 @@ const handleAppError = (res: Response, error: unknown): Response | null => {
 class ActivityController {
   create = async (req: Request, res: Response) => {
     try {
-      const userId = req.user!.id;
-      const tenantId = req.user!.tenantId;
+      const { userId, tenantId } = getAuthContext(req);
       const body = CreateActivitySchema.parse(req.body);
       const activity = await activityService.create(tenantId, userId, body);
       return res.status(201).json({ message: "Activity logged", activity });
@@ -42,7 +42,7 @@ class ActivityController {
 
   getByContact = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { contactId } = req.params;
       const parsed = ListActivitiesByContactQuerySchema.safeParse(req.query);
       const data = parsed.success ? parsed.data : undefined;
@@ -70,7 +70,7 @@ class ActivityController {
 
   getByDeal = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { dealId } = req.params;
       const parsed = ListActivitiesByDealQuerySchema.safeParse(req.query);
       const data = parsed.success ? parsed.data : undefined;
@@ -94,7 +94,7 @@ class ActivityController {
 
   getById = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { id } = req.params;
       const activity = await activityService.getById(tenantId, id);
       return res.status(200).json({ message: "OK", activity });
@@ -108,8 +108,7 @@ class ActivityController {
 
   delete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const { id } = req.params;
       const deleteBody = DeleteBodySchema.parse(req.body ?? {});
       const ip = typeof req.ip === "string" ? req.ip : undefined;

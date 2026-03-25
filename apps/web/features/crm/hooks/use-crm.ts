@@ -1,6 +1,8 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 import {
   getCrmDashboard,
   getCrmReports,
@@ -8,23 +10,29 @@ import {
 } from "../services/crm.service";
 
 export const crmKeys = {
+  /** Prefix for all CRM overview / reports queries — use for invalidation after mutations. */
+  all: ["crm"] as const,
   dashboard: () => ["crm", "dashboard"] as const,
   reports: (year?: number) => ["crm", "reports", year] as const,
 };
 
 export function useCrmDashboard() {
+  const crmEnabled = useEnvFeatureFlag(EnvFeature.CRM);
   return useQuery({
     queryKey: crmKeys.dashboard(),
     queryFn: () => getCrmDashboard(),
-    staleTime: 3 * 60 * 1000,
+    staleTime: 60 * 1000,
+    enabled: crmEnabled,
   });
 }
 
 export function useCrmReports(year?: number) {
+  const reportsEnabled = useEnvFeatureFlag(EnvFeature.CRM_REPORTS);
   return useQuery({
     queryKey: crmKeys.reports(year),
     queryFn: () => getCrmReports(year),
-    staleTime: 3 * 60 * 1000,
+    staleTime: 60 * 1000,
+    enabled: reportsEnabled,
   });
 }
 

@@ -1,11 +1,13 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import notificationController from "./notification.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const notificationRouter = Router();
 
 notificationRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+notificationRouter.use(enforcePlanFeature("salesPipeline"));
 
 /**
  * @swagger

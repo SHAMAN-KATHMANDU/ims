@@ -5,6 +5,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,7 +23,8 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { MultiSelectCombobox } from "@/components/ui/multi-select-combobox";
-import { Plus } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Package, ListTree, Plus } from "lucide-react";
 import { useProducts, useCategories } from "@/features/products";
 import type {
   PromoCode,
@@ -72,6 +74,7 @@ export function PromoForm({
   renderTrigger = true,
 }: PromoFormProps) {
   const [productSearch, setProductSearch] = useState("");
+  const [sectionTab, setSectionTab] = useState<"details" | "scope">("details");
 
   const form = useForm<PromoFormInput>({
     resolver: zodResolver(PromoFormSchema),
@@ -154,6 +157,10 @@ export function PromoForm({
     }
   }, [open, editingPromo, form]);
 
+  useEffect(() => {
+    if (open) setSectionTab("details");
+  }, [open, editingPromo?.id]);
+
   const handleSubmit = form.handleSubmit(async (values) => {
     await onSubmit({
       code: values.code,
@@ -193,333 +200,383 @@ export function PromoForm({
     if (cleaned.length !== subCategories.length) {
       form.setValue("subCategories", cleaned);
     }
-    // categoryIdsKey/subCategoriesKey used instead of raw arrays to avoid unstable deps (form.watch returns new refs each render)
+    // categoryIdsKey/subCategoriesKey used instead of raw arrays to avoid unstable deps (form.watch returns new array refs each render)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [categoryIdsKey, filteredSubcategories, subCategoriesKey, form]);
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Code *</label>
-          <Controller
-            name="code"
-            control={form.control}
-            render={({ field }) => (
-              <Input
-                {...field}
-                onChange={(e) => field.onChange(e.target.value.toUpperCase())}
-                placeholder="e.g. FESTIVE20"
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <Tabs
+        value={sectionTab}
+        onValueChange={(v) => setSectionTab(v as "details" | "scope")}
+        className="w-full"
+      >
+        <TabsList className="grid h-auto w-full grid-cols-2 gap-1 p-1 sm:max-w-md">
+          <TabsTrigger value="details" className="gap-2 py-2.5">
+            <Package className="h-4 w-4 shrink-0" aria-hidden />
+            <span>Details</span>
+          </TabsTrigger>
+          <TabsTrigger value="scope" className="gap-2 py-2.5">
+            <ListTree className="h-4 w-4 shrink-0" aria-hidden />
+            <span>Product scope</span>
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="details" className="mt-6 space-y-6 outline-none">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="promo-code">Code *</Label>
+              <Controller
+                name="code"
+                control={form.control}
+                render={({ field }) => (
+                  <Input
+                    id="promo-code"
+                    {...field}
+                    onChange={(e) =>
+                      field.onChange(e.target.value.toUpperCase())
+                    }
+                    placeholder="e.g. FESTIVE20"
+                  />
+                )}
               />
-            )}
-          />
-          {form.formState.errors.code && (
-            <p className="text-sm text-destructive mt-1">
-              {form.formState.errors.code.message}
-            </p>
-          )}
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Eligibility</label>
-          <Controller
-            name="eligibility"
-            control={form.control}
-            render={({ field }) => (
-              <Select
-                value={field.value}
-                onValueChange={(value) =>
-                  field.onChange(value as PromoFormInput["eligibility"])
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ALL">All Customers</SelectItem>
-                  <SelectItem value="MEMBER">Members Only</SelectItem>
-                  <SelectItem value="NON_MEMBER">Non-Members Only</SelectItem>
-                  <SelectItem value="WHOLESALE">Wholesale Only</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-      </div>
+              {form.formState.errors.code && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.code.message}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="promo-eligibility">Eligibility</Label>
+              <Controller
+                name="eligibility"
+                control={form.control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) =>
+                      field.onChange(value as PromoFormInput["eligibility"])
+                    }
+                  >
+                    <SelectTrigger id="promo-eligibility" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL">All Customers</SelectItem>
+                      <SelectItem value="MEMBER">Members Only</SelectItem>
+                      <SelectItem value="NON_MEMBER">
+                        Non-Members Only
+                      </SelectItem>
+                      <SelectItem value="WHOLESALE">Wholesale Only</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+          </div>
 
-      <div className="space-y-1">
-        <label className="text-xs font-medium">Description</label>
-        <Input
-          {...form.register("description")}
-          placeholder="Short description for internal use"
-        />
-      </div>
+          <div className="space-y-2">
+            <Label htmlFor="promo-description">Description</Label>
+            <Input
+              id="promo-description"
+              {...form.register("description")}
+              placeholder="Short description for internal use"
+            />
+          </div>
 
-      <div className="grid grid-cols-3 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Discount Type</label>
-          <Controller
-            name="valueType"
-            control={form.control}
-            render={({ field }) => (
-              <Select
-                value={field.value}
-                onValueChange={(value) =>
-                  field.onChange(value as "PERCENTAGE" | "FLAT")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
-                  <SelectItem value="FLAT">Flat Amount</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Value</label>
-          <Input
-            type="number"
-            min={0}
-            step={0.01}
-            {...form.register("value", { valueAsNumber: true })}
-          />
-          {form.formState.errors.value && (
-            <p className="text-sm text-destructive mt-1">
-              {form.formState.errors.value.message}
-            </p>
-          )}
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Usage Limit (optional)</label>
-          <Controller
-            name="usageLimit"
-            control={form.control}
-            render={({ field }) => (
+          <div className="grid gap-4 sm:grid-cols-3">
+            <div className="space-y-2">
+              <Label htmlFor="promo-value-type">Discount type</Label>
+              <Controller
+                name="valueType"
+                control={form.control}
+                render={({ field }) => (
+                  <Select
+                    value={field.value}
+                    onValueChange={(value) =>
+                      field.onChange(value as "PERCENTAGE" | "FLAT")
+                    }
+                  >
+                    <SelectTrigger id="promo-value-type" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PERCENTAGE">Percentage (%)</SelectItem>
+                      <SelectItem value="FLAT">Flat amount</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="promo-value">Value</Label>
               <Input
+                id="promo-value"
                 type="number"
                 min={0}
-                value={field.value ?? ""}
-                onChange={(e) =>
-                  field.onChange(
-                    e.target.value === "" ? undefined : Number(e.target.value),
-                  )
-                }
-                placeholder="Unlimited if empty"
+                step={0.01}
+                {...form.register("value", { valueAsNumber: true })}
               />
-            )}
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-2 gap-3">
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Valid From (optional)</label>
-          <Controller
-            name="validFrom"
-            control={form.control}
-            render={({ field }) => (
-              <Input
-                type="date"
-                value={field.value ? String(field.value).slice(0, 10) : ""}
-                onChange={(e) => field.onChange(e.target.value || undefined)}
-                onBlur={field.onBlur}
-              />
-            )}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-xs font-medium">Valid To (optional)</label>
-          <Controller
-            name="validTo"
-            control={form.control}
-            render={({ field }) => (
-              <Input
-                type="date"
-                value={field.value ? String(field.value).slice(0, 10) : ""}
-                onChange={(e) => field.onChange(e.target.value || undefined)}
-                onBlur={field.onBlur}
-                min={
-                  form.watch("validFrom")
-                    ? String(form.watch("validFrom")).slice(0, 10)
-                    : undefined
-                }
-              />
-            )}
-          />
-        </div>
-      </div>
-
-      <div className="flex flex-wrap gap-4">
-        <Controller
-          name="overrideDiscounts"
-          control={form.control}
-          render={({ field }) => (
-            <div className="flex items-center gap-2">
-              <Switch
-                id="override-discounts"
-                checked={!!field.value}
-                onCheckedChange={field.onChange}
-              />
-              <label
-                htmlFor="override-discounts"
-                className="text-xs text-muted-foreground"
-              >
-                Override existing discounts
-              </label>
+              {form.formState.errors.value && (
+                <p className="text-sm text-destructive">
+                  {form.formState.errors.value.message}
+                </p>
+              )}
             </div>
-          )}
-        />
-        <Controller
-          name="allowStacking"
-          control={form.control}
-          render={({ field }) => (
-            <div className="flex items-center gap-2">
-              <Switch
-                id="allow-stacking"
-                checked={!!field.value}
-                onCheckedChange={field.onChange}
+            <div className="space-y-2">
+              <Label htmlFor="promo-usage-limit">Usage limit (optional)</Label>
+              <Controller
+                name="usageLimit"
+                control={form.control}
+                render={({ field }) => (
+                  <Input
+                    id="promo-usage-limit"
+                    type="number"
+                    min={0}
+                    value={field.value ?? ""}
+                    onChange={(e) =>
+                      field.onChange(
+                        e.target.value === ""
+                          ? undefined
+                          : Number(e.target.value),
+                      )
+                    }
+                    placeholder="Unlimited if empty"
+                  />
+                )}
               />
-              <label
-                htmlFor="allow-stacking"
-                className="text-xs text-muted-foreground"
-              >
-                Allow stacking with discounts
-              </label>
             </div>
-          )}
-        />
-        <Controller
-          name="isActive"
-          control={form.control}
-          render={({ field }) => (
-            <div className="flex items-center gap-2">
-              <Switch
-                id="promo-active"
-                checked={!!field.value}
-                onCheckedChange={field.onChange}
-              />
-              <label
-                htmlFor="promo-active"
-                className="text-xs text-muted-foreground"
-              >
-                Active
-              </label>
-            </div>
-          )}
-        />
-      </div>
+          </div>
 
-      <div className="space-y-2">
-        <label className="text-xs font-medium">Products (apply to)</label>
-        <div className="space-y-2">
-          <div className="flex items-center justify-between gap-2">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="promo-valid-from">Valid from (optional)</Label>
+              <Controller
+                name="validFrom"
+                control={form.control}
+                render={({ field }) => (
+                  <Input
+                    id="promo-valid-from"
+                    type="date"
+                    value={field.value ? String(field.value).slice(0, 10) : ""}
+                    onChange={(e) =>
+                      field.onChange(e.target.value || undefined)
+                    }
+                    onBlur={field.onBlur}
+                  />
+                )}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="promo-valid-to">Valid to (optional)</Label>
+              <Controller
+                name="validTo"
+                control={form.control}
+                render={({ field }) => (
+                  <Input
+                    id="promo-valid-to"
+                    type="date"
+                    value={field.value ? String(field.value).slice(0, 10) : ""}
+                    onChange={(e) =>
+                      field.onChange(e.target.value || undefined)
+                    }
+                    onBlur={field.onBlur}
+                    min={
+                      form.watch("validFrom")
+                        ? String(form.watch("validFrom")).slice(0, 10)
+                        : undefined
+                    }
+                  />
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
             <Controller
-              name="applyToAll"
+              name="overrideDiscounts"
               control={form.control}
               render={({ field }) => (
                 <div className="flex items-center gap-2">
                   <Switch
-                    id="apply-all"
+                    id="override-discounts"
                     checked={!!field.value}
                     onCheckedChange={field.onChange}
                   />
-                  <label
-                    htmlFor="apply-all"
-                    className="text-xs text-muted-foreground"
+                  <Label
+                    htmlFor="override-discounts"
+                    className="text-sm font-normal text-muted-foreground"
                   >
-                    Apply to all products
-                  </label>
+                    Override existing discounts
+                  </Label>
                 </div>
               )}
             />
-            {!applyToAll && (
-              <Input
-                placeholder="Search products..."
-                className="h-8 w-40 text-xs"
-                onChange={(e) => setProductSearch(e.target.value)}
+            <Controller
+              name="allowStacking"
+              control={form.control}
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="allow-stacking"
+                    checked={!!field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <Label
+                    htmlFor="allow-stacking"
+                    className="text-sm font-normal text-muted-foreground"
+                  >
+                    Allow stacking with discounts
+                  </Label>
+                </div>
+              )}
+            />
+            <Controller
+              name="isActive"
+              control={form.control}
+              render={({ field }) => (
+                <div className="flex items-center gap-2">
+                  <Switch
+                    id="promo-active"
+                    checked={!!field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                  <Label
+                    htmlFor="promo-active"
+                    className="text-sm font-normal text-muted-foreground"
+                  >
+                    Active
+                  </Label>
+                </div>
+              )}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="scope" className="mt-6 space-y-6 outline-none">
+          <div className="space-y-4">
+            <div>
+              <Label className="text-base">Products (apply to)</Label>
+              <p className="text-sm text-muted-foreground mt-1">
+                Limit this code to specific products, or apply store-wide.
+              </p>
+            </div>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+              <Controller
+                name="applyToAll"
+                control={form.control}
+                render={({ field }) => (
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="apply-all"
+                      checked={!!field.value}
+                      onCheckedChange={field.onChange}
+                    />
+                    <Label
+                      htmlFor="apply-all"
+                      className="text-sm font-normal text-muted-foreground"
+                    >
+                      Apply to all products
+                    </Label>
+                  </div>
+                )}
               />
+              {!applyToAll && (
+                <Input
+                  id="promo-product-search"
+                  placeholder="Search products by name or code..."
+                  className="w-full sm:max-w-xs"
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  aria-label="Search products"
+                />
+              )}
+            </div>
+
+            {!applyToAll && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Categories</Label>
+                  <MultiSelectCombobox
+                    options={categories.map((c) => ({
+                      value: c.id,
+                      label: c.name,
+                    }))}
+                    selected={categoryIds}
+                    onChange={(ids) => form.setValue("categoryIds", ids)}
+                    placeholder="Add categories..."
+                    emptyMessage="No categories found"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Subcategories</Label>
+                  <MultiSelectCombobox
+                    options={filteredSubcategories.map((s) => ({
+                      value: s,
+                      label: s,
+                    }))}
+                    selected={subCategories}
+                    onChange={(subs) => form.setValue("subCategories", subs)}
+                    placeholder="Add subcategories..."
+                    emptyMessage="No subcategories found"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Select products</Label>
+                  <div className="max-h-56 min-h-40 overflow-y-auto rounded-md border p-3 space-y-1">
+                    {filteredProducts.map((product) => {
+                      const isSelected = productIds.includes(product.id);
+                      return (
+                        <button
+                          key={product.id}
+                          type="button"
+                          className={`w-full flex items-center justify-between gap-2 rounded-md px-3 py-2.5 text-left text-sm hover:bg-muted ${
+                            isSelected ? "bg-muted" : ""
+                          }`}
+                          onClick={() => {
+                            const exists = productIds.includes(product.id);
+                            form.setValue(
+                              "productIds",
+                              exists
+                                ? productIds.filter((id) => id !== product.id)
+                                : [...productIds, product.id],
+                            );
+                          }}
+                        >
+                          <span className="truncate">
+                            {product.name}{" "}
+                            <span className="text-muted-foreground">
+                              (
+                              {(product as { imsCode?: string }).imsCode ?? "—"}
+                              )
+                            </span>
+                          </span>
+                          {isSelected && (
+                            <Badge
+                              variant="outline"
+                              className="shrink-0 text-xs"
+                            >
+                              Selected
+                            </Badge>
+                          )}
+                        </button>
+                      );
+                    })}
+                    {filteredProducts.length === 0 && (
+                      <p className="text-sm text-muted-foreground py-4 text-center">
+                        No products match your filters
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
           </div>
+        </TabsContent>
+      </Tabs>
 
-          {!applyToAll && (
-            <>
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Categories</label>
-                <MultiSelectCombobox
-                  options={categories.map((c) => ({
-                    value: c.id,
-                    label: c.name,
-                  }))}
-                  selected={categoryIds}
-                  onChange={(ids) => form.setValue("categoryIds", ids)}
-                  placeholder="Add categories..."
-                  emptyMessage="No categories found"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-medium">Subcategories</label>
-                <MultiSelectCombobox
-                  options={filteredSubcategories.map((s) => ({
-                    value: s,
-                    label: s,
-                  }))}
-                  selected={subCategories}
-                  onChange={(subs) => form.setValue("subCategories", subs)}
-                  placeholder="Add subcategories..."
-                  emptyMessage="No subcategories found"
-                />
-              </div>
-
-              <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-1">
-                {filteredProducts.map((product) => {
-                  const isSelected = productIds.includes(product.id);
-                  return (
-                    <button
-                      key={product.id}
-                      type="button"
-                      className={`w-full flex items-center justify-between px-2 py-1 text-sm rounded hover:bg-muted ${
-                        isSelected ? "bg-muted" : ""
-                      }`}
-                      onClick={() => {
-                        const exists = productIds.includes(product.id);
-                        form.setValue(
-                          "productIds",
-                          exists
-                            ? productIds.filter((id) => id !== product.id)
-                            : [...productIds, product.id],
-                        );
-                      }}
-                    >
-                      <span className="truncate">
-                        {product.name}{" "}
-                        <span className="text-xs text-muted-foreground">
-                          ({(product as { imsCode?: string }).imsCode ?? "—"})
-                        </span>
-                      </span>
-                      {isSelected && (
-                        <Badge variant="outline" className="text-xs px-2 py-0">
-                          Selected
-                        </Badge>
-                      )}
-                    </button>
-                  );
-                })}
-                {filteredProducts.length === 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    No products available
-                  </p>
-                )}
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-2 pt-2">
+      <div className="flex justify-end gap-3 border-t pt-6">
         <Button type="button" variant="outline" onClick={handleCancel}>
           Cancel
         </Button>
@@ -536,9 +593,9 @@ export function PromoForm({
 
   if (inline) {
     return (
-      <div className="max-w-xl space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-2xl font-semibold">
+      <div className="max-w-3xl space-y-6">
+        <div className="space-y-2">
+          <h2 className="text-2xl font-semibold tracking-tight">
             {editingPromo ? "Edit Promo Code" : "Create Promo Code"}
           </h2>
           <p className="text-muted-foreground text-sm">
@@ -574,13 +631,18 @@ export function PromoForm({
           </Button>
         </DialogTrigger>
       )}
-      <DialogContent className="max-w-xl" allowDismiss={false}>
-        <DialogHeader>
+      <DialogContent
+        className="z-60 max-h-[min(90vh,900px)] max-w-2xl overflow-hidden p-0"
+        allowDismiss={false}
+      >
+        <DialogHeader className="space-y-1 px-6 pt-6">
           <DialogTitle>
             {editingPromo ? "Edit Promo Code" : "Create Promo Code"}
           </DialogTitle>
         </DialogHeader>
-        {formContent}
+        <div className="max-h-[calc(min(90vh,900px)-4.5rem)] overflow-y-auto px-6 pb-6">
+          {formContent}
+        </div>
       </DialogContent>
     </Dialog>
   );

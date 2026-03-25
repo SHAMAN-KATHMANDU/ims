@@ -58,11 +58,13 @@ import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import { DEFAULT_PAGE } from "@/lib/apiTypes";
 import {
   usePipelines,
+  usePipelineTemplates,
   useCreatePipeline,
   useUpdatePipeline,
   useDeletePipeline,
   useSeedPipelineFramework,
 } from "../../hooks/use-pipelines";
+import type { CrmPipelineTemplateDTO } from "../../services/pipeline.service";
 import {
   useCrmSources,
   useCreateCrmSource,
@@ -288,16 +290,23 @@ const PIPELINE_TYPE_LABELS: Record<string, string> = {
 const DEFAULT_PIPELINE_PAGE_SIZE = 10;
 
 function PipelineSettings() {
+  const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const [pipelinePage, setPipelinePage] = useState(DEFAULT_PAGE);
   const [pipelinePageSize, setPipelinePageSize] = useState(
     DEFAULT_PIPELINE_PAGE_SIZE,
   );
   const [pipelineSearch, setPipelineSearch] = useState("");
   const debouncedPipelineSearch = useDebounce(pipelineSearch, 300);
-  const { data, isLoading } = usePipelines({
-    page: pipelinePage,
-    limit: pipelinePageSize,
-    search: debouncedPipelineSearch || undefined,
+  const { data, isLoading } = usePipelines(
+    {
+      page: pipelinePage,
+      limit: pipelinePageSize,
+      search: debouncedPipelineSearch || undefined,
+    },
+    { enabled: pipelinesTabEnabled },
+  );
+  const { data: templatesPayload } = usePipelineTemplates({
+    enabled: pipelinesTabEnabled,
   });
   const createMutation = useCreatePipeline();
   const updateMutation = useUpdatePipeline();
@@ -317,6 +326,33 @@ function PipelineSettings() {
 
   const pipelines = data?.pipelines ?? [];
   const pipelinePagination = data?.pagination;
+  const catalogTemplates = templatesPayload?.templates ?? [];
+
+  const applyTemplate = (t: CrmPipelineTemplateDTO) => {
+    const stages = t.stageNames.map((name, i) => ({
+      id: crypto.randomUUID(),
+      name,
+      order: i,
+      probability: t.probabilities[i] ?? 0,
+    }));
+    createMutation.mutate(
+      {
+        name: t.name,
+        type: t.type,
+        stages,
+        isDefault: t.suggestAsDefault && pipelines.length === 0,
+        closedWonStageName: t.closedWonStageName ?? null,
+        closedLostStageName: t.closedLostStageName ?? null,
+      },
+      {
+        onSuccess: () => {
+          setShowCreate(false);
+          setNewName("");
+          setCreateStages([]);
+        },
+      },
+    );
+  };
 
   const handleCreate = () => {
     if (!newName.trim()) return;
@@ -434,11 +470,52 @@ function PipelineSettings() {
             ))}
           </div>
         ) : pipelines.length === 0 ? (
-          <div className="text-center py-10 text-muted-foreground">
-            <GitBranch className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p className="text-sm">
-              No pipelines yet. Create one to get started.
-            </p>
+          <div className="space-y-6 py-4">
+            <div className="text-center text-muted-foreground">
+              <GitBranch className="h-8 w-8 mx-auto mb-2 opacity-40" />
+              <p className="text-sm max-w-md mx-auto">
+                No pipelines yet. Start from a template (recommended) or create
+                a custom pipeline.
+              </p>
+            </div>
+            {catalogTemplates.length > 0 && (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {catalogTemplates.map((t) => (
+                  <Card key={t.templateId} className="flex flex-col">
+                    <CardHeader className="pb-2">
+                      <div className="flex items-start justify-between gap-2">
+                        <CardTitle className="text-base">{t.name}</CardTitle>
+                        {t.suggestAsDefault && (
+                          <Badge variant="secondary" className="text-[10px]">
+                            Suggested default
+                          </Badge>
+                        )}
+                      </div>
+                      {t.type && t.type !== "GENERAL" && (
+                        <CardDescription className="text-xs">
+                          {PIPELINE_TYPE_LABELS[t.type] ?? t.type}
+                        </CardDescription>
+                      )}
+                    </CardHeader>
+                    <CardContent className="flex-1 flex flex-col gap-3">
+                      <p className="text-sm text-muted-foreground flex-1">
+                        {t.description}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="w-full"
+                        onClick={() => applyTemplate(t)}
+                        disabled={createMutation.isPending}
+                      >
+                        {createMutation.isPending
+                          ? "Creating…"
+                          : "Use template"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto">

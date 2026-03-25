@@ -10,7 +10,15 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Plus,
+  Package,
+  Ruler,
+  Layers,
+  Percent,
+} from "lucide-react";
 import { GeneralTab } from "./form-tabs/GeneralTab";
 import { DimensionsTab } from "./form-tabs/DimensionsTab";
 import { VariationsTab } from "./form-tabs/VariationsTab";
@@ -276,10 +284,22 @@ export function ProductForm({
       <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
         <Tabs value={dialogTab} onValueChange={setDialogTab} className="w-full">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="dimensions">Dimensions</TabsTrigger>
-            <TabsTrigger value="variations">Variations</TabsTrigger>
-            <TabsTrigger value="discounts">Discounts</TabsTrigger>
+            <TabsTrigger value="general" className="gap-1.5">
+              <Package className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">General</span>
+            </TabsTrigger>
+            <TabsTrigger value="dimensions" className="gap-1.5">
+              <Ruler className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">Dimensions</span>
+            </TabsTrigger>
+            <TabsTrigger value="variations" className="gap-1.5">
+              <Layers className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">Variations</span>
+            </TabsTrigger>
+            <TabsTrigger value="discounts" className="gap-1.5">
+              <Percent className="h-4 w-4 shrink-0" aria-hidden />
+              <span className="truncate">Discounts</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="space-y-4 mt-4">

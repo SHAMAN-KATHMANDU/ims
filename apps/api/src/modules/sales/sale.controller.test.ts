@@ -628,7 +628,7 @@ describe("SaleController", () => {
     it("returns 400 on Zod validation error", async () => {
       const req = makeReq({
         params: { id: "s1" },
-        body: { method: "INVALID", amount: 500 },
+        body: { method: "cash-method", amount: 500 },
       });
       const res = mockRes() as Response;
 

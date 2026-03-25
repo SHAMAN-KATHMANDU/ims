@@ -7,6 +7,7 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { PhoneInput } from "@/components/ui/phone-input";
 import {
   Select,
@@ -15,6 +16,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
 import { useContactTags, useCreateContactTag } from "../../hooks/use-contacts";
 import {
@@ -23,17 +32,20 @@ import {
 } from "../../hooks/use-crm-settings";
 import { useToast } from "@/hooks/useToast";
 import type { CreateContactData } from "../../services/contact.service";
+import { ContactProfileFieldsSchema } from "@repo/shared";
 
-const schema = z.object({
-  firstName: z.string().min(1, "First name is required"),
-  lastName: z.string().optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().optional(),
-  companyId: z.string().optional(),
-  tagIds: z.array(z.string()).optional(),
-  source: z.string().optional(),
-  journeyType: z.string().optional(),
-});
+const schema = z
+  .object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    phone: z.string().optional(),
+    companyId: z.string().optional(),
+    tagIds: z.array(z.string()).optional(),
+    source: z.string().optional(),
+    journeyType: z.string().optional(),
+  })
+  .merge(ContactProfileFieldsSchema);
 
 type FormValues = z.infer<typeof schema>;
 
@@ -75,6 +87,11 @@ export function ContactForm({
   const tags = displayTags;
   const sources = sourcesData?.sources ?? [];
   const journeyTypes = journeyTypesData?.journeyTypes ?? [];
+  const [addTagOpen, setAddTagOpen] = useState(false);
+  const [newTagName, setNewTagName] = useState("");
+
+  const toDateInput = (iso?: string | null) =>
+    iso && iso.length >= 10 ? iso.slice(0, 10) : "";
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -84,6 +101,8 @@ export function ContactForm({
       lastName: defaultValues?.lastName ?? "",
       email: defaultValues?.email ?? "",
       phone: defaultValues?.phone ?? "",
+      gender: defaultValues?.gender ?? "",
+      birthDate: toDateInput(defaultValues?.birthDate),
       companyId: defaultValues?.companyId ?? "",
       tagIds: defaultValues?.tagIds ?? [],
       source: defaultValues?.source ?? "",
@@ -104,12 +123,47 @@ export function ContactForm({
       lastName: defaultValues.lastName ?? "",
       email: defaultValues.email ?? "",
       phone: defaultValues.phone ?? "",
+      gender: defaultValues.gender ?? "",
+      birthDate: toDateInput(defaultValues.birthDate),
       companyId: defaultValues.companyId ?? "",
       tagIds: defaultValues.tagIds ?? [],
       source: defaultValues.source ?? "",
       journeyType: defaultValues.journeyType ?? "",
     });
   }, [defaultValues, form]);
+
+  const handleAddTagDialogChange = (open: boolean) => {
+    setAddTagOpen(open);
+    if (!open) setNewTagName("");
+  };
+
+  const handleCreateTag = async () => {
+    const trimmed = newTagName.trim();
+    if (!trimmed) {
+      toast({
+        title: "Enter a tag name",
+        variant: "destructive",
+      });
+      return;
+    }
+    try {
+      const result = await createTagMutation.mutateAsync(trimmed);
+      const current = form.getValues("tagIds") ?? [];
+      if (result?.tag && !current.includes(result.tag.id)) {
+        setOptimisticTags((prev) => [
+          ...prev.filter((t) => t.id !== result.tag.id),
+          { id: result.tag.id, name: result.tag.name },
+        ]);
+        form.setValue("tagIds", [...current, result.tag.id]);
+      }
+      handleAddTagDialogChange(false);
+    } catch {
+      toast({
+        title: "Failed to create tag",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <form
@@ -119,6 +173,10 @@ export function ContactForm({
           lastName: values.lastName || undefined,
           email: values.email || undefined,
           phone: values.phone?.trim() || undefined,
+          gender: values.gender?.trim() || null,
+          birthDate: values.birthDate?.trim()
+            ? new Date(values.birthDate.trim()).toISOString()
+            : null,
           companyId: values.companyId || undefined,
           tagIds: values.tagIds,
           source: values.source || undefined,
@@ -173,6 +231,26 @@ export function ContactForm({
           numberInputId="contact-phone"
           className="mt-1"
         />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <Label htmlFor="gender">Gender</Label>
+          <Input
+            id="gender"
+            placeholder="Optional"
+            {...form.register("gender")}
+            className="mt-1"
+          />
+        </div>
+        <div>
+          <Label htmlFor="birthDate">Birth date</Label>
+          <Input
+            id="birthDate"
+            type="date"
+            {...form.register("birthDate")}
+            className="mt-1"
+          />
+        </div>
       </div>
       <div>
         <Label>Company</Label>
@@ -245,21 +323,23 @@ export function ContactForm({
           {tags.map((tag) => {
             const current = form.watch("tagIds") ?? [];
             const checked = current.includes(tag.id);
+            const checkboxId = `contact-tag-${tag.id}`;
             return (
               <label
                 key={tag.id}
                 className="flex items-center gap-1.5 text-sm cursor-pointer"
+                htmlFor={checkboxId}
               >
-                <input
-                  type="checkbox"
+                <Checkbox
+                  id={checkboxId}
                   checked={checked}
-                  onChange={(e) => {
-                    const next = e.target.checked
+                  onCheckedChange={(nextChecked) => {
+                    const isChecked = nextChecked === true;
+                    const next = isChecked
                       ? [...current, tag.id]
                       : current.filter((id) => id !== tag.id);
                     form.setValue("tagIds", next);
                   }}
-                  className="rounded"
                 />
                 {tag.name}
               </label>
@@ -267,33 +347,58 @@ export function ContactForm({
           })}
           <button
             type="button"
-            onClick={async () => {
-              const name = window.prompt("New tag name");
-              if (!name?.trim()) return;
-              try {
-                const result = await createTagMutation.mutateAsync(name.trim());
-                const current = form.watch("tagIds") ?? [];
-                if (result?.tag && !current.includes(result.tag.id)) {
-                  setOptimisticTags((prev) => [
-                    ...prev.filter((t) => t.id !== result.tag.id),
-                    { id: result.tag.id, name: result.tag.name },
-                  ]);
-                  form.setValue("tagIds", [...current, result.tag.id]);
-                }
-              } catch {
-                toast({
-                  title: "Failed to create tag",
-                  variant: "destructive",
-                });
-              }
-            }}
+            onClick={() => setAddTagOpen(true)}
             disabled={createTagMutation.isPending}
-            className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed rounded px-2 py-1"
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1 border border-dashed rounded-md px-3 py-1.5"
           >
             + Add tag
           </button>
         </div>
       </div>
+
+      <Dialog open={addTagOpen} onOpenChange={handleAddTagDialogChange}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>New tag</DialogTitle>
+            <DialogDescription>
+              Create a tag you can assign to this contact. It will be available
+              for all contacts in your workspace.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Label htmlFor="new-contact-tag-name">Tag name</Label>
+            <Input
+              id="new-contact-tag-name"
+              value={newTagName}
+              onChange={(e) => setNewTagName(e.target.value)}
+              placeholder="e.g. VIP, Newsletter"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  void handleCreateTag();
+                }
+              }}
+            />
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => handleAddTagDialogChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={() => void handleCreateTag()}
+              disabled={createTagMutation.isPending}
+            >
+              {createTagMutation.isPending ? "Creating…" : "Create tag"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="flex justify-end gap-2">
         <Button type="button" variant="outline" onClick={onCancel}>
           Cancel

@@ -100,6 +100,11 @@ export async function deleteTenantBySlug(
     .findMany({ where: { tenantId: tid }, select: { id: true } })
     .then((r) => r.map((u) => u.id));
   if (userIds.length > 0) {
+    // TransferLog.user is onDelete: Restrict — remove any log rows still pointing at
+    // tenant users (e.g. edge cases missed by the transfer-scoped delete above).
+    await prisma.transferLog.deleteMany({
+      where: { userId: { in: userIds } },
+    });
     await prisma.notification.deleteMany({
       where: { userId: { in: userIds } },
     });

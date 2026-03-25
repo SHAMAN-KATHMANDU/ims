@@ -3,6 +3,11 @@ import ExcelJS from "exceljs";
 import productRepository from "./product.repository";
 import type { ExcelProductRow } from "./bulkUpload.validation";
 import type { ValidationError } from "@/utils/bulkParse";
+import {
+  buildImsCodePrefix,
+  isProductImsCodeTenantUniqueViolation,
+  sanitizeSlugForImsCode,
+} from "./ims-code";
 
 export interface ProcessProductBulkContext {
   tenantId: string;
@@ -31,9 +36,15 @@ type RowWithLocation = ExcelProductRow & {
   vendorId?: string | null;
 };
 
-function variationAttributeKey(pairs: Array<{ attributeTypeId: string; attributeValueId: string }>): string {
+function variationAttributeKey(
+  pairs: Array<{ attributeTypeId: string; attributeValueId: string }>,
+): string {
   return [...pairs]
-    .sort((a, b) => a.attributeTypeId.localeCompare(b.attributeTypeId) || a.attributeValueId.localeCompare(b.attributeValueId))
+    .sort(
+      (a, b) =>
+        a.attributeTypeId.localeCompare(b.attributeTypeId) ||
+        a.attributeValueId.localeCompare(b.attributeValueId),
+    )
     .map((p) => `${p.attributeTypeId}:${p.attributeValueId}`)
     .join("|");
 }
@@ -56,11 +67,14 @@ export async function processProductBulkRows(
   const skipped: ProcessProductBulkResult["skipped"] = [];
   const errors: ValidationError[] = [];
 
-  const [allCategories, allLocations, allVendors] = await Promise.all([
-    productRepository.findCategoriesByTenant(tenantId),
-    productRepository.findLocationsByTenant(tenantId),
-    productRepository.findVendorsByTenant(tenantId),
-  ]);
+  const [allCategories, allLocations, allVendors, tenantRow] =
+    await Promise.all([
+      productRepository.findCategoriesByTenant(tenantId),
+      productRepository.findLocationsByTenant(tenantId),
+      productRepository.findVendorsByTenant(tenantId),
+      productRepository.findTenantSlugAndName(tenantId),
+    ]);
+  const tenantSlugSanitized = sanitizeSlugForImsCode(tenantRow?.slug ?? "");
 
   const categoryMap = new Map(
     allCategories.map((cat) => [cat.name.toLowerCase(), cat.id]),
@@ -98,14 +112,18 @@ export async function processProductBulkRows(
         vendorByNameMap.get(vendorInput.toLowerCase());
       if (!resolvedVendorId) {
         try {
-          const newVendor = await productRepository.createVendorForTenant(tenantId, vendorInput);
+          const newVendor = await productRepository.createVendorForTenant(
+            tenantId,
+            vendorInput,
+          );
           resolvedVendorId = newVendor.id;
           vendorByNameMap.set(vendorInput.toLowerCase(), newVendor.id);
           vendorByIdMap.set(newVendor.id, newVendor.id);
         } catch (createErr: unknown) {
           const err = createErr as { code?: string };
           if (err.code === "P2002") {
-            const allVendorsRefresh = await productRepository.findVendorsByTenant(tenantId);
+            const allVendorsRefresh =
+              await productRepository.findVendorsByTenant(tenantId);
             const found = allVendorsRefresh.find(
               (v) => v.name.toLowerCase() === vendorInput.toLowerCase(),
             );
@@ -195,10 +213,15 @@ export async function processProductBulkRows(
     tenantId: string,
     dynamicAttributes: Record<string, string>,
   ): Promise<Array<{ attributeTypeId: string; attributeValueId: string }>> => {
-    const pairs: Array<{ attributeTypeId: string; attributeValueId: string }> = [];
+    const pairs: Array<{ attributeTypeId: string; attributeValueId: string }> =
+      [];
     for (const [attrName, attrValue] of Object.entries(dynamicAttributes)) {
       if (!attrValue || attrValue.trim() === "") continue;
-      const pair = await ensureAttributeTypeAndValue(tenantId, attrName, attrValue);
+      const pair = await ensureAttributeTypeAndValue(
+        tenantId,
+        attrName,
+        attrValue,
+      );
       pairs.push(pair);
     }
     return pairs;
@@ -266,11 +289,29 @@ export async function processProductBulkRows(
         );
 
       if (existingProduct) {
-        const productWithAttrs = await productRepository.findProductById(existingProduct.id);
-        const variationByAttrKey = new Map<string, (typeof productWithAttrs.variations)[0]>();
+        const productWithAttrs = await productRepository.findProductById(
+          existingProduct.id,
+        );
+        const variationByAttrKey = new Map<
+          string,
+          (typeof productWithAttrs.variations)[0]
+        >();
         for (const v of productWithAttrs?.variations ?? []) {
-          const attrs = (v as { attributes?: Array<{ attributeTypeId: string; attributeValueId: string }> }).attributes ?? [];
-          const key = variationAttributeKey(attrs.map((a) => ({ attributeTypeId: a.attributeTypeId, attributeValueId: a.attributeValueId })));
+          const attrs =
+            (
+              v as {
+                attributes?: Array<{
+                  attributeTypeId: string;
+                  attributeValueId: string;
+                }>;
+              }
+            ).attributes ?? [];
+          const key = variationAttributeKey(
+            attrs.map((a) => ({
+              attributeTypeId: a.attributeTypeId,
+              attributeValueId: a.attributeValueId,
+            })),
+          );
           variationByAttrKey.set(key, v);
         }
         let inventoryUpserted = 0;
@@ -295,7 +336,10 @@ export async function processProductBulkRows(
                 },
               },
             );
-            variationByAttrKey.set(key, newVariation as (typeof productWithAttrs.variations)[0]);
+            variationByAttrKey.set(
+              key,
+              newVariation as (typeof productWithAttrs.variations)[0],
+            );
             variation = newVariation as (typeof productWithAttrs.variations)[0];
             const typeIds = [
               ...new Set(attributePairs.map((p) => p.attributeTypeId)),
@@ -368,39 +412,75 @@ export async function processProductBulkRows(
       }
 
       const productId = randomUUID();
-      const imsCodeForProduct =
+      const explicitIms =
         firstRow.imsCode != null && firstRow.imsCode.trim() !== ""
           ? firstRow.imsCode.trim()
-          : productId;
+          : null;
 
-      const product = await productRepository.createProductWithVariations({
-        id: productId,
-        tenantId,
-        imsCode: imsCodeForProduct,
-        name: firstRow.name,
-        categoryId: categoryId!,
-        description: firstRow.description || null,
-        length: firstRow.length,
-        breadth: firstRow.breadth,
-        height: firstRow.height,
-        weight: firstRow.weight,
-        vendorId: firstRow.vendorId ?? undefined,
-        costPrice: firstRow.costPrice,
-        mrp: firstRow.finalSP,
-        createdById: userId,
-        variations: {
-          create: productVariationsData.map((v) => ({
+      const createPayload = (imsCode: string) =>
+        productRepository.createProductWithVariations({
+          id: productId,
+          tenantId,
+          imsCode,
+          name: firstRow.name,
+          categoryId: categoryId!,
+          subCategory: firstRow.subCategory ?? null,
+          description: firstRow.description || null,
+          length: firstRow.length,
+          breadth: firstRow.breadth,
+          height: firstRow.height,
+          weight: firstRow.weight,
+          vendorId: firstRow.vendorId ?? undefined,
+          costPrice: firstRow.costPrice,
+          mrp: firstRow.finalSP,
+          createdById: userId,
+          variations: {
+            create: productVariationsData.map((v) => ({
+              tenantId,
+              stockQuantity: v.stockQuantity,
+              attributes: {
+                create: v.attributePairs.map((p) => ({
+                  attributeTypeId: p.attributeTypeId,
+                  attributeValueId: p.attributeValueId,
+                })),
+              },
+            })),
+          },
+        });
+
+      let product: Awaited<ReturnType<typeof createPayload>> | undefined;
+      if (explicitIms) {
+        product = await createPayload(explicitIms);
+      } else {
+        const prefix = buildImsCodePrefix(
+          tenantSlugSanitized,
+          categoryNameOriginal,
+          firstRow.subCategory,
+        );
+        let n =
+          (await productRepository.getMaxImsCodeNumericSuffix(
             tenantId,
-            stockQuantity: v.stockQuantity,
-            attributes: {
-              create: v.attributePairs.map((p) => ({
-                attributeTypeId: p.attributeTypeId,
-                attributeValueId: p.attributeValueId,
-              })),
-            },
-          })),
-        },
-      });
+            prefix,
+          )) + 1;
+        let lastErr: unknown;
+        for (let attempt = 0; attempt < 40; attempt++) {
+          const candidate = `${prefix}${n}`;
+          try {
+            product = await createPayload(candidate);
+            lastErr = undefined;
+            break;
+          } catch (err: unknown) {
+            lastErr = err;
+            if (!isProductImsCodeTenantUniqueViolation(err)) {
+              throw err;
+            }
+            n += 1;
+          }
+        }
+        if (product === undefined) {
+          throw lastErr ?? new Error("Could not assign a unique product code");
+        }
+      }
 
       const attributeTypeIds = [
         ...new Set(
@@ -418,7 +498,11 @@ export async function processProductBulkRows(
       }
 
       const productVariations = product.variations ?? [];
-      for (let i = 0; i < variations.length && i < productVariations.length; i++) {
+      for (
+        let i = 0;
+        i < variations.length && i < productVariations.length;
+        i++
+      ) {
         const variation = productVariations[i];
         const variationRow = variations[i];
         if (!variation || !variationRow) continue;
@@ -569,14 +653,38 @@ export async function buildProductBulkTemplate(): Promise<Buffer> {
   instructionSheet.getRow(1).font = { bold: true };
 
   const instructions = [
-    ["Attribute Columns", "Rename 'Attribute 1', 'Attribute 2', etc. to actual attribute names like 'Color', 'Size', 'Material'."],
-    ["Adding More Attributes", "Add more columns after 'Attribute 3' with your attribute names as headers."],
-    ["Dynamic Detection", "Any column header not matching a predefined field (Product Code, Location, Category, etc.) is automatically treated as a product attribute."],
-    ["Same Product Code", "Multiple rows can share the same product code if the product name is the same. Each row becomes a separate variation."],
-    ["New Product Name", "If the product name changes, the system treats it as a new product even with the same product code."],
-    ["Attributes Reuse", "If an attribute (e.g. 'Color') already exists in the system, it will be reused — not duplicated."],
-    ["Values Reuse", "If a value (e.g. 'Red' for 'Color') already exists, it will be reused — not duplicated."],
-    ["Example", "Product Code: 1001 | Name: T-Shirt | Color: Red | Size: L → creates product T-Shirt with Color=Red, Size=L variation."],
+    [
+      "Attribute Columns",
+      "Rename 'Attribute 1', 'Attribute 2', etc. to actual attribute names like 'Color', 'Size', 'Material'.",
+    ],
+    [
+      "Adding More Attributes",
+      "Add more columns after 'Attribute 3' with your attribute names as headers.",
+    ],
+    [
+      "Dynamic Detection",
+      "Any column header not matching a predefined field (Product Code, Location, Category, etc.) is automatically treated as a product attribute.",
+    ],
+    [
+      "Same Product Code",
+      "Multiple rows can share the same product code if the product name is the same. Each row becomes a separate variation.",
+    ],
+    [
+      "New Product Name",
+      "If the product name changes, the system treats it as a new product even with the same product code.",
+    ],
+    [
+      "Attributes Reuse",
+      "If an attribute (e.g. 'Color') already exists in the system, it will be reused — not duplicated.",
+    ],
+    [
+      "Values Reuse",
+      "If a value (e.g. 'Red' for 'Color') already exists, it will be reused — not duplicated.",
+    ],
+    [
+      "Example",
+      "Product Code: 1001 | Name: T-Shirt | Color: Red | Size: L → creates product T-Shirt with Color=Red, Size=L variation.",
+    ],
   ];
   instructions.forEach((row) => instructionSheet.addRow(row));
 

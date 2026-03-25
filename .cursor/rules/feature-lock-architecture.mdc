@@ -1,0 +1,72 @@
+---
+description: Enforce silent feature locks with zero disabled-feature API calls
+alwaysApply: true
+---
+
+# Feature Lock Architecture
+
+When a feature is disabled by env or plan flags, the system must behave as if that feature does not exist.
+
+## Core Rule
+
+- Disabled features must make **zero API calls**.
+- Disabled features must not mount dependent query hooks.
+- Disabled features should be hidden (silent no-call), not shown as broken/errored UI.
+
+## Required Gating Layers
+
+Apply all three layers for every gated feature:
+
+1. **Route/Page Guard**
+   - Use `EnvFeaturePageGuard` (and `FeaturePageGuard` for plan gating).
+   - Block access before page content renders.
+
+2. **Hook-Level Query Guard**
+   - Every feature hook that calls API must enforce `enabled`.
+   - Combine env/plan gate with optional caller `enabled`:
+     - `enabled: isFeatureEnabled && (options?.enabled ?? true)`
+
+3. **Component Mount Guard**
+   - Do not call feature-specific hooks unconditionally.
+   - Only mount hook consumers/sections/tabs/actions when corresponding feature is enabled.
+
+## CRM Mapping (Current Standard)
+
+- `CRM_DEALS` -> all deals queries/mutations and deals-coupled UI
+- `CRM_WORKFLOWS` -> workflow queries/mutations and workflow editor UI
+- `CRM_REPORTS` -> CRM reports queries/pages
+- `CRM_PIPELINES_TAB` -> pipeline queries/templates/settings tab
+
+## Implementation Pattern
+
+```typescript
+const featureEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+
+const { data } = useDealsPaginated(params, {
+  enabled: featureEnabled,
+});
+```
+
+```typescript
+export function useDealsPaginated(params?: DealListParams, options?: { enabled?: boolean }) {
+  const featureEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  return useQuery({
+    queryKey: dealKeys.list(params ?? {}),
+    queryFn: () => getDeals(params),
+    enabled: featureEnabled && (options?.enabled ?? true),
+  });
+}
+```
+
+## Verification Checklist
+
+- Search all call-sites of changed hook/service and update every caller.
+- Confirm route guard exists for gated pages.
+- Run `cd apps/web && npx tsc --noEmit`.
+- Grep for unguarded hooks in feature modules before finishing.
+
+## Forbidden
+
+- Hiding a tab but leaving underlying queries active
+- Calling gated hooks before computing feature flags
+- Relying only on backend 403/404 while frontend continues to call disabled endpoints

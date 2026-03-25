@@ -1,4 +1,5 @@
 import { randomUUID } from "crypto";
+import { CRM_PIPELINE_TEMPLATES } from "@repo/shared";
 import prisma from "@/config/prisma";
 import type { PipelineType } from "@prisma/client";
 
@@ -21,6 +22,8 @@ export interface CreatePipelineData {
     probability: number;
   }>;
   isDefault: boolean;
+  closedWonStageName?: string | null;
+  closedLostStageName?: string | null;
 }
 
 export interface UpdatePipelineData {
@@ -32,6 +35,8 @@ export interface UpdatePipelineData {
     probability: number;
   }>;
   isDefault?: boolean;
+  closedWonStageName?: string | null;
+  closedLostStageName?: string | null;
 }
 
 export class PipelineRepository {
@@ -43,6 +48,8 @@ export class PipelineRepository {
         type: data.type ?? "GENERAL",
         stages: data.stages,
         isDefault: data.isDefault,
+        closedWonStageName: data.closedWonStageName ?? undefined,
+        closedLostStageName: data.closedLostStageName ?? undefined,
       },
     });
   }
@@ -173,10 +180,17 @@ export class PipelineRepository {
         probability: probabilities[i] ?? 0,
       }));
 
+    const frameworkTypes: PipelineType[] = [
+      "NEW_SALES",
+      "REMARKETING",
+      "REPURCHASE",
+    ];
+    const frameworkTypeSet = new Set<PipelineType>(frameworkTypes);
+
     const existing = await prisma.pipeline.findMany({
       where: {
         tenantId,
-        type: { in: ["NEW_SALES", "REMARKETING", "REPURCHASE"] },
+        type: { in: frameworkTypes },
         deletedAt: null,
       },
       select: { type: true },
@@ -185,64 +199,18 @@ export class PipelineRepository {
 
     const results: Array<{ id: string; name: string; type: PipelineType }> = [];
 
-    if (!existingTypes.has("NEW_SALES")) {
-      const p = await this.create({
-        tenantId,
-        name: "New Sales",
-        type: "NEW_SALES",
-        stages: makeStages(
-          [
-            "New Lead",
-            "Qualifying",
-            "Proposal Sent",
-            "Negotiating",
-            "Closed Won",
-            "Closed Lost",
-          ],
-          [10, 25, 50, 75, 100, 0],
-        ),
-        isDefault: true,
-      });
-      results.push({ id: p.id, name: p.name, type: p.type });
-    }
+    for (const tmpl of CRM_PIPELINE_TEMPLATES) {
+      if (!frameworkTypeSet.has(tmpl.type as PipelineType)) continue;
+      if (existingTypes.has(tmpl.type as PipelineType)) continue;
 
-    if (!existingTypes.has("REMARKETING")) {
       const p = await this.create({
         tenantId,
-        name: "Remarketing",
-        type: "REMARKETING",
-        stages: makeStages(
-          [
-            "Post-Purchase Follow-up",
-            "Dormant",
-            "Re-engaged",
-            "Active Interest",
-            "Purchase Intent",
-          ],
-          [20, 5, 30, 50, 80],
-        ),
-        isDefault: false,
-      });
-      results.push({ id: p.id, name: p.name, type: p.type });
-    }
-
-    if (!existingTypes.has("REPURCHASE")) {
-      const p = await this.create({
-        tenantId,
-        name: "Repurchase",
-        type: "REPURCHASE",
-        stages: makeStages(
-          [
-            "Returned",
-            "Needs Assessment",
-            "Loyalty Offer Made",
-            "Negotiating",
-            "Closed Won",
-            "Closed Lost",
-          ],
-          [30, 40, 60, 75, 100, 0],
-        ),
-        isDefault: false,
+        name: tmpl.name,
+        type: tmpl.type as PipelineType,
+        stages: makeStages(tmpl.stageNames, [...tmpl.probabilities]),
+        isDefault: tmpl.suggestAsDefault,
+        closedWonStageName: tmpl.closedWonStageName ?? null,
+        closedLostStageName: tmpl.closedLostStageName ?? null,
       });
       results.push({ id: p.id, name: p.name, type: p.type });
     }

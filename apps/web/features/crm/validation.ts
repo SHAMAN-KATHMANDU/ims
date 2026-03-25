@@ -3,14 +3,21 @@
  */
 
 import { z } from "zod";
+import {
+  ContactProfileFieldsSchema,
+  WORKFLOW_TRIGGER_VALUES,
+  WORKFLOW_ACTION_VALUES,
+} from "@repo/shared";
 
-export const ContactSchema = z.object({
-  firstName: z.string().min(1, "First name is required").max(100),
-  lastName: z.string().max(100).optional(),
-  email: z.string().email().optional().or(z.literal("")),
-  phone: z.string().max(50).optional(),
-  companyId: z.string().uuid().optional().nullable(),
-});
+export const ContactSchema = z
+  .object({
+    firstName: z.string().min(1, "First name is required").max(100),
+    lastName: z.string().max(100).optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    phone: z.string().max(50).optional(),
+    companyId: z.string().uuid().optional().nullable(),
+  })
+  .merge(ContactProfileFieldsSchema);
 
 export const LeadSchema = z.object({
   name: z.string().min(1, "Name is required").max(200),
@@ -38,7 +45,10 @@ export const TaskSchema = z.object({
   completed: z.boolean().optional(),
   contactId: z.string().uuid().optional().nullable(),
   dealId: z.string().uuid().optional().nullable(),
+  companyId: z.string().uuid().optional().nullable(),
   assignedToId: z.string().uuid().optional().nullable(),
+  priority: z.enum(["LOW", "MEDIUM", "HIGH"]).optional(),
+  status: z.enum(["OPEN", "IN_PROGRESS", "DONE", "CANCELLED"]).optional(),
 });
 
 export const CompanySchema = z.object({
@@ -55,25 +65,10 @@ export const LogActivitySchema = z.object({
   activityAt: z.string().min(1, "Date and time is required"),
 });
 
-const WORKFLOW_TRIGGERS = [
-  "STAGE_ENTER",
-  "STAGE_EXIT",
-  "DEAL_CREATED",
-  "DEAL_WON",
-  "DEAL_LOST",
-] as const;
-const WORKFLOW_ACTIONS = [
-  "CREATE_TASK",
-  "SEND_NOTIFICATION",
-  "MOVE_STAGE",
-  "UPDATE_FIELD",
-  "CREATE_ACTIVITY",
-] as const;
-
 export const WorkflowRuleSchema = z.object({
-  trigger: z.enum(WORKFLOW_TRIGGERS),
+  trigger: z.enum(WORKFLOW_TRIGGER_VALUES),
   triggerStageId: z.string().max(100).optional().nullable(),
-  action: z.enum(WORKFLOW_ACTIONS),
+  action: z.enum(WORKFLOW_ACTION_VALUES),
   actionConfig: z.record(z.unknown()).default({}),
   ruleOrder: z.number().int().min(0).optional(),
 });

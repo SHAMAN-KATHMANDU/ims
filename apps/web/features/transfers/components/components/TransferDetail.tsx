@@ -27,7 +27,10 @@ import {
   XCircle,
   Clock,
   User,
+  PackageCheck,
+  Info,
 } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   type Transfer,
   getStatusLabel,
@@ -45,10 +48,12 @@ interface TransferDetailProps {
   isLoading?: boolean;
   canManage: boolean;
   onApprove: () => void;
+  onApproveAndFulfill?: () => void;
   onStartTransit: () => void;
   onComplete: () => void;
   onCancel: () => void;
   actionLoading?: boolean;
+  fulfilling?: boolean;
 }
 
 function getStatusBadgeVariant(
@@ -77,10 +82,12 @@ export function TransferDetail({
   isLoading,
   canManage,
   onApprove,
+  onApproveAndFulfill,
   onStartTransit,
   onComplete,
   onCancel,
   actionLoading,
+  fulfilling,
 }: TransferDetailProps) {
   if (!transfer && !isLoading) {
     return null;
@@ -112,6 +119,21 @@ export function TransferDetail({
             </div>
           ) : transfer ? (
             <div className="space-y-6 p-1">
+              {(transfer.status === "PENDING" ||
+                transfer.status === "APPROVED") && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    Approving only authorizes the transfer. Stock is{" "}
+                    <strong>deducted from the source</strong> when you start
+                    transit, and <strong>added at the destination</strong> when
+                    you mark received. Use{" "}
+                    <strong>Approve &amp; move stock</strong> to do all steps in
+                    one go.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Route Info */}
               <div className="flex items-center justify-center gap-4 rounded-lg border p-4">
                 <div className="text-center">
@@ -291,19 +313,34 @@ export function TransferDetail({
                   <Separator />
                   <div className="flex flex-wrap gap-2">
                     {canApprove(transfer) && (
-                      <Button
-                        onClick={onApprove}
-                        disabled={actionLoading}
-                        className="gap-2"
-                      >
-                        <CheckCircle className="h-4 w-4" />
-                        Approve
-                      </Button>
+                      <>
+                        {onApproveAndFulfill && (
+                          <Button
+                            onClick={onApproveAndFulfill}
+                            disabled={actionLoading || fulfilling}
+                            className="gap-2"
+                          >
+                            <PackageCheck className="h-4 w-4" />
+                            {fulfilling
+                              ? "Moving stock…"
+                              : "Approve & move stock"}
+                          </Button>
+                        )}
+                        <Button
+                          onClick={onApprove}
+                          disabled={actionLoading || fulfilling}
+                          variant="secondary"
+                          className="gap-2"
+                        >
+                          <CheckCircle className="h-4 w-4" />
+                          Approve only
+                        </Button>
+                      </>
                     )}
                     {canStartTransit(transfer) && (
                       <Button
                         onClick={onStartTransit}
-                        disabled={actionLoading}
+                        disabled={actionLoading || fulfilling}
                         variant="secondary"
                         className="gap-2"
                       >
@@ -314,7 +351,7 @@ export function TransferDetail({
                     {canComplete(transfer) && (
                       <Button
                         onClick={onComplete}
-                        disabled={actionLoading}
+                        disabled={actionLoading || fulfilling}
                         className="gap-2"
                       >
                         <CheckCircle className="h-4 w-4" />
@@ -324,7 +361,7 @@ export function TransferDetail({
                     {canCancel(transfer) && (
                       <Button
                         onClick={onCancel}
-                        disabled={actionLoading}
+                        disabled={actionLoading || fulfilling}
                         variant="destructive"
                         className="gap-2"
                       >

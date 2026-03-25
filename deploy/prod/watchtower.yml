@@ -1,0 +1,28 @@
+# Watchtower for prod EC2.
+# Watches prod_api and prod_web for new :prod images and restarts them automatically.
+# Run AFTER the app stack (docker-compose.yml) is already up so the ims-prod network exists.
+#
+# Usage (managed by up.sh / down.sh):
+#   docker compose -f watchtower.yml up -d
+#   docker compose -f watchtower.yml down
+
+services:
+  watchtower:
+    container_name: watchtower-prod
+    image: nickfedor/watchtower
+    restart: always
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      WATCHTOWER_POLL_INTERVAL: 30
+      WATCHTOWER_CLEANUP: "true"
+      WATCHTOWER_WARN_ON_HEAD_FAILURE: "never"
+    # Only watch the app containers -- not the DB, Redis, backup service, or Watchtower itself
+    command: --interval 30 prod_web prod_api
+    networks:
+      - prod
+
+networks:
+  prod:
+    external: true
+    name: ims-prod

@@ -320,7 +320,7 @@ model SubCategory {
 model Product {
   id            String   @id @default(uuid()) @map("product_id")
   tenantId      String   @map("tenant_id")
-  /// Product code / barcode (POS lookup). Auto-filled with product UUID when omitted on create.
+  /// Product code / barcode (POS lookup). When omitted on create, auto-filled as {tenantSlug}-{categoryLetter}{subCategoryLetter?}{seq}.
   imsCode       String   @map("ims_code") @db.VarChar(100)
   name          String   @map("product_name") @db.VarChar(255)
   categoryId    String   @map("category_id")
@@ -802,18 +802,10 @@ model SaleItem {
 // PAYMENT & PROMO MODELS
 // ============================================
 
-enum PaymentMethod {
-  CASH
-  CARD
-  CHEQUE
-  FONEPAY
-  QR
-}
-
 model SalePayment {
   id        String        @id @default(uuid()) @map("payment_id")
   saleId    String        @map("sale_id")
-  method    PaymentMethod
+  method    String        @db.VarChar(32)
   amount    Decimal       @db.Decimal(12, 2)
   createdAt DateTime      @default(now()) @map("created_at")
 
@@ -937,6 +929,7 @@ model Company {
   tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts Contact[]
   deals    Deal[]
+  tasks    Task[]
 
   @@index([tenantId])
   @@map("companies")
@@ -974,6 +967,8 @@ model Contact {
   lastName      String?  @map("last_name") @db.VarChar(255)
   email         String?  @db.VarChar(255)
   phone         String?  @db.VarChar(50)
+  gender        String?  @db.VarChar(20)
+  birthDate     DateTime? @map("birth_date")
   companyId     String?  @map("company_id")
   memberId      String?  @unique @map("member_id")
   ownedById     String    @map("owned_by_id")
@@ -1108,6 +1103,10 @@ model Pipeline {
   name         String       @db.VarChar(255)
   type         PipelineType @default(GENERAL)
   stages       Json         // Array of { id, name, order, probability }
+  /// When set, marking a deal WON sets deal.stage to this name (must match a stage name in `stages` JSON).
+  closedWonStageName  String?  @map("closed_won_stage_name") @db.VarChar(100)
+  /// When set, marking a deal LOST sets deal.stage to this name.
+  closedLostStageName String?  @map("closed_lost_stage_name") @db.VarChar(100)
   isDefault    Boolean      @default(false) @map("is_default")
   deletedAt    DateTime?    @map("deleted_at")
   deletedBy    String?      @map("deleted_by")
@@ -1253,15 +1252,31 @@ model DealLineItem {
   @@map("deal_line_items")
 }
 
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum TaskWorkflowStatus {
+  OPEN
+  IN_PROGRESS
+  DONE
+  CANCELLED
+}
+
 model Task {
   id           String    @id @default(uuid()) @map("task_id")
   tenantId     String    @map("tenant_id")
   title        String    @db.VarChar(500)
   dueDate      DateTime? @map("due_date")
   completed    Boolean   @default(false)
+  status       TaskWorkflowStatus @default(OPEN) @map("workflow_status")
+  priority     TaskPriority @default(MEDIUM)
   contactId    String?   @map("contact_id")
   memberId     String?   @map("member_id")
   dealId       String?   @map("deal_id")
+  companyId    String?   @map("company_id")
   assignedToId String    @map("assigned_to_id")
   deletedAt    DateTime? @map("deleted_at")
   deletedBy    String?   @map("deleted_by")
@@ -1273,9 +1288,11 @@ model Task {
   contact    Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   member     Member?  @relation("TaskMember", fields: [memberId], references: [id], onDelete: SetNull)
   deal       Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  company    Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
   assignedTo User     @relation(fields: [assignedToId], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
+  @@index([companyId])
   @@map("tasks")
 }
 

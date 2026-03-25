@@ -29,6 +29,9 @@ import {
   type DiscountAuthorityResult,
 } from "../../services/discount-authority.service";
 import { DealLineItemsSection } from "./DealLineItemsSection";
+import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@/features/flags";
+import { Feature } from "@repo/shared";
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -49,6 +52,7 @@ const createSchema = z.object({
 });
 
 const editSchema = createSchema.extend({
+  pipelineId: z.string().uuid("Select a pipeline"),
   stage: z.string(),
   probability: z.coerce
     .number()
@@ -75,6 +79,7 @@ interface DealFormEditProps {
   defaultValues: {
     name: string;
     value: number;
+    pipelineId: string;
     stage: string;
     probability: number;
     expectedCloseDate?: string;
@@ -98,7 +103,12 @@ type DealFormProps = DealFormCreateProps | DealFormEditProps;
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function DealForm(props: DealFormProps) {
-  const { data: pipelinesData } = usePipelines();
+  const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
+  const dealsEnabled = envDealsEnabled && salesPipelinePlan;
+  const { data: pipelinesData } = usePipelines(undefined, {
+    enabled: dealsEnabled,
+  });
   const { data: contactsData } = useContactsPaginated({ limit: 10 });
   const { data: companiesData } = useCompaniesForSelect();
   const { data: usersResult } = useUsers({ limit: 10 });
@@ -121,6 +131,7 @@ export function DealForm(props: DealFormProps) {
       ? {
           name: props.defaultValues.name,
           value: props.defaultValues.value,
+          pipelineId: props.defaultValues.pipelineId,
           stage: props.defaultValues.stage,
           probability: props.defaultValues.probability,
           expectedCloseDate: props.defaultValues.expectedCloseDate ?? "",
@@ -143,9 +154,17 @@ export function DealForm(props: DealFormProps) {
         },
   });
 
-  const stageNames = isEdit
-    ? props.defaultValues.stageNames
-    : (defaultPipeline?.stages?.map((s) => s.name) ?? []);
+  const watchedPipelineId = form.watch("pipelineId");
+
+  const stageNames = useMemo(() => {
+    if (props.mode === "edit") {
+      const p = pipelines.find((x) => x.id === watchedPipelineId);
+      return p?.stages?.map((s) => s.name) ?? props.defaultValues.stageNames;
+    }
+    const pid = watchedPipelineId || defaultPipeline?.id;
+    const p = pipelines.find((x) => x.id === pid);
+    return p?.stages?.map((s) => s.name) ?? [];
+  }, [props, pipelines, watchedPipelineId, defaultPipeline?.id]);
 
   const initialPipelineId =
     props.mode === "create" && "initialPipelineId" in props
@@ -161,6 +180,15 @@ export function DealForm(props: DealFormProps) {
     if (fallback) form.setValue("pipelineId", fallback);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- form is stable; omit to avoid overwriting user selection on identity change
   }, [isEdit, pipelines, defaultPipeline?.id, initialPipelineId]);
+
+  useEffect(() => {
+    if (props.mode !== "edit" || !watchedPipelineId || stageNames.length === 0)
+      return;
+    const cur = form.getValues("stage");
+    if (!stageNames.includes(cur)) {
+      form.setValue("stage", stageNames[0]!);
+    }
+  }, [props.mode, watchedPipelineId, stageNames, form]);
 
   // ── Discount authority check ──────────────────────────────────────────────
   const pipelineType =
@@ -214,6 +242,7 @@ export function DealForm(props: DealFormProps) {
       await props.onSubmit({
         name: values.name,
         value: values.value,
+        pipelineId: values.pipelineId,
         stage: values.stage,
         probability: values.probability,
         expectedCloseDate: values.expectedCloseDate || null,
@@ -269,6 +298,39 @@ export function DealForm(props: DealFormProps) {
           )}
         </div>
       </div>
+
+      {isEdit && pipelines.length > 0 && (
+        <div>
+          <Label>Pipeline</Label>
+          <Controller
+            name="pipelineId"
+            control={form.control}
+            render={({ field }) => (
+              <Select
+                value={field.value ?? ""}
+                onValueChange={(v) => field.onChange(v || undefined)}
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Select pipeline" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}
+                      {p.isDefault ? " (default)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          />
+          {form.formState.errors.pipelineId && (
+            <p className="text-sm text-destructive mt-1">
+              {form.formState.errors.pipelineId.message}
+            </p>
+          )}
+        </div>
+      )}
 
       {isEdit && (
         <div className="grid gap-4 sm:grid-cols-2">

@@ -7,13 +7,18 @@ export type WorkflowTrigger =
   | "STAGE_EXIT"
   | "DEAL_CREATED"
   | "DEAL_WON"
-  | "DEAL_LOST";
+  | "DEAL_LOST"
+  | "PURCHASE_COUNT_CHANGED";
 export type WorkflowAction =
   | "CREATE_TASK"
   | "SEND_NOTIFICATION"
   | "MOVE_STAGE"
   | "UPDATE_FIELD"
-  | "CREATE_ACTIVITY";
+  | "CREATE_ACTIVITY"
+  | "CREATE_DEAL"
+  | "UPDATE_CONTACT_FIELD"
+  | "APPLY_TAG"
+  | "REMOVE_TAG";
 
 export interface WorkflowRule {
   id: string;

@@ -172,6 +172,8 @@ export class ContactRepository {
         memberId: data.memberId || null,
         source: data.source || null,
         journeyType: data.journeyType || null,
+        gender: data.gender?.trim() || null,
+        birthDate: data.birthDate ? new Date(data.birthDate) : null,
         ownedById: userId,
         createdById: userId,
         tagLinks:
@@ -213,6 +215,12 @@ export class ContactRepository {
         ...(data.source !== undefined && { source: data.source || null }),
         ...(data.journeyType !== undefined && {
           journeyType: data.journeyType || null,
+        }),
+        ...(data.gender !== undefined && {
+          gender: data.gender?.trim() || null,
+        }),
+        ...(data.birthDate !== undefined && {
+          birthDate: data.birthDate ? new Date(data.birthDate) : null,
         }),
       };
 
@@ -500,6 +508,57 @@ export class ContactRepository {
       data: { purchaseCount: { increment: 1 } },
       select: { id: true, purchaseCount: true },
     });
+  }
+
+  /** Link contact to an existing tag by name (tenant-scoped). No-op if tag does not exist. */
+  async linkExistingTagToContact(
+    tenantId: string,
+    contactId: string,
+    tagName: string,
+  ): Promise<boolean> {
+    const tag = await prisma.contactTag.findUnique({
+      where: { tenantId_name: { tenantId, name: tagName } },
+    });
+    if (!tag) return false;
+    await prisma.contactTagLink.upsert({
+      where: { contactId_tagId: { contactId, tagId: tag.id } },
+      create: { contactId, tagId: tag.id },
+      update: {},
+    });
+    return true;
+  }
+
+  /** Remove tag link by name. No-op if tag does not exist. */
+  async unlinkTagFromContact(
+    tenantId: string,
+    contactId: string,
+    tagName: string,
+  ): Promise<void> {
+    const tag = await prisma.contactTag.findUnique({
+      where: { tenantId_name: { tenantId, name: tagName } },
+    });
+    if (!tag) return;
+    await prisma.contactTagLink.deleteMany({
+      where: { contactId, tagId: tag.id },
+    });
+  }
+
+  /** Workflow automation — allowlisted scalar fields only. */
+  async updateContactByWorkflow(
+    tenantId: string,
+    contactId: string,
+    data: { source?: string | null; journeyType?: string | null },
+  ): Promise<void> {
+    const existing = await prisma.contact.findFirst({
+      where: { id: contactId, tenantId, deletedAt: null },
+      select: { id: true },
+    });
+    if (!existing) return;
+    const patch: { source?: string | null; journeyType?: string | null } = {};
+    if (data.source !== undefined) patch.source = data.source;
+    if (data.journeyType !== undefined) patch.journeyType = data.journeyType;
+    if (Object.keys(patch).length === 0) return;
+    await prisma.contact.update({ where: { id: contactId }, data: patch });
   }
 
   async createContactForImport(

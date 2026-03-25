@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Skills Index
 
-This project has 29 skills in `.cursor/skills/`. Before working on any task below, read the corresponding `SKILL.md` file first.
+This project has 30 skills in `.cursor/skills/`. Before working on any task below, read the corresponding `SKILL.md` file first.
 
 ## How to Use
 
@@ -62,6 +62,7 @@ Then follow the patterns and guidelines it contains.
 |----------------|------------|
 | React components, custom hooks, Next.js App Router, state management, forms, accessibility | `.cursor/skills/frontend-patterns/SKILL.md` |
 | Bundle size analysis, heavy imports, code splitting | `.cursor/skills/bundle-analysis/SKILL.md` |
+| Feature-flag/feature-lock work (env or plan gating), preventing disabled-feature API calls, CRM subfeature gating | `.cursor/skills/feature-lock-enforcement/SKILL.md` |
 
 ### Testing
 
@@ -117,6 +118,7 @@ security-review         → auth changes, new endpoints
 security-scan           → .cursor/ config audit
 
 frontend-patterns       → React, Next.js, hooks
+feature-lock-enforcement → feature flags, silent no-call gating
 
 integration-testing     → API + DB integration tests
 security-testing        → auth-bypass, IDOR, cross-tenant

@@ -1,3 +1,4 @@
+import type { TaskWorkflowStatus } from "@prisma/client";
 import prisma from "@/config/prisma";
 import {
   getPaginationParams,
@@ -10,6 +11,7 @@ const TASK_INCLUDE = {
   contact: { select: { id: true, firstName: true, lastName: true } },
   member: { select: { id: true, name: true, phone: true } },
   deal: { select: { id: true, name: true } },
+  company: { select: { id: true, name: true } },
   assignedTo: { select: { id: true, username: true } },
 } as const;
 
@@ -17,6 +19,7 @@ const TASK_DETAIL_INCLUDE = {
   contact: true,
   member: true,
   deal: true,
+  company: true,
   assignedTo: { select: { id: true, username: true } },
 } as const;
 
@@ -83,6 +86,7 @@ export class TaskRepository {
   }
 
   async create(tenantId: string, data: CreateTaskDto, userId: string) {
+    const completed = data.status === "DONE";
     return prisma.task.create({
       data: {
         tenantId,
@@ -91,7 +95,11 @@ export class TaskRepository {
         contactId: data.contactId || null,
         memberId: data.memberId || null,
         dealId: data.dealId || null,
+        companyId: data.companyId || null,
         assignedToId: data.assignedToId || userId,
+        priority: data.priority ?? "MEDIUM",
+        status: data.status ?? "OPEN",
+        completed,
       },
       include: TASK_INCLUDE,
     });
@@ -100,7 +108,12 @@ export class TaskRepository {
   async update(
     id: string,
     data: UpdateTaskDto,
-    existing: { title: string; assignedToId: string | null },
+    existing: {
+      title: string;
+      assignedToId: string | null;
+      completed: boolean;
+      status: TaskWorkflowStatus;
+    },
   ) {
     const normalizeId = (
       val: string | null | undefined,
@@ -117,7 +130,6 @@ export class TaskRepository {
       ...(data.dueDate !== undefined && {
         dueDate: data.dueDate ? new Date(data.dueDate) : null,
       }),
-      ...(data.completed !== undefined && { completed: !!data.completed }),
       ...(data.contactId !== undefined && {
         contactId: normalizeId(data.contactId),
       }),
@@ -125,10 +137,26 @@ export class TaskRepository {
         memberId: normalizeId(data.memberId),
       }),
       ...(data.dealId !== undefined && { dealId: normalizeId(data.dealId) }),
+      ...(data.companyId !== undefined && {
+        companyId: normalizeId(data.companyId),
+      }),
+      ...(data.priority !== undefined && { priority: data.priority }),
       ...(data.assignedToId !== undefined && {
         assignedToId: normalizeId(data.assignedToId, existing.assignedToId),
       }),
     };
+
+    if (data.status !== undefined) {
+      updateData.status = data.status;
+      updateData.completed = data.status === "DONE";
+    } else if (data.completed !== undefined) {
+      updateData.completed = data.completed;
+      if (data.completed) {
+        updateData.status = "DONE";
+      } else if (existing.status === "DONE") {
+        updateData.status = "OPEN";
+      }
+    }
 
     return prisma.task.update({
       where: { id },
@@ -140,7 +168,7 @@ export class TaskRepository {
   async complete(id: string) {
     return prisma.task.update({
       where: { id },
-      data: { completed: true },
+      data: { completed: true, status: "DONE" },
       include: TASK_INCLUDE,
     });
   }
@@ -162,7 +190,7 @@ export class TaskRepository {
   async completeManyByContactId(contactId: string) {
     await prisma.task.updateMany({
       where: { contactId, completed: false, deletedAt: null },
-      data: { completed: true, contactId: null },
+      data: { completed: true, status: "DONE", contactId: null },
     });
   }
 
@@ -170,7 +198,7 @@ export class TaskRepository {
     if (ids.length === 0) return { count: 0 };
     return prisma.task.updateMany({
       where: { id: { in: ids }, tenantId, deletedAt: null },
-      data: { completed: true },
+      data: { completed: true, status: "DONE" },
     });
   }
 

@@ -12,7 +12,10 @@ export type SaleWithIncludes = {
   notes?: string | null;
   isCreditSale?: boolean;
   promoCodesUsed?: string[] | unknown | null;
-  tenant?: { name: string } | null;
+  tenant?: {
+    name: string;
+    settings?: unknown;
+  } | null;
   location?:
     | { id: string; name: string; address?: string | null }
     | { id: string; name: string };

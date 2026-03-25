@@ -1,4 +1,18 @@
 import prisma from "@/config/prisma";
+import type { Prisma } from "@prisma/client";
+
+/** Only count the current revision of each deal; exclude soft-deleted rows. */
+function baseDealWhere(
+  tenantId: string,
+  extra: Prisma.DealWhereInput = {},
+): Prisma.DealWhereInput {
+  return {
+    tenantId,
+    deletedAt: null,
+    isLatest: true,
+    ...extra,
+  };
+}
 
 function startOfMonth(d: Date): Date {
   const out = new Date(d);
@@ -53,37 +67,37 @@ export class CrmRepository {
       recentActivities,
     ] = await Promise.all([
       prisma.deal.aggregate({
-        where: { tenantId, status: "OPEN" },
+        where: baseDealWhere(tenantId, { status: "OPEN" }),
         _sum: { value: true },
       }),
       prisma.deal.count({
-        where: {
-          tenantId,
+        where: baseDealWhere(tenantId, {
           status: "OPEN",
           expectedCloseDate: {
             gte: thisMonthStart,
             lte: thisMonthEnd,
           },
-        },
+        }),
       }),
       prisma.task.count({
         where: {
           tenantId,
+          deletedAt: null,
           completed: false,
           dueDate: { gte: todayStart, lte: todayEnd },
         },
       }),
       prisma.lead.groupBy({
         by: ["status"],
-        where: { tenantId },
+        where: { tenantId, deletedAt: null },
         _count: true,
       }),
       prisma.deal.findMany({
-        where: { tenantId, status: "WON" },
+        where: baseDealWhere(tenantId, { status: "WON" }),
         select: { value: true, closedAt: true },
       }),
       prisma.activity.findMany({
-        where: { tenantId },
+        where: { tenantId, deletedAt: null },
         orderBy: { activityAt: "desc" },
         take: 10,
         include: {
@@ -111,40 +125,36 @@ export class CrmRepository {
     const [dealsWon, dealsLost, leadsBySource, salesPerUser, monthlyRevenue] =
       await Promise.all([
         prisma.deal.count({
-          where: {
-            tenantId,
+          where: baseDealWhere(tenantId, {
             status: "WON",
             closedAt: { gte: startOfYear, lte: endOfYear },
-          },
+          }),
         }),
         prisma.deal.count({
-          where: {
-            tenantId,
+          where: baseDealWhere(tenantId, {
             status: "LOST",
             closedAt: { gte: startOfYear, lte: endOfYear },
-          },
+          }),
         }),
         prisma.lead.groupBy({
           by: ["source"],
           _count: true,
-          where: { tenantId, source: { not: null } },
+          where: { tenantId, deletedAt: null, source: { not: null } },
         }),
         prisma.deal.groupBy({
           by: ["assignedToId"],
-          where: {
-            tenantId,
+          where: baseDealWhere(tenantId, {
             status: "WON",
             closedAt: { gte: startOfYear, lte: endOfYear },
-          },
+          }),
           _count: true,
           _sum: { value: true },
         }),
         prisma.deal.findMany({
-          where: {
-            tenantId,
+          where: baseDealWhere(tenantId, {
             status: "WON",
             closedAt: { gte: startOfYear, lte: endOfYear },
-          },
+          }),
           select: { value: true, closedAt: true },
         }),
       ]);
@@ -172,33 +182,30 @@ export class CrmRepository {
     const [dealsWon, dealsLost, salesPerUser, leadsBySource] =
       await Promise.all([
         prisma.deal.count({
-          where: {
-            tenantId,
+          where: baseDealWhere(tenantId, {
             status: "WON",
             closedAt: { gte: startOfYear, lte: endOfYear },
-          },
+          }),
         }),
         prisma.deal.count({
-          where: {
-            tenantId,
+          where: baseDealWhere(tenantId, {
             status: "LOST",
             closedAt: { gte: startOfYear, lte: endOfYear },
-          },
+          }),
         }),
         prisma.deal.groupBy({
           by: ["assignedToId"],
-          where: {
-            tenantId,
+          where: baseDealWhere(tenantId, {
             status: "WON",
             closedAt: { gte: startOfYear, lte: endOfYear },
-          },
+          }),
           _count: true,
           _sum: { value: true },
         }),
         prisma.lead.groupBy({
           by: ["source"],
           _count: true,
-          where: { tenantId, source: { not: null } },
+          where: { tenantId, deletedAt: null, source: { not: null } },
         }),
       ]);
 

@@ -1,11 +1,13 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
+import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
 import leadController from "./lead.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const leadRouter = Router();
 
 leadRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+leadRouter.use(enforcePlanFeature("salesPipeline"));
 
 /**
  * @swagger

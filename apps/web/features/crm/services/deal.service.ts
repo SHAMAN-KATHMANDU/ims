@@ -119,6 +119,7 @@ export interface UpdateDealData {
   contactId?: string | null;
   memberId?: string | null;
   companyId?: string | null;
+  pipelineId?: string;
   assignedToId?: string;
   editReason?: string | null;
 }
@@ -163,9 +164,9 @@ export async function updateDeal(
 
 export async function updateDealStage(
   id: string,
-  stage: string,
+  payload: { stage: string; pipelineId?: string },
 ): Promise<{ deal: Deal }> {
-  const res = await api.patch(`/deals/${id}/stage`, { stage });
+  const res = await api.patch(`/deals/${id}/stage`, payload);
   return res.data;
 }
 

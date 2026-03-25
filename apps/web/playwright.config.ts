@@ -1,5 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const DEFAULT_E2E_PORT = 3100;
+const resolvedPort = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "", 10);
+const e2ePort = Number.isFinite(resolvedPort) ? resolvedPort : DEFAULT_E2E_PORT;
+const baseURL = process.env.BASE_URL ?? `http://localhost:${e2ePort}`;
+
 export default defineConfig({
   testDir: "./e2e",
   /** Serial runs: `next dev` compiles lazily; parallel workers often timeout. */
@@ -18,7 +23,7 @@ export default defineConfig({
     process.env.CI ? ["github"] : ["list"],
   ],
   use: {
-    baseURL: process.env.BASE_URL ?? "http://localhost:3000",
+    baseURL,
     navigationTimeout: 60_000,
     actionTimeout: 30_000,
     trace: "on-first-retry",
@@ -32,8 +37,8 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "pnpm --filter web dev",
-    url: "http://localhost:3000",
+    command: `pnpm --filter web exec next dev --port ${e2ePort} --webpack`,
+    url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
   },

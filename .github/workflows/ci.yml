@@ -1,5 +1,5 @@
 # Continuous Integration: lint, test, typecheck, and security scan.
-# No Docker build/push or deployment. Runs on PRs and push to main only.
+# No Docker build/push or deployment. Runs on PRs and non-main branch pushes.
 
 name: CI
 
@@ -9,18 +9,19 @@ permissions:
 
 on:
   push:
-    branches: [main]
+    branches-ignore: [main]
     paths-ignore:
       - "**/*.md"
       - "docs/**"
   pull_request:
     branches: ["**"]
+    types: [opened, synchronize, reopened, ready_for_review]
     paths-ignore:
       - "**/*.md"
       - "docs/**"
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.event.pull_request.head.ref || github.ref_name }}
   cancel-in-progress: true
 
 jobs:

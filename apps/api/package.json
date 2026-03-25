@@ -17,6 +17,7 @@
     "prisma:seed": "node prisma/seed.js",
     "seed": "node prisma/seed.js",
     "prisma:reset": "prisma migrate reset --force",
+    "delete-tenants": "node prisma/delete-tenants-by-slug.cjs",
     "check-user": "ts-node scripts/check-user.ts",
     "test": "vitest",
     "test:run": "vitest run",

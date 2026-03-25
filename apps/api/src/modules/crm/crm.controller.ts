@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { CrmReportsQuerySchema } from "./crm.schema";
 import crmService from "./crm.service";
 import { sendControllerError } from "@/utils/controllerError";
@@ -6,7 +7,7 @@ import { sendControllerError } from "@/utils/controllerError";
 class CrmController {
   getDashboard = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const data = await crmService.getDashboard(tenantId);
       return res.status(200).json({ message: "OK", data });
     } catch (error: unknown) {
@@ -16,7 +17,7 @@ class CrmController {
 
   getReports = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { year } = CrmReportsQuerySchema.parse(req.query);
       const data = await crmService.getReports(tenantId, year);
       return res.status(200).json({ message: "OK", data });
@@ -27,7 +28,7 @@ class CrmController {
 
   exportReportsCsv = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { year } = CrmReportsQuerySchema.parse(req.query);
       const buffer = await crmService.exportReportsExcel(tenantId, year);
       res.setHeader(

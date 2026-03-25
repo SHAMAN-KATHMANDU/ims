@@ -118,9 +118,9 @@ describe("AddPaymentSchema", () => {
     }
   });
 
-  it("rejects invalid payment method", () => {
+  it("rejects invalid payment method format", () => {
     expect(() =>
-      AddPaymentSchema.parse({ method: "INVALID", amount: 100 }),
+      AddPaymentSchema.parse({ method: "cash-method", amount: 100 }),
     ).toThrow();
   });
 

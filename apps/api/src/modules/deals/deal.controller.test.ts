@@ -110,6 +110,31 @@ describe("DealController", () => {
         expect.objectContaining({ message: "Deal stage updated", deal }),
       );
     });
+
+    it("passes optional pipelineId to the service", async () => {
+      const deal = { id: "2", stage: "Qualification", pipelineId: "p2" };
+      mockService.updateStage.mockResolvedValue(deal);
+      const req = makeReq({
+        params: { id: "1" },
+        body: {
+          stage: "Qualification",
+          pipelineId: "550e8400-e29b-41d4-a716-446655440000",
+        },
+      });
+      const res = mockRes() as Response;
+
+      await dealController.updateStage(req, res);
+
+      expect(mockService.updateStage).toHaveBeenCalledWith(
+        "t1",
+        "1",
+        {
+          stage: "Qualification",
+          pipelineId: "550e8400-e29b-41d4-a716-446655440000",
+        },
+        "u1",
+      );
+    });
   });
 
   describe("delete", () => {

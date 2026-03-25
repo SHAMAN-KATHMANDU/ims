@@ -160,6 +160,7 @@ const navSections: NavSection[] = [
         icon: LayoutDashboard,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.CRM,
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "crm/companies",
@@ -167,6 +168,7 @@ const navSections: NavSection[] = [
         icon: Factory,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.CRM,
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "crm/contacts",
@@ -174,6 +176,7 @@ const navSections: NavSection[] = [
         icon: Contact,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.CRM,
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "crm/deals",
@@ -189,6 +192,7 @@ const navSections: NavSection[] = [
         icon: CheckSquare,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.TASKS,
+        feature: Feature.SALES_PIPELINE,
       },
       {
         path: "crm/notifications",
@@ -196,6 +200,7 @@ const navSections: NavSection[] = [
         icon: Bell,
         roles: ["user", "admin", "superAdmin"],
         envFeature: EnvFeature.NOTIFICATIONS,
+        feature: Feature.SALES_PIPELINE,
       },
     ],
   },

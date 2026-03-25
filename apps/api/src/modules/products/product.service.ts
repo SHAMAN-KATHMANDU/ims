@@ -13,6 +13,11 @@ import productRepository, {
   type ProductListWhere,
   type ProductStockSortFilters,
 } from "./product.repository";
+import {
+  buildImsCodePrefix,
+  isProductImsCodeTenantUniqueViolation,
+  sanitizeSlugForImsCode,
+} from "./ims-code";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import type {
   CreateProductDto,
@@ -68,13 +73,7 @@ export interface ProductListParams {
 }
 
 function isImsCodeConflict(err: unknown): boolean {
-  const e = err as { code?: string; meta?: { target?: string[] } };
-  if (e.code !== "P2002") return false;
-  const target = e.meta?.target as string[] | undefined;
-  if (!target || target.length !== 2) return true;
-  const hasIms = target.some((f) => f === "ims_code");
-  const hasTenant = target.some((f) => f === "tenantId" || f === "tenant_id");
-  return hasIms && hasTenant;
+  return isProductImsCodeTenantUniqueViolation(err);
 }
 
 export class ProductService {
@@ -217,12 +216,11 @@ export class ProductService {
         ? data.imsCode.trim()
         : undefined;
     const productId = randomUUID();
-    const imsCodeForCreate = trimmedIms ?? productId;
 
-    const createData: ProductCreateData = {
+    const buildCreateData = (imsCode: string): ProductCreateData => ({
       tenantId,
       id: productId,
-      imsCode: imsCodeForCreate,
+      imsCode,
       name: data.name,
       categoryId: category.id,
       description: data.description ?? null,
@@ -240,13 +238,47 @@ export class ProductService {
         resolvedDiscounts.length > 0
           ? { create: resolvedDiscounts }
           : undefined,
-    };
+    });
 
-    let product;
-    try {
-      product = await this.repo.createProduct(createData);
-    } catch (err: unknown) {
-      throw this.mapPrismaConflict(err);
+    let product:
+      | Awaited<ReturnType<ProductRepository["createProduct"]>>
+      | undefined;
+    if (trimmedIms) {
+      try {
+        product = await this.repo.createProduct(buildCreateData(trimmedIms));
+      } catch (err: unknown) {
+        throw this.mapPrismaConflict(err);
+      }
+    } else {
+      const tenantRow = await this.repo.findTenantSlugAndName(tenantId);
+      const slug = sanitizeSlugForImsCode(tenantRow?.slug ?? "");
+      const prefix = buildImsCodePrefix(slug, category.name, data.subCategory);
+      let n =
+        (await this.repo.getMaxImsCodeNumericSuffix(tenantId, prefix)) + 1;
+      let lastErr: unknown;
+      for (let attempt = 0; attempt < 40; attempt++) {
+        const candidate = `${prefix}${n}`;
+        try {
+          product = await this.repo.createProduct(buildCreateData(candidate));
+          lastErr = undefined;
+          break;
+        } catch (err: unknown) {
+          lastErr = err;
+          if (!isImsCodeConflict(err)) {
+            throw this.mapPrismaConflict(err);
+          }
+          n += 1;
+        }
+      }
+      if (product === undefined) {
+        throw this.mapPrismaConflict(
+          lastErr ?? new Error("Unique product code"),
+        );
+      }
+    }
+
+    if (product === undefined) {
+      throw createError("Product creation failed", 500);
     }
 
     if (data.attributeTypeIds?.length && Array.isArray(data.attributeTypeIds)) {

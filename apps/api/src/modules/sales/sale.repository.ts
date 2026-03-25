@@ -332,7 +332,7 @@ export interface CreateSaleWithItemsInput {
     discountApprovedById?: string | null;
   }>;
   payments?: Array<{
-    method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+    method: string;
     amount: number;
   }>;
 }
@@ -541,7 +541,7 @@ export async function countSalesForUserSince(userId: string, since: Date) {
 }
 
 const SALE_DETAIL_INCLUDE = {
-  tenant: { select: { name: true } },
+  tenant: { select: { name: true, settings: true } },
   location: { select: { id: true, name: true, address: true } },
   member: { select: { id: true, phone: true, name: true, address: true } },
   contact: {
@@ -921,7 +921,7 @@ export async function softDeleteSale(
 
 export async function createSalePayment(data: {
   saleId: string;
-  method: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+  method: string;
   amount: number;
 }) {
   return prisma.salePayment.create({
@@ -1091,7 +1091,7 @@ export async function createSaleBulk(data: {
     discountAmount: number;
     lineTotal: number;
   }>;
-  paymentMethod: "CASH" | "CARD" | "CHEQUE" | "FONEPAY" | "QR";
+  paymentMethod: string;
 }) {
   return prisma.sale.create({
     data: {

@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
+import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
@@ -17,8 +18,7 @@ import contactService from "./contact.service";
 class ContactController {
   create = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = CreateContactSchema.parse(req.body);
       const contact = await contactService.create(tenantId, body, userId);
       return res
@@ -41,7 +41,7 @@ class ContactController {
 
   getAll = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const result = await contactService.getAll(
         tenantId,
         req.query as Record<string, unknown>,
@@ -54,7 +54,7 @@ class ContactController {
 
   getById = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const contact = await contactService.getById(tenantId, req.params.id);
       return res.status(200).json({ message: "OK", contact });
     } catch (error: unknown) {
@@ -69,7 +69,7 @@ class ContactController {
 
   update = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const body = UpdateContactSchema.parse(req.body);
       const contact = await contactService.update(
         tenantId,
@@ -96,8 +96,7 @@ class ContactController {
 
   delete = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const id = Array.isArray(req.params.id)
         ? req.params.id[0]
         : req.params.id;
@@ -123,7 +122,7 @@ class ContactController {
 
   getTags = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const parsed = ListTagsQuerySchema.safeParse(req.query);
       const query =
         parsed.success &&
@@ -141,7 +140,7 @@ class ContactController {
 
   createTag = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { name } = CreateTagSchema.parse(req.body);
       const { tag, created } = await contactService.createTag(tenantId, name);
       return res
@@ -159,7 +158,7 @@ class ContactController {
 
   updateTag = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const { name } = UpdateTagSchema.parse(req.body);
       const tag = await contactService.updateTag(
         tenantId,
@@ -184,7 +183,7 @@ class ContactController {
 
   deleteTag = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       await contactService.deleteTag(tenantId, req.params.tagId);
       return res.status(200).json({ message: "Tag deleted" });
     } catch (error: unknown) {
@@ -199,8 +198,7 @@ class ContactController {
 
   addNote = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = AddNoteSchema.parse(req.body);
       const note = await contactService.addNote(
         tenantId,
@@ -226,7 +224,7 @@ class ContactController {
 
   deleteNote = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       await contactService.deleteNote(
         tenantId,
         req.params.id,
@@ -245,8 +243,7 @@ class ContactController {
 
   addAttachment = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const file = (req as any).file as Express.Multer.File | undefined;
       if (!file) return res.status(400).json({ message: "No file uploaded" });
       const attachment = await contactService.addAttachment(
@@ -268,7 +265,7 @@ class ContactController {
 
   deleteAttachment = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       await contactService.deleteAttachment(
         tenantId,
         req.params.id,
@@ -287,8 +284,7 @@ class ContactController {
 
   addCommunication = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
-      const userId = req.user!.id;
+      const { tenantId, userId } = getAuthContext(req);
       const body = AddCommunicationSchema.parse(req.body);
       const communication = await contactService.addCommunication(
         tenantId,
@@ -316,7 +312,7 @@ class ContactController {
 
   importCsv = async (req: Request, res: Response) => {
     try {
-      const tenantId = req.user!.tenantId;
+      const tenantId = getAuthContext(req).tenantId;
       const userId = req.user!.id;
       const file = (req as any).file as Express.Multer.File | undefined;
       if (!file) return res.status(400).json({ message: "No file uploaded" });

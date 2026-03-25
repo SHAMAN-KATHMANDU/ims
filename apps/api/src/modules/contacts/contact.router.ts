@@ -1,6 +1,9 @@
 import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
-import { enforcePlanLimits } from "@/middlewares/enforcePlanLimits";
+import {
+  enforcePlanLimits,
+  enforcePlanFeature,
+} from "@/middlewares/enforcePlanLimits";
 import { uploadAttachment, uploadSingle } from "@/config/multer.config";
 import contactController from "./contact.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
@@ -8,6 +11,7 @@ import { asyncHandler } from "@/middlewares/errorHandler";
 const contactRouter = Router();
 
 contactRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+contactRouter.use(enforcePlanFeature("salesPipeline"));
 
 /**
  * @swagger

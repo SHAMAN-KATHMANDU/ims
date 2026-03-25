@@ -70,8 +70,9 @@ import type {
   CreateTaskData,
   UpdateTaskData,
 } from "../../services/task.service";
-import { useEnvFeatureFlag } from "@/features/flags";
+import { useEnvFeatureFlag, useFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
+import { Feature } from "@repo/shared";
 
 type TaskFilterTab = "all" | "incomplete" | "complete";
 type DrawerMode = "new" | "edit" | null;
@@ -83,7 +84,9 @@ export function TasksPage() {
   const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isDesktop = useIsDesktop();
-  const dealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
+  const dealsEnabled = envDealsEnabled && salesPipelinePlan;
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);

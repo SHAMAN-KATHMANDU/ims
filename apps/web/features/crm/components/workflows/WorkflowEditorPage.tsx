@@ -53,6 +53,8 @@ import type {
   CreateWorkflowFormValues,
   UpdateWorkflowFormValues,
 } from "../../validation";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 
 const TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
   STAGE_ENTER: "Stage enter",
@@ -60,6 +62,7 @@ const TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
   DEAL_CREATED: "Deal created",
   DEAL_WON: "Deal won",
   DEAL_LOST: "Deal lost",
+  PURCHASE_COUNT_CHANGED: "Purchase count changed",
 };
 
 const ACTION_LABELS: Record<WorkflowAction, string> = {
@@ -68,24 +71,34 @@ const ACTION_LABELS: Record<WorkflowAction, string> = {
   MOVE_STAGE: "Move stage",
   UPDATE_FIELD: "Update field",
   CREATE_ACTIVITY: "Create activity",
+  CREATE_DEAL: "Create deal",
+  UPDATE_CONTACT_FIELD: "Update contact field",
+  APPLY_TAG: "Apply tag",
+  REMOVE_TAG: "Remove tag",
 };
 
 const DEFAULT_PAGE_SIZE = 10;
 
 export default function WorkflowEditorPage() {
+  const workflowsEnabled = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [isActiveFilter, setIsActiveFilter] = useState<string>("all");
   const debouncedSearch = useDebounce(search, 300);
-  const { data, isLoading, isError, error } = useWorkflows({
-    page,
-    limit: pageSize,
-    search: debouncedSearch || undefined,
-    isActive:
-      isActiveFilter === "all" ? undefined : isActiveFilter === "active",
+  const { data, isLoading, isError, error } = useWorkflows(
+    {
+      page,
+      limit: pageSize,
+      search: debouncedSearch || undefined,
+      isActive:
+        isActiveFilter === "all" ? undefined : isActiveFilter === "active",
+    },
+    { enabled: workflowsEnabled },
+  );
+  const { data: pipelinesData } = usePipelines(undefined, {
+    enabled: workflowsEnabled,
   });
-  const { data: pipelinesData } = usePipelines();
   const createMutation = useCreateWorkflow();
   const updateMutation = useUpdateWorkflow();
   const deleteMutation = useDeleteWorkflow();

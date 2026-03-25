@@ -161,7 +161,7 @@ describe("AddPaymentSchema - invariants", () => {
     ).toBe(false);
   });
 
-  it("valid payment methods only", () => {
+  it("payment method format is constrained", () => {
     const validMethods = ["CASH", "CARD", "CHEQUE", "FONEPAY", "QR"];
     for (const method of validMethods) {
       expect(AddPaymentSchema.safeParse({ method, amount: 100 }).success).toBe(
@@ -169,7 +169,12 @@ describe("AddPaymentSchema - invariants", () => {
       );
     }
     expect(
-      AddPaymentSchema.safeParse({ method: "BITCOIN", amount: 100 }).success,
+      AddPaymentSchema.safeParse({ method: "BANK_TRANSFER", amount: 100 })
+        .success,
+    ).toBe(true);
+    expect(
+      AddPaymentSchema.safeParse({ method: "bank-transfer", amount: 100 })
+        .success,
     ).toBe(false);
   });
 });

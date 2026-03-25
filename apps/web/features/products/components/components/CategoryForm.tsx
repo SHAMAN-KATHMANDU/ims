@@ -23,20 +23,26 @@ interface CategoryFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingCategory: Category | null;
-  initialSubcategoryNames?: string[];
   onSubmit: (data: CategoryFormInput) => Promise<void>;
   onReset: () => void;
   isLoading?: boolean;
+  /** Persisted subcategories from API (edit mode only). */
+  serverSubcategories?: string[];
+  isLoadingServerSubcategories?: boolean;
+  /** Removing a persisted sub opens delete confirmation in parent. */
+  onRemoveServerSubcategory?: (name: string) => void;
 }
 
 export function CategoryForm({
   open,
   onOpenChange,
   editingCategory,
-  initialSubcategoryNames,
   onSubmit,
   onReset,
   isLoading = false,
+  serverSubcategories = [],
+  isLoadingServerSubcategories = false,
+  onRemoveServerSubcategory,
 }: CategoryFormProps) {
   const [subcategoryInput, setSubcategoryInput] = useState("");
 
@@ -55,23 +61,34 @@ export function CategoryForm({
       form.reset({
         name: editingCategory.name,
         description: editingCategory.description || "",
-        subcategories: initialSubcategoryNames ?? [],
+        subcategories: [],
       });
     } else if (!open) {
       form.reset({ name: "", description: "", subcategories: [] });
       setSubcategoryInput("");
     }
-  }, [open, editingCategory, initialSubcategoryNames, form]);
+  }, [open, editingCategory, form]);
+
+  const pendingSubcategories = form.watch("subcategories") ?? [];
 
   const handleAddSubcategory = () => {
     const trimmed = subcategoryInput.trim();
     const current = form.getValues("subcategories") ?? [];
-    if (!trimmed || current.includes(trimmed)) return;
+    const serverSet = new Set(
+      (serverSubcategories ?? []).map((s) => s.toLowerCase()),
+    );
+    if (
+      !trimmed ||
+      current.includes(trimmed) ||
+      serverSet.has(trimmed.toLowerCase())
+    ) {
+      return;
+    }
     form.setValue("subcategories", [...current, trimmed]);
     setSubcategoryInput("");
   };
 
-  const handleRemoveSubcategory = (index: number) => {
+  const handleRemovePendingSubcategory = (index: number) => {
     const current = form.getValues("subcategories") ?? [];
     form.setValue(
       "subcategories",
@@ -84,8 +101,6 @@ export function CategoryForm({
     onOpenChange(false);
     onReset();
   });
-
-  const subcategories = form.watch("subcategories") ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -119,16 +134,53 @@ export function CategoryForm({
             <Label htmlFor="cat-description">Description</Label>
             <Textarea id="cat-description" {...form.register("description")} />
           </div>
+          {editingCategory && (
+            <div className="space-y-2">
+              <Label>Current subcategories</Label>
+              {isLoadingServerSubcategories ? (
+                <p className="text-sm text-muted-foreground">Loading…</p>
+              ) : serverSubcategories.length > 0 ? (
+                <div className="flex flex-wrap gap-2 mt-1">
+                  {serverSubcategories.map((sub) => (
+                    <Badge
+                      key={sub}
+                      variant="secondary"
+                      className="flex items-center gap-1"
+                    >
+                      <span>{sub}</span>
+                      {onRemoveServerSubcategory && (
+                        <button
+                          type="button"
+                          className="text-xs text-muted-foreground hover:text-destructive"
+                          onClick={() => onRemoveServerSubcategory(sub)}
+                        >
+                          ×
+                        </button>
+                      )}
+                    </Badge>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No subcategories yet
+                </p>
+              )}
+            </div>
+          )}
           <div className="space-y-2">
-            <Label>Subcategories (optional)</Label>
+            <Label>
+              {editingCategory
+                ? "Add subcategories (saved on Update)"
+                : "Subcategories (optional)"}
+            </Label>
             <p className="text-xs text-muted-foreground">
               {editingCategory
-                ? "Add or remove subcategories for this category."
-                : "Add subcategories for this category. You can also add them later via the Manage subcategories action."}
+                ? "New names are created when you click Update. Remove existing subcategories with × (confirmation required)."
+                : "Add subcategories now, or add them later by editing the category."}
             </p>
-            {subcategories.length > 0 && (
+            {pendingSubcategories.length > 0 && (
               <div className="flex flex-wrap gap-2 mt-1">
-                {subcategories.map((sub, index) => (
+                {pendingSubcategories.map((sub, index) => (
                   <Badge
                     key={`${sub}-${index}`}
                     variant="secondary"
@@ -138,7 +190,7 @@ export function CategoryForm({
                     <button
                       type="button"
                       className="text-xs text-muted-foreground hover:text-destructive"
-                      onClick={() => handleRemoveSubcategory(index)}
+                      onClick={() => handleRemovePendingSubcategory(index)}
                     >
                       ×
                     </button>
@@ -166,6 +218,10 @@ export function CategoryForm({
                 <Plus className="h-4 w-4 mr-1" /> Add
               </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Note: Subcategories are assigned to products. Create or edit a
+              product in this category and set its subcategory field.
+            </p>
           </div>
           <div className="flex gap-2 justify-end">
             <Button
