@@ -1048,27 +1048,45 @@ export class ProductRepository {
     totalItems: number;
   }> {
     const whereSql = this.buildProductListWhereSql(filters);
-    const stockSubquery = Prisma.sql`(
-      SELECT COALESCE(SUM(
-        COALESCE(
-          (SELECT SUM(li.quantity)::bigint FROM location_inventory li WHERE li.variation_id = v.variation_id),
-          v.stock_quantity::bigint
-        )
-      ), 0)::bigint
-      FROM product_variations v
-      WHERE v.product_id = p.product_id
-    )`;
     const orderDir = sortOrder === "asc" ? Prisma.sql`ASC` : Prisma.sql`DESC`;
 
     const [countRows, idRows] = await Promise.all([
       prisma.$queryRaw<[{ count: bigint }]>`
-        SELECT COUNT(*)::bigint AS count FROM products p WHERE ${whereSql}
+        WITH filtered_products AS (
+          SELECT p.product_id
+          FROM products p
+          WHERE ${whereSql}
+        )
+        SELECT COUNT(*)::bigint AS count
+        FROM filtered_products
       `,
       prisma.$queryRaw<{ product_id: string }[]>`
-        SELECT p.product_id
-        FROM products p
-        WHERE ${whereSql}
-        ORDER BY (${stockSubquery}) ${orderDir}, p.product_id ASC
+        WITH filtered_products AS (
+          SELECT p.product_id
+          FROM products p
+          WHERE ${whereSql}
+        ),
+        product_stock AS (
+          SELECT
+            fp.product_id,
+            COALESCE(
+              SUM(
+                COALESCE(inv.quantity_sum, v.stock_quantity::bigint)
+              ),
+              0
+            )::bigint AS total_stock
+          FROM filtered_products fp
+          LEFT JOIN product_variations v ON v.product_id = fp.product_id
+          LEFT JOIN LATERAL (
+            SELECT SUM(li.quantity)::bigint AS quantity_sum
+            FROM location_inventory li
+            WHERE li.variation_id = v.variation_id
+          ) inv ON TRUE
+          GROUP BY fp.product_id
+        )
+        SELECT ps.product_id
+        FROM product_stock ps
+        ORDER BY ps.total_stock ${orderDir}, ps.product_id ASC
         LIMIT ${take} OFFSET ${skip}
       `,
     ]);
