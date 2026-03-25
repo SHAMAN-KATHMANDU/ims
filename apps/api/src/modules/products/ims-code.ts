@@ -1,78 +1,60 @@
 /**
- * Default product code (ims_code): tenant initials + suffix from product UUID hex.
+ * Human-readable default product code (ims_code): {slug}-{C}{S?}{N}
  * Domain-specific naming; not a generic string utility.
  */
 
-const MAX_PREFIX_LEN = 4;
-const MIN_SUFFIX_LEN = 3;
-
-/** Visible ASCII alnum for Prisma VarChar ims_code (max 100). */
-function sanitizePrefix(s: string): string {
-  return s.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+/** Escape a string for use inside a RegExp constructor. */
+export function escapeRegex(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-export function initialsFromTenantName(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "XX";
-
-  const words = trimmed.split(/[\s\-_.&,]+/).filter(Boolean);
-  const chars: string[] = [];
-
-  if (words.length >= 2) {
-    for (const w of words) {
-      const alnum = w.replace(/[^a-zA-Z0-9]/g, "");
-      if (alnum.length > 0) {
-        chars.push(alnum[0]!.toUpperCase());
-      }
-      if (chars.length >= MAX_PREFIX_LEN) break;
-    }
-    if (chars.length === 0) return "XX";
-    if (chars.length === 1) return `${chars[0]}X`;
-    return chars.join("");
-  }
-
-  const w = words[0] ?? trimmed;
-  const alnum = w.replace(/[^a-zA-Z0-9]/g, "");
-  if (alnum.length >= 2) {
-    return alnum.slice(0, 2).toUpperCase();
-  }
-  if (alnum.length === 1) {
-    return `${alnum.toUpperCase()}X`;
-  }
-  return "XX";
-}
-
-export function buildDefaultImsCode(
-  tenantName: string,
-  productId: string,
-  suffixCharCount: number,
-): string {
-  const hex = productId.replace(/-/g, "").toUpperCase();
-  const n = Math.min(Math.max(suffixCharCount, MIN_SUFFIX_LEN), hex.length);
-  const suffix = hex.slice(-n);
-  const prefix = sanitizePrefix(initialsFromTenantName(tenantName));
-  return `${prefix}${suffix}`;
+/** First ASCII letter or digit in the label, uppercased; else X. */
+export function firstImsCodeLetter(label: string): string {
+  const m = label.match(/[a-zA-Z0-9]/);
+  return m ? m[0]!.toUpperCase() : "X";
 }
 
 /**
- * Yields candidate ims codes for a new product: lengthening hex suffix, then disambiguating.
+ * Tenant slug segment for ims_code: alnum only, lowercased.
+ * Falls back to "tenant" if empty after stripping.
  */
-export function* defaultImsCodeCandidates(
-  tenantName: string,
-  productId: string,
-): Generator<string> {
-  const hex = productId.replace(/-/g, "").toUpperCase();
-  const prefix = sanitizePrefix(initialsFromTenantName(tenantName));
+export function sanitizeSlugForImsCode(slug: string): string {
+  const s = slug.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  return s.length > 0 ? s : "tenant";
+}
 
-  for (let len = MIN_SUFFIX_LEN; len <= hex.length; len++) {
-    yield `${prefix}${hex.slice(-len)}`;
-  }
+/**
+ * Prefix before the numeric suffix (no trailing digits).
+ * `sanitizedSlug` should already be passed through sanitizeSlugForImsCode.
+ */
+export function buildImsCodePrefix(
+  sanitizedSlug: string,
+  categoryName: string,
+  subCategory: string | null | undefined,
+): string {
+  const c = firstImsCodeLetter(categoryName);
+  const sub = subCategory?.trim();
+  const s = sub ? firstImsCodeLetter(sub) : "";
+  return `${sanitizedSlug}-${c}${s}`;
+}
 
-  let counter = 2;
-  for (;;) {
-    yield `${prefix}${hex}-${counter}`;
-    counter += 1;
+/**
+ * Max trailing integer N among codes that match `^prefix(\d+)$`.
+ */
+export function maxNumericSuffixForPrefix(
+  imsCodes: string[],
+  prefix: string,
+): number {
+  const re = new RegExp(`^${escapeRegex(prefix)}(\\d+)$`);
+  let max = 0;
+  for (const code of imsCodes) {
+    const m = code.match(re);
+    if (m) {
+      const n = parseInt(m[1]!, 10);
+      if (Number.isFinite(n)) max = Math.max(max, n);
+    }
   }
+  return max;
 }
 
 /** Prisma P2002 on (tenantId, imsCode) for products. */

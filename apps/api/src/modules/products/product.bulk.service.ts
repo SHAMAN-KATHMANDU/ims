@@ -4,8 +4,9 @@ import productRepository from "./product.repository";
 import type { ExcelProductRow } from "./bulkUpload.validation";
 import type { ValidationError } from "@/utils/bulkParse";
 import {
-  defaultImsCodeCandidates,
+  buildImsCodePrefix,
   isProductImsCodeTenantUniqueViolation,
+  sanitizeSlugForImsCode,
 } from "./ims-code";
 
 export interface ProcessProductBulkContext {
@@ -71,9 +72,9 @@ export async function processProductBulkRows(
       productRepository.findCategoriesByTenant(tenantId),
       productRepository.findLocationsByTenant(tenantId),
       productRepository.findVendorsByTenant(tenantId),
-      productRepository.findTenantName(tenantId),
+      productRepository.findTenantSlugAndName(tenantId),
     ]);
-  const tenantName = tenantRow?.name ?? "";
+  const tenantSlugSanitized = sanitizeSlugForImsCode(tenantRow?.slug ?? "");
 
   const categoryMap = new Map(
     allCategories.map((cat) => [cat.name.toLowerCase(), cat.id]),
@@ -423,6 +424,7 @@ export async function processProductBulkRows(
           imsCode,
           name: firstRow.name,
           categoryId: categoryId!,
+          subCategory: firstRow.subCategory ?? null,
           description: firstRow.description || null,
           length: firstRow.length,
           breadth: firstRow.breadth,
@@ -450,11 +452,19 @@ export async function processProductBulkRows(
       if (explicitIms) {
         product = await createPayload(explicitIms);
       } else {
-        const gen = defaultImsCodeCandidates(tenantName, productId);
+        const prefix = buildImsCodePrefix(
+          tenantSlugSanitized,
+          categoryNameOriginal,
+          firstRow.subCategory,
+        );
+        let n =
+          (await productRepository.getMaxImsCodeNumericSuffix(
+            tenantId,
+            prefix,
+          )) + 1;
         let lastErr: unknown;
         for (let attempt = 0; attempt < 40; attempt++) {
-          const { value: candidate } = gen.next();
-          if (candidate === undefined) break;
+          const candidate = `${prefix}${n}`;
           try {
             product = await createPayload(candidate);
             lastErr = undefined;
@@ -464,6 +474,7 @@ export async function processProductBulkRows(
             if (!isProductImsCodeTenantUniqueViolation(err)) {
               throw err;
             }
+            n += 1;
           }
         }
         if (product === undefined) {
