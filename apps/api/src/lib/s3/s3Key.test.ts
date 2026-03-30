@@ -103,11 +103,28 @@ describe("s3Key", () => {
     ).toBe(false);
   });
 
+  it("keyBelongsToTenant allows legacy layout when allowLegacyKeys", () => {
+    const k = `tenants/${TENANT}/library/general/x`;
+    expect(
+      keyBelongsToTenant(k, TENANT, "dev", { allowLegacyKeys: true }),
+    ).toBe(true);
+    expect(keyBelongsToTenant(k, TENANT, "dev")).toBe(false);
+  });
+
   it("keyMatchesContactPrefix", () => {
     const k = `dev/tenants/${TENANT}/contacts/${CONTACT}/uuid/file.pdf`;
     expect(keyMatchesContactPrefix(k, TENANT, CONTACT, "dev")).toBe(true);
     expect(keyMatchesContactPrefix(k, TENANT, "wrong", "dev")).toBe(false);
     expect(keyMatchesContactPrefix(k, TENANT, CONTACT, "stage")).toBe(false);
+  });
+
+  it("keyMatchesContactPrefix allows legacy layout when allowLegacyKeys", () => {
+    const k = `tenants/${TENANT}/contacts/${CONTACT}/f.pdf`;
+    expect(
+      keyMatchesContactPrefix(k, TENANT, CONTACT, "dev", {
+        allowLegacyKeys: true,
+      }),
+    ).toBe(true);
   });
 
   it("assertValidTenantId", () => {

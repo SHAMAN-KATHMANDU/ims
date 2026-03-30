@@ -4,6 +4,7 @@ import { basePrisma as prisma } from "@/config/prisma";
 import dbConnect from "@/config/dbConnect";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
+import { verifyS3Connectivity } from "@/lib/s3/s3Storage";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
 import { startUploadCleanupCron } from "@/jobs/uploadCleanup";
 import { startRemarketingScheduler } from "@/modules/remarketing/remarketing.scheduler";
@@ -30,8 +31,9 @@ const startServer = async () => {
 
     const metaMessagingConfigured =
       Boolean(env.metaAppId) && Boolean(env.metaAppSecret);
-    const publicOriginLooksLocal =
-      /localhost|127\.0\.0\.1|\[::1\]/i.test(env.publicServerOrigin);
+    const publicOriginLooksLocal = /localhost|127\.0\.0\.1|\[::1\]/i.test(
+      env.publicServerOrigin,
+    );
     if (metaMessagingConfigured && publicOriginLooksLocal) {
       logger.warn(
         "Messaging: API_PUBLIC_URL resolves to a local origin. Facebook Messenger cannot download outbound media from localhost; set API_PUBLIC_URL to a public HTTPS URL for image/video delivery to users.",
@@ -68,6 +70,23 @@ const startServer = async () => {
     } catch (dbError) {
       logger.error("Database health check failed", undefined, dbError);
       throw dbError;
+    }
+
+    if (env.isDev) {
+      logger.log(
+        `S3 object key prefix: ${env.photosS3KeyPrefix} (explicit PHOTOS_S3_KEY_PREFIX: ${env.photosS3KeyPrefixExplicit})`,
+      );
+    }
+
+    if (env.photosS3VerifyOnStartup && env.photosS3Configured) {
+      logger.log("Verifying S3 bucket access (HeadBucket)…");
+      try {
+        await verifyS3Connectivity();
+        logger.log("S3 connectivity OK");
+      } catch (s3Err) {
+        logger.error("S3 connectivity check failed", undefined, s3Err);
+        process.exit(1);
+      }
     }
 
     httpServer = http.createServer(app);

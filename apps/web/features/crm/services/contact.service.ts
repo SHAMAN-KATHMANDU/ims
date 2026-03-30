@@ -240,7 +240,7 @@ export async function addContactAttachment(
   contactId: string,
   payload: {
     storageKey: string;
-    publicUrl: string;
+    publicUrl?: string;
     fileName: string;
     mimeType: string;
     fileSize?: number;

@@ -98,7 +98,9 @@ export function buildObjectKey(params: {
     params.entityId.includes("..") ||
     params.entityId.includes("/")
   ) {
-    throw new S3KeyError("Invalid entity id");
+    throw new S3KeyError(
+      "entityId must be draft, pending, general, or a valid UUID",
+    );
   }
   const ext = pickExtension(params.fileName, params.mimeType);
   const uuid = randomUUID();
@@ -109,12 +111,17 @@ export function keyBelongsToTenant(
   key: string,
   tenantId: string,
   storageEnv: string,
+  options?: { allowLegacyKeys?: boolean },
 ): boolean {
   assertValidStorageEnv(storageEnv);
   const expected = `${storageEnv}/tenants/${tenantId}/`;
-  if (!key.startsWith(expected)) return false;
   if (key.includes("..")) return false;
-  return true;
+  if (key.startsWith(expected)) return true;
+  if (options?.allowLegacyKeys) {
+    const legacy = `tenants/${tenantId}/`;
+    return key.startsWith(legacy);
+  }
+  return false;
 }
 
 export function keyMatchesContactPrefix(
@@ -122,10 +129,17 @@ export function keyMatchesContactPrefix(
   tenantId: string,
   contactId: string,
   storageEnv: string,
+  options?: { allowLegacyKeys?: boolean },
 ): boolean {
   if (!TENANT_OR_ENTITY_UUID.test(contactId)) return false;
+  if (key.includes("..")) return false;
   const prefix = `${storageEnv}/tenants/${tenantId}/contacts/${contactId}/`;
-  return (
-    key.startsWith(prefix) && keyBelongsToTenant(key, tenantId, storageEnv)
-  );
+  if (key.startsWith(prefix)) {
+    return keyBelongsToTenant(key, tenantId, storageEnv, options);
+  }
+  if (options?.allowLegacyKeys) {
+    const legacyPrefix = `tenants/${tenantId}/contacts/${contactId}/`;
+    return key.startsWith(legacyPrefix);
+  }
+  return false;
 }

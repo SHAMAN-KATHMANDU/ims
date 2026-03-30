@@ -13,4 +13,15 @@ describe("contact-attachment.schema", () => {
     });
     expect(r.success).toBe(true);
   });
+
+  it("accepts payload without publicUrl", () => {
+    const r = CreateContactAttachmentSchema.safeParse({
+      storageKey:
+        "dev/tenants/123e4567-e89b-12d3-a456-426614174000/contacts/223e4567-e89b-12d3-a456-426614174001/x.pdf",
+      fileName: "doc.pdf",
+      mimeType: "application/pdf",
+      fileSize: 100,
+    });
+    expect(r.success).toBe(true);
+  });
 });

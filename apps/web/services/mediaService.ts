@@ -7,14 +7,18 @@ export type PresignResponse = {
   uploadUrl: string;
   key: string;
   publicUrl: string;
+  /** Normalized Content-Type; use this on the PUT and on register. */
+  contentType: string;
   expiresAt: string;
   maxBytes: number;
+  requiresCompletion: boolean;
 };
 
 export async function presignMedia(body: {
   purpose: MediaPurpose;
   mimeType: string;
   fileName?: string;
+  contentLength: number;
   entityType?: "products" | "contacts" | "library" | "messages";
   entityId?: string;
 }): Promise<PresignResponse> {
@@ -49,7 +53,7 @@ export async function listMediaAssets(params?: {
 
 export async function registerMediaAsset(body: {
   storageKey: string;
-  publicUrl: string;
+  publicUrl?: string;
   fileName: string;
   mimeType: string;
   byteSize?: number;
