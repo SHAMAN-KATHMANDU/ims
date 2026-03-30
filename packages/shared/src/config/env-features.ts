@@ -58,6 +58,7 @@ export enum EnvFeature {
   PASSWORD_RESETS = "PASSWORD_RESETS",
   TRANSFER_REQUEST = "TRANSFER_REQUEST",
   MESSAGING = "MESSAGING",
+  MEDIA_UPLOAD = "MEDIA_UPLOAD",
 }
 
 /**
@@ -101,14 +102,15 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
     MESSAGING: true,
+    MEDIA_UPLOAD: true,
   },
   staging: {
     CRM: true,
-    CRM_DEALS: false,
-    CRM_REPORTS: false,
+    CRM_DEALS: true,
+    CRM_REPORTS: true,
     CRM_SETTINGS: true,
-    CRM_WORKFLOWS: false,
-    CRM_PIPELINES_TAB: false,
+    CRM_WORKFLOWS: true,
+    CRM_PIPELINES_TAB: true,
     SALES: true,
     SALES_USER_REPORT: true,
     CATALOG: true,
@@ -132,12 +134,13 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     AUDIT_LOGS: true,
     API_ACCESS: true,
     ANALYTICS_ADVANCED: true,
-    NOTIFICATIONS: false,
+    NOTIFICATIONS: true,
     TASKS: true,
     SYSTEM_ADMIN: true,
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
     MESSAGING: true,
+    MEDIA_UPLOAD: true,
   },
   "staging-production": {
     CRM: true,
@@ -175,6 +178,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
     MESSAGING: false,
+    MEDIA_UPLOAD: true,
   },
   production: {
     CRM: true,
@@ -212,6 +216,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
     MESSAGING: false,
+    MEDIA_UPLOAD: true,
   },
 };
 

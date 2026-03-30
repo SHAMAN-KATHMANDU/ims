@@ -95,6 +95,7 @@ export function ContactDetail({
 }: ContactDetailProps) {
   const { toast } = useToast();
   const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
   const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
   const dealsEnabled = envDealsEnabled && salesPipelinePlan;
 
@@ -452,7 +453,11 @@ export function ContactDetail({
                   { value: "files", label: "Files", icon: Paperclip },
                 ] as const
               )
-                .filter((t) => dealsEnabled || t.value !== "deals")
+                .filter(
+                  (t) =>
+                    (dealsEnabled || t.value !== "deals") &&
+                    (mediaUploadEnabled || t.value !== "files"),
+                )
                 .map(({ value, label, icon: Icon }) => (
                   <TabsTrigger
                     key={value}
@@ -1149,68 +1154,70 @@ export function ContactDetail({
             </TabsContent>
 
             {/* ── FILES ────────────────────────────────────────────────── */}
-            <TabsContent value="files" className="mt-0 p-6 space-y-4">
-              <form
-                onSubmit={handleAddAttachment}
-                className="rounded-lg border bg-card"
-              >
-                <div className="px-4 py-3 border-b">
-                  <h3 className="text-sm font-semibold">Upload File</h3>
-                </div>
-                <div className="p-4 space-y-3">
-                  <Input
-                    type="file"
-                    onChange={(e) =>
-                      setAttachmentFile(e.target.files?.[0] ?? null)
-                    }
-                    className="text-sm"
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={
-                      !attachmentFile || addAttachmentMutation.isPending
-                    }
-                    className="w-full"
-                  >
-                    <Paperclip className="h-4 w-4 mr-1" />
-                    {addAttachmentMutation.isPending
-                      ? "Uploading..."
-                      : "Upload"}
-                  </Button>
-                </div>
-              </form>
-
-              {contact.attachments && contact.attachments.length > 0 ? (
-                <div className="space-y-2">
-                  {contact.attachments.map((a) => (
-                    <div
-                      key={a.id}
-                      className="rounded-lg border bg-card p-3 flex items-center justify-between gap-2"
+            {mediaUploadEnabled && (
+              <TabsContent value="files" className="mt-0 p-6 space-y-4">
+                <form
+                  onSubmit={handleAddAttachment}
+                  className="rounded-lg border bg-card"
+                >
+                  <div className="px-4 py-3 border-b">
+                    <h3 className="text-sm font-semibold">Upload File</h3>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <Input
+                      type="file"
+                      onChange={(e) =>
+                        setAttachmentFile(e.target.files?.[0] ?? null)
+                      }
+                      className="text-sm"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={
+                        !attachmentFile || addAttachmentMutation.isPending
+                      }
+                      className="w-full"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm truncate">{a.fileName}</span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() => handleDeleteAttachment(a.id)}
-                        disabled={deleteAttachmentMutation.isPending}
+                      <Paperclip className="h-4 w-4 mr-1" />
+                      {addAttachmentMutation.isPending
+                        ? "Uploading..."
+                        : "Upload"}
+                    </Button>
+                  </div>
+                </form>
+
+                {contact.attachments && contact.attachments.length > 0 ? (
+                  <div className="space-y-2">
+                    {contact.attachments.map((a) => (
+                      <div
+                        key={a.id}
+                        className="rounded-lg border bg-card p-3 flex items-center justify-between gap-2"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Paperclip className="h-7 w-7 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No files attached.</p>
-                </div>
-              )}
-            </TabsContent>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate">{a.fileName}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => handleDeleteAttachment(a.id)}
+                          disabled={deleteAttachmentMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Paperclip className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No files attached.</p>
+                  </div>
+                )}
+              </TabsContent>
+            )}
           </div>
         </Tabs>
       </div>

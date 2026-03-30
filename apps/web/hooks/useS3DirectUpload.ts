@@ -2,6 +2,7 @@
 
 import { inferMimeFromFileName } from "@repo/shared";
 import { useCallback } from "react";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 import {
   presignMedia,
   registerMediaAsset,
@@ -40,62 +41,71 @@ async function putToPresignedUrl(
 }
 
 export function useS3DirectUpload() {
-  const uploadFile = useCallback(async (options: UploadToS3Options) => {
-    const mimeType =
-      options.file.type?.trim() ||
-      inferMimeFromFileName(options.file.name) ||
-      "application/octet-stream";
+  const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
 
-    const runOnce = async () => {
-      const presign = await presignMedia({
-        purpose: options.purpose,
-        mimeType,
-        fileName: options.file.name,
-        contentLength: options.file.size,
-        entityType: options.entityType,
-        entityId: options.entityId,
-      });
-
-      if (options.file.size > presign.maxBytes) {
-        throw new Error(
-          `File is too large (max ${Math.round(presign.maxBytes / (1024 * 1024))} MB)`,
-        );
+  const uploadFile = useCallback(
+    async (options: UploadToS3Options) => {
+      if (!mediaUploadEnabled) {
+        throw new Error("Media upload is disabled in this environment.");
       }
 
-      const putRes = await putToPresignedUrl(
-        presign.uploadUrl,
-        options.file,
-        presign.contentType,
-      );
-      return { presign, putRes };
-    };
+      const mimeType =
+        options.file.type?.trim() ||
+        inferMimeFromFileName(options.file.name) ||
+        "application/octet-stream";
 
-    let { presign, putRes } = await runOnce();
-    if (!putRes.ok && putRes.status === 403) {
-      ({ presign, putRes } = await runOnce());
-    }
+      const runOnce = async () => {
+        const presign = await presignMedia({
+          purpose: options.purpose,
+          mimeType,
+          fileName: options.file.name,
+          contentLength: options.file.size,
+          entityType: options.entityType,
+          entityId: options.entityId,
+        });
 
-    if (!putRes.ok) {
-      throw new Error(putErrorMessage(putRes.status));
-    }
+        if (options.file.size > presign.maxBytes) {
+          throw new Error(
+            `File is too large (max ${Math.round(presign.maxBytes / (1024 * 1024))} MB)`,
+          );
+        }
 
-    if (options.registerInLibrary) {
-      await registerMediaAsset({
-        storageKey: presign.key,
-        fileName: options.file.name,
-        mimeType: presign.contentType,
-        byteSize: options.file.size,
-        purpose: options.purpose,
-      });
-    }
+        const putRes = await putToPresignedUrl(
+          presign.uploadUrl,
+          options.file,
+          presign.contentType,
+        );
+        return { presign, putRes };
+      };
 
-    return {
-      publicUrl: presign.publicUrl,
-      key: presign.key,
-      maxBytes: presign.maxBytes,
-      contentType: presign.contentType,
-    };
-  }, []);
+      let { presign, putRes } = await runOnce();
+      if (!putRes.ok && putRes.status === 403) {
+        ({ presign, putRes } = await runOnce());
+      }
 
-  return { uploadFile };
+      if (!putRes.ok) {
+        throw new Error(putErrorMessage(putRes.status));
+      }
+
+      if (options.registerInLibrary) {
+        await registerMediaAsset({
+          storageKey: presign.key,
+          fileName: options.file.name,
+          mimeType: presign.contentType,
+          byteSize: options.file.size,
+          purpose: options.purpose,
+        });
+      }
+
+      return {
+        publicUrl: presign.publicUrl,
+        key: presign.key,
+        maxBytes: presign.maxBytes,
+        contentType: presign.contentType,
+      };
+    },
+    [mediaUploadEnabled],
+  );
+
+  return { uploadFile, mediaUploadEnabled };
 }
