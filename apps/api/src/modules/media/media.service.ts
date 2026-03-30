@@ -19,6 +19,7 @@ import type {
   MEDIA_PURPOSES,
   PresignBodyDto,
   RegisterMediaAssetDto,
+  UpdateMediaAssetDto,
 } from "./media.schema";
 import {
   MEDIA_PURPOSE_MAX_BYTES,
@@ -388,5 +389,21 @@ export class MediaService {
       }
     }
     await this.repo.deleteByIdForTenant(assetId, tenantId);
+  }
+
+  async updateAsset(
+    tenantId: string,
+    assetId: string,
+    dto: UpdateMediaAssetDto,
+  ): Promise<MediaAsset> {
+    const updated = await this.repo.updateFileNameForTenant(
+      assetId,
+      tenantId,
+      dto.fileName,
+    );
+    if (!updated) {
+      throw createError("Media asset not found", 404);
+    }
+    return updated;
   }
 }

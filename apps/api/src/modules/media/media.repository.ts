@@ -59,4 +59,19 @@ export class MediaRepository {
       where: { storageKey, tenantId },
     });
   }
+
+  async updateFileNameForTenant(
+    id: string,
+    tenantId: string,
+    fileName: string,
+  ): Promise<MediaAsset | null> {
+    const updated = await prisma.mediaAsset.updateMany({
+      where: { id, tenantId },
+      data: { fileName },
+    });
+    if (updated.count === 0) return null;
+    return prisma.mediaAsset.findFirst({
+      where: { id, tenantId },
+    });
+  }
 }

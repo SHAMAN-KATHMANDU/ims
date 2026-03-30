@@ -71,3 +71,9 @@ export const RegisterMediaAssetSchema = z.object({
 });
 
 export type RegisterMediaAssetDto = z.infer<typeof RegisterMediaAssetSchema>;
+
+export const UpdateMediaAssetSchema = z.object({
+  fileName: z.string().min(1).max(255),
+});
+
+export type UpdateMediaAssetDto = z.infer<typeof UpdateMediaAssetSchema>;

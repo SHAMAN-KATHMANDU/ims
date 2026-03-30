@@ -8,6 +8,7 @@ import {
   ListMediaQuerySchema,
   PresignBodySchema,
   RegisterMediaAssetSchema,
+  UpdateMediaAssetSchema,
 } from "./media.schema";
 import { MediaService } from "./media.service";
 
@@ -33,6 +34,26 @@ function mapAppError(error: unknown): AppError | null {
 }
 
 class MediaController {
+  updateMediaAsset = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const { id } = req.params;
+      if (!id) return fail(res, "Missing id", 400);
+      const body = UpdateMediaAssetSchema.parse(req.body);
+      const asset = await service.updateAsset(tenantId, id, body);
+      return ok(res, { asset });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return fail(res, mapZodError(error), 400);
+      }
+      const httpErr = mapAppError(error);
+      if (httpErr?.statusCode && httpErr.message) {
+        return fail(res, httpErr.message, httpErr.statusCode);
+      }
+      return sendControllerError(req, res, error, "media update");
+    }
+  };
+
   async presign(req: Request, res: Response) {
     try {
       const { tenantId } = getAuthContext(req);
