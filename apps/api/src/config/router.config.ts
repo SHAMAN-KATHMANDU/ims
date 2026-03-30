@@ -48,6 +48,7 @@ import messagingChannelRouter from "@/modules/messaging-channels/messaging-chann
 import messagingRouter from "@/modules/messaging/messaging.router";
 import trashRouter from "@/modules/trash/trash.router";
 import tenantSettingsRouter from "@/modules/tenant-settings/tenant-settings.router";
+import mediaRouter from "@/modules/media/media.router";
 
 const router = Router();
 
@@ -106,5 +107,6 @@ router.use("/workflows", workflowRouter);
 router.use("/trash", trashRouter);
 router.use("/messaging-channels", messagingChannelRouter);
 router.use("/messaging", messagingRouter);
+router.use("/media", mediaRouter);
 
 export default router;

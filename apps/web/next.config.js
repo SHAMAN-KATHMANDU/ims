@@ -41,6 +41,11 @@ const nextConfig = {
         hostname: "picsum.photos",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "ims-shaman-photos.s3.ap-south-1.amazonaws.com",
+        pathname: "/**",
+      },
     ],
   },
 

@@ -13,11 +13,26 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { LogOut, Menu, Settings, Bug, Building2, Bell } from "lucide-react";
+import {
+  LogOut,
+  Menu,
+  Settings,
+  Bug,
+  Building2,
+  Bell,
+  Images,
+} from "lucide-react";
 import { useAuth } from "@/features/auth";
 import { useToast } from "@/hooks/useToast";
 import { ReportErrorDialog } from "./ReportErrorDialog";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { MediaLibraryPanel } from "@/components/media/MediaLibraryPanel";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   useNotifications,
@@ -113,6 +128,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [reportErrorOpen, setReportErrorOpen] = useState(false);
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
 
   const handleLogout = async () => {
     try {
@@ -183,6 +199,17 @@ export function TopBar({ onMenuClick }: TopBarProps) {
               )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {user?.role !== "platformAdmin" && (
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setMediaLibraryOpen(true);
+                }}
+              >
+                <Images className="mr-2 h-4 w-4" />
+                Media library
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link href={settingsPath} className="flex items-center w-full">
                 <Settings className="mr-2 h-4 w-4" />
@@ -204,6 +231,21 @@ export function TopBar({ onMenuClick }: TopBarProps) {
           open={reportErrorOpen}
           onOpenChange={setReportErrorOpen}
         />
+        {user?.role !== "platformAdmin" && (
+          <Sheet open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>
+            <SheetContent
+              side="right"
+              className="w-full sm:max-w-md overflow-y-auto"
+            >
+              <SheetHeader>
+                <SheetTitle>Media library</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <MediaLibraryPanel fullPageHref={`${basePath}/media`} />
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </header>
   );

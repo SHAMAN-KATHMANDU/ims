@@ -24,6 +24,7 @@ import {
   type GetContactTagsParams,
 } from "../services/contact.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+import { useS3DirectUpload } from "@/hooks/useS3DirectUpload";
 
 export const contactKeys = {
   all: ["contacts"] as const,
@@ -146,8 +147,22 @@ export function useDeleteContactNote(contactId: string) {
 
 export function useAddContactAttachment(contactId: string) {
   const qc = useQueryClient();
+  const { uploadFile } = useS3DirectUpload();
   return useMutation({
-    mutationFn: (file: File) => addContactAttachment(contactId, file),
+    mutationFn: async (file: File) => {
+      const { publicUrl, key } = await uploadFile({
+        file,
+        purpose: "contact_attachment",
+        entityId: contactId,
+      });
+      return addContactAttachment(contactId, {
+        storageKey: key,
+        publicUrl,
+        fileName: file.name,
+        mimeType: file.type || "application/octet-stream",
+        fileSize: file.size,
+      });
+    },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: contactKeys.detail(contactId) }),
   });
