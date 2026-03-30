@@ -396,10 +396,29 @@ export class MediaService {
     assetId: string,
     dto: UpdateMediaAssetDto,
   ): Promise<MediaAsset> {
+    const current = await this.repo.findByIdForTenant(assetId, tenantId);
+    if (!current) {
+      throw createError("Media asset not found", 404);
+    }
+
+    const nextName = dto.fileName;
+    if (current.fileName === nextName) {
+      return current;
+    }
+
+    const conflict = await this.repo.findByFileNameForTenantExcludingId(
+      tenantId,
+      nextName,
+      assetId,
+    );
+    if (conflict) {
+      throw createError("Media asset name already exists", 409);
+    }
+
     const updated = await this.repo.updateFileNameForTenant(
       assetId,
       tenantId,
-      dto.fileName,
+      nextName,
     );
     if (!updated) {
       throw createError("Media asset not found", 404);

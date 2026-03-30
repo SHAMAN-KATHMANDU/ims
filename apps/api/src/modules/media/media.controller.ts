@@ -6,6 +6,7 @@ import { ok, fail } from "@/shared/response";
 import { sendControllerError } from "@/utils/controllerError";
 import {
   ListMediaQuerySchema,
+  MediaAssetIdParamsSchema,
   PresignBodySchema,
   RegisterMediaAssetSchema,
   UpdateMediaAssetSchema,
@@ -37,10 +38,9 @@ class MediaController {
   updateMediaAsset = async (req: Request, res: Response) => {
     try {
       const { tenantId } = getAuthContext(req);
-      const { id } = req.params;
-      if (!id) return fail(res, "Missing id", 400);
+      const params = MediaAssetIdParamsSchema.parse(req.params);
       const body = UpdateMediaAssetSchema.parse(req.body);
-      const asset = await service.updateAsset(tenantId, id, body);
+      const asset = await service.updateAsset(tenantId, params.id, body);
       return ok(res, { asset });
     } catch (error: unknown) {
       if (error instanceof ZodError) {

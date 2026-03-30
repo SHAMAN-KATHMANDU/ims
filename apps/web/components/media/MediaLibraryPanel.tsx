@@ -63,9 +63,15 @@ function formatBytes(value: number | null): string {
   return `${(kb / 1024).toFixed(1)} MB`;
 }
 
+type ThumbnailStrategy = "next" | "img" | "broken";
+
 function MediaCardThumbnail({ asset }: { asset: MediaAssetRow }) {
-  const [failed, setFailed] = useState(false);
+  const [strategy, setStrategy] = useState<ThumbnailStrategy>("next");
   const isImage = asset.mimeType.startsWith("image/");
+
+  useEffect(() => {
+    setStrategy("next");
+  }, [asset.id, asset.publicUrl]);
 
   if (!isImage) {
     const kind =
@@ -85,11 +91,23 @@ function MediaCardThumbnail({ asset }: { asset: MediaAssetRow }) {
     );
   }
 
-  if (failed) {
+  if (strategy === "broken") {
     return (
       <div className="flex h-full w-full items-center justify-center bg-muted">
         <ImageOff className="h-10 w-10 text-muted-foreground/70" aria-hidden />
       </div>
+    );
+  }
+
+  if (strategy === "img") {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- Fallback when `next/image` fails (e.g. host not in remotePatterns)
+      <img
+        src={asset.publicUrl}
+        alt=""
+        className="absolute inset-0 h-full w-full object-cover"
+        onError={() => setStrategy("broken")}
+      />
     );
   }
 
@@ -101,7 +119,7 @@ function MediaCardThumbnail({ asset }: { asset: MediaAssetRow }) {
       className="object-cover"
       sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
       unoptimized
-      onError={() => setFailed(true)}
+      onError={() => setStrategy("img")}
     />
   );
 }

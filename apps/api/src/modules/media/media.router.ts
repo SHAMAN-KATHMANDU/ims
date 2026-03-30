@@ -172,6 +172,8 @@ mediaRouter.get(
  *         description: Validation error
  *       404:
  *         description: Not found, or media upload feature disabled in this environment
+ *       409:
+ *         description: Another asset in the tenant already uses this display name
  */
 mediaRouter.delete(
   "/assets/:id",

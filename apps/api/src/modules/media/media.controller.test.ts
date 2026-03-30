@@ -67,15 +67,32 @@ describe("MediaController", () => {
       expect(hoisted.updateAsset).toHaveBeenCalledWith(
         "t1",
         "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
-        {
-          fileName: "new-name.png",
-        },
+        { fileName: "new-name.png" },
       );
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         data: { asset },
       });
+    });
+
+    it("passes trimmed fileName to service", async () => {
+      const asset = assetStub({ fileName: "a.png" });
+      hoisted.updateAsset.mockResolvedValue(asset);
+      const req = makeReq({
+        params: { id: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa" },
+        body: { fileName: "  a.png  " },
+      });
+      const res = mockRes() as Response;
+
+      await mediaController.updateMediaAsset(req, res);
+
+      expect(hoisted.updateAsset).toHaveBeenCalledWith(
+        "t1",
+        "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+        { fileName: "a.png" },
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
     });
 
     it("returns 400 when fileName is empty (Zod)", async () => {
@@ -89,6 +106,51 @@ describe("MediaController", () => {
 
       expect(res.status).toHaveBeenCalledWith(400);
       expect(hoisted.updateAsset).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when id is not a valid UUID", async () => {
+      const req = makeReq({
+        params: { id: "not-a-uuid" },
+        body: { fileName: "x.png" },
+      });
+      const res = mockRes() as Response;
+
+      await mediaController.updateMediaAsset(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(hoisted.updateAsset).not.toHaveBeenCalled();
+    });
+
+    it("returns 400 when fileName is whitespace-only (Zod)", async () => {
+      const req = makeReq({
+        params: { id: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa" },
+        body: { fileName: "  \t  " },
+      });
+      const res = mockRes() as Response;
+
+      await mediaController.updateMediaAsset(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(400);
+      expect(hoisted.updateAsset).not.toHaveBeenCalled();
+    });
+
+    it("returns 409 when name already exists for another asset", async () => {
+      hoisted.updateAsset.mockRejectedValue(
+        createError("Media asset name already exists", 409),
+      );
+      const req = makeReq({
+        params: { id: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa" },
+        body: { fileName: "taken.png" },
+      });
+      const res = mockRes() as Response;
+
+      await mediaController.updateMediaAsset(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(409);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        message: "Media asset name already exists",
+      });
     });
 
     it("returns 404 when service throws AppError", async () => {

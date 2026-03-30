@@ -3,6 +3,7 @@ import {
   PresignBodySchema,
   RegisterMediaAssetSchema,
   ListMediaQuerySchema,
+  MediaAssetIdParamsSchema,
   UpdateMediaAssetSchema,
 } from "./media.schema";
 
@@ -84,5 +85,29 @@ describe("media.schema", () => {
   it("UpdateMediaAssetSchema rejects fileName over 255 chars", () => {
     const r = UpdateMediaAssetSchema.safeParse({ fileName: "x".repeat(256) });
     expect(r.success).toBe(false);
+  });
+
+  it("UpdateMediaAssetSchema trims fileName", () => {
+    const r = UpdateMediaAssetSchema.safeParse({ fileName: "  photo.png  " });
+    expect(r.success).toBe(true);
+    if (r.success) expect(r.data.fileName).toBe("photo.png");
+  });
+
+  it("UpdateMediaAssetSchema rejects whitespace-only fileName", () => {
+    const r = UpdateMediaAssetSchema.safeParse({ fileName: "   \t  " });
+    expect(r.success).toBe(false);
+  });
+
+  it("MediaAssetIdParamsSchema accepts UUID id", () => {
+    const r = MediaAssetIdParamsSchema.safeParse({
+      id: "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("MediaAssetIdParamsSchema rejects invalid id", () => {
+    expect(MediaAssetIdParamsSchema.safeParse({ id: "not-uuid" }).success).toBe(
+      false,
+    );
   });
 });
