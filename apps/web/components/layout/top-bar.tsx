@@ -237,12 +237,12 @@ export function TopBar({ onMenuClick }: TopBarProps) {
           <Sheet open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>
             <SheetContent
               side="right"
-              className="w-full sm:max-w-md overflow-y-auto"
+              className="flex h-full w-full flex-col overflow-hidden sm:max-w-md"
             >
               <SheetHeader>
                 <SheetTitle>Media library</SheetTitle>
               </SheetHeader>
-              <div className="mt-4">
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4">
                 <MediaLibraryPanel fullPageHref={`${basePath}/media`} />
               </div>
             </SheetContent>

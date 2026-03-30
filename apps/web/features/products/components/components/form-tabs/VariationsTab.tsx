@@ -35,7 +35,11 @@ interface VariationsTabProps {
       | Array<{ attributeTypeId: string; attributeValueId: string }>,
   ) => void;
   onUpdateSubVariants: (index: number, subVariants: string[]) => void;
-  onAddPhoto: (variationIndex: number, photoUrl: string) => void;
+  onAddPhoto: (
+    variationIndex: number,
+    photoUrl: string,
+    fileName?: string,
+  ) => void;
   onRemovePhoto: (variationIndex: number, photoIndex: number) => void;
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
   attributeTypes?: AttributeType[];
@@ -265,12 +269,12 @@ export function VariationsTab({
                     if (!file) return;
                     const idx = fileTargetIndexRef.current;
                     try {
-                      const { publicUrl } = await uploadFile({
+                      const { publicUrl, fileName } = await uploadFile({
                         file,
                         purpose: "product_photo",
                         registerInLibrary: addPhotoToLibrary,
                       });
-                      onAddPhoto(idx, publicUrl);
+                      onAddPhoto(idx, publicUrl, fileName);
                     } catch (err) {
                       toast({
                         title: getApiErrorMessage(err),
@@ -334,6 +338,7 @@ export function VariationsTab({
                         <img
                           src={photo.photoUrl}
                           alt={`Variation ${index + 1} photo ${photoIndex + 1}`}
+                          title={photo.fileName || photo.photoUrl}
                           className="h-20 w-full rounded border object-cover"
                           onError={(e) => {
                             e.currentTarget.src =
@@ -343,6 +348,11 @@ export function VariationsTab({
                         {photo.isPrimary && (
                           <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-1 rounded">
                             Primary
+                          </span>
+                        )}
+                        {photo.fileName && (
+                          <span className="absolute right-1 bottom-1 max-w-[95%] truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
+                            {photo.fileName}
                           </span>
                         )}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
@@ -385,7 +395,9 @@ export function VariationsTab({
       <MediaLibraryPickerDialog
         open={libraryOpen}
         onOpenChange={setLibraryOpen}
-        onPick={(url) => onAddPhoto(libraryVariationIndex, url)}
+        onPick={({ publicUrl, fileName }) =>
+          onAddPhoto(libraryVariationIndex, publicUrl, fileName)
+        }
       />
     </div>
   );

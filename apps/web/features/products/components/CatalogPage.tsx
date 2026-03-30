@@ -724,7 +724,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     setProductVariations(updated);
   };
 
-  const addPhotoToVariation = (variationIndex: number, photoUrl: string) => {
+  const addPhotoToVariation = (
+    variationIndex: number,
+    photoUrl: string,
+    fileName?: string,
+  ) => {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
@@ -734,7 +738,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     updated[variationIndex] = {
       stockQuantity: variation.stockQuantity || "0",
       subVariants: variation.subVariants ?? [],
-      photos: [...photos, { photoUrl, isPrimary }],
+      photos: [...photos, { photoUrl, isPrimary, fileName }],
     };
     setProductVariations(updated);
   };

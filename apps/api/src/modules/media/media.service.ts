@@ -19,6 +19,7 @@ import type {
   MEDIA_PURPOSES,
   PresignBodyDto,
   RegisterMediaAssetDto,
+  UpdateMediaAssetDto,
 } from "./media.schema";
 import {
   MEDIA_PURPOSE_MAX_BYTES,
@@ -388,5 +389,40 @@ export class MediaService {
       }
     }
     await this.repo.deleteByIdForTenant(assetId, tenantId);
+  }
+
+  async updateAsset(
+    tenantId: string,
+    assetId: string,
+    dto: UpdateMediaAssetDto,
+  ): Promise<MediaAsset> {
+    const current = await this.repo.findByIdForTenant(assetId, tenantId);
+    if (!current) {
+      throw createError("Media asset not found", 404);
+    }
+
+    const nextName = dto.fileName;
+    if (current.fileName === nextName) {
+      return current;
+    }
+
+    const conflict = await this.repo.findByFileNameForTenantExcludingId(
+      tenantId,
+      nextName,
+      assetId,
+    );
+    if (conflict) {
+      throw createError("Media asset name already exists", 409);
+    }
+
+    const updated = await this.repo.updateFileNameForTenant(
+      assetId,
+      tenantId,
+      nextName,
+    );
+    if (!updated) {
+      throw createError("Media asset not found", 404);
+    }
+    return updated;
   }
 }

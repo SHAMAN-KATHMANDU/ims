@@ -376,6 +376,7 @@ export function ContactsPage() {
         onOpenChange={(o) => !o && closeDrawer()}
         title={drawerTitle}
         size="2xl"
+        bodyPadding={false}
       >
         {drawerMode === "view" && selectedId && (
           <div className="flex flex-col h-full">

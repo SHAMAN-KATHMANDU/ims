@@ -67,3 +67,12 @@ export async function deleteMediaAsset(id: string): Promise<void> {
   const res = await api.delete(`/media/assets/${id}`);
   unwrapApiData<{ deleted: boolean }>(res.data);
 }
+
+export async function updateMediaAsset(
+  id: string,
+  data: { fileName: string },
+): Promise<MediaAssetRow> {
+  const res = await api.patch(`/media/assets/${id}`, data);
+  const { asset } = unwrapApiData<{ asset: MediaAssetRow }>(res.data);
+  return asset;
+}

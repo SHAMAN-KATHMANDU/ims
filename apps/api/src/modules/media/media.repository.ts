@@ -59,4 +59,34 @@ export class MediaRepository {
       where: { storageKey, tenantId },
     });
   }
+
+  /** Another asset in the tenant with the same display name, excluding one id (for rename conflict checks). */
+  async findByFileNameForTenantExcludingId(
+    tenantId: string,
+    fileName: string,
+    excludeAssetId: string,
+  ): Promise<MediaAsset | null> {
+    return prisma.mediaAsset.findFirst({
+      where: {
+        tenantId,
+        fileName,
+        NOT: { id: excludeAssetId },
+      },
+    });
+  }
+
+  async updateFileNameForTenant(
+    id: string,
+    tenantId: string,
+    fileName: string,
+  ): Promise<MediaAsset | null> {
+    const updated = await prisma.mediaAsset.updateMany({
+      where: { id, tenantId },
+      data: { fileName },
+    });
+    if (updated.count === 0) return null;
+    return prisma.mediaAsset.findFirst({
+      where: { id, tenantId },
+    });
+  }
 }

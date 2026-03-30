@@ -154,4 +154,57 @@ describe("MediaService", () => {
     expect(out.asset).toBe(existing);
     expect(repo.create).not.toHaveBeenCalled();
   });
+
+  it("updateAsset returns current row when display name unchanged", async () => {
+    const row = {
+      id: "asset-1",
+      tenantId: "t1",
+      fileName: "same.png",
+    } as MediaAsset;
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue(row),
+      findByFileNameForTenantExcludingId: vi.fn(),
+      updateFileNameForTenant: vi.fn(),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    const out = await svc.updateAsset("t1", "asset-1", {
+      fileName: "same.png",
+    });
+    expect(out).toBe(row);
+    expect(repo.findByFileNameForTenantExcludingId).not.toHaveBeenCalled();
+    expect(repo.updateFileNameForTenant).not.toHaveBeenCalled();
+  });
+
+  it("updateAsset throws 409 when another asset has the display name", async () => {
+    const current = {
+      id: "asset-1",
+      tenantId: "t1",
+      fileName: "old.png",
+    } as MediaAsset;
+    const other = {
+      id: "asset-2",
+      tenantId: "t1",
+      fileName: "taken.png",
+    } as MediaAsset;
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue(current),
+      findByFileNameForTenantExcludingId: vi.fn().mockResolvedValue(other),
+      updateFileNameForTenant: vi.fn(),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    await expect(
+      svc.updateAsset("t1", "asset-1", { fileName: "taken.png" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(repo.updateFileNameForTenant).not.toHaveBeenCalled();
+  });
+
+  it("updateAsset throws 404 when asset missing", async () => {
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue(null),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    await expect(
+      svc.updateAsset("t1", "missing-id", { fileName: "x.png" }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+  });
 });

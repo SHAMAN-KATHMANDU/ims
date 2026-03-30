@@ -103,11 +103,7 @@ export function useProductFormAdapter({
   }, []);
 
   const revealAllWizardValidationErrors = useCallback(() => {
-    attemptedWizardTabsRef.current = new Set([
-      "general",
-      "dimensions",
-      "variations",
-    ]);
+    attemptedWizardTabsRef.current = new Set(["general", "variations"]);
     markValidatedKeys(Object.keys(defaultValues) as string[]);
     setWizardAttemptVersion((v) => v + 1);
   }, [defaultValues, markValidatedKeys]);

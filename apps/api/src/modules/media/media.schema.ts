@@ -71,3 +71,24 @@ export const RegisterMediaAssetSchema = z.object({
 });
 
 export type RegisterMediaAssetDto = z.infer<typeof RegisterMediaAssetSchema>;
+
+/** Path params for routes that use `:id` as a media asset UUID. */
+export const MediaAssetIdParamsSchema = z.object({
+  id: z.string().uuid("Invalid media asset id"),
+});
+
+export type MediaAssetIdParamsDto = z.infer<typeof MediaAssetIdParamsSchema>;
+
+export const UpdateMediaAssetSchema = z.object({
+  fileName: z
+    .string()
+    .transform((s) => s.trim())
+    .pipe(
+      z
+        .string()
+        .min(1, "Display name cannot be empty")
+        .max(255, "Display name must be at most 255 characters"),
+    ),
+});
+
+export type UpdateMediaAssetDto = z.infer<typeof UpdateMediaAssetSchema>;
