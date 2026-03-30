@@ -245,6 +245,16 @@ git add .
 git commit -m "your message"
 ```
 
+### pnpm lockfile parse error in CI
+
+If CI fails with `ERR_PNPM_BROKEN_LOCKFILE` (for example, "duplicated mapping key"),
+regenerate the lockfile locally and verify it before pushing:
+
+```bash
+pnpm install --lockfile-only
+pnpm install --frozen-lockfile
+```
+
 ## Contributing
 
 1. Branch from `main` (e.g. `#42-feat/my-feature`)
