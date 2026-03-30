@@ -391,6 +391,7 @@ export function CompaniesPage() {
         open={drawerMode !== null}
         onOpenChange={(o) => !o && closeDrawer()}
         title={drawerTitle}
+        bodyPadding={false}
       >
         {drawerMode === "view" && selectedId && (
           <div className="flex flex-col h-full">

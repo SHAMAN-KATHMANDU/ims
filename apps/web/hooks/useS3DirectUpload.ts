@@ -99,6 +99,7 @@ export function useS3DirectUpload() {
 
       return {
         publicUrl: presign.publicUrl,
+        fileName: options.file.name,
         key: presign.key,
         maxBytes: presign.maxBytes,
         contentType: presign.contentType,

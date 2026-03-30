@@ -134,7 +134,10 @@ export function SaleBulkUploadDialog({
     <>
       {!inline && (
         <DialogHeader>
-          <DialogTitle>Bulk Upload Sales</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-4 w-4 text-muted-foreground" aria-hidden />
+            Bulk Upload Sales
+          </DialogTitle>
           <DialogDescription>
             Upload an Excel or CSV file to create multiple sales at once.
             Download the template to see required and optional column headers.

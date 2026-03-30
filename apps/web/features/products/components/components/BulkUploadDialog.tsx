@@ -94,11 +94,14 @@ export function BulkUploadDialog({
     <>
       {!inline && (
         <DialogHeader>
-          <DialogTitle>Bulk Upload Products</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-4 w-4 text-muted-foreground" aria-hidden />
+            Bulk Upload Products
+          </DialogTitle>
           <DialogDescription>
             Upload an Excel or CSV file to create or update products with
-            location-based stock. Each row is one variant with its own product code
-            and stock. Add attribute columns (e.g. <strong>Color</strong>,{" "}
+            location-based stock. Each row is one variant with its own product
+            code and stock. Add attribute columns (e.g. <strong>Color</strong>,{" "}
             <strong>Size</strong>, <strong>Material</strong>) directly as
             headers — any column not matching a predefined field is
             automatically treated as a product attribute. Include the{" "}
@@ -112,8 +115,8 @@ export function BulkUploadDialog({
           <h2 className="text-2xl font-semibold">Bulk Upload Products</h2>
           <p className="text-muted-foreground text-sm">
             Upload an Excel or CSV file to create or update products with
-            location-based stock. Each row is one variant with its own product code.
-            Add attribute columns (e.g. Color, Size, Material) directly as
+            location-based stock. Each row is one variant with its own product
+            code. Add attribute columns (e.g. Color, Size, Material) directly as
             headers — any column not matching a predefined field is
             automatically treated as a product attribute. Include the Location
             column. Download the template for required columns.

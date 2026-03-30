@@ -12,12 +12,20 @@ import {
 } from "@/services/mediaService";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/api-error";
-import { Loader2, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, Trash2, ExternalLink, Files } from "lucide-react";
 
 type MediaLibraryPanelProps = {
   /** Link to full-page library (optional). */
   fullPageHref?: string;
 };
+
+function formatBytes(value: number | null): string {
+  if (!value || value <= 0) return "-";
+  if (value < 1024) return `${value} B`;
+  const kb = value / 1024;
+  if (kb < 1024) return `${kb.toFixed(1)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
 
 export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
   const { toast } = useToast();
@@ -175,65 +183,100 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
       </div>
 
       {loading && items.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Loading...
+        </div>
       ) : items.length === 0 ? (
         <p className="text-sm text-muted-foreground">
           No files yet. Choose a file above to upload to your tenant library.
         </p>
       ) : (
-        <ul className="space-y-2 border rounded-md divide-y">
-          {items.map((a) => (
-            <li
-              key={a.id}
-              className="flex items-center justify-between gap-2 p-2 text-sm"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{a.fileName}</p>
-                <p className="text-xs text-muted-foreground truncate">
+        <div className="overflow-hidden rounded-md border">
+          <div className="grid grid-cols-[minmax(0,1fr)_150px_90px_90px] gap-3 border-b bg-muted/40 px-3 py-2 text-xs font-medium text-muted-foreground">
+            <span>File</span>
+            <span>Type</span>
+            <span>Size</span>
+            <span className="text-right">Actions</span>
+          </div>
+          <ul className="divide-y">
+            {items.map((a) => (
+              <li
+                key={a.id}
+                className="grid grid-cols-[minmax(0,1fr)_150px_90px_90px] items-center gap-3 px-3 py-2 text-sm"
+              >
+                <div className="min-w-0">
+                  <p className="truncate font-medium">{a.fileName}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {new Date(a.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+                <p className="truncate text-xs text-muted-foreground">
                   {a.mimeType}
                 </p>
-              </div>
-              <div className="flex items-center gap-1 shrink-0">
-                <Button variant="ghost" size="icon" className="h-8 w-8" asChild>
-                  <a
-                    href={a.publicUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="Open file"
+                <p className="text-xs text-muted-foreground">
+                  {formatBytes(a.byteSize)}
+                </p>
+                <div className="flex items-center justify-end gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8"
+                    asChild
                   >
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-destructive"
-                  disabled={deletingId === a.id || !mediaUploadEnabled}
-                  onClick={() => onDelete(a.id)}
-                  aria-label="Delete"
-                >
-                  {deletingId === a.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-            </li>
-          ))}
-        </ul>
+                    <a
+                      href={a.publicUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      aria-label="Open file"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 text-destructive"
+                    disabled={deletingId === a.id || !mediaUploadEnabled}
+                    onClick={() => onDelete(a.id)}
+                    aria-label="Delete"
+                  >
+                    {deletingId === a.id ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Trash2 className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
-      {hasMore && (
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={loadingMore}
-          onClick={loadMore}
-        >
-          {loadingMore ? "Loading…" : "Load more"}
-        </Button>
-      )}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-xs text-muted-foreground">
+          {items.length > 0
+            ? `${items.length} file${items.length === 1 ? "" : "s"} loaded`
+            : ""}
+        </p>
+        {hasMore && (
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={loadingMore}
+            onClick={loadMore}
+            className="gap-1.5"
+          >
+            {loadingMore ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Files className="h-4 w-4" />
+            )}
+            {loadingMore ? "Loading..." : "Load more"}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }

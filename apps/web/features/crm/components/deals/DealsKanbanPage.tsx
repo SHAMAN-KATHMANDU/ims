@@ -487,6 +487,7 @@ export function DealsKanbanPage() {
               : "Deal Details"
         }
         size="2xl"
+        bodyPadding={false}
       >
         {drawerMode === "view" && selectedDealId && (
           <div className="flex flex-col h-full">
