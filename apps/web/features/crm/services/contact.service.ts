@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
+import { unwrapApiData } from "@/lib/apiResponse";
 
 export interface ContactTag {
   id: string;
@@ -51,6 +52,8 @@ export type ContactAttachment = {
   id: string;
   fileName: string;
   filePath: string;
+  storageKey?: string | null;
+  publicUrl?: string | null;
   fileSize?: number;
   mimeType?: string;
   createdAt: string;
@@ -235,12 +238,16 @@ export async function deleteContactNote(
 
 export async function addContactAttachment(
   contactId: string,
-  file: File,
-): Promise<{ attachment: ContactAttachment }> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await api.post(`/contacts/${contactId}/attachments`, formData);
-  return res.data;
+  payload: {
+    storageKey: string;
+    publicUrl: string;
+    fileName: string;
+    mimeType: string;
+    fileSize?: number;
+  },
+): Promise<{ message: string; attachment: ContactAttachment }> {
+  const res = await api.post(`/contacts/${contactId}/attachments`, payload);
+  return unwrapApiData(res.data);
 }
 
 export async function deleteContactAttachment(

@@ -73,6 +73,8 @@ model Tenant {
   messagingChannels MessagingChannel[]
   conversations     Conversation[]
 
+  mediaAssets    MediaAsset[]
+
   @@map("tenants")
 }
 
@@ -236,6 +238,7 @@ model User {
   dealsCreated          Deal[]            @relation("DealCreator")
   dealsEdited           Deal[]            @relation("DealEditedBy")
   leadsCreated          Lead[]            @relation("LeadCreator")
+  mediaAssetsUploaded   MediaAsset[]
 
   // Messaging relations
   assignedConversations Conversation[]    @relation("ConversationAssignedTo")
@@ -1022,6 +1025,10 @@ model ContactAttachment {
   contactId String   @map("contact_id")
   fileName  String   @map("file_name") @db.VarChar(255)
   filePath  String   @map("file_path") @db.VarChar(500)
+  /// S3 object key for direct-upload attachments (null = legacy disk path in filePath).
+  storageKey String? @map("storage_key") @db.VarChar(768)
+  /// Canonical public URL when stored in S3.
+  publicUrl  String? @map("public_url") @db.VarChar(1024)
   fileSize  Int?     @map("file_size")
   mimeType  String?  @map("mime_type") @db.VarChar(100)
   uploadedById String @map("uploaded_by_id")
@@ -1031,6 +1038,26 @@ model ContactAttachment {
   uploader  User    @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
 
   @@map("contact_attachments")
+}
+
+model MediaAsset {
+  id           String   @id @default(uuid()) @map("media_asset_id")
+  tenantId     String   @map("tenant_id")
+  storageKey   String   @map("storage_key") @db.VarChar(768)
+  publicUrl    String   @map("public_url") @db.VarChar(1024)
+  fileName     String   @map("file_name") @db.VarChar(255)
+  mimeType     String   @map("mime_type") @db.VarChar(120)
+  byteSize     Int?     @map("byte_size")
+  purpose      String   @map("purpose") @db.VarChar(64)
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploader User   @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+
+  @@unique([tenantId, storageKey])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("media_assets")
 }
 
 enum CommunicationType {
