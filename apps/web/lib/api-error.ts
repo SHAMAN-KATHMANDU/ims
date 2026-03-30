@@ -10,6 +10,8 @@ import { AxiosError } from "axios";
 
 interface ApiErrorResponse {
   message?: string;
+  /** Standardized fail() responses from the API */
+  success?: boolean;
 }
 
 /**
@@ -40,10 +42,19 @@ const MESSAGES = {
 export function getApiErrorMessage(error: unknown, context?: string): string {
   if (isAxiosError(error)) {
     const status = error.response?.status;
+    const data = error.response?.data as ApiErrorResponse | undefined;
+    if (
+      data &&
+      typeof data === "object" &&
+      data.success === false &&
+      typeof data.message === "string" &&
+      data.message.trim() !== ""
+    ) {
+      return data.message.trim();
+    }
     const backendMessage =
-      typeof error.response?.data?.message === "string" &&
-      error.response.data.message.trim() !== ""
-        ? error.response.data.message.trim()
+      typeof data?.message === "string" && data.message.trim() !== ""
+        ? data.message.trim()
         : null;
 
     if (error.code === "ERR_NETWORK") {

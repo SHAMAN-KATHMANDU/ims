@@ -18,6 +18,9 @@ const APP_ENV_VALUES = [
   "production",
 ] as const;
 
+const PHOTOS_S3_KEY_PREFIX_VALUES = ["dev", "stage", "prod"] as const;
+type PhotosS3KeyPrefix = (typeof PHOTOS_S3_KEY_PREFIX_VALUES)[number];
+
 const EnvSchema = z
   .object({
     NODE_ENV: z
@@ -46,6 +49,10 @@ const EnvSchema = z
     META_APP_ID: z.string().optional(),
     META_APP_SECRET: z.string().optional(),
     CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    AWS_REGION: z.string().optional(),
+    PHOTOS_S3_BUCKET: z.string().optional(),
+    PHOTOS_PUBLIC_URL_PREFIX: z.string().optional(),
+    PHOTOS_S3_KEY_PREFIX: z.string().optional(),
   })
   .transform((raw) => {
     const isDev = raw.NODE_ENV === "development";
@@ -124,6 +131,63 @@ const EnvSchema = z
     /** Base origin for static assets (uploads); strip /api/v1 from API_PUBLIC_URL */
     const publicServerOrigin = publicApiUrl.replace(/\/api\/v1\/?$/, "");
 
+    const awsRegion = raw.AWS_REGION?.trim() ?? "";
+    const photosS3Bucket = raw.PHOTOS_S3_BUCKET?.trim() ?? "";
+    const photosPublicUrlPrefixRaw = raw.PHOTOS_PUBLIC_URL_PREFIX?.trim() ?? "";
+
+    if (!isDev) {
+      if (!awsRegion) {
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["AWS_REGION"],
+            message: "AWS_REGION is required in staging and production.",
+          },
+        ]);
+      }
+      if (!photosS3Bucket || !photosPublicUrlPrefixRaw) {
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["PHOTOS_S3_BUCKET"],
+            message:
+              "PHOTOS_S3_BUCKET and PHOTOS_PUBLIC_URL_PREFIX are required in staging and production.",
+          },
+        ]);
+      }
+    }
+
+    const photosPublicUrlPrefix = photosPublicUrlPrefixRaw
+      ? photosPublicUrlPrefixRaw.endsWith("/")
+        ? photosPublicUrlPrefixRaw
+        : `${photosPublicUrlPrefixRaw}/`
+      : "";
+
+    function parsePhotosS3KeyPrefix(): PhotosS3KeyPrefix {
+      const p = raw.PHOTOS_S3_KEY_PREFIX?.trim().toLowerCase();
+      if (p) {
+        if (!PHOTOS_S3_KEY_PREFIX_VALUES.includes(p as PhotosS3KeyPrefix)) {
+          throw new z.ZodError([
+            {
+              code: "custom",
+              path: ["PHOTOS_S3_KEY_PREFIX"],
+              message: "PHOTOS_S3_KEY_PREFIX must be one of: dev, stage, prod.",
+            },
+          ]);
+        }
+        return p as PhotosS3KeyPrefix;
+      }
+      if (isDev) return "dev";
+      if (isStaging) return "stage";
+      if (isProd) return "prod";
+      return "dev";
+    }
+
+    const photosS3KeyPrefix = parsePhotosS3KeyPrefix();
+    const photosS3Configured = Boolean(
+      awsRegion && photosS3Bucket && photosPublicUrlPrefix,
+    );
+
     return {
       nodeEnv: raw.NODE_ENV,
       isDev,
@@ -136,7 +200,9 @@ const EnvSchema = z
       corsOrigin,
       publicApiUrl,
       publicServerOrigin:
-        publicServerOrigin.length > 0 ? publicServerOrigin : "http://localhost:4000",
+        publicServerOrigin.length > 0
+          ? publicServerOrigin
+          : "http://localhost:4000",
       appEnv,
       featureFlags: raw.FEATURE_FLAGS?.trim(),
       features: {} as const,
@@ -144,6 +210,11 @@ const EnvSchema = z
       metaAppId: raw.META_APP_ID?.trim() ?? "",
       metaAppSecret: raw.META_APP_SECRET?.trim() ?? "",
       credentialEncryptionKey: raw.CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "",
+      awsRegion,
+      photosS3Bucket,
+      photosPublicUrlPrefix,
+      photosS3KeyPrefix,
+      photosS3Configured,
     };
   });
 

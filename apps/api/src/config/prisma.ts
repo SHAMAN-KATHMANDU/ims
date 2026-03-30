@@ -41,6 +41,7 @@ const TENANT_SCOPED_MODELS = new Set([
   "ErrorReport",
   "MessagingChannel",
   "Conversation",
+  "MediaAsset",
 ]);
 
 /**

@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
@@ -11,11 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Upload, Images } from "lucide-react";
 import type { ProductVariationForm } from "../../types";
 import type { UseFormReturn } from "@/hooks/useForm";
 import type { ProductFormValues } from "../../types";
 import type { AttributeType } from "@/features/products";
+import { useS3DirectUpload } from "@/hooks/useS3DirectUpload";
+import { MediaLibraryPickerDialog } from "@/components/media/MediaLibraryPickerDialog";
+import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface VariationsTabProps {
   variations: ProductVariationForm[];
@@ -52,6 +57,13 @@ export function VariationsTab({
   productAttributeTypeIds = [],
   onProductAttributeTypeIdsChange,
 }: VariationsTabProps) {
+  const { uploadFile } = useS3DirectUpload();
+  const { toast } = useToast();
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryVariationIndex, setLibraryVariationIndex] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileTargetIndexRef = useRef(0);
+
   const selectedTypes = attributeTypes.filter((t) =>
     productAttributeTypeIds.includes(t.id),
   );
@@ -227,22 +239,72 @@ export function VariationsTab({
               )}
 
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    const idx = fileTargetIndexRef.current;
+                    try {
+                      const { publicUrl } = await uploadFile({
+                        file,
+                        purpose: "product_photo",
+                      });
+                      onAddPhoto(idx, publicUrl);
+                    } catch (err) {
+                      toast({
+                        title: getApiErrorMessage(err),
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                />
+                <div className="flex justify-between items-center flex-wrap gap-1">
                   <Label className="text-xs">Photos (Optional)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const photoUrl = prompt("Enter photo URL:");
-                      if (photoUrl && photoUrl.trim()) {
-                        onAddPhoto(index, photoUrl.trim());
-                      }
-                    }}
-                    className="h-7 text-xs"
-                  >
-                    <Plus className="h-3 w-3 mr-1" /> Add Photo
-                  </Button>
+                  <div className="flex gap-1">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        fileTargetIndexRef.current = index;
+                        fileInputRef.current?.click();
+                      }}
+                      className="h-7 text-xs"
+                    >
+                      <Upload className="h-3 w-3 mr-1" /> Upload
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setLibraryVariationIndex(index);
+                        setLibraryOpen(true);
+                      }}
+                      className="h-7 text-xs"
+                    >
+                      <Images className="h-3 w-3 mr-1" /> Library
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const photoUrl = prompt("Enter photo URL:");
+                        if (photoUrl && photoUrl.trim()) {
+                          onAddPhoto(index, photoUrl.trim());
+                        }
+                      }}
+                      className="h-7 text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> URL
+                    </Button>
+                  </div>
                 </div>
                 {variation.photos && variation.photos.length > 0 && (
                   <div className="grid grid-cols-3 gap-2">
@@ -300,6 +362,11 @@ export function VariationsTab({
         Add at least one variation (default stock required). Variant name can be
         auto-filled from attribute values. The first variation is the default.
       </p>
+      <MediaLibraryPickerDialog
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        onPick={(url) => onAddPhoto(libraryVariationIndex, url)}
+      />
     </div>
   );
 }
