@@ -57,7 +57,7 @@ export function VariationsTab({
   productAttributeTypeIds = [],
   onProductAttributeTypeIdsChange,
 }: VariationsTabProps) {
-  const { uploadFile } = useS3DirectUpload();
+  const { uploadFile, mediaUploadEnabled } = useS3DirectUpload();
   const { toast } = useToast();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryVariationIndex, setLibraryVariationIndex] = useState(0);
@@ -165,13 +165,19 @@ export function VariationsTab({
       )}
       {variations.length > 0 && (
         <div className="space-y-4 border rounded-lg p-4">
-          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-            <Checkbox
-              checked={addPhotoToLibrary}
-              onCheckedChange={(c) => setAddPhotoToLibrary(!!c)}
-            />
-            Add product photo uploads to media library
-          </label>
+          {mediaUploadEnabled ? (
+            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+              <Checkbox
+                checked={addPhotoToLibrary}
+                onCheckedChange={(c) => setAddPhotoToLibrary(!!c)}
+              />
+              Add product photo uploads to media library
+            </label>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Photo upload and media library are disabled in this environment.
+            </p>
+          )}
           {variations.map((variation, index) => (
             <div
               key={index}
@@ -251,6 +257,7 @@ export function VariationsTab({
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
+                  aria-label="Upload variation photo"
                   accept="image/jpeg,image/png,image/gif,image/webp"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
@@ -275,30 +282,34 @@ export function VariationsTab({
                 <div className="flex justify-between items-center flex-wrap gap-1">
                   <Label className="text-xs">Photos (Optional)</Label>
                   <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        fileTargetIndexRef.current = index;
-                        fileInputRef.current?.click();
-                      }}
-                      className="h-7 text-xs"
-                    >
-                      <Upload className="h-3 w-3 mr-1" /> Upload
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setLibraryVariationIndex(index);
-                        setLibraryOpen(true);
-                      }}
-                      className="h-7 text-xs"
-                    >
-                      <Images className="h-3 w-3 mr-1" /> Library
-                    </Button>
+                    {mediaUploadEnabled && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            fileTargetIndexRef.current = index;
+                            fileInputRef.current?.click();
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          <Upload className="h-3 w-3 mr-1" /> Upload
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLibraryVariationIndex(index);
+                            setLibraryOpen(true);
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          <Images className="h-3 w-3 mr-1" /> Library
+                        </Button>
+                      </>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"

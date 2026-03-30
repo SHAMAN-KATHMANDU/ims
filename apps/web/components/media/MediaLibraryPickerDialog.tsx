@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 import {
   Dialog,
   DialogContent,
@@ -27,11 +28,12 @@ export function MediaLibraryPickerDialog({
   title = "Choose from library",
 }: MediaLibraryPickerDialogProps) {
   const { toast } = useToast();
+  const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
   const [items, setItems] = useState<MediaAssetRow[]>([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !mediaUploadEnabled) return;
     let cancelled = false;
     setLoading(true);
     listMediaAssets({ limit: 50 })
@@ -52,7 +54,7 @@ export function MediaLibraryPickerDialog({
     return () => {
       cancelled = true;
     };
-  }, [open, toast]);
+  }, [open, mediaUploadEnabled, toast]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -62,6 +64,10 @@ export function MediaLibraryPickerDialog({
         </DialogHeader>
         {loading ? (
           <p className="text-sm text-muted-foreground">Loading…</p>
+        ) : !mediaUploadEnabled ? (
+          <p className="text-sm text-muted-foreground">
+            Media uploads are disabled in this environment.
+          </p>
         ) : items.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No images in your library yet. Upload from the media library in the
@@ -74,6 +80,7 @@ export function MediaLibraryPickerDialog({
                 key={a.id}
                 type="button"
                 className="relative aspect-square rounded border overflow-hidden focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label={`Pick ${a.fileName}`}
                 onClick={() => {
                   onPick(a.publicUrl);
                   onOpenChange(false);

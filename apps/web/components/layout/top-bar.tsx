@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/sheet";
 import { MediaLibraryPanel } from "@/components/media/MediaLibraryPanel";
 import { useIsMobile } from "@/hooks/useMobile";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 import {
   useNotifications,
   useUnreadNotificationCount,
@@ -129,6 +130,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const isMobile = useIsMobile();
   const [reportErrorOpen, setReportErrorOpen] = useState(false);
   const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
 
   const handleLogout = async () => {
     try {
@@ -199,7 +201,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
               )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            {user?.role !== "platformAdmin" && (
+            {user?.role !== "platformAdmin" && mediaUploadEnabled && (
               <DropdownMenuItem
                 onSelect={(e) => {
                   e.preventDefault();
@@ -231,7 +233,7 @@ export function TopBar({ onMenuClick }: TopBarProps) {
           open={reportErrorOpen}
           onOpenChange={setReportErrorOpen}
         />
-        {user?.role !== "platformAdmin" && (
+        {user?.role !== "platformAdmin" && mediaUploadEnabled && (
           <Sheet open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>
             <SheetContent
               side="right"

@@ -1,11 +1,14 @@
 import { Router } from "express";
+import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { asyncHandler } from "@/middlewares/errorHandler";
+import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import mediaController from "./media.controller";
 
 const mediaRouter = Router();
 
 mediaRouter.use(authorizeRoles("user", "admin", "superAdmin"));
+mediaRouter.use(enforceEnvFeature(EnvFeature.MEDIA_UPLOAD));
 
 /**
  * @swagger
@@ -49,6 +52,8 @@ mediaRouter.use(authorizeRoles("user", "admin", "superAdmin"));
  *         description: Presign result
  *       400:
  *         description: Validation error
+ *       404:
+ *         description: Media upload feature is disabled in this environment
  *       503:
  *         description: Object storage not configured
  */
@@ -89,6 +94,8 @@ mediaRouter.post(
  *         description: Existing asset (idempotent register)
  *       201:
  *         description: Created
+ *       404:
+ *         description: Media upload feature is disabled in this environment
  *   get:
  *     summary: List media assets for the tenant
  *     tags: [Media]
@@ -104,6 +111,8 @@ mediaRouter.post(
  *     responses:
  *       200:
  *         description: Paginated list
+ *       404:
+ *         description: Media upload feature is disabled in this environment
  */
 mediaRouter.post(
   "/assets",
@@ -131,7 +140,7 @@ mediaRouter.get(
  *       200:
  *         description: Deleted
  *       404:
- *         description: Not found
+ *         description: Not found, or media upload feature disabled in this environment
  *       502:
  *         description: Storage delete failed (DB unchanged)
  *       503:

@@ -21,7 +21,7 @@ type MediaLibraryPanelProps = {
 
 export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
   const { toast } = useToast();
-  const { uploadFile } = useS3DirectUpload();
+  const { uploadFile, mediaUploadEnabled } = useS3DirectUpload();
   const [items, setItems] = useState<MediaAssetRow[]>([]);
   const nextCursorRef = useRef<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -35,6 +35,14 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
   };
 
   useEffect(() => {
+    if (!mediaUploadEnabled) {
+      setItems([]);
+      setHasMore(false);
+      nextCursorRef.current = null;
+      setLoading(false);
+      return;
+    }
+
     let cancelled = false;
     setLoading(true);
     nextCursorRef.current = null;
@@ -57,9 +65,11 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [toast]);
+  }, [mediaUploadEnabled, toast]);
 
   const refresh = () => {
+    if (!mediaUploadEnabled) return;
+
     setLoading(true);
     nextCursorRef.current = null;
     fetchPage(undefined)
@@ -78,6 +88,8 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
   };
 
   const loadMore = () => {
+    if (!mediaUploadEnabled) return;
+
     const c = nextCursorRef.current;
     if (!c) return;
     setLoadingMore(true);
@@ -137,12 +149,17 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
 
   return (
     <div className="space-y-4">
+      {!mediaUploadEnabled && (
+        <p className="text-sm text-muted-foreground">
+          Media uploads are disabled in this environment.
+        </p>
+      )}
       <div className="flex flex-wrap items-center gap-2 justify-between">
         <div className="flex items-center gap-2">
           <Input
             type="file"
             className="max-w-xs"
-            disabled={uploading}
+            disabled={uploading || !mediaUploadEnabled}
             onChange={onFile}
             accept="image/*,application/pdf,.doc,.docx"
           />
@@ -191,7 +208,7 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8 text-destructive"
-                  disabled={deletingId === a.id}
+                  disabled={deletingId === a.id || !mediaUploadEnabled}
                   onClick={() => onDelete(a.id)}
                   aria-label="Delete"
                 >
