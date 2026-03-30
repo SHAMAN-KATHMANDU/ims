@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { S3_KEY_ENTITIES } from "@/lib/s3/s3Key";
+import { MEDIA_PURPOSE_MAX_BYTES } from "./media.constants";
 
 export const MEDIA_PURPOSES = [
   "product_photo",
@@ -15,10 +16,24 @@ export const PresignBodySchema = z
     purpose: z.enum(MEDIA_PURPOSES),
     mimeType: z.string().min(1).max(120),
     fileName: z.string().max(255).optional(),
+    /** Exact upload size in bytes; enforced on the signed PUT. */
+    contentLength: z
+      .number()
+      .int()
+      .positive()
+      .max(200 * 1024 * 1024),
     entityType: z.enum(S3_KEY_ENTITIES).optional(),
     entityId: z.string().min(1).max(128).optional(),
   })
   .superRefine((data, ctx) => {
+    const max = MEDIA_PURPOSE_MAX_BYTES[data.purpose];
+    if (data.contentLength > max) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `contentLength exceeds max for ${data.purpose}`,
+        path: ["contentLength"],
+      });
+    }
     if (data.purpose === "contact_attachment") {
       if (!data.entityId || !UUID_RE.test(data.entityId)) {
         ctx.addIssue({
@@ -42,7 +57,8 @@ export type ListMediaQueryDto = z.infer<typeof ListMediaQuerySchema>;
 
 export const RegisterMediaAssetSchema = z.object({
   storageKey: z.string().min(1).max(768),
-  publicUrl: z.string().url().max(1024),
+  /** Optional; server computes canonical URL from storage key and PHOTOS_PUBLIC_URL_PREFIX. */
+  publicUrl: z.string().url().max(1024).optional(),
   fileName: z.string().min(1).max(255),
   mimeType: z.string().min(1).max(120),
   byteSize: z.coerce

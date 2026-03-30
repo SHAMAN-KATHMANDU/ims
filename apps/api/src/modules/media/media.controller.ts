@@ -55,8 +55,12 @@ class MediaController {
     try {
       const { tenantId, userId } = getAuthContext(req);
       const body = RegisterMediaAssetSchema.parse(req.body);
-      const asset = await service.registerAsset(tenantId, userId, body);
-      return ok(res, { asset }, 201);
+      const { asset, created } = await service.registerAsset(
+        tenantId,
+        userId,
+        body,
+      );
+      return ok(res, { asset }, created ? 201 : 200);
     } catch (error: unknown) {
       if (error instanceof ZodError) {
         return fail(res, mapZodError(error), 400);
@@ -95,8 +99,14 @@ class MediaController {
       return ok(res, { deleted: true });
     } catch (error: unknown) {
       const httpErr = mapAppError(error);
-      if (httpErr?.statusCode === 404 && httpErr.message) {
-        return fail(res, httpErr.message, 404);
+      if (
+        httpErr?.statusCode &&
+        (httpErr.statusCode === 404 ||
+          httpErr.statusCode === 502 ||
+          httpErr.statusCode === 503) &&
+        httpErr.message
+      ) {
+        return fail(res, httpErr.message, httpErr.statusCode);
       }
       return sendControllerError(req, res, error, "media delete");
     }

@@ -50,4 +50,13 @@ export class MediaRepository {
     });
     return Boolean(row);
   }
+
+  async findByStorageKeyForTenant(
+    storageKey: string,
+    tenantId: string,
+  ): Promise<MediaAsset | null> {
+    return prisma.mediaAsset.findFirst({
+      where: { storageKey, tenantId },
+    });
+  }
 }

@@ -150,16 +150,15 @@ export function useAddContactAttachment(contactId: string) {
   const { uploadFile } = useS3DirectUpload();
   return useMutation({
     mutationFn: async (file: File) => {
-      const { publicUrl, key } = await uploadFile({
+      const { key, contentType } = await uploadFile({
         file,
         purpose: "contact_attachment",
         entityId: contactId,
       });
       return addContactAttachment(contactId, {
         storageKey: key,
-        publicUrl,
         fileName: file.name,
-        mimeType: file.type || "application/octet-stream",
+        mimeType: contentType,
         fileSize: file.size,
       });
     },

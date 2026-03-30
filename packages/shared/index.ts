@@ -1,4 +1,5 @@
 export * from "./src/utils/date";
+export * from "./src/media/mimeFromExtension";
 export * from "./src/types/user";
 export * from "./src/config/features";
 export * from "./src/config/env-features";

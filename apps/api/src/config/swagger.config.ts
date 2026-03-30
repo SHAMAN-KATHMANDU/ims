@@ -970,6 +970,11 @@ const swaggerDefinition: SwaggerDefinition = {
       description:
         "Messenger channels (OAuth or manual dev connect) and inbox integration",
     },
+    {
+      name: "Media",
+      description:
+        "Presigned S3 uploads, media library assets, and public URL handling",
+    },
   ],
 };
 
