@@ -25,10 +25,22 @@ export class MediaRepository {
 
   async listForTenant(
     tenantId: string,
-    opts: { take: number; cursorId?: string },
+    opts: {
+      take: number;
+      cursorId?: string;
+      purpose?: string;
+      mimePrefix?: string;
+    },
   ): Promise<MediaAsset[]> {
+    const where: Prisma.MediaAssetWhereInput = { tenantId };
+    if (opts.purpose) {
+      where.purpose = opts.purpose;
+    }
+    if (opts.mimePrefix) {
+      where.mimeType = { startsWith: opts.mimePrefix };
+    }
     return prisma.mediaAsset.findMany({
-      where: { tenantId },
+      where,
       orderBy: [{ createdAt: "desc" }, { id: "desc" }],
       take: opts.take,
       ...(opts.cursorId
@@ -37,6 +49,20 @@ export class MediaRepository {
             cursor: { id: opts.cursorId },
           }
         : {}),
+    });
+  }
+
+  async countContactAttachmentsByMediaAssetId(
+    mediaAssetId: string,
+  ): Promise<number> {
+    return prisma.contactAttachment.count({
+      where: { mediaAssetId },
+    });
+  }
+
+  async countMessagesByMediaAssetId(mediaAssetId: string): Promise<number> {
+    return prisma.message.count({
+      where: { mediaAssetId },
     });
   }
 

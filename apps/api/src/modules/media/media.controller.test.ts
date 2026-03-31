@@ -8,6 +8,7 @@ const hoisted = vi.hoisted(() => ({
   registerAsset: vi.fn(),
   listAssets: vi.fn(),
   deleteAsset: vi.fn(),
+  getConversation: vi.fn().mockResolvedValue({ id: "conv-1" }),
 }));
 
 vi.mock("./media.service", () => ({
@@ -25,6 +26,12 @@ vi.mock("@/utils/controllerError", () => ({
 }));
 
 vi.mock("@/config/prisma", () => ({ default: {} }));
+
+vi.mock("@/modules/messaging/messaging.service", () => ({
+  default: {
+    getConversation: hoisted.getConversation,
+  },
+}));
 
 import mediaController from "./media.controller";
 import { sendControllerError } from "@/utils/controllerError";
@@ -50,6 +57,38 @@ function assetStub(overrides: Partial<MediaAsset> = {}): MediaAsset {
 describe("MediaController", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  describe("presign", () => {
+    it("calls getConversation before presign for message_media", async () => {
+      hoisted.presign.mockResolvedValue({
+        uploadUrl: "https://signed",
+        key: "k",
+        publicUrl: "https://pub",
+        contentType: "image/png",
+        expiresAt: new Date().toISOString(),
+        maxBytes: 1e6,
+        requiresCompletion: true,
+      });
+      const req = makeReq({
+        body: {
+          purpose: "message_media",
+          mimeType: "image/png",
+          contentLength: 100,
+          entityId: "aaaaaaaa-bbbb-4ccc-bbbb-aaaaaaaaaaaa",
+        },
+      });
+      const res = mockRes() as Response;
+
+      await mediaController.presign(req, res);
+
+      expect(hoisted.getConversation).toHaveBeenCalledWith(
+        "t1",
+        "aaaaaaaa-bbbb-4ccc-bbbb-aaaaaaaaaaaa",
+      );
+      expect(hoisted.presign).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
   });
 
   describe("updateMediaAsset", () => {

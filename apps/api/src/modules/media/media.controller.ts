@@ -12,6 +12,7 @@ import {
   UpdateMediaAssetSchema,
 } from "./media.schema";
 import { MediaService } from "./media.service";
+import messagingService from "@/modules/messaging/messaging.service";
 
 const service = new MediaService();
 
@@ -58,6 +59,9 @@ class MediaController {
     try {
       const { tenantId } = getAuthContext(req);
       const body = PresignBodySchema.parse(req.body);
+      if (body.purpose === "message_media") {
+        await messagingService.getConversation(tenantId, body.entityId!);
+      }
       const result = await service.presign(tenantId, body);
       return ok(res, result);
     } catch (error: unknown) {
@@ -101,6 +105,8 @@ class MediaController {
       const { items, nextCursor } = await service.listAssets(tenantId, {
         take: q.limit,
         cursorId: q.cursor,
+        purpose: q.purpose,
+        mimePrefix: q.mimePrefix,
       });
       return ok(res, { items, nextCursor });
     } catch (error: unknown) {
@@ -123,6 +129,7 @@ class MediaController {
       if (
         httpErr?.statusCode &&
         (httpErr.statusCode === 404 ||
+          httpErr.statusCode === 409 ||
           httpErr.statusCode === 502 ||
           httpErr.statusCode === 503) &&
         httpErr.message

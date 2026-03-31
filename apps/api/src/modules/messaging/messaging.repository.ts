@@ -150,6 +150,7 @@ export class MessagingRepository {
     sentAt?: Date | null;
     deliveredAt?: Date | null;
     replyToId?: string | null;
+    mediaAssetId?: string | null;
   }): Promise<MessageWithCreateRelations> {
     return prisma.message.create({
       data,

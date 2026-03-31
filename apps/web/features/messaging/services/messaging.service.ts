@@ -97,6 +97,7 @@ export interface Message {
   contentType: string;
   textContent: string | null;
   mediaPayload: unknown;
+  mediaAssetId?: string | null;
   providerMessageId: string | null;
   sentAt: string | null;
   deliveredAt: string | null;
@@ -114,14 +115,9 @@ export interface SendMessageData {
   text?: string;
   mediaUrl?: string;
   mediaType?: "image" | "video" | "audio" | "file";
+  /** Set when media was uploaded via tenant media library (S3). */
+  mediaAssetId?: string;
   replyToId?: string;
-}
-
-export interface MessagingMediaUploadResult {
-  message: string;
-  url: string;
-  mediaType: "image" | "video";
-  relativeUrl: string;
 }
 
 export interface UpdateConversationData {
@@ -175,26 +171,6 @@ export async function sendMessage(
   const res = await api.post<SendMessageResponse>(
     `/messaging/conversations/${conversationId}/messages`,
     data,
-  );
-  return res.data;
-}
-
-export async function uploadMessagingMedia(
-  conversationId: string,
-  file: File,
-  onProgress?: (percent: number) => void,
-): Promise<MessagingMediaUploadResult> {
-  const form = new FormData();
-  form.append("file", file);
-  const res = await api.post<MessagingMediaUploadResult>(
-    `/messaging/conversations/${conversationId}/upload`,
-    form,
-    {
-      onUploadProgress: (evt) => {
-        if (!onProgress || !evt.total) return;
-        onProgress(Math.round((evt.loaded / evt.total) * 100));
-      },
-    },
   );
   return res.data;
 }

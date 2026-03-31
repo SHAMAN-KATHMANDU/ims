@@ -11,12 +11,6 @@ import {
 import messagingService from "./messaging.service";
 import { sendControllerError } from "@/utils/controllerError";
 import type { AppError } from "@/middlewares/errorHandler";
-import { env } from "@/config/env";
-import {
-  messagingMediaKind,
-  unlinkSilent,
-  validateMessagingMediaMagicBytes,
-} from "./messaging-upload.validation";
 
 const handleAppError = (res: Response, error: unknown): Response | null => {
   if ((error as AppError).statusCode) {
@@ -215,7 +209,9 @@ class MessagingController {
         userId,
         body.text,
       );
-      return res.status(200).json({ message: "Message updated", data: message });
+      return res
+        .status(200)
+        .json({ message: "Message updated", data: message });
     } catch (error: unknown) {
       if (error instanceof ZodError) {
         return res
@@ -225,48 +221,6 @@ class MessagingController {
       return (
         handleAppError(res, error) ??
         sendControllerError(req, res, error, "Edit message error")
-      );
-    }
-  };
-
-  uploadMedia = async (req: Request, res: Response) => {
-    const tenantId = req.user!.tenantId;
-    const conversationId = req.params.id;
-    const file = req.file;
-
-    try {
-      await messagingService.getConversation(tenantId, conversationId);
-
-      if (!file?.path) {
-        return res.status(400).json({ message: "File is required (field: file)" });
-      }
-
-      const verified = await validateMessagingMediaMagicBytes(file.path);
-      if (!verified) {
-        unlinkSilent(file.path);
-        return res.status(400).json({
-          message:
-            "File content does not match an allowed image or video type.",
-        });
-      }
-
-      const relativeUrl = `/uploads/messaging/${file.filename}`;
-      const absoluteUrl = `${env.publicServerOrigin}${relativeUrl}`;
-      const mediaType = messagingMediaKind(verified.mime);
-
-      return res.status(201).json({
-        message: "Upload complete",
-        url: absoluteUrl,
-        mediaType,
-        relativeUrl,
-      });
-    } catch (error: unknown) {
-      if (file?.path) {
-        unlinkSilent(file.path);
-      }
-      return (
-        handleAppError(res, error) ??
-        sendControllerError(req, res, error, "Messaging upload error")
       );
     }
   };

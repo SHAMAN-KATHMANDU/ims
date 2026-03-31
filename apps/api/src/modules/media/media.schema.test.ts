@@ -45,6 +45,35 @@ describe("media.schema", () => {
     expect(r.success).toBe(true);
   });
 
+  it("PresignBodySchema requires entityId for message_media", () => {
+    const r = PresignBodySchema.safeParse({
+      purpose: "message_media",
+      mimeType: "video/mp4",
+      contentLength: 100,
+    });
+    expect(r.success).toBe(false);
+  });
+
+  it("PresignBodySchema accepts message_media with conversation UUID", () => {
+    const r = PresignBodySchema.safeParse({
+      purpose: "message_media",
+      mimeType: "image/png",
+      contentLength: 500,
+      entityId: "cccccccc-cccc-4ccc-a000-cccccccccccc",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("PresignBodySchema rejects when contentLength exceeds message_media max", () => {
+    const r = PresignBodySchema.safeParse({
+      purpose: "message_media",
+      mimeType: "video/mp4",
+      contentLength: 30 * 1024 * 1024,
+      entityId: "cccccccc-cccc-4ccc-a000-cccccccccccc",
+    });
+    expect(r.success).toBe(false);
+  });
+
   it("RegisterMediaAssetSchema allows omitting publicUrl", () => {
     const r = RegisterMediaAssetSchema.safeParse({
       storageKey: "k",
@@ -70,6 +99,15 @@ describe("media.schema", () => {
   it("ListMediaQuerySchema defaults limit", () => {
     const r = ListMediaQuerySchema.parse({});
     expect(r.limit).toBe(20);
+  });
+
+  it("ListMediaQuerySchema accepts purpose and mimePrefix", () => {
+    const r = ListMediaQuerySchema.parse({
+      purpose: "message_media",
+      mimePrefix: "image/",
+    });
+    expect(r.purpose).toBe("message_media");
+    expect(r.mimePrefix).toBe("image/");
   });
 
   it("UpdateMediaAssetSchema accepts valid fileName", () => {

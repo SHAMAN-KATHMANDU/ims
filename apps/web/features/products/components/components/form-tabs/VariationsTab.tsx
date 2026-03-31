@@ -67,7 +67,6 @@ export function VariationsTab({
   const [libraryVariationIndex, setLibraryVariationIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileTargetIndexRef = useRef(0);
-  const [addPhotoToLibrary, setAddPhotoToLibrary] = useState(false);
 
   const selectedTypes = attributeTypes.filter((t) =>
     productAttributeTypeIds.includes(t.id),
@@ -169,15 +168,7 @@ export function VariationsTab({
       )}
       {variations.length > 0 && (
         <div className="space-y-4 border rounded-lg p-4">
-          {mediaUploadEnabled ? (
-            <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-              <Checkbox
-                checked={addPhotoToLibrary}
-                onCheckedChange={(c) => setAddPhotoToLibrary(!!c)}
-              />
-              Add product photo uploads to media library
-            </label>
-          ) : (
+          {!mediaUploadEnabled && (
             <p className="text-xs text-muted-foreground">
               Photo upload and media library are disabled in this environment.
             </p>
@@ -272,7 +263,6 @@ export function VariationsTab({
                       const { publicUrl, fileName } = await uploadFile({
                         file,
                         purpose: "product_photo",
-                        registerInLibrary: addPhotoToLibrary,
                       });
                       onAddPhoto(idx, publicUrl, fileName);
                     } catch (err) {

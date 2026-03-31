@@ -3,8 +3,6 @@ import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
-import { uploadMessagingMedia } from "@/config/multer.config";
-import { messagingUploadRateLimit } from "@/middlewares/messagingUploadRateLimit";
 import messagingController from "./messaging.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -260,7 +258,11 @@ messagingRouter.put(
  *                 description: Message body (no max length; control characters stripped server-side)
  *               mediaUrl:
  *                 type: string
- *                 description: Public HTTPS URL or /uploads/messaging/... path from upload endpoint
+ *                 description: Public HTTPS URL or legacy /uploads/messaging/... path
+ *               mediaAssetId:
+ *                 type: string
+ *                 format: uuid
+ *                 description: Tenant media library asset (message_media); server uses canonical URL
  *               mediaType:
  *                 type: string
  *                 enum: [image, video, audio, file]
@@ -275,62 +277,6 @@ messagingRouter.put(
 messagingRouter.post(
   "/conversations/:id/messages",
   asyncHandler(messagingController.sendMessage),
-);
-
-/**
- * @swagger
- * /messaging/conversations/{id}/upload:
- *   post:
- *     summary: Upload image or video for a conversation (multipart)
- *     description: Returns absolute url for use in POST .../messages as mediaUrl. Rate limited (10/min).
- *     tags: [Messaging]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - $ref: '#/components/parameters/XTenantSlug'
- *       - in: path
- *         name: id
- *         required: true
- *         schema: { type: string, format: uuid }
- *     requestBody:
- *       required: true
- *       content:
- *         multipart/form-data:
- *           schema:
- *             type: object
- *             required: [file]
- *             properties:
- *               file:
- *                 type: string
- *                 format: binary
- *     responses:
- *       201:
- *         description: Upload complete
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message: { type: string }
- *                 url: { type: string, description: Absolute URL for Messenger / clients }
- *                 mediaType: { type: string, enum: [image, video] }
- *                 relativeUrl: { type: string }
- *       400: { description: Invalid file or missing file }
- *       429: { description: Too many uploads }
- */
-messagingRouter.post(
-  "/conversations/:id/upload",
-  messagingUploadRateLimit,
-  (req, res, next) => {
-    uploadMessagingMedia(req, res, (err: unknown) => {
-      if (err) {
-        const msg = err instanceof Error ? err.message : "Upload failed";
-        return res.status(400).json({ message: msg });
-      }
-      next();
-    });
-  },
-  asyncHandler(messagingController.uploadMedia),
 );
 
 /**

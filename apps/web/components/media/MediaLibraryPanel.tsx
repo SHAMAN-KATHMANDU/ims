@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,15 @@ import {
   listMediaAssets,
   updateMediaAsset,
   type MediaAssetRow,
+  type MediaPurpose,
 } from "@/services/mediaService";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/useToast";
 import { getApiErrorMessage } from "@/lib/api-error";
 import {
@@ -54,6 +62,8 @@ type MediaLibraryPanelProps = {
   /** Link to full-page library (optional). */
   fullPageHref?: string;
 };
+
+type LibraryListFilter = "all" | "images" | "videos" | MediaPurpose;
 
 function formatBytes(value: number | null): string {
   if (!value || value <= 0) return "-";
@@ -140,10 +150,25 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
   const [renaming, setRenaming] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<MediaAssetRow | null>(null);
+  const [listFilter, setListFilter] = useState<LibraryListFilter>("all");
 
-  const fetchPage = async (cursor: string | undefined) => {
-    return listMediaAssets({ limit: 30, cursor });
-  };
+  const fetchPage = useCallback(
+    async (cursor: string | undefined) => {
+      const params: Parameters<typeof listMediaAssets>[0] = {
+        limit: 30,
+        cursor,
+      };
+      if (listFilter === "images") {
+        params.mimePrefix = "image/";
+      } else if (listFilter === "videos") {
+        params.mimePrefix = "video/";
+      } else if (listFilter !== "all") {
+        params.purpose = listFilter;
+      }
+      return listMediaAssets(params);
+    },
+    [listFilter],
+  );
 
   useEffect(() => {
     if (!mediaUploadEnabled) {
@@ -176,7 +201,7 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
     return () => {
       cancelled = true;
     };
-  }, [mediaUploadEnabled, toast]);
+  }, [mediaUploadEnabled, toast, fetchPage]);
 
   const refresh = () => {
     if (!mediaUploadEnabled) return;
@@ -313,7 +338,7 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
         </p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Input
             type="file"
             className="max-w-xs"
@@ -324,6 +349,28 @@ export function MediaLibraryPanel({ fullPageHref }: MediaLibraryPanelProps) {
           {uploading && (
             <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
           )}
+          <Select
+            value={listFilter}
+            onValueChange={(v) => setListFilter(v as LibraryListFilter)}
+            disabled={!mediaUploadEnabled}
+          >
+            <SelectTrigger className="w-[200px]" aria-label="Filter library">
+              <SelectValue placeholder="Show" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All files</SelectItem>
+              <SelectItem value="images">Images only</SelectItem>
+              <SelectItem value="videos">Videos only</SelectItem>
+              <SelectItem value="library">Source: Library upload</SelectItem>
+              <SelectItem value="product_photo">
+                Source: Product photos
+              </SelectItem>
+              <SelectItem value="contact_attachment">
+                Source: Contact attachments
+              </SelectItem>
+              <SelectItem value="message_media">Source: Messages</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         {fullPageHref && (
           <Button variant="outline" size="sm" asChild>
