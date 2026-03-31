@@ -6,7 +6,7 @@
  * 1. Add a value to the EnvFeature enum below.
  * 2. Set its value in each row of ENV_FEATURE_MATRIX (true/false per env). Optional
  *    FEATURE_FLAGS env (comma-separated enabled names) overrides the matrix in development
- *    and production only — staging / staging-production always use the matrix.
+ *    and production only; staging / staging-production always use the matrix.
  * 3. If the feature is also plan-gated, add it to the Feature enum and FEATURE_REGISTRY
  *    in features.ts.
  * 4. Frontend: add envFeature to the sidebar nav item; wrap the page with EnvFeaturePageGuard
