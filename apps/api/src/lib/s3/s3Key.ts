@@ -51,6 +51,9 @@ export function extensionFromMime(mimeType: string): string | null {
     "image/png": ".png",
     "image/gif": ".gif",
     "image/webp": ".webp",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
     "application/pdf": ".pdf",
     "application/msword": ".doc",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
@@ -139,6 +142,26 @@ export function keyMatchesContactPrefix(
   }
   if (options?.allowLegacyKeys) {
     const legacyPrefix = `tenants/${tenantId}/contacts/${contactId}/`;
+    return key.startsWith(legacyPrefix);
+  }
+  return false;
+}
+
+export function keyMatchesMessagePrefix(
+  key: string,
+  tenantId: string,
+  conversationId: string,
+  storageEnv: string,
+  options?: { allowLegacyKeys?: boolean },
+): boolean {
+  if (!TENANT_OR_ENTITY_UUID.test(conversationId)) return false;
+  if (key.includes("..")) return false;
+  const prefix = `${storageEnv}/tenants/${tenantId}/messages/${conversationId}/`;
+  if (key.startsWith(prefix)) {
+    return keyBelongsToTenant(key, tenantId, storageEnv, options);
+  }
+  if (options?.allowLegacyKeys) {
+    const legacyPrefix = `tenants/${tenantId}/messages/${conversationId}/`;
     return key.startsWith(legacyPrefix);
   }
   return false;

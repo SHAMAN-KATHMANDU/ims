@@ -260,7 +260,7 @@ export function GeneralTab({
           onChange={(e) => form.handleChange("description", e.target.value)}
         />
       </div>
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="costPrice" className="flex items-center gap-2">
             <Coins
@@ -301,7 +301,9 @@ export function GeneralTab({
             allowDecimals
             min={0}
           />
-          {showMrpBelowCpWarning && (
+        </div>
+        {showMrpBelowCpWarning && (
+          <div className="sm:col-span-2">
             <div className="flex flex-wrap items-center gap-2 rounded-md border border-amber-200 bg-amber-50 p-2 text-sm dark:border-amber-900 dark:bg-amber-950/50">
               <span className="text-amber-800 dark:text-amber-200">
                 MRP is below cost price.
@@ -316,16 +318,16 @@ export function GeneralTab({
                 Confirm pricing
               </Button>
             </div>
-          )}
-          <MrpBelowCostConfirmDialog
-            open={mrpConfirmDialogOpen}
-            onOpenChange={setMrpConfirmDialogOpen}
-            onConfirm={() => {
-              onMrpBelowCpAcceptedChange?.(true);
-              setShowMrpBelowCpWarning(false);
-            }}
-          />
-        </div>
+          </div>
+        )}
+        <MrpBelowCostConfirmDialog
+          open={mrpConfirmDialogOpen}
+          onOpenChange={setMrpConfirmDialogOpen}
+          onConfirm={() => {
+            onMrpBelowCpAcceptedChange?.(true);
+            setShowMrpBelowCpWarning(false);
+          }}
+        />
       </div>
     </div>
   );

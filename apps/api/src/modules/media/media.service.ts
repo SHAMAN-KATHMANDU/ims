@@ -19,6 +19,7 @@ import type {
   MEDIA_PURPOSES,
   PresignBodyDto,
   RegisterMediaAssetDto,
+  UpdateMediaAssetDto,
 } from "./media.schema";
 import {
   MEDIA_PURPOSE_MAX_BYTES,
@@ -47,6 +48,17 @@ const CONTACT_MIMES = new Set([
 
 const LIBRARY_MIMES = new Set(CONTACT_MIMES);
 
+const MESSAGE_MEDIA_MIMES = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
+
 function allowedMimesForPurpose(purpose: string): Set<string> {
   switch (purpose) {
     case "product_photo":
@@ -55,6 +67,8 @@ function allowedMimesForPurpose(purpose: string): Set<string> {
       return CONTACT_MIMES;
     case "library":
       return LIBRARY_MIMES;
+    case "message_media":
+      return MESSAGE_MEDIA_MIMES;
     default:
       return new Set();
   }
@@ -153,6 +167,15 @@ function resolveEntityForPresign(body: PresignBodyDto): {
         );
       }
       return { entity: "library", entityId: body.entityId ?? "general" };
+    }
+    case "message_media": {
+      if (body.entityType && body.entityType !== "messages") {
+        throw createError(
+          "For message_media, entityType must be messages or omitted",
+          400,
+        );
+      }
+      return { entity: "messages", entityId: body.entityId! };
     }
     default:
       throw createError("Invalid purpose", 400);
@@ -355,13 +378,20 @@ export class MediaService {
 
   async listAssets(
     tenantId: string,
-    opts: { take: number; cursorId?: string },
+    opts: {
+      take: number;
+      cursorId?: string;
+      purpose?: string;
+      mimePrefix?: string;
+    },
   ): Promise<{ items: MediaAsset[]; nextCursor: string | null }> {
     const pageSize = opts.take;
     const fetchCount = pageSize + 1;
     const rows = await this.repo.listForTenant(tenantId, {
       take: fetchCount,
       cursorId: opts.cursorId,
+      purpose: opts.purpose,
+      mimePrefix: opts.mimePrefix,
     });
     const hasMore = rows.length > pageSize;
     const items = hasMore ? rows.slice(0, pageSize) : rows;
@@ -373,6 +403,16 @@ export class MediaService {
     const row = await this.repo.findByIdForTenant(assetId, tenantId);
     if (!row) {
       throw createError("Media asset not found", 404);
+    }
+    const [contactRefs, messageRefs] = await Promise.all([
+      this.repo.countContactAttachmentsByMediaAssetId(assetId),
+      this.repo.countMessagesByMediaAssetId(assetId),
+    ]);
+    if (contactRefs > 0 || messageRefs > 0) {
+      throw createError(
+        "Media asset is still linked to a contact attachment or message; remove those first",
+        409,
+      );
     }
     if (row.storageKey) {
       if (!env.photosS3Configured) {
@@ -388,5 +428,40 @@ export class MediaService {
       }
     }
     await this.repo.deleteByIdForTenant(assetId, tenantId);
+  }
+
+  async updateAsset(
+    tenantId: string,
+    assetId: string,
+    dto: UpdateMediaAssetDto,
+  ): Promise<MediaAsset> {
+    const current = await this.repo.findByIdForTenant(assetId, tenantId);
+    if (!current) {
+      throw createError("Media asset not found", 404);
+    }
+
+    const nextName = dto.fileName;
+    if (current.fileName === nextName) {
+      return current;
+    }
+
+    const conflict = await this.repo.findByFileNameForTenantExcludingId(
+      tenantId,
+      nextName,
+      assetId,
+    );
+    if (conflict) {
+      throw createError("Media asset name already exists", 409);
+    }
+
+    const updated = await this.repo.updateFileNameForTenant(
+      assetId,
+      tenantId,
+      nextName,
+    );
+    if (!updated) {
+      throw createError("Media asset not found", 404);
+    }
+    return updated;
   }
 }

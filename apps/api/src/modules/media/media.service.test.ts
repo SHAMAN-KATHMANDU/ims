@@ -110,6 +110,41 @@ describe("MediaService", () => {
     ).rejects.toMatchObject({ statusCode: 400 });
   });
 
+  it("presign returns key under messages/{conversationId} for message_media", async () => {
+    const tenantId = "123e4567-e89b-12d3-a456-426614174000";
+    const convId = "aaaaaaaa-bbbb-4ccc-bbbb-aaaaaaaaaaaa";
+    const svc = new MediaService(new MediaRepository());
+    const out = await svc.presign(tenantId, {
+      purpose: "message_media",
+      mimeType: "video/mp4",
+      fileName: "clip.mp4",
+      contentLength: 1024,
+      entityId: convId,
+    });
+    expect(out.key).toContain(`dev/tenants/${tenantId}/messages/${convId}/`);
+    expect(out.contentType).toBe("video/mp4");
+  });
+
+  it("deleteAsset throws 409 when asset is linked to a contact attachment", async () => {
+    const tenantId = "123e4567-e89b-12d3-a456-426614174000";
+    const storageKey = `dev/tenants/${tenantId}/library/general/aaaaaaaa-bbbb-4ccc-bbbb-aaaaaaaaaaaa.png`;
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue({
+        id: "asset-1",
+        tenantId,
+        storageKey,
+      }),
+      countContactAttachmentsByMediaAssetId: vi.fn().mockResolvedValue(1),
+      countMessagesByMediaAssetId: vi.fn().mockResolvedValue(0),
+      deleteByIdForTenant: vi.fn(),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    await expect(svc.deleteAsset(tenantId, "asset-1")).rejects.toMatchObject({
+      statusCode: 409,
+    });
+    expect(repo.deleteByIdForTenant).not.toHaveBeenCalled();
+  });
+
   it("deleteAsset does not remove DB row when S3 delete fails", async () => {
     const tenantId = "123e4567-e89b-12d3-a456-426614174000";
     const storageKey = `dev/tenants/${tenantId}/library/general/aaaaaaaa-bbbb-4ccc-bbbb-aaaaaaaaaaaa.png`;
@@ -119,6 +154,8 @@ describe("MediaService", () => {
         tenantId,
         storageKey,
       }),
+      countContactAttachmentsByMediaAssetId: vi.fn().mockResolvedValue(0),
+      countMessagesByMediaAssetId: vi.fn().mockResolvedValue(0),
       deleteByIdForTenant: vi.fn(),
     };
     deleteMock.mockRejectedValue(new Error("S3 network"));
@@ -153,5 +190,58 @@ describe("MediaService", () => {
     expect(out.created).toBe(false);
     expect(out.asset).toBe(existing);
     expect(repo.create).not.toHaveBeenCalled();
+  });
+
+  it("updateAsset returns current row when display name unchanged", async () => {
+    const row = {
+      id: "asset-1",
+      tenantId: "t1",
+      fileName: "same.png",
+    } as MediaAsset;
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue(row),
+      findByFileNameForTenantExcludingId: vi.fn(),
+      updateFileNameForTenant: vi.fn(),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    const out = await svc.updateAsset("t1", "asset-1", {
+      fileName: "same.png",
+    });
+    expect(out).toBe(row);
+    expect(repo.findByFileNameForTenantExcludingId).not.toHaveBeenCalled();
+    expect(repo.updateFileNameForTenant).not.toHaveBeenCalled();
+  });
+
+  it("updateAsset throws 409 when another asset has the display name", async () => {
+    const current = {
+      id: "asset-1",
+      tenantId: "t1",
+      fileName: "old.png",
+    } as MediaAsset;
+    const other = {
+      id: "asset-2",
+      tenantId: "t1",
+      fileName: "taken.png",
+    } as MediaAsset;
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue(current),
+      findByFileNameForTenantExcludingId: vi.fn().mockResolvedValue(other),
+      updateFileNameForTenant: vi.fn(),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    await expect(
+      svc.updateAsset("t1", "asset-1", { fileName: "taken.png" }),
+    ).rejects.toMatchObject({ statusCode: 409 });
+    expect(repo.updateFileNameForTenant).not.toHaveBeenCalled();
+  });
+
+  it("updateAsset throws 404 when asset missing", async () => {
+    const repo = {
+      findByIdForTenant: vi.fn().mockResolvedValue(null),
+    };
+    const svc = new MediaService(repo as unknown as MediaRepository);
+    await expect(
+      svc.updateAsset("t1", "missing-id", { fileName: "x.png" }),
+    ).rejects.toMatchObject({ statusCode: 404 });
   });
 });

@@ -4,12 +4,14 @@ import {
   buildPublicUrl,
   keyBelongsToTenant,
   keyMatchesContactPrefix,
+  keyMatchesMessagePrefix,
   S3KeyError,
   assertValidTenantId,
 } from "./s3Key";
 
 const TENANT = "123e4567-e89b-12d3-a456-426614174000";
 const CONTACT = "223e4567-e89b-12d3-a456-426614174001";
+const CONV = "323e4567-e89b-12d3-a456-426614174002";
 const ENV = "dev";
 
 describe("s3Key", () => {
@@ -122,6 +124,22 @@ describe("s3Key", () => {
     const k = `tenants/${TENANT}/contacts/${CONTACT}/f.pdf`;
     expect(
       keyMatchesContactPrefix(k, TENANT, CONTACT, "dev", {
+        allowLegacyKeys: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("keyMatchesMessagePrefix", () => {
+    const k = `dev/tenants/${TENANT}/messages/${CONV}/uuid/file.mp4`;
+    expect(keyMatchesMessagePrefix(k, TENANT, CONV, "dev")).toBe(true);
+    expect(keyMatchesMessagePrefix(k, TENANT, "wrong", "dev")).toBe(false);
+    expect(keyMatchesMessagePrefix(k, TENANT, CONV, "stage")).toBe(false);
+  });
+
+  it("keyMatchesMessagePrefix allows legacy layout when allowLegacyKeys", () => {
+    const k = `tenants/${TENANT}/messages/${CONV}/f.mp4`;
+    expect(
+      keyMatchesMessagePrefix(k, TENANT, CONV, "dev", {
         allowLegacyKeys: true,
       }),
     ).toBe(true);

@@ -11,9 +11,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Paperclip, Send, Video, X } from "lucide-react";
 import { toast } from "sonner";
-import { useSendMessage, useUploadMessagingMedia } from "../hooks/use-messages";
+import { useSendMessage } from "../hooks/use-messages";
 import type { Message } from "../services/messaging.service";
 import { cn } from "@/lib/utils";
+import { useS3DirectUpload } from "@/hooks/useS3DirectUpload";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 
 function replyPreviewSnippet(msg: Message): string {
   const t = msg.textContent?.trim();
@@ -58,9 +60,7 @@ function isLikelyVideoFile(file: File): boolean {
   if (file.type.startsWith("video/")) return true;
   const lower = file.name.toLowerCase();
   return (
-    lower.endsWith(".mp4") ||
-    lower.endsWith(".webm") ||
-    lower.endsWith(".mov")
+    lower.endsWith(".mp4") || lower.endsWith(".webm") || lower.endsWith(".mov")
   );
 }
 
@@ -87,8 +87,9 @@ export function MessageComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { mutateAsync: sendAsync, isPending: isSendPending } =
     useSendMessage(conversationId);
-  const { mutateAsync: uploadFile, isPending: isUploadPending } =
-    useUploadMessagingMedia(conversationId);
+  const { uploadFile, mediaUploadEnabled } = useS3DirectUpload();
+  const messagingEnabled = useEnvFeatureFlag(EnvFeature.MESSAGING);
+  const [isDirectUploading, setIsDirectUploading] = useState(false);
 
   useEffect(() => {
     const el = textareaRef.current;
@@ -116,10 +117,14 @@ export function MessageComposer({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  const busy = isSendPending || isUploadPending;
+  const busy = isSendPending || isDirectUploading;
 
   function attachFileIfAllowed(file: File | undefined) {
     if (!file) return;
+    if (!mediaUploadEnabled || !messagingEnabled) {
+      toast.error("Media upload is not available in this environment.");
+      return;
+    }
     if (!isAcceptedMessagingFile(file)) {
       toast.error(
         "Use a photo or video: JPEG, PNG, GIF, WebP, MP4, WebM, or MOV.",
@@ -169,7 +174,7 @@ export function MessageComposer({
   const handleSend = () => {
     const trimmed = text.trim();
     const canSend = trimmed.length > 0 || selectedFile !== null;
-    if (!canSend || isSendPending || isUploadPending) return;
+    if (!canSend || isSendPending || isDirectUploading) return;
 
     const afterSuccess = () => {
       setText("");
@@ -184,22 +189,28 @@ export function MessageComposer({
     if (selectedFile) {
       void (async () => {
         try {
+          setIsDirectUploading(true);
           setUploadProgress(0);
-          const { url, mediaType } = await uploadFile({
+          const { mediaAssetId } = await uploadFile({
             file: selectedFile,
-            onProgress: (p) => setUploadProgress(p),
+            purpose: "message_media",
+            entityType: "messages",
+            entityId: conversationId,
+            registerInLibrary: true,
           });
+          setUploadProgress(100);
           await sendAsync({
             text: trimmed.length > 0 ? trimmed : undefined,
-            mediaUrl: url,
-            mediaType,
+            mediaAssetId,
+            mediaType: isLikelyVideoFile(selectedFile) ? "video" : "image",
             ...(replyToId ? { replyToId } : {}),
           });
           afterSuccess();
         } catch {
-          // Toast from axios interceptor
+          // Toast from axios interceptor or upload hook
         } finally {
           setUploadProgress(null);
+          setIsDirectUploading(false);
         }
       })();
       return;
@@ -220,8 +231,7 @@ export function MessageComposer({
     }
   };
 
-  const canSubmit =
-    (text.trim().length > 0 || selectedFile !== null) && !busy;
+  const canSubmit = (text.trim().length > 0 || selectedFile !== null) && !busy;
 
   return (
     <div
@@ -290,7 +300,7 @@ export function MessageComposer({
             <p className="truncate font-medium text-foreground">
               {selectedFile.name}
             </p>
-            {uploadProgress !== null && isUploadPending && (
+            {uploadProgress !== null && isDirectUploading && (
               <p className="mt-1">Uploading… {uploadProgress}%</p>
             )}
           </div>
@@ -310,7 +320,7 @@ export function MessageComposer({
           variant="ghost"
           size="icon"
           className="shrink-0"
-          disabled={busy}
+          disabled={busy || !mediaUploadEnabled}
           onClick={() => fileInputRef.current?.click()}
           aria-label="Attach photo or video"
         >

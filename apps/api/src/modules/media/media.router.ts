@@ -31,7 +31,7 @@ mediaRouter.use(enforceEnvFeature(EnvFeature.MEDIA_UPLOAD));
  *             properties:
  *               purpose:
  *                 type: string
- *                 enum: [product_photo, contact_attachment, library]
+ *                 enum: [product_photo, contact_attachment, library, message_media]
  *               mimeType:
  *                 type: string
  *                 description: Declared MIME; application/octet-stream allowed when fileName implies an allowed extension.
@@ -46,7 +46,7 @@ mediaRouter.use(enforceEnvFeature(EnvFeature.MEDIA_UPLOAD));
  *                 enum: [products, contacts, library, messages]
  *               entityId:
  *                 type: string
- *                 description: Contact UUID for contact_attachment; optional draft UUID for products.
+ *                 description: Contact UUID for contact_attachment; conversation UUID for message_media; optional draft UUID for products.
  *     responses:
  *       200:
  *         description: Presign result
@@ -88,7 +88,7 @@ mediaRouter.post(
  *               byteSize: { type: integer }
  *               purpose:
  *                 type: string
- *                 enum: [product_photo, contact_attachment, library]
+ *                 enum: [product_photo, contact_attachment, library, message_media]
  *     responses:
  *       200:
  *         description: Existing asset (idempotent register)
@@ -108,6 +108,14 @@ mediaRouter.post(
  *       - in: query
  *         name: cursor
  *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: purpose
+ *         schema:
+ *           type: string
+ *           enum: [product_photo, contact_attachment, library, message_media]
+ *       - in: query
+ *         name: mimePrefix
+ *         schema: { type: string, description: e.g. image/ or video/ }
  *     responses:
  *       200:
  *         description: Paginated list
@@ -145,10 +153,43 @@ mediaRouter.get(
  *         description: Storage delete failed (DB unchanged)
  *       503:
  *         description: S3 not configured for delete
+ *   patch:
+ *     summary: Update media asset display name (metadata only)
+ *     description: Updates **fileName** in the database; storage key and public URL are unchanged.
+ *     tags: [Media]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required: [fileName]
+ *             properties:
+ *               fileName: { type: string, minLength: 1, maxLength: 255 }
+ *     responses:
+ *       200:
+ *         description: Updated asset
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: Not found, or media upload feature disabled in this environment
+ *       409:
+ *         description: Another asset in the tenant already uses this display name
  */
 mediaRouter.delete(
   "/assets/:id",
   asyncHandler(mediaController.remove.bind(mediaController)),
+);
+mediaRouter.patch(
+  "/assets/:id",
+  asyncHandler(mediaController.updateMediaAsset),
 );
 
 export default mediaRouter;

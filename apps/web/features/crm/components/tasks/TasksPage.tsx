@@ -628,6 +628,7 @@ export function TasksPage() {
         open={drawerMode !== null}
         onOpenChange={(o) => !o && closeDrawer()}
         title={drawerMode === "new" ? "New Task" : "Edit Task"}
+        bodyPadding={false}
       >
         {drawerMode === "new" && (
           <TaskForm

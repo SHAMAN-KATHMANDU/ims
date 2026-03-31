@@ -11,9 +11,13 @@ import { createError } from "@/middlewares/errorHandler";
 import type { CreateContactAttachmentDto } from "./contact-attachment.schema";
 import { ContactAttachmentRepository } from "./contact-attachment.repository";
 import type { ContactAttachment } from "@prisma/client";
+import { MediaService } from "@/modules/media/media.service";
 
 export class ContactAttachmentService {
-  constructor(private readonly repo = new ContactAttachmentRepository()) {}
+  constructor(
+    private readonly repo = new ContactAttachmentRepository(),
+    private readonly mediaService = new MediaService(),
+  ) {}
 
   async addS3Attachment(
     tenantId: string,
@@ -59,6 +63,14 @@ export class ContactAttachmentService {
         400,
       );
     }
+    const { asset } = await this.mediaService.registerAsset(tenantId, userId, {
+      storageKey: body.storageKey,
+      publicUrl: canonicalPublicUrl,
+      fileName: body.fileName,
+      mimeType: body.mimeType,
+      byteSize: body.fileSize ?? undefined,
+      purpose: "contact_attachment",
+    });
     return this.repo.create({
       contactId,
       fileName: body.fileName,
@@ -68,6 +80,7 @@ export class ContactAttachmentService {
       fileSize: body.fileSize ?? null,
       mimeType: body.mimeType,
       uploadedById: userId,
+      mediaAssetId: asset.id,
     });
   }
 
@@ -86,6 +99,12 @@ export class ContactAttachmentService {
     );
     if (!attachment) {
       throw createError("Attachment not found", 404);
+    }
+    const mediaAssetId = attachment.mediaAssetId;
+    if (mediaAssetId) {
+      await this.repo.deleteById(attachmentId);
+      await this.mediaService.deleteAsset(tenantId, mediaAssetId);
+      return;
     }
     if (attachment.storageKey) {
       if (!env.photosS3Configured) {

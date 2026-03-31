@@ -87,21 +87,28 @@ export function useS3DirectUpload() {
         throw new Error(putErrorMessage(putRes.status));
       }
 
-      if (options.registerInLibrary) {
-        await registerMediaAsset({
+      let mediaAssetId: string | undefined;
+      const shouldRegister =
+        options.registerInLibrary === true ||
+        options.purpose === "product_photo";
+      if (shouldRegister) {
+        const reg = await registerMediaAsset({
           storageKey: presign.key,
           fileName: options.file.name,
           mimeType: presign.contentType,
           byteSize: options.file.size,
           purpose: options.purpose,
         });
+        mediaAssetId = reg.asset.id;
       }
 
       return {
         publicUrl: presign.publicUrl,
+        fileName: options.file.name,
         key: presign.key,
         maxBytes: presign.maxBytes,
         contentType: presign.contentType,
+        mediaAssetId,
       };
     },
     [mediaUploadEnabled],

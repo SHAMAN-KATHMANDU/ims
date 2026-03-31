@@ -6,6 +6,7 @@ export const MEDIA_PURPOSES = [
   "product_photo",
   "contact_attachment",
   "library",
+  "message_media",
 ] as const;
 
 const UUID_RE =
@@ -44,6 +45,16 @@ export const PresignBodySchema = z
         });
       }
     }
+    if (data.purpose === "message_media") {
+      if (!data.entityId || !UUID_RE.test(data.entityId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "entityId (conversation UUID) is required for message_media presign",
+          path: ["entityId"],
+        });
+      }
+    }
   });
 
 export type PresignBodyDto = z.infer<typeof PresignBodySchema>;
@@ -51,6 +62,10 @@ export type PresignBodyDto = z.infer<typeof PresignBodySchema>;
 export const ListMediaQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   cursor: z.string().uuid().optional(),
+  /** When set, only assets whose purpose matches (exact). */
+  purpose: z.enum(MEDIA_PURPOSES).optional(),
+  /** When set, only assets whose mimeType starts with this prefix (e.g. image/, video/). */
+  mimePrefix: z.string().trim().min(1).max(40).optional(),
 });
 
 export type ListMediaQueryDto = z.infer<typeof ListMediaQuerySchema>;
@@ -71,3 +86,24 @@ export const RegisterMediaAssetSchema = z.object({
 });
 
 export type RegisterMediaAssetDto = z.infer<typeof RegisterMediaAssetSchema>;
+
+/** Path params for routes that use `:id` as a media asset UUID. */
+export const MediaAssetIdParamsSchema = z.object({
+  id: z.string().uuid("Invalid media asset id"),
+});
+
+export type MediaAssetIdParamsDto = z.infer<typeof MediaAssetIdParamsSchema>;
+
+export const UpdateMediaAssetSchema = z.object({
+  fileName: z
+    .string()
+    .transform((s) => s.trim())
+    .pipe(
+      z
+        .string()
+        .min(1, "Display name cannot be empty")
+        .max(255, "Display name must be at most 255 characters"),
+    ),
+});
+
+export type UpdateMediaAssetDto = z.infer<typeof UpdateMediaAssetSchema>;
