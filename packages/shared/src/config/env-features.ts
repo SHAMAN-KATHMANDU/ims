@@ -5,7 +5,7 @@
  * ## How to add a new feature flag
  * 1. Add a value to the EnvFeature enum below.
  * 2. Set its value in each row of ENV_FEATURE_MATRIX (true/false per env), or rely on
- *    FEATURE_FLAGS env var (comma-separated list of enabled flag names) to override.
+ *    FEATURE_FLAGS env var (comma-separated list of enabled flag names) as an override.
  * 3. If the feature is also plan-gated, add it to the Feature enum and FEATURE_REGISTRY
  *    in features.ts.
  * 4. Frontend: add envFeature to the sidebar nav item; wrap the page with EnvFeaturePageGuard
