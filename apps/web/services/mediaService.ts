@@ -1,7 +1,11 @@
 import api from "@/lib/axios";
 import { unwrapApiData } from "@/lib/apiResponse";
 
-export type MediaPurpose = "product_photo" | "contact_attachment" | "library";
+export type MediaPurpose =
+  | "product_photo"
+  | "contact_attachment"
+  | "library"
+  | "message_media";
 
 export type PresignResponse = {
   uploadUrl: string;
@@ -44,6 +48,8 @@ export type MediaAssetRow = {
 export async function listMediaAssets(params?: {
   limit?: number;
   cursor?: string;
+  purpose?: MediaPurpose;
+  mimePrefix?: string;
 }): Promise<{ items: MediaAssetRow[]; nextCursor: string | null }> {
   const res = await api.get("/media/assets", { params });
   return unwrapApiData<{ items: MediaAssetRow[]; nextCursor: string | null }>(

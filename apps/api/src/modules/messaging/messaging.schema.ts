@@ -3,8 +3,7 @@ import { z } from "zod";
 const mediaUrlSchema = z
   .string()
   .refine(
-    (val) =>
-      /^https?:\/\//i.test(val) || val.startsWith("/uploads/messaging/"),
+    (val) => /^https?:\/\//i.test(val) || val.startsWith("/uploads/messaging/"),
     { message: "mediaUrl must be a valid URL or /uploads/messaging/ path" },
   );
 
@@ -13,10 +12,12 @@ export const SendMessageSchema = z
     text: z.string().trim().min(1).optional(),
     mediaUrl: mediaUrlSchema.optional(),
     mediaType: z.enum(["image", "video", "audio", "file"]).optional(),
+    /** Registered tenant media (dashboard S3 upload); server uses canonical URL from asset. */
+    mediaAssetId: z.string().uuid().optional(),
     replyToId: z.string().uuid().optional(),
   })
-  .refine((data) => data.text || data.mediaUrl, {
-    message: "Either text or mediaUrl is required",
+  .refine((data) => data.text || data.mediaUrl || data.mediaAssetId, {
+    message: "Either text, mediaUrl, or mediaAssetId is required",
   });
 
 export const AddReactionSchema = z.object({

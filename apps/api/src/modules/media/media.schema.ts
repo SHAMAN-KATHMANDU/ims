@@ -6,6 +6,7 @@ export const MEDIA_PURPOSES = [
   "product_photo",
   "contact_attachment",
   "library",
+  "message_media",
 ] as const;
 
 const UUID_RE =
@@ -44,6 +45,16 @@ export const PresignBodySchema = z
         });
       }
     }
+    if (data.purpose === "message_media") {
+      if (!data.entityId || !UUID_RE.test(data.entityId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message:
+            "entityId (conversation UUID) is required for message_media presign",
+          path: ["entityId"],
+        });
+      }
+    }
   });
 
 export type PresignBodyDto = z.infer<typeof PresignBodySchema>;
@@ -51,6 +62,10 @@ export type PresignBodyDto = z.infer<typeof PresignBodySchema>;
 export const ListMediaQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   cursor: z.string().uuid().optional(),
+  /** When set, only assets whose purpose matches (exact). */
+  purpose: z.enum(MEDIA_PURPOSES).optional(),
+  /** When set, only assets whose mimeType starts with this prefix (e.g. image/, video/). */
+  mimePrefix: z.string().trim().min(1).max(40).optional(),
 });
 
 export type ListMediaQueryDto = z.infer<typeof ListMediaQuerySchema>;

@@ -1033,10 +1033,14 @@ model ContactAttachment {
   mimeType  String?  @map("mime_type") @db.VarChar(100)
   uploadedById String @map("uploaded_by_id")
   createdAt DateTime @default(now()) @map("created_at")
+  /// Row in tenant media library when registered (S3 direct uploads).
+  mediaAssetId String? @map("media_asset_id")
 
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  uploader  User    @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  contact    Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  uploader   User        @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  mediaAsset MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
 
+  @@index([mediaAssetId])
   @@map("contact_attachments")
 }
 
@@ -1052,8 +1056,10 @@ model MediaAsset {
   uploadedById String   @map("uploaded_by_id")
   createdAt    DateTime @default(now()) @map("created_at")
 
-  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  uploader User   @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploader           User                @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  contactAttachments ContactAttachment[]
+  messages           Message[]
 
   @@unique([tenantId, storageKey])
   @@index([tenantId, createdAt(sort: Desc)])
@@ -1579,6 +1585,8 @@ model Message {
 
   /// Structured media/payload content (provider-agnostic JSON).
   mediaPayload      Json?              @map("media_payload")
+  /// Dashboard-uploaded media registered in the tenant media library.
+  mediaAssetId      String?            @map("media_asset_id")
 
   /// Provider's message ID for deduplication and status tracking.
   providerMessageId String?            @map("provider_message_id") @db.VarChar(255)
@@ -1606,8 +1614,10 @@ model Message {
   replyTo           Message?           @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
   replies           Message[]          @relation("MessageReplies")
   reactions         MessageReaction[]
+  mediaAsset        MediaAsset?        @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
 
   @@index([conversationId, createdAt])
+  @@index([mediaAssetId])
   @@index([providerMessageId])
   @@index([replyToId])
   @@map("messages")
