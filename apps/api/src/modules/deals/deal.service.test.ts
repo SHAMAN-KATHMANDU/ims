@@ -6,6 +6,7 @@ const mockCreate = vi.fn();
 const mockFindById = vi.fn();
 const mockCreateDealRevision = vi.fn();
 const mockExecuteWorkflowRules = vi.fn().mockResolvedValue(undefined);
+const mockUpdateContactByWorkflow = vi.fn();
 
 vi.mock("@/modules/workflows/workflow.engine", () => ({
   executeWorkflowRules: (...args: unknown[]) =>
@@ -31,6 +32,14 @@ vi.mock("./deal.repository", () => ({
   },
 }));
 
+vi.mock("@/modules/contacts/contact.repository", () => ({
+  default: {
+    updateContactByWorkflow: (...args: unknown[]) =>
+      mockUpdateContactByWorkflow(...args),
+    incrementPurchaseCount: vi.fn(),
+  },
+}));
+
 import { DealService } from "./deal.service";
 
 const dealService = new DealService();
@@ -51,6 +60,28 @@ describe("DealService", () => {
       );
 
       expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it("syncs contact journey type to the selected pipeline name", async () => {
+      mockFindDefaultPipeline.mockResolvedValue({
+        id: "p1",
+        name: "New Sales",
+        stages: [{ id: "st1", name: "Lead", probability: 10 }],
+      });
+      mockCreate.mockResolvedValue({
+        ...baseDealRow,
+        contactId: "c1",
+      });
+
+      await dealService.create(
+        "t1",
+        { name: "Deal 1", contactId: "c1", pipelineId: "p1" },
+        "u1",
+      );
+
+      expect(mockUpdateContactByWorkflow).toHaveBeenCalledWith("t1", "c1", {
+        journeyType: "New Sales",
+      });
     });
   });
 
@@ -92,14 +123,16 @@ describe("DealService", () => {
     });
 
     it("runs STAGE_EXIT with source rules pipeline then revision when moving to another pipeline", async () => {
-      mockFindById.mockResolvedValue({ ...baseDealRow });
+      mockFindById.mockResolvedValue({ ...baseDealRow, contactId: "c1" });
       mockFindDefaultPipeline.mockResolvedValue({
         id: "p2",
+        name: "Remarketing",
         stages: [{ id: "st2", name: "Qualification", probability: 5 }],
       });
       mockCreateDealRevision.mockResolvedValue({
         ...baseDealRow,
         id: "d1-rev",
+        contactId: "c1",
         pipelineId: "p2",
         stage: "Qualification",
       });
@@ -130,6 +163,9 @@ describe("DealService", () => {
         "u1",
         null,
       );
+      expect(mockUpdateContactByWorkflow).toHaveBeenCalledWith("t1", "c1", {
+        journeyType: "Remarketing",
+      });
     });
   });
 });

@@ -70,7 +70,6 @@ export class PipelineTransitionService {
 
   /**
    * New Sales Closed Won -> Remarketing R1 (Post-Purchase Follow-up)
-   * - Set journeyType = "Customer"
    * - purchaseCount already incremented by deal.service/sale.service
    */
   private async handleNewSalesWon(
@@ -89,10 +88,6 @@ export class PipelineTransitionService {
       "Post-Purchase Follow-up",
     );
     if (!firstStage) return { transitioned: false };
-
-    await this.updateContactJourneyAndTags(deal.contactId, {
-      journeyType: "Customer",
-    });
 
     const newDeal = await this.createDealInPipeline({
       tenantId: deal.tenantId,
@@ -129,7 +124,6 @@ export class PipelineTransitionService {
 
   /**
    * New Sales Closed Lost -> Remarketing R2 (Dormant)
-   * - Set journeyType = "Lost Lead"
    * - Apply tag "Re-engage"
    * - Create follow-up task in 30 days
    */
@@ -151,7 +145,6 @@ export class PipelineTransitionService {
     if (!dormantStage) return { transitioned: false };
 
     await this.updateContactJourneyAndTags(deal.contactId, {
-      journeyType: "Lost Lead",
       addTags: ["Re-engage"],
     });
 

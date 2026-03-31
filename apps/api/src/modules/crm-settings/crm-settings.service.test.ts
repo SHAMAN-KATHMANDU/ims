@@ -6,6 +6,12 @@ const mockCreateSource = vi.fn();
 const mockFindSourceById = vi.fn();
 const mockUpdateSource = vi.fn();
 const mockDeleteSource = vi.fn();
+const mockFindAllSources = vi.fn();
+const mockCountSources = vi.fn();
+const mockFindJourneyTypeByName = vi.fn();
+const mockCreateJourneyType = vi.fn();
+const mockFindAllJourneyTypes = vi.fn();
+const mockFindAllPipelines = vi.fn();
 
 vi.mock("./crm-settings.repository", () => ({
   default: {
@@ -14,13 +20,22 @@ vi.mock("./crm-settings.repository", () => ({
     findSourceById: (...args: unknown[]) => mockFindSourceById(...args),
     updateSource: (...args: unknown[]) => mockUpdateSource(...args),
     deleteSource: (...args: unknown[]) => mockDeleteSource(...args),
-    findAllSources: vi.fn().mockResolvedValue([]),
-    findAllJourneyTypes: vi.fn().mockResolvedValue([]),
-    findJourneyTypeByName: vi.fn(),
-    createJourneyType: vi.fn(),
+    findAllSources: (...args: unknown[]) => mockFindAllSources(...args),
+    countSources: (...args: unknown[]) => mockCountSources(...args),
+    findAllJourneyTypes: (...args: unknown[]) =>
+      mockFindAllJourneyTypes(...args),
+    findJourneyTypeByName: (...args: unknown[]) =>
+      mockFindJourneyTypeByName(...args),
+    createJourneyType: (...args: unknown[]) => mockCreateJourneyType(...args),
     findJourneyTypeById: vi.fn(),
     updateJourneyType: vi.fn(),
     deleteJourneyType: vi.fn(),
+  },
+}));
+
+vi.mock("../pipelines/pipeline.repository", () => ({
+  default: {
+    findAll: (...args: unknown[]) => mockFindAllPipelines(...args),
   },
 }));
 
@@ -31,6 +46,62 @@ const crmSettingsService = new CrmSettingsService();
 describe("CrmSettingsService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockFindAllSources.mockResolvedValue([]);
+    mockCountSources.mockResolvedValue(0);
+    mockFindAllJourneyTypes.mockResolvedValue([]);
+    mockFindAllPipelines.mockResolvedValue([]);
+  });
+
+  describe("getAllSources", () => {
+    it("ensures the default Sales source exists for existing tenants", async () => {
+      mockFindSourceByName.mockResolvedValueOnce(null);
+      mockCreateSource.mockResolvedValue({
+        id: "s-sales",
+        name: "Sales",
+        tenantId: "t1",
+      });
+      mockFindAllSources.mockResolvedValue([{ id: "s-sales", name: "Sales" }]);
+
+      const result = await crmSettingsService.getAllSources("t1");
+
+      expect(mockCreateSource).toHaveBeenCalledWith("t1", { name: "Sales" });
+      expect(result).toEqual({
+        sources: [{ id: "s-sales", name: "Sales" }],
+      });
+    });
+  });
+
+  describe("getAllJourneyTypes", () => {
+    it("ensures pipeline names exist as journey types", async () => {
+      mockFindAllPipelines.mockResolvedValue([
+        { id: "p1", name: "New Sales" },
+        { id: "p2", name: "Remarketing" },
+      ]);
+      mockFindJourneyTypeByName
+        .mockResolvedValueOnce(null)
+        .mockResolvedValueOnce({ id: "jt2", name: "Remarketing" });
+      mockCreateJourneyType.mockResolvedValue({
+        id: "jt1",
+        name: "New Sales",
+        tenantId: "t1",
+      });
+      mockFindAllJourneyTypes.mockResolvedValue([
+        { id: "jt1", name: "New Sales" },
+        { id: "jt2", name: "Remarketing" },
+      ]);
+
+      const result = await crmSettingsService.getAllJourneyTypes("t1");
+
+      expect(mockCreateJourneyType).toHaveBeenCalledWith("t1", {
+        name: "New Sales",
+      });
+      expect(result).toEqual({
+        journeyTypes: [
+          { id: "jt1", name: "New Sales" },
+          { id: "jt2", name: "Remarketing" },
+        ],
+      });
+    });
   });
 
   describe("createSource", () => {
