@@ -1,7 +1,7 @@
 /**
  * Loyalty Tier Service
  *
- * Automatically applies/removes tags and updates journeyType
+ * Automatically applies/removes loyalty tags
  * based on a contact's purchaseCount.
  */
 
@@ -11,7 +11,6 @@ import { logger } from "@/config/logger";
 export interface LoyaltyTier {
   tier: "none" | "customer" | "repeat_buyer" | "vip";
   label: string;
-  journeyType: string;
   tag: string | null;
 }
 
@@ -20,28 +19,24 @@ const TIERS: Array<{ minCount: number } & LoyaltyTier> = [
     minCount: 3,
     tier: "vip",
     label: "VIP",
-    journeyType: "VIP Customer",
     tag: "VIP",
   },
   {
     minCount: 2,
     tier: "repeat_buyer",
     label: "Repeat Buyer",
-    journeyType: "Returning Customer",
     tag: "Repeat Buyer",
   },
   {
     minCount: 1,
     tier: "customer",
     label: "Customer",
-    journeyType: "Customer",
     tag: null,
   },
   {
     minCount: 0,
     tier: "none",
     label: "Prospect",
-    journeyType: "New",
     tag: null,
   },
 ];
@@ -52,7 +47,6 @@ export function getLoyaltyTier(purchaseCount: number): LoyaltyTier {
       return {
         tier: t.tier,
         label: t.label,
-        journeyType: t.journeyType,
         tag: t.tag,
       };
     }
@@ -62,7 +56,7 @@ export function getLoyaltyTier(purchaseCount: number): LoyaltyTier {
 
 /**
  * Apply loyalty tier changes after purchaseCount is incremented.
- * Updates journeyType and adds/removes loyalty tags.
+ * Updates loyalty tags without overriding pipeline-linked journeyType.
  */
 export async function applyLoyaltyTier(contactId: string) {
   const contact = await prisma.contact.findUnique({
@@ -71,20 +65,11 @@ export async function applyLoyaltyTier(contactId: string) {
       id: true,
       tenantId: true,
       purchaseCount: true,
-      journeyType: true,
     },
   });
   if (!contact) return;
 
   const tier = getLoyaltyTier(contact.purchaseCount);
-
-  // Update journey type
-  if (contact.journeyType !== tier.journeyType) {
-    await prisma.contact.update({
-      where: { id: contactId },
-      data: { journeyType: tier.journeyType },
-    });
-  }
 
   // Apply/remove loyalty tags
   const loyaltyTagNames = ["VIP", "Repeat Buyer"];

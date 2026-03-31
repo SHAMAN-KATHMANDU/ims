@@ -96,6 +96,16 @@ export interface FindAllContactsParams {
 }
 
 export class ContactRepository {
+  private async ensureSalesSource(contactId: string): Promise<void> {
+    await prisma.contact.updateMany({
+      where: {
+        id: contactId,
+        OR: [{ source: null }, { source: "" }],
+      },
+      data: { source: "Sales" },
+    });
+  }
+
   async findAll(tenantId: string, query: Record<string, unknown>) {
     const { page, limit, sortBy, sortOrder, search } =
       getPaginationParams(query);
@@ -428,7 +438,10 @@ export class ContactRepository {
       },
       select: { id: true },
     });
-    if (existing) return existing;
+    if (existing) {
+      await this.ensureSalesSource(existing.id);
+      return existing;
+    }
     const nameParts = (member.name || "").trim().split(/\s+/);
     const firstName = nameParts[0] || "Customer";
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
@@ -484,7 +497,10 @@ export class ContactRepository {
       where: { tenantId, deletedAt: null, phone: data.phone },
       select: { id: true },
     });
-    if (existing) return existing;
+    if (existing) {
+      await this.ensureSalesSource(existing.id);
+      return existing;
+    }
     const nameParts = (data.name || "").trim().split(/\s+/);
     const firstName = nameParts[0] || "Customer";
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;

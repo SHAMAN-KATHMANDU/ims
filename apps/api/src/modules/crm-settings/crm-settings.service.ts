@@ -8,13 +8,48 @@ import type {
   UpdateCrmJourneyTypeDto,
 } from "./crm-settings.schema";
 
+const SALES_SOURCE_NAME = "Sales";
+
 export class CrmSettingsService {
+  private async ensureDefaultSalesSource(tenantId: string): Promise<void> {
+    const existing = await crmSettingsRepository.findSourceByName(
+      tenantId,
+      SALES_SOURCE_NAME,
+    );
+    if (!existing) {
+      await crmSettingsRepository.createSource(tenantId, {
+        name: SALES_SOURCE_NAME,
+      });
+    }
+  }
+
+  private async ensurePipelineJourneyTypes(tenantId: string): Promise<void> {
+    const pipelineRepository = (
+      await import("../pipelines/pipeline.repository")
+    ).default;
+    const pipelines = await pipelineRepository.findAll(tenantId);
+
+    for (const pipeline of pipelines) {
+      const name = pipeline.name?.trim();
+      if (!name) continue;
+
+      const existing = await crmSettingsRepository.findJourneyTypeByName(
+        tenantId,
+        name,
+      );
+      if (!existing) {
+        await crmSettingsRepository.createJourneyType(tenantId, { name });
+      }
+    }
+  }
+
   // ── Sources ──────────────────────────────────────────────────────────────
 
   async getAllSources(
     tenantId: string,
     query?: { page?: number; limit?: number; search?: string },
   ) {
+    await this.ensureDefaultSalesSource(tenantId);
     const page = query?.page;
     const limit = query?.limit;
     const search = query?.search;
@@ -72,6 +107,7 @@ export class CrmSettingsService {
     tenantId: string,
     query?: { page?: number; limit?: number; search?: string },
   ) {
+    await this.ensurePipelineJourneyTypes(tenantId);
     const page = query?.page;
     const limit = query?.limit;
     const search = query?.search;
