@@ -11,7 +11,6 @@ export const CreateContactSchema = z
     memberId: z.string().uuid().optional().nullable(),
     tagIds: z.array(z.string().uuid()).optional(),
     source: z.string().max(100).optional().nullable(),
-    journeyType: z.string().max(100).optional().nullable(),
   })
   .merge(ContactProfileFieldsSchema);
 

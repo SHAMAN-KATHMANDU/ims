@@ -68,6 +68,7 @@ export function ContactsPage() {
   const { toast } = useToast();
   const isDesktop = useIsDesktop();
   const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
   const dealsEnabled = envDealsEnabled && salesPipelinePlan;
 
@@ -104,8 +105,12 @@ export function ContactsPage() {
   const { data: contactToDeleteData } = useContact(deleteId || "");
   const { data: companiesData } = useCompaniesForSelect();
   const { data: tagsData } = useContactTags();
-  const { data: sourcesData } = useCrmSources();
-  const { data: journeyTypesData } = useCrmJourneyTypes();
+  const { data: sourcesData } = useCrmSources(undefined, {
+    enabled: pipelinesEnabled,
+  });
+  const { data: journeyTypesData } = useCrmJourneyTypes(undefined, {
+    enabled: pipelinesEnabled,
+  });
   const companies = companiesData?.companies ?? [];
   const tags = tagsData?.tags ?? [];
   const sources = sourcesData?.sources ?? [];
@@ -310,44 +315,48 @@ export function ContactsPage() {
             setPage(DEFAULT_PAGE);
           }}
         />
-        <Select
-          value={sourceFilter}
-          onValueChange={(v) => {
-            setSourceFilter(v);
-            setPage(DEFAULT_PAGE);
-          }}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Source" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sources</SelectItem>
-            {sources.map((s) => (
-              <SelectItem key={s.id} value={s.name}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={journeyTypeFilter}
-          onValueChange={(v) => {
-            setJourneyTypeFilter(v);
-            setPage(DEFAULT_PAGE);
-          }}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Journey type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All journey types</SelectItem>
-            {journeyTypes.map((jt) => (
-              <SelectItem key={jt.id} value={jt.name}>
-                {jt.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {pipelinesEnabled && (
+          <Select
+            value={sourceFilter}
+            onValueChange={(v) => {
+              setSourceFilter(v);
+              setPage(DEFAULT_PAGE);
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {sources.map((s) => (
+                <SelectItem key={s.id} value={s.name}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+        {pipelinesEnabled && (
+          <Select
+            value={journeyTypeFilter}
+            onValueChange={(v) => {
+              setJourneyTypeFilter(v);
+              setPage(DEFAULT_PAGE);
+            }}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Journey type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All journey types</SelectItem>
+              {journeyTypes.map((jt) => (
+                <SelectItem key={jt.id} value={jt.name}>
+                  {jt.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       <ContactTable
@@ -417,7 +426,6 @@ export function ContactsPage() {
                     phone: contactData.contact.phone ?? undefined,
                     companyId: contactData.contact.companyId ?? undefined,
                     source: contactData.contact.source ?? undefined,
-                    journeyType: contactData.contact.journeyType ?? undefined,
                     tagIds:
                       contactData.contact.tagLinks?.map((tl) => tl.tag.id) ??
                       [],
