@@ -137,6 +137,7 @@ crmSettingsRouter.get(
  *               name: { type: string }
  *     responses:
  *       201: { description: Journey type created }
+ *       403: { description: Journey types are derived from pipeline names }
  */
 crmSettingsRouter.post(
   "/journey-types",
@@ -166,6 +167,7 @@ crmSettingsRouter.post(
  *               name: { type: string }
  *     responses:
  *       200: { description: Journey type updated }
+ *       403: { description: Journey types are derived from pipeline names }
  */
 crmSettingsRouter.put(
   "/journey-types/:id",
@@ -188,6 +190,7 @@ crmSettingsRouter.put(
  *         schema: { type: string, format: uuid }
  *     responses:
  *       200: { description: Journey type deleted }
+ *       403: { description: Journey types are derived from pipeline names }
  */
 crmSettingsRouter.delete(
   "/journey-types/:id",

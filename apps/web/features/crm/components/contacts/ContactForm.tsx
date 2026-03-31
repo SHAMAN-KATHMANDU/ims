@@ -26,11 +26,10 @@ import {
 } from "@/components/ui/dialog";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
 import { useContactTags, useCreateContactTag } from "../../hooks/use-contacts";
-import {
-  useCrmSources,
-  useCrmJourneyTypes,
-} from "../../hooks/use-crm-settings";
+import { useCrmSources } from "../../hooks/use-crm-settings";
 import { useToast } from "@/hooks/useToast";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 import type { CreateContactData } from "../../services/contact.service";
 import { ContactProfileFieldsSchema } from "@repo/shared";
 
@@ -43,7 +42,6 @@ const schema = z
     companyId: z.string().optional(),
     tagIds: z.array(z.string()).optional(),
     source: z.string().optional(),
-    journeyType: z.string().optional(),
   })
   .merge(ContactProfileFieldsSchema);
 
@@ -63,11 +61,13 @@ export function ContactForm({
   isLoading,
 }: ContactFormProps) {
   const { toast } = useToast();
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const { data: companiesData } = useCompaniesForSelect();
   const { data: tagsData } = useContactTags();
   const createTagMutation = useCreateContactTag();
-  const { data: sourcesData } = useCrmSources();
-  const { data: journeyTypesData } = useCrmJourneyTypes();
+  const { data: sourcesData } = useCrmSources(undefined, {
+    enabled: pipelinesEnabled,
+  });
   const companies = companiesData?.companies ?? [];
   const [optimisticTags, setOptimisticTags] = useState<
     Array<{ id: string; name: string }>
@@ -86,7 +86,6 @@ export function ContactForm({
   ];
   const tags = displayTags;
   const sources = sourcesData?.sources ?? [];
-  const journeyTypes = journeyTypesData?.journeyTypes ?? [];
   const [addTagOpen, setAddTagOpen] = useState(false);
   const [newTagName, setNewTagName] = useState("");
 
@@ -106,7 +105,6 @@ export function ContactForm({
       companyId: defaultValues?.companyId ?? "",
       tagIds: defaultValues?.tagIds ?? [],
       source: defaultValues?.source ?? "",
-      journeyType: defaultValues?.journeyType ?? "",
     },
   });
 
@@ -128,7 +126,6 @@ export function ContactForm({
       companyId: defaultValues.companyId ?? "",
       tagIds: defaultValues.tagIds ?? [],
       source: defaultValues.source ?? "",
-      journeyType: defaultValues.journeyType ?? "",
     });
   }, [defaultValues, form]);
 
@@ -179,8 +176,7 @@ export function ContactForm({
             : null,
           companyId: values.companyId || undefined,
           tagIds: values.tagIds,
-          source: values.source || undefined,
-          journeyType: values.journeyType || undefined,
+          source: pipelinesEnabled ? values.source || undefined : undefined,
         });
       })}
       className="space-y-4 px-6 py-6 sm:px-6 pb-safe"
@@ -273,7 +269,7 @@ export function ContactForm({
           </SelectContent>
         </Select>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      {pipelinesEnabled && (
         <div>
           <Label>Source</Label>
           <Select
@@ -295,28 +291,7 @@ export function ContactForm({
             </SelectContent>
           </Select>
         </div>
-        <div>
-          <Label>Journey Type</Label>
-          <Select
-            value={form.watch("journeyType") || "__none__"}
-            onValueChange={(v) =>
-              form.setValue("journeyType", v === "__none__" ? undefined : v)
-            }
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue placeholder="Select journey type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">None</SelectItem>
-              {journeyTypes.map((jt) => (
-                <SelectItem key={jt.id} value={jt.name}>
-                  {jt.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      </div>
+      )}
       <div>
         <Label>Tags</Label>
         <div className="flex flex-wrap gap-2 mt-1 items-center">

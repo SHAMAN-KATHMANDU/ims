@@ -14,6 +14,8 @@ import {
   useConvertLead,
 } from "../../hooks/use-leads";
 import { useCrmSources } from "../../hooks/use-crm-settings";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 import { useUsers } from "@/features/users";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
 import { Input } from "@/components/ui/input";
@@ -90,6 +92,7 @@ export function LeadsPage() {
   const basePath = `/${workspace}`;
   const { toast } = useToast();
   const isDesktop = useIsDesktop();
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
 
   const [page, setPage] = useState(DEFAULT_PAGE);
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
@@ -103,7 +106,9 @@ export function LeadsPage() {
   const [convertLeadId, setConvertLeadId] = useState<string | null>(null);
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
 
-  const { data: sourcesData } = useCrmSources();
+  const { data: sourcesData } = useCrmSources(undefined, {
+    enabled: pipelinesEnabled,
+  });
   const { data: usersResult } = useUsers({ limit: 500 });
   const sources = sourcesData?.sources ?? [];
   const users = usersResult?.users ?? [];
@@ -227,25 +232,27 @@ export function LeadsPage() {
             ))}
           </SelectContent>
         </Select>
-        <Select
-          value={sourceFilter}
-          onValueChange={(v) => {
-            setSourceFilter(v);
-            setPage(DEFAULT_PAGE);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-[160px]">
-            <SelectValue placeholder="Source" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sources</SelectItem>
-            {sources.map((s) => (
-              <SelectItem key={s.id} value={s.name}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {pipelinesEnabled && (
+          <Select
+            value={sourceFilter}
+            onValueChange={(v) => {
+              setSourceFilter(v);
+              setPage(DEFAULT_PAGE);
+            }}
+          >
+            <SelectTrigger className="w-full sm:w-[160px]">
+              <SelectValue placeholder="Source" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All sources</SelectItem>
+              {sources.map((s) => (
+                <SelectItem key={s.id} value={s.name}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select
           value={assignedToFilter}
           onValueChange={(v) => {

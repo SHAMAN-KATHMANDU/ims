@@ -354,12 +354,10 @@ async function executeAction(
     case "UPDATE_CONTACT_FIELD": {
       const c = config as ActionConfigMap["UPDATE_CONTACT_FIELD"];
       if (!deal.contactId) break;
-      const patch =
-        c.field === "source" ? { source: c.value } : { journeyType: c.value };
       await contactRepository.updateContactByWorkflow(
         deal.tenantId,
         deal.contactId,
-        patch,
+        { source: c.value },
       );
       break;
     }

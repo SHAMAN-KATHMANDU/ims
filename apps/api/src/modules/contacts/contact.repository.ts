@@ -181,7 +181,6 @@ export class ContactRepository {
         companyId: data.companyId || null,
         memberId: data.memberId || null,
         source: data.source || null,
-        journeyType: data.journeyType || null,
         gender: data.gender?.trim() || null,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
         ownedById: userId,
@@ -223,9 +222,6 @@ export class ContactRepository {
         }),
         ...(data.memberId !== undefined && { memberId: data.memberId || null }),
         ...(data.source !== undefined && { source: data.source || null }),
-        ...(data.journeyType !== undefined && {
-          journeyType: data.journeyType || null,
-        }),
         ...(data.gender !== undefined && {
           gender: data.gender?.trim() || null,
         }),
@@ -609,6 +605,39 @@ export class ContactRepository {
         company: { select: { id: true, name: true } },
         owner: { select: { id: true, username: true } },
         tagLinks: { include: { tag: { select: { id: true, name: true } } } },
+      },
+    });
+  }
+
+  async renameJourneyTypeForPipeline(
+    tenantId: string,
+    oldName: string,
+    newName: string,
+  ): Promise<void> {
+    await prisma.contact.updateMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        journeyType: oldName,
+      },
+      data: {
+        journeyType: newName,
+      },
+    });
+  }
+
+  async clearJourneyTypeForPipeline(
+    tenantId: string,
+    journeyTypeName: string,
+  ): Promise<void> {
+    await prisma.contact.updateMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        journeyType: journeyTypeName,
+      },
+      data: {
+        journeyType: null,
       },
     });
   }

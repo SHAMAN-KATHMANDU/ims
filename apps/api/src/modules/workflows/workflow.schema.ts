@@ -68,7 +68,7 @@ export const CreateDealConfigSchema = z.object({
 export type CreateDealConfig = z.infer<typeof CreateDealConfigSchema>;
 
 /** Only safe CRM fields — do not allow arbitrary Prisma keys. */
-export const UPDATE_CONTACT_FIELD_ALLOWED = ["source", "journeyType"] as const;
+export const UPDATE_CONTACT_FIELD_ALLOWED = ["source"] as const;
 export const UpdateContactFieldConfigSchema = z.object({
   field: z.enum(UPDATE_CONTACT_FIELD_ALLOWED),
   value: z.union([z.string(), z.null()]),

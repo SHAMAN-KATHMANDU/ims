@@ -29,7 +29,7 @@ export class PipelineService {
       await pipelineRepository.clearDefaultForTenant(tenantId);
     }
 
-    return pipelineRepository.create({
+    const pipeline = await pipelineRepository.create({
       tenantId,
       name: data.name,
       type: data.type ?? "GENERAL",
@@ -38,30 +38,30 @@ export class PipelineService {
       closedWonStageName: data.closedWonStageName ?? undefined,
       closedLostStageName: data.closedLostStageName ?? undefined,
     });
+    const crmSettingsService = (
+      await import("@/modules/crm-settings/crm-settings.service")
+    ).default;
+    await crmSettingsService.syncJourneyTypeToPipelineRename(
+      tenantId,
+      pipeline.name,
+      pipeline.name,
+    );
+    return pipeline;
   }
 
   async seedFramework(tenantId: string) {
     const pipelines = await pipelineRepository.seedFrameworkPipelines(tenantId);
 
-    const crmSettingsRepo = (
-      await import("@/modules/crm-settings/crm-settings.repository")
+    const journeyTypes = pipelines.map((pipeline) => pipeline.name);
+    const crmSettingsService = (
+      await import("@/modules/crm-settings/crm-settings.service")
     ).default;
-
-    const journeyTypes = [
-      "New",
-      "Engaging",
-      "Customer",
-      "Lost Lead",
-      "Returning Customer",
-      "VIP Customer",
-      "Cold",
-    ];
-    for (const name of journeyTypes) {
-      try {
-        await crmSettingsRepo.createJourneyType(tenantId, { name });
-      } catch {
-        // Already exists — skip
-      }
+    for (const journeyTypeName of journeyTypes) {
+      await crmSettingsService.syncJourneyTypeToPipelineRename(
+        tenantId,
+        journeyTypeName,
+        journeyTypeName,
+      );
     }
 
     const contactRepo = (await import("@/modules/contacts/contact.repository"))
@@ -140,7 +140,18 @@ export class PipelineService {
       updateData.closedLostStageName = data.closedLostStageName;
     }
 
-    return pipelineRepository.update(id, updateData);
+    const updatedPipeline = await pipelineRepository.update(id, updateData);
+    if (data.name !== undefined) {
+      const crmSettingsService = (
+        await import("@/modules/crm-settings/crm-settings.service")
+      ).default;
+      await crmSettingsService.syncJourneyTypeToPipelineRename(
+        tenantId,
+        existing.name,
+        updatedPipeline.name,
+      );
+    }
+    return updatedPipeline;
   }
 
   async delete(
@@ -166,6 +177,13 @@ export class PipelineService {
       deletedBy: ctx.userId,
       deleteReason: ctx.reason ?? null,
     });
+    const crmSettingsService = (
+      await import("@/modules/crm-settings/crm-settings.service")
+    ).default;
+    await crmSettingsService.syncJourneyTypeToPipelineDelete(
+      tenantId,
+      existing.name,
+    );
     await createDeleteAuditLog({
       userId: ctx.userId,
       tenantId,

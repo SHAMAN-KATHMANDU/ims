@@ -10,8 +10,13 @@ const mockFindAllSources = vi.fn();
 const mockCountSources = vi.fn();
 const mockFindJourneyTypeByName = vi.fn();
 const mockCreateJourneyType = vi.fn();
+const mockUpsertJourneyTypeByName = vi.fn();
+const mockRenameJourneyTypeByName = vi.fn();
+const mockDeleteJourneyType = vi.fn();
 const mockFindAllJourneyTypes = vi.fn();
 const mockFindAllPipelines = vi.fn();
+const mockRenameJourneyTypeForPipeline = vi.fn();
+const mockClearJourneyTypeForPipeline = vi.fn();
 
 vi.mock("./crm-settings.repository", () => ({
   default: {
@@ -27,15 +32,28 @@ vi.mock("./crm-settings.repository", () => ({
     findJourneyTypeByName: (...args: unknown[]) =>
       mockFindJourneyTypeByName(...args),
     createJourneyType: (...args: unknown[]) => mockCreateJourneyType(...args),
+    upsertJourneyTypeByName: (...args: unknown[]) =>
+      mockUpsertJourneyTypeByName(...args),
+    renameJourneyTypeByName: (...args: unknown[]) =>
+      mockRenameJourneyTypeByName(...args),
     findJourneyTypeById: vi.fn(),
     updateJourneyType: vi.fn(),
-    deleteJourneyType: vi.fn(),
+    deleteJourneyType: (...args: unknown[]) => mockDeleteJourneyType(...args),
   },
 }));
 
 vi.mock("../pipelines/pipeline.repository", () => ({
   default: {
     findAll: (...args: unknown[]) => mockFindAllPipelines(...args),
+  },
+}));
+
+vi.mock("../contacts/contact.repository", () => ({
+  default: {
+    renameJourneyTypeForPipeline: (...args: unknown[]) =>
+      mockRenameJourneyTypeForPipeline(...args),
+    clearJourneyTypeForPipeline: (...args: unknown[]) =>
+      mockClearJourneyTypeForPipeline(...args),
   },
 }));
 
@@ -92,15 +110,108 @@ describe("CrmSettingsService", () => {
 
       const result = await crmSettingsService.getAllJourneyTypes("t1");
 
-      expect(mockCreateJourneyType).toHaveBeenCalledWith("t1", {
-        name: "New Sales",
-      });
+      expect(mockUpsertJourneyTypeByName).toHaveBeenCalledWith(
+        "t1",
+        "New Sales",
+      );
       expect(result).toEqual({
         journeyTypes: [
           { id: "jt1", name: "New Sales" },
           { id: "jt2", name: "Remarketing" },
         ],
       });
+    });
+  });
+
+  describe("journey type mutations", () => {
+    it("rejects manual create attempts", async () => {
+      await expect(
+        crmSettingsService.createJourneyType("t1", { name: "Manual" }),
+      ).rejects.toMatchObject(
+        createError(
+          "Journey types are derived from pipeline names and cannot be edited manually.",
+          403,
+        ),
+      );
+    });
+
+    it("rejects manual update attempts", async () => {
+      await expect(
+        crmSettingsService.updateJourneyType("t1", "jt1", { name: "Manual" }),
+      ).rejects.toMatchObject(
+        createError(
+          "Journey types are derived from pipeline names and cannot be edited manually.",
+          403,
+        ),
+      );
+    });
+
+    it("rejects manual delete attempts", async () => {
+      await expect(
+        crmSettingsService.deleteJourneyType("t1", "jt1"),
+      ).rejects.toMatchObject(
+        createError(
+          "Journey types are derived from pipeline names and cannot be edited manually.",
+          403,
+        ),
+      );
+    });
+  });
+
+  describe("pipeline sync helpers", () => {
+    it("upserts a derived journey type when ensuring a pipeline name", async () => {
+      await crmSettingsService.syncJourneyTypeToPipelineRename(
+        "t1",
+        "New Sales",
+        "New Sales",
+      );
+
+      expect(mockUpsertJourneyTypeByName).toHaveBeenCalledWith(
+        "t1",
+        "New Sales",
+      );
+      expect(mockRenameJourneyTypeForPipeline).not.toHaveBeenCalled();
+    });
+
+    it("renames the catalog row and contacts when a pipeline name changes", async () => {
+      mockFindJourneyTypeByName
+        .mockResolvedValueOnce({ id: "jt-old", name: "Old Name" })
+        .mockResolvedValueOnce(null);
+
+      await crmSettingsService.syncJourneyTypeToPipelineRename(
+        "t1",
+        "Old Name",
+        "New Name",
+      );
+
+      expect(mockRenameJourneyTypeByName).toHaveBeenCalledWith(
+        "t1",
+        "Old Name",
+        "New Name",
+      );
+      expect(mockRenameJourneyTypeForPipeline).toHaveBeenCalledWith(
+        "t1",
+        "Old Name",
+        "New Name",
+      );
+    });
+
+    it("deletes the derived journey type and clears contacts on pipeline delete", async () => {
+      mockFindJourneyTypeByName.mockResolvedValue({
+        id: "jt-old",
+        name: "Old Name",
+      });
+
+      await crmSettingsService.syncJourneyTypeToPipelineDelete(
+        "t1",
+        "Old Name",
+      );
+
+      expect(mockDeleteJourneyType).toHaveBeenCalledWith("jt-old");
+      expect(mockClearJourneyTypeForPipeline).toHaveBeenCalledWith(
+        "t1",
+        "Old Name",
+      );
     });
   });
 

@@ -25,6 +25,15 @@ describe("CreateContactSchema", () => {
     expect(result.email).toBe("john@example.com");
   });
 
+  it("rejects journeyType as a writable input", () => {
+    expect(() =>
+      CreateContactSchema.parse({
+        firstName: "John",
+        journeyType: "New Sales",
+      }),
+    ).toThrow();
+  });
+
   it("accepts optional profile fields", () => {
     const result = CreateContactSchema.parse({
       firstName: "Jane",

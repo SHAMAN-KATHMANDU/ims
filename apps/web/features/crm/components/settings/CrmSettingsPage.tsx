@@ -91,14 +91,14 @@ import type {
 
 export default function CrmSettingsPage() {
   const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
-  const defaultTab = pipelinesTabEnabled ? "pipelines" : "sources";
+  const defaultTab = pipelinesTabEnabled ? "pipelines" : "tags";
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">CRM Settings</h1>
         <p className="text-muted-foreground text-sm mt-1">
-          Configure pipelines, contact sources, and journey types for your CRM.
+          Configure pipelines and CRM contact metadata.
         </p>
       </div>
 
@@ -110,14 +110,18 @@ export default function CrmSettingsPage() {
               Pipelines
             </TabsTrigger>
           )}
-          <TabsTrigger value="sources" className="gap-2 shrink-0">
-            <Tag className="h-4 w-4" />
-            <span className="hidden sm:inline">Contact </span>Sources
-          </TabsTrigger>
-          <TabsTrigger value="journey-types" className="gap-2 shrink-0">
-            <Route className="h-4 w-4" />
-            <span className="hidden sm:inline">Journey </span>Types
-          </TabsTrigger>
+          {pipelinesTabEnabled && (
+            <TabsTrigger value="sources" className="gap-2 shrink-0">
+              <Tag className="h-4 w-4" />
+              <span className="hidden sm:inline">Contact </span>Sources
+            </TabsTrigger>
+          )}
+          {pipelinesTabEnabled && (
+            <TabsTrigger value="journey-types" className="gap-2 shrink-0">
+              <Route className="h-4 w-4" />
+              <span className="hidden sm:inline">Journey </span>Types
+            </TabsTrigger>
+          )}
           <TabsTrigger value="tags" className="gap-2 shrink-0">
             <Tags className="h-4 w-4" />
             Tags
@@ -129,12 +133,16 @@ export default function CrmSettingsPage() {
             <PipelineSettings />
           </TabsContent>
         )}
-        <TabsContent value="sources">
-          <SourceSettings />
-        </TabsContent>
-        <TabsContent value="journey-types">
-          <JourneyTypeSettings />
-        </TabsContent>
+        {pipelinesTabEnabled && (
+          <TabsContent value="sources">
+            <SourceSettings />
+          </TabsContent>
+        )}
+        {pipelinesTabEnabled && (
+          <TabsContent value="journey-types">
+            <JourneyTypeSettings />
+          </TabsContent>
+        )}
         <TabsContent value="tags">
           <TagSettings />
         </TabsContent>
@@ -885,17 +893,21 @@ const DEFAULT_TAG_PAGE_SIZE = 10;
 // ── Source Settings ───────────────────────────────────────────────────────────
 
 function SourceSettings() {
+  const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const [sourcePage, setSourcePage] = useState(DEFAULT_PAGE);
   const [sourcePageSize, setSourcePageSize] = useState(
     DEFAULT_SOURCE_PAGE_SIZE,
   );
   const [sourceSearch, setSourceSearch] = useState("");
   const debouncedSourceSearch = useDebounce(sourceSearch, 300);
-  const { data, isLoading } = useCrmSources({
-    page: sourcePage,
-    limit: sourcePageSize,
-    search: debouncedSourceSearch || undefined,
-  });
+  const { data, isLoading } = useCrmSources(
+    {
+      page: sourcePage,
+      limit: sourcePageSize,
+      search: debouncedSourceSearch || undefined,
+    },
+    { enabled: pipelinesTabEnabled },
+  );
   const createMutation = useCreateCrmSource();
   const updateMutation = useUpdateCrmSource();
   const deleteMutation = useDeleteCrmSource();
@@ -951,17 +963,21 @@ function SourceSettings() {
 // ── Journey Type Settings ─────────────────────────────────────────────────────
 
 function JourneyTypeSettings() {
+  const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const [journeyTypePage, setJourneyTypePage] = useState(DEFAULT_PAGE);
   const [journeyTypePageSize, setJourneyTypePageSize] = useState(
     DEFAULT_JOURNEY_TYPE_PAGE_SIZE,
   );
   const [journeyTypeSearch, setJourneyTypeSearch] = useState("");
   const debouncedJourneyTypeSearch = useDebounce(journeyTypeSearch, 300);
-  const { data, isLoading } = useCrmJourneyTypes({
-    page: journeyTypePage,
-    limit: journeyTypePageSize,
-    search: debouncedJourneyTypeSearch || undefined,
-  });
+  const { data, isLoading } = useCrmJourneyTypes(
+    {
+      page: journeyTypePage,
+      limit: journeyTypePageSize,
+      search: debouncedJourneyTypeSearch || undefined,
+    },
+    { enabled: pipelinesTabEnabled },
+  );
   const createMutation = useCreateCrmJourneyType();
   const updateMutation = useUpdateCrmJourneyType();
   const deleteMutation = useDeleteCrmJourneyType();

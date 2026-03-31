@@ -475,7 +475,6 @@ export class PipelineTransitionService {
   private async updateContactJourneyAndTags(
     contactId: string,
     updates: {
-      journeyType?: string;
       addTags?: string[];
       removeTags?: string[];
     },
@@ -485,16 +484,6 @@ export class PipelineTransitionService {
       select: { tenantId: true },
     });
     if (!contact) return;
-
-    if (updates.journeyType) {
-      await contactRepository.updateContactByWorkflow(
-        contact.tenantId,
-        contactId,
-        {
-          journeyType: updates.journeyType,
-        },
-      );
-    }
 
     if (updates.addTags?.length) {
       for (const tagName of updates.addTags) {

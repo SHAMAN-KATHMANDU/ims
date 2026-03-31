@@ -68,11 +68,11 @@ describe("Workflow Schemas", () => {
   describe("parseActionConfig", () => {
     it("parses UPDATE_CONTACT_FIELD with allowlisted field", () => {
       const c = parseActionConfig("UPDATE_CONTACT_FIELD", {
-        field: "journeyType",
-        value: "Customer",
+        field: "source",
+        value: "Website",
       }) as UpdateContactFieldConfig;
-      expect(c.field).toBe("journeyType");
-      expect(c.value).toBe("Customer");
+      expect(c.field).toBe("source");
+      expect(c.value).toBe("Website");
     });
 
     it("rejects UPDATE_CONTACT_FIELD with unknown field", () => {
