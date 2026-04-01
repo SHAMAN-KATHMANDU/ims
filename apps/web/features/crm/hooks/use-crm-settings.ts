@@ -15,6 +15,7 @@ import {
   type GetCrmSourcesParams,
   type GetCrmJourneyTypesParams,
 } from "../services/crm-settings.service";
+import { contactKeys } from "./use-contacts";
 
 export const crmSettingsKeys = {
   all: ["crm-settings"] as const,
@@ -50,9 +51,12 @@ export function useCreateCrmSource() {
       }
     },
     onSuccess: () =>
-      qc.invalidateQueries({
-        queryKey: [...crmSettingsKeys.all, "sources"],
-      }),
+      Promise.all([
+        qc.invalidateQueries({
+          queryKey: [...crmSettingsKeys.all, "sources"],
+        }),
+        qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+      ]),
   });
 }
 
@@ -69,9 +73,12 @@ export function useUpdateCrmSource() {
       }
     },
     onSuccess: () =>
-      qc.invalidateQueries({
-        queryKey: [...crmSettingsKeys.all, "sources"],
-      }),
+      Promise.all([
+        qc.invalidateQueries({
+          queryKey: [...crmSettingsKeys.all, "sources"],
+        }),
+        qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+      ]),
   });
 }
 
@@ -87,9 +94,12 @@ export function useDeleteCrmSource() {
       }
     },
     onSuccess: () =>
-      qc.invalidateQueries({
-        queryKey: [...crmSettingsKeys.all, "sources"],
-      }),
+      Promise.all([
+        qc.invalidateQueries({
+          queryKey: [...crmSettingsKeys.all, "sources"],
+        }),
+        qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+      ]),
   });
 }
 

@@ -17,7 +17,6 @@ describe("CreateDealSchema", () => {
       name: "Deal 1",
       value: 1000,
       stage: "Qualification",
-      probability: 10,
       contactId: "550e8400-e29b-41d4-a716-446655440000",
     });
     expect(result.value).toBe(1000);

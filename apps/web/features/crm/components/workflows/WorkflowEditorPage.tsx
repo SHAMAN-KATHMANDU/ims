@@ -21,6 +21,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
@@ -28,6 +29,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { SortOrder } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -55,6 +57,7 @@ import type {
 } from "../../validation";
 import { useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@repo/shared";
+import { useMemo } from "react";
 
 const TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
   STAGE_ENTER: "Stage enter",
@@ -85,6 +88,10 @@ export default function WorkflowEditorPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_PAGE_SIZE);
   const [search, setSearch] = useState("");
   const [isActiveFilter, setIsActiveFilter] = useState<string>("all");
+  const [sortBy, setSortBy] = useState<
+    "name" | "pipeline" | "rules" | "active"
+  >("name");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("asc");
   const debouncedSearch = useDebounce(search, 300);
   const { data, isLoading, isError, error } = useWorkflows(
     {
@@ -106,9 +113,33 @@ export default function WorkflowEditorPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [editWorkflow, setEditWorkflow] = useState<Workflow | null>(null);
 
-  const workflows = data?.workflows ?? [];
+  const workflows = useMemo(() => data?.workflows ?? [], [data?.workflows]);
   const pagination = data?.pagination;
   const pipelines = pipelinesData?.pipelines ?? [];
+  const sortedWorkflows = useMemo(() => {
+    const direction = sortOrder === "desc" ? -1 : 1;
+    return [...workflows].sort((a, b) => {
+      const aValue =
+        sortBy === "pipeline"
+          ? (a.pipeline?.name ?? "").toLowerCase()
+          : sortBy === "rules"
+            ? a.rules.length
+            : sortBy === "active"
+              ? Number(a.isActive)
+              : a.name.toLowerCase();
+      const bValue =
+        sortBy === "pipeline"
+          ? (b.pipeline?.name ?? "").toLowerCase()
+          : sortBy === "rules"
+            ? b.rules.length
+            : sortBy === "active"
+              ? Number(b.isActive)
+              : b.name.toLowerCase();
+      if (aValue < bValue) return -1 * direction;
+      if (aValue > bValue) return 1 * direction;
+      return 0;
+    });
+  }, [sortBy, sortOrder, workflows]);
 
   const resetForm = () => {
     setShowCreate(false);
@@ -245,15 +276,56 @@ export default function WorkflowEditorPage() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>Pipeline</TableHead>
-                      <TableHead>Rules</TableHead>
-                      <TableHead className="w-24">Active</TableHead>
+                      <SortableTableHead
+                        sortKey="name"
+                        currentSortBy={sortBy}
+                        currentSortOrder={sortOrder}
+                        onSort={(nextSortBy, nextSortOrder) => {
+                          setSortBy(nextSortBy as typeof sortBy);
+                          setSortOrder(nextSortOrder);
+                        }}
+                      >
+                        Name
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="pipeline"
+                        currentSortBy={sortBy}
+                        currentSortOrder={sortOrder}
+                        onSort={(nextSortBy, nextSortOrder) => {
+                          setSortBy(nextSortBy as typeof sortBy);
+                          setSortOrder(nextSortOrder);
+                        }}
+                      >
+                        Pipeline
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="rules"
+                        currentSortBy={sortBy}
+                        currentSortOrder={sortOrder}
+                        onSort={(nextSortBy, nextSortOrder) => {
+                          setSortBy(nextSortBy as typeof sortBy);
+                          setSortOrder(nextSortOrder);
+                        }}
+                      >
+                        Rules
+                      </SortableTableHead>
+                      <SortableTableHead
+                        sortKey="active"
+                        currentSortBy={sortBy}
+                        currentSortOrder={sortOrder}
+                        onSort={(nextSortBy, nextSortOrder) => {
+                          setSortBy(nextSortBy as typeof sortBy);
+                          setSortOrder(nextSortOrder);
+                        }}
+                        className="w-24"
+                      >
+                        Active
+                      </SortableTableHead>
                       <TableHead className="w-24 text-right">Actions</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {workflows.map((w) => (
+                    {sortedWorkflows.map((w) => (
                       <TableRow key={w.id}>
                         <TableCell className="font-medium">{w.name}</TableCell>
                         <TableCell>

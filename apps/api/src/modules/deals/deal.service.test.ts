@@ -158,7 +158,8 @@ describe("DealService", () => {
         expect.objectContaining({
           pipelineId: "p2",
           stage: "Qualification",
-          probability: 5,
+          status: "OPEN",
+          closedAt: null,
         }),
         "u1",
         null,

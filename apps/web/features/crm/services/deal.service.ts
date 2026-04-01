@@ -9,7 +9,6 @@ export interface Deal {
   name: string;
   value: number;
   stage: string;
-  probability: number;
   status: DealStatus;
   expectedCloseDate?: string | null;
   closedAt?: string | null;
@@ -99,7 +98,6 @@ export interface CreateDealData {
   name: string;
   value?: number;
   stage?: string;
-  probability?: number;
   expectedCloseDate?: string | null;
   contactId?: string | null;
   memberId?: string | null;
@@ -112,7 +110,6 @@ export interface UpdateDealData {
   name?: string;
   value?: number;
   stage?: string;
-  probability?: number;
   status?: DealStatus;
   expectedCloseDate?: string | null;
   lostReason?: string | null;

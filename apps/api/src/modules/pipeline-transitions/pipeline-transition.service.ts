@@ -95,7 +95,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: remarketingPipeline.id,
       stage: firstStage.name,
-      probability: firstStage.probability ?? 20,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Remarketing — Post-Purchase`,
@@ -154,7 +153,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: remarketingPipeline.id,
       stage: dormantStage.name,
-      probability: dormantStage.probability ?? 5,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Remarketing — Re-engage`,
@@ -256,7 +254,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: repurchasePipeline.id,
       stage: returnedStage.name,
-      probability: returnedStage.probability ?? 30,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Repurchase — Returning Customer`,
@@ -316,7 +313,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: remarketingPipeline.id,
       stage: firstStage.name,
-      probability: firstStage.probability ?? 20,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Remarketing — Post-Purchase`,
@@ -375,7 +371,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: remarketingPipeline.id,
       stage: dormantStage.name,
-      probability: dormantStage.probability ?? 5,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Remarketing — Re-engage (from Repurchase)`,
@@ -416,12 +411,10 @@ export class PipelineTransitionService {
   private getStageByName(
     stages: unknown,
     name: string,
-  ): { name: string; probability?: number } | null {
+  ): { name: string } | null {
     if (!stages || !Array.isArray(stages)) return null;
     return (
-      (stages as Array<{ name: string; probability?: number }>).find(
-        (s) => s.name === name,
-      ) ?? null
+      (stages as Array<{ name: string }>).find((s) => s.name === name) ?? null
     );
   }
 
@@ -449,7 +442,6 @@ export class PipelineTransitionService {
     memberId: string | null;
     pipelineId: string;
     stage: string;
-    probability: number;
     assignedToId: string;
     createdById: string;
     name: string;
@@ -462,7 +454,6 @@ export class PipelineTransitionService {
         name: data.name,
         value: 0,
         stage: data.stage,
-        probability: data.probability,
         contactId: data.contactId,
         memberId: data.memberId,
         pipelineId: data.pipelineId,

@@ -11,7 +11,10 @@ export const TaskDealLinkSchema = z.discriminatedUnion("mode", [
   z.object({ mode: z.literal("CURRENT_DEAL") }),
   z.object({
     mode: z.literal("OPEN_DEAL_IN_PIPELINE"),
-    targetPipelineId: z.string().uuid(),
+    targetPipelineId: z.string().uuid().optional(),
+    targetPipelineType: z
+      .enum(["NEW_SALES", "REMARKETING", "REPURCHASE"])
+      .optional(),
     stageName: z.string().max(100).optional(),
   }),
 ]);
@@ -43,10 +46,7 @@ export const MoveStageConfigSchema = z.object({
 });
 export type MoveStageConfig = z.infer<typeof MoveStageConfigSchema>;
 
-export const UPDATE_FIELD_ALLOWED = [
-  "probability",
-  "expectedCloseDate",
-] as const;
+export const UPDATE_FIELD_ALLOWED = ["expectedCloseDate"] as const;
 export const UpdateFieldConfigSchema = z.object({
   field: z.enum(UPDATE_FIELD_ALLOWED),
   value: z.union([z.number(), z.string(), z.null()]),
@@ -60,11 +60,17 @@ export const CreateActivityConfigSchema = z.object({
 });
 export type CreateActivityConfig = z.infer<typeof CreateActivityConfigSchema>;
 
-export const CreateDealConfigSchema = z.object({
-  pipelineId: z.string().uuid("pipelineId is required"),
-  stageId: z.string().max(100).optional(),
-  title: z.string().max(500).optional(),
-});
+export const CreateDealConfigSchema = z
+  .object({
+    pipelineId: z.string().uuid().optional(),
+    pipelineType: z.enum(["NEW_SALES", "REMARKETING", "REPURCHASE"]).optional(),
+    stageId: z.string().max(100).optional(),
+    stageName: z.string().max(100).optional(),
+    title: z.string().max(500).optional(),
+  })
+  .refine((value) => value.pipelineId || value.pipelineType, {
+    message: "pipelineId or pipelineType is required",
+  });
 export type CreateDealConfig = z.infer<typeof CreateDealConfigSchema>;
 
 /** Only safe CRM fields — do not allow arbitrary Prisma keys. */

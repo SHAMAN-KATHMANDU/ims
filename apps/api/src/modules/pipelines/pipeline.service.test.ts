@@ -50,8 +50,8 @@ describe("PipelineService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetDefaultStages.mockReturnValue([
-      { id: "s1", name: "Lead", order: 0, probability: 10 },
-      { id: "s2", name: "Won", order: 1, probability: 100 },
+      { id: "s1", name: "Lead", order: 0 },
+      { id: "s2", name: "Won", order: 1 },
     ]);
   });
 
@@ -63,8 +63,8 @@ describe("PipelineService", () => {
       const result = await pipelineService.create(tenantId, {
         name: "Sales",
         stages: [
-          { id: "s1", name: "Lead", order: 0, probability: 10 },
-          { id: "s2", name: "Won", order: 1, probability: 100 },
+          { id: "s1", name: "Lead", order: 0 },
+          { id: "s2", name: "Won", order: 1 },
         ],
       });
 
@@ -92,8 +92,8 @@ describe("PipelineService", () => {
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           stages: [
-            { id: "s1", name: "Lead", order: 0, probability: 10 },
-            { id: "s2", name: "Won", order: 1, probability: 100 },
+            { id: "s1", name: "Lead", order: 0 },
+            { id: "s2", name: "Won", order: 1 },
           ],
         }),
       );

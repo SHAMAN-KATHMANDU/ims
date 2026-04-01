@@ -35,6 +35,9 @@ import {
 import contactRepository from "@/modules/contacts/contact.repository";
 import memberRepository from "@/modules/members/member.repository";
 import tenantSettingsService from "@/modules/tenant-settings/tenant-settings.service";
+import pipelineRepository from "@/modules/pipelines/pipeline.repository";
+import dealRepository from "@/modules/deals/deal.repository";
+import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
 
 // ── Shared types ──────────────────────────────────────────────────────────
 
@@ -508,6 +511,80 @@ function normalizePayments(
   }));
 }
 
+async function runPurchaseFollowUpWorkflow(input: {
+  tenantId: string;
+  userId: string;
+  contactId: string;
+  memberId?: string | null;
+}): Promise<void> {
+  const remarketingPipeline = await pipelineRepository.findByType(
+    input.tenantId,
+    "REMARKETING",
+  );
+  if (!remarketingPipeline) return;
+
+  const stage =
+    Array.isArray(remarketingPipeline.stages) &&
+    remarketingPipeline.stages.length > 0
+      ? (remarketingPipeline.stages[0] as {
+          name: string;
+          probability?: number;
+        })
+      : null;
+  if (!stage?.name) return;
+
+  let workflowDealId =
+    (
+      await dealRepository.findLatestOpenDealForContactInPipeline(
+        input.tenantId,
+        input.contactId,
+        remarketingPipeline.id,
+      )
+    )?.id ?? null;
+
+  if (!workflowDealId) {
+    const createdDeal = await dealRepository.create(
+      input.tenantId,
+      {
+        name: "Remarketing follow-up",
+        value: 0,
+        stage: stage.name,
+        contactId: input.contactId,
+        memberId: input.memberId ?? undefined,
+        pipelineId: remarketingPipeline.id,
+        assignedToId: input.userId,
+      },
+      input.userId,
+      stage.name,
+      remarketingPipeline.id,
+    );
+    workflowDealId = createdDeal.id;
+  }
+
+  const workflowDeal = await dealRepository.findById(
+    input.tenantId,
+    workflowDealId,
+  );
+  if (!workflowDeal) return;
+
+  await executeWorkflowRules({
+    trigger: "PURCHASE_COUNT_CHANGED",
+    deal: {
+      id: workflowDeal.id,
+      tenantId: workflowDeal.tenantId,
+      pipelineId: workflowDeal.pipelineId,
+      stage: workflowDeal.stage,
+      status: workflowDeal.status,
+      contactId: workflowDeal.contactId,
+      memberId: workflowDeal.memberId,
+      companyId: workflowDeal.companyId,
+      assignedToId: workflowDeal.assignedToId ?? input.userId,
+      createdById: workflowDeal.createdById,
+    },
+    userId: input.userId,
+  });
+}
+
 export async function createSale(
   ctx: CreateSaleContext,
   dto: {
@@ -723,6 +800,12 @@ export async function createSale(
       const { applyLoyaltyTier } =
         await import("@/modules/contacts/loyalty.service");
       await applyLoyaltyTier(resolvedContactId);
+      await runPurchaseFollowUpWorkflow({
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        contactId: resolvedContactId,
+        memberId: member?.id ?? null,
+      });
     } catch {
       // Log but don't fail sale creation
     }

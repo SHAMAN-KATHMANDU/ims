@@ -39,7 +39,7 @@ describe("PipelineRepository", () => {
       await pipelineRepository.create({
         tenantId: "t1",
         name: "Sales",
-        stages: [{ id: "s1", name: "Lead", order: 0, probability: 10 }],
+        stages: [{ id: "s1", name: "Lead", order: 0 }],
         isDefault: false,
       });
 
@@ -83,7 +83,7 @@ describe("PipelineRepository", () => {
       mockFindMany.mockResolvedValue([]);
       mockCreate.mockResolvedValue({
         id: "p1",
-        name: "New Sales",
+        name: "Sales",
         type: "NEW_SALES",
       });
 
@@ -95,8 +95,9 @@ describe("PipelineRepository", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             tenantId: "tenant-1",
-            name: "New Sales",
+            name: "Sales",
             isDefault: true,
+            type: "NEW_SALES",
           }),
         }),
       );
@@ -107,6 +108,7 @@ describe("PipelineRepository", () => {
             tenantId: "tenant-1",
             name: "Remarketing",
             isDefault: false,
+            type: "REMARKETING",
           }),
         }),
       );
@@ -115,8 +117,9 @@ describe("PipelineRepository", () => {
         expect.objectContaining({
           data: expect.objectContaining({
             tenantId: "tenant-1",
-            name: "Repurchase",
+            name: "Repurchasing",
             isDefault: false,
+            type: "REPURCHASE",
           }),
         }),
       );

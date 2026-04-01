@@ -14,14 +14,12 @@ export class PipelineService {
       id: string;
       name: string;
       order: number;
-      probability: number;
     }> =
       Array.isArray(data.stages) && data.stages.length > 0
         ? (data.stages as Array<{
             id: string;
             name: string;
             order: number;
-            probability: number;
           }>)
         : pipelineRepository.getDefaultStages();
 
@@ -51,6 +49,21 @@ export class PipelineService {
 
   async seedFramework(tenantId: string) {
     const pipelines = await pipelineRepository.seedFrameworkPipelines(tenantId);
+    const workflowService = (
+      await import("@/modules/workflows/workflow.service")
+    ).default;
+    const workflows = await workflowService.reseedFrameworkDefaults(
+      tenantId,
+      pipelines.filter(
+        (
+          pipeline,
+        ): pipeline is {
+          id: string;
+          name: string;
+          type: "NEW_SALES" | "REMARKETING" | "REPURCHASE";
+        } => pipeline.type !== "GENERAL",
+      ),
+    );
 
     const journeyTypes = pipelines.map((pipeline) => pipeline.name);
     const crmSettingsService = (
@@ -82,7 +95,7 @@ export class PipelineService {
       }
     }
 
-    return { pipelines, journeyTypes, tags: tagNames };
+    return { pipelines, workflows, journeyTypes, tags: tagNames };
   }
 
   async getAll(tenantId: string, query?: ListPipelinesQueryDto) {
@@ -129,7 +142,6 @@ export class PipelineService {
         id: string;
         name: string;
         order: number;
-        probability: number;
       }>;
     }
     if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;

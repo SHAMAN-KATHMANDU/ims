@@ -12,6 +12,9 @@ import {
   type UpdateWorkflowInput,
 } from "../services/workflow.service";
 import { useToast } from "@/hooks/useToast";
+import { crmKeys } from "./use-crm";
+import { dealKeys } from "./use-deals";
+import { taskKeys } from "./use-tasks";
 
 import type { GetWorkflowsParams } from "../services/workflow.service";
 
@@ -42,6 +45,9 @@ export function useCreateWorkflow() {
     mutationFn: (data: CreateWorkflowInput) => createWorkflow(data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: workflowKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
       toast({ title: "Workflow created successfully" });
     },
     onError: (error: Error) => {
@@ -63,6 +69,9 @@ export function useUpdateWorkflow() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: workflowKeys.lists() });
       qc.invalidateQueries({ queryKey: workflowKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
       toast({ title: "Workflow updated successfully" });
     },
     onError: (error: Error) => {
@@ -82,6 +91,9 @@ export function useDeleteWorkflow() {
     mutationFn: (id: string) => deleteWorkflow(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: workflowKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: dealKeys.lists() });
+      qc.invalidateQueries({ queryKey: taskKeys.lists() });
       toast({ title: "Workflow deleted successfully" });
     },
     onError: (error: Error) => {

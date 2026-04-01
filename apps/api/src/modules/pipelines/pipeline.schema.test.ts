@@ -9,7 +9,7 @@ describe("CreatePipelineSchema", () => {
   });
 
   it("accepts name with stages and isDefault", () => {
-    const stages = [{ id: "1", name: "Stage 1", order: 1, probability: 10 }];
+    const stages = [{ id: "1", name: "Stage 1", order: 1 }];
     const result = CreatePipelineSchema.parse({
       name: "Sales",
       stages,
@@ -48,11 +48,9 @@ describe("UpdatePipelineSchema", () => {
     expect(result).toEqual({});
   });
 
-  it("accepts stages without probability (defaults to 0)", () => {
+  it("accepts stages without probability", () => {
     const stages = [{ id: "1", name: "Stage 1", order: 1 }];
     const result = UpdatePipelineSchema.parse({ stages });
-    expect(result.stages).toEqual([
-      { id: "1", name: "Stage 1", order: 1, probability: 0 },
-    ]);
+    expect(result.stages).toEqual([{ id: "1", name: "Stage 1", order: 1 }]);
   });
 });

@@ -83,7 +83,7 @@ const DEFAULT_ACTION_CONFIG: Partial<
   CREATE_TASK: { taskTitle: "Follow up", dueDateDays: 1 },
   SEND_NOTIFICATION: { title: "", message: "" },
   MOVE_STAGE: { targetStageId: "", targetPipelineId: undefined },
-  UPDATE_FIELD: { field: "probability", value: 0 },
+  UPDATE_FIELD: { field: "expectedCloseDate", value: "" },
   CREATE_ACTIVITY: { type: "CALL", subject: "", notes: null },
   CREATE_DEAL: { pipelineId: "", stageId: "", title: "" },
   UPDATE_CONTACT_FIELD: { field: "source", value: "" },
@@ -214,6 +214,18 @@ export function WorkflowForm(props: WorkflowFormProps) {
                   key={field.id}
                   className="space-y-2 p-2 border rounded bg-muted/30"
                 >
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Trigger
+                      </Label>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Action
+                      </Label>
+                    </div>
+                  </div>
                   <div className="flex flex-wrap gap-2 items-center">
                     <Select
                       value={form.watch(`rules.${i}.trigger`)}
@@ -303,6 +315,9 @@ export function WorkflowForm(props: WorkflowFormProps) {
                   {/* Per-action config fields */}
                   {action === "CREATE_TASK" && (
                     <div className="flex flex-col gap-2 pl-2 text-sm">
+                      <p className="text-xs text-muted-foreground">
+                        Task identifiers and linkage
+                      </p>
                       <div className="flex flex-wrap gap-2 items-center">
                         <Label className="sr-only">Task title</Label>
                         <Input
@@ -489,6 +504,9 @@ export function WorkflowForm(props: WorkflowFormProps) {
                   )}
                   {action === "MOVE_STAGE" && (
                     <div className="flex flex-col gap-2 pl-2 text-sm">
+                      <p className="text-xs text-muted-foreground">
+                        Target pipeline and stage identifiers
+                      </p>
                       <div className="flex flex-wrap gap-2 items-center">
                         <Label className="text-muted-foreground whitespace-nowrap">
                           Target pipeline
@@ -574,9 +592,6 @@ export function WorkflowForm(props: WorkflowFormProps) {
                           <SelectValue placeholder="Field" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="probability">
-                            Probability
-                          </SelectItem>
                           <SelectItem value="expectedCloseDate">
                             Expected close date
                           </SelectItem>
@@ -627,6 +642,9 @@ export function WorkflowForm(props: WorkflowFormProps) {
                   )}
                   {action === "CREATE_DEAL" && (
                     <div className="flex flex-col gap-2 pl-2 text-sm">
+                      <p className="text-xs text-muted-foreground">
+                        New deal pipeline, stage, and title
+                      </p>
                       <div className="flex flex-wrap gap-2 items-center">
                         <Select
                           value={(actionConfig.pipelineId as string) ?? ""}
@@ -685,6 +703,9 @@ export function WorkflowForm(props: WorkflowFormProps) {
                   )}
                   {action === "UPDATE_CONTACT_FIELD" && (
                     <div className="flex flex-wrap gap-2 items-center pl-2 text-sm">
+                      <Label className="text-muted-foreground whitespace-nowrap">
+                        Contact field
+                      </Label>
                       <Select
                         value={(actionConfig.field as string) ?? "source"}
                         onValueChange={(v) => updateConfig("field", v)}

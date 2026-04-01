@@ -57,6 +57,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { CreateContactData } from "../../services/contact.service";
+import type { SortOrder } from "@/components/ui/table";
 
 type DrawerMode = "view" | "new" | "edit" | null;
 
@@ -76,8 +77,8 @@ export function ContactsPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
-  const [sortBy] = useState("createdAt");
-  const [sortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [companyId, setCompanyId] = useState<string>("");
   const [tagId, setTagId] = useState<string>("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -94,7 +95,7 @@ export function ContactsPage() {
     limit: pageSize,
     search: debouncedSearch,
     sortBy,
-    sortOrder,
+    sortOrder: sortOrder === "none" ? "desc" : sortOrder,
     companyId: companyId || undefined,
     tagId: tagId || undefined,
     source: sourceFilter === "all" ? undefined : sourceFilter,
@@ -364,6 +365,13 @@ export function ContactsPage() {
         isLoading={isLoading}
         basePath={basePath}
         dealsEnabled={dealsEnabled}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={(nextSortBy, nextSortOrder) => {
+          setSortBy(nextSortBy);
+          setSortOrder(nextSortOrder === "none" ? "desc" : nextSortOrder);
+          setPage(DEFAULT_PAGE);
+        }}
         onView={openView}
         onEdit={openEdit}
         onDelete={(id) => openDeleteDialog(id)}

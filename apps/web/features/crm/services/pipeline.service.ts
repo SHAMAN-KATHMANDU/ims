@@ -5,7 +5,6 @@ export interface PipelineStage {
   id: string;
   name: string;
   order?: number;
-  probability?: number;
 }
 
 export type PipelineType =
@@ -58,7 +57,6 @@ export interface CrmPipelineTemplateDTO {
   description: string;
   type: PipelineType;
   stageNames: string[];
-  probabilities: number[];
   suggestAsDefault: boolean;
   closedWonStageName?: string;
   closedLostStageName?: string;

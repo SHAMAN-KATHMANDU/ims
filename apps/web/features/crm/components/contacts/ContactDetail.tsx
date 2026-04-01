@@ -318,7 +318,8 @@ export function ContactDetail({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
-  const openDeal = contact.deals?.find((d) => d.status === "OPEN");
+  const latestActiveDeal =
+    contact.deals?.find((d) => d.status === "OPEN") ?? contact.deals?.[0];
   const fullName = [contact.firstName, contact.lastName]
     .filter(Boolean)
     .join(" ");
@@ -381,10 +382,12 @@ export function ContactDetail({
               Born {new Date(contact.birthDate).toLocaleDateString()}
             </span>
           )}
-          {dealsEnabled && openDeal && (
+          {dealsEnabled && latestActiveDeal && (
             <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300">
               <Handshake className="h-3 w-3" />
-              {openDeal.stage}
+              {latestActiveDeal.pipeline?.name
+                ? `${latestActiveDeal.pipeline.name} · ${latestActiveDeal.stage}`
+                : latestActiveDeal.stage}
             </span>
           )}
           {contact.purchaseCount > 0 && (
@@ -497,8 +500,8 @@ export function ContactDetail({
                       Deals
                     </div>
                     <p className="text-sm font-medium">
-                      {contact.deals.filter((d) => d.status === "OPEN").length}{" "}
-                      open / {contact.deals.length} total
+                      {contact.deals.length} latest deal
+                      {contact.deals.length !== 1 ? "s" : ""}
                     </p>
                   </div>
                 )}
@@ -1073,7 +1076,9 @@ export function ContactDetail({
                                 {d.status}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
-                                {d.stage}
+                                {d.pipeline?.name
+                                  ? `${d.pipeline.name} · ${d.stage}`
+                                  : d.stage}
                               </span>
                             </div>
                           </div>

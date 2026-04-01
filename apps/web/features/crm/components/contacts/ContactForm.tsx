@@ -30,6 +30,7 @@ import { useCrmSources } from "../../hooks/use-crm-settings";
 import { useToast } from "@/hooks/useToast";
 import { useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@repo/shared";
+import { getApiErrorMessage } from "@/lib/api-error";
 import type { CreateContactData } from "../../services/contact.service";
 import { ContactProfileFieldsSchema } from "@repo/shared";
 
@@ -165,19 +166,27 @@ export function ContactForm({
   return (
     <form
       onSubmit={form.handleSubmit(async (values) => {
-        await onSubmit({
-          firstName: values.firstName,
-          lastName: values.lastName || undefined,
-          email: values.email || undefined,
-          phone: values.phone?.trim() || undefined,
-          gender: values.gender?.trim() || null,
-          birthDate: values.birthDate?.trim()
-            ? new Date(values.birthDate.trim()).toISOString()
-            : null,
-          companyId: values.companyId || undefined,
-          tagIds: values.tagIds,
-          source: pipelinesEnabled ? values.source || undefined : undefined,
-        });
+        form.clearErrors("root");
+
+        try {
+          await onSubmit({
+            firstName: values.firstName,
+            lastName: values.lastName || undefined,
+            email: values.email || undefined,
+            phone: values.phone?.trim() || undefined,
+            gender: values.gender?.trim() || null,
+            birthDate: values.birthDate?.trim()
+              ? new Date(values.birthDate.trim()).toISOString()
+              : null,
+            companyId: values.companyId || undefined,
+            tagIds: values.tagIds,
+            source: pipelinesEnabled ? values.source || undefined : undefined,
+          });
+        } catch (error) {
+          form.setError("root", {
+            message: getApiErrorMessage(error, "save contact"),
+          });
+        }
       })}
       className="space-y-4 px-6 py-6 sm:px-6 pb-safe"
     >
@@ -330,6 +339,11 @@ export function ContactForm({
           </button>
         </div>
       </div>
+      {form.formState.errors.root?.message && (
+        <p className="text-sm text-destructive" role="alert">
+          {form.formState.errors.root.message}
+        </p>
+      )}
 
       <Dialog open={addTagOpen} onOpenChange={handleAddTagDialogChange}>
         <DialogContent className="sm:max-w-md">

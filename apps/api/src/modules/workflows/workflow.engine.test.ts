@@ -340,14 +340,14 @@ describe("WorkflowEngine", () => {
       );
     });
 
-    it("executes UPDATE_FIELD for probability", async () => {
+    it("executes UPDATE_FIELD for expectedCloseDate", async () => {
       mockFindActiveRulesByPipeline.mockResolvedValue([
         {
           id: "r1",
           trigger: "DEAL_CREATED",
           triggerStageId: null,
           action: "UPDATE_FIELD",
-          actionConfig: { field: "probability", value: 75 },
+          actionConfig: { field: "expectedCloseDate", value: "2026-04-10" },
         },
       ]);
       mockDealUpdate.mockResolvedValue({});
@@ -359,7 +359,7 @@ describe("WorkflowEngine", () => {
 
       expect(mockDealUpdate).toHaveBeenCalledWith(
         "deal-1",
-        { probability: 75 },
+        { expectedCloseDate: "2026-04-10T00:00:00.000Z" },
         "",
       );
     });
