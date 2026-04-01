@@ -15,6 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { usePipelines } from "../../hooks/use-pipelines";
 import { useContactsPaginated } from "../../hooks/use-contacts";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
@@ -39,11 +40,6 @@ const createSchema = z.object({
   name: z.string().min(1, "Name is required"),
   value: z.coerce.number().min(0),
   stage: z.string().optional(),
-  probability: z.coerce
-    .number()
-    .min(0, "Probability must be at least 0")
-    .max(100, "Probability must be between 0 and 100")
-    .optional(),
   pipelineId: z.string().optional(),
   expectedCloseDate: z.string().optional(),
   contactId: z.string().optional(),
@@ -54,10 +50,6 @@ const createSchema = z.object({
 const editSchema = createSchema.extend({
   pipelineId: z.string().uuid("Select a pipeline"),
   stage: z.string(),
-  probability: z.coerce
-    .number()
-    .min(0, "Probability must be at least 0")
-    .max(100, "Probability must be between 0 and 100"),
   status: z.enum(["OPEN", "WON", "LOST"]),
   editReason: z.string().max(500).optional().nullable(),
 });
@@ -81,7 +73,6 @@ interface DealFormEditProps {
     value: number;
     pipelineId: string;
     stage: string;
-    probability: number;
     expectedCloseDate?: string;
     status: "OPEN" | "WON" | "LOST";
     contactId?: string;
@@ -133,7 +124,6 @@ export function DealForm(props: DealFormProps) {
           value: props.defaultValues.value,
           pipelineId: props.defaultValues.pipelineId,
           stage: props.defaultValues.stage,
-          probability: props.defaultValues.probability,
           expectedCloseDate: props.defaultValues.expectedCloseDate ?? "",
           status: props.defaultValues.status,
           contactId: props.defaultValues.contactId ?? "",
@@ -144,7 +134,6 @@ export function DealForm(props: DealFormProps) {
       : {
           name: "",
           value: 0,
-          probability: 0,
           pipelineId:
             (props.mode === "create" && "initialPipelineId" in props
               ? props.initialPipelineId
@@ -182,13 +171,12 @@ export function DealForm(props: DealFormProps) {
   }, [isEdit, pipelines, defaultPipeline?.id, initialPipelineId]);
 
   useEffect(() => {
-    if (props.mode !== "edit" || !watchedPipelineId || stageNames.length === 0)
-      return;
+    if (!watchedPipelineId || stageNames.length === 0) return;
     const cur = form.getValues("stage");
-    if (!stageNames.includes(cur)) {
+    if (!cur || !stageNames.includes(cur)) {
       form.setValue("stage", stageNames[0]!);
     }
-  }, [props.mode, watchedPipelineId, stageNames, form]);
+  }, [watchedPipelineId, stageNames, form]);
 
   // ── Discount authority check ──────────────────────────────────────────────
   const pipelineType =
@@ -230,7 +218,6 @@ export function DealForm(props: DealFormProps) {
         name: values.name,
         value: values.value,
         stage: values.stage,
-        probability: values.probability ?? 0,
         expectedCloseDate: values.expectedCloseDate || undefined,
         contactId: values.contactId || undefined,
         companyId: values.companyId || undefined,
@@ -244,7 +231,6 @@ export function DealForm(props: DealFormProps) {
         value: values.value,
         pipelineId: values.pipelineId,
         stage: values.stage,
-        probability: values.probability,
         expectedCloseDate: values.expectedCloseDate || null,
         status: values.status,
         contactId: values.contactId || null,
@@ -279,21 +265,6 @@ export function DealForm(props: DealFormProps) {
           {form.formState.errors.value && (
             <p className="text-sm text-destructive mt-1">
               {form.formState.errors.value.message}
-            </p>
-          )}
-        </div>
-        <div>
-          <Label>Probability (%)</Label>
-          <Input
-            type="number"
-            {...form.register("probability")}
-            className="mt-1"
-            min={0}
-            max={100}
-          />
-          {form.formState.errors.probability && (
-            <p className="text-sm text-destructive mt-1">
-              {form.formState.errors.probability.message}
             </p>
           )}
         </div>
@@ -396,30 +367,56 @@ export function DealForm(props: DealFormProps) {
       )}
 
       {!isEdit && pipelines.length > 0 && (
-        <div>
-          <Label>Pipeline</Label>
-          <Controller
-            name="pipelineId"
-            control={form.control}
-            render={({ field }) => (
-              <Select
-                value={field.value ?? ""}
-                onValueChange={(v) => field.onChange(v || undefined)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select pipeline" />
-                </SelectTrigger>
-                <SelectContent>
-                  {pipelines.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}
-                      {p.isDefault ? " (default)" : ""}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-          />
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <Label>Pipeline</Label>
+            <Controller
+              name="pipelineId"
+              control={form.control}
+              render={({ field }) => (
+                <Select
+                  value={field.value ?? ""}
+                  onValueChange={(v) => field.onChange(v || undefined)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select pipeline" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {pipelines.map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.name}
+                        {p.isDefault ? " (default)" : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
+          <div>
+            <Label>Stage</Label>
+            <Controller
+              name="stage"
+              control={form.control}
+              render={({ field }) => (
+                <Select
+                  value={field.value ?? ""}
+                  onValueChange={(v) => field.onChange(v || undefined)}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {stageNames.map((stageName) => (
+                      <SelectItem key={stageName} value={stageName}>
+                        {stageName}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            />
+          </div>
         </div>
       )}
 
@@ -497,68 +494,55 @@ export function DealForm(props: DealFormProps) {
 
       <div>
         <Label>Contact</Label>
-        <Select
-          value={form.watch("contactId") || "__none__"}
-          onValueChange={(v) =>
-            form.setValue("contactId", v === "__none__" ? undefined : v)
-          }
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select contact" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">None</SelectItem>
-            {contacts.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.firstName} {c.lastName || ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="mt-1">
+          <SearchableSelect
+            options={contacts.map((c) => ({
+              value: c.id,
+              label: `${c.firstName} ${c.lastName || ""}`.trim(),
+            }))}
+            value={form.watch("contactId") || ""}
+            onChange={(value) => form.setValue("contactId", value || undefined)}
+            includeAll
+            allLabel="None"
+            placeholder="Search contacts..."
+          />
+        </div>
       </div>
 
       <div>
         <Label>Company</Label>
-        <Select
-          value={form.watch("companyId") || "__none__"}
-          onValueChange={(v) =>
-            form.setValue("companyId", v === "__none__" ? undefined : v)
-          }
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select company" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">None</SelectItem>
-            {companies.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="mt-1">
+          <SearchableSelect
+            options={companies.map((c) => ({
+              value: c.id,
+              label: c.name,
+            }))}
+            value={form.watch("companyId") || ""}
+            onChange={(value) => form.setValue("companyId", value || undefined)}
+            includeAll
+            allLabel="None"
+            placeholder="Search companies..."
+          />
+        </div>
       </div>
 
       <div>
         <Label>Assign To</Label>
-        <Select
-          value={form.watch("assignedToId") || "__none__"}
-          onValueChange={(v) =>
-            form.setValue("assignedToId", v === "__none__" ? undefined : v)
-          }
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select user" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">Unassigned</SelectItem>
-            {users.map((u) => (
-              <SelectItem key={u.id} value={u.id}>
-                {u.username}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="mt-1">
+          <SearchableSelect
+            options={users.map((u) => ({
+              value: u.id,
+              label: u.username,
+            }))}
+            value={form.watch("assignedToId") || ""}
+            onChange={(value) =>
+              form.setValue("assignedToId", value || undefined)
+            }
+            includeAll
+            allLabel="Unassigned"
+            placeholder="Search users..."
+          />
+        </div>
       </div>
 
       {isEdit &&

@@ -2,6 +2,7 @@
 
 import type { Contact } from "../../services/contact.service";
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
@@ -13,12 +14,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Mail, Phone } from "lucide-react";
+import type { SortOrder } from "@/components/ui/table";
 
 interface ContactTableProps {
   contacts: Contact[];
   isLoading: boolean;
   basePath: string;
   dealsEnabled: boolean;
+  sortBy: string;
+  sortOrder: SortOrder;
+  onSort: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
@@ -29,6 +34,9 @@ export function ContactTable({
   isLoading,
   basePath: _basePath,
   dealsEnabled,
+  sortBy,
+  sortOrder,
+  onSort,
   onView,
   onEdit,
   onDelete,
@@ -100,7 +108,7 @@ export function ContactTable({
       {/* ── Mobile card list ─────────────────────────────────────────── */}
       <div className="sm:hidden space-y-2">
         {contacts.map((c) => {
-          const openDealStage = c.deals?.[0]?.stage;
+          const latestDeal = c.deals?.[0];
           const fullName = [c.firstName, c.lastName].filter(Boolean).join(" ");
           return (
             <div key={c.id} className="rounded-lg border bg-card p-3 space-y-2">
@@ -111,9 +119,11 @@ export function ContactTable({
                 >
                   {fullName}
                 </button>
-                {dealsEnabled && openDealStage && (
+                {dealsEnabled && latestDeal && (
                   <Badge variant="outline" className="text-xs shrink-0">
-                    {openDealStage}
+                    {latestDeal.pipeline?.name
+                      ? `${latestDeal.pipeline.name} · ${latestDeal.stage}`
+                      : latestDeal.stage}
                   </Badge>
                 )}
               </div>
@@ -189,10 +199,38 @@ export function ContactTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Company</TableHead>
+              <SortableTableHead
+                sortKey="firstName"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Name
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="email"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Email
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="phone"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Phone
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="companyId"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Company
+              </SortableTableHead>
               <TableHead>Tags</TableHead>
               {dealsEnabled && <TableHead>Deal Stage</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
@@ -200,7 +238,7 @@ export function ContactTable({
           </TableHeader>
           <TableBody>
             {contacts.map((c) => {
-              const openDealStage = c.deals?.[0]?.stage;
+              const latestDeal = c.deals?.[0];
               return (
                 <TableRow key={c.id}>
                   <TableCell>
@@ -220,9 +258,11 @@ export function ContactTable({
                   </TableCell>
                   {dealsEnabled && (
                     <TableCell>
-                      {openDealStage ? (
+                      {latestDeal ? (
                         <Badge variant="outline" className="text-xs">
-                          {openDealStage}
+                          {latestDeal.pipeline?.name
+                            ? `${latestDeal.pipeline.name} · ${latestDeal.stage}`
+                            : latestDeal.stage}
                         </Badge>
                       ) : (
                         "—"

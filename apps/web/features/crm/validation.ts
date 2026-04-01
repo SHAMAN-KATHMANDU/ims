@@ -36,7 +36,6 @@ export const DealSchema = z.object({
   companyId: z.string().uuid().optional().nullable(),
   pipelineId: z.string().uuid().optional(),
   expectedCloseDate: z.string().optional(),
-  probability: z.coerce.number().min(0).max(100).optional(),
 });
 
 export const TaskSchema = z.object({

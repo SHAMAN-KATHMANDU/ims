@@ -528,7 +528,6 @@ export function DealsKanbanPage() {
               value: Number(selectedDealData.deal.value),
               pipelineId: selectedDealData.deal.pipelineId,
               stage: selectedDealData.deal.stage,
-              probability: selectedDealData.deal.probability,
               expectedCloseDate: selectedDealData.deal.expectedCloseDate
                 ? new Date(selectedDealData.deal.expectedCloseDate)
                     .toISOString()
@@ -1104,7 +1103,6 @@ function normalizeStages(raw: PipelineStage[]): PipelineStage[] {
     id: s.id ?? String(i + 1),
     name: s.name ?? `Stage ${i + 1}`,
     order: s.order ?? i + 1,
-    probability: s.probability ?? 0,
   }));
 }
 
@@ -1148,7 +1146,6 @@ function EditPipelineStagesDialog({
         id: `new-${Date.now()}`,
         name: "New stage",
         order: prev.length + 1,
-        probability: 0,
       },
     ]);
   }, []);
@@ -1174,7 +1171,6 @@ function EditPipelineStagesDialog({
         id: s.id.startsWith("new-") ? String(i + 1) : s.id,
         name: s.name.trim() || `Stage ${i + 1}`,
         order: i + 1,
-        probability: s.probability ?? 0,
       }));
       updatePipeline.mutate(
         { id: pipeline.id, data: { stages: normalized } },
@@ -1228,26 +1224,6 @@ function EditPipelineStagesDialog({
                       placeholder="Stage name"
                       className="h-8"
                     />
-                    <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground shrink-0">
-                        Probability %
-                      </Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={stage.probability ?? 0}
-                        onChange={(e) =>
-                          updateStage(index, {
-                            probability: Math.min(
-                              100,
-                              Math.max(0, Number(e.target.value) || 0),
-                            ),
-                          })
-                        }
-                        className="h-7 w-16"
-                      />
-                    </div>
                   </div>
                   <div className="flex items-center gap-0.5 shrink-0">
                     <Button

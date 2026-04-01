@@ -27,6 +27,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
@@ -34,6 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { SortOrder } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +43,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Pencil,
@@ -197,7 +206,6 @@ function StageBuilder({
         id: crypto.randomUUID(),
         name: "",
         order: stages.length,
-        probability: 0,
       },
     ]);
   };
@@ -304,6 +312,10 @@ function PipelineSettings() {
     DEFAULT_PIPELINE_PAGE_SIZE,
   );
   const [pipelineSearch, setPipelineSearch] = useState("");
+  const [pipelineSortBy, setPipelineSortBy] = useState<"name" | "default">(
+    "name",
+  );
+  const [pipelineSortOrder, setPipelineSortOrder] = useState<SortOrder>("asc");
   const debouncedPipelineSearch = useDebounce(pipelineSearch, 300);
   const { data, isLoading } = usePipelines(
     {
@@ -327,21 +339,42 @@ function PipelineSettings() {
     name: string;
     stages: PipelineStage[];
     isDefault: boolean;
+    closedWonStageName?: string | null;
+    closedLostStageName?: string | null;
   } | null>(null);
   const [newName, setNewName] = useState("");
   const [createStages, setCreateStages] = useState<PipelineStage[]>([]);
   const [editStages, setEditStages] = useState<PipelineStage[]>([]);
+  const [createWonStageName, setCreateWonStageName] = useState<string>("");
+  const [createLostStageName, setCreateLostStageName] = useState<string>("");
+  const [editWonStageName, setEditWonStageName] = useState<string>("");
+  const [editLostStageName, setEditLostStageName] = useState<string>("");
 
-  const pipelines = data?.pipelines ?? [];
+  const pipelines = useMemo(() => data?.pipelines ?? [], [data?.pipelines]);
   const pipelinePagination = data?.pagination;
   const catalogTemplates = templatesPayload?.templates ?? [];
+  const sortedPipelines = useMemo(() => {
+    const direction = pipelineSortOrder === "desc" ? -1 : 1;
+    return [...pipelines].sort((a, b) => {
+      const aValue =
+        pipelineSortBy === "default"
+          ? Number(a.isDefault)
+          : a.name.toLowerCase();
+      const bValue =
+        pipelineSortBy === "default"
+          ? Number(b.isDefault)
+          : b.name.toLowerCase();
+      if (aValue < bValue) return -1 * direction;
+      if (aValue > bValue) return 1 * direction;
+      return 0;
+    });
+  }, [pipelineSortBy, pipelineSortOrder, pipelines]);
 
   const applyTemplate = (t: CrmPipelineTemplateDTO) => {
     const stages = t.stageNames.map((name, i) => ({
       id: crypto.randomUUID(),
       name,
       order: i,
-      probability: t.probabilities[i] ?? 0,
     }));
     createMutation.mutate(
       {
@@ -369,12 +402,19 @@ function PipelineSettings() {
       .filter((s) => s.name);
     if (stages.length === 0) return;
     createMutation.mutate(
-      { name: newName.trim(), stages },
+      {
+        name: newName.trim(),
+        stages,
+        closedWonStageName: createWonStageName || null,
+        closedLostStageName: createLostStageName || null,
+      },
       {
         onSuccess: () => {
           setShowCreate(false);
           setNewName("");
           setCreateStages([]);
+          setCreateWonStageName("");
+          setCreateLostStageName("");
         },
       },
     );
@@ -389,13 +429,20 @@ function PipelineSettings() {
     updateMutation.mutate(
       {
         id: editPipeline.id,
-        data: { name: newName.trim() || editPipeline.name, stages },
+        data: {
+          name: newName.trim() || editPipeline.name,
+          stages,
+          closedWonStageName: editWonStageName || null,
+          closedLostStageName: editLostStageName || null,
+        },
       },
       {
         onSuccess: () => {
           setEditPipeline(null);
           setNewName("");
           setEditStages([]);
+          setEditWonStageName("");
+          setEditLostStageName("");
         },
       },
     );
@@ -407,14 +454,17 @@ function PipelineSettings() {
       name: p.name,
       stages: p.stages,
       isDefault: p.isDefault,
+      closedWonStageName: p.closedWonStageName ?? null,
+      closedLostStageName: p.closedLostStageName ?? null,
     });
     setNewName(p.name);
+    setEditWonStageName(p.closedWonStageName ?? "");
+    setEditLostStageName(p.closedLostStageName ?? "");
     setEditStages(
       p.stages.map((s, i) => ({
         id: s.id,
         name: s.name,
         order: i,
-        probability: s.probability ?? 0,
       })),
     );
   };
@@ -447,8 +497,10 @@ function PipelineSettings() {
             onClick={() => {
               setShowCreate(true);
               setNewName("");
+              setCreateWonStageName("");
+              setCreateLostStageName("");
               setCreateStages([
-                { id: crypto.randomUUID(), name: "", order: 0, probability: 0 },
+                { id: crypto.randomUUID(), name: "", order: 0 },
               ]);
             }}
           >
@@ -530,14 +582,35 @@ function PipelineSettings() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
+                  <SortableTableHead
+                    sortKey="name"
+                    currentSortBy={pipelineSortBy}
+                    currentSortOrder={pipelineSortOrder}
+                    onSort={(nextSortBy, nextSortOrder) => {
+                      setPipelineSortBy(nextSortBy as "name" | "default");
+                      setPipelineSortOrder(nextSortOrder);
+                    }}
+                  >
+                    Name
+                  </SortableTableHead>
                   <TableHead>Stages</TableHead>
-                  <TableHead className="w-24">Default</TableHead>
+                  <SortableTableHead
+                    sortKey="default"
+                    currentSortBy={pipelineSortBy}
+                    currentSortOrder={pipelineSortOrder}
+                    onSort={(nextSortBy, nextSortOrder) => {
+                      setPipelineSortBy(nextSortBy as "name" | "default");
+                      setPipelineSortOrder(nextSortOrder);
+                    }}
+                    className="w-24"
+                  >
+                    Default
+                  </SortableTableHead>
                   <TableHead className="w-20 text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pipelines.map((p) => (
+                {sortedPipelines.map((p) => (
                   <TableRow key={p.id}>
                     <TableCell className="font-medium">
                       <span className="flex items-center gap-2">
@@ -644,6 +717,54 @@ function PipelineSettings() {
               <label className="text-sm font-medium">Stages</label>
               <StageBuilder stages={createStages} onChange={setCreateStages} />
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Won Stage</label>
+                <Select
+                  value={createWonStageName || "__none__"}
+                  onValueChange={(value) =>
+                    setCreateWonStageName(value === "__none__" ? "" : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select won stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {createStages
+                      .filter((stage) => stage.name.trim())
+                      .map((stage) => (
+                        <SelectItem key={stage.id} value={stage.name.trim()}>
+                          {stage.name.trim()}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Lost Stage</label>
+                <Select
+                  value={createLostStageName || "__none__"}
+                  onValueChange={(value) =>
+                    setCreateLostStageName(value === "__none__" ? "" : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select lost stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {createStages
+                      .filter((stage) => stage.name.trim())
+                      .map((stage) => (
+                        <SelectItem key={stage.id} value={stage.name.trim()}>
+                          {stage.name.trim()}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowCreate(false)}>
@@ -654,7 +775,9 @@ function PipelineSettings() {
               disabled={
                 !newName.trim() ||
                 createMutation.isPending ||
-                createStages.filter((s) => s.name.trim()).length === 0
+                createStages.filter((s) => s.name.trim()).length === 0 ||
+                (createWonStageName !== "" &&
+                  createWonStageName === createLostStageName)
               }
             >
               {createMutation.isPending ? "Creating..." : "Create Pipeline"}
@@ -687,6 +810,54 @@ function PipelineSettings() {
               <label className="text-sm font-medium">Stages</label>
               <StageBuilder stages={editStages} onChange={setEditStages} />
             </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Won Stage</label>
+                <Select
+                  value={editWonStageName || "__none__"}
+                  onValueChange={(value) =>
+                    setEditWonStageName(value === "__none__" ? "" : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select won stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {editStages
+                      .filter((stage) => stage.name.trim())
+                      .map((stage) => (
+                        <SelectItem key={stage.id} value={stage.name.trim()}>
+                          {stage.name.trim()}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-sm font-medium">Lost Stage</label>
+                <Select
+                  value={editLostStageName || "__none__"}
+                  onValueChange={(value) =>
+                    setEditLostStageName(value === "__none__" ? "" : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select lost stage" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {editStages
+                      .filter((stage) => stage.name.trim())
+                      .map((stage) => (
+                        <SelectItem key={stage.id} value={stage.name.trim()}>
+                          {stage.name.trim()}
+                        </SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditPipeline(null)}>
@@ -696,7 +867,9 @@ function PipelineSettings() {
               onClick={handleUpdate}
               disabled={
                 updateMutation.isPending ||
-                editStages.filter((s) => s.name.trim()).length === 0
+                editStages.filter((s) => s.name.trim()).length === 0 ||
+                (editWonStageName !== "" &&
+                  editWonStageName === editLostStageName)
               }
             >
               {updateMutation.isPending ? "Saving..." : "Save Changes"}
@@ -727,6 +900,8 @@ interface ListSettingsProps {
   searchValue?: string;
   onSearchChange?: (value: string) => void;
   searchPlaceholder?: string;
+  createMode?: "inline" | "dialog";
+  createDialogTitle?: string;
 }
 
 function ListSettings({
@@ -746,17 +921,21 @@ function ListSettings({
   searchValue,
   onSearchChange,
   searchPlaceholder,
+  createMode = "inline",
+  createDialogTitle,
 }: ListSettingsProps) {
   const [newName, setNewName] = useState("");
   const [editItem, setEditItem] = useState<{ id: string; name: string } | null>(
     null,
   );
   const [editName, setEditName] = useState("");
+  const [createOpen, setCreateOpen] = useState(false);
 
   const handleAdd = () => {
     if (!newName.trim()) return;
     onAdd(newName.trim());
     setNewName("");
+    setCreateOpen(false);
   };
 
   const handleUpdate = () => {
@@ -783,24 +962,38 @@ function ListSettings({
             />
           </div>
         )}
-        {/* Add row */}
-        <div className="flex gap-2">
-          <Input
-            placeholder={placeholder}
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-            className="flex-1"
-          />
-          <Button
-            onClick={handleAdd}
-            disabled={isCreating || !newName.trim()}
-            className="shrink-0"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            {isCreating ? "Adding..." : "Add"}
-          </Button>
-        </div>
+        {/* Add control */}
+        {createMode === "dialog" ? (
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              onClick={() => setCreateOpen(true)}
+              disabled={isCreating}
+              className="shrink-0"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              {isCreating ? "Adding..." : "Add"}
+            </Button>
+          </div>
+        ) : (
+          <div className="flex gap-2">
+            <Input
+              placeholder={placeholder}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleAdd}
+              disabled={isCreating || !newName.trim()}
+              className="shrink-0"
+            >
+              <Plus className="h-4 w-4 mr-1" />
+              {isCreating ? "Adding..." : "Add"}
+            </Button>
+          </div>
+        )}
 
         {/* List */}
         {isLoading ? (
@@ -849,6 +1042,49 @@ function ListSettings({
           </div>
         )}
       </CardContent>
+
+      {/* Create dialog */}
+      <Dialog
+        open={createMode === "dialog" ? createOpen : false}
+        onOpenChange={(open) => {
+          setCreateOpen(open);
+          if (!open) setNewName("");
+        }}
+      >
+        <DialogContent allowDismiss={false}>
+          <DialogHeader>
+            <DialogTitle>
+              {createDialogTitle ?? `Add ${title.replace(/s$/, "")}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-2">
+            <Input
+              placeholder={placeholder}
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setCreateOpen(false);
+                setNewName("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAdd}
+              disabled={!newName.trim() || isCreating}
+            >
+              {isCreating ? "Adding..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Edit dialog */}
       <Dialog
@@ -921,8 +1157,10 @@ function SourceSettings() {
         title="Contact Sources"
         description="Define where your contacts come from. These appear as options when creating or editing a contact."
         emptyIcon={<Tag className="h-8 w-8" />}
-        emptyText="No sources yet. Add one above."
+        emptyText="No sources yet. Add one to get started."
         placeholder="e.g. Website, Referral, Social Media, Walk-in"
+        createMode="dialog"
+        createDialogTitle="Add Contact Source"
         items={sources}
         isLoading={isLoading}
         isCreating={createMutation.isPending}

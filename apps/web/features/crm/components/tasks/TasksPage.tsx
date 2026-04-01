@@ -33,6 +33,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
@@ -40,6 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import type { SortOrder } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DataTablePagination,
@@ -92,6 +94,8 @@ export function TasksPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [taskTab, setTaskTab] = useState<TaskFilterTab>("all");
   const [dueToday, setDueToday] = useState(false);
   const [orphanedOnly, setOrphanedOnly] = useState(false);
@@ -123,6 +127,8 @@ export function TasksPage() {
     page,
     limit: pageSize,
     search: debouncedSearch,
+    sortBy,
+    sortOrder: sortOrder === "none" ? "desc" : sortOrder,
     completed: completedFilter,
     dueToday,
     assignedToId: assignedToFilter === "all" ? undefined : assignedToFilter,
@@ -469,8 +475,30 @@ export function TasksPage() {
                   }}
                 />
               </TableHead>
-              <TableHead>Title</TableHead>
-              <TableHead>Due Date</TableHead>
+              <SortableTableHead
+                sortKey="title"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={(nextSortBy, nextSortOrder) => {
+                  setSortBy(nextSortBy);
+                  setSortOrder(nextSortOrder);
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                Title
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="dueDate"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={(nextSortBy, nextSortOrder) => {
+                  setSortBy(nextSortBy);
+                  setSortOrder(nextSortOrder);
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                Due Date
+              </SortableTableHead>
               <TableHead>Assigned To</TableHead>
               <TableHead>Contact</TableHead>
               {dealsEnabled && <TableHead>Deal</TableHead>}
