@@ -4,7 +4,11 @@
  * Uses repositories only; no direct Prisma access.
  */
 
-import type { WorkflowTrigger, WorkflowAction } from "@prisma/client";
+import type {
+  PipelineType,
+  WorkflowTrigger,
+  WorkflowAction,
+} from "@prisma/client";
 import workflowRepository from "./workflow.repository";
 import taskRepository from "@/modules/tasks/task.repository";
 import notificationRepository from "@/modules/notifications/notification.repository";
@@ -170,11 +174,28 @@ async function executeAction(
           );
           dealIdForTask = null;
         } else {
+          const targetPipelineId =
+            link.targetPipelineId ??
+            (link.targetPipelineType
+              ? await resolvePipelineIdByType(
+                  deal.tenantId,
+                  link.targetPipelineType as PipelineType,
+                )
+              : null);
+          if (!targetPipelineId) {
+            logger.warn(
+              "CREATE_TASK OPEN_DEAL_IN_PIPELINE skipped: target pipeline missing",
+              undefined,
+              { dealId: deal.id, tenantId: deal.tenantId },
+            );
+            dealIdForTask = null;
+            break;
+          }
           const open =
             await dealRepository.findLatestOpenDealForContactInPipeline(
               deal.tenantId,
               deal.contactId,
-              link.targetPipelineId,
+              targetPipelineId,
               link.stageName ?? null,
             );
           if (!open) {
@@ -183,7 +204,7 @@ async function executeAction(
               undefined,
               {
                 contactId: deal.contactId,
-                pipelineId: link.targetPipelineId,
+                pipelineId: targetPipelineId,
                 tenantId: deal.tenantId,
               },
             );
@@ -247,25 +268,11 @@ async function executeAction(
       const value = c.value;
       if (value === undefined) return;
 
-      if (c.field === "probability") {
-        const num = typeof value === "number" ? value : Number(value);
-        if (!Number.isFinite(num)) return;
-        await dealRepository.update(
-          deal.id,
-          { probability: Math.min(100, Math.max(0, num)) },
-          "",
-        );
-      } else {
-        const dateStr =
-          value != null && value !== ""
-            ? new Date(value as string).toISOString()
-            : null;
-        await dealRepository.update(
-          deal.id,
-          { expectedCloseDate: dateStr },
-          "",
-        );
-      }
+      const dateStr =
+        value != null && value !== ""
+          ? new Date(value as string).toISOString()
+          : null;
+      await dealRepository.update(deal.id, { expectedCloseDate: dateStr }, "");
       break;
     }
 
@@ -291,41 +298,46 @@ async function executeAction(
 
     case "CREATE_DEAL": {
       const c = config as ActionConfigMap["CREATE_DEAL"];
+      const targetPipelineId =
+        c.pipelineId ??
+        (c.pipelineType
+          ? await resolvePipelineIdByType(
+              deal.tenantId,
+              c.pipelineType as PipelineType,
+            )
+          : null);
+      if (!targetPipelineId) {
+        logger.warn("CREATE_DEAL skipped: target pipeline missing", undefined, {
+          tenantId: deal.tenantId,
+          pipelineId: c.pipelineId,
+          pipelineType: c.pipelineType,
+        });
+        break;
+      }
       const pipeline = await dealRepository.findDefaultPipeline(
         deal.tenantId,
-        c.pipelineId,
+        targetPipelineId,
       );
-      if (!pipeline || pipeline.id !== c.pipelineId) {
+      if (!pipeline || pipeline.id !== targetPipelineId) {
         logger.warn(
           "CREATE_DEAL skipped: pipeline not found or mismatch",
           undefined,
           {
             tenantId: deal.tenantId,
-            pipelineId: c.pipelineId,
+            pipelineId: targetPipelineId,
           },
         );
         break;
       }
       const stages = pipeline.stages;
       let stageName: string;
-      let probability = 0;
       if (c.stageId) {
         stageName = resolveStageName(stages, c.stageId);
-        const isUuid = UUID_REGEX.test(c.stageId);
-        const row = Array.isArray(stages)
-          ? (
-              stages as Array<{
-                id?: string;
-                name: string;
-                probability?: number;
-              }>
-            ).find((s) => (isUuid ? s.id === c.stageId : s.name === stageName))
-          : undefined;
-        probability = Number(row?.probability ?? 0);
+      } else if (c.stageName) {
+        stageName = c.stageName;
       } else if (Array.isArray(stages) && stages.length > 0) {
-        const first = stages[0] as { name: string; probability?: number };
+        const first = stages[0] as { name: string };
         stageName = String(first.name);
-        probability = Number(first.probability ?? 0);
       } else {
         stageName = "Qualification";
       }
@@ -338,9 +350,6 @@ async function executeAction(
           name: c.title?.trim() || "New deal",
           value: 0,
           stage: stageName,
-          probability: Number.isFinite(probability)
-            ? Math.min(100, Math.max(0, probability))
-            : 0,
           contactId: deal.contactId,
           memberId: deal.memberId,
           pipelineId: pipeline.id,
@@ -387,4 +396,15 @@ async function executeAction(
     default:
       break;
   }
+}
+
+async function resolvePipelineIdByType(
+  tenantId: string,
+  pipelineType: PipelineType,
+): Promise<string | null> {
+  const pipeline = await dealRepository.findPipelineByType(
+    tenantId,
+    pipelineType,
+  );
+  return pipeline?.id ?? null;
 }

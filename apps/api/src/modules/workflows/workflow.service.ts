@@ -25,6 +25,16 @@ function validateRulesActionConfig(
 }
 
 export class WorkflowService {
+  async reseedFrameworkDefaults(
+    tenantId: string,
+    pipelines: Array<{
+      id: string;
+      type: "NEW_SALES" | "REMARKETING" | "REPURCHASE";
+    }>,
+  ) {
+    return workflowRepository.replaceFrameworkDefaults(tenantId, pipelines);
+  }
+
   async getAll(tenantId: string, query?: GetWorkflowsQueryDto) {
     const page = query?.page;
     const limit = query?.limit;

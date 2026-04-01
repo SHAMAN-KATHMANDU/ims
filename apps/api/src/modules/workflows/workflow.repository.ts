@@ -3,6 +3,8 @@ import type {
   CreateWorkflowDto,
   CreateWorkflowRuleDto,
 } from "./workflow.schema";
+import { CRM_WORKFLOW_TEMPLATES } from "@repo/shared";
+import type { PipelineType, Prisma } from "@prisma/client";
 
 const workflowListInclude = {
   pipeline: { select: { id: true, name: true } },
@@ -10,6 +12,68 @@ const workflowListInclude = {
 };
 
 export class WorkflowRepository {
+  async replaceFrameworkDefaults(
+    tenantId: string,
+    pipelines: Array<{ id: string; type: PipelineType }>,
+  ) {
+    const pipelineIdByType = new Map(pipelines.map((p) => [p.type, p.id]));
+    const pipelineIds = pipelines.map((pipeline) => pipeline.id);
+    if (pipelineIds.length === 0) return [];
+
+    return basePrisma.$transaction(async (tx) => {
+      await tx.workflowRule.deleteMany({
+        where: {
+          workflow: {
+            tenantId,
+            pipelineId: { in: pipelineIds },
+          },
+        },
+      });
+      await tx.pipelineWorkflow.deleteMany({
+        where: {
+          tenantId,
+          pipelineId: { in: pipelineIds },
+        },
+      });
+
+      for (const template of CRM_WORKFLOW_TEMPLATES) {
+        const pipelineId = pipelineIdByType.get(template.pipelineType);
+        if (!pipelineId) continue;
+
+        const workflow = await tx.pipelineWorkflow.create({
+          data: {
+            tenantId,
+            pipelineId,
+            name: template.name,
+            isActive: template.isActive ?? true,
+          },
+        });
+
+        if (template.rules.length > 0) {
+          await tx.workflowRule.createMany({
+            data: template.rules.map((rule, index) => ({
+              workflowId: workflow.id,
+              trigger: rule.trigger,
+              triggerStageId: rule.triggerStageId ?? null,
+              action: rule.action,
+              actionConfig: rule.actionConfig as Prisma.InputJsonValue,
+              ruleOrder: rule.ruleOrder ?? index,
+            })),
+          });
+        }
+      }
+
+      return tx.pipelineWorkflow.findMany({
+        where: {
+          tenantId,
+          pipelineId: { in: pipelineIds },
+        },
+        include: workflowListInclude,
+        orderBy: { createdAt: "asc" },
+      });
+    });
+  }
+
   async countByTenant(
     tenantId: string,
     filters?: { search?: string; isActive?: boolean; pipelineId?: string },
