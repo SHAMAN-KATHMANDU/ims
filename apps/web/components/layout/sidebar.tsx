@@ -389,6 +389,13 @@ const navSections: NavSection[] = [
         feature: Feature.SALES_PIPELINE,
       },
       {
+        path: "settings/automation",
+        label: "Automation",
+        icon: Zap,
+        roles: ["admin", "superAdmin"],
+        envFeature: EnvFeature.AUTOMATION,
+      },
+      {
         path: "settings/crm/workflows",
         label: "Workflows",
         icon: Zap,

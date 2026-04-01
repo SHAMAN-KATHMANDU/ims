@@ -10,6 +10,7 @@ import type {
   WorkflowAction,
 } from "@prisma/client";
 import workflowRepository from "./workflow.repository";
+import automationRepository from "@/modules/automation/automation.repository";
 import taskRepository from "@/modules/tasks/task.repository";
 import notificationRepository from "@/modules/notifications/notification.repository";
 import dealRepository from "@/modules/deals/deal.repository";
@@ -58,6 +59,20 @@ function resolveStageName(stages: unknown, triggerStageId: string): string {
   return stage?.name ?? triggerStageId;
 }
 
+function mapLegacyWorkflowTriggerToAutomationEvent(
+  trigger: WorkflowTrigger,
+): "crm.deal.created" | "crm.deal.stage_changed" | null {
+  switch (trigger) {
+    case "DEAL_CREATED":
+      return "crm.deal.created";
+    case "STAGE_ENTER":
+    case "STAGE_EXIT":
+      return "crm.deal.stage_changed";
+    default:
+      return null;
+  }
+}
+
 export async function executeWorkflowRules(
   event: WorkflowEvent,
   options?: ExecuteWorkflowRulesOptions,
@@ -76,6 +91,30 @@ export async function executeWorkflowRules(
   }
 
   const rulesPipelineId = options?.rulesPipelineId ?? event.deal.pipelineId;
+  const mappedAutomationEvent = mapLegacyWorkflowTriggerToAutomationEvent(
+    event.trigger,
+  );
+  if (
+    mappedAutomationEvent &&
+    (await automationRepository.hasActiveAutomationSuppressingLegacyWorkflow({
+      tenantId: event.deal.tenantId,
+      pipelineId: rulesPipelineId,
+      eventName: mappedAutomationEvent,
+    }))
+  ) {
+    logger.warn(
+      "Skipping legacy CRM workflow rules in favor of automation",
+      undefined,
+      {
+        dealId: event.deal.id,
+        tenantId: event.deal.tenantId,
+        trigger: event.trigger,
+        pipelineId: rulesPipelineId,
+      },
+    );
+    return;
+  }
+
   const rules = await workflowRepository.findActiveRulesByPipeline(
     event.deal.tenantId,
     rulesPipelineId,

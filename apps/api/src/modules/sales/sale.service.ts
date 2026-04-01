@@ -38,6 +38,7 @@ import tenantSettingsService from "@/modules/tenant-settings/tenant-settings.ser
 import pipelineRepository from "@/modules/pipelines/pipeline.repository";
 import dealRepository from "@/modules/deals/deal.repository";
 import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
+import automationService from "@/modules/automation/automation.service";
 
 // ── Shared types ──────────────────────────────────────────────────────────
 
@@ -830,6 +831,46 @@ export async function createSale(
     // Log but don't fail
   }
 
+  await Promise.all(
+    processedItems.map((item) =>
+      automationService.syncLowStockSignal({
+        tenantId: ctx.tenantId,
+        locationId: dto.locationId,
+        variationId: item.variationId,
+        subVariationId: item.subVariationId,
+        actorUserId: ctx.userId,
+        reason: "sale_created",
+      }),
+    ),
+  ).catch(() => {
+    // Do not fail sale creation when automation side effects fail.
+  });
+
+  await automationService
+    .publishDomainEvent({
+      tenantId: ctx.tenantId,
+      eventName: "sales.sale.created",
+      scopeType: "LOCATION",
+      scopeId: finalSale.locationId,
+      entityType: "SALE",
+      entityId: finalSale.id,
+      actorUserId: ctx.userId,
+      dedupeKey: `sale-created:${finalSale.id}`,
+      payload: {
+        saleId: finalSale.id,
+        saleCode: finalSale.saleCode,
+        locationId: finalSale.locationId,
+        memberId: finalSale.memberId,
+        contactId: finalSale.contactId,
+        total: Number(finalSale.total),
+        subtotal: Number(finalSale.subtotal),
+        itemCount: finalSale.items.length,
+      },
+    })
+    .catch(() => {
+      // Do not fail sale creation when automation event publishing fails.
+    });
+
   return finalSale;
 }
 
@@ -838,12 +879,29 @@ export async function deleteSale(
   userId: string,
   deleteReason?: string | null,
 ) {
+  const sale = await findSaleById(saleId);
   const result = await softDeleteSale(saleId, userId, deleteReason ?? null);
   if (!result) {
     throw Object.assign(new Error("Sale not found or already deleted"), {
       statusCode: 404,
     });
   }
+
+  if (sale) {
+    await Promise.allSettled(
+      sale.items.map((item) =>
+        automationService.syncLowStockSignal({
+          tenantId: sale.tenantId,
+          locationId: sale.locationId,
+          variationId: item.variationId,
+          subVariationId: item.subVariationId,
+          actorUserId: userId,
+          reason: "sale_deleted",
+        }),
+      ),
+    );
+  }
+
   return result;
 }
 
@@ -960,6 +1018,41 @@ export async function editSale(
       statusCode: 500,
     });
   }
+
+  const inventoryKeys = new Map<
+    string,
+    { variationId: string; subVariationId: string | null }
+  >();
+
+  for (const item of sale.items) {
+    const key = `${item.variationId}:${item.subVariationId ?? "base"}`;
+    inventoryKeys.set(key, {
+      variationId: item.variationId,
+      subVariationId: item.subVariationId ?? null,
+    });
+  }
+
+  for (const item of result.items) {
+    const key = `${item.variationId}:${item.subVariationId ?? "base"}`;
+    inventoryKeys.set(key, {
+      variationId: item.variationId,
+      subVariationId: item.subVariationId ?? null,
+    });
+  }
+
+  await Promise.allSettled(
+    Array.from(inventoryKeys.values()).map((item) =>
+      automationService.syncLowStockSignal({
+        tenantId: sale.tenantId,
+        locationId: sale.locationId,
+        variationId: item.variationId,
+        subVariationId: item.subVariationId,
+        actorUserId: userId,
+        reason: "sale_edited",
+      }),
+    ),
+  );
+
   return result;
 }
 

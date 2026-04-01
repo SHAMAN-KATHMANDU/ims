@@ -6,6 +6,7 @@ import transferRepository, {
   type TransferWhere,
 } from "./transfer.repository";
 import auditRepository from "@/modules/audit/audit.repository";
+import automationService from "@/modules/automation/automation.service";
 import type {
   CreateTransferDto,
   GetAllTransfersQuery,
@@ -164,6 +165,27 @@ export class TransferService {
       console.error("Audit log CREATE_TRANSFER failed:", auditErr);
     }
 
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "transfers.transfer.created",
+        entityType: "TRANSFER",
+        entityId: transfer.id,
+        actorUserId: userId,
+        dedupeKey: `transfer-created:${transfer.id}`,
+        payload: {
+          transferId: transfer.id,
+          transferCode: transfer.transferCode,
+          fromLocationId: transfer.fromLocationId,
+          toLocationId: transfer.toLocationId,
+          status: transfer.status,
+          itemCount: transfer.items.length,
+        },
+      })
+      .catch(() => {
+        // Transfer creation should not fail because automation publishing failed.
+      });
+
     return transfer;
   }
 
@@ -300,6 +322,23 @@ export class TransferService {
       new Date(),
     );
     await this.repo.createTransferLog(id, "APPROVED", userId);
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "transfers.transfer.approved",
+        entityType: "TRANSFER",
+        entityId: updated.id,
+        actorUserId: userId,
+        dedupeKey: `transfer-approved:${updated.id}`,
+        payload: {
+          transferId: updated.id,
+          transferCode: updated.transferCode,
+          fromLocationId: updated.fromLocationId,
+          toLocationId: updated.toLocationId,
+          status: updated.status,
+        },
+      })
+      .catch(() => {});
     return updated;
   }
 
@@ -331,6 +370,37 @@ export class TransferService {
     await this.repo.createTransferLog(id, "IN_TRANSIT", userId, {
       message: "Stock deducted from source location",
     });
+
+    await Promise.all(
+      transfer.items.map((item) =>
+        automationService.syncLowStockSignal({
+          tenantId,
+          locationId: transfer.fromLocationId,
+          variationId: item.variationId,
+          subVariationId: item.subVariationId,
+          actorUserId: userId,
+          reason: "transfer_in_transit",
+        }),
+      ),
+    ).catch(() => {});
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "transfers.transfer.in_transit",
+        entityType: "TRANSFER",
+        entityId: updated.id,
+        actorUserId: userId,
+        dedupeKey: `transfer-in-transit:${updated.id}`,
+        payload: {
+          transferId: updated.id,
+          transferCode: updated.transferCode,
+          fromLocationId: transfer.fromLocationId,
+          toLocationId: transfer.toLocationId,
+          status: updated.status,
+        },
+      })
+      .catch(() => {});
     return updated;
   }
 
@@ -371,6 +441,37 @@ export class TransferService {
     await this.repo.createTransferLog(id, "COMPLETED", userId, {
       message: "Stock added to destination location",
     });
+
+    await Promise.all(
+      transfer.items.map((item) =>
+        automationService.syncLowStockSignal({
+          tenantId,
+          locationId: transfer.toLocationId,
+          variationId: item.variationId,
+          subVariationId: item.subVariationId,
+          actorUserId: userId,
+          reason: "transfer_completed",
+        }),
+      ),
+    ).catch(() => {});
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "transfers.transfer.completed",
+        entityType: "TRANSFER",
+        entityId: updated.id,
+        actorUserId: userId,
+        dedupeKey: `transfer-completed:${updated.id}`,
+        payload: {
+          transferId: updated.id,
+          transferCode: updated.transferCode,
+          fromLocationId: transfer.fromLocationId,
+          toLocationId: transfer.toLocationId,
+          status: updated.status,
+        },
+      })
+      .catch(() => {});
     return updated;
   }
 
@@ -421,6 +522,41 @@ export class TransferService {
       previousStatus,
       stockRestored: previousStatus === "IN_TRANSIT",
     });
+
+    if (previousStatus === "IN_TRANSIT") {
+      const transferWithItems = await this.repo.findTransferWithItems(id);
+      await Promise.all(
+        (transferWithItems?.items ?? []).map((item) =>
+          automationService.syncLowStockSignal({
+            tenantId,
+            locationId: transfer.fromLocationId,
+            variationId: item.variationId,
+            subVariationId: item.subVariationId,
+            actorUserId: userId,
+            reason: "transfer_cancelled_restore",
+          }),
+        ),
+      ).catch(() => {});
+    }
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "transfers.transfer.cancelled",
+        entityType: "TRANSFER",
+        entityId: updated.id,
+        actorUserId: userId,
+        dedupeKey: `transfer-cancelled:${updated.id}`,
+        payload: {
+          transferId: updated.id,
+          transferCode: updated.transferCode,
+          fromLocationId: transfer.fromLocationId,
+          toLocationId: transfer.toLocationId,
+          status: updated.status,
+          previousStatus,
+        },
+      })
+      .catch(() => {});
     return { transfer: updated, previousStatus };
   }
 

@@ -4,6 +4,7 @@ import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
 import { runWithIncreasedWorkflowNestingDepth } from "@/modules/workflows/workflow-execution-context";
 import pipelineTransitionService from "@/modules/pipeline-transitions/pipeline-transition.service";
 import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import dealRepository from "./deal.repository";
 import {
   createSaleWithItemsAndDeductInventory,
@@ -68,6 +69,34 @@ export class DealService {
       stage,
       pipeline.id,
     );
+    await automationService
+      .publishDomainEvent({
+        tenantId: deal.tenantId,
+        eventName: "crm.deal.created",
+        scopeType: "CRM_PIPELINE",
+        scopeId: deal.pipelineId,
+        entityType: "DEAL",
+        entityId: deal.id,
+        actorUserId: userId,
+        dedupeKey: `crm-deal-created:${deal.id}`,
+        payload: {
+          dealId: deal.id,
+          pipelineId: deal.pipelineId,
+          stage: deal.stage,
+          status: deal.status,
+          contactId: deal.contactId,
+          memberId: deal.memberId,
+          companyId: deal.companyId,
+        },
+      })
+      .catch((err) =>
+        logger.error("Automation event publishing failed", undefined, {
+          dealId: deal.id,
+          tenantId: deal.tenantId,
+          eventName: "crm.deal.created",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
     await executeWorkflowRules({
       trigger: "DEAL_CREATED",
       deal: toDealContext(deal),
@@ -560,6 +589,28 @@ export class DealService {
         }),
       );
     await this.runTerminalStatusEffects(existing, deal);
+    await automationService
+      .publishDomainEvent({
+        tenantId: deal.tenantId,
+        eventName: "crm.deal.stage_changed",
+        scopeType: "CRM_PIPELINE",
+        scopeId: deal.pipelineId,
+        entityType: "DEAL",
+        entityId: deal.id,
+        actorUserId: existing.assignedToId,
+        dedupeKey: `crm-deal-stage:${deal.id}:${existing.stage}:${deal.stage}:${deal.revisionNo}`,
+        payload: {
+          dealId: deal.id,
+          previousStage: existing.stage,
+          stage: deal.stage,
+          previousPipelineId: existing.pipelineId,
+          pipelineId: deal.pipelineId,
+          status: deal.status,
+          contactId: deal.contactId,
+          memberId: deal.memberId,
+        },
+      })
+      .catch(() => {});
   }
 
   /** After cross-pipeline move; STAGE_EXIT for source already ran before revision. */
@@ -607,6 +658,28 @@ export class DealService {
         }),
       );
     await this.runTerminalStatusEffects(existing, deal);
+    await automationService
+      .publishDomainEvent({
+        tenantId: deal.tenantId,
+        eventName: "crm.deal.stage_changed",
+        scopeType: "CRM_PIPELINE",
+        scopeId: deal.pipelineId,
+        entityType: "DEAL",
+        entityId: deal.id,
+        actorUserId: existing.assignedToId,
+        dedupeKey: `crm-deal-stage:${deal.id}:${existing.pipelineId}:${existing.stage}:${deal.pipelineId}:${deal.stage}:${deal.revisionNo}`,
+        payload: {
+          dealId: deal.id,
+          previousStage: existing.stage,
+          stage: deal.stage,
+          previousPipelineId: existing.pipelineId,
+          pipelineId: deal.pipelineId,
+          status: deal.status,
+          contactId: deal.contactId,
+          memberId: deal.memberId,
+        },
+      })
+      .catch(() => {});
   }
 
   private async getStageStatusPatch(

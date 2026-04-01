@@ -9,6 +9,7 @@ const mockNotificationCreate = vi.fn();
 const mockDealUpdate = vi.fn();
 const mockActivityCreate = vi.fn();
 const mockUpdateStageFromAutomation = vi.fn();
+const mockHasActiveAutomationSuppressingLegacyWorkflow = vi.fn();
 
 const { mockShouldSkipWorkflowRules } = vi.hoisted(() => ({
   mockShouldSkipWorkflowRules: vi.fn().mockReturnValue(false),
@@ -29,6 +30,12 @@ vi.mock("./workflow-execution-context", () => ({
   shouldSkipWorkflowRules: () => mockShouldSkipWorkflowRules(),
   MAX_WORKFLOW_NESTING_DEPTH: 5,
   runWithIncreasedWorkflowNestingDepth: async <T>(fn: () => Promise<T>) => fn(),
+}));
+vi.mock("@/modules/automation/automation.repository", () => ({
+  default: {
+    hasActiveAutomationSuppressingLegacyWorkflow: (...args: unknown[]) =>
+      mockHasActiveAutomationSuppressingLegacyWorkflow(...args),
+  },
 }));
 vi.mock("@/modules/tasks/task.repository", () => ({
   default: { create: (...args: unknown[]) => mockTaskCreate(...args) },
@@ -73,6 +80,7 @@ describe("WorkflowEngine", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockCreateWorkflowRun.mockResolvedValue({ id: "run-1" });
+    mockHasActiveAutomationSuppressingLegacyWorkflow.mockResolvedValue(false);
   });
 
   describe("executeWorkflowRules", () => {
@@ -89,6 +97,24 @@ describe("WorkflowEngine", () => {
       expect(mockNotificationCreate).not.toHaveBeenCalled();
       expect(mockUpdateStageFromAutomation).not.toHaveBeenCalled();
       expect(mockActivityCreate).not.toHaveBeenCalled();
+    });
+
+    it("skips legacy CRM workflows when automation suppression is active", async () => {
+      mockHasActiveAutomationSuppressingLegacyWorkflow.mockResolvedValue(true);
+
+      await executeWorkflowRules({
+        trigger: "DEAL_CREATED",
+        deal: baseDeal,
+      });
+
+      expect(
+        mockHasActiveAutomationSuppressingLegacyWorkflow,
+      ).toHaveBeenCalledWith({
+        tenantId: "t1",
+        pipelineId: "p1",
+        eventName: "crm.deal.created",
+      });
+      expect(mockFindActiveRulesByPipeline).not.toHaveBeenCalled();
     });
 
     it("skips rule when trigger does not match", async () => {

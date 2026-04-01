@@ -6,6 +6,7 @@ import {
 import { getTenantId } from "@/config/tenantContext";
 import inventoryRepository from "./inventory.repository";
 import type { AdjustInventoryDto, SetInventoryDto } from "./inventory.schema";
+import automationService from "@/modules/automation/automation.service";
 
 export class InventoryService {
   async getLocationInventory(
@@ -155,6 +156,14 @@ export class InventoryService {
       );
     }
 
+    await automationService.syncLowStockSignal({
+      tenantId: location.tenantId,
+      locationId: data.locationId,
+      variationId: data.variationId,
+      subVariationId,
+      reason: "inventory_adjustment",
+    });
+
     return {
       locationId: data.locationId,
       locationName: location.name,
@@ -199,6 +208,14 @@ export class InventoryService {
       subVariationId,
       data.quantity,
     );
+
+    await automationService.syncLowStockSignal({
+      tenantId: location.tenantId,
+      locationId: data.locationId,
+      variationId: data.variationId,
+      subVariationId,
+      reason: "inventory_set",
+    });
 
     return {
       id: inventory.id,
