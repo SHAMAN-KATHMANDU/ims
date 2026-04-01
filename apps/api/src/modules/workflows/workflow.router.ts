@@ -31,7 +31,7 @@ workflowRouter.get("/templates", asyncHandler(workflowController.getTemplates));
  * /workflows/templates/{templateKey}/install:
  *   post:
  *     summary: Install or reinstall a workflow template
- *     description: Installs a ready-made workflow template onto a compatible tenant pipeline. Use overwriteExisting to reinstall the same template.
+ *     description: Installs a ready-made workflow template onto a compatible tenant pipeline. Returns whether the template was newly installed, reused, or overwritten.
  *     tags: [Workflows]
  *     security: [{ bearerAuth: [] }]
  *     parameters:
@@ -50,7 +50,13 @@ workflowRouter.get("/templates", asyncHandler(workflowController.getTemplates));
  *               activate: { type: boolean }
  *     responses:
  *       201:
- *         description: Workflow template installed
+ *         description: Workflow template installed for the first time
+ *       200:
+ *         description: Existing template reused or overwritten
+ *       400:
+ *         description: Invalid pipeline or stage mapping for the selected template
+ *       404:
+ *         description: Unknown workflow template
  */
 workflowRouter.post(
   "/templates/:templateKey/install",

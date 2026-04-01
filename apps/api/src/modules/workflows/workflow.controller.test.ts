@@ -230,12 +230,15 @@ describe("WorkflowController", () => {
   });
 
   describe("installTemplate", () => {
-    it("returns 201 with installed workflow on success", async () => {
+    it("returns 201 with outcome on fresh install", async () => {
       const workflow = {
         id: "wf1",
         templateKey: "new-sales-sales-won-follow-up",
       };
-      mockService.installTemplate.mockResolvedValue(workflow);
+      mockService.installTemplate.mockResolvedValue({
+        outcome: "installed",
+        workflow,
+      });
       const req = makeReq({
         params: { templateKey: "new-sales-sales-won-follow-up" },
         body: {
@@ -251,7 +254,33 @@ describe("WorkflowController", () => {
       expect(res.json).toHaveBeenCalledWith(
         expect.objectContaining({
           message: "Workflow template installed successfully",
+          outcome: "installed",
           workflow,
+        }),
+      );
+    });
+
+    it("returns 200 when template is reused", async () => {
+      mockService.installTemplate.mockResolvedValue({
+        outcome: "reused",
+        workflow: {
+          id: "wf1",
+          templateKey: "new-sales-sales-won-follow-up",
+        },
+      });
+      const req = makeReq({
+        params: { templateKey: "new-sales-sales-won-follow-up" },
+        body: {},
+      });
+      const res = mockRes() as Response;
+
+      await workflowController.installTemplate(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Workflow template already installed",
+          outcome: "reused",
         }),
       );
     });

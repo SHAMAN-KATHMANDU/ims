@@ -83,14 +83,22 @@ class WorkflowController {
       const tenantId = getAuthContext(req).tenantId;
       const { templateKey } = WorkflowTemplateKeyParamSchema.parse(req.params);
       const body = InstallWorkflowTemplateSchema.parse(req.body ?? {});
-      const workflow = await workflowService.installTemplate(
+      const result = await workflowService.installTemplate(
         tenantId,
         templateKey,
         body,
       );
-      return res.status(201).json({
-        message: "Workflow template installed successfully",
-        workflow,
+      const statusCode = result.outcome === "installed" ? 201 : 200;
+      const message =
+        result.outcome === "reused"
+          ? "Workflow template already installed"
+          : result.outcome === "overwritten"
+            ? "Workflow template overwritten successfully"
+            : "Workflow template installed successfully";
+      return res.status(statusCode).json({
+        message,
+        outcome: result.outcome,
+        workflow: result.workflow,
       });
     } catch (error: unknown) {
       if (error instanceof ZodError) {

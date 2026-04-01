@@ -1,34 +1,19 @@
 import api from "@/lib/axios";
 import { handleApiError } from "@/lib/api-error";
 import type { PaginationMeta } from "@/lib/apiTypes";
-
-export type WorkflowTrigger =
-  | "STAGE_ENTER"
-  | "STAGE_EXIT"
-  | "DEAL_CREATED"
-  | "DEAL_WON"
-  | "DEAL_LOST"
-  | "PURCHASE_COUNT_CHANGED";
-export type WorkflowAction =
-  | "CREATE_TASK"
-  | "SEND_NOTIFICATION"
-  | "MOVE_STAGE"
-  | "UPDATE_FIELD"
-  | "CREATE_ACTIVITY"
-  | "CREATE_DEAL"
-  | "UPDATE_CONTACT_FIELD"
-  | "APPLY_TAG"
-  | "REMOVE_TAG";
+import type {
+  WorkflowTriggerValue,
+  WorkflowActionValue,
+  WorkflowTemplateCategory,
+  WorkflowActionConfigValue,
+  WorkflowPipelineType,
+  WorkflowTemplateDifficulty,
+  WorkflowTemplateSupportedObject,
+} from "@repo/shared";
 
 export type WorkflowOrigin = "CUSTOM" | "TEMPLATE" | "SYSTEM";
-
-export type WorkflowTemplateCategory =
-  | "DEFAULT"
-  | "DEAL_HYGIENE"
-  | "RE_ENGAGEMENT"
-  | "POST_SALE"
-  | "DATA_QUALITY"
-  | "INTERNAL_ALERTS";
+export type WorkflowTrigger = WorkflowTriggerValue;
+export type WorkflowAction = WorkflowActionValue;
 
 export type WorkflowRunStatus = "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
 
@@ -37,7 +22,7 @@ export interface WorkflowRule {
   trigger: WorkflowTrigger;
   triggerStageId: string | null;
   action: WorkflowAction;
-  actionConfig: Record<string, unknown>;
+  actionConfig: WorkflowActionConfigValue;
   ruleOrder: number;
 }
 
@@ -66,26 +51,30 @@ export interface WorkflowTemplate {
   name: string;
   description: string;
   category: WorkflowTemplateCategory;
-  difficulty: "BEGINNER" | "INTERMEDIATE";
+  difficulty: WorkflowTemplateDifficulty;
   recommended: boolean;
-  supportedObjects: Array<"DEAL" | "CONTACT" | "TASK" | "NOTIFICATION">;
-  pipelineType: "NEW_SALES" | "REMARKETING" | "REPURCHASE";
+  supportedObjects: WorkflowTemplateSupportedObject[];
+  pipelineType: WorkflowPipelineType;
   version: number;
   isInstalled: boolean;
+  isOutdated: boolean;
   installedWorkflowId: string | null;
   installedWorkflowName: string | null;
   installedPipelineId: string | null;
   installedPipelineName: string | null;
   installedAt: string | null;
   isActive: boolean;
+  installedCount: number;
+  installState: "AVAILABLE" | "INSTALLED" | "OUTDATED" | "UNAVAILABLE";
   availablePipelines: Array<{
     id: string;
     name: string;
-    type: "NEW_SALES" | "REMARKETING" | "REPURCHASE";
+    type: WorkflowPipelineType;
   }>;
   rulesPreview: Array<{
     trigger: WorkflowTrigger;
     triggerStageId: string | null;
+    triggerStageLabel: string | null;
     action: WorkflowAction;
     ruleOrder: number | null;
   }>;
@@ -119,7 +108,7 @@ export interface CreateWorkflowRuleInput {
   trigger: WorkflowTrigger;
   triggerStageId?: string | null;
   action: WorkflowAction;
-  actionConfig: Record<string, unknown>;
+  actionConfig: WorkflowActionConfigValue;
   ruleOrder?: number;
 }
 
@@ -147,6 +136,12 @@ export interface InstallWorkflowTemplateInput {
   pipelineId?: string;
   overwriteExisting?: boolean;
   activate?: boolean;
+}
+
+export interface InstallWorkflowTemplateResponse {
+  workflow: Workflow;
+  outcome: "installed" | "reused" | "overwritten";
+  message: string;
 }
 
 export async function getWorkflows(
@@ -196,7 +191,7 @@ export async function createWorkflow(
 export async function installWorkflowTemplate(
   templateKey: string,
   data?: InstallWorkflowTemplateInput,
-): Promise<{ workflow: Workflow }> {
+): Promise<InstallWorkflowTemplateResponse> {
   try {
     const res = await api.post(
       `/workflows/templates/${templateKey}/install`,

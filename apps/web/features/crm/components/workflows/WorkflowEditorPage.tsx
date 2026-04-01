@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { DataTablePagination } from "@/components/ui/data-table-pagination";
 import {
   Select,
@@ -33,10 +34,12 @@ import type { SortOrder } from "@/components/ui/table";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Plus, Pencil, Trash2, Zap, Search } from "lucide-react";
 import {
   useWorkflows,
@@ -51,6 +54,7 @@ import type {
   Workflow,
   WorkflowTrigger,
   WorkflowAction,
+  WorkflowTemplate,
 } from "../../services/workflow.service";
 import { WorkflowForm } from "./WorkflowForm";
 import type {
@@ -59,7 +63,6 @@ import type {
 } from "../../validation";
 import { useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@repo/shared";
-import { useMemo } from "react";
 
 const TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
   STAGE_ENTER: "Stage enter",
@@ -83,6 +86,21 @@ const ACTION_LABELS: Record<WorkflowAction, string> = {
 };
 
 const DEFAULT_PAGE_SIZE = 10;
+
+function getTemplateInstallLabel(template: WorkflowTemplate): string {
+  switch (template.installState) {
+    case "INSTALLED":
+      return `Installed on ${template.installedPipelineName ?? "a pipeline"}`;
+    case "OUTDATED":
+      return `Installed on ${template.installedPipelineName ?? "a pipeline"} (update available)`;
+    case "UNAVAILABLE":
+      return "No compatible pipeline yet";
+    default:
+      return template.availablePipelines.length === 1
+        ? `Ready for ${template.availablePipelines[0]?.name}`
+        : `${template.availablePipelines.length} compatible pipelines`;
+  }
+}
 
 export default function WorkflowEditorPage() {
   const workflowsEnabled = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
@@ -108,7 +126,12 @@ export default function WorkflowEditorPage() {
   const { data: pipelinesData } = usePipelines(undefined, {
     enabled: workflowsEnabled,
   });
-  const { data: templatesData } = useWorkflowTemplates({
+  const {
+    data: templatesData,
+    isLoading: isTemplatesLoading,
+    isError: isTemplatesError,
+    error: templatesError,
+  } = useWorkflowTemplates({
     enabled: workflowsEnabled,
   });
   const createMutation = useCreateWorkflow();
@@ -118,11 +141,19 @@ export default function WorkflowEditorPage() {
 
   const [showCreate, setShowCreate] = useState(false);
   const [editWorkflow, setEditWorkflow] = useState<Workflow | null>(null);
+  const [templateToInstall, setTemplateToInstall] =
+    useState<WorkflowTemplate | null>(null);
+  const [templatePipelineId, setTemplatePipelineId] = useState<string>("");
+  const [templateShouldActivate, setTemplateShouldActivate] = useState(true);
 
   const workflows = useMemo(() => data?.workflows ?? [], [data?.workflows]);
   const pagination = data?.pagination;
   const pipelines = pipelinesData?.pipelines ?? [];
   const templates = templatesData?.templates ?? [];
+  const selectedTemplatePipeline =
+    templateToInstall?.availablePipelines.find(
+      (pipeline) => pipeline.id === templatePipelineId,
+    ) ?? null;
   const sortedWorkflows = useMemo(() => {
     const direction = sortOrder === "desc" ? -1 : 1;
     return [...workflows].sort((a, b) => {
@@ -151,6 +182,20 @@ export default function WorkflowEditorPage() {
   const resetForm = () => {
     setShowCreate(false);
     setEditWorkflow(null);
+  };
+
+  const closeInstallDialog = () => {
+    setTemplateToInstall(null);
+    setTemplatePipelineId("");
+    setTemplateShouldActivate(true);
+  };
+
+  const openInstallDialog = (template: WorkflowTemplate) => {
+    setTemplateToInstall(template);
+    setTemplatePipelineId(
+      template.installedPipelineId ?? template.availablePipelines[0]?.id ?? "",
+    );
+    setTemplateShouldActivate(template.isInstalled ? template.isActive : true);
   };
 
   const handleCreate = (formData: CreateWorkflowFormValues) => {
@@ -216,24 +261,24 @@ export default function WorkflowEditorPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {templates.length === 0 ? (
+          {isTemplatesLoading ? (
+            <div className="space-y-2">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-muted animate-pulse rounded" />
+              ))}
+            </div>
+          ) : isTemplatesError ? (
+            <p className="text-sm text-destructive" role="alert">
+              Failed to load workflow templates.{" "}
+              {templatesError?.message ?? "Please try again."}
+            </p>
+          ) : templates.length === 0 ? (
             <p className="text-sm text-muted-foreground">
               No workflow templates are available right now.
             </p>
           ) : (
             <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
               {templates.map((template) => {
-                const targetPipeline =
-                  template.availablePipelines[0] ??
-                  (template.installedPipelineId &&
-                  template.installedPipelineName
-                    ? {
-                        id: template.installedPipelineId,
-                        name: template.installedPipelineName,
-                        type: template.pipelineType,
-                      }
-                    : null);
-
                 return (
                   <div
                     key={template.templateKey}
@@ -250,6 +295,9 @@ export default function WorkflowEditorPage() {
                         <Badge variant="secondary" className="text-xs">
                           {template.category.replaceAll("_", " ")}
                         </Badge>
+                        <Badge variant="outline" className="text-xs">
+                          {template.installState.replaceAll("_", " ")}
+                        </Badge>
                       </div>
                       <p className="text-sm text-muted-foreground">
                         {template.description}
@@ -261,35 +309,53 @@ export default function WorkflowEditorPage() {
                         {template.pipelineType.replaceAll("_", " ")}
                       </p>
                       <p>Objects: {template.supportedObjects.join(", ")}</p>
+                      <p>{getTemplateInstallLabel(template)}</p>
+                      {template.isInstalled && (
+                        <p>
+                          Workflow status:{" "}
+                          {template.isActive ? "Active" : "Inactive"}
+                        </p>
+                      )}
                       <p>
-                        {template.isInstalled
-                          ? `Installed on ${template.installedPipelineName ?? "a pipeline"}`
-                          : targetPipeline
-                            ? `Ready for ${targetPipeline.name}`
-                            : "No compatible pipeline yet"}
+                        {template.rulesPreview.length} rule
+                        {template.rulesPreview.length === 1 ? "" : "s"}
                       </p>
+                      {template.isOutdated && (
+                        <p>Current version {template.version} is newer.</p>
+                      )}
                     </div>
-                    <Button
-                      size="sm"
-                      variant={template.isInstalled ? "outline" : "default"}
-                      disabled={
-                        installTemplateMutation.isPending || !targetPipeline
-                      }
-                      onClick={() =>
-                        installTemplateMutation.mutate({
-                          templateKey: template.templateKey,
-                          data: {
-                            pipelineId: targetPipeline?.id,
-                            overwriteExisting: template.isInstalled,
-                            activate: true,
-                          },
-                        })
-                      }
-                    >
-                      {template.isInstalled
-                        ? "Reinstall template"
-                        : "Install template"}
-                    </Button>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant={template.isInstalled ? "outline" : "default"}
+                        disabled={
+                          installTemplateMutation.isPending ||
+                          template.installState === "UNAVAILABLE"
+                        }
+                        onClick={() => openInstallDialog(template)}
+                      >
+                        {template.isInstalled
+                          ? "Review install"
+                          : "Install template"}
+                      </Button>
+                      {template.isInstalled && template.installedWorkflowId && (
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={updateMutation.isPending}
+                          onClick={() =>
+                            updateMutation.mutate({
+                              id: template.installedWorkflowId!,
+                              data: { isActive: !template.isActive },
+                            })
+                          }
+                        >
+                          {template.isActive
+                            ? "Deactivate workflow"
+                            : "Activate workflow"}
+                        </Button>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -538,6 +604,11 @@ export default function WorkflowEditorPage() {
             <DialogTitle>
               {editWorkflow ? "Edit Workflow" : "New Workflow"}
             </DialogTitle>
+            <DialogDescription>
+              {editWorkflow
+                ? "Update the workflow rules, triggers, and activation state."
+                : "Create a custom workflow for one of your CRM pipelines."}
+            </DialogDescription>
           </DialogHeader>
           {(showCreate || editWorkflow) &&
             (editWorkflow ? (
@@ -572,6 +643,149 @@ export default function WorkflowEditorPage() {
                 isSubmitting={createMutation.isPending}
               />
             ))}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={!!templateToInstall}
+        onOpenChange={(open) => !open && closeInstallDialog()}
+      >
+        <DialogContent className="max-w-lg" allowDismiss={true}>
+          <DialogHeader>
+            <DialogTitle>
+              {templateToInstall?.isInstalled
+                ? "Review Workflow Template Install"
+                : "Install Workflow Template"}
+            </DialogTitle>
+            <DialogDescription>
+              Choose the target pipeline and confirm whether this template
+              should create or overwrite an installed workflow.
+            </DialogDescription>
+          </DialogHeader>
+          {templateToInstall && (
+            <div className="space-y-4">
+              <div className="space-y-1">
+                <h3 className="font-medium">{templateToInstall.name}</h3>
+                <p className="text-sm text-muted-foreground">
+                  {templateToInstall.description}
+                </p>
+              </div>
+
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  Install state:{" "}
+                  {templateToInstall.installState.replaceAll("_", " ")}
+                </p>
+                <p>
+                  Pipeline type:{" "}
+                  {templateToInstall.pipelineType.replaceAll("_", " ")}
+                </p>
+                {templateToInstall.installedPipelineName && (
+                  <p>
+                    Current install: {templateToInstall.installedPipelineName}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="templatePipelineId">Target pipeline</Label>
+                <Select
+                  value={templatePipelineId}
+                  onValueChange={setTemplatePipelineId}
+                >
+                  <SelectTrigger id="templatePipelineId">
+                    <SelectValue placeholder="Select a compatible pipeline" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templateToInstall.availablePipelines.map((pipeline) => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {pipeline.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Switch
+                  id="templateActivate"
+                  checked={templateShouldActivate}
+                  onCheckedChange={setTemplateShouldActivate}
+                />
+                <Label htmlFor="templateActivate">
+                  Activate workflow after install
+                </Label>
+              </div>
+
+              <div className="rounded-md border bg-muted/30 p-3 text-sm text-muted-foreground">
+                <p>
+                  {templateToInstall.isInstalled
+                    ? "Continuing will overwrite the existing installed template workflow and refresh its rules."
+                    : "Continuing will create a workflow from this template on the selected pipeline."}
+                </p>
+                {selectedTemplatePipeline && (
+                  <p className="mt-1">
+                    Selected pipeline: {selectedTemplatePipeline.name}
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Rule preview</p>
+                <div className="space-y-1">
+                  {templateToInstall.rulesPreview.map((rule, index) => (
+                    <p
+                      key={`${templateToInstall.templateKey}-${index}`}
+                      className="text-sm text-muted-foreground"
+                    >
+                      {TRIGGER_LABELS[rule.trigger]}
+                      {rule.triggerStageLabel
+                        ? ` (${rule.triggerStageLabel})`
+                        : ""}
+                      {" -> "}
+                      {ACTION_LABELS[rule.action]}
+                    </p>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={closeInstallDialog}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  disabled={
+                    installTemplateMutation.isPending ||
+                    templatePipelineId.length === 0
+                  }
+                  onClick={() =>
+                    installTemplateMutation.mutate(
+                      {
+                        templateKey: templateToInstall.templateKey,
+                        data: {
+                          pipelineId: templatePipelineId,
+                          overwriteExisting: templateToInstall.isInstalled,
+                          activate: templateShouldActivate,
+                        },
+                      },
+                      {
+                        onSuccess: () => closeInstallDialog(),
+                      },
+                    )
+                  }
+                >
+                  {templateToInstall.isInstalled
+                    ? "Overwrite template"
+                    : "Install template"}
+                </Button>
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>

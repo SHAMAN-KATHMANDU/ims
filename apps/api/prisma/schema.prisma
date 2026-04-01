@@ -1215,6 +1215,7 @@ model PipelineWorkflow {
   workflowRuns WorkflowRun[]
 
   @@unique([tenantId, pipelineId, name])
+  @@unique([tenantId, templateKey])
   @@index([tenantId])
   @@index([pipelineId])
   @@index([tenantId, templateKey])

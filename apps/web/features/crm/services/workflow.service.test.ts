@@ -78,7 +78,13 @@ describe("workflow.service", () => {
   });
 
   it("installs workflow template", async () => {
-    mockPost.mockResolvedValue({ data: { workflow: { id: "wf-template" } } });
+    mockPost.mockResolvedValue({
+      data: {
+        workflow: { id: "wf-template" },
+        outcome: "installed",
+        message: "Workflow template installed successfully",
+      },
+    });
     await installWorkflowTemplate("new-sales-sales-won-follow-up", {
       overwriteExisting: true,
     });

@@ -254,8 +254,11 @@ describe("WorkflowService", () => {
   describe("installTemplate", () => {
     it("installs a workflow template", async () => {
       mockInstallTemplate.mockResolvedValue({
-        id: "wf-template",
-        templateKey: "new-sales-sales-won-follow-up",
+        outcome: "installed",
+        workflow: {
+          id: "wf-template",
+          templateKey: "new-sales-sales-won-follow-up",
+        },
       });
 
       const result = await workflowService.installTemplate(
@@ -276,8 +279,11 @@ describe("WorkflowService", () => {
         }),
       );
       expect(result).toEqual({
-        id: "wf-template",
-        templateKey: "new-sales-sales-won-follow-up",
+        outcome: "installed",
+        workflow: {
+          id: "wf-template",
+          templateKey: "new-sales-sales-won-follow-up",
+        },
       });
     });
   });

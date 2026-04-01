@@ -101,13 +101,21 @@ export function useInstallWorkflowTemplate() {
       templateKey: string;
       data?: InstallWorkflowTemplateInput;
     }) => installWorkflowTemplate(templateKey, data),
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: workflowKeys.templates() });
       qc.invalidateQueries({ queryKey: workflowKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
       qc.invalidateQueries({ queryKey: dealKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
-      toast({ title: "Workflow template installed successfully" });
+      toast({
+        title:
+          result.outcome === "reused"
+            ? "Workflow template already installed"
+            : result.outcome === "overwritten"
+              ? "Workflow template updated"
+              : "Workflow template installed successfully",
+        description: result.message,
+      });
     },
     onError: (error: Error) => {
       toast({

@@ -12,6 +12,7 @@ const mockInstallWorkflowTemplate = vi.fn();
 const mockUpdateWorkflow = vi.fn();
 const mockDeleteWorkflow = vi.fn();
 const mockToast = vi.fn();
+const mockUseEnvFeatureFlag = vi.fn(() => true);
 
 vi.mock("../services/workflow.service", () => ({
   getWorkflows: (...args: unknown[]) => mockGetWorkflows(...args),
@@ -27,6 +28,10 @@ vi.mock("../services/workflow.service", () => ({
 
 vi.mock("@/hooks/useToast", () => ({
   useToast: () => ({ toast: mockToast }),
+}));
+
+vi.mock("@/features/flags", () => ({
+  useEnvFeatureFlag: () => mockUseEnvFeatureFlag(),
 }));
 
 import {
@@ -46,6 +51,7 @@ const wrapper = ({ children }: { children: React.ReactNode }) => (
 describe("use-workflows", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseEnvFeatureFlag.mockReturnValue(true);
   });
 
   it("loads workflows with provided filters", async () => {
@@ -122,6 +128,8 @@ describe("use-workflows", () => {
   it("installs workflow template and triggers success toast", async () => {
     mockInstallWorkflowTemplate.mockResolvedValue({
       workflow: { id: "wf-template" },
+      outcome: "overwritten",
+      message: "Workflow template overwritten successfully",
     });
 
     const { result } = renderHook(() => useInstallWorkflowTemplate(), {
@@ -141,9 +149,21 @@ describe("use-workflows", () => {
     );
     expect(mockToast).toHaveBeenCalledWith(
       expect.objectContaining({
-        title: "Workflow template installed successfully",
+        title: "Workflow template updated",
+        description: "Workflow template overwritten successfully",
       }),
     );
+  });
+
+  it("does not load workflow templates when workflows feature is disabled", async () => {
+    mockUseEnvFeatureFlag.mockReturnValue(false);
+
+    const { result } = renderHook(() => useWorkflowTemplates(), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.fetchStatus).toBe("idle"));
+    expect(mockGetWorkflowTemplates).not.toHaveBeenCalled();
   });
 
   it("updates and deletes workflow via mutations", async () => {

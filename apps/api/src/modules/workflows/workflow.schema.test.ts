@@ -59,6 +59,16 @@ describe("Workflow Schemas", () => {
         }),
       ).toThrow();
     });
+
+    it("rejects stage-based rules without a trigger stage", () => {
+      expect(() =>
+        CreateWorkflowRuleSchema.parse({
+          trigger: "STAGE_ENTER",
+          action: "CREATE_TASK",
+          actionConfig: { taskTitle: "Follow up" },
+        }),
+      ).toThrow(/triggerStageId is required/);
+    });
   });
 
   describe("UpdateWorkflowSchema", () => {

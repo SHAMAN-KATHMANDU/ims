@@ -1,5 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createPaginationResult } from "@/utils/pagination";
+import { logger } from "@/config/logger";
 import workflowRepository from "./workflow.repository";
 import {
   parseActionConfig,
@@ -89,7 +90,7 @@ export class WorkflowService {
     templateKey: string,
     data: InstallWorkflowTemplateDto,
   ) {
-    const templateWorkflow = await workflowRepository.installTemplate(
+    const installResult = await workflowRepository.installTemplate(
       tenantId,
       templateKey,
       {
@@ -98,10 +99,13 @@ export class WorkflowService {
         activate: data.activate,
       },
     );
-    if (!templateWorkflow) {
-      throw createError("Workflow template installation failed", 500);
-    }
-    return templateWorkflow;
+    logger.request("Workflow template install completed", undefined, {
+      tenantId,
+      templateKey,
+      pipelineId: installResult.workflow.pipelineId,
+      outcome: installResult.outcome,
+    });
+    return installResult;
   }
 
   async update(tenantId: string, id: string, data: UpdateWorkflowDto) {
