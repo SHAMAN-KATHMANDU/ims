@@ -17,10 +17,19 @@ const CONTACT_LIST_INCLUDE = {
   tagLinks: { include: { tag: { select: { id: true, name: true } } } },
   _count: { select: { deals: true, tasks: true } },
   deals: {
-    where: { status: "OPEN" as const, deletedAt: null },
-    orderBy: { createdAt: "desc" as const },
-    take: 1,
-    select: { stage: true },
+    where: { deletedAt: null, isLatest: true },
+    orderBy: [{ status: "asc" as const }, { updatedAt: "desc" as const }] as {
+      status?: "asc" | "desc";
+      updatedAt?: "asc" | "desc";
+    }[],
+    take: 3,
+    select: {
+      id: true,
+      stage: true,
+      status: true,
+      pipelineId: true,
+      pipeline: { select: { id: true, name: true, type: true } },
+    },
   },
 } as const;
 
@@ -52,13 +61,20 @@ const CONTACT_DETAIL_INCLUDE = {
     include: { creator: { select: { id: true, username: true } } },
   },
   deals: {
-    where: { deletedAt: null },
+    where: { deletedAt: null, isLatest: true },
+    orderBy: [{ status: "asc" as const }, { updatedAt: "desc" as const }] as {
+      status?: "asc" | "desc";
+      updatedAt?: "asc" | "desc";
+    }[],
     select: {
       id: true,
       name: true,
       value: true,
       stage: true,
       status: true,
+      pipelineId: true,
+      isLatest: true,
+      pipeline: { select: { id: true, name: true, type: true } },
       expectedCloseDate: true,
     },
   },

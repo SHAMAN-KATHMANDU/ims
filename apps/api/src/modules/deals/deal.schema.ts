@@ -4,11 +4,6 @@ export const CreateDealSchema = z.object({
   name: z.string().min(1, "Deal name is required").max(255),
   value: z.number().min(0).default(0),
   stage: z.string().optional(),
-  probability: z
-    .number()
-    .min(0, "Probability must be at least 0")
-    .max(100, "Probability must be between 0 and 100")
-    .optional(),
   expectedCloseDate: z.string().optional().nullable(),
   contactId: z.string().uuid().optional().nullable(),
   memberId: z.string().uuid().optional().nullable(),

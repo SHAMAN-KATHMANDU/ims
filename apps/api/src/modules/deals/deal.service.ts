@@ -24,17 +24,14 @@ const UUID_REGEX =
 function resolveStageOnPipeline(
   stages: unknown,
   stageIdOrName: string,
-): { name: string; probability: number } | null {
+): { name: string } | null {
   if (!stages || !Array.isArray(stages)) return null;
   const isUuid = UUID_REGEX.test(stageIdOrName);
-  const row = (
-    stages as Array<{ id?: string; name: string; probability?: unknown }>
-  ).find((s) =>
+  const row = (stages as Array<{ id?: string; name: string }>).find((s) =>
     isUuid ? s.id === stageIdOrName : String(s.name) === stageIdOrName,
   );
   if (!row?.name) return null;
-  const probability = Math.min(100, Math.max(0, Number(row.probability ?? 0)));
-  return { name: String(row.name), probability };
+  return { name: String(row.name) };
 }
 
 function generateSaleCode(): string {
@@ -169,7 +166,6 @@ export class DealService {
       }
       targetPipelineName = pl.name;
       patch.stage = resolved.name;
-      patch.probability = resolved.probability;
     }
 
     if (pipelineWillChange && existing.assignedToId) {
@@ -359,10 +355,15 @@ export class DealService {
       if (existing.stage === data.stage) {
         return existing;
       }
+      const stageStatusPatch = await this.getStageStatusPatch(
+        tenantId,
+        existing.pipelineId,
+        data.stage,
+      );
       const deal = await dealRepository.createDealRevision(
         id,
         tenantId,
-        { stage: data.stage },
+        { stage: data.stage, ...stageStatusPatch },
         userId,
         null,
       );
@@ -386,6 +387,11 @@ export class DealService {
     if (!resolved) {
       throw createError("Stage not found in target pipeline", 400);
     }
+    const stageStatusPatch = await this.getStageStatusPatch(
+      tenantId,
+      targetPipelineId,
+      resolved.name,
+    );
 
     if (existing.assignedToId) {
       await executeWorkflowRules(
@@ -412,7 +418,7 @@ export class DealService {
       {
         pipelineId: targetPipelineId,
         stage: resolved.name,
-        probability: resolved.probability,
+        ...stageStatusPatch,
       },
       userId,
       null,
@@ -478,6 +484,11 @@ export class DealService {
           );
           return;
         }
+        const stageStatusPatch = await this.getStageStatusPatch(
+          tenantId,
+          destPipelineId,
+          resolved.name,
+        );
         if (existing.assignedToId) {
           await executeWorkflowRules(
             {
@@ -502,7 +513,7 @@ export class DealService {
           {
             pipelineId: destPipelineId,
             stage: resolved.name,
-            probability: resolved.probability,
+            ...stageStatusPatch,
           },
           actorUserId,
           null,
@@ -517,10 +528,15 @@ export class DealService {
         return;
       }
 
+      const stageStatusPatch = await this.getStageStatusPatch(
+        tenantId,
+        existing.pipelineId,
+        targetStage,
+      );
       const deal = await dealRepository.createDealRevision(
         dealId,
         tenantId,
-        { stage: targetStage },
+        { stage: targetStage, ...stageStatusPatch },
         actorUserId,
         null,
       );
@@ -582,6 +598,7 @@ export class DealService {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
+    await this.runTerminalStatusEffects(existing, deal);
   }
 
   /** After cross-pipeline move; STAGE_EXIT for source already ran before revision. */
@@ -632,6 +649,69 @@ export class DealService {
         logger.error("Pipeline transition failed", undefined, {
           dealId: deal.id,
           trigger: "STAGE_ENTER",
+          error: err instanceof Error ? err.message : String(err),
+        }),
+      );
+    await this.runTerminalStatusEffects(existing, deal);
+  }
+
+  private async getStageStatusPatch(
+    tenantId: string,
+    pipelineId: string,
+    stageName: string,
+  ): Promise<Pick<UpdateDealDto, "status" | "closedAt">> {
+    const closing = await dealRepository.getPipelineClosingStageNames(
+      pipelineId,
+      tenantId,
+    );
+    if (closing?.closedWonStageName === stageName) {
+      return { status: "WON", closedAt: new Date().toISOString() };
+    }
+    if (closing?.closedLostStageName === stageName) {
+      return { status: "LOST", closedAt: new Date().toISOString() };
+    }
+    return { status: "OPEN", closedAt: null };
+  }
+
+  private async runTerminalStatusEffects(
+    existing: NonNullable<Awaited<ReturnType<typeof dealRepository.findById>>>,
+    deal: NonNullable<
+      Awaited<ReturnType<typeof dealRepository.createDealRevision>>
+    >,
+  ): Promise<void> {
+    if (deal.status === existing.status || !existing.assignedToId) return;
+
+    const trigger =
+      deal.status === "WON"
+        ? "DEAL_WON"
+        : deal.status === "LOST"
+          ? "DEAL_LOST"
+          : null;
+    if (!trigger) return;
+
+    await executeWorkflowRules({
+      trigger,
+      deal: toDealContext(deal),
+      userId: existing.assignedToId,
+    }).catch((err) =>
+      logger.error("Workflow execution failed", undefined, {
+        dealId: deal.id,
+        tenantId: deal.tenantId,
+        trigger,
+        error: err instanceof Error ? err.message : String(err),
+      }),
+    );
+
+    await pipelineTransitionService
+      .handleDealEvent({
+        trigger,
+        deal: toDealContext(deal),
+        userId: existing.assignedToId,
+      })
+      .catch((err) =>
+        logger.error("Pipeline transition failed", undefined, {
+          dealId: deal.id,
+          trigger,
           error: err instanceof Error ? err.message : String(err),
         }),
       );
