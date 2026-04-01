@@ -50,4 +50,29 @@ describe("WorkflowForm", () => {
     fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
     expect(onCancel).toHaveBeenCalledTimes(1);
   });
+
+  it("does not offer journey type as a writable contact field", () => {
+    render(
+      <WorkflowForm
+        mode="edit"
+        pipelines={[{ id: "p1", name: "Main Pipeline" }]}
+        stages={[]}
+        defaultValues={{
+          name: "Existing flow",
+          isActive: true,
+          rules: [
+            {
+              trigger: "DEAL_CREATED",
+              action: "UPDATE_CONTACT_FIELD",
+              actionConfig: { field: "source", value: "" },
+            },
+          ],
+        }}
+        onSubmit={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    expect(screen.queryByText("Journey type")).not.toBeInTheDocument();
+  });
 });

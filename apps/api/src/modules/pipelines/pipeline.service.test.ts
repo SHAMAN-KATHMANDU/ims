@@ -9,8 +9,6 @@ const mockClearDefaultForTenantExcept = vi.fn();
 const mockCountDealsInPipeline = vi.fn();
 const mockSoftDelete = vi.fn();
 const mockGetDefaultStages = vi.fn();
-const mockSyncJourneyTypeToPipelineRename = vi.fn();
-const mockSyncJourneyTypeToPipelineDelete = vi.fn();
 
 vi.mock("./pipeline.repository", () => ({
   default: {
@@ -31,15 +29,6 @@ vi.mock("./pipeline.repository", () => ({
 
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
-}));
-
-vi.mock("@/modules/crm-settings/crm-settings.service", () => ({
-  default: {
-    syncJourneyTypeToPipelineRename: (...args: unknown[]) =>
-      mockSyncJourneyTypeToPipelineRename(...args),
-    syncJourneyTypeToPipelineDelete: (...args: unknown[]) =>
-      mockSyncJourneyTypeToPipelineDelete(...args),
-  },
 }));
 
 import pipelineService from "./pipeline.service";
@@ -76,11 +65,6 @@ describe("PipelineService", () => {
           stages: expect.any(Array),
           isDefault: false,
         }),
-      );
-      expect(mockSyncJourneyTypeToPipelineRename).toHaveBeenCalledWith(
-        tenantId,
-        "Sales",
-        "Sales",
       );
     });
 
@@ -156,11 +140,6 @@ describe("PipelineService", () => {
       });
 
       expect(result).toEqual(updated);
-      expect(mockSyncJourneyTypeToPipelineRename).toHaveBeenCalledWith(
-        tenantId,
-        "Sales",
-        "Sales Updated",
-      );
     });
 
     it("throws 404 when pipeline not found", async () => {
@@ -188,10 +167,6 @@ describe("PipelineService", () => {
         deletedBy: "u1",
         deleteReason: null,
       });
-      expect(mockSyncJourneyTypeToPipelineDelete).toHaveBeenCalledWith(
-        tenantId,
-        "Sales",
-      );
     });
 
     it("throws 404 when pipeline not found", async () => {

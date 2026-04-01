@@ -715,9 +715,6 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="source">Source</SelectItem>
-                          <SelectItem value="journeyType">
-                            Journey type
-                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <Input

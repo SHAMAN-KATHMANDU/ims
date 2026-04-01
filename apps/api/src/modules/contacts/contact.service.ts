@@ -13,6 +13,40 @@ import type {
   AddNoteDto,
 } from "./contact.schema";
 
+function deriveJourneyTypeFromDeals(
+  deals:
+    | Array<{
+        stage?: string | null;
+        status?: string | null;
+        pipeline?: { name?: string | null } | null;
+      }>
+    | undefined,
+): string | null {
+  const activeDeal = deals?.find((deal) => deal.status === "OPEN");
+  const pipelineName = activeDeal?.pipeline?.name?.trim();
+  const stageName = activeDeal?.stage?.trim();
+  if (!pipelineName || !stageName) {
+    return null;
+  }
+  return `${pipelineName}(${stageName})`;
+}
+
+function withDerivedJourneyType<
+  T extends {
+    deals?: Array<{
+      stage?: string | null;
+      status?: string | null;
+      pipeline?: { name?: string | null } | null;
+    }>;
+    journeyType?: string | null;
+  },
+>(contact: T): T {
+  return {
+    ...contact,
+    journeyType: deriveJourneyTypeFromDeals(contact.deals),
+  };
+}
+
 export class ContactService {
   async create(tenantId: string, data: CreateContactDto, userId: string) {
     let phoneNormalized: string | null = null;
@@ -30,13 +64,17 @@ export class ContactService {
   }
 
   async getAll(tenantId: string, query: Record<string, unknown>) {
-    return contactRepository.findAll(tenantId, query);
+    const result = await contactRepository.findAll(tenantId, query);
+    return {
+      ...result,
+      data: result.data.map((contact) => withDerivedJourneyType(contact)),
+    };
   }
 
   async getById(tenantId: string, id: string) {
     const contact = await contactRepository.findById(tenantId, id);
     if (!contact) throw createError("Contact not found", 404);
-    return contact;
+    return withDerivedJourneyType(contact);
   }
 
   async update(tenantId: string, id: string, data: UpdateContactDto) {
@@ -312,7 +350,14 @@ export class ContactService {
           .map((l) => l.tag.name)
           .join(", "),
         source: c.source || "",
-        journeyType: c.journeyType || "",
+        journeyType:
+          deriveJourneyTypeFromDeals(
+            c.deals as Array<{
+              stage?: string | null;
+              status?: string | null;
+              pipeline?: { name?: string | null } | null;
+            }>,
+          ) || "",
       });
     }
 

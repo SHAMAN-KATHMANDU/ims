@@ -94,7 +94,7 @@ describe("ContactService", () => {
 
   describe("getAll", () => {
     it("returns paginated contacts", async () => {
-      const data = { contacts: [], pagination: {} };
+      const data = { data: [], pagination: {} };
       mockFindAll.mockResolvedValue(data);
 
       const result = await contactService.getAll(tenantId, { page: 1 });
@@ -111,7 +111,7 @@ describe("ContactService", () => {
 
       const result = await contactService.getById(tenantId, "c1");
 
-      expect(result).toEqual(contact);
+      expect(result).toEqual(expect.objectContaining(contact));
     });
 
     it("throws 404 when contact not found", async () => {
@@ -123,6 +123,27 @@ describe("ContactService", () => {
         statusCode: 404,
         message: "Contact not found",
       });
+    });
+
+    it("derives journey type from the active deal context", async () => {
+      mockFindById.mockResolvedValue({
+        id: "c1",
+        firstName: "John",
+        journeyType: "Legacy",
+        deals: [
+          {
+            stage: "Lead",
+            status: "OPEN",
+            pipeline: { name: "New Sales" },
+          },
+        ],
+      });
+
+      const result = await contactService.getById(tenantId, "c1");
+
+      expect(result).toEqual(
+        expect.objectContaining({ journeyType: "New Sales(Lead)" }),
+      );
     });
   });
 

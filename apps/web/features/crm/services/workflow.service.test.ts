@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   getWorkflows,
+  getWorkflowTemplates,
+  getWorkflowRuns,
   getWorkflowById,
   createWorkflow,
+  installWorkflowTemplate,
   updateWorkflow,
   deleteWorkflow,
 } from "./workflow.service";
@@ -45,6 +48,19 @@ describe("workflow.service", () => {
     expect(mockGet).toHaveBeenCalledWith("/workflows/wf1");
   });
 
+  it("gets workflow templates and runs", async () => {
+    mockGet.mockResolvedValueOnce({ data: { templates: [] } });
+    mockGet.mockResolvedValueOnce({ data: { runs: [] } });
+
+    await getWorkflowTemplates();
+    await getWorkflowRuns("wf1", { limit: 5 });
+
+    expect(mockGet).toHaveBeenNthCalledWith(1, "/workflows/templates");
+    expect(mockGet).toHaveBeenNthCalledWith(2, "/workflows/wf1/runs", {
+      params: { limit: 5 },
+    });
+  });
+
   it("creates and updates workflow", async () => {
     mockPost.mockResolvedValue({ data: { workflow: { id: "wf1" } } });
     mockPut.mockResolvedValue({ data: { workflow: { id: "wf1" } } });
@@ -59,6 +75,17 @@ describe("workflow.service", () => {
     expect(mockPut).toHaveBeenCalledWith("/workflows/wf1", {
       name: "Updated Auto",
     });
+  });
+
+  it("installs workflow template", async () => {
+    mockPost.mockResolvedValue({ data: { workflow: { id: "wf-template" } } });
+    await installWorkflowTemplate("new-sales-sales-won-follow-up", {
+      overwriteExisting: true,
+    });
+    expect(mockPost).toHaveBeenCalledWith(
+      "/workflows/templates/new-sales-sales-won-follow-up/install",
+      { overwriteExisting: true },
+    );
   });
 
   it("deletes workflow", async () => {

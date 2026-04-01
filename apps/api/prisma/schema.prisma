@@ -62,6 +62,7 @@ model Tenant {
   leads          Lead[]
   pipelines       Pipeline[]
   pipelineWorkflows PipelineWorkflow[]
+  workflowRuns   WorkflowRun[]
   deals          Deal[]
   tasks          Task[]
   activities     Activity[]
@@ -1176,22 +1177,47 @@ enum WorkflowAction {
   REMOVE_TAG
 }
 
-model PipelineWorkflow {
-  id         String   @id @default(uuid()) @map("workflow_id")
-  tenantId   String   @map("tenant_id")
-  pipelineId String   @map("pipeline_id")
-  name       String   @db.VarChar(255)
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+enum WorkflowOrigin {
+  CUSTOM
+  TEMPLATE
+  SYSTEM
+}
 
-  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  pipeline Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
-  rules    WorkflowRule[]
+enum WorkflowRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+model PipelineWorkflow {
+  id              String         @id @default(uuid()) @map("workflow_id")
+  tenantId        String         @map("tenant_id")
+  pipelineId      String         @map("pipeline_id")
+  name            String         @db.VarChar(255)
+  description     String?        @db.VarChar(500)
+  isActive        Boolean        @default(true) @map("is_active")
+  templateKey     String?        @map("template_key") @db.VarChar(120)
+  templateVersion Int?           @map("template_version")
+  origin          WorkflowOrigin @default(CUSTOM)
+  version         Int            @default(1)
+  publishedAt     DateTime?      @map("published_at")
+  lastRunAt       DateTime?      @map("last_run_at")
+  lastErrorAt     DateTime?      @map("last_error_at")
+  runCount        Int            @default(0) @map("run_count")
+  failureCount    Int            @default(0) @map("failure_count")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pipeline     Pipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  rules        WorkflowRule[]
+  workflowRuns WorkflowRun[]
 
   @@unique([tenantId, pipelineId, name])
   @@index([tenantId])
   @@index([pipelineId])
+  @@index([tenantId, templateKey])
   @@map("pipeline_workflows")
 }
 
@@ -1210,6 +1236,32 @@ model WorkflowRule {
 
   @@index([workflowId])
   @@map("workflow_rules")
+}
+
+model WorkflowRun {
+  id          String            @id @default(uuid()) @map("workflow_run_id")
+  tenantId    String            @map("tenant_id")
+  workflowId  String            @map("workflow_id")
+  ruleId      String?           @map("rule_id")
+  trigger     WorkflowTrigger
+  action      WorkflowAction?
+  status      WorkflowRunStatus
+  entityType  String            @default("DEAL") @map("entity_type") @db.VarChar(50)
+  entityId    String            @map("entity_id")
+  dedupeKey   String?           @map("dedupe_key") @db.VarChar(255)
+  attempt     Int               @default(1)
+  errorMessage String?          @map("error_message") @db.VarChar(2000)
+  metadata    Json?
+  startedAt   DateTime          @default(now()) @map("started_at")
+  completedAt DateTime?         @map("completed_at")
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflow PipelineWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, workflowId, startedAt])
+  @@index([workflowId, status])
+  @@unique([workflowId, dedupeKey])
+  @@map("workflow_runs")
 }
 
 enum DealStatus {

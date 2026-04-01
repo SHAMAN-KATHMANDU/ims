@@ -40,7 +40,9 @@ import { Badge } from "@/components/ui/badge";
 import { Plus, Pencil, Trash2, Zap, Search } from "lucide-react";
 import {
   useWorkflows,
+  useWorkflowTemplates,
   useCreateWorkflow,
+  useInstallWorkflowTemplate,
   useUpdateWorkflow,
   useDeleteWorkflow,
 } from "../../hooks/use-workflows";
@@ -106,7 +108,11 @@ export default function WorkflowEditorPage() {
   const { data: pipelinesData } = usePipelines(undefined, {
     enabled: workflowsEnabled,
   });
+  const { data: templatesData } = useWorkflowTemplates({
+    enabled: workflowsEnabled,
+  });
   const createMutation = useCreateWorkflow();
+  const installTemplateMutation = useInstallWorkflowTemplate();
   const updateMutation = useUpdateWorkflow();
   const deleteMutation = useDeleteWorkflow();
 
@@ -116,6 +122,7 @@ export default function WorkflowEditorPage() {
   const workflows = useMemo(() => data?.workflows ?? [], [data?.workflows]);
   const pagination = data?.pagination;
   const pipelines = pipelinesData?.pipelines ?? [];
+  const templates = templatesData?.templates ?? [];
   const sortedWorkflows = useMemo(() => {
     const direction = sortOrder === "desc" ? -1 : 1;
     return [...workflows].sort((a, b) => {
@@ -201,6 +208,97 @@ export default function WorkflowEditorPage() {
       </div>
 
       <Card>
+        <CardHeader>
+          <CardTitle>Ready-made Workflow Templates</CardTitle>
+          <CardDescription>
+            Install recommended workflow packs for your pipelines, then adapt
+            them to your process.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {templates.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No workflow templates are available right now.
+            </p>
+          ) : (
+            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {templates.map((template) => {
+                const targetPipeline =
+                  template.availablePipelines[0] ??
+                  (template.installedPipelineId &&
+                  template.installedPipelineName
+                    ? {
+                        id: template.installedPipelineId,
+                        name: template.installedPipelineName,
+                        type: template.pipelineType,
+                      }
+                    : null);
+
+                return (
+                  <div
+                    key={template.templateKey}
+                    className="rounded-lg border p-4 space-y-3"
+                  >
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-medium">{template.name}</h3>
+                        {template.recommended && (
+                          <Badge variant="default" className="text-xs">
+                            Recommended
+                          </Badge>
+                        )}
+                        <Badge variant="secondary" className="text-xs">
+                          {template.category.replaceAll("_", " ")}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {template.description}
+                      </p>
+                    </div>
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <p>
+                        Pipeline type:{" "}
+                        {template.pipelineType.replaceAll("_", " ")}
+                      </p>
+                      <p>Objects: {template.supportedObjects.join(", ")}</p>
+                      <p>
+                        {template.isInstalled
+                          ? `Installed on ${template.installedPipelineName ?? "a pipeline"}`
+                          : targetPipeline
+                            ? `Ready for ${targetPipeline.name}`
+                            : "No compatible pipeline yet"}
+                      </p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant={template.isInstalled ? "outline" : "default"}
+                      disabled={
+                        installTemplateMutation.isPending || !targetPipeline
+                      }
+                      onClick={() =>
+                        installTemplateMutation.mutate({
+                          templateKey: template.templateKey,
+                          data: {
+                            pipelineId: targetPipeline?.id,
+                            overwriteExisting: template.isInstalled,
+                            activate: true,
+                          },
+                        })
+                      }
+                    >
+                      {template.isInstalled
+                        ? "Reinstall template"
+                        : "Install template"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader className="flex flex-row items-start justify-between">
           <div>
             <CardTitle>Workflows</CardTitle>
@@ -267,7 +365,8 @@ export default function WorkflowEditorPage() {
             <div className="text-center py-10 text-muted-foreground">
               <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">
-                No workflows yet. Create one to automate deal actions.
+                No workflows yet. Install a ready-made template above or create
+                a custom workflow to automate deal actions.
               </p>
             </div>
           ) : (
@@ -329,7 +428,19 @@ export default function WorkflowEditorPage() {
                       <TableRow key={w.id}>
                         <TableCell className="font-medium">{w.name}</TableCell>
                         <TableCell>
-                          {w.pipeline?.name ?? w.pipelineId}
+                          <div className="space-y-1">
+                            <div>{w.pipeline?.name ?? w.pipelineId}</div>
+                            <div className="flex flex-wrap gap-1">
+                              <Badge variant="outline" className="text-xs">
+                                {w.origin === "CUSTOM" ? "Custom" : "Template"}
+                              </Badge>
+                              {w.templateKey && (
+                                <Badge variant="secondary" className="text-xs">
+                                  {w.templateKey}
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
@@ -346,15 +457,23 @@ export default function WorkflowEditorPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {w.isActive ? (
-                            <Badge variant="default" className="text-xs">
-                              Active
-                            </Badge>
-                          ) : (
-                            <span className="text-muted-foreground text-sm">
-                              Off
-                            </span>
-                          )}
+                          <div className="space-y-1">
+                            {w.isActive ? (
+                              <Badge variant="default" className="text-xs">
+                                Active
+                              </Badge>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">
+                                Off
+                              </span>
+                            )}
+                            <p className="text-xs text-muted-foreground">
+                              Runs: {w.runCount ?? 0}
+                              {w.failureCount
+                                ? `, failures: ${w.failureCount}`
+                                : ""}
+                            </p>
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="flex gap-1 justify-end">

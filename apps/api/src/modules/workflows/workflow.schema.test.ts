@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   CreateWorkflowSchema,
   CreateWorkflowRuleSchema,
+  GetWorkflowRunsQuerySchema,
+  InstallWorkflowTemplateSchema,
   UpdateWorkflowSchema,
+  WorkflowTemplateKeyParamSchema,
   parseActionConfig,
   type CreateTaskConfig,
   type MoveStageConfig,
@@ -65,6 +68,34 @@ describe("Workflow Schemas", () => {
     });
   });
 
+  describe("template schemas", () => {
+    it("accepts known workflow template key", () => {
+      const result = WorkflowTemplateKeyParamSchema.parse({
+        templateKey: "new-sales-sales-won-follow-up",
+      });
+      expect(result.templateKey).toBe("new-sales-sales-won-follow-up");
+    });
+
+    it("rejects unknown workflow template key", () => {
+      expect(() =>
+        WorkflowTemplateKeyParamSchema.parse({
+          templateKey: "missing-template",
+        }),
+      ).toThrow();
+    });
+
+    it("parses install template payload defaults", () => {
+      const result = InstallWorkflowTemplateSchema.parse({});
+      expect(result.overwriteExisting).toBe(false);
+      expect(result.activate).toBe(true);
+    });
+
+    it("parses workflow runs query limit", () => {
+      const result = GetWorkflowRunsQuerySchema.parse({ limit: "15" });
+      expect(result.limit).toBe(15);
+    });
+  });
+
   describe("parseActionConfig", () => {
     it("parses UPDATE_CONTACT_FIELD with allowlisted field", () => {
       const c = parseActionConfig("UPDATE_CONTACT_FIELD", {
@@ -80,6 +111,15 @@ describe("Workflow Schemas", () => {
         parseActionConfig("UPDATE_CONTACT_FIELD", {
           field: "purchaseCount",
           value: "1",
+        }),
+      ).toThrow();
+    });
+
+    it("rejects UPDATE_CONTACT_FIELD for derived journey type", () => {
+      expect(() =>
+        parseActionConfig("UPDATE_CONTACT_FIELD", {
+          field: "journeyType",
+          value: "New Sales(Lead)",
         }),
       ).toThrow();
     });

@@ -6,6 +6,9 @@ const mockFindById = vi.fn();
 const mockCreate = vi.fn();
 const mockUpdate = vi.fn();
 const mockDelete = vi.fn();
+const mockFindTemplateCatalog = vi.fn();
+const mockInstallTemplate = vi.fn();
+const mockFindRecentRuns = vi.fn();
 
 vi.mock("./workflow.repository", () => ({
   default: {
@@ -15,6 +18,16 @@ vi.mock("./workflow.repository", () => ({
     create: (...args: unknown[]) => mockCreate(...args),
     update: (...args: unknown[]) => mockUpdate(...args),
     delete: (...args: unknown[]) => mockDelete(...args),
+    findTemplateCatalog: (...args: unknown[]) =>
+      mockFindTemplateCatalog(...args),
+    installTemplate: (...args: unknown[]) => mockInstallTemplate(...args),
+    findRecentRuns: (...args: unknown[]) => mockFindRecentRuns(...args),
+  },
+}));
+
+vi.mock("@/modules/pipelines/pipeline.repository", () => ({
+  default: {
+    findByType: vi.fn(),
   },
 }));
 
@@ -52,6 +65,21 @@ describe("WorkflowService", () => {
 
       expect(mockFindByPipeline).toHaveBeenCalledWith(tenantId, "p1");
       expect(result).toEqual(workflows);
+    });
+  });
+
+  describe("getTemplateCatalog", () => {
+    it("returns workflow template catalog", async () => {
+      mockFindTemplateCatalog.mockResolvedValue([
+        { templateKey: "new-sales-sales-won-follow-up", isInstalled: false },
+      ]);
+
+      const result = await workflowService.getTemplateCatalog(tenantId);
+
+      expect(mockFindTemplateCatalog).toHaveBeenCalledWith(tenantId);
+      expect(result).toEqual([
+        { templateKey: "new-sales-sales-won-follow-up", isInstalled: false },
+      ]);
     });
   });
 
@@ -145,6 +173,7 @@ describe("WorkflowService", () => {
       expect(mockFindById).toHaveBeenCalledWith(tenantId, "w1");
       expect(mockUpdate).toHaveBeenCalledWith("w1", tenantId, {
         name: "Updated",
+        description: undefined,
         isActive: false,
         rules: undefined,
       });
@@ -219,6 +248,60 @@ describe("WorkflowService", () => {
         statusCode: 404,
       });
       expect(mockDelete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("installTemplate", () => {
+    it("installs a workflow template", async () => {
+      mockInstallTemplate.mockResolvedValue({
+        id: "wf-template",
+        templateKey: "new-sales-sales-won-follow-up",
+      });
+
+      const result = await workflowService.installTemplate(
+        tenantId,
+        "new-sales-sales-won-follow-up",
+        {
+          activate: true,
+          overwriteExisting: false,
+        },
+      );
+
+      expect(mockInstallTemplate).toHaveBeenCalledWith(
+        tenantId,
+        "new-sales-sales-won-follow-up",
+        expect.objectContaining({
+          activate: true,
+          overwriteExisting: false,
+        }),
+      );
+      expect(result).toEqual({
+        id: "wf-template",
+        templateKey: "new-sales-sales-won-follow-up",
+      });
+    });
+  });
+
+  describe("getRuns", () => {
+    it("returns recent workflow runs", async () => {
+      mockFindById.mockResolvedValue({
+        id: "w1",
+        name: "Follow-up",
+        pipelineId: "p1",
+        tenantId,
+      });
+      mockFindRecentRuns.mockResolvedValue([
+        { id: "run-1", status: "SUCCEEDED" },
+      ]);
+
+      const result = await workflowService.getRuns(tenantId, "w1", {
+        limit: 10,
+      });
+
+      expect(mockFindRecentRuns).toHaveBeenCalledWith(tenantId, "w1", 10);
+      expect(result).toEqual({
+        runs: [{ id: "run-1", status: "SUCCEEDED" }],
+      });
     });
   });
 });

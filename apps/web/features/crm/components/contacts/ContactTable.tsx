@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Mail, Phone } from "lucide-react";
 import type { SortOrder } from "@/components/ui/table";
+import { getActiveJourneyType } from "../../utils/journey-type";
 
 interface ContactTableProps {
   contacts: Contact[];
@@ -108,7 +109,7 @@ export function ContactTable({
       {/* ── Mobile card list ─────────────────────────────────────────── */}
       <div className="sm:hidden space-y-2">
         {contacts.map((c) => {
-          const latestDeal = c.deals?.[0];
+          const activeJourneyType = getActiveJourneyType(c.deals);
           const fullName = [c.firstName, c.lastName].filter(Boolean).join(" ");
           return (
             <div key={c.id} className="rounded-lg border bg-card p-3 space-y-2">
@@ -119,11 +120,9 @@ export function ContactTable({
                 >
                   {fullName}
                 </button>
-                {dealsEnabled && latestDeal && (
+                {dealsEnabled && activeJourneyType && (
                   <Badge variant="outline" className="text-xs shrink-0">
-                    {latestDeal.pipeline?.name
-                      ? `${latestDeal.pipeline.name} · ${latestDeal.stage}`
-                      : latestDeal.stage}
+                    {activeJourneyType}
                   </Badge>
                 )}
               </div>
@@ -238,7 +237,7 @@ export function ContactTable({
           </TableHeader>
           <TableBody>
             {contacts.map((c) => {
-              const latestDeal = c.deals?.[0];
+              const activeJourneyType = getActiveJourneyType(c.deals);
               return (
                 <TableRow key={c.id}>
                   <TableCell>
@@ -258,11 +257,9 @@ export function ContactTable({
                   </TableCell>
                   {dealsEnabled && (
                     <TableCell>
-                      {latestDeal ? (
+                      {activeJourneyType ? (
                         <Badge variant="outline" className="text-xs">
-                          {latestDeal.pipeline?.name
-                            ? `${latestDeal.pipeline.name} · ${latestDeal.stage}`
-                            : latestDeal.stage}
+                          {activeJourneyType}
                         </Badge>
                       ) : (
                         "—"

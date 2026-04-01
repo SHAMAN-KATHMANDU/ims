@@ -1,5 +1,9 @@
 import { z } from "zod";
-import { WORKFLOW_TRIGGER_VALUES, WORKFLOW_ACTION_VALUES } from "@repo/shared";
+import {
+  CRM_WORKFLOW_TEMPLATES,
+  WORKFLOW_TRIGGER_VALUES,
+  WORKFLOW_ACTION_VALUES,
+} from "@repo/shared";
 
 export const WORKFLOW_TRIGGERS = WORKFLOW_TRIGGER_VALUES;
 export const WORKFLOW_ACTIONS = WORKFLOW_ACTION_VALUES;
@@ -73,7 +77,7 @@ export const CreateDealConfigSchema = z
   });
 export type CreateDealConfig = z.infer<typeof CreateDealConfigSchema>;
 
-/** Only safe CRM fields — do not allow arbitrary Prisma keys. */
+/** Only safe CRM fields — journey type is derived from active deal context. */
 export const UPDATE_CONTACT_FIELD_ALLOWED = ["source"] as const;
 export const UpdateContactFieldConfigSchema = z.object({
   field: z.enum(UPDATE_CONTACT_FIELD_ALLOWED),
@@ -170,8 +174,40 @@ export const WorkflowIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+const WORKFLOW_TEMPLATE_KEYS = CRM_WORKFLOW_TEMPLATES.map(
+  (template) => template.templateKey,
+) as [string, ...string[]];
+
+export const WorkflowTemplateKeyParamSchema = z.object({
+  templateKey: z.enum(WORKFLOW_TEMPLATE_KEYS, {
+    errorMap: () => ({ message: "Unknown workflow template" }),
+  }),
+});
+
+export const InstallWorkflowTemplateSchema = z.object({
+  pipelineId: z.string().uuid().optional(),
+  overwriteExisting: z.boolean().optional().default(false),
+  activate: z.boolean().optional().default(true),
+});
+
+export const GetWorkflowRunsQuerySchema = z.object({
+  limit: z
+    .string()
+    .optional()
+    .transform((v) => Math.min(100, Math.max(1, parseInt(v || "20") || 20))),
+});
+
 export type CreateWorkflowDto = z.infer<typeof CreateWorkflowSchema>;
 export type UpdateWorkflowDto = z.infer<typeof UpdateWorkflowSchema>;
 export type CreateWorkflowRuleDto = z.infer<typeof CreateWorkflowRuleSchema>;
 export type GetWorkflowsQueryDto = z.infer<typeof GetWorkflowsQuerySchema>;
 export type WorkflowIdParamDto = z.infer<typeof WorkflowIdParamSchema>;
+export type WorkflowTemplateKeyParamDto = z.infer<
+  typeof WorkflowTemplateKeyParamSchema
+>;
+export type InstallWorkflowTemplateDto = z.infer<
+  typeof InstallWorkflowTemplateSchema
+>;
+export type GetWorkflowRunsQueryDto = z.infer<
+  typeof GetWorkflowRunsQuerySchema
+>;

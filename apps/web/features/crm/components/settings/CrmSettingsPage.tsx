@@ -57,7 +57,6 @@ import {
   Trash2,
   GitBranch,
   Tag,
-  Route,
   Tags,
   GripVertical,
   Search,
@@ -79,10 +78,6 @@ import {
   useCreateCrmSource,
   useUpdateCrmSource,
   useDeleteCrmSource,
-  useCrmJourneyTypes,
-  useCreateCrmJourneyType,
-  useUpdateCrmJourneyType,
-  useDeleteCrmJourneyType,
 } from "../../hooks/use-crm-settings";
 import {
   useContactTags,
@@ -93,10 +88,7 @@ import {
 import { useEnvFeatureFlag } from "@/features/flags";
 import { EnvFeature } from "@/features/flags";
 import type { PipelineStage } from "../../services/pipeline.service";
-import type {
-  CrmSource,
-  CrmJourneyType,
-} from "../../services/crm-settings.service";
+import type { CrmSource } from "../../services/crm-settings.service";
 
 export default function CrmSettingsPage() {
   const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
@@ -126,15 +118,11 @@ export default function CrmSettingsPage() {
             </TabsTrigger>
           )}
           {pipelinesTabEnabled && (
-            <TabsTrigger value="journey-types" className="gap-2 shrink-0">
-              <Route className="h-4 w-4" />
-              <span className="hidden sm:inline">Journey </span>Types
+            <TabsTrigger value="tags" className="gap-2 shrink-0">
+              <Tags className="h-4 w-4" />
+              Tags
             </TabsTrigger>
           )}
-          <TabsTrigger value="tags" className="gap-2 shrink-0">
-            <Tags className="h-4 w-4" />
-            Tags
-          </TabsTrigger>
         </TabsList>
 
         {pipelinesTabEnabled && (
@@ -145,11 +133,6 @@ export default function CrmSettingsPage() {
         {pipelinesTabEnabled && (
           <TabsContent value="sources">
             <SourceSettings />
-          </TabsContent>
-        )}
-        {pipelinesTabEnabled && (
-          <TabsContent value="journey-types">
-            <JourneyTypeSettings />
           </TabsContent>
         )}
         <TabsContent value="tags">
@@ -1123,7 +1106,6 @@ function ListSettings({
 }
 
 const DEFAULT_SOURCE_PAGE_SIZE = 10;
-const DEFAULT_JOURNEY_TYPE_PAGE_SIZE = 10;
 const DEFAULT_TAG_PAGE_SIZE = 10;
 
 // ── Source Settings ───────────────────────────────────────────────────────────
@@ -1190,76 +1172,6 @@ function SourceSettings() {
           onPageSizeChange={(size) => {
             setSourcePageSize(size);
             setSourcePage(DEFAULT_PAGE);
-          }}
-          isLoading={isLoading}
-        />
-      )}
-    </>
-  );
-}
-
-// ── Journey Type Settings ─────────────────────────────────────────────────────
-
-function JourneyTypeSettings() {
-  const pipelinesTabEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
-  const [journeyTypePage, setJourneyTypePage] = useState(DEFAULT_PAGE);
-  const [journeyTypePageSize, setJourneyTypePageSize] = useState(
-    DEFAULT_JOURNEY_TYPE_PAGE_SIZE,
-  );
-  const [journeyTypeSearch, setJourneyTypeSearch] = useState("");
-  const debouncedJourneyTypeSearch = useDebounce(journeyTypeSearch, 300);
-  const { data, isLoading } = useCrmJourneyTypes(
-    {
-      page: journeyTypePage,
-      limit: journeyTypePageSize,
-      search: debouncedJourneyTypeSearch || undefined,
-    },
-    { enabled: pipelinesTabEnabled },
-  );
-  const createMutation = useCreateCrmJourneyType();
-  const updateMutation = useUpdateCrmJourneyType();
-  const deleteMutation = useDeleteCrmJourneyType();
-
-  const journeyTypes: CrmJourneyType[] = data?.journeyTypes ?? [];
-  const journeyTypePagination = data?.pagination;
-
-  return (
-    <>
-      <ListSettings
-        title="Journey Types"
-        description="Define the stages of your customer journey. These appear as options when creating or editing a contact."
-        emptyIcon={<Route className="h-8 w-8" />}
-        emptyText="No journey types yet. Add one above."
-        placeholder="e.g. Prospecting, Qualified, Proposal, Negotiation, Closed"
-        items={journeyTypes}
-        isLoading={isLoading}
-        isCreating={createMutation.isPending}
-        isUpdating={updateMutation.isPending}
-        isDeleting={deleteMutation.isPending}
-        onAdd={(name) => createMutation.mutate(name)}
-        onUpdate={(id, name) => updateMutation.mutate({ id, name })}
-        onDelete={(id) => deleteMutation.mutate(id)}
-        searchValue={journeyTypeSearch}
-        onSearchChange={(v) => {
-          setJourneyTypeSearch(v);
-          setJourneyTypePage(DEFAULT_PAGE);
-        }}
-        searchPlaceholder="Search journey types..."
-      />
-      {journeyTypePagination && (
-        <DataTablePagination
-          pagination={{
-            currentPage: journeyTypePagination.currentPage,
-            totalPages: journeyTypePagination.totalPages,
-            totalItems: journeyTypePagination.totalItems,
-            itemsPerPage: journeyTypePagination.itemsPerPage,
-            hasNextPage: journeyTypePagination.hasNextPage,
-            hasPrevPage: journeyTypePagination.hasPrevPage,
-          }}
-          onPageChange={setJourneyTypePage}
-          onPageSizeChange={(size) => {
-            setJourneyTypePageSize(size);
-            setJourneyTypePage(DEFAULT_PAGE);
           }}
           isLoading={isLoading}
         />

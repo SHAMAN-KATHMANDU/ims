@@ -1,6 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockFindActiveRulesByPipeline = vi.fn();
+const mockCreateWorkflowRun = vi.fn();
+const mockMarkWorkflowRunSucceeded = vi.fn();
+const mockMarkWorkflowRunFailed = vi.fn();
 const mockTaskCreate = vi.fn();
 const mockNotificationCreate = vi.fn();
 const mockDealUpdate = vi.fn();
@@ -15,6 +18,11 @@ vi.mock("./workflow.repository", () => ({
   default: {
     findActiveRulesByPipeline: (...args: unknown[]) =>
       mockFindActiveRulesByPipeline(...args),
+    createWorkflowRun: (...args: unknown[]) => mockCreateWorkflowRun(...args),
+    markWorkflowRunSucceeded: (...args: unknown[]) =>
+      mockMarkWorkflowRunSucceeded(...args),
+    markWorkflowRunFailed: (...args: unknown[]) =>
+      mockMarkWorkflowRunFailed(...args),
   },
 }));
 vi.mock("./workflow-execution-context", () => ({
@@ -64,6 +72,7 @@ const baseDeal = {
 describe("WorkflowEngine", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateWorkflowRun.mockResolvedValue({ id: "run-1" });
   });
 
   describe("executeWorkflowRules", () => {
@@ -105,6 +114,7 @@ describe("WorkflowEngine", () => {
       mockFindActiveRulesByPipeline.mockResolvedValue([
         {
           id: "r1",
+          workflowId: "wf1",
           trigger: "DEAL_CREATED",
           triggerStageId: null,
           action: "CREATE_TASK",
@@ -129,6 +139,8 @@ describe("WorkflowEngine", () => {
         }),
         "u1",
       );
+      expect(mockCreateWorkflowRun).toHaveBeenCalled();
+      expect(mockMarkWorkflowRunSucceeded).toHaveBeenCalledWith("run-1", "wf1");
     });
 
     it("executes SEND_NOTIFICATION when rule matches", async () => {
@@ -361,6 +373,31 @@ describe("WorkflowEngine", () => {
         "deal-1",
         { expectedCloseDate: "2026-04-10T00:00:00.000Z" },
         "",
+      );
+    });
+
+    it("records failed workflow runs when action execution throws", async () => {
+      mockFindActiveRulesByPipeline.mockResolvedValue([
+        {
+          id: "r1",
+          workflowId: "wf1",
+          trigger: "DEAL_CREATED",
+          triggerStageId: null,
+          action: "UPDATE_FIELD",
+          actionConfig: { field: "expectedCloseDate", value: "2026-04-10" },
+        },
+      ]);
+      mockDealUpdate.mockRejectedValue(new Error("update failed"));
+
+      await executeWorkflowRules({
+        trigger: "DEAL_CREATED",
+        deal: baseDeal,
+      });
+
+      expect(mockMarkWorkflowRunFailed).toHaveBeenCalledWith(
+        "run-1",
+        "wf1",
+        "update failed",
       );
     });
   });

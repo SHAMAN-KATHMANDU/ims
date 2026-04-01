@@ -84,6 +84,7 @@ export async function executeWorkflowRules(
   for (const rule of rules) {
     const ruleWithTrigger = rule as {
       id: string;
+      workflowId?: string;
       trigger: WorkflowTrigger;
       triggerStageId: string | null;
       action: WorkflowAction;
@@ -92,20 +93,67 @@ export async function executeWorkflowRules(
     };
     if (!matchesTrigger(ruleWithTrigger, event)) continue;
 
+    let runId: string | null = null;
     try {
+      if (ruleWithTrigger.workflowId) {
+        const run = await workflowRepository.createWorkflowRun({
+          tenantId: event.deal.tenantId,
+          workflowId: ruleWithTrigger.workflowId,
+          ruleId: ruleWithTrigger.id,
+          trigger: event.trigger,
+          action: ruleWithTrigger.action,
+          status: "RUNNING",
+          entityId: event.deal.id,
+          metadata: {
+            dealId: event.deal.id,
+            pipelineId: event.deal.pipelineId,
+            stage: event.deal.stage,
+            previousStage: event.previousStage ?? null,
+          },
+        });
+        runId = run.id;
+      }
       const config = parseActionConfig(
         ruleWithTrigger.action,
         ruleWithTrigger.actionConfig,
       );
       await executeAction(ruleWithTrigger.action, config, event);
+      if (runId && ruleWithTrigger.workflowId) {
+        await workflowRepository.markWorkflowRunSucceeded(
+          runId,
+          ruleWithTrigger.workflowId,
+        );
+      }
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Workflow rule execution failed";
+      try {
+        if (runId && ruleWithTrigger.workflowId) {
+          await workflowRepository.markWorkflowRunFailed(
+            runId,
+            ruleWithTrigger.workflowId,
+            message,
+          );
+        }
+      } catch (historyError) {
+        logger.error("Workflow run history write failed", undefined, {
+          workflowId: ruleWithTrigger.workflowId,
+          ruleId: ruleWithTrigger.id,
+          dealId: event.deal.id,
+          tenantId: event.deal.tenantId,
+          error:
+            historyError instanceof Error
+              ? historyError.message
+              : String(historyError),
+        });
+      }
       logger.error("Workflow rule execution failed", undefined, {
         ruleId: ruleWithTrigger.id,
         dealId: event.deal.id,
         tenantId: event.deal.tenantId,
         trigger: event.trigger,
         action: ruleWithTrigger.action,
-        error: err instanceof Error ? err.message : String(err),
+        error: message,
       });
     }
   }

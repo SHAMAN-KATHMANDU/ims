@@ -8,6 +8,9 @@ import {
   UpdateWorkflowSchema,
   GetWorkflowsQuerySchema,
   WorkflowIdParamSchema,
+  WorkflowTemplateKeyParamSchema,
+  InstallWorkflowTemplateSchema,
+  GetWorkflowRunsQuerySchema,
 } from "./workflow.schema";
 import workflowService from "./workflow.service";
 
@@ -57,6 +60,49 @@ class WorkflowController {
         return res.status(appErr.statusCode).json({ message: appErr.message });
       }
       return sendControllerError(req, res, error, "Get workflow error");
+    }
+  };
+
+  getTemplates = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const templates = await workflowService.getTemplateCatalog(tenantId);
+      return res.status(200).json({ message: "OK", templates });
+    } catch (error: unknown) {
+      return sendControllerError(
+        req,
+        res,
+        error,
+        "Get workflow templates error",
+      );
+    }
+  };
+
+  installTemplate = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const { templateKey } = WorkflowTemplateKeyParamSchema.parse(req.params);
+      const body = InstallWorkflowTemplateSchema.parse(req.body ?? {});
+      const workflow = await workflowService.installTemplate(
+        tenantId,
+        templateKey,
+        body,
+      );
+      return res.status(201).json({
+        message: "Workflow template installed successfully",
+        workflow,
+      });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      const appErr = error as AppError;
+      if (appErr.statusCode != null) {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
+      return sendControllerError(req, res, error, "Install workflow template");
     }
   };
 
@@ -122,6 +168,27 @@ class WorkflowController {
         return res.status(appErr.statusCode).json({ message: appErr.message });
       }
       return sendControllerError(req, res, error, "Delete workflow error");
+    }
+  };
+
+  getRuns = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const { id } = WorkflowIdParamSchema.parse(req.params);
+      const query = GetWorkflowRunsQuerySchema.parse(req.query);
+      const result = await workflowService.getRuns(tenantId, id, query);
+      return res.status(200).json({ message: "OK", runs: result.runs });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return res
+          .status(400)
+          .json({ message: error.errors[0]?.message ?? "Validation error" });
+      }
+      const appErr = error as AppError;
+      if (appErr.statusCode != null) {
+        return res.status(appErr.statusCode).json({ message: appErr.message });
+      }
+      return sendControllerError(req, res, error, "Get workflow runs error");
     }
   };
 }
