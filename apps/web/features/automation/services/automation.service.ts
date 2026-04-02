@@ -5,6 +5,7 @@ import type { PaginationMeta } from "@/lib/apiTypes";
 import type {
   AutomationActionConfigValue,
   AutomationActionTypeValue,
+  AutomationCondition,
   AutomationExecutionModeValue,
   AutomationScopeValue,
   AutomationStatusValue,
@@ -14,11 +15,7 @@ import type {
 export interface AutomationTrigger {
   id: string;
   eventName: AutomationTriggerEventValue;
-  conditionGroups?: Array<{
-    path: string;
-    operator: string;
-    value?: unknown;
-  }> | null;
+  conditionGroups?: AutomationCondition[] | null;
   delayMinutes: number;
 }
 
@@ -57,6 +54,7 @@ export interface AutomationRunStep {
 
 export interface AutomationRun {
   id: string;
+  automationEventId?: string | null;
   status: "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
   executionMode: AutomationExecutionModeValue;
   eventName: string;
@@ -69,6 +67,10 @@ export interface AutomationRun {
   runSteps: AutomationRunStep[];
 }
 
+export interface ReplayAutomationEventInput {
+  reprocessFromStart?: boolean;
+}
+
 export interface CreateAutomationDefinitionInput {
   name: string;
   description?: string | null;
@@ -79,7 +81,7 @@ export interface CreateAutomationDefinitionInput {
   suppressLegacyWorkflows?: boolean;
   triggers: Array<{
     eventName: AutomationTriggerEventValue;
-    conditions?: Array<{ path: string; operator: string; value?: unknown }>;
+    conditions?: AutomationCondition[];
     delayMinutes?: number;
   }>;
   steps: Array<{
@@ -159,5 +161,17 @@ export async function getAutomationRuns(
     return unwrapApiData<{ runs: AutomationRun[] }>(res.data);
   } catch (error) {
     handleApiError(error, `fetch automation runs for "${id}"`);
+  }
+}
+
+export async function replayAutomationEvent(
+  id: string,
+  payload: ReplayAutomationEventInput = {},
+): Promise<{ replayQueued: true }> {
+  try {
+    const res = await api.post(`/automation/events/${id}/replay`, payload);
+    return unwrapApiData<{ replayQueued: true }>(res.data);
+  } catch (error) {
+    handleApiError(error, `replay automation event "${id}"`);
   }
 }

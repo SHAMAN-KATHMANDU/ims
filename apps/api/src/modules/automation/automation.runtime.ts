@@ -7,6 +7,8 @@ import {
   parseAutomationActionConfig,
   type AutomationActionConfigValue,
   type AutomationCondition,
+  type CrmCompanyUpdateActionConfig,
+  type CrmContactUpdateActionConfig,
   type WorkItemCreateActionConfig,
   type NotificationSendActionConfig,
   type TransferCreateDraftActionConfig,
@@ -85,19 +87,46 @@ const ACTION_ALLOWED_EVENTS = {
   "workitem.create": AUTOMATION_TRIGGER_EVENT_VALUES,
   "notification.send": AUTOMATION_TRIGGER_EVENT_VALUES,
   "transfer.create_draft": [
+    "inventory.stock.adjusted",
+    "inventory.stock.set",
     "inventory.stock.low_detected",
     "inventory.stock.threshold_crossed",
   ],
   "record.update_field": AUTOMATION_TRIGGER_EVENT_VALUES,
+  "crm.contact.update": AUTOMATION_TRIGGER_EVENT_VALUES,
+  "crm.company.update": AUTOMATION_TRIGGER_EVENT_VALUES,
   "crm.deal.move_stage": ["crm.deal.created", "crm.deal.stage_changed"],
-  "crm.activity.create": ["crm.deal.created", "crm.deal.stage_changed"],
+  "crm.activity.create": [
+    "crm.deal.created",
+    "crm.deal.stage_changed",
+    "crm.contact.created",
+    "crm.contact.updated",
+    "crm.company.created",
+    "crm.company.updated",
+    "crm.activity.created",
+    "crm.lead.created",
+    "crm.lead.assigned",
+    "crm.lead.converted",
+  ],
   "webhook.emit": AUTOMATION_TRIGGER_EVENT_VALUES,
 } as const satisfies Record<string, readonly string[]>;
 
 const RECORD_UPDATE_FIELD_ALLOWLIST = {
   DEAL: ["status", "stage", "assignedToId", "expectedCloseDate"],
   CONTACT: ["source", "email", "phone", "ownerId", "status"],
+  COMPANY: ["name", "website", "address", "phone"],
   MEMBER: ["name", "email", "notes", "memberStatus"],
+  PRODUCT: [
+    "name",
+    "description",
+    "subCategory",
+    "vendorId",
+    "costPrice",
+    "mrp",
+  ],
+  CATEGORY: ["name", "description"],
+  VENDOR: ["name", "contact", "address", "phone"],
+  LOCATION: ["name", "address", "isActive", "isDefaultWarehouse"],
   SALE: ["notes"],
   TRANSFER: ["notes"],
   WORK_ITEM: ["status", "priority", "assignedToId", "dueDate"],
@@ -499,6 +528,30 @@ const actionHandlers: Record<string, ActionHandler> = {
     });
     return { activityId: activity.id };
   },
+  "crm.contact.update": async ({ config, context }) => {
+    const parsed = renderTemplateValue(
+      config,
+      context,
+    ) as CrmContactUpdateActionConfig;
+    const contactId = renderTemplateString(parsed.contactIdTemplate, context);
+    await basePrisma.contact.update({
+      where: { id: contactId },
+      data: { [parsed.field]: parsed.value },
+    });
+    return { contactId, field: parsed.field };
+  },
+  "crm.company.update": async ({ config, context }) => {
+    const parsed = renderTemplateValue(
+      config,
+      context,
+    ) as CrmCompanyUpdateActionConfig;
+    const companyId = renderTemplateString(parsed.companyIdTemplate, context);
+    await basePrisma.company.update({
+      where: { id: companyId },
+      data: { [parsed.field]: parsed.value },
+    });
+    return { companyId, field: parsed.field };
+  },
   "crm.deal.move_stage": async ({ config, context }) => {
     const parsed = renderTemplateValue(
       config,
@@ -529,7 +582,12 @@ const actionHandlers: Record<string, ActionHandler> = {
     const modelMap: Record<string, string> = {
       DEAL: "deal",
       CONTACT: "contact",
+      COMPANY: "company",
       MEMBER: "member",
+      PRODUCT: "product",
+      CATEGORY: "category",
+      VENDOR: "vendor",
+      LOCATION: "location",
       SALE: "sale",
       TRANSFER: "transfer",
       WORK_ITEM: "workItem",

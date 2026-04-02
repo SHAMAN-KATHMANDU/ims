@@ -11,9 +11,27 @@ import {
   WORK_ITEM_TYPE_VALUES,
 } from "./automation-enums";
 
-const CRM_EVENT_NAMES = ["crm.deal.created", "crm.deal.stage_changed"] as const;
+const CRM_DEAL_EVENT_NAMES = [
+  "crm.deal.created",
+  "crm.deal.stage_changed",
+] as const;
+
+const CRM_EVENT_NAMES = [
+  "crm.deal.created",
+  "crm.deal.stage_changed",
+  "crm.contact.created",
+  "crm.contact.updated",
+  "crm.company.created",
+  "crm.company.updated",
+  "crm.activity.created",
+  "crm.lead.created",
+  "crm.lead.assigned",
+  "crm.lead.converted",
+] as const;
 
 const INVENTORY_EVENT_NAMES = [
+  "inventory.stock.adjusted",
+  "inventory.stock.set",
   "inventory.stock.low_detected",
   "inventory.stock.threshold_crossed",
 ] as const;
@@ -26,7 +44,9 @@ export const AUTOMATION_ACTION_ALLOWED_EVENTS: Record<
   "notification.send": AUTOMATION_TRIGGER_EVENT_VALUES,
   "transfer.create_draft": INVENTORY_EVENT_NAMES,
   "record.update_field": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "crm.deal.move_stage": CRM_EVENT_NAMES,
+  "crm.contact.update": AUTOMATION_TRIGGER_EVENT_VALUES,
+  "crm.company.update": AUTOMATION_TRIGGER_EVENT_VALUES,
+  "crm.deal.move_stage": CRM_DEAL_EVENT_NAMES,
   "crm.activity.create": CRM_EVENT_NAMES,
   "webhook.emit": AUTOMATION_TRIGGER_EVENT_VALUES,
 };
@@ -34,7 +54,19 @@ export const AUTOMATION_ACTION_ALLOWED_EVENTS: Record<
 export const RECORD_UPDATE_FIELD_ALLOWLIST = {
   DEAL: ["status", "stage", "assignedToId", "expectedCloseDate"],
   CONTACT: ["source", "email", "phone", "ownerId", "status"],
+  COMPANY: ["name", "website", "address", "phone"],
   MEMBER: ["name", "email", "notes", "memberStatus"],
+  PRODUCT: [
+    "name",
+    "description",
+    "subCategory",
+    "vendorId",
+    "costPrice",
+    "mrp",
+  ],
+  CATEGORY: ["name", "description"],
+  VENDOR: ["name", "contact", "address", "phone"],
+  LOCATION: ["name", "address", "isActive", "isDefaultWarehouse"],
   SALE: ["notes"],
   TRANSFER: ["notes"],
   WORK_ITEM: ["status", "priority", "assignedToId", "dueDate"],
@@ -145,6 +177,58 @@ export type RecordUpdateFieldActionConfig = z.infer<
   typeof RecordUpdateFieldActionConfigSchema
 >;
 
+const CONTACT_UPDATE_ALLOWLIST = RECORD_UPDATE_FIELD_ALLOWLIST.CONTACT;
+const CONTACT_UPDATE_FIELDS = [...CONTACT_UPDATE_ALLOWLIST] as [
+  (typeof CONTACT_UPDATE_ALLOWLIST)[number],
+  ...(typeof CONTACT_UPDATE_ALLOWLIST)[number][],
+];
+
+export const CrmContactUpdateActionConfigSchema = z
+  .object({
+    contactIdTemplate: z.string().min(1).max(255).default("{{event.entityId}}"),
+    field: z.enum(CONTACT_UPDATE_FIELDS),
+    value: z.unknown(),
+  })
+  .superRefine((value, ctx) => {
+    if (!CONTACT_UPDATE_ALLOWLIST.includes(value.field)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["field"],
+        message: `Field "${value.field}" is not updatable for CONTACT`,
+      });
+    }
+  });
+
+export type CrmContactUpdateActionConfig = z.infer<
+  typeof CrmContactUpdateActionConfigSchema
+>;
+
+const COMPANY_UPDATE_ALLOWLIST = RECORD_UPDATE_FIELD_ALLOWLIST.COMPANY;
+const COMPANY_UPDATE_FIELDS = [...COMPANY_UPDATE_ALLOWLIST] as [
+  (typeof COMPANY_UPDATE_ALLOWLIST)[number],
+  ...(typeof COMPANY_UPDATE_ALLOWLIST)[number][],
+];
+
+export const CrmCompanyUpdateActionConfigSchema = z
+  .object({
+    companyIdTemplate: z.string().min(1).max(255).default("{{event.entityId}}"),
+    field: z.enum(COMPANY_UPDATE_FIELDS),
+    value: z.unknown(),
+  })
+  .superRefine((value, ctx) => {
+    if (!COMPANY_UPDATE_ALLOWLIST.includes(value.field)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["field"],
+        message: `Field "${value.field}" is not updatable for COMPANY`,
+      });
+    }
+  });
+
+export type CrmCompanyUpdateActionConfig = z.infer<
+  typeof CrmCompanyUpdateActionConfigSchema
+>;
+
 export const CrmDealMoveStageActionConfigSchema = z.object({
   dealIdTemplate: z.string().min(1).max(255).default("{{event.entityId}}"),
   targetStageId: z.string().min(1).max(100),
@@ -182,6 +266,8 @@ export const AutomationActionConfigSchemas = {
   "notification.send": NotificationSendActionConfigSchema,
   "transfer.create_draft": TransferCreateDraftActionConfigSchema,
   "record.update_field": RecordUpdateFieldActionConfigSchema,
+  "crm.contact.update": CrmContactUpdateActionConfigSchema,
+  "crm.company.update": CrmCompanyUpdateActionConfigSchema,
   "crm.deal.move_stage": CrmDealMoveStageActionConfigSchema,
   "crm.activity.create": CrmActivityCreateActionConfigSchema,
   "webhook.emit": WebhookEmitActionConfigSchema,
@@ -192,6 +278,8 @@ export type AutomationActionConfigValue =
   | NotificationSendActionConfig
   | TransferCreateDraftActionConfig
   | RecordUpdateFieldActionConfig
+  | CrmContactUpdateActionConfig
+  | CrmCompanyUpdateActionConfig
   | CrmDealMoveStageActionConfig
   | CrmActivityCreateActionConfig
   | WebhookEmitActionConfig;

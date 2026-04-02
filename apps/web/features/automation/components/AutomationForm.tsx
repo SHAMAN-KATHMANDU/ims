@@ -16,13 +16,17 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Trash2 } from "lucide-react";
+import { usePipelines } from "@/features/crm";
+import { useActiveLocations } from "@/features/locations";
 import {
   AUTOMATION_ACTION_TYPE_VALUES,
   AUTOMATION_EXECUTION_MODE_VALUES,
   AUTOMATION_SCOPE_VALUES,
   AUTOMATION_STATUS_VALUES,
   AUTOMATION_TRIGGER_EVENT_VALUES,
+  isAutomationActionAllowedForEvent,
   type AutomationActionTypeValue,
+  type AutomationCondition,
 } from "@repo/shared";
 import {
   AutomationDefinitionFormSchema,
@@ -41,32 +45,19 @@ const ACTION_LABELS: Record<AutomationActionTypeValue, string> = {
   "notification.send": "Send notification",
   "transfer.create_draft": "Create transfer draft",
   "record.update_field": "Update record field",
+  "crm.contact.update": "Update CRM contact",
+  "crm.company.update": "Update CRM company",
   "crm.deal.move_stage": "Move CRM deal stage",
   "crm.activity.create": "Create CRM activity",
   "webhook.emit": "Emit webhook",
 };
 
-const ACTION_ALLOWED_EVENTS = {
-  "workitem.create": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "notification.send": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "transfer.create_draft": [
-    "inventory.stock.low_detected",
-    "inventory.stock.threshold_crossed",
-  ],
-  "record.update_field": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "crm.deal.move_stage": ["crm.deal.created", "crm.deal.stage_changed"],
-  "crm.activity.create": ["crm.deal.created", "crm.deal.stage_changed"],
-  "webhook.emit": AUTOMATION_TRIGGER_EVENT_VALUES,
-} as const satisfies Record<AutomationActionTypeValue, readonly string[]>;
-
-function isActionAllowedForEvent(
-  actionType: AutomationActionTypeValue,
-  eventName: string,
-): boolean {
-  return (ACTION_ALLOWED_EVENTS[actionType] as readonly string[]).includes(
-    eventName,
-  );
-}
+const SCOPE_LABELS = {
+  GLOBAL: "Global",
+  CRM_PIPELINE: "CRM pipeline",
+  LOCATION: "Location",
+  PRODUCT_VARIATION: "Product variation",
+} as const;
 
 function getDefaultActionConfig(actionType: AutomationActionTypeValue) {
   switch (actionType) {
@@ -83,6 +74,18 @@ function getDefaultActionConfig(actionType: AutomationActionTypeValue) {
         field: "status",
         value: "OPEN",
       };
+    case "crm.contact.update":
+      return {
+        contactIdTemplate: "{{event.payload.contactId}}",
+        field: "status",
+        value: "QUALIFIED",
+      };
+    case "crm.company.update":
+      return {
+        companyIdTemplate: "{{event.payload.companyId}}",
+        field: "website",
+        value: "https://example.com",
+      };
     case "crm.deal.move_stage":
       return {
         dealIdTemplate: "{{event.entityId}}",
@@ -96,6 +99,29 @@ function getDefaultActionConfig(actionType: AutomationActionTypeValue) {
         method: "POST",
         timeoutSeconds: 10,
       };
+  }
+}
+
+function getDefaultCondition(): AutomationCondition {
+  return {
+    path: "total",
+    operator: "gte",
+    value: 1000,
+  };
+}
+
+function getScopeIdPlaceholder(
+  scopeType: AutomationDefinitionFormValues["scopeType"],
+): string {
+  switch (scopeType) {
+    case "CRM_PIPELINE":
+      return "Select a CRM pipeline";
+    case "LOCATION":
+      return "Select a location";
+    case "PRODUCT_VARIATION":
+      return "Enter a product variation UUID";
+    default:
+      return "No scope id required";
   }
 }
 
@@ -275,6 +301,73 @@ function ActionConfigFields({
     );
   }
 
+  if (actionType === "crm.contact.update") {
+    return (
+      <div className="grid gap-2 md:grid-cols-3">
+        <Input
+          placeholder="Contact id template"
+          value={String(
+            value.contactIdTemplate ?? "{{event.payload.contactId}}",
+          )}
+          onChange={(e) => update("contactIdTemplate", e.target.value)}
+        />
+        <Select
+          value={String(value.field ?? "status")}
+          onValueChange={(next) => update("field", next)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Field" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="source">Source</SelectItem>
+            <SelectItem value="email">Email</SelectItem>
+            <SelectItem value="phone">Phone</SelectItem>
+            <SelectItem value="ownerId">Owner</SelectItem>
+            <SelectItem value="status">Status</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="New value"
+          value={String(value.value ?? "")}
+          onChange={(e) => update("value", e.target.value)}
+        />
+      </div>
+    );
+  }
+
+  if (actionType === "crm.company.update") {
+    return (
+      <div className="grid gap-2 md:grid-cols-3">
+        <Input
+          placeholder="Company id template"
+          value={String(
+            value.companyIdTemplate ?? "{{event.payload.companyId}}",
+          )}
+          onChange={(e) => update("companyIdTemplate", e.target.value)}
+        />
+        <Select
+          value={String(value.field ?? "website")}
+          onValueChange={(next) => update("field", next)}
+        >
+          <SelectTrigger>
+            <SelectValue placeholder="Field" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="name">Name</SelectItem>
+            <SelectItem value="website">Website</SelectItem>
+            <SelectItem value="address">Address</SelectItem>
+            <SelectItem value="phone">Phone</SelectItem>
+          </SelectContent>
+        </Select>
+        <Input
+          placeholder="New value"
+          value={String(value.value ?? "")}
+          onChange={(e) => update("value", e.target.value)}
+        />
+      </div>
+    );
+  }
+
   return (
     <Textarea
       rows={4}
@@ -296,28 +389,43 @@ export function AutomationForm({
   onCancel,
   isSubmitting,
 }: AutomationFormProps) {
+  const initialValues = useMemo<AutomationDefinitionFormValues>(
+    () =>
+      defaultValues ?? {
+        name: "",
+        description: "",
+        scopeType: "GLOBAL",
+        scopeId: "",
+        status: "ACTIVE",
+        executionMode: "LIVE",
+        suppressLegacyWorkflows: false,
+        triggers: [
+          {
+            eventName: "inventory.stock.low_detected",
+            conditions: [],
+            delayMinutes: 0,
+          },
+        ],
+        steps: [
+          {
+            actionType: "workitem.create",
+            actionConfig: getDefaultActionConfig("workitem.create"),
+            continueOnError: false,
+          },
+        ],
+      },
+    [defaultValues],
+  );
   const form = useForm<AutomationDefinitionFormValues>({
     resolver: zodResolver(AutomationDefinitionFormSchema),
-    defaultValues: defaultValues ?? {
-      name: "",
-      description: "",
-      scopeType: "GLOBAL",
-      scopeId: "",
-      status: "ACTIVE",
-      executionMode: "LIVE",
-      suppressLegacyWorkflows: false,
-      triggers: [
-        { eventName: "inventory.stock.low_detected", delayMinutes: 0 },
-      ],
-      steps: [
-        {
-          actionType: "workitem.create",
-          actionConfig: getDefaultActionConfig("workitem.create"),
-          continueOnError: false,
-        },
-      ],
-    },
+    defaultValues: initialValues,
   });
+  const scopeType = form.watch("scopeType");
+  const { data: pipelineData } = usePipelines(
+    { page: 1, limit: 100 },
+    { enabled: scopeType === "CRM_PIPELINE" },
+  );
+  const { data: locationData } = useActiveLocations();
 
   const triggerArray = useFieldArray({
     control: form.control,
@@ -333,7 +441,7 @@ export function AutomationForm({
 
     return AUTOMATION_ACTION_TYPE_VALUES.filter((actionType) =>
       events.some((eventName) =>
-        isActionAllowedForEvent(actionType, eventName),
+        isAutomationActionAllowedForEvent(actionType, eventName),
       ),
     );
   }, [selectedTriggerEvents]);
@@ -361,6 +469,16 @@ export function AutomationForm({
     });
   }, [compatibleActionTypes, form, stepArray.fields]);
 
+  useEffect(() => {
+    form.reset(initialValues);
+  }, [form, initialValues]);
+
+  useEffect(() => {
+    if (scopeType === "GLOBAL" && form.getValues("scopeId")) {
+      form.setValue("scopeId", "", { shouldValidate: true });
+    }
+  }, [form, scopeType]);
+
   return (
     <form
       className="space-y-5 rounded-lg border p-4"
@@ -374,7 +492,7 @@ export function AutomationForm({
         <div className="space-y-2">
           <Label>Scope</Label>
           <Select
-            value={form.watch("scopeType")}
+            value={scopeType}
             onValueChange={(next) =>
               form.setValue(
                 "scopeType",
@@ -388,7 +506,7 @@ export function AutomationForm({
             <SelectContent>
               {AUTOMATION_SCOPE_VALUES.map((scope) => (
                 <SelectItem key={scope} value={scope}>
-                  {scope}
+                  {SCOPE_LABELS[scope]}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -399,11 +517,52 @@ export function AutomationForm({
           <Textarea rows={3} {...form.register("description")} />
         </div>
         <div className="space-y-2">
-          <Label>Scope id (optional)</Label>
-          <Input
-            placeholder="UUID for pipeline, location, or variation scope"
-            {...form.register("scopeId")}
-          />
+          <Label>Scope target</Label>
+          {scopeType === "CRM_PIPELINE" ? (
+            <Select
+              value={form.watch("scopeId") || ""}
+              onValueChange={(next) => form.setValue("scopeId", next)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={getScopeIdPlaceholder(scopeType)} />
+              </SelectTrigger>
+              <SelectContent>
+                {(pipelineData?.pipelines ?? []).map((pipeline) => (
+                  <SelectItem key={pipeline.id} value={pipeline.id}>
+                    {pipeline.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+          {scopeType === "LOCATION" ? (
+            <Select
+              value={form.watch("scopeId") || ""}
+              onValueChange={(next) => form.setValue("scopeId", next)}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder={getScopeIdPlaceholder(scopeType)} />
+              </SelectTrigger>
+              <SelectContent>
+                {(locationData ?? []).map((location) => (
+                  <SelectItem key={location.id} value={location.id}>
+                    {location.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : null}
+          {scopeType === "PRODUCT_VARIATION" ? (
+            <Input
+              placeholder={getScopeIdPlaceholder(scopeType)}
+              {...form.register("scopeId")}
+            />
+          ) : null}
+          {scopeType === "GLOBAL" ? (
+            <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+              This automation applies across the tenant.
+            </div>
+          ) : null}
         </div>
         <div className="space-y-2">
           <Label>Status</Label>
@@ -481,6 +640,7 @@ export function AutomationForm({
             onClick={() =>
               triggerArray.append({
                 eventName: "sales.sale.created",
+                conditions: [],
                 delayMinutes: 0,
               })
             }
@@ -489,46 +649,144 @@ export function AutomationForm({
           </Button>
         </div>
         {triggerArray.fields.map((field, index) => (
-          <div
-            key={field.id}
-            className="grid gap-2 rounded-md border p-3 md:grid-cols-[1fr_140px_auto]"
-          >
-            <Select
-              value={form.watch(`triggers.${index}.eventName`)}
-              onValueChange={(next) =>
-                form.setValue(
-                  `triggers.${index}.eventName`,
-                  next as AutomationDefinitionFormValues["triggers"][number]["eventName"],
-                )
-              }
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Event" />
-              </SelectTrigger>
-              <SelectContent>
-                {AUTOMATION_TRIGGER_EVENT_VALUES.map((eventName) => (
-                  <SelectItem key={eventName} value={eventName}>
-                    {eventName}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="number"
-              min={0}
-              {...form.register(`triggers.${index}.delayMinutes`, {
-                valueAsNumber: true,
-              })}
-              placeholder="Delay min"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => triggerArray.remove(index)}
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
+          <div key={field.id} className="space-y-3 rounded-md border p-3">
+            <div className="grid gap-2 md:grid-cols-[1fr_140px_auto]">
+              <Select
+                value={form.watch(`triggers.${index}.eventName`)}
+                onValueChange={(next) =>
+                  form.setValue(
+                    `triggers.${index}.eventName`,
+                    next as AutomationDefinitionFormValues["triggers"][number]["eventName"],
+                  )
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Event" />
+                </SelectTrigger>
+                <SelectContent>
+                  {AUTOMATION_TRIGGER_EVENT_VALUES.map((eventName) => (
+                    <SelectItem key={eventName} value={eventName}>
+                      {eventName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Input
+                type="number"
+                min={0}
+                {...form.register(`triggers.${index}.delayMinutes`, {
+                  valueAsNumber: true,
+                })}
+                placeholder="Delay min"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                onClick={() => triggerArray.remove(index)}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs text-muted-foreground">
+                  Conditions
+                </Label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const current =
+                      form.getValues(`triggers.${index}.conditions`) ?? [];
+                    form.setValue(`triggers.${index}.conditions`, [
+                      ...current,
+                      getDefaultCondition(),
+                    ]);
+                  }}
+                >
+                  Add condition
+                </Button>
+              </div>
+              {(form.watch(`triggers.${index}.conditions`) ?? []).map(
+                (condition, conditionIndex) => (
+                  <div
+                    key={`${field.id}-condition-${conditionIndex}`}
+                    className="grid gap-2 md:grid-cols-[1.2fr_160px_1fr_auto]"
+                  >
+                    <Input
+                      placeholder="Payload path"
+                      value={String(condition.path ?? "")}
+                      onChange={(e) =>
+                        form.setValue(
+                          `triggers.${index}.conditions.${conditionIndex}.path`,
+                          e.target.value,
+                        )
+                      }
+                    />
+                    <Select
+                      value={condition.operator}
+                      onValueChange={(next) =>
+                        form.setValue(
+                          `triggers.${index}.conditions.${conditionIndex}.operator`,
+                          next as AutomationCondition["operator"],
+                        )
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Operator" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {[
+                          "eq",
+                          "neq",
+                          "gt",
+                          "gte",
+                          "lt",
+                          "lte",
+                          "contains",
+                          "in",
+                          "exists",
+                        ].map((operator) => (
+                          <SelectItem key={operator} value={operator}>
+                            {operator}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      placeholder="Value"
+                      value={
+                        condition.value == null ? "" : String(condition.value)
+                      }
+                      onChange={(e) =>
+                        form.setValue(
+                          `triggers.${index}.conditions.${conditionIndex}.value`,
+                          e.target.value,
+                        )
+                      }
+                      disabled={condition.operator === "exists"}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const current =
+                          form.getValues(`triggers.${index}.conditions`) ?? [];
+                        form.setValue(
+                          `triggers.${index}.conditions`,
+                          current.filter((_, i) => i !== conditionIndex),
+                        );
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ),
+              )}
+            </div>
           </div>
         ))}
       </div>

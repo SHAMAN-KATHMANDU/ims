@@ -1,4 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import {
   getPaginationParams,
   createPaginationResult,
@@ -59,6 +61,33 @@ export class MemberService {
       email: data.email ?? null,
       notes: data.notes ?? null,
     });
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "members.member.created",
+        scopeType: "GLOBAL",
+        entityType: "MEMBER",
+        entityId: member.id,
+        actorUserId: null,
+        dedupeKey: `member-created:${member.id}`,
+        payload: {
+          memberId: member.id,
+          phone: member.phone,
+          name: member.name ?? null,
+          email: member.email ?? null,
+          isActive: member.isActive,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          memberId: member.id,
+          eventName: "members.member.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
     return { existing: null, member };
   }
 
@@ -132,6 +161,63 @@ export class MemberService {
       id,
       updateData as UpdateMemberRepoData,
     );
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "members.member.updated",
+        scopeType: "GLOBAL",
+        entityType: "MEMBER",
+        entityId: member.id,
+        actorUserId: null,
+        dedupeKey: `member-updated:${member.id}:${member.updatedAt.toISOString()}`,
+        payload: {
+          memberId: member.id,
+          phone: member.phone,
+          name: member.name ?? null,
+          email: member.email ?? null,
+          isActive: member.isActive,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          memberId: member.id,
+          eventName: "members.member.updated",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    if (
+      existing.isActive !== undefined &&
+      member.isActive !== undefined &&
+      existing.isActive !== member.isActive
+    ) {
+      await automationService
+        .publishDomainEvent({
+          tenantId,
+          eventName: "members.member.status_changed",
+          scopeType: "GLOBAL",
+          entityType: "MEMBER",
+          entityId: member.id,
+          actorUserId: null,
+          dedupeKey: `member-status-changed:${member.id}:${member.updatedAt.toISOString()}`,
+          payload: {
+            memberId: member.id,
+            previousIsActive: existing.isActive,
+            isActive: member.isActive,
+          },
+        })
+        .catch((error) => {
+          logger.error("Automation event publishing failed", undefined, {
+            tenantId,
+            memberId: member.id,
+            eventName: "members.member.status_changed",
+            error: error instanceof Error ? error.message : String(error),
+          });
+        });
+    }
+
     return { conflict: false, member };
   }
 

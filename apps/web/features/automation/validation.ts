@@ -5,34 +5,14 @@ import {
   AUTOMATION_SCOPE_VALUES,
   AUTOMATION_STATUS_VALUES,
   AUTOMATION_TRIGGER_EVENT_VALUES,
+  AutomationConditionSchema,
+  isAutomationActionAllowedForEvent,
   parseAutomationActionConfig,
-  type AutomationActionTypeValue,
 } from "@repo/shared";
-
-const ACTION_ALLOWED_EVENTS = {
-  "workitem.create": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "notification.send": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "transfer.create_draft": [
-    "inventory.stock.low_detected",
-    "inventory.stock.threshold_crossed",
-  ],
-  "record.update_field": AUTOMATION_TRIGGER_EVENT_VALUES,
-  "crm.deal.move_stage": ["crm.deal.created", "crm.deal.stage_changed"],
-  "crm.activity.create": ["crm.deal.created", "crm.deal.stage_changed"],
-  "webhook.emit": AUTOMATION_TRIGGER_EVENT_VALUES,
-} as const satisfies Record<string, readonly string[]>;
-
-function isActionAllowedForEvent(
-  actionType: AutomationActionTypeValue,
-  eventName: string,
-): boolean {
-  return (ACTION_ALLOWED_EVENTS[actionType] as readonly string[]).includes(
-    eventName,
-  );
-}
 
 export const AutomationTriggerFormSchema = z.object({
   eventName: z.enum(AUTOMATION_TRIGGER_EVENT_VALUES),
+  conditions: z.array(AutomationConditionSchema).optional().default([]),
   delayMinutes: z.coerce.number().int().min(0).optional().default(0),
 });
 
@@ -75,7 +55,7 @@ export const AutomationDefinitionFormSchema = z
 
     for (const [index, step] of value.steps.entries()) {
       const hasCompatibleTrigger = triggerEvents.some((eventName) =>
-        isActionAllowedForEvent(step.actionType, eventName),
+        isAutomationActionAllowedForEvent(step.actionType, eventName),
       );
 
       if (!hasCompatibleTrigger) {

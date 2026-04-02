@@ -15,6 +15,8 @@ const mockFindActiveAutoDraftTransferBySignal = vi.fn();
 const mockCreateTransfer = vi.fn();
 const mockCreateTransferLog = vi.fn();
 const mockUserFindFirst = vi.fn();
+const mockContactUpdate = vi.fn();
+const mockCompanyUpdate = vi.fn();
 
 vi.mock("@/config/env", () => ({
   env: {
@@ -34,6 +36,12 @@ vi.mock("@/config/prisma", () => ({
   basePrisma: {
     user: {
       findFirst: (...args: unknown[]) => mockUserFindFirst(...args),
+    },
+    contact: {
+      update: (...args: unknown[]) => mockContactUpdate(...args),
+    },
+    company: {
+      update: (...args: unknown[]) => mockCompanyUpdate(...args),
     },
   },
 }));
@@ -114,6 +122,8 @@ describe("automation.runtime", () => {
     mockCreateRun.mockResolvedValue({ id: "run-1", status: "RUNNING" });
     mockCreateRunStep.mockResolvedValue({ id: "run-step-1" });
     mockUserFindFirst.mockResolvedValue({ id: "user-1" });
+    mockContactUpdate.mockResolvedValue({ id: "contact-1" });
+    mockCompanyUpdate.mockResolvedValue({ id: "company-1" });
   });
 
   it("records preview outputs for shadow runs", async () => {
@@ -164,6 +174,50 @@ describe("automation.runtime", () => {
         }),
       }),
     );
+    expect(mockMarkEventProcessed).toHaveBeenCalledWith("event-1");
+  });
+
+  it("executes entity-specific CRM contact update actions", async () => {
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      eventName: "crm.lead.converted",
+      entityType: "LEAD",
+      payload: {
+        contactId: "contact-1",
+      },
+    });
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-1",
+        executionMode: "LIVE",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "crm.lead.converted",
+            conditionGroups: null,
+          },
+        ],
+        steps: [
+          {
+            id: "step-1",
+            actionType: "crm.contact.update",
+            actionConfig: {
+              contactIdTemplate: "{{event.payload.contactId}}",
+              field: "status",
+              value: "CUSTOMER",
+            },
+            continueOnError: false,
+          },
+        ],
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockContactUpdate).toHaveBeenCalledWith({
+      where: { id: "contact-1" },
+      data: { status: "CUSTOMER" },
+    });
     expect(mockMarkEventProcessed).toHaveBeenCalledWith("event-1");
   });
 

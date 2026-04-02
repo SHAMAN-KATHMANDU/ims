@@ -6,6 +6,7 @@ const mockUseAutomationRuns = vi.fn();
 const mockCreateMutate = vi.fn();
 const mockUpdateMutate = vi.fn();
 const mockArchiveMutate = vi.fn();
+const mockReplayMutate = vi.fn();
 
 vi.mock("../hooks/use-automation", () => ({
   useAutomationDefinitions: (...args: unknown[]) =>
@@ -21,6 +22,10 @@ vi.mock("../hooks/use-automation", () => ({
   }),
   useArchiveAutomationDefinition: () => ({
     mutate: mockArchiveMutate,
+    isPending: false,
+  }),
+  useReplayAutomationEvent: () => ({
+    mutate: mockReplayMutate,
     isPending: false,
   }),
 }));
@@ -50,7 +55,13 @@ vi.mock("./AutomationForm", () => ({
             status: "ACTIVE",
             executionMode: "LIVE",
             suppressLegacyWorkflows: true,
-            triggers: [{ eventName: "crm.deal.created", delayMinutes: 0 }],
+            triggers: [
+              {
+                eventName: "crm.deal.created",
+                conditions: [],
+                delayMinutes: 0,
+              },
+            ],
             steps: [
               {
                 actionType: "workitem.create",
@@ -189,5 +200,13 @@ describe("AutomationBuilderPage", () => {
     expect(
       screen.getByText(/skipped · \{"preview":"shadow payload"\}/i),
     ).toBeInTheDocument();
+  });
+
+  it("shows template shortcuts for common automation starters", () => {
+    render(<AutomationBuilderPage />);
+
+    expect(screen.getByText("Sales follow-up")).toBeInTheDocument();
+    expect(screen.getByText("Inventory restock")).toBeInTheDocument();
+    expect(screen.getByText("Lead routing")).toBeInTheDocument();
   });
 });

@@ -4,10 +4,13 @@ import {
   previewSale,
   getSaleById,
   addPayment,
+  deleteSale,
   calculateSaleItems,
   SaleCalculationError,
 } from "./sale.service";
 
+const mockPublishDomainEvent = vi.fn();
+const mockSyncLowStockSignal = vi.fn();
 const mockFindLocationById = vi.fn();
 const mockFindVariationWithDiscounts = vi.fn();
 const mockFindInventory = vi.fn();
@@ -23,6 +26,7 @@ const mockUpdateMemberAggregation = vi.fn();
 const mockFindSaleById = vi.fn();
 const mockFindSaleWithPaymentsOnly = vi.fn();
 const mockCreateSalePayment = vi.fn();
+const mockSoftDeleteSale = vi.fn();
 const mockAssertMethodAllowed = vi.fn();
 
 vi.mock("./sale.repository", () => ({
@@ -48,6 +52,7 @@ vi.mock("./sale.repository", () => ({
   findSaleWithPaymentsOnly: (...args: unknown[]) =>
     mockFindSaleWithPaymentsOnly(...args),
   createSalePayment: (...args: unknown[]) => mockCreateSalePayment(...args),
+  softDeleteSale: (...args: unknown[]) => mockSoftDeleteSale(...args),
   findShowroomLocations: vi.fn(),
   findSalesPaginatedByFilter: vi.fn(),
   countSalesByFilter: vi.fn(),
@@ -70,6 +75,12 @@ vi.mock("@/modules/tenant-settings/tenant-settings.service", () => ({
   default: {
     assertMethodAllowed: (...args: unknown[]) =>
       mockAssertMethodAllowed(...args),
+  },
+}));
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
+    syncLowStockSignal: (...args: unknown[]) => mockSyncLowStockSignal(...args),
   },
 }));
 
@@ -150,6 +161,8 @@ describe("SaleService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockAssertMethodAllowed.mockResolvedValue(undefined);
+    mockPublishDomainEvent.mockResolvedValue(undefined);
+    mockSyncLowStockSignal.mockResolvedValue(undefined);
   });
 
   describe("calculateSaleItems", () => {
@@ -706,7 +719,12 @@ describe("SaleService", () => {
       mockCreateSaleWithItemsAndDeductInventory.mockResolvedValue({
         id: "sale1",
         saleCode: "SL-20240101-ABCD",
+        locationId: "loc1",
+        subtotal: 100,
         total: 100,
+        memberId: null,
+        contactId: null,
+        items: [{ variationId: "v1", quantity: 1 }],
       });
 
       const result = await createSale(ctx, {
@@ -867,6 +885,32 @@ describe("SaleService", () => {
         method: "CASH",
         amount: 50,
       });
+    });
+  });
+
+  describe("deleteSale", () => {
+    it("publishes an automation event after soft delete", async () => {
+      mockFindSaleById.mockResolvedValue({
+        id: "sale-1",
+        saleCode: "S-001",
+        tenantId: "t1",
+        locationId: "loc1",
+        memberId: null,
+        contactId: "contact-1",
+        total: 2500,
+        items: [],
+      });
+      mockSoftDeleteSale.mockResolvedValue({ success: true });
+
+      await deleteSale("sale-1", "u1", "voided");
+
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "sales.sale.deleted",
+          entityId: "sale-1",
+        }),
+      );
     });
   });
 });

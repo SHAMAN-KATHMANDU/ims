@@ -4,6 +4,7 @@ import {
   createAutomationDefinition,
   getAutomationDefinitions,
   getAutomationRuns,
+  replayAutomationEvent,
   updateAutomationDefinition,
 } from "./automation.service";
 
@@ -56,7 +57,7 @@ describe("automation.service", () => {
     });
   });
 
-  it("creates, updates, archives, and lists runs", async () => {
+  it("creates, updates, archives, lists runs, and replays failed events", async () => {
     mockPost.mockResolvedValue({
       data: { success: true, data: { automation: { id: "auto-1" } } },
     });
@@ -88,6 +89,7 @@ describe("automation.service", () => {
     await updateAutomationDefinition("auto-1", { status: "INACTIVE" });
     await archiveAutomationDefinition("auto-1");
     await getAutomationRuns("auto-1", { limit: 5 });
+    await replayAutomationEvent("event-1", { reprocessFromStart: true });
 
     expect(mockPost).toHaveBeenCalledWith(
       "/automation/definitions",
@@ -103,5 +105,8 @@ describe("automation.service", () => {
         params: { limit: 5 },
       },
     );
+    expect(mockPost).toHaveBeenCalledWith("/automation/events/event-1/replay", {
+      reprocessFromStart: true,
+    });
   });
 });

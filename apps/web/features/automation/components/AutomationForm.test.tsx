@@ -39,6 +39,18 @@ vi.mock("@/components/ui/switch", () => ({
   ),
 }));
 
+vi.mock("@/features/crm", () => ({
+  usePipelines: () => ({
+    data: { pipelines: [{ id: "pipe-1", name: "Default pipeline" }] },
+  }),
+}));
+
+vi.mock("@/features/locations", () => ({
+  useActiveLocations: () => ({
+    data: [{ id: "loc-1", name: "Warehouse A" }],
+  }),
+}));
+
 describe("AutomationForm", () => {
   const baseValues: AutomationDefinitionFormValues = {
     name: "Restock automation",
@@ -48,7 +60,13 @@ describe("AutomationForm", () => {
     status: "ACTIVE",
     executionMode: "LIVE",
     suppressLegacyWorkflows: false,
-    triggers: [{ eventName: "inventory.stock.low_detected", delayMinutes: 0 }],
+    triggers: [
+      {
+        eventName: "inventory.stock.low_detected",
+        conditions: [],
+        delayMinutes: 0,
+      },
+    ],
     steps: [
       {
         actionType: "workitem.create",
@@ -94,7 +112,13 @@ describe("AutomationForm", () => {
       <AutomationForm
         defaultValues={{
           ...baseValues,
-          triggers: [{ eventName: "sales.sale.created", delayMinutes: 0 }],
+          triggers: [
+            {
+              eventName: "sales.sale.created",
+              conditions: [],
+              delayMinutes: 0,
+            },
+          ],
           steps: [
             {
               actionType: "transfer.create_draft",

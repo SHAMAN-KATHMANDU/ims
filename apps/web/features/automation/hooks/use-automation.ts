@@ -9,8 +9,10 @@ import {
   createAutomationDefinition,
   getAutomationDefinitions,
   getAutomationRuns,
+  replayAutomationEvent,
   type CreateAutomationDefinitionInput,
   type GetAutomationDefinitionsParams,
+  type ReplayAutomationEventInput,
   type UpdateAutomationDefinitionInput,
   updateAutomationDefinition,
 } from "../services/automation.service";
@@ -107,6 +109,31 @@ export function useArchiveAutomationDefinition() {
     onError: (error: Error) => {
       toast({
         title: "Failed to archive automation",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+}
+
+export function useReplayAutomationEvent() {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+  return useMutation({
+    mutationFn: ({
+      eventId,
+      payload,
+    }: {
+      eventId: string;
+      payload?: ReplayAutomationEventInput;
+    }) => replayAutomationEvent(eventId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: automationKeys.all });
+      toast({ title: "Automation replay queued" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Failed to replay automation event",
         description: error.message,
         variant: "destructive",
       });

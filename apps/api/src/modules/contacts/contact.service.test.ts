@@ -13,6 +13,7 @@ const mockCreateTag = vi.fn();
 const mockAddNote = vi.fn();
 const mockDeleteNote = vi.fn();
 const mockAddCommunication = vi.fn();
+const mockPublishDomainEvent = vi.fn();
 
 vi.mock("./contact.repository", () => ({
   default: {
@@ -49,6 +50,19 @@ vi.mock("../tasks/task.repository", () => ({
   },
 }));
 
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) =>
+      Promise.resolve(mockPublishDomainEvent(...args)),
+  },
+}));
+
 import contactService from "./contact.service";
 
 describe("ContactService", () => {
@@ -76,6 +90,14 @@ describe("ContactService", () => {
         expect.objectContaining({ firstName: "John", lastName: "Doe" }),
         userId,
         "+1234567890",
+      );
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: "crm.contact.created",
+          entityType: "CONTACT",
+          entityId: "c1",
+          actorUserId: userId,
+        }),
       );
     });
 
@@ -150,7 +172,11 @@ describe("ContactService", () => {
   describe("update", () => {
     it("updates contact and returns refreshed", async () => {
       const existing = { id: "c1" };
-      const updated = { id: "c1", firstName: "Jane" };
+      const updated = {
+        id: "c1",
+        firstName: "Jane",
+        updatedAt: new Date("2024-06-15T00:00:00.000Z"),
+      };
       mockFindById.mockResolvedValue(existing);
       mockGetAfterUpdate.mockResolvedValue(updated);
 
@@ -160,6 +186,13 @@ describe("ContactService", () => {
 
       expect(result).toEqual(updated);
       expect(mockUpdate).toHaveBeenCalled();
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: "crm.contact.updated",
+          entityType: "CONTACT",
+          entityId: "c1",
+        }),
+      );
     });
 
     it("throws 404 when contact not found", async () => {

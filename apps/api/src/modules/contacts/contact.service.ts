@@ -1,6 +1,8 @@
 import fs from "fs";
 import csvParser from "csv-parser";
 import ExcelJS from "exceljs";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import { normalizePhoneOptional } from "@/utils/phone";
 import { createError } from "@/middlewares/errorHandler";
 import { createPaginationResult } from "@/utils/pagination";
@@ -60,7 +62,43 @@ export class ContactService {
         );
       }
     }
-    return contactRepository.create(tenantId, data, userId, phoneNormalized);
+    const contact = await contactRepository.create(
+      tenantId,
+      data,
+      userId,
+      phoneNormalized,
+    );
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "crm.contact.created",
+        scopeType: "GLOBAL",
+        entityType: "CONTACT",
+        entityId: contact.id,
+        actorUserId: userId,
+        dedupeKey: `crm-contact-created:${contact.id}`,
+        payload: {
+          contactId: contact.id,
+          firstName: contact.firstName,
+          lastName: contact.lastName ?? null,
+          email: contact.email ?? null,
+          phone: contact.phone ?? null,
+          companyId: contact.companyId ?? null,
+          memberId: contact.memberId ?? null,
+          source: contact.source ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          contactId: contact.id,
+          eventName: "crm.contact.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return contact;
   }
 
   async getAll(tenantId: string, query: Record<string, unknown>) {
@@ -98,7 +136,38 @@ export class ContactService {
     }
 
     await contactRepository.update(id, data, phoneNormalized);
-    return contactRepository.getAfterUpdate(id);
+    const contact = await contactRepository.getAfterUpdate(id);
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "crm.contact.updated",
+        scopeType: "GLOBAL",
+        entityType: "CONTACT",
+        entityId: contact.id,
+        actorUserId: null,
+        dedupeKey: `crm-contact-updated:${contact.id}:${contact.updatedAt.toISOString()}`,
+        payload: {
+          contactId: contact.id,
+          firstName: contact.firstName,
+          lastName: contact.lastName ?? null,
+          email: contact.email ?? null,
+          phone: contact.phone ?? null,
+          companyId: contact.companyId ?? null,
+          memberId: contact.memberId ?? null,
+          source: contact.source ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          contactId: contact.id,
+          eventName: "crm.contact.updated",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return contact;
   }
 
   async delete(

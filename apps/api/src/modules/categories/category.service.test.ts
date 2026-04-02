@@ -3,6 +3,7 @@ import { CategoryService } from "./category.service";
 import type { CategoryRepository } from "./category.repository";
 import { createError } from "@/middlewares/errorHandler";
 
+const mockPublishDomainEvent = vi.fn().mockResolvedValue(undefined);
 const mockFindByName = vi.fn();
 const mockFindByNameExcluding = vi.fn();
 const mockCreate = vi.fn();
@@ -36,6 +37,16 @@ const mockRepo: CategoryRepository = {
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
+  },
+}));
 
 const categoryService = new CategoryService(mockRepo);
 
@@ -60,6 +71,13 @@ describe("CategoryService", () => {
       expect(result.category.name).toBe("Electronics");
       expect(result.restored).toBe(false);
       expect(mockCreate).toHaveBeenCalledWith("t1", { name: "Electronics" });
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "catalog.category.created",
+          entityId: "c1",
+        }),
+      );
     });
 
     it("throws 409 when category name already exists", async () => {
@@ -111,6 +129,35 @@ describe("CategoryService", () => {
       );
 
       expect(mockSoftDelete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("update", () => {
+    it("publishes an automation event after update", async () => {
+      mockFindByIdWithProductCount.mockResolvedValue({
+        id: "c1",
+        name: "Old",
+        _count: { products: 0 },
+      });
+      mockUpdate.mockResolvedValue({
+        id: "c1",
+        name: "Electronics",
+        description: null,
+        updatedAt: new Date("2026-04-02T00:00:00.000Z"),
+      });
+
+      const result = await categoryService.update("c1", "t1", {
+        name: "Electronics",
+      });
+
+      expect(result.name).toBe("Electronics");
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "catalog.category.updated",
+          entityId: "c1",
+        }),
+      );
     });
   });
 

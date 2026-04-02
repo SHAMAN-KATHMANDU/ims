@@ -102,6 +102,7 @@ export class SaleCalculationError extends Error {
 
 const MANUAL_DISCOUNT_AUTH_THRESHOLD_PERCENT = 20;
 const AUTHORIZED_ROLES = ["admin", "superAdmin", "platformAdmin"];
+const HIGH_VALUE_SALE_THRESHOLD = 5000;
 
 /**
  * Validates items, resolves discounts & promo codes, and computes totals.
@@ -871,6 +872,34 @@ export async function createSale(
       // Do not fail sale creation when automation event publishing fails.
     });
 
+  if (Number(finalSale.total) >= HIGH_VALUE_SALE_THRESHOLD) {
+    await automationService
+      .publishDomainEvent({
+        tenantId: ctx.tenantId,
+        eventName: "sales.sale.high_value_created",
+        scopeType: "LOCATION",
+        scopeId: finalSale.locationId,
+        entityType: "SALE",
+        entityId: finalSale.id,
+        actorUserId: ctx.userId,
+        dedupeKey: `sale-high-value-created:${finalSale.id}`,
+        payload: {
+          saleId: finalSale.id,
+          saleCode: finalSale.saleCode,
+          locationId: finalSale.locationId,
+          memberId: finalSale.memberId,
+          contactId: finalSale.contactId,
+          total: Number(finalSale.total),
+          subtotal: Number(finalSale.subtotal),
+          itemCount: finalSale.items.length,
+          threshold: HIGH_VALUE_SALE_THRESHOLD,
+        },
+      })
+      .catch(() => {
+        // Do not fail sale creation when automation event publishing fails.
+      });
+  }
+
   return finalSale;
 }
 
@@ -900,6 +929,30 @@ export async function deleteSale(
         }),
       ),
     );
+
+    await automationService
+      .publishDomainEvent({
+        tenantId: sale.tenantId,
+        eventName: "sales.sale.deleted",
+        scopeType: "LOCATION",
+        scopeId: sale.locationId,
+        entityType: "SALE",
+        entityId: sale.id,
+        actorUserId: userId,
+        dedupeKey: `sale-deleted:${sale.id}`,
+        payload: {
+          saleId: sale.id,
+          saleCode: sale.saleCode,
+          locationId: sale.locationId,
+          memberId: sale.memberId,
+          contactId: sale.contactId,
+          total: Number(sale.total),
+          deleteReason: deleteReason ?? null,
+        },
+      })
+      .catch(() => {
+        // Do not fail sale deletion when automation event publishing fails.
+      });
   }
 
   return result;

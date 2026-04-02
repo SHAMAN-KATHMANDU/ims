@@ -6,80 +6,9 @@ import {
   AutomationScopeSchema,
   AutomationStatusSchema,
   AutomationTriggerEventSchema,
+  isAutomationActionAllowedForEvent,
   parseAutomationActionConfig,
 } from "@repo/shared";
-
-const ACTION_ALLOWED_EVENTS = {
-  "workitem.create": [
-    "crm.deal.created",
-    "crm.deal.stage_changed",
-    "sales.sale.created",
-    "inventory.stock.low_detected",
-    "inventory.stock.threshold_crossed",
-    "transfers.transfer.created",
-    "transfers.transfer.approved",
-    "transfers.transfer.in_transit",
-    "transfers.transfer.completed",
-    "transfers.transfer.cancelled",
-    "workitems.created",
-    "workitems.completed",
-  ],
-  "notification.send": [
-    "crm.deal.created",
-    "crm.deal.stage_changed",
-    "sales.sale.created",
-    "inventory.stock.low_detected",
-    "inventory.stock.threshold_crossed",
-    "transfers.transfer.created",
-    "transfers.transfer.approved",
-    "transfers.transfer.in_transit",
-    "transfers.transfer.completed",
-    "transfers.transfer.cancelled",
-    "workitems.created",
-    "workitems.completed",
-  ],
-  "transfer.create_draft": [
-    "inventory.stock.low_detected",
-    "inventory.stock.threshold_crossed",
-  ],
-  "record.update_field": [
-    "crm.deal.created",
-    "crm.deal.stage_changed",
-    "sales.sale.created",
-    "inventory.stock.low_detected",
-    "inventory.stock.threshold_crossed",
-    "transfers.transfer.created",
-    "transfers.transfer.approved",
-    "transfers.transfer.in_transit",
-    "transfers.transfer.completed",
-    "transfers.transfer.cancelled",
-    "workitems.created",
-    "workitems.completed",
-  ],
-  "crm.deal.move_stage": ["crm.deal.created", "crm.deal.stage_changed"],
-  "crm.activity.create": ["crm.deal.created", "crm.deal.stage_changed"],
-  "webhook.emit": [
-    "crm.deal.created",
-    "crm.deal.stage_changed",
-    "sales.sale.created",
-    "inventory.stock.low_detected",
-    "inventory.stock.threshold_crossed",
-    "transfers.transfer.created",
-    "transfers.transfer.approved",
-    "transfers.transfer.in_transit",
-    "transfers.transfer.completed",
-    "transfers.transfer.cancelled",
-    "workitems.created",
-    "workitems.completed",
-  ],
-} as const satisfies Record<string, readonly string[]>;
-
-function isActionAllowedForEvent(
-  actionType: string,
-  eventName: string,
-): boolean {
-  return ACTION_ALLOWED_EVENTS[actionType]?.includes(eventName) ?? false;
-}
 
 export const AutomationIdParamSchema = z.object({
   id: z.string().uuid(),
@@ -158,7 +87,10 @@ function validateActionCompatibility(
       (eventName) =>
         eventName != null &&
         step.actionType != null &&
-        isActionAllowedForEvent(step.actionType, eventName),
+        isAutomationActionAllowedForEvent(
+          step.actionType as z.infer<typeof AutomationActionTypeSchema>,
+          eventName as z.infer<typeof AutomationTriggerEventSchema>,
+        ),
     );
 
     if (!hasCompatibleTrigger) {

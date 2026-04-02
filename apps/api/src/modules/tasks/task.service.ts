@@ -1,5 +1,7 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import taskRepository from "./task.repository";
 import type { CreateTaskDto, UpdateTaskDto } from "./task.schema";
 
@@ -15,6 +17,38 @@ export class TaskService {
         task.dueDate,
       );
     }
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "workitems.created",
+        scopeType: "GLOBAL",
+        entityType: "WORK_ITEM",
+        entityId: task.id,
+        actorUserId: userId,
+        dedupeKey: `workitem-created:${task.id}`,
+        payload: {
+          taskId: task.id,
+          title: task.title,
+          assignedToId: task.assignedToId,
+          dueDate: task.dueDate?.toISOString() ?? null,
+          contactId: task.contactId ?? null,
+          memberId: task.memberId ?? null,
+          dealId: task.dealId ?? null,
+          companyId: task.companyId ?? null,
+          priority: task.priority,
+          status: task.status,
+          completed: task.completed,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          taskId: task.id,
+          eventName: "workitems.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
 
     return task;
   }
@@ -35,10 +69,44 @@ export class TaskService {
     return taskRepository.update(id, data, existing);
   }
 
-  async complete(tenantId: string, id: string) {
+  async complete(tenantId: string, id: string, userId?: string) {
     const existing = await taskRepository.findById(tenantId, id);
     if (!existing) throw createError("Task not found", 404);
-    return taskRepository.complete(id);
+    const task = await taskRepository.complete(id);
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "workitems.completed",
+        scopeType: "GLOBAL",
+        entityType: "WORK_ITEM",
+        entityId: task.id,
+        actorUserId: userId ?? null,
+        dedupeKey: `workitem-completed:${task.id}`,
+        payload: {
+          taskId: task.id,
+          title: task.title,
+          assignedToId: task.assignedToId,
+          dueDate: task.dueDate?.toISOString() ?? null,
+          contactId: task.contactId ?? null,
+          memberId: task.memberId ?? null,
+          dealId: task.dealId ?? null,
+          companyId: task.companyId ?? null,
+          priority: task.priority,
+          status: task.status,
+          completed: task.completed,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          taskId: task.id,
+          eventName: "workitems.completed",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return task;
   }
 
   async bulkComplete(tenantId: string, ids: string[]) {

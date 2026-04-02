@@ -87,4 +87,91 @@ describe("AutomationDefinitionFormSchema", () => {
       timeoutSeconds: 15,
     });
   });
+
+  it("accepts new CRM and member triggers in the form schema", () => {
+    const result = AutomationDefinitionFormSchema.parse({
+      name: "CRM/member automation",
+      description: "",
+      scopeType: "GLOBAL",
+      scopeId: "",
+      triggers: [
+        { eventName: "crm.contact.updated", delayMinutes: 0 },
+        { eventName: "members.member.created", delayMinutes: 0 },
+      ],
+      steps: [
+        {
+          actionType: "webhook.emit",
+          actionConfig: {
+            url: "https://example.com/webhook",
+            method: "POST",
+          },
+          continueOnError: false,
+        },
+      ],
+    });
+
+    expect(result.triggers.map((trigger) => trigger.eventName)).toEqual([
+      "crm.contact.updated",
+      "members.member.created",
+    ]);
+  });
+
+  it("accepts conditions and expanded domain triggers", () => {
+    const result = AutomationDefinitionFormSchema.parse({
+      name: "High-value sale watcher",
+      description: "",
+      scopeType: "LOCATION",
+      scopeId: "00000000-0000-0000-0000-000000000001",
+      triggers: [
+        {
+          eventName: "sales.sale.high_value_created",
+          conditions: [{ path: "total", operator: "gte", value: 5000 }],
+          delayMinutes: 0,
+        },
+        {
+          eventName: "catalog.product.updated",
+          conditions: [],
+          delayMinutes: 0,
+        },
+      ],
+      steps: [
+        {
+          actionType: "webhook.emit",
+          actionConfig: {
+            url: "https://example.com/webhook",
+            method: "POST",
+          },
+          continueOnError: false,
+        },
+      ],
+    });
+
+    expect(result.triggers[0]?.conditions).toEqual([
+      { path: "total", operator: "gte", value: 5000 },
+    ]);
+    expect(result.triggers[1]?.eventName).toBe("catalog.product.updated");
+  });
+
+  it("accepts entity-specific CRM update actions", () => {
+    const result = AutomationDefinitionFormSchema.parse({
+      name: "Converted lead contact sync",
+      description: "",
+      scopeType: "GLOBAL",
+      scopeId: "",
+      triggers: [{ eventName: "crm.lead.converted", delayMinutes: 0 }],
+      steps: [
+        {
+          actionType: "crm.contact.update",
+          actionConfig: {
+            contactIdTemplate: "{{event.payload.contactId}}",
+            field: "status",
+            value: "CUSTOMER",
+          },
+          continueOnError: false,
+        },
+      ],
+    });
+
+    expect(result.steps[0]?.actionType).toBe("crm.contact.update");
+  });
 });

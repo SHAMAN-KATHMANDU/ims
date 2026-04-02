@@ -1,5 +1,7 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import { normalizePhoneOptional } from "@/utils/phone";
 import companyRepository from "./company.repository";
 import type { CreateCompanyDto, UpdateCompanyDto } from "./company.schema";
@@ -18,12 +20,40 @@ export class CompanyService {
       }
     }
 
-    return companyRepository.create(tenantId, {
+    const company = await companyRepository.create(tenantId, {
       name: data.name,
       website: data.website ?? null,
       address: data.address ?? null,
       phone: phoneNormalized,
     });
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "crm.company.created",
+        scopeType: "GLOBAL",
+        entityType: "COMPANY",
+        entityId: company.id,
+        actorUserId: null,
+        dedupeKey: `crm-company-created:${company.id}`,
+        payload: {
+          companyId: company.id,
+          name: company.name,
+          website: company.website ?? null,
+          address: company.address ?? null,
+          phone: company.phone ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          companyId: company.id,
+          eventName: "crm.company.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return company;
   }
 
   async getAll(tenantId: string, query: Record<string, unknown>) {
@@ -68,7 +98,35 @@ export class CompanyService {
       ...(phoneValue !== undefined && { phone: phoneValue }),
     };
 
-    return companyRepository.update(id, tenantId, updateData);
+    const company = await companyRepository.update(id, tenantId, updateData);
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "crm.company.updated",
+        scopeType: "GLOBAL",
+        entityType: "COMPANY",
+        entityId: company.id,
+        actorUserId: null,
+        dedupeKey: `crm-company-updated:${company.id}:${company.updatedAt.toISOString()}`,
+        payload: {
+          companyId: company.id,
+          name: company.name,
+          website: company.website ?? null,
+          address: company.address ?? null,
+          phone: company.phone ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          companyId: company.id,
+          eventName: "crm.company.updated",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return company;
   }
 
   async delete(

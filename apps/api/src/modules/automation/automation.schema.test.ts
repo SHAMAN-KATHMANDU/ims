@@ -76,6 +76,80 @@ describe("automation.schema", () => {
     expect(result.status).toBe("INACTIVE");
   });
 
+  it("accepts newly added CRM and member trigger families", () => {
+    const result = CreateAutomationDefinitionSchema.parse({
+      name: "Lead follow-up automation",
+      scopeType: "GLOBAL",
+      triggers: [
+        { eventName: "crm.lead.converted" },
+        { eventName: "members.member.status_changed" },
+      ],
+      steps: [
+        {
+          actionType: "notification.send",
+          actionConfig: {
+            title: "Automation event received",
+            message: "A supported CRM/member trigger fired",
+          },
+        },
+      ],
+    });
+
+    expect(result.triggers.map((trigger) => trigger.eventName)).toEqual([
+      "crm.lead.converted",
+      "members.member.status_changed",
+    ]);
+  });
+
+  it("accepts expanded catalog, location, and inventory trigger families", () => {
+    const result = CreateAutomationDefinitionSchema.parse({
+      name: "Catalog watcher",
+      scopeType: "GLOBAL",
+      triggers: [
+        { eventName: "catalog.product.updated" },
+        { eventName: "locations.location.updated" },
+        { eventName: "inventory.stock.adjusted" },
+      ],
+      steps: [
+        {
+          actionType: "webhook.emit",
+          actionConfig: {
+            url: "https://example.com/webhook",
+            method: "POST",
+          },
+        },
+      ],
+    });
+
+    expect(result.triggers.map((trigger) => trigger.eventName)).toEqual([
+      "catalog.product.updated",
+      "locations.location.updated",
+      "inventory.stock.adjusted",
+    ]);
+  });
+
+  it("accepts entity-specific CRM contact update actions", () => {
+    const result = CreateAutomationDefinitionSchema.parse({
+      name: "Lead conversion contact sync",
+      scopeType: "GLOBAL",
+      triggers: [{ eventName: "crm.lead.converted" }],
+      steps: [
+        {
+          actionType: "crm.contact.update",
+          actionConfig: {
+            contactIdTemplate: "{{event.payload.contactId}}",
+            field: "status",
+            value: "CUSTOMER",
+          },
+        },
+      ],
+    });
+
+    expect(result.steps[0]).toMatchObject({
+      actionType: "crm.contact.update",
+    });
+  });
+
   it("defaults replay requests to restarting retries from scratch", () => {
     const result = ReplayAutomationEventSchema.parse({});
 
