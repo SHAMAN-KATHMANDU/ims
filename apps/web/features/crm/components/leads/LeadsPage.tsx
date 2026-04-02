@@ -28,7 +28,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Mail, Phone as PhoneIcon } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Mail,
+  Phone as PhoneIcon,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -65,6 +72,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { Lead, LeadStatus } from "../../services/lead.service";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
+import { Spinner } from "@/components/ui/spinner";
+import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
 
 const STATUS_OPTIONS: LeadStatus[] = [
   "NEW",
@@ -105,6 +116,7 @@ export function LeadsPage() {
   const [convertDialogOpen, setConvertDialogOpen] = useState(false);
   const [convertLeadId, setConvertLeadId] = useState<string | null>(null);
   const [deleteLeadId, setDeleteLeadId] = useState<string | null>(null);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data: sourcesData } = useCrmSources(undefined, {
     enabled: pipelinesEnabled,
@@ -113,7 +125,7 @@ export function LeadsPage() {
   const sources = sourcesData?.sources ?? [];
   const users = usersResult?.users ?? [];
 
-  const { data, isLoading } = useLeadsPaginated({
+  const { data, isLoading, isFetching } = useLeadsPaginated({
     page,
     limit: pageSize,
     search: debouncedSearch,
@@ -128,6 +140,33 @@ export function LeadsPage() {
   const convertMutation = useConvertLead();
 
   const leads = data?.data ?? [];
+
+  const hasStructuredFilters =
+    status !== "__all__" ||
+    sourceFilter !== "all" ||
+    assignedToFilter !== "all";
+
+  const activeFilterCount =
+    (status !== "__all__" ? 1 : 0) +
+    (sourceFilter !== "all" ? 1 : 0) +
+    (assignedToFilter !== "all" ? 1 : 0);
+
+  const clearLeadsFilters = () => {
+    setStatus("__all__");
+    setSourceFilter("all");
+    setAssignedToFilter("all");
+    setSearch("");
+    setPage(DEFAULT_PAGE);
+  };
+
+  const assignedUserLabel =
+    users.find((u) => u.id === assignedToFilter)?.username ?? null;
+
+  const leadsEmptyNoResults =
+    !isLoading &&
+    leads.length === 0 &&
+    (hasStructuredFilters || debouncedSearch.trim());
+
   const pagination = data?.pagination
     ? ({
         currentPage: data.pagination.currentPage,
@@ -188,94 +227,230 @@ export function LeadsPage() {
     }
   };
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold">Leads</h1>
-        <Link href={`${basePath}/crm/leads/new`}>
-          <Button>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Lead
-          </Button>
-        </Link>
-      </div>
+  const listDimmed = isFetching && !isLoading;
 
-      <div className="flex flex-col gap-4 sm:flex-row">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  return (
+    <PageShell className="space-y-4">
+      <PageHeader
+        title="Leads"
+        actions={
+          <Link href={`${basePath}/crm/leads/new`}>
+            <Button>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Lead
+            </Button>
+          </Link>
+        }
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search leads..."
+            placeholder="Search leads…"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(DEFAULT_PAGE);
             }}
-            className="pl-9"
+            className="pl-9 pr-10"
+            aria-busy={isFetching && !isLoading}
           />
+          {isFetching && !isLoading ? (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <Spinner className="size-4" />
+            </span>
+          ) : null}
         </div>
-        <Select
-          value={status}
-          onValueChange={(v) => {
-            setStatus(v);
-            setPage(DEFAULT_PAGE);
-          }}
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0 gap-2"
+          onClick={() => setFiltersOpen(true)}
         >
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__all__">All statuses</SelectItem>
-            {STATUS_OPTIONS.map((s) => (
-              <SelectItem key={s} value={s}>
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {pipelinesEnabled && (
-          <Select
-            value={sourceFilter}
-            onValueChange={(v) => {
-              setSourceFilter(v);
-              setPage(DEFAULT_PAGE);
-            }}
-          >
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="Source" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All sources</SelectItem>
-              {sources.map((s) => (
-                <SelectItem key={s.id} value={s.name}>
-                  {s.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
-        <Select
-          value={assignedToFilter}
-          onValueChange={(v) => {
-            setAssignedToFilter(v);
-            setPage(DEFAULT_PAGE);
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-[160px]">
-            <SelectValue placeholder="Assigned to" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All users</SelectItem>
-            {users.map((u) => (
-              <SelectItem key={u.id} value={u.id}>
-                {u.username}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <SlidersHorizontal className="size-4" />
+          Filters
+          {activeFilterCount > 0 ? (
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">
+              {activeFilterCount}
+            </Badge>
+          ) : null}
+        </Button>
       </div>
 
+      {(activeFilterCount > 0 || debouncedSearch.trim()) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {debouncedSearch.trim() ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              <span className="text-muted-foreground">Search:</span>
+              {debouncedSearch.trim()}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Clear search"
+                onClick={() => {
+                  setSearch("");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          {status !== "__all__" ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              Status: {status}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Clear status filter"
+                onClick={() => {
+                  setStatus("__all__");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          {pipelinesEnabled && sourceFilter !== "all" ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              Source: {sourceFilter}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Clear source filter"
+                onClick={() => {
+                  setSourceFilter("all");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          {assignedToFilter !== "all" && assignedUserLabel ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              Assigned: {assignedUserLabel}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Clear assignee filter"
+                onClick={() => {
+                  setAssignedToFilter("all");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-muted-foreground"
+            onClick={clearLeadsFilters}
+          >
+            Clear all
+          </Button>
+        </div>
+      )}
+
+      <ResponsiveDrawer
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        title="Filters"
+        description="Refine the lead list. Changes apply immediately."
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Status</p>
+            <Select
+              value={status}
+              onValueChange={(v) => {
+                setStatus(v);
+                setPage(DEFAULT_PAGE);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">All statuses</SelectItem>
+                {STATUS_OPTIONS.map((s) => (
+                  <SelectItem key={s} value={s}>
+                    {s}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {pipelinesEnabled ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Source</p>
+              <Select
+                value={sourceFilter}
+                onValueChange={(v) => {
+                  setSourceFilter(v);
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sources</SelectItem>
+                  {sources.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Assigned to</p>
+            <Select
+              value={assignedToFilter}
+              onValueChange={(v) => {
+                setAssignedToFilter(v);
+                setPage(DEFAULT_PAGE);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Assigned to" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All users</SelectItem>
+                {users.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {u.username}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => setFiltersOpen(false)}
+          >
+            Done
+          </Button>
+        </div>
+      </ResponsiveDrawer>
+
       {/* ── Mobile card list ─────────────────────────────────────────── */}
-      <div className="sm:hidden space-y-2">
+      <div
+        className={
+          listDimmed
+            ? "sm:hidden space-y-2 opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
+            : "sm:hidden space-y-2 transition-opacity duration-[var(--duration-normal,200ms)]"
+        }
+      >
         {isLoading ? (
           [1, 2, 3].map((i) => (
             <div key={i} className="rounded-lg border p-3 space-y-2">
@@ -356,7 +531,13 @@ export function LeadsPage() {
       </div>
 
       {/* ── Desktop table ────────────────────────────────────────────── */}
-      <div className="hidden sm:block overflow-x-auto rounded-md border">
+      <div
+        className={
+          listDimmed
+            ? "hidden sm:block overflow-x-auto rounded-md border opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
+            : "hidden sm:block overflow-x-auto rounded-md border transition-opacity duration-[var(--duration-normal,200ms)]"
+        }
+      >
         <Table>
           <TableHeader>
             <TableRow>
@@ -394,11 +575,30 @@ export function LeadsPage() {
               ))
             ) : leads.length === 0 ? (
               <TableRow>
-                <TableCell
-                  colSpan={6}
-                  className="text-center py-8 text-muted-foreground"
-                >
-                  No leads found
+                <TableCell colSpan={6} className="text-center py-8 px-4">
+                  {leadsEmptyNoResults ? (
+                    <div className="space-y-3">
+                      <p className="text-muted-foreground text-sm">
+                        No leads match your search or filters.
+                      </p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={clearLeadsFilters}
+                      >
+                        Clear filters
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="space-y-1 text-muted-foreground">
+                      <p className="font-medium text-foreground">
+                        No leads yet
+                      </p>
+                      <p className="text-sm">
+                        Add a lead to start tracking prospects.
+                      </p>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
@@ -555,6 +755,6 @@ export function LeadsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageShell>
   );
 }

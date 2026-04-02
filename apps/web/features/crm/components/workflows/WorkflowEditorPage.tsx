@@ -654,10 +654,10 @@ export default function WorkflowEditorPage() {
         onOpenChange={(open) => !open && resetForm()}
       >
         <DialogContent
-          className="max-w-lg max-h-[90vh] overflow-y-auto"
+          className="flex max-h-[90vh] max-w-4xl flex-col gap-0 overflow-hidden p-0"
           allowDismiss={true}
         >
-          <DialogHeader>
+          <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4 text-left">
             <DialogTitle>
               {editWorkflow ? "Edit Workflow" : "New Workflow"}
             </DialogTitle>
@@ -667,39 +667,41 @@ export default function WorkflowEditorPage() {
                 : "Create a custom workflow for one of your CRM pipelines."}
             </DialogDescription>
           </DialogHeader>
-          {(showCreate || editWorkflow) &&
-            (editWorkflow ? (
-              <WorkflowForm
-                mode="edit"
-                pipelines={pipelines}
-                stages={
-                  pipelines.find((p) => p.id === editWorkflow.pipelineId)
-                    ?.stages ?? []
-                }
-                defaultValues={{
-                  name: editWorkflow.name,
-                  isActive: editWorkflow.isActive,
-                  rules: editWorkflow.rules.map((r) => ({
-                    trigger: r.trigger,
-                    triggerStageId: r.triggerStageId,
-                    action: r.action,
-                    actionConfig: r.actionConfig ?? {},
-                    ruleOrder: r.ruleOrder,
-                  })),
-                }}
-                onSubmit={handleUpdate}
-                onCancel={resetForm}
-                isSubmitting={updateMutation.isPending}
-              />
-            ) : (
-              <WorkflowForm
-                mode="create"
-                pipelines={pipelines}
-                onSubmit={handleCreate}
-                onCancel={resetForm}
-                isSubmitting={createMutation.isPending}
-              />
-            ))}
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            {(showCreate || editWorkflow) &&
+              (editWorkflow ? (
+                <WorkflowForm
+                  mode="edit"
+                  pipelines={pipelines}
+                  stages={
+                    pipelines.find((p) => p.id === editWorkflow.pipelineId)
+                      ?.stages ?? []
+                  }
+                  defaultValues={{
+                    name: editWorkflow.name,
+                    isActive: editWorkflow.isActive,
+                    rules: editWorkflow.rules.map((r) => ({
+                      trigger: r.trigger,
+                      triggerStageId: r.triggerStageId,
+                      action: r.action,
+                      actionConfig: r.actionConfig ?? {},
+                      ruleOrder: r.ruleOrder,
+                    })),
+                  }}
+                  onSubmit={handleUpdate}
+                  onCancel={resetForm}
+                  isSubmitting={updateMutation.isPending}
+                />
+              ) : (
+                <WorkflowForm
+                  mode="create"
+                  pipelines={pipelines}
+                  onSubmit={handleCreate}
+                  onCancel={resetForm}
+                  isSubmitting={createMutation.isPending}
+                />
+              ))}
+          </div>
         </DialogContent>
       </Dialog>
 

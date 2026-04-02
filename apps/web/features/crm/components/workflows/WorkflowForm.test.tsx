@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import { WorkflowForm } from "./WorkflowForm";
 
 describe("WorkflowForm", () => {
@@ -35,7 +41,7 @@ describe("WorkflowForm", () => {
     });
   });
 
-  it("shows rules help text for stage triggers and Any stage", () => {
+  it("shows rules help text for stage triggers and Any stage", async () => {
     render(
       <WorkflowForm
         mode="edit"
@@ -47,11 +53,19 @@ describe("WorkflowForm", () => {
       />,
     );
 
+    fireEvent.click(
+      screen.getByRole("button", { name: /help: workflow rules/i }),
+    );
+    const help = await screen.findByRole("dialog", { name: /workflow rules/i });
     expect(
-      screen.getByText(/require a specific stage unless you choose/),
+      within(help).getByText(/require a specific stage unless you choose/),
     ).toBeInTheDocument();
+
+    fireEvent.click(within(help).getByRole("button", { name: /^close$/i }));
+
+    fireEvent.click(screen.getByRole("button", { name: /add rule/i }));
     expect(screen.getByText("Stage entered")).toBeInTheDocument();
-    expect(screen.getByText("Any stage")).toBeInTheDocument();
+    expect(screen.getAllByText("Any stage").length).toBeGreaterThanOrEqual(1);
   });
 
   it("submits stage enter rule with Any stage (null triggerStageId)", async () => {
