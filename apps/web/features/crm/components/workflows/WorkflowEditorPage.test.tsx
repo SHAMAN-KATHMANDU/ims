@@ -295,32 +295,4 @@ describe("WorkflowEditorPage", () => {
 
     expect(screen.getByText(/numbered setup guide/i)).toBeInTheDocument();
   });
-
-  it("renders workflow onboarding and link to Automation settings", () => {
-    mockUseWorkflows.mockReturnValue({
-      data: { workflows: [] },
-      isLoading: false,
-      isError: false,
-      error: null,
-    });
-
-    render(<WorkflowEditorPage />);
-
-    expect(screen.getByText(/What pipeline workflows do/i)).toBeInTheDocument();
-    expect(
-      screen.getByRole("link", { name: /Settings → Automation/i }),
-    ).toHaveAttribute("href", "/test-workspace/settings/automation");
-
-    expect(
-      screen.getByRole("button", { name: /How to set up workflows/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Templates vs custom workflows/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /When to use Automations instead/i }),
-    ).toBeInTheDocument();
-
-    expect(screen.getByText(/numbered setup guide/i)).toBeInTheDocument();
-  });
 });
