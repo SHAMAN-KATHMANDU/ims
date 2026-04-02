@@ -17,9 +17,13 @@ import { Building2, Mail, Phone } from "lucide-react";
 import type { SortOrder } from "@/components/ui/table";
 import { getActiveJourneyType } from "../../utils/journey-type";
 
+type ContactEmptyVariant = "empty" | "no-results";
+
 interface ContactTableProps {
   contacts: Contact[];
   isLoading: boolean;
+  /** Background refetch — table stays visible with dimmed state */
+  isFetching?: boolean;
   basePath: string;
   dealsEnabled: boolean;
   sortBy: string;
@@ -28,11 +32,14 @@ interface ContactTableProps {
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  emptyVariant?: ContactEmptyVariant;
+  onClearFilters?: () => void;
 }
 
 export function ContactTable({
   contacts,
   isLoading,
+  isFetching = false,
   basePath: _basePath,
   dealsEnabled,
   sortBy,
@@ -41,6 +48,8 @@ export function ContactTable({
   onView,
   onEdit,
   onDelete,
+  emptyVariant = "empty",
+  onClearFilters,
 }: ContactTableProps) {
   if (isLoading) {
     return (
@@ -97,15 +106,41 @@ export function ContactTable({
   }
 
   if (contacts.length === 0) {
+    if (emptyVariant === "no-results") {
+      return (
+        <div className="rounded-md border py-8 text-center space-y-3 px-4">
+          <p className="text-muted-foreground text-sm">
+            No contacts match your search or filters. Try different keywords or
+            clear filters to see everyone.
+          </p>
+          {onClearFilters ? (
+            <Button variant="outline" size="sm" onClick={onClearFilters}>
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+      );
+    }
     return (
-      <div className="rounded-md border py-8 text-center text-muted-foreground">
-        No contacts found
+      <div className="rounded-md border py-8 text-center text-muted-foreground px-4 space-y-1">
+        <p className="font-medium text-foreground">No contacts yet</p>
+        <p className="text-sm">
+          Add a contact or import a list to get started.
+        </p>
       </div>
     );
   }
 
+  const dimmed = isFetching && !isLoading;
+
   return (
-    <>
+    <div
+      className={
+        dimmed
+          ? "opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
+          : "transition-opacity duration-[var(--duration-normal,200ms)]"
+      }
+    >
       {/* ── Mobile card list ─────────────────────────────────────────── */}
       <div className="sm:hidden space-y-2">
         {contacts.map((c) => {
@@ -296,6 +331,6 @@ export function ContactTable({
           </TableBody>
         </Table>
       </div>
-    </>
+    </div>
   );
 }

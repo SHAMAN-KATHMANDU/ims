@@ -44,6 +44,8 @@ import {
   Building2,
   Pencil,
   Trash2,
+  SlidersHorizontal,
+  X,
 } from "lucide-react";
 import { ResponsiveDrawer } from "@/components/ui/responsive-drawer";
 import {
@@ -58,8 +60,21 @@ import {
 } from "@/components/ui/alert-dialog";
 import { CompanyForm } from "./CompanyForm";
 import type { CreateCompanyData } from "../../services/company.service";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 type DrawerMode = "view" | "new" | "edit" | null;
+
+const DEFAULT_COMPANY_SORT = "name-asc";
+
+const COMPANY_SORT_LABELS: Record<string, string> = {
+  "name-asc": "Name (A–Z)",
+  "name-desc": "Name (Z–A)",
+  "createdAt-desc": "Newest first",
+  "createdAt-asc": "Oldest first",
+};
 
 export function CompaniesPage() {
   const params = useParams();
@@ -73,7 +88,8 @@ export function CompaniesPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
-  const [sortValue, setSortValue] = useState<string>("name-asc");
+  const [sortValue, setSortValue] = useState<string>(DEFAULT_COMPANY_SORT);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [drawerMode, setDrawerMode] = useState<DrawerMode>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
@@ -84,7 +100,7 @@ export function CompaniesPage() {
       : "createdAt";
   const sortOrder = sortValue.endsWith("-desc") ? "desc" : "asc";
 
-  const { data, isLoading } = useCompaniesPaginated({
+  const { data, isLoading, isFetching } = useCompaniesPaginated({
     page,
     limit: pageSize,
     search: debouncedSearch,
@@ -97,6 +113,19 @@ export function CompaniesPage() {
   const deleteMutation = useDeleteCompany();
 
   const companies = data?.data ?? [];
+
+  const sortIsNonDefault = sortValue !== DEFAULT_COMPANY_SORT;
+  const companiesEmptyNoResults =
+    !isLoading &&
+    companies.length === 0 &&
+    (sortIsNonDefault || debouncedSearch.trim());
+
+  const clearCompaniesQuery = () => {
+    setSearch("");
+    setSortValue(DEFAULT_COMPANY_SORT);
+    setPage(DEFAULT_PAGE);
+  };
+
   const pagination = data?.pagination
     ? ({
         currentPage: data.pagination.currentPage,
@@ -177,50 +206,143 @@ export function CompaniesPage() {
 
   const selectedCompany = selectedCompanyData?.company ?? null;
 
-  return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold">Companies</h1>
-        <Button onClick={openNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Company
-        </Button>
-      </div>
+  const listDimmed = isFetching && !isLoading;
 
-      <div className="flex flex-wrap items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+  return (
+    <PageShell className="space-y-4">
+      <PageHeader
+        title="Companies"
+        actions={
+          <Button onClick={openNew}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add Company
+          </Button>
+        }
+      />
+
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1 max-w-xl">
+          <Search className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search companies..."
+            placeholder="Search companies…"
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(DEFAULT_PAGE);
             }}
-            className="pl-9"
+            className="pl-9 pr-10"
+            aria-busy={isFetching && !isLoading}
           />
+          {isFetching && !isLoading ? (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <Spinner className="size-4" />
+            </span>
+          ) : null}
         </div>
-        <Select
-          value={sortValue}
-          onValueChange={(v) => {
-            setSortValue(v);
-            setPage(DEFAULT_PAGE);
-          }}
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0 gap-2"
+          onClick={() => setFiltersOpen(true)}
         >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Sort" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name-asc">Name (A–Z)</SelectItem>
-            <SelectItem value="name-desc">Name (Z–A)</SelectItem>
-            <SelectItem value="createdAt-desc">Newest first</SelectItem>
-            <SelectItem value="createdAt-asc">Oldest first</SelectItem>
-          </SelectContent>
-        </Select>
+          <SlidersHorizontal className="size-4" />
+          Sort
+        </Button>
       </div>
 
+      {(debouncedSearch.trim() || sortIsNonDefault) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {debouncedSearch.trim() ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              <span className="text-muted-foreground">Search:</span>
+              {debouncedSearch.trim()}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Clear search"
+                onClick={() => {
+                  setSearch("");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          {sortIsNonDefault ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              Sort: {COMPANY_SORT_LABELS[sortValue] ?? sortValue}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Reset sort"
+                onClick={() => {
+                  setSortValue(DEFAULT_COMPANY_SORT);
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-muted-foreground"
+            onClick={clearCompaniesQuery}
+          >
+            Clear all
+          </Button>
+        </div>
+      )}
+
+      <ResponsiveDrawer
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        title="Sort"
+        description="Choose how companies are ordered."
+        size="sm"
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Order by</p>
+            <Select
+              value={sortValue}
+              onValueChange={(v) => {
+                setSortValue(v);
+                setPage(DEFAULT_PAGE);
+              }}
+            >
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Sort" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="name-asc">Name (A–Z)</SelectItem>
+                <SelectItem value="name-desc">Name (Z–A)</SelectItem>
+                <SelectItem value="createdAt-desc">Newest first</SelectItem>
+                <SelectItem value="createdAt-asc">Oldest first</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => setFiltersOpen(false)}
+          >
+            Done
+          </Button>
+        </div>
+      </ResponsiveDrawer>
+
       {/* ── Mobile card list ─────────────────────────────────────────── */}
-      <div className="sm:hidden space-y-2">
+      <div
+        className={
+          listDimmed
+            ? "sm:hidden space-y-2 opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
+            : "sm:hidden space-y-2 transition-opacity duration-[var(--duration-normal,200ms)]"
+        }
+      >
         {isLoading ? (
           [1, 2, 3].map((i) => (
             <div key={i} className="rounded-lg border p-3 space-y-2">
@@ -230,8 +352,29 @@ export function CompaniesPage() {
             </div>
           ))
         ) : companies.length === 0 ? (
-          <div className="rounded-md border py-8 text-center text-muted-foreground">
-            No companies found. Add one to get started.
+          <div className="rounded-md border py-8 text-center space-y-3 px-4">
+            {companiesEmptyNoResults ? (
+              <>
+                <p className="text-muted-foreground text-sm">
+                  No companies match your search or sort. Try different keywords
+                  or reset sort.
+                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={clearCompaniesQuery}
+                >
+                  Clear filters
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-foreground">No companies yet</p>
+                <p className="text-sm text-muted-foreground">
+                  Add a company to get started.
+                </p>
+              </>
+            )}
           </div>
         ) : (
           companies.map((c) => (
@@ -288,7 +431,13 @@ export function CompaniesPage() {
       </div>
 
       {/* ── Desktop table ────────────────────────────────────────────── */}
-      <div className="hidden sm:block overflow-x-auto rounded-md border">
+      <div
+        className={
+          listDimmed
+            ? "hidden sm:block overflow-x-auto rounded-md border opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
+            : "hidden sm:block overflow-x-auto rounded-md border transition-opacity duration-[var(--duration-normal,200ms)]"
+        }
+      >
         {isLoading ? (
           <Table>
             <TableHeader>
@@ -331,11 +480,28 @@ export function CompaniesPage() {
             <TableBody>
               {companies.length === 0 ? (
                 <TableRow>
-                  <TableCell
-                    colSpan={4}
-                    className="text-center py-8 text-muted-foreground"
-                  >
-                    No companies found. Add one to get started.
+                  <TableCell colSpan={4} className="text-center py-8 px-4">
+                    {companiesEmptyNoResults ? (
+                      <div className="space-y-3">
+                        <p className="text-muted-foreground text-sm">
+                          No companies match your search or sort.
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={clearCompaniesQuery}
+                        >
+                          Clear filters
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="space-y-1 text-muted-foreground">
+                        <p className="font-medium text-foreground">
+                          No companies yet
+                        </p>
+                        <p className="text-sm">Add a company to get started.</p>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ) : (
@@ -528,6 +694,6 @@ export function CompaniesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageShell>
   );
 }

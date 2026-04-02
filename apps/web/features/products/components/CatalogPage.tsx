@@ -80,6 +80,8 @@ import type {
   ProductVariationForm,
   ProductDiscountForm,
 } from "./types";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 
 interface CatalogPageProps {
   /** When true, catalog is read-only for all roles (no Add/Bulk Upload/Download/edit/delete). */
@@ -836,13 +838,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   );
 
   return (
-    <div className="space-y-6 pb-24">
-      <div>
-        <h1 className="text-3xl font-bold">Product Catalog</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage products and their variations
-        </p>
-      </div>
+    <PageShell className="space-y-6 pb-24">
+      <PageHeader
+        title="Product Catalog"
+        description="Manage products and their variations"
+      />
 
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -1272,6 +1272,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }
