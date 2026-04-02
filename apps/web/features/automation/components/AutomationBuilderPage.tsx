@@ -300,8 +300,9 @@ export function AutomationBuilderPage() {
           and work items.
         </p>
         <p className="text-sm text-muted-foreground">
-          Use the guide below for concepts and setup; templates jump-start
-          common patterns. Pipeline deal rules live under CRM → Workflows.
+          Use the guide below for concepts and setup; open{" "}
+          <strong>Automation templates</strong> for ready-made starters.
+          Pipeline deal rules live under CRM → Workflows.
         </p>
       </div>
 
