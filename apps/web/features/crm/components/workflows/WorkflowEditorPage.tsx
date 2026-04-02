@@ -40,7 +40,14 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
-import { Plus, Pencil, Trash2, Zap, Search } from "lucide-react";
+import {
+  LayoutTemplate,
+  Plus,
+  Pencil,
+  Trash2,
+  Zap,
+  Search,
+} from "lucide-react";
 import {
   useWorkflows,
   useWorkflowTemplates,
@@ -146,6 +153,7 @@ export default function WorkflowEditorPage() {
     useState<WorkflowTemplate | null>(null);
   const [templatePipelineId, setTemplatePipelineId] = useState<string>("");
   const [templateShouldActivate, setTemplateShouldActivate] = useState(true);
+  const [templatesBrowserOpen, setTemplatesBrowserOpen] = useState(false);
 
   const workflows = useMemo(() => data?.workflows ?? [], [data?.workflows]);
   const pagination = data?.pagination;
@@ -197,6 +205,11 @@ export default function WorkflowEditorPage() {
       template.installedPipelineId ?? template.availablePipelines[0]?.id ?? "",
     );
     setTemplateShouldActivate(template.isInstalled ? template.isActive : true);
+  };
+
+  const openInstallFromTemplateBrowser = (template: WorkflowTemplate) => {
+    setTemplatesBrowserOpen(false);
+    openInstallDialog(template);
   };
 
   const handleCreate = (formData: CreateWorkflowFormValues) => {
@@ -256,21 +269,32 @@ export default function WorkflowEditorPage() {
       <WorkflowOnboarding />
 
       <Card>
-        <CardHeader>
-          <CardTitle>Ready-made Workflow Templates</CardTitle>
-          <CardDescription>
-            Install recommended workflow packs for your pipelines, then adapt
-            them to your process. For a numbered setup guide, open{" "}
-            <strong>How to set up workflows</strong> in the section above.
-          </CardDescription>
+        <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="space-y-1.5">
+            <CardTitle>Ready-made Workflow Templates</CardTitle>
+            <CardDescription>
+              Browse descriptions and install packs onto a pipeline. For a
+              numbered setup guide, open{" "}
+              <strong>How to set up workflows</strong> in the section above.
+            </CardDescription>
+          </div>
+          <Button
+            type="button"
+            variant="secondary"
+            className="shrink-0"
+            onClick={() => setTemplatesBrowserOpen(true)}
+            disabled={isTemplatesLoading || isTemplatesError}
+          >
+            <LayoutTemplate className="mr-2 h-4 w-4" aria-hidden />
+            Browse templates
+          </Button>
         </CardHeader>
         <CardContent>
           {isTemplatesLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="h-24 bg-muted animate-pulse rounded" />
-              ))}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              Loading templates… open <strong>Browse templates</strong> when
+              ready.
+            </p>
           ) : isTemplatesError ? (
             <p className="text-sm text-destructive" role="alert">
               Failed to load workflow templates.{" "}
@@ -281,92 +305,140 @@ export default function WorkflowEditorPage() {
               No workflow templates are available right now.
             </p>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-              {templates.map((template) => {
-                return (
-                  <div
-                    key={template.templateKey}
-                    className="rounded-lg border p-4 space-y-3"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-medium">{template.name}</h3>
-                        {template.recommended && (
-                          <Badge variant="default" className="text-xs">
-                            Recommended
-                          </Badge>
-                        )}
-                        <Badge variant="secondary" className="text-xs">
-                          {template.category.replaceAll("_", " ")}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {template.installState.replaceAll("_", " ")}
-                        </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        {template.description}
-                      </p>
-                    </div>
-                    <div className="space-y-1 text-xs text-muted-foreground">
-                      <p>
-                        Pipeline type:{" "}
-                        {template.pipelineType.replaceAll("_", " ")}
-                      </p>
-                      <p>Objects: {template.supportedObjects.join(", ")}</p>
-                      <p>{getTemplateInstallLabel(template)}</p>
-                      {template.isInstalled && (
-                        <p>
-                          Workflow status:{" "}
-                          {template.isActive ? "Active" : "Inactive"}
-                        </p>
-                      )}
-                      <p>
-                        {template.rulesPreview.length} rule
-                        {template.rulesPreview.length === 1 ? "" : "s"}
-                      </p>
-                      {template.isOutdated && (
-                        <p>Current version {template.version} is newer.</p>
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Button
-                        size="sm"
-                        variant={template.isInstalled ? "outline" : "default"}
-                        disabled={
-                          installTemplateMutation.isPending ||
-                          template.installState === "UNAVAILABLE"
-                        }
-                        onClick={() => openInstallDialog(template)}
-                      >
-                        {template.isInstalled
-                          ? "Review install"
-                          : "Install template"}
-                      </Button>
-                      {template.isInstalled && template.installedWorkflowId && (
-                        <Button
-                          size="sm"
-                          variant="secondary"
-                          disabled={updateMutation.isPending}
-                          onClick={() =>
-                            updateMutation.mutate({
-                              id: template.installedWorkflowId!,
-                              data: { isActive: !template.isActive },
-                            })
-                          }
-                        >
-                          {template.isActive
-                            ? "Deactivate workflow"
-                            : "Activate workflow"}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <p className="text-sm text-muted-foreground">
+              {templates.length} template
+              {templates.length === 1 ? "" : "s"} available — click{" "}
+              <strong>Browse templates</strong> to view details and install.
+            </p>
           )}
         </CardContent>
       </Card>
+
+      <Dialog
+        open={templatesBrowserOpen}
+        onOpenChange={setTemplatesBrowserOpen}
+      >
+        <DialogContent
+          className="flex max-h-[min(90vh,800px)] max-w-5xl flex-col gap-0 p-0"
+          allowDismiss={true}
+        >
+          <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4 text-left">
+            <DialogTitle>Workflow templates</DialogTitle>
+            <DialogDescription>
+              Each template lists what it automates. Install onto a compatible
+              pipeline, then adjust rules in the workflow table below.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            {isTemplatesLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="h-24 animate-pulse rounded bg-muted"
+                  />
+                ))}
+              </div>
+            ) : isTemplatesError ? (
+              <p className="text-sm text-destructive" role="alert">
+                Failed to load workflow templates.{" "}
+                {templatesError?.message ?? "Please try again."}
+              </p>
+            ) : templates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No workflow templates are available right now.
+              </p>
+            ) : (
+              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
+                {templates.map((template) => {
+                  return (
+                    <div
+                      key={template.templateKey}
+                      className="space-y-3 rounded-lg border p-4"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-medium">{template.name}</h3>
+                          {template.recommended && (
+                            <Badge variant="default" className="text-xs">
+                              Recommended
+                            </Badge>
+                          )}
+                          <Badge variant="secondary" className="text-xs">
+                            {template.category.replaceAll("_", " ")}
+                          </Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {template.installState.replaceAll("_", " ")}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {template.description}
+                        </p>
+                      </div>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p>
+                          Pipeline type:{" "}
+                          {template.pipelineType.replaceAll("_", " ")}
+                        </p>
+                        <p>Objects: {template.supportedObjects.join(", ")}</p>
+                        <p>{getTemplateInstallLabel(template)}</p>
+                        {template.isInstalled && (
+                          <p>
+                            Workflow status:{" "}
+                            {template.isActive ? "Active" : "Inactive"}
+                          </p>
+                        )}
+                        <p>
+                          {template.rulesPreview.length} rule
+                          {template.rulesPreview.length === 1 ? "" : "s"}
+                        </p>
+                        {template.isOutdated && (
+                          <p>Current version {template.version} is newer.</p>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        <Button
+                          size="sm"
+                          variant={template.isInstalled ? "outline" : "default"}
+                          disabled={
+                            installTemplateMutation.isPending ||
+                            template.installState === "UNAVAILABLE"
+                          }
+                          onClick={() =>
+                            openInstallFromTemplateBrowser(template)
+                          }
+                        >
+                          {template.isInstalled
+                            ? "Review install"
+                            : "Install template"}
+                        </Button>
+                        {template.isInstalled &&
+                          template.installedWorkflowId && (
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              disabled={updateMutation.isPending}
+                              onClick={() =>
+                                updateMutation.mutate({
+                                  id: template.installedWorkflowId!,
+                                  data: { isActive: !template.isActive },
+                                })
+                              }
+                            >
+                              {template.isActive
+                                ? "Deactivate workflow"
+                                : "Activate workflow"}
+                            </Button>
+                          )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Card>
         <CardHeader className="flex flex-row items-start justify-between">
@@ -435,8 +507,8 @@ export default function WorkflowEditorPage() {
             <div className="text-center py-10 text-muted-foreground">
               <Zap className="h-8 w-8 mx-auto mb-2 opacity-40" />
               <p className="text-sm">
-                No workflows yet. Install a ready-made template above or create
-                a custom workflow to automate deal actions.
+                No workflows yet. Open <strong>Browse templates</strong> above
+                or create a custom workflow to automate deal actions.
               </p>
             </div>
           ) : (

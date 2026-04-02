@@ -208,12 +208,46 @@ describe("AutomationBuilderPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows template shortcuts for common automation starters", () => {
+  it("opens automation templates dialog with descriptions and apply actions", () => {
     render(<AutomationBuilderPage />);
 
+    fireEvent.click(
+      screen.getByRole("button", { name: /automation templates/i }),
+    );
+
+    expect(
+      screen.getByRole("heading", { name: /automation templates/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Sales follow-up")).toBeInTheDocument();
     expect(screen.getByText("Inventory restock")).toBeInTheDocument();
     expect(screen.getByText("Lead routing")).toBeInTheDocument();
+    expect(screen.getAllByText("When it runs").length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(
+      screen.getAllByRole("button", { name: /use this template/i }).length,
+    ).toBe(3);
+  });
+
+  it("loads chosen template into the editor form and closes the dialog", () => {
+    render(<AutomationBuilderPage />);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /automation templates/i }),
+    );
+    const leadCard = screen.getByTestId("automation-template-lead-routing");
+    fireEvent.click(
+      within(leadCard).getByRole("button", {
+        name: /use this template/i,
+      }),
+    );
+
+    expect(
+      screen.queryByRole("heading", { name: /automation templates/i }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByText("editing:Lead conversion routing"),
+    ).toBeInTheDocument();
   });
 
   it("renders onboarding guide with SHADOW and pipeline workflow cues", () => {
@@ -237,7 +271,15 @@ describe("AutomationBuilderPage", () => {
         name: /Pipeline workflows vs automations/i,
       }),
     ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /Inventory, low stock, and locations/i,
+      }),
+    ).toBeInTheDocument();
 
+    fireEvent.click(
+      screen.getByRole("button", { name: /automation templates/i }),
+    );
     expect(screen.getAllByText("When it runs").length).toBeGreaterThanOrEqual(
       1,
     );

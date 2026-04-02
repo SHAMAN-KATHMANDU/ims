@@ -66,6 +66,20 @@ export const AutomationDefinitionFormSchema = z
         });
       }
     }
+  })
+  .superRefine((value, ctx) => {
+    if (value.scopeType === "GLOBAL") {
+      return;
+    }
+    const raw = (value.scopeId ?? "").trim();
+    if (!z.string().uuid().safeParse(raw).success) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["scopeId"],
+        message:
+          "Select a scope target (pipeline, warehouse, or product variation UUID).",
+      });
+    }
   });
 
 export type AutomationDefinitionFormValues = z.infer<

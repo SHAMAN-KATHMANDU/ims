@@ -175,6 +175,39 @@ describe("AutomationDefinitionFormSchema", () => {
     expect(result.steps[0]?.actionType).toBe("crm.contact.update");
   });
 
+  it("rejects location (or other non-global) scope without a UUID scope target", () => {
+    const result = AutomationDefinitionFormSchema.safeParse({
+      name: "Warehouse only",
+      description: "",
+      scopeType: "LOCATION",
+      scopeId: "",
+      triggers: [
+        {
+          eventName: "inventory.stock.low_detected",
+          conditions: [],
+          delayMinutes: 0,
+        },
+      ],
+      steps: [
+        {
+          actionType: "notification.send",
+          actionConfig: {
+            title: "Low stock",
+            message: "Check inventory",
+          },
+          continueOnError: false,
+        },
+      ],
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.flatten().fieldErrors.scopeId?.length,
+      ).toBeGreaterThan(0);
+    }
+  });
+
   it("normalizes in-operator conditions from comma-separated strings", () => {
     const result = AutomationDefinitionFormSchema.parse({
       name: "Status IN filter",

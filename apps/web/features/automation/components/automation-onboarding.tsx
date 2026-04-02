@@ -101,6 +101,33 @@ export function AutomationOnboarding() {
             </ol>
           </AccordionContent>
         </AccordionItem>
+        <AccordionItem value="inventory-locations">
+          <AccordionTrigger className="text-left font-medium">
+            Inventory, low stock, and locations
+          </AccordionTrigger>
+          <AccordionContent className="space-y-2 text-sm text-muted-foreground">
+            <p>
+              Events such as{" "}
+              <code className="rounded bg-muted px-1">
+                inventory.stock.low_detected
+              </code>{" "}
+              and{" "}
+              <code className="rounded bg-muted px-1">
+                inventory.stock.threshold_crossed
+              </code>{" "}
+              are raised per <strong>warehouse</strong> (location). The platform
+              attaches the location to the event.
+            </p>
+            <p>
+              <strong>Demo:</strong> set <strong>Scope</strong> to{" "}
+              <strong>Location</strong>, choose one warehouse under{" "}
+              <strong>Scope target</strong>, add a low-stock trigger and steps,
+              then use <strong>SHADOW</strong> and <strong>Recent runs</strong>{" "}
+              to verify. Use <strong>Global</strong> if you want the same
+              automation to run for every site.
+            </p>
+          </AccordionContent>
+        </AccordionItem>
         <AccordionItem value="vs-workflows">
           <AccordionTrigger className="text-left font-medium">
             Pipeline workflows vs automations
