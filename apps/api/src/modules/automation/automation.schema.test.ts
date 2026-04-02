@@ -163,4 +163,69 @@ describe("automation.schema", () => {
 
     expect(result.reprocessFromStart).toBe(false);
   });
+
+  it("normalizes in-operator trigger conditions to arrays", () => {
+    const result = CreateAutomationDefinitionSchema.parse({
+      name: "Status filter",
+      scopeType: "GLOBAL",
+      triggers: [
+        {
+          eventName: "crm.contact.updated",
+          conditions: [{ path: "status", operator: "in", value: "a, b, c" }],
+        },
+      ],
+      steps: [
+        {
+          actionType: "notification.send",
+          actionConfig: { title: "Hi", message: "Test" },
+        },
+      ],
+    });
+
+    expect(result.triggers[0]?.conditions?.[0]?.value).toEqual(["a", "b", "c"]);
+  });
+
+  it("rejects malformed JSON arrays for in-operator conditions", () => {
+    expect(() =>
+      CreateAutomationDefinitionSchema.parse({
+        name: "Bad in",
+        scopeType: "GLOBAL",
+        triggers: [
+          {
+            eventName: "crm.contact.updated",
+            conditions: [
+              { path: "status", operator: "in", value: "[not-json" },
+            ],
+          },
+        ],
+        steps: [
+          {
+            actionType: "notification.send",
+            actionConfig: { title: "Hi", message: "Test" },
+          },
+        ],
+      }),
+    ).toThrow();
+  });
+
+  it("coerces numeric comparison condition values", () => {
+    const result = CreateAutomationDefinitionSchema.parse({
+      name: "Numeric",
+      scopeType: "GLOBAL",
+      triggers: [
+        {
+          eventName: "sales.sale.created",
+          conditions: [{ path: "total", operator: "gte", value: "100" }],
+        },
+      ],
+      steps: [
+        {
+          actionType: "notification.send",
+          actionConfig: { title: "Hi", message: "Test" },
+        },
+      ],
+    });
+
+    expect(result.triggers[0]?.conditions?.[0]?.value).toBe(100);
+  });
 });

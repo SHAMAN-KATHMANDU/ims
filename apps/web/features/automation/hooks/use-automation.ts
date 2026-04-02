@@ -127,9 +127,15 @@ export function useReplayAutomationEvent() {
       eventId: string;
       payload?: ReplayAutomationEventInput;
     }) => replayAutomationEvent(eventId, payload),
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: automationKeys.all });
-      toast({ title: "Automation replay queued" });
+      if (result.mode === "resume" && result.resumedRuns != null) {
+        toast({
+          title: `Resumed ${result.resumedRuns} failed run(s)`,
+        });
+      } else {
+        toast({ title: "Automation replay queued" });
+      }
     },
     onError: (error: Error) => {
       toast({

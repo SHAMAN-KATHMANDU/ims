@@ -146,6 +146,29 @@ function getPathValue(source: unknown, path: string): unknown {
     }, source);
 }
 
+function normalizeInConditionValue(value: unknown): unknown[] | null {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed: unknown = JSON.parse(trimmed);
+        return Array.isArray(parsed) ? parsed : null;
+      } catch {
+        return null;
+      }
+    }
+    if (trimmed.includes(",")) {
+      return trimmed
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return trimmed ? [trimmed] : null;
+  }
+  return null;
+}
+
 function isActionAllowedForEvent(
   actionType: string,
   eventName: string,
@@ -301,6 +324,397 @@ async function createRunSafely(input: CreateAutomationRunInput) {
   }
 }
 
+type AutomationDefinitionGraph = Awaited<
+  ReturnType<typeof automationRepository.findMatchingDefinitions>
+>[number];
+
+function eventRowToPayload(row: {
+  id: string;
+  tenantId: string;
+  eventName: string;
+  scopeType: string | null;
+  scopeId: string | null;
+  entityType: string;
+  entityId: string;
+  actorUserId: string | null;
+  dedupeKey: string | null;
+  payload: unknown;
+  occurredAt: Date;
+}): AutomationEventPayload {
+  return {
+    id: row.id,
+    tenantId: row.tenantId,
+    eventName: row.eventName,
+    scopeType: row.scopeType,
+    scopeId: row.scopeId,
+    entityType: row.entityType,
+    entityId: row.entityId,
+    actorUserId: row.actorUserId,
+    dedupeKey: row.dedupeKey,
+    payload: isRecord(row.payload) ? row.payload : {},
+    occurredAt: row.occurredAt,
+  };
+}
+
+function sortAutomationSteps(automation: AutomationDefinitionGraph) {
+  return [...automation.steps].sort((a, b) => a.stepOrder - b.stepOrder);
+}
+
+async function runShadowAutomation(
+  automation: AutomationDefinitionGraph,
+  event: AutomationEventPayload,
+  runId: string,
+): Promise<void> {
+  const shadowOutputs: Record<string, unknown> = {};
+  const context: RuntimeContext = {
+    event,
+    outputs: shadowOutputs,
+    lastOutput: null,
+  };
+
+  for (const step of sortAutomationSteps(automation)) {
+    const parsedConfig = parseAutomationActionConfig(
+      step.actionType as never,
+      step.actionConfig,
+    );
+    const renderedConfig = renderTemplateValue(parsedConfig, context);
+    const preview = buildShadowStepPreview(step.actionType, renderedConfig);
+    shadowOutputs[step.id] = preview;
+    await automationRepository.createRunStep({
+      automationRunId: runId,
+      automationStepId: step.id,
+      status: "SKIPPED",
+      output: preview as Prisma.InputJsonValue,
+      errorMessage: "Shadow mode: side effects were not executed",
+    });
+  }
+
+  await automationRepository.updateRun(runId, {
+    status: "SKIPPED",
+    errorMessage: "Shadow mode: side effects were not executed",
+    stepOutput: shadowOutputs as Prisma.InputJsonValue,
+    completedAt: new Date(),
+  });
+}
+
+async function runLiveAutomationSteps(
+  automation: AutomationDefinitionGraph,
+  event: AutomationEventPayload,
+  runId: string,
+  sortedSteps: AutomationDefinitionGraph["steps"],
+  context: RuntimeContext,
+  startIndex: number,
+  existingByStepId: Map<
+    string,
+    {
+      runStepId: string;
+      status: "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+    }
+  >,
+): Promise<{ failed: boolean }> {
+  let failed = false;
+
+  for (let idx = startIndex; idx < sortedSteps.length; idx++) {
+    const step = sortedSteps[idx];
+    const prev = existingByStepId.get(step.id);
+    let runStepId: string;
+
+    if (prev && (prev.status === "FAILED" || prev.status === "RUNNING")) {
+      runStepId = prev.runStepId;
+      await automationRepository.updateRunStep(runStepId, {
+        status: "RUNNING",
+        errorMessage: null,
+        completedAt: null,
+      });
+    } else if (!prev) {
+      const created = await automationRepository.createRunStep({
+        automationRunId: runId,
+        automationStepId: step.id,
+        status: "RUNNING",
+      });
+      runStepId = created.id;
+    } else {
+      continue;
+    }
+
+    try {
+      if (!isActionAllowedForEvent(step.actionType, event.eventName)) {
+        throw new Error(
+          `Action "${step.actionType}" cannot run for "${event.eventName}"`,
+        );
+      }
+      const parsedConfig = parseAutomationActionConfig(
+        step.actionType as never,
+        step.actionConfig,
+      );
+      const handler = actionHandlers[step.actionType];
+      if (!handler) {
+        throw new Error(`No handler registered for "${step.actionType}"`);
+      }
+
+      const output = await handler({
+        automation,
+        config: parsedConfig,
+        context,
+        runId,
+      });
+
+      context.outputs[step.id] = output ?? null;
+      context.lastOutput = output ?? null;
+
+      await automationRepository.updateRunStep(runStepId, {
+        status: "SUCCEEDED",
+        output: (output as Prisma.InputJsonValue | undefined) ?? null,
+        completedAt: new Date(),
+      });
+      existingByStepId.set(step.id, { runStepId, status: "SUCCEEDED" });
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Automation step execution failed";
+      await automationRepository.updateRunStep(runStepId, {
+        status: "FAILED",
+        errorMessage: message,
+        completedAt: new Date(),
+      });
+      existingByStepId.set(step.id, { runStepId, status: "FAILED" });
+
+      if (!step.continueOnError) {
+        failed = true;
+        await automationRepository.updateRun(runId, {
+          status: "FAILED",
+          errorMessage: message,
+          stepOutput: context.outputs as Prisma.InputJsonValue,
+          completedAt: new Date(),
+        });
+        if (error instanceof AutomationProcessingError) {
+          throw error;
+        }
+        break;
+      }
+    }
+  }
+
+  return { failed };
+}
+
+async function runMatchedAutomation(
+  automation: AutomationDefinitionGraph,
+  event: AutomationEventPayload,
+  dedupeKey: string | null,
+): Promise<void> {
+  const run = await createRunSafely({
+    tenantId: event.tenantId,
+    automationId: automation.id,
+    automationEventId: event.id,
+    status: "RUNNING",
+    executionMode: automation.executionMode,
+    eventName: event.eventName,
+    entityType: event.entityType,
+    entityId: event.entityId,
+    actorUserId: event.actorUserId,
+    dedupeKey,
+    triggerPayload: event.payload as Prisma.InputJsonValue,
+  });
+  if (!run || run.status !== "RUNNING") {
+    return;
+  }
+
+  if (automation.executionMode === "SHADOW") {
+    await runShadowAutomation(automation, event, run.id);
+    return;
+  }
+
+  const sortedSteps = sortAutomationSteps(automation);
+  const context: RuntimeContext = {
+    event,
+    outputs: {},
+    lastOutput: null,
+  };
+  const existingByStepId = new Map<
+    string,
+    {
+      runStepId: string;
+      status: "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+    }
+  >();
+
+  const { failed } = await runLiveAutomationSteps(
+    automation,
+    event,
+    run.id,
+    sortedSteps,
+    context,
+    0,
+    existingByStepId,
+  );
+
+  if (!failed) {
+    await automationRepository.updateRun(run.id, {
+      status: "SUCCEEDED",
+      stepOutput: context.outputs as Prisma.InputJsonValue,
+      completedAt: new Date(),
+    });
+  }
+}
+
+export async function resumeFailedAutomationRunsForEvent(
+  tenantId: string,
+  automationEventId: string,
+): Promise<number> {
+  if (!automationFeatureEnabled) return 0;
+
+  const runs = await automationRepository.findFailedLiveRunsForEventReplay(
+    tenantId,
+    automationEventId,
+  );
+
+  let resumed = 0;
+
+  for (const run of runs) {
+    if (!run.automation || run.automation.status !== "ACTIVE") continue;
+    if (!run.automationEventId) continue;
+
+    const eventRow = await automationRepository.findEventById(
+      run.automationEventId,
+    );
+    if (!eventRow || eventRow.tenantId !== tenantId) continue;
+
+    const event = eventRowToPayload(eventRow);
+    const sortedSteps = sortAutomationSteps(run.automation);
+
+    const existingByStepId = new Map<
+      string,
+      {
+        runStepId: string;
+        status: "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+      }
+    >();
+
+    const outputs: Record<string, unknown> = {};
+    let lastOutput: unknown = null;
+
+    for (const st of sortedSteps) {
+      const rs = run.runSteps.find((r) => r.automationStepId === st.id);
+      if (rs) {
+        existingByStepId.set(st.id, {
+          runStepId: rs.id,
+          status: rs.status,
+        });
+        if (rs.status === "SUCCEEDED") {
+          outputs[st.id] = rs.output != null ? (rs.output as unknown) : null;
+          lastOutput = rs.output ?? null;
+        }
+      }
+    }
+
+    const startIdx = sortedSteps.findIndex((st) => {
+      const rs = existingByStepId.get(st.id);
+      return !rs || rs.status === "FAILED" || rs.status === "RUNNING";
+    });
+
+    if (startIdx === -1) continue;
+
+    await automationRepository.updateRun(run.id, {
+      status: "RUNNING",
+      completedAt: null,
+      errorMessage: null,
+      stepOutput: outputs as Prisma.InputJsonValue,
+    });
+
+    const context: RuntimeContext = {
+      event,
+      outputs,
+      lastOutput,
+    };
+
+    const { failed } = await runLiveAutomationSteps(
+      run.automation,
+      event,
+      run.id,
+      sortedSteps,
+      context,
+      startIdx,
+      existingByStepId,
+    );
+
+    if (!failed) {
+      await automationRepository.updateRun(run.id, {
+        status: "SUCCEEDED",
+        stepOutput: context.outputs as Prisma.InputJsonValue,
+        completedAt: new Date(),
+      });
+    }
+
+    resumed += 1;
+  }
+
+  return resumed;
+}
+
+export async function processDueDelayedAutomationRuns(
+  limit = AUTOMATION_RETRY_SWEEP_LIMIT,
+): Promise<number> {
+  if (!automationFeatureEnabled) return 0;
+
+  const now = new Date();
+  const due = await automationRepository.findDueDelayedRuns(now, limit);
+  let processed = 0;
+
+  for (const row of due) {
+    const claimed = await automationRepository.claimDelayedRun(row.id);
+    if (!claimed) continue;
+
+    try {
+      const eventRow = await automationRepository.findEventById(
+        row.automationEventId,
+      );
+      if (!eventRow || eventRow.tenantId !== row.tenantId) {
+        await automationRepository.completeDelayedRun(row.id);
+        continue;
+      }
+
+      const automation = await automationRepository.findDefinitionById(
+        row.tenantId,
+        row.automationDefinitionId,
+      );
+      if (!automation || automation.status !== "ACTIVE") {
+        await automationRepository.completeDelayedRun(row.id);
+        continue;
+      }
+
+      const trigger = automation.triggers.find(
+        (t) => t.id === row.automationTriggerId,
+      );
+      if (!trigger || trigger.delayMinutes <= 0) {
+        await automationRepository.completeDelayedRun(row.id);
+        continue;
+      }
+
+      const event = eventRowToPayload(eventRow);
+      if (
+        trigger.eventName !== event.eventName ||
+        !matchesConditions(event.payload, trigger.conditionGroups)
+      ) {
+        await automationRepository.completeDelayedRun(row.id);
+        continue;
+      }
+
+      const dedupeKey = `delay:${event.id}:${automation.id}:${trigger.id}`;
+      await runMatchedAutomation(automation, event, dedupeKey);
+      await automationRepository.completeDelayedRun(row.id);
+      processed += 1;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Delayed automation failed";
+      await automationRepository.failDelayedRun(row.id, message);
+    }
+  }
+
+  return processed;
+}
+
 function renderTemplateValue<T>(value: T, context: RuntimeContext): T {
   if (typeof value === "string") {
     return renderTemplateString(value, context) as T;
@@ -342,10 +756,10 @@ function evaluateCondition(
       return Number(actual) <= Number(condition.value);
     case "contains":
       return String(actual ?? "").includes(String(condition.value ?? ""));
-    case "in":
-      return Array.isArray(condition.value)
-        ? condition.value.includes(actual)
-        : false;
+    case "in": {
+      const list = normalizeInConditionValue(condition.value);
+      return list != null ? list.includes(actual) : false;
+    }
     default:
       return false;
   }
@@ -783,141 +1197,32 @@ export async function processAutomationEventById(
       );
       if (!matchingTrigger) continue;
 
-      const run = await createRunSafely({
-        tenantId: event.tenantId,
-        automationId: automation.id,
-        automationEventId: event.id,
-        status: "RUNNING",
-        executionMode: automation.executionMode,
-        eventName: event.eventName,
-        entityType: event.entityType,
-        entityId: event.entityId,
-        actorUserId: event.actorUserId,
-        dedupeKey: event.dedupeKey
-          ? `${event.dedupeKey}:${automation.id}`
-          : null,
-        triggerPayload: event.payload as Prisma.InputJsonValue,
-      });
-      if (!run || run.status !== "RUNNING") {
-        continue;
-      }
-
-      if (automation.executionMode === "SHADOW") {
-        const shadowOutputs: Record<string, unknown> = {};
-        const context: RuntimeContext = {
-          event,
-          outputs: shadowOutputs,
-          lastOutput: null,
-        };
-
-        for (const step of automation.steps) {
-          const parsedConfig = parseAutomationActionConfig(
-            step.actionType as never,
-            step.actionConfig,
-          );
-          const renderedConfig = renderTemplateValue(parsedConfig, context);
-          const preview = buildShadowStepPreview(
-            step.actionType,
-            renderedConfig,
-          );
-          shadowOutputs[step.id] = preview;
-          await automationRepository.createRunStep({
-            automationRunId: run.id,
-            automationStepId: step.id,
-            status: "SKIPPED",
-            output: preview as Prisma.InputJsonValue,
-            errorMessage: "Shadow mode: side effects were not executed",
-          });
-        }
-
-        await automationRepository.updateRun(run.id, {
-          status: "SKIPPED",
-          errorMessage: "Shadow mode: side effects were not executed",
-          stepOutput: shadowOutputs as Prisma.InputJsonValue,
-          completedAt: new Date(),
-        });
-        continue;
-      }
-
-      const context: RuntimeContext = {
-        event,
-        outputs: {},
-        lastOutput: null,
-      };
-
-      let failed = false;
-
-      for (const step of automation.steps) {
-        const runStep = await automationRepository.createRunStep({
-          automationRunId: run.id,
-          automationStepId: step.id,
-          status: "RUNNING",
-        });
-
+      if (matchingTrigger.delayMinutes > 0) {
+        const fireAt = new Date(
+          Date.now() + matchingTrigger.delayMinutes * 60 * 1000,
+        );
         try {
-          if (!isActionAllowedForEvent(step.actionType, event.eventName)) {
-            throw new Error(
-              `Action "${step.actionType}" cannot run for "${event.eventName}"`,
-            );
-          }
-          const parsedConfig = parseAutomationActionConfig(
-            step.actionType as never,
-            step.actionConfig,
-          );
-          const handler = actionHandlers[step.actionType];
-          if (!handler) {
-            throw new Error(`No handler registered for "${step.actionType}"`);
-          }
-
-          const output = await handler({
-            automation,
-            config: parsedConfig,
-            context,
-            runId: run.id,
-          });
-
-          context.outputs[step.id] = output ?? null;
-          context.lastOutput = output ?? null;
-
-          await automationRepository.updateRunStep(runStep.id, {
-            status: "SUCCEEDED",
-            output: (output as Prisma.InputJsonValue | undefined) ?? null,
-            completedAt: new Date(),
+          await automationRepository.createDelayedRun({
+            tenantId: event.tenantId,
+            automationEventId: event.id,
+            automationDefinitionId: automation.id,
+            automationTriggerId: matchingTrigger.id,
+            fireAt,
           });
         } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : "Automation step execution failed";
-          await automationRepository.updateRunStep(runStep.id, {
-            status: "FAILED",
-            errorMessage: message,
-            completedAt: new Date(),
-          });
-
-          if (!step.continueOnError) {
-            failed = true;
-            await automationRepository.updateRun(run.id, {
-              status: "FAILED",
-              errorMessage: message,
-              stepOutput: context.outputs as Prisma.InputJsonValue,
-              completedAt: new Date(),
-            });
-            if (error instanceof AutomationProcessingError) {
-              throw error;
-            }
-            break;
+          const code = (error as { code?: string })?.code;
+          if (code === "P2002") {
+            continue;
           }
+          throw error;
         }
+        continue;
       }
 
-      if (!failed) {
-        await automationRepository.updateRun(run.id, {
-          status: "SUCCEEDED",
-          stepOutput: context.outputs as Prisma.InputJsonValue,
-          completedAt: new Date(),
-        });
-      }
+      const dedupeKey = event.dedupeKey
+        ? `${event.dedupeKey}:${automation.id}`
+        : null;
+      await runMatchedAutomation(automation, event, dedupeKey);
     }
 
     await automationRepository.markEventProcessed(event.id);
@@ -959,9 +1264,19 @@ if (
       error: error instanceof Error ? error.message : String(error),
     });
   });
+  void processDueDelayedAutomationRuns().catch((error) => {
+    logger.error("Initial automation delayed-run sweep failed", undefined, {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  });
   const timer = setInterval(() => {
     void processDueAutomationEvents().catch((error) => {
       logger.error("Automation retry sweep failed", undefined, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+    });
+    void processDueDelayedAutomationRuns().catch((error) => {
+      logger.error("Automation delayed-run sweep failed", undefined, {
         error: error instanceof Error ? error.message : String(error),
       });
     });

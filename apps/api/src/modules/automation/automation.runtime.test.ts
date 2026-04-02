@@ -11,6 +11,7 @@ const mockUpdateRunStep = vi.fn();
 const mockMarkEventProcessed = vi.fn();
 const mockMarkEventFailed = vi.fn();
 const mockMarkEventExhausted = vi.fn();
+const mockCreateDelayedRun = vi.fn();
 const mockFindActiveAutoDraftTransferBySignal = vi.fn();
 const mockCreateTransfer = vi.fn();
 const mockCreateTransferLog = vi.fn();
@@ -85,6 +86,13 @@ vi.mock("./automation.repository", () => ({
     markEventFailed: (...args: unknown[]) => mockMarkEventFailed(...args),
     markEventExhausted: (...args: unknown[]) => mockMarkEventExhausted(...args),
     findRetryableEventIds: vi.fn(),
+    createDelayedRun: (...args: unknown[]) => mockCreateDelayedRun(...args),
+    findDueDelayedRuns: vi.fn().mockResolvedValue([]),
+    claimDelayedRun: vi.fn().mockResolvedValue(true),
+    completeDelayedRun: vi.fn(),
+    failDelayedRun: vi.fn(),
+    findDefinitionById: vi.fn(),
+    findFailedLiveRunsForEventReplay: vi.fn().mockResolvedValue([]),
   },
 }));
 
@@ -124,6 +132,46 @@ describe("automation.runtime", () => {
     mockUserFindFirst.mockResolvedValue({ id: "user-1" });
     mockContactUpdate.mockResolvedValue({ id: "contact-1" });
     mockCompanyUpdate.mockResolvedValue({ id: "company-1" });
+    mockCreateDelayedRun.mockResolvedValue({ id: "delayed-1" });
+  });
+
+  it("enqueues delayed automation instead of running immediately", async () => {
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-1",
+        executionMode: "LIVE",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+            delayMinutes: 15,
+          },
+        ],
+        steps: [
+          {
+            id: "step-1",
+            actionType: "workitem.create",
+            actionConfig: { title: "Later", type: "TASK", priority: "HIGH" },
+            continueOnError: false,
+          },
+        ],
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateDelayedRun).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: "tenant-1",
+        automationEventId: "event-1",
+        automationDefinitionId: "auto-1",
+        automationTriggerId: "trigger-1",
+      }),
+    );
+    expect(mockCreateDelayedRun.mock.calls[0][0].fireAt).toBeInstanceOf(Date);
+    expect(mockCreateRun).not.toHaveBeenCalled();
+    expect(mockMarkEventProcessed).toHaveBeenCalledWith("event-1");
   });
 
   it("records preview outputs for shadow runs", async () => {

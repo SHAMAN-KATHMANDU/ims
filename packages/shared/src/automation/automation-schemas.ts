@@ -84,21 +84,123 @@ export const AutomationActionTypeSchema = z.enum(AUTOMATION_ACTION_TYPE_VALUES);
 export const WorkItemTypeSchema = z.enum(WORK_ITEM_TYPE_VALUES);
 export const WorkItemPrioritySchema = z.enum(WORK_ITEM_PRIORITY_VALUES);
 
-export const AutomationConditionSchema = z.object({
-  path: z.string().min(1),
-  operator: z.enum([
-    "eq",
-    "neq",
-    "gt",
-    "gte",
-    "lt",
-    "lte",
-    "contains",
-    "in",
-    "exists",
-  ]),
-  value: z.unknown().optional(),
-});
+const AUTOMATION_CONDITION_OPERATORS = [
+  "eq",
+  "neq",
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+  "contains",
+  "in",
+  "exists",
+] as const;
+
+/** True if the value can be used for operator `in` (before normalization to an array). */
+export function isValidAutomationInConditionValue(value: unknown): boolean {
+  if (Array.isArray(value)) return true;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (!t) return false;
+    if (t.startsWith("[")) {
+      try {
+        return Array.isArray(JSON.parse(t));
+      } catch {
+        return false;
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
+export function normalizeAutomationInConditionValue(value: unknown): unknown[] {
+  if (Array.isArray(value)) return value;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    if (trimmed.startsWith("[")) {
+      try {
+        const parsed: unknown = JSON.parse(trimmed);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    }
+    if (trimmed.includes(",")) {
+      return trimmed
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    }
+    return trimmed ? [trimmed] : [];
+  }
+  return [];
+}
+
+export const AutomationConditionSchema = z
+  .object({
+    path: z.string().min(1),
+    operator: z.enum(AUTOMATION_CONDITION_OPERATORS),
+    value: z.unknown().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.operator === "exists") {
+      return;
+    }
+    if (data.operator === "in") {
+      if (!isValidAutomationInConditionValue(data.value)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["value"],
+          message:
+            'For "in", provide a JSON array (e.g. ["a","b"]), comma-separated values, or a single value',
+        });
+      }
+      return;
+    }
+    if (
+      data.operator === "gt" ||
+      data.operator === "gte" ||
+      data.operator === "lt" ||
+      data.operator === "lte"
+    ) {
+      if (data.value === undefined || data.value === null) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["value"],
+          message: "A numeric value is required for this operator",
+        });
+        return;
+      }
+      const n = Number(data.value);
+      if (!Number.isFinite(n)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["value"],
+          message: "Value must be a finite number",
+        });
+      }
+    }
+  })
+  .transform((data) => {
+    if (data.operator === "in" && data.value !== undefined) {
+      return {
+        ...data,
+        value: normalizeAutomationInConditionValue(data.value),
+      };
+    }
+    if (
+      (data.operator === "gt" ||
+        data.operator === "gte" ||
+        data.operator === "lt" ||
+        data.operator === "lte") &&
+      data.value !== undefined &&
+      data.value !== null
+    ) {
+      return { ...data, value: Number(data.value) };
+    }
+    return data;
+  });
 
 export type AutomationCondition = z.infer<typeof AutomationConditionSchema>;
 

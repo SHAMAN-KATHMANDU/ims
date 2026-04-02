@@ -9,7 +9,10 @@ import type {
   ReplayAutomationEventDto,
   UpdateAutomationDefinitionDto,
 } from "./automation.schema";
-import { publishAutomationEvent } from "./automation.runtime";
+import {
+  publishAutomationEvent,
+  resumeFailedAutomationRunsForEvent,
+} from "./automation.runtime";
 
 const LOW_STOCK_THRESHOLD = 5;
 
@@ -160,6 +163,16 @@ export class AutomationService {
       );
     }
 
+    if (options.reprocessFromStart === false) {
+      const resumedRuns = await resumeFailedAutomationRunsForEvent(
+        tenantId,
+        eventId,
+      );
+      if (resumedRuns > 0) {
+        return { replayQueued: true, resumedRuns, mode: "resume" as const };
+      }
+    }
+
     await publishAutomationEvent({
       tenantId: existing.tenantId,
       eventName: existing.eventName,
@@ -173,7 +186,11 @@ export class AutomationService {
       occurredAt: new Date(),
     });
 
-    return { replayQueued: true };
+    return {
+      replayQueued: true,
+      resumedRuns: 0,
+      mode: "full" as const,
+    };
   }
 
   async publishDomainEvent(

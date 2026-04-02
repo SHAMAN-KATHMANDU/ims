@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockUseAutomationDefinitions = vi.fn();
@@ -165,7 +165,7 @@ describe("AutomationBuilderPage", () => {
     );
   });
 
-  it("supports edit and archive flows for listed automations", () => {
+  it("supports edit and archive flows for listed automations", async () => {
     render(<AutomationBuilderPage />);
 
     fireEvent.click(screen.getByRole("button", { name: /edit/i }));
@@ -186,6 +186,8 @@ describe("AutomationBuilderPage", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /archive/i }));
+    const dialog = await screen.findByRole("alertdialog");
+    fireEvent.click(within(dialog).getByRole("button", { name: /^archive$/i }));
     expect(mockArchiveMutate).toHaveBeenCalledWith("auto-1");
   });
 

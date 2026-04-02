@@ -63,9 +63,10 @@ model Tenant {
   pipelines             Pipeline[]
   pipelineWorkflows     PipelineWorkflow[]
   workflowRuns          WorkflowRun[]
-  automationDefinitions AutomationDefinition[]
-  automationEvents      AutomationEvent[]
-  automationRuns        AutomationRun[]
+  automationDefinitions   AutomationDefinition[]
+  automationEvents        AutomationEvent[]
+  automationRuns          AutomationRun[]
+  automationDelayedRuns   AutomationDelayedRun[]
   workItems             WorkItem[]
   inventorySignals      InventorySignal[]
   deals                 Deal[]
@@ -1290,6 +1291,13 @@ enum AutomationRunStatus {
   SKIPPED
 }
 
+enum AutomationDelayedRunStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 enum WorkItemType {
   TASK
   APPROVAL
@@ -1409,10 +1417,11 @@ model AutomationDefinition {
   tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   createdBy User                @relation("AutomationDefinitionCreator", fields: [createdById], references: [id], onDelete: Restrict)
   updatedBy User?               @relation("AutomationDefinitionUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
-  triggers  AutomationTrigger[]
-  steps     AutomationStep[]
-  runs      AutomationRun[]
-  workItems WorkItem[]
+  triggers    AutomationTrigger[]
+  steps       AutomationStep[]
+  runs        AutomationRun[]
+  delayedRuns AutomationDelayedRun[]
+  workItems   WorkItem[]
 
   @@unique([tenantId, scopeType, scopeId, name])
   @@index([tenantId, status])
@@ -1429,7 +1438,8 @@ model AutomationTrigger {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  automation AutomationDefinition @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  automation  AutomationDefinition   @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  delayedRuns AutomationDelayedRun[]
 
   @@index([automationId])
   @@index([eventName])
@@ -1476,8 +1486,9 @@ model AutomationEvent {
   updatedAt    DateTime              @updatedAt @map("updated_at")
 
   tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actor  User?           @relation("AutomationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  runs   AutomationRun[]
+  actor        User?                  @relation("AutomationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  runs         AutomationRun[]
+  delayedRuns  AutomationDelayedRun[]
 
   @@unique([tenantId, dedupeKey])
   @@index([tenantId, status, nextAttemptAt])
@@ -1534,6 +1545,28 @@ model AutomationRunStep {
   @@index([automationRunId])
   @@index([automationStepId])
   @@map("automation_run_steps")
+}
+
+model AutomationDelayedRun {
+  id                     String                     @id @default(uuid()) @map("automation_delayed_run_id")
+  tenantId               String                     @map("tenant_id")
+  automationEventId      String                     @map("automation_event_id")
+  automationDefinitionId String                   @map("automation_definition_id")
+  automationTriggerId    String                     @map("automation_trigger_id")
+  fireAt                 DateTime                   @map("fire_at")
+  status                 AutomationDelayedRunStatus @default(PENDING)
+  errorMessage           String?                    @map("error_message") @db.VarChar(2000)
+  createdAt              DateTime                   @default(now()) @map("created_at")
+  processedAt            DateTime?                  @map("processed_at")
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event      AutomationEvent      @relation(fields: [automationEventId], references: [id], onDelete: Cascade)
+  automation AutomationDefinition @relation(fields: [automationDefinitionId], references: [id], onDelete: Cascade)
+  trigger    AutomationTrigger    @relation(fields: [automationTriggerId], references: [id], onDelete: Cascade)
+
+  @@unique([automationEventId, automationDefinitionId, automationTriggerId])
+  @@index([tenantId, status, fireAt])
+  @@map("automation_delayed_runs")
 }
 
 model WorkItem {

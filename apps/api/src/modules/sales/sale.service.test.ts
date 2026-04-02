@@ -750,6 +750,47 @@ describe("SaleService", () => {
           ]),
         }),
       );
+
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "sales.sale.created",
+          entityId: "sale1",
+        }),
+      );
+    });
+
+    it("publishes high-value sale automation event when total meets threshold", async () => {
+      mockFindLocationById.mockResolvedValue(showroomLocation);
+      mockFindVariationWithDiscounts.mockResolvedValue({
+        ...mockVariation,
+        product: { ...mockVariation.product, mrp: 6000 },
+      });
+      mockFindInventory.mockResolvedValue({ quantity: 10 });
+      mockCreateSaleWithItemsAndDeductInventory.mockResolvedValue({
+        id: "sale-hv",
+        saleCode: "SL-20240101-HIGH",
+        locationId: "loc1",
+        subtotal: 6000,
+        total: 6000,
+        memberId: null,
+        contactId: null,
+        items: [{ variationId: "v1", quantity: 1 }],
+      });
+
+      await createSale(ctx, {
+        locationId: "loc1",
+        items: [{ variationId: "v1", quantity: 1 }],
+        payments: [{ method: "CASH", amount: 6000 }],
+      });
+
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "sales.sale.high_value_created",
+          entityId: "sale-hv",
+        }),
+      );
     });
   });
 

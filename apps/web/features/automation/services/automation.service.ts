@@ -167,10 +167,18 @@ export async function getAutomationRuns(
 export async function replayAutomationEvent(
   id: string,
   payload: ReplayAutomationEventInput = {},
-): Promise<{ replayQueued: true }> {
+): Promise<{
+  replayQueued: true;
+  resumedRuns?: number;
+  mode?: "full" | "resume";
+}> {
   try {
     const res = await api.post(`/automation/events/${id}/replay`, payload);
-    return unwrapApiData<{ replayQueued: true }>(res.data);
+    return unwrapApiData<{
+      replayQueued: true;
+      resumedRuns?: number;
+      mode?: "full" | "resume";
+    }>(res.data);
   } catch (error) {
     handleApiError(error, `replay automation event "${id}"`);
   }

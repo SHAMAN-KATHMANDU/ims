@@ -617,6 +617,99 @@ export class AutomationRepository {
     });
   }
 
+  async createDelayedRun(input: {
+    tenantId: string;
+    automationEventId: string;
+    automationDefinitionId: string;
+    automationTriggerId: string;
+    fireAt: Date;
+  }) {
+    return basePrisma.automationDelayedRun.create({
+      data: {
+        tenantId: input.tenantId,
+        automationEventId: input.automationEventId,
+        automationDefinitionId: input.automationDefinitionId,
+        automationTriggerId: input.automationTriggerId,
+        fireAt: input.fireAt,
+      },
+    });
+  }
+
+  async findDueDelayedRuns(
+    now: Date,
+    limit: number,
+  ): Promise<
+    Array<{
+      id: string;
+      tenantId: string;
+      automationEventId: string;
+      automationDefinitionId: string;
+      automationTriggerId: string;
+    }>
+  > {
+    return basePrisma.automationDelayedRun.findMany({
+      where: { status: "PENDING", fireAt: { lte: now } },
+      orderBy: { fireAt: "asc" },
+      take: limit,
+      select: {
+        id: true,
+        tenantId: true,
+        automationEventId: true,
+        automationDefinitionId: true,
+        automationTriggerId: true,
+      },
+    });
+  }
+
+  async claimDelayedRun(id: string): Promise<boolean> {
+    const result = await basePrisma.automationDelayedRun.updateMany({
+      where: { id, status: "PENDING" },
+      data: { status: "PROCESSING" },
+    });
+    return result.count === 1;
+  }
+
+  async completeDelayedRun(id: string): Promise<void> {
+    await basePrisma.automationDelayedRun.update({
+      where: { id },
+      data: { status: "COMPLETED", processedAt: new Date() },
+    });
+  }
+
+  async failDelayedRun(id: string, errorMessage: string): Promise<void> {
+    await basePrisma.automationDelayedRun.update({
+      where: { id },
+      data: {
+        status: "FAILED",
+        errorMessage: errorMessage.slice(0, 2000),
+        processedAt: new Date(),
+      },
+    });
+  }
+
+  async findFailedLiveRunsForEventReplay(
+    tenantId: string,
+    automationEventId: string,
+  ) {
+    return basePrisma.automationRun.findMany({
+      where: {
+        tenantId,
+        automationEventId,
+        status: "FAILED",
+        executionMode: "LIVE",
+      },
+      include: {
+        runSteps: { orderBy: { startedAt: "asc" } },
+        automation: {
+          include: {
+            steps: { orderBy: { stepOrder: "asc" } },
+            triggers: { orderBy: { createdAt: "asc" } },
+          },
+        },
+      },
+    });
+  }
+
   async hasActiveAutomationSuppressingLegacyWorkflow(input: {
     tenantId: string;
     eventName: string;

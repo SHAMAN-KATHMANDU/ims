@@ -15,6 +15,7 @@ const mockCreateInventorySignal = vi.fn();
 const mockResolveInventorySignal = vi.fn();
 const mockUpdateInventorySignal = vi.fn();
 const mockPublishAutomationEvent = vi.fn();
+const mockResumeFailedAutomationRunsForEvent = vi.fn();
 
 vi.mock("./automation.repository", () => ({
   default: {
@@ -45,6 +46,8 @@ vi.mock("./automation.repository", () => ({
 vi.mock("./automation.runtime", () => ({
   publishAutomationEvent: (...args: unknown[]) =>
     mockPublishAutomationEvent(...args),
+  resumeFailedAutomationRunsForEvent: (...args: unknown[]) =>
+    mockResumeFailedAutomationRunsForEvent(...args),
 }));
 
 import automationService from "./automation.service";
@@ -222,7 +225,12 @@ describe("automation.service", () => {
       reprocessFromStart: true,
     });
 
-    expect(result).toEqual({ replayQueued: true });
+    expect(result).toEqual({
+      replayQueued: true,
+      resumedRuns: 0,
+      mode: "full",
+    });
+    expect(mockResumeFailedAutomationRunsForEvent).not.toHaveBeenCalled();
     expect(mockPublishAutomationEvent).toHaveBeenCalledWith(
       expect.objectContaining({
         tenantId: "t1",
@@ -231,6 +239,62 @@ describe("automation.service", () => {
         payload: { saleId: "sale-1" },
       }),
     );
+  });
+
+  it("resumes failed runs when reprocessFromStart is false and runs exist", async () => {
+    mockFindEventById.mockResolvedValue({
+      id: "event-1",
+      tenantId: "t1",
+      eventName: "sales.sale.created",
+      scopeType: "GLOBAL",
+      scopeId: null,
+      entityType: "SALE",
+      entityId: "sale-1",
+      actorUserId: "u1",
+      dedupeKey: "sale:event-1",
+      payload: { saleId: "sale-1" },
+      status: "FAILED",
+    });
+    mockResumeFailedAutomationRunsForEvent.mockResolvedValue(2);
+
+    const result = await automationService.replayEvent("t1", "event-1", {
+      reprocessFromStart: false,
+    });
+
+    expect(result).toEqual({
+      replayQueued: true,
+      resumedRuns: 2,
+      mode: "resume",
+    });
+    expect(mockResumeFailedAutomationRunsForEvent).toHaveBeenCalledWith(
+      "t1",
+      "event-1",
+    );
+    expect(mockPublishAutomationEvent).not.toHaveBeenCalled();
+  });
+
+  it("falls back to full replay when reprocessFromStart is false and nothing to resume", async () => {
+    mockFindEventById.mockResolvedValue({
+      id: "event-1",
+      tenantId: "t1",
+      eventName: "sales.sale.created",
+      scopeType: "GLOBAL",
+      scopeId: null,
+      entityType: "SALE",
+      entityId: "sale-1",
+      actorUserId: "u1",
+      dedupeKey: "sale:event-1",
+      payload: { saleId: "sale-1" },
+      status: "FAILED",
+    });
+    mockResumeFailedAutomationRunsForEvent.mockResolvedValue(0);
+
+    await automationService.replayEvent("t1", "event-1", {
+      reprocessFromStart: false,
+    });
+
+    expect(mockResumeFailedAutomationRunsForEvent).toHaveBeenCalled();
+    expect(mockPublishAutomationEvent).toHaveBeenCalled();
   });
 
   it("rejects replay when the event belongs to another tenant", async () => {

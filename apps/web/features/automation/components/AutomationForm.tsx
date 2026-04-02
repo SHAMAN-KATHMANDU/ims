@@ -15,6 +15,14 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Trash2 } from "lucide-react";
 import { usePipelines } from "@/features/crm";
 import { useActiveLocations } from "@/features/locations";
@@ -109,6 +117,24 @@ function getDefaultCondition(): AutomationCondition {
     value: 1000,
   };
 }
+
+function formatConditionValueForDisplay(
+  operator: AutomationCondition["operator"],
+  value: unknown,
+): string {
+  if (value == null) return "";
+  if (operator === "in" && Array.isArray(value)) {
+    return value.map((v) => String(v)).join(", ");
+  }
+  return String(value);
+}
+
+const NUMERIC_OPERATORS = new Set<AutomationCondition["operator"]>([
+  "gt",
+  "gte",
+  "lt",
+  "lte",
+]);
 
 function getScopeIdPlaceholder(
   scopeType: AutomationDefinitionFormValues["scopeType"],
@@ -420,6 +446,7 @@ export function AutomationForm({
     resolver: zodResolver(AutomationDefinitionFormSchema),
     defaultValues: initialValues,
   });
+  const { errors } = form.formState;
   const scopeType = form.watch("scopeType");
   const { data: pipelineData } = usePipelines(
     { page: 1, limit: 100 },
@@ -473,6 +500,9 @@ export function AutomationForm({
     form.reset(initialValues);
   }, [form, initialValues]);
 
+  const stepAutoAdjustNote =
+    "When triggers change, any step whose action is not allowed for those events is reset to the first compatible action and default settings.";
+
   useEffect(() => {
     if (scopeType === "GLOBAL" && form.getValues("scopeId")) {
       form.setValue("scopeId", "", { shouldValidate: true });
@@ -480,409 +510,592 @@ export function AutomationForm({
   }, [form, scopeType]);
 
   return (
-    <form
-      className="space-y-5 rounded-lg border p-4"
-      onSubmit={form.handleSubmit(onSubmit)}
-    >
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label>Name</Label>
-          <Input {...form.register("name")} />
-        </div>
-        <div className="space-y-2">
-          <Label>Scope</Label>
-          <Select
-            value={scopeType}
-            onValueChange={(next) =>
-              form.setValue(
-                "scopeType",
-                next as AutomationDefinitionFormValues["scopeType"],
-              )
-            }
+    <Form {...form}>
+      <form
+        className="space-y-5 rounded-lg border p-4"
+        onSubmit={form.handleSubmit(onSubmit)}
+        noValidate
+      >
+        {Object.keys(errors).length > 0 ? (
+          <div
+            role="alert"
+            className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
           >
-            <SelectTrigger>
-              <SelectValue placeholder="Select scope" />
-            </SelectTrigger>
-            <SelectContent>
-              {AUTOMATION_SCOPE_VALUES.map((scope) => (
-                <SelectItem key={scope} value={scope}>
-                  {SCOPE_LABELS[scope]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2 md:col-span-2">
-          <Label>Description</Label>
-          <Textarea rows={3} {...form.register("description")} />
-        </div>
-        <div className="space-y-2">
-          <Label>Scope target</Label>
-          {scopeType === "CRM_PIPELINE" ? (
-            <Select
-              value={form.watch("scopeId") || ""}
-              onValueChange={(next) => form.setValue("scopeId", next)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={getScopeIdPlaceholder(scopeType)} />
-              </SelectTrigger>
-              <SelectContent>
-                {(pipelineData?.pipelines ?? []).map((pipeline) => (
-                  <SelectItem key={pipeline.id} value={pipeline.id}>
-                    {pipeline.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
-          {scopeType === "LOCATION" ? (
-            <Select
-              value={form.watch("scopeId") || ""}
-              onValueChange={(next) => form.setValue("scopeId", next)}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder={getScopeIdPlaceholder(scopeType)} />
-              </SelectTrigger>
-              <SelectContent>
-                {(locationData ?? []).map((location) => (
-                  <SelectItem key={location.id} value={location.id}>
-                    {location.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          ) : null}
-          {scopeType === "PRODUCT_VARIATION" ? (
-            <Input
-              placeholder={getScopeIdPlaceholder(scopeType)}
-              {...form.register("scopeId")}
-            />
-          ) : null}
-          {scopeType === "GLOBAL" ? (
-            <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-              This automation applies across the tenant.
-            </div>
-          ) : null}
-        </div>
-        <div className="space-y-2">
-          <Label>Status</Label>
-          <Select
-            value={form.watch("status")}
-            onValueChange={(next) =>
-              form.setValue(
-                "status",
-                next as AutomationDefinitionFormValues["status"],
-              )
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select status" />
-            </SelectTrigger>
-            <SelectContent>
-              {AUTOMATION_STATUS_VALUES.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2">
-          <Label>Execution mode</Label>
-          <Select
-            value={form.watch("executionMode")}
-            onValueChange={(next) =>
-              form.setValue(
-                "executionMode",
-                next as AutomationDefinitionFormValues["executionMode"],
-              )
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select execution mode" />
-            </SelectTrigger>
-            <SelectContent>
-              {AUTOMATION_EXECUTION_MODE_VALUES.map((mode) => (
-                <SelectItem key={mode} value={mode}>
-                  {mode}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-        <div className="space-y-2 rounded-md border p-3 md:col-span-2">
-          <div className="flex items-center justify-between gap-3">
-            <div className="space-y-1">
-              <Label>Suppress legacy CRM workflows</Label>
-              <p className="text-xs text-muted-foreground">
-                When enabled on CRM automations, matching legacy CRM workflow
-                rules are skipped to avoid duplicate side effects during
-                migration.
-              </p>
-            </div>
-            <Switch
-              checked={form.watch("suppressLegacyWorkflows")}
-              onCheckedChange={(checked) =>
-                form.setValue("suppressLegacyWorkflows", checked)
-              }
-            />
+            Some fields need attention. Review the messages below and try again.
           </div>
-        </div>
-      </div>
+        ) : null}
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label>Triggers</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              triggerArray.append({
-                eventName: "sales.sale.created",
-                conditions: [],
-                delayMinutes: 0,
-              })
-            }
-          >
-            Add trigger
-          </Button>
-        </div>
-        {triggerArray.fields.map((field, index) => (
-          <div key={field.id} className="space-y-3 rounded-md border p-3">
-            <div className="grid gap-2 md:grid-cols-[1fr_140px_auto]">
+        <div className="grid gap-4 md:grid-cols-2">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Name</FormLabel>
+                <FormControl>
+                  <Input {...field} autoComplete="off" />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="space-y-2">
+            <Label htmlFor="automation-scope-type">Scope</Label>
+            <Select
+              value={scopeType}
+              onValueChange={(next) =>
+                form.setValue(
+                  "scopeType",
+                  next as AutomationDefinitionFormValues["scopeType"],
+                )
+              }
+            >
+              <SelectTrigger id="automation-scope-type">
+                <SelectValue placeholder="Select scope" />
+              </SelectTrigger>
+              <SelectContent>
+                {AUTOMATION_SCOPE_VALUES.map((scope) => (
+                  <SelectItem key={scope} value={scope}>
+                    {SCOPE_LABELS[scope]}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <FormField
+            control={form.control}
+            name="description"
+            render={({ field }) => (
+              <FormItem className="md:col-span-2">
+                <FormLabel>Description</FormLabel>
+                <FormControl>
+                  <Textarea rows={3} {...field} value={field.value ?? ""} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <div className="space-y-2">
+            <Label htmlFor="automation-scope-target">Scope target</Label>
+            {scopeType === "CRM_PIPELINE" ? (
               <Select
-                value={form.watch(`triggers.${index}.eventName`)}
-                onValueChange={(next) =>
-                  form.setValue(
-                    `triggers.${index}.eventName`,
-                    next as AutomationDefinitionFormValues["triggers"][number]["eventName"],
-                  )
-                }
+                value={form.watch("scopeId") || ""}
+                onValueChange={(next) => form.setValue("scopeId", next)}
               >
-                <SelectTrigger>
-                  <SelectValue placeholder="Event" />
+                <SelectTrigger id="automation-scope-target">
+                  <SelectValue placeholder={getScopeIdPlaceholder(scopeType)} />
                 </SelectTrigger>
                 <SelectContent>
-                  {AUTOMATION_TRIGGER_EVENT_VALUES.map((eventName) => (
-                    <SelectItem key={eventName} value={eventName}>
-                      {eventName}
+                  {(pipelineData?.pipelines ?? []).map((pipeline) => (
+                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                      {pipeline.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Input
-                type="number"
-                min={0}
-                {...form.register(`triggers.${index}.delayMinutes`, {
-                  valueAsNumber: true,
-                })}
-                placeholder="Delay min"
-              />
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                onClick={() => triggerArray.remove(index)}
+            ) : null}
+            {scopeType === "LOCATION" ? (
+              <Select
+                value={form.watch("scopeId") || ""}
+                onValueChange={(next) => form.setValue("scopeId", next)}
               >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label className="text-xs text-muted-foreground">
-                  Conditions
-                </Label>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const current =
-                      form.getValues(`triggers.${index}.conditions`) ?? [];
-                    form.setValue(`triggers.${index}.conditions`, [
-                      ...current,
-                      getDefaultCondition(),
-                    ]);
-                  }}
-                >
-                  Add condition
-                </Button>
+                <SelectTrigger id="automation-scope-target">
+                  <SelectValue placeholder={getScopeIdPlaceholder(scopeType)} />
+                </SelectTrigger>
+                <SelectContent>
+                  {(locationData ?? []).map((location) => (
+                    <SelectItem key={location.id} value={location.id}>
+                      {location.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : null}
+            {scopeType === "PRODUCT_VARIATION" ? (
+              <Input
+                id="automation-scope-target"
+                placeholder={getScopeIdPlaceholder(scopeType)}
+                aria-invalid={!!errors.scopeId}
+                aria-describedby={
+                  errors.scopeId ? "automation-scope-target-error" : undefined
+                }
+                {...form.register("scopeId")}
+              />
+            ) : null}
+            {scopeType === "GLOBAL" ? (
+              <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+                This automation applies across the tenant.
               </div>
-              {(form.watch(`triggers.${index}.conditions`) ?? []).map(
-                (condition, conditionIndex) => (
-                  <div
-                    key={`${field.id}-condition-${conditionIndex}`}
-                    className="grid gap-2 md:grid-cols-[1.2fr_160px_1fr_auto]"
-                  >
-                    <Input
-                      placeholder="Payload path"
-                      value={String(condition.path ?? "")}
-                      onChange={(e) =>
-                        form.setValue(
-                          `triggers.${index}.conditions.${conditionIndex}.path`,
-                          e.target.value,
-                        )
-                      }
-                    />
-                    <Select
-                      value={condition.operator}
-                      onValueChange={(next) =>
-                        form.setValue(
-                          `triggers.${index}.conditions.${conditionIndex}.operator`,
-                          next as AutomationCondition["operator"],
-                        )
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Operator" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {[
-                          "eq",
-                          "neq",
-                          "gt",
-                          "gte",
-                          "lt",
-                          "lte",
-                          "contains",
-                          "in",
-                          "exists",
-                        ].map((operator) => (
-                          <SelectItem key={operator} value={operator}>
-                            {operator}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Input
-                      placeholder="Value"
-                      value={
-                        condition.value == null ? "" : String(condition.value)
-                      }
-                      onChange={(e) =>
-                        form.setValue(
-                          `triggers.${index}.conditions.${conditionIndex}.value`,
-                          e.target.value,
-                        )
-                      }
-                      disabled={condition.operator === "exists"}
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => {
-                        const current =
-                          form.getValues(`triggers.${index}.conditions`) ?? [];
-                        form.setValue(
-                          `triggers.${index}.conditions`,
-                          current.filter((_, i) => i !== conditionIndex),
-                        );
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ),
-              )}
+            ) : null}
+            {errors.scopeId?.message ? (
+              <p
+                id="automation-scope-target-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
+                {errors.scopeId.message}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="automation-status">Status</Label>
+            <Select
+              value={form.watch("status")}
+              onValueChange={(next) =>
+                form.setValue(
+                  "status",
+                  next as AutomationDefinitionFormValues["status"],
+                )
+              }
+            >
+              <SelectTrigger id="automation-status">
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                {AUTOMATION_STATUS_VALUES.map((status) => (
+                  <SelectItem key={status} value={status}>
+                    {status}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="automation-execution-mode">Execution mode</Label>
+            <Select
+              value={form.watch("executionMode")}
+              onValueChange={(next) =>
+                form.setValue(
+                  "executionMode",
+                  next as AutomationDefinitionFormValues["executionMode"],
+                )
+              }
+            >
+              <SelectTrigger id="automation-execution-mode">
+                <SelectValue placeholder="Select execution mode" />
+              </SelectTrigger>
+              <SelectContent>
+                {AUTOMATION_EXECUTION_MODE_VALUES.map((mode) => (
+                  <SelectItem key={mode} value={mode}>
+                    {mode}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 rounded-md border p-3 md:col-span-2">
+            <div className="flex items-center justify-between gap-3">
+              <div className="space-y-1">
+                <Label>Suppress legacy CRM workflows</Label>
+                <p className="text-xs text-muted-foreground">
+                  When enabled on CRM automations, matching legacy CRM workflow
+                  rules are skipped to avoid duplicate side effects during
+                  migration.
+                </p>
+              </div>
+              <Switch
+                checked={form.watch("suppressLegacyWorkflows")}
+                onCheckedChange={(checked) =>
+                  form.setValue("suppressLegacyWorkflows", checked)
+                }
+              />
             </div>
           </div>
-        ))}
-      </div>
-
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label>Steps</Label>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              stepArray.append({
-                actionType: "notification.send",
-                actionConfig: getDefaultActionConfig("notification.send"),
-                continueOnError: false,
-              })
-            }
-          >
-            Add step
-          </Button>
         </div>
-        {stepArray.fields.map((field, index) => {
-          const actionType = form.watch(`steps.${index}.actionType`);
-          const config =
-            (form.watch(`steps.${index}.actionConfig`) as Record<
-              string,
-              unknown
-            >) ?? {};
 
-          return (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <Label>Triggers</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                triggerArray.append({
+                  eventName: "sales.sale.created",
+                  conditions: [],
+                  delayMinutes: 0,
+                })
+              }
+            >
+              Add trigger
+            </Button>
+          </div>
+          {triggerArray.fields.map((field, index) => (
             <div key={field.id} className="space-y-3 rounded-md border p-3">
-              <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
+              <div className="grid gap-2 md:grid-cols-[1fr_140px_auto]">
                 <Select
-                  value={actionType}
-                  onValueChange={(next) => {
-                    const typed = next as AutomationActionTypeValue;
-                    form.setValue(`steps.${index}.actionType`, typed);
+                  value={form.watch(`triggers.${index}.eventName`)}
+                  onValueChange={(next) =>
                     form.setValue(
-                      `steps.${index}.actionConfig`,
-                      getDefaultActionConfig(typed),
-                    );
-                  }}
+                      `triggers.${index}.eventName`,
+                      next as AutomationDefinitionFormValues["triggers"][number]["eventName"],
+                    )
+                  }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Action" />
+                    <SelectValue placeholder="Event" />
                   </SelectTrigger>
                   <SelectContent>
-                    {compatibleActionTypes.map((action) => (
-                      <SelectItem key={action} value={action}>
-                        {ACTION_LABELS[action]}
+                    {AUTOMATION_TRIGGER_EVENT_VALUES.map((eventName) => (
+                      <SelectItem key={eventName} value={eventName}>
+                        {eventName}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
-                <div className="flex items-center gap-2">
-                  <Switch
-                    checked={form.watch(`steps.${index}.continueOnError`)}
-                    onCheckedChange={(checked) =>
-                      form.setValue(`steps.${index}.continueOnError`, checked)
-                    }
-                  />
-                  <Label>Continue on error</Label>
-                </div>
+                <Input
+                  type="number"
+                  min={0}
+                  {...form.register(`triggers.${index}.delayMinutes`, {
+                    valueAsNumber: true,
+                  })}
+                  placeholder="Delay min"
+                />
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  onClick={() => stepArray.remove(index)}
+                  aria-label={`Remove trigger ${index + 1}`}
+                  onClick={() => triggerArray.remove(index)}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
               </div>
-
-              <ActionConfigFields
-                actionType={actionType}
-                value={config}
-                onChange={(next) =>
-                  form.setValue(`steps.${index}.actionConfig`, next)
-                }
-              />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">
+                    Conditions
+                  </Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const current =
+                        form.getValues(`triggers.${index}.conditions`) ?? [];
+                      form.setValue(`triggers.${index}.conditions`, [
+                        ...current,
+                        getDefaultCondition(),
+                      ]);
+                    }}
+                  >
+                    Add condition
+                  </Button>
+                </div>
+                {(form.watch(`triggers.${index}.conditions`) ?? []).map(
+                  (condition, conditionIndex) => {
+                    const conditionFieldErrors =
+                      errors.triggers?.[index]?.conditions?.[conditionIndex];
+                    return (
+                      <div
+                        key={`${field.id}-condition-${conditionIndex}`}
+                        className="space-y-1"
+                      >
+                        <div className="grid gap-2 md:grid-cols-[1.2fr_160px_1fr_auto]">
+                          <Input
+                            placeholder="Payload path"
+                            aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} path`}
+                            value={String(condition.path ?? "")}
+                            onChange={(e) =>
+                              form.setValue(
+                                `triggers.${index}.conditions.${conditionIndex}.path`,
+                                e.target.value,
+                                { shouldValidate: true },
+                              )
+                            }
+                          />
+                          <Select
+                            value={condition.operator}
+                            onValueChange={(next) => {
+                              const op =
+                                next as AutomationCondition["operator"];
+                              form.setValue(
+                                `triggers.${index}.conditions.${conditionIndex}.operator`,
+                                op,
+                                { shouldValidate: false },
+                              );
+                              if (op === "exists") {
+                                form.setValue(
+                                  `triggers.${index}.conditions.${conditionIndex}.value`,
+                                  undefined,
+                                  { shouldValidate: true },
+                                );
+                              } else if (op === "in") {
+                                const v = form.getValues(
+                                  `triggers.${index}.conditions.${conditionIndex}.value`,
+                                );
+                                if (Array.isArray(v)) {
+                                  form.setValue(
+                                    `triggers.${index}.conditions.${conditionIndex}.value`,
+                                    v.map(String).join(", "),
+                                    { shouldValidate: true },
+                                  );
+                                } else if (typeof v !== "string") {
+                                  form.setValue(
+                                    `triggers.${index}.conditions.${conditionIndex}.value`,
+                                    "",
+                                    { shouldValidate: true },
+                                  );
+                                }
+                              } else if (NUMERIC_OPERATORS.has(op)) {
+                                const v = form.getValues(
+                                  `triggers.${index}.conditions.${conditionIndex}.value`,
+                                );
+                                const n = Number(v);
+                                form.setValue(
+                                  `triggers.${index}.conditions.${conditionIndex}.value`,
+                                  Number.isFinite(n) ? n : 0,
+                                  { shouldValidate: true },
+                                );
+                              }
+                            }}
+                          >
+                            <SelectTrigger
+                              aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} operator`}
+                            >
+                              <SelectValue placeholder="Operator" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {[
+                                "eq",
+                                "neq",
+                                "gt",
+                                "gte",
+                                "lt",
+                                "lte",
+                                "contains",
+                                "in",
+                                "exists",
+                              ].map((operator) => (
+                                <SelectItem key={operator} value={operator}>
+                                  {operator}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {condition.operator === "exists" ? (
+                            <span className="self-center px-1 text-sm text-muted-foreground">
+                              No value
+                            </span>
+                          ) : null}
+                          {condition.operator === "in" ? (
+                            <Textarea
+                              rows={2}
+                              placeholder='e.g. ["A","B"] or A, B'
+                              aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} value`}
+                              value={formatConditionValueForDisplay(
+                                condition.operator,
+                                condition.value,
+                              )}
+                              onChange={(e) =>
+                                form.setValue(
+                                  `triggers.${index}.conditions.${conditionIndex}.value`,
+                                  e.target.value,
+                                  { shouldValidate: true },
+                                )
+                              }
+                            />
+                          ) : null}
+                          {NUMERIC_OPERATORS.has(condition.operator) ? (
+                            <Input
+                              type="number"
+                              aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} numeric value`}
+                              value={
+                                condition.value === "" ||
+                                condition.value === undefined ||
+                                condition.value === null
+                                  ? ""
+                                  : String(condition.value)
+                              }
+                              onChange={(e) => {
+                                const raw = e.target.value;
+                                form.setValue(
+                                  `triggers.${index}.conditions.${conditionIndex}.value`,
+                                  raw === "" ? "" : Number(raw),
+                                  { shouldValidate: true },
+                                );
+                              }}
+                            />
+                          ) : null}
+                          {condition.operator !== "exists" &&
+                          condition.operator !== "in" &&
+                          !NUMERIC_OPERATORS.has(condition.operator) ? (
+                            <Input
+                              placeholder="Value"
+                              aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} value`}
+                              value={
+                                condition.value == null
+                                  ? ""
+                                  : String(condition.value)
+                              }
+                              onChange={(e) =>
+                                form.setValue(
+                                  `triggers.${index}.conditions.${conditionIndex}.value`,
+                                  e.target.value,
+                                  { shouldValidate: true },
+                                )
+                              }
+                            />
+                          ) : null}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            aria-label={`Remove condition ${conditionIndex + 1} on trigger ${index + 1}`}
+                            onClick={() => {
+                              const current =
+                                form.getValues(
+                                  `triggers.${index}.conditions`,
+                                ) ?? [];
+                              form.setValue(
+                                `triggers.${index}.conditions`,
+                                current.filter((_, i) => i !== conditionIndex),
+                              );
+                            }}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        {conditionFieldErrors?.path?.message ? (
+                          <p role="alert" className="text-xs text-destructive">
+                            {conditionFieldErrors.path.message}
+                          </p>
+                        ) : null}
+                        {conditionFieldErrors?.value?.message ? (
+                          <p role="alert" className="text-xs text-destructive">
+                            {String(conditionFieldErrors.value.message)}
+                          </p>
+                        ) : null}
+                      </div>
+                    );
+                  },
+                )}
+              </div>
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
 
-      <div className="flex gap-2">
-        <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? "Saving..." : "Save automation"}
-        </Button>
-        {onCancel ? (
-          <Button type="button" variant="outline" onClick={onCancel}>
-            Cancel
+        <div className="space-y-3">
+          <p className="text-xs text-muted-foreground">{stepAutoAdjustNote}</p>
+          <div className="flex items-center justify-between">
+            <Label>Steps</Label>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                stepArray.append({
+                  actionType: "notification.send",
+                  actionConfig: getDefaultActionConfig("notification.send"),
+                  continueOnError: false,
+                })
+              }
+            >
+              Add step
+            </Button>
+          </div>
+          {stepArray.fields.map((field, index) => {
+            const actionType = form.watch(`steps.${index}.actionType`);
+            const config =
+              (form.watch(`steps.${index}.actionConfig`) as Record<
+                string,
+                unknown
+              >) ?? {};
+
+            return (
+              <div key={field.id} className="space-y-3 rounded-md border p-3">
+                <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
+                  <Select
+                    value={actionType}
+                    onValueChange={(next) => {
+                      const typed = next as AutomationActionTypeValue;
+                      form.setValue(`steps.${index}.actionType`, typed);
+                      form.setValue(
+                        `steps.${index}.actionConfig`,
+                        getDefaultActionConfig(typed),
+                      );
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Action" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {compatibleActionTypes.map((action) => (
+                        <SelectItem key={action} value={action}>
+                          {ACTION_LABELS[action]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={form.watch(`steps.${index}.continueOnError`)}
+                      onCheckedChange={(checked) =>
+                        form.setValue(`steps.${index}.continueOnError`, checked)
+                      }
+                    />
+                    <Label>Continue on error</Label>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    aria-label={`Remove step ${index + 1}`}
+                    onClick={() => stepArray.remove(index)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {errors.steps?.[index]?.actionType?.message ? (
+                  <p role="alert" className="text-xs text-destructive">
+                    {errors.steps[index]?.actionType?.message}
+                  </p>
+                ) : null}
+
+                <ActionConfigFields
+                  actionType={actionType}
+                  value={config}
+                  onChange={(next) =>
+                    form.setValue(`steps.${index}.actionConfig`, next, {
+                      shouldValidate: true,
+                    })
+                  }
+                />
+                {errors.steps?.[index]?.actionConfig &&
+                typeof errors.steps[index]?.actionConfig === "object" &&
+                "message" in (errors.steps[index]?.actionConfig as object) ? (
+                  <p role="alert" className="text-xs text-destructive">
+                    {String(
+                      (
+                        errors.steps[index]?.actionConfig as {
+                          message?: string;
+                        }
+                      ).message,
+                    )}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            type="submit"
+            disabled={isSubmitting}
+            aria-busy={isSubmitting}
+          >
+            {isSubmitting ? "Saving..." : "Save automation"}
           </Button>
-        ) : null}
-      </div>
-    </form>
+          {onCancel ? (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
+          ) : null}
+        </div>
+      </form>
+    </Form>
   );
 }

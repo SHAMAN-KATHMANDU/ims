@@ -13,6 +13,12 @@ The legacy CRM workflow engine under `apps/api/src/modules/workflows` remains a 
 3. The automation runtime resolves matching definitions, evaluates conditions, executes steps, and records run history.
 4. The frontend automation builder becomes the primary authoring surface for new automation work.
 
+### Runtime behavior (authoritative)
+
+- **Trigger delay (`delayMinutes`)**: When greater than zero, matching work is stored as a `AutomationDelayedRun` row with a `fireAt` time instead of executing immediately. A background sweep (same interval as automation event retries) claims due rows and runs the automation against the original stored event payload. The parent `AutomationEvent` is still marked processed after the initial sweep so delayed work does not block other automations on that event.
+- **Condition operator `in`**: Values are normalized to arrays at validation time (API and shared Zod). The runtime also accepts comma-separated strings and JSON arrays for robustness when reading stored JSON.
+- **Replay API** (`POST /automation/events/:id/replay`): `reprocessFromStart: true` (default) queues a full replay by publishing a new automation event. `reprocessFromStart: false` first attempts to **resume** failed `LIVE` runs linked to that event from the first failed step; if none are resumable, the service falls back to a full replay.
+
 ## Migration Rule
 
 Prefer adding new trigger families and action capabilities to the generic automation platform instead of extending the legacy workflow engine.

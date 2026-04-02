@@ -174,4 +174,37 @@ describe("AutomationDefinitionFormSchema", () => {
 
     expect(result.steps[0]?.actionType).toBe("crm.contact.update");
   });
+
+  it("normalizes in-operator conditions from comma-separated strings", () => {
+    const result = AutomationDefinitionFormSchema.parse({
+      name: "Status IN filter",
+      description: "",
+      scopeType: "GLOBAL",
+      scopeId: "",
+      triggers: [
+        {
+          eventName: "crm.contact.updated",
+          conditions: [
+            { path: "status", operator: "in", value: "OPEN, QUALIFIED" },
+          ],
+          delayMinutes: 0,
+        },
+      ],
+      steps: [
+        {
+          actionType: "webhook.emit",
+          actionConfig: {
+            url: "https://example.com/webhook",
+            method: "POST",
+          },
+          continueOnError: false,
+        },
+      ],
+    });
+
+    expect(result.triggers[0]?.conditions?.[0]?.value).toEqual([
+      "OPEN",
+      "QUALIFIED",
+    ]);
+  });
 });

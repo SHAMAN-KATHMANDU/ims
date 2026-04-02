@@ -1,8 +1,20 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useDebounce } from "@/hooks/useDebounce";
 import { AutomationForm } from "./AutomationForm";
 import {
   useArchiveAutomationDefinition,
@@ -162,6 +174,7 @@ function toFormValues(
 
 export function AutomationBuilderPage() {
   const [search, setSearch] = useState("");
+  const debouncedSearch = useDebounce(search, 300);
   const [editing, setEditing] = useState<AutomationDefinition | null>(null);
   const [draftValues, setDraftValues] = useState<
     AutomationDefinitionFormValues | undefined
@@ -171,13 +184,23 @@ export function AutomationBuilderPage() {
   const archiveAutomation = useArchiveAutomationDefinition();
   const replayAutomationEvent = useReplayAutomationEvent();
 
-  const { data, isLoading } = useAutomationDefinitions({
-    search: search || undefined,
+  const {
+    data,
+    isLoading,
+    isError: definitionsError,
+    error: definitionsErrorObj,
+    refetch: refetchDefinitions,
+  } = useAutomationDefinitions({
+    search: debouncedSearch || undefined,
     page: 1,
     limit: 25,
   });
   const selectedAutomationId = editing?.id ?? data?.automations[0]?.id ?? "";
-  const { data: runsData } = useAutomationRuns(
+  const {
+    data: runsData,
+    isLoading: runsLoading,
+    isError: runsError,
+  } = useAutomationRuns(
     selectedAutomationId,
     { limit: 5 },
     { enabled: !!selectedAutomationId },
@@ -277,6 +300,27 @@ export function AutomationBuilderPage() {
           </div>
 
           <div className="space-y-3">
+            {definitionsError ? (
+              <div
+                role="alert"
+                className="flex flex-wrap items-center gap-2 rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+              >
+                <span>
+                  {definitionsErrorObj instanceof Error
+                    ? definitionsErrorObj.message
+                    : "Failed to load automations."}
+                </span>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => void refetchDefinitions()}
+                >
+                  Retry
+                </Button>
+              </div>
+            ) : null}
+
             {isLoading ? (
               <p className="text-sm text-muted-foreground">
                 Loading automations...
@@ -313,13 +357,34 @@ export function AutomationBuilderPage() {
                     >
                       Edit
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => archiveAutomation.mutate(automation.id)}
-                    >
-                      Archive
-                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          Archive
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>
+                            Archive this automation?
+                          </AlertDialogTitle>
+                          <AlertDialogDescription>
+                            It will stop running for new events. You can create
+                            a replacement later if needed.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() =>
+                              archiveAutomation.mutate(automation.id)
+                            }
+                          >
+                            Archive
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
@@ -335,9 +400,18 @@ export function AutomationBuilderPage() {
               </div>
             ))}
 
-            {!isLoading && data?.automations.length === 0 ? (
+            {!isLoading &&
+            !definitionsError &&
+            data?.automations.length === 0 ? (
               <p className="text-sm text-muted-foreground">
                 No automation definitions yet.
+              </p>
+            ) : null}
+
+            {data?.pagination && data.pagination.totalPages > 1 ? (
+              <p className="text-xs text-muted-foreground">
+                Showing page {data.pagination.currentPage} of{" "}
+                {data.pagination.totalPages}. Use search to narrow results.
               </p>
             ) : null}
           </div>
@@ -367,7 +441,15 @@ export function AutomationBuilderPage() {
 
           <div className="rounded-lg border p-4">
             <h2 className="mb-3 font-medium">Recent runs</h2>
-            {runsData?.runs.length ? (
+            {runsLoading ? (
+              <p className="text-sm text-muted-foreground">Loading runs…</p>
+            ) : null}
+            {runsError ? (
+              <p className="text-sm text-destructive" role="alert">
+                Could not load recent runs.
+              </p>
+            ) : null}
+            {!runsLoading && !runsError && runsData?.runs.length ? (
               <div className="space-y-3">
                 {runsData.runs.map((run) => (
                   <div key={run.id} className="rounded-md border p-3">
@@ -386,19 +468,74 @@ export function AutomationBuilderPage() {
                       </p>
                     ) : null}
                     {run.automationEventId && run.status === "FAILED" ? (
-                      <Button
-                        className="mt-2"
-                        size="sm"
-                        variant="outline"
-                        onClick={() =>
-                          replayAutomationEvent.mutate({
-                            eventId: run.automationEventId!,
-                            payload: { reprocessFromStart: true },
-                          })
-                        }
-                      >
-                        Replay event
-                      </Button>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="outline">
+                              Full replay
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Queue a full replay?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Re-queues the original event from scratch so all
+                                matching automations can run again. Use “Resume
+                                failed steps” instead if you only want to retry
+                                a failed run without duplicating side effects
+                                from steps that already succeeded.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  replayAutomationEvent.mutate({
+                                    eventId: run.automationEventId!,
+                                    payload: { reprocessFromStart: true },
+                                  })
+                                }
+                              >
+                                Full replay
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="secondary">
+                              Resume failed steps
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>
+                                Resume from the failed step?
+                              </AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Continues this failed run from the first failed
+                                step. If nothing is eligible, a full replay is
+                                queued instead.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() =>
+                                  replayAutomationEvent.mutate({
+                                    eventId: run.automationEventId!,
+                                    payload: { reprocessFromStart: false },
+                                  })
+                                }
+                              >
+                                Resume
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </div>
                     ) : null}
                     {run.runSteps.length ? (
                       <div className="mt-2 space-y-1">
@@ -418,11 +555,14 @@ export function AutomationBuilderPage() {
                   </div>
                 ))}
               </div>
-            ) : (
+            ) : null}
+            {!runsLoading &&
+            !runsError &&
+            (!runsData?.runs.length || runsData.runs.length === 0) ? (
               <p className="text-sm text-muted-foreground">
                 No runs recorded for the selected automation yet.
               </p>
-            )}
+            ) : null}
           </div>
         </div>
       </div>
