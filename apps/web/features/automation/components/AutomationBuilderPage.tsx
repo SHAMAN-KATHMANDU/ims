@@ -16,6 +16,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AutomationForm } from "./AutomationForm";
+import { AutomationOnboarding } from "./automation-onboarding";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   useArchiveAutomationDefinition,
   useAutomationDefinitions,
@@ -35,12 +43,22 @@ const AUTOMATION_TEMPLATES: Array<{
   id: string;
   name: string;
   description: string;
+  whenItRuns: string[];
+  whatItDoes: string[];
   values: AutomationDefinitionFormValues;
 }> = [
   {
     id: "sales-follow-up",
     name: "Sales follow-up",
     description: "Create a work item after a high-value sale.",
+    whenItRuns: [
+      "Fires when a sale is created and the order total meets your threshold.",
+      "Uses event sales.sale.high_value_created (example condition: total ≥ 5000).",
+    ],
+    whatItDoes: [
+      "Creates a high-priority FOLLOW_UP work item for your team.",
+      "Includes the sale code in the task description for quick lookup.",
+    ],
     values: {
       name: "High-value sale follow-up",
       description: "Assign a follow-up task when a high-value sale is created.",
@@ -74,6 +92,14 @@ const AUTOMATION_TEMPLATES: Array<{
     id: "inventory-restock",
     name: "Inventory restock",
     description: "Draft a transfer when stock drops below threshold.",
+    whenItRuns: [
+      "Fires when the platform emits a low-stock signal for a variation.",
+      "Uses event inventory.stock.low_detected.",
+    ],
+    whatItDoes: [
+      "Opens a transfer draft using suggested movement data from the event.",
+      "Lets staff review and confirm before stock moves.",
+    ],
     values: {
       name: "Inventory restock draft",
       description: "Create a transfer draft when low stock is detected.",
@@ -105,6 +131,14 @@ const AUTOMATION_TEMPLATES: Array<{
     name: "Lead routing",
     description:
       "Create activity and update contact status after lead conversion.",
+    whenItRuns: [
+      "Fires when a lead is converted to a contact or customer record.",
+      "Uses event crm.lead.converted.",
+    ],
+    whatItDoes: [
+      "Sets the contact status to CUSTOMER (adjust field/value after install if needed).",
+      "Logs a CALL-type activity so the team sees follow-up context.",
+    ],
     values: {
       name: "Lead conversion routing",
       description: "Keep CRM records in sync when a lead converts.",
@@ -254,7 +288,13 @@ export function AutomationBuilderPage() {
           Manage cross-system automations for CRM, sales, inventory, transfers,
           and work items.
         </p>
+        <p className="text-sm text-muted-foreground">
+          Use the guide below for concepts and setup; templates jump-start
+          common patterns. Pipeline deal rules live under CRM → Workflows.
+        </p>
       </div>
+
+      <AutomationOnboarding />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,420px)]">
         <div className="space-y-4">
@@ -284,6 +324,22 @@ export function AutomationBuilderPage() {
                 <p className="mt-1 text-sm text-muted-foreground">
                   {template.description}
                 </p>
+                <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                  <p className="font-medium text-foreground">When it runs</p>
+                  <ul className="list-disc space-y-1 pl-4">
+                    {template.whenItRuns.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                  <p className="pt-1 font-medium text-foreground">
+                    What it does
+                  </p>
+                  <ul className="list-disc space-y-1 pl-4">
+                    {template.whatItDoes.map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                </div>
                 <Button
                   className="mt-3"
                   variant="outline"
@@ -439,131 +495,144 @@ export function AutomationBuilderPage() {
             />
           </div>
 
-          <div className="rounded-lg border p-4">
-            <h2 className="mb-3 font-medium">Recent runs</h2>
-            {runsLoading ? (
-              <p className="text-sm text-muted-foreground">Loading runs…</p>
-            ) : null}
-            {runsError ? (
-              <p className="text-sm text-destructive" role="alert">
-                Could not load recent runs.
-              </p>
-            ) : null}
-            {!runsLoading && !runsError && runsData?.runs.length ? (
-              <div className="space-y-3">
-                {runsData.runs.map((run) => (
-                  <div key={run.id} className="rounded-md border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{run.eventName}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {run.status} · {run.executionMode}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {run.entityType} · {run.entityId}
-                    </p>
-                    {run.errorMessage ? (
-                      <p className="mt-2 text-xs text-destructive">
-                        {run.errorMessage}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-medium">
+                Recent runs
+              </CardTitle>
+              <CardDescription>
+                Failed runs can be retried: <strong>Full replay</strong>{" "}
+                re-queues the original event from scratch (all matching
+                automations may run again). <strong>Resume failed steps</strong>{" "}
+                continues this run from the first failed step when you want to
+                avoid duplicating steps that already succeeded.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3 px-6 pt-0">
+              {runsLoading ? (
+                <p className="text-sm text-muted-foreground">Loading runs…</p>
+              ) : null}
+              {runsError ? (
+                <p className="text-sm text-destructive" role="alert">
+                  Could not load recent runs.
+                </p>
+              ) : null}
+              {!runsLoading && !runsError && runsData?.runs.length ? (
+                <div className="space-y-3">
+                  {runsData.runs.map((run) => (
+                    <div key={run.id} className="rounded-md border p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{run.eventName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {run.status} · {run.executionMode}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {run.entityType} · {run.entityId}
                       </p>
-                    ) : null}
-                    {run.automationEventId && run.status === "FAILED" ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="outline">
-                              Full replay
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Queue a full replay?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Re-queues the original event from scratch so all
-                                matching automations can run again. Use “Resume
-                                failed steps” instead if you only want to retry
-                                a failed run without duplicating side effects
-                                from steps that already succeeded.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  replayAutomationEvent.mutate({
-                                    eventId: run.automationEventId!,
-                                    payload: { reprocessFromStart: true },
-                                  })
-                                }
-                              >
+                      {run.errorMessage ? (
+                        <p className="mt-2 text-xs text-destructive">
+                          {run.errorMessage}
+                        </p>
+                      ) : null}
+                      {run.automationEventId && run.status === "FAILED" ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline">
                                 Full replay
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="secondary">
-                              Resume failed steps
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Resume from the failed step?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Continues this failed run from the first failed
-                                step. If nothing is eligible, a full replay is
-                                queued instead.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  replayAutomationEvent.mutate({
-                                    eventId: run.automationEventId!,
-                                    payload: { reprocessFromStart: false },
-                                  })
-                                }
-                              >
-                                Resume
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    ) : null}
-                    {run.runSteps.length ? (
-                      <div className="mt-2 space-y-1">
-                        {run.runSteps.map((step) => (
-                          <p
-                            key={step.id}
-                            className="text-xs text-muted-foreground"
-                          >
-                            {step.status}
-                            {step.output
-                              ? ` · ${JSON.stringify(step.output)}`
-                              : ""}
-                          </p>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
-            ) : null}
-            {!runsLoading &&
-            !runsError &&
-            (!runsData?.runs.length || runsData.runs.length === 0) ? (
-              <p className="text-sm text-muted-foreground">
-                No runs recorded for the selected automation yet.
-              </p>
-            ) : null}
-          </div>
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Queue a full replay?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Re-queues the original event from scratch so
+                                  all matching automations can run again. Use
+                                  “Resume failed steps” instead if you only want
+                                  to retry a failed run without duplicating side
+                                  effects from steps that already succeeded.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    replayAutomationEvent.mutate({
+                                      eventId: run.automationEventId!,
+                                      payload: { reprocessFromStart: true },
+                                    })
+                                  }
+                                >
+                                  Full replay
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="secondary">
+                                Resume failed steps
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Resume from the failed step?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Continues this failed run from the first
+                                  failed step. If nothing is eligible, a full
+                                  replay is queued instead.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    replayAutomationEvent.mutate({
+                                      eventId: run.automationEventId!,
+                                      payload: { reprocessFromStart: false },
+                                    })
+                                  }
+                                >
+                                  Resume
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      ) : null}
+                      {run.runSteps.length ? (
+                        <div className="mt-2 space-y-1">
+                          {run.runSteps.map((step) => (
+                            <p
+                              key={step.id}
+                              className="text-xs text-muted-foreground"
+                            >
+                              {step.status}
+                              {step.output
+                                ? ` · ${JSON.stringify(step.output)}`
+                                : ""}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+              {!runsLoading &&
+              !runsError &&
+              (!runsData?.runs.length || runsData.runs.length === 0) ? (
+                <p className="text-sm text-muted-foreground">
+                  No runs recorded for the selected automation yet.
+                </p>
+              ) : null}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

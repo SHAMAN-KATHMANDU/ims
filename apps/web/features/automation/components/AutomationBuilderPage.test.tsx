@@ -1,6 +1,10 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+vi.mock("next/navigation", () => ({
+  useParams: () => ({ workspace: "test-workspace" }),
+}));
+
 const mockUseAutomationDefinitions = vi.fn();
 const mockUseAutomationRuns = vi.fn();
 const mockCreateMutate = vi.fn();
@@ -210,5 +214,35 @@ describe("AutomationBuilderPage", () => {
     expect(screen.getByText("Sales follow-up")).toBeInTheDocument();
     expect(screen.getByText("Inventory restock")).toBeInTheDocument();
     expect(screen.getByText("Lead routing")).toBeInTheDocument();
+  });
+
+  it("renders onboarding guide with SHADOW and pipeline workflow cues", () => {
+    render(<AutomationBuilderPage />);
+
+    expect(screen.getByText(/What automations do/i)).toBeInTheDocument();
+    const onboardingAlert = screen.getByRole("alert");
+    expect(within(onboardingAlert).getByText(/SHADOW/i)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Settings → CRM → Workflows/i }),
+    ).toHaveAttribute("href", "/test-workspace/settings/crm/workflows");
+
+    expect(
+      screen.getByRole("button", { name: /How automations work/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /Setup checklist/i }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: /Pipeline workflows vs automations/i,
+      }),
+    ).toBeInTheDocument();
+
+    expect(screen.getAllByText("When it runs").length).toBeGreaterThanOrEqual(
+      1,
+    );
+    expect(screen.getAllByText("What it does").length).toBeGreaterThanOrEqual(
+      1,
+    );
   });
 });

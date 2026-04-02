@@ -57,6 +57,7 @@ import type {
   WorkflowTemplate,
 } from "../../services/workflow.service";
 import { WorkflowForm } from "./WorkflowForm";
+import { WorkflowOnboarding } from "./workflow-onboarding";
 import type {
   CreateWorkflowFormValues,
   UpdateWorkflowFormValues,
@@ -252,12 +253,15 @@ export default function WorkflowEditorPage() {
         </p>
       </div>
 
+      <WorkflowOnboarding />
+
       <Card>
         <CardHeader>
           <CardTitle>Ready-made Workflow Templates</CardTitle>
           <CardDescription>
             Install recommended workflow packs for your pipelines, then adapt
-            them to your process.
+            them to your process. For a numbered setup guide, open{" "}
+            <strong>How to set up workflows</strong> in the section above.
           </CardDescription>
         </CardHeader>
         <CardContent>

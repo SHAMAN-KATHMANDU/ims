@@ -94,6 +94,14 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Guard Prisma migrations — tenant FK must reference tenants(id)
+        run: |
+          set -e
+          if grep -R 'REFERENCES "tenants"("tenant_id")' apps/api/prisma/migrations --include='*.sql' 2>/dev/null; then
+            echo "::error::Invalid FK in migration SQL: use REFERENCES \"tenants\"(\"id\"). The Tenant primary key column is id, not tenant_id."
+            exit 1
+          fi
+          echo "Prisma migration tenant FK guard OK."
       - name: Lint API (and shared if needed)
         run: pnpm run lint --filter=api --filter=@repo/shared
 
