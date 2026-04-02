@@ -113,3 +113,15 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionValue, string> =
       ][]
     ).map(([k, v]) => [k, v.label]),
   ) as Record<WorkflowActionValue, string>;
+
+/** Safe for API/template preview when the server has a newer enum than this client. */
+export function getWorkflowTriggerLabel(trigger: string): string {
+  const meta = WORKFLOW_TRIGGER_META[trigger as WorkflowTriggerValue];
+  return meta?.label ?? trigger;
+}
+
+/** Safe for API/template preview when the server has a newer enum than this client. */
+export function getWorkflowActionLabel(action: string): string {
+  const meta = WORKFLOW_ACTION_META[action as WorkflowActionValue];
+  return meta?.label ?? action;
+}

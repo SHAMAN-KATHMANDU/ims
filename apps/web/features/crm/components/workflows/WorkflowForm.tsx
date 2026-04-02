@@ -15,6 +15,14 @@ import {
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
 import {
+  WORKFLOW_ACTION_META,
+  WORKFLOW_ACTION_VALUES,
+  WORKFLOW_TRIGGER_META,
+  WORKFLOW_TRIGGER_VALUES,
+  type WorkflowActionValue,
+  type WorkflowTriggerValue,
+} from "@repo/shared";
+import {
   CreateWorkflowFormSchema,
   UpdateWorkflowFormSchema,
   type CreateWorkflowFormValues,
@@ -29,27 +37,6 @@ export interface PipelineStageOption {
   id: string;
   name: string;
 }
-
-const TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
-  STAGE_ENTER: "Stage enter",
-  STAGE_EXIT: "Stage exit",
-  DEAL_CREATED: "Deal created",
-  DEAL_WON: "Deal won",
-  DEAL_LOST: "Deal lost",
-  PURCHASE_COUNT_CHANGED: "Purchase count changed",
-};
-
-const ACTION_LABELS: Record<WorkflowAction, string> = {
-  CREATE_TASK: "Create task",
-  SEND_NOTIFICATION: "Send notification",
-  MOVE_STAGE: "Move stage",
-  UPDATE_FIELD: "Update field",
-  CREATE_ACTIVITY: "Create activity",
-  CREATE_DEAL: "Create deal",
-  UPDATE_CONTACT_FIELD: "Update contact field",
-  APPLY_TAG: "Apply tag",
-  REMOVE_TAG: "Remove tag",
-};
 
 interface PipelineOption {
   id: string;
@@ -128,6 +115,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
   const addRule = () => {
     append({
       trigger: "STAGE_ENTER",
+      triggerStageId: null,
       action: "CREATE_TASK",
       actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
     });
@@ -194,6 +182,10 @@ export function WorkflowForm(props: WorkflowFormProps) {
             <Plus className="h-3 w-3 mr-1" /> Add rule
           </Button>
         </div>
+        <p className="mb-3 text-sm text-muted-foreground">
+          <strong>Stage entered</strong> and <strong>Stage exited</strong>{" "}
+          require a specific stage unless you choose <strong>Any stage</strong>.
+        </p>
         {fields.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             No rules. Add a rule to trigger actions on deal events.
@@ -202,7 +194,27 @@ export function WorkflowForm(props: WorkflowFormProps) {
           <div className="space-y-2">
             {fields.map((field, i) => {
               const action = form.watch(`rules.${i}.action`);
+              const triggerNow = form.watch(`rules.${i}.trigger`);
               const actionConfig = form.watch(`rules.${i}.actionConfig`) ?? {};
+              const stageIdRaw = form.watch(`rules.${i}.triggerStageId`) as
+                | string
+                | null
+                | undefined;
+              const stageIds = new Set(stages.map((s) => s.id));
+              const orphanStageId =
+                typeof stageIdRaw === "string" &&
+                stageIdRaw.length > 0 &&
+                !stageIds.has(stageIdRaw)
+                  ? stageIdRaw
+                  : null;
+              const triggerOptions: WorkflowTriggerValue[] =
+                WORKFLOW_TRIGGER_VALUES.includes(triggerNow)
+                  ? [...WORKFLOW_TRIGGER_VALUES]
+                  : [...WORKFLOW_TRIGGER_VALUES, triggerNow];
+              const actionOptions: WorkflowActionValue[] =
+                WORKFLOW_ACTION_VALUES.includes(action)
+                  ? [...WORKFLOW_ACTION_VALUES]
+                  : [...WORKFLOW_ACTION_VALUES, action];
               const updateConfig = (key: string, value: unknown) => {
                 form.setValue(`rules.${i}.actionConfig`, {
                   ...actionConfig,
@@ -226,7 +238,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
                       </Label>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-2 items-center">
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Select
                       value={form.watch(`rules.${i}.trigger`)}
                       onValueChange={(v) =>
@@ -236,17 +248,26 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         )
                       }
                     >
-                      <SelectTrigger className="w-36">
+                      <SelectTrigger className="min-w-44 w-full sm:w-auto sm:min-w-52">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(TRIGGER_LABELS) as WorkflowTrigger[]).map(
-                          (t) => (
-                            <SelectItem key={t} value={t}>
-                              {TRIGGER_LABELS[t]}
+                        {triggerOptions.map((t) => {
+                          const meta = WORKFLOW_TRIGGER_META[t];
+                          const label = meta?.label ?? t;
+                          const description =
+                            meta?.description ?? "No description available.";
+                          return (
+                            <SelectItem key={t} value={t} textValue={label}>
+                              <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                                <span>{label}</span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  {description}
+                                </span>
+                              </span>
                             </SelectItem>
-                          ),
-                        )}
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     {(form.watch(`rules.${i}.trigger`) === "STAGE_ENTER" ||
@@ -263,11 +284,16 @@ export function WorkflowForm(props: WorkflowFormProps) {
                           )
                         }
                       >
-                        <SelectTrigger className="w-36">
+                        <SelectTrigger className="min-w-40 w-full sm:w-auto sm:min-w-44">
                           <SelectValue placeholder="Stage" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__any__">Any stage</SelectItem>
+                          {orphanStageId ? (
+                            <SelectItem value={orphanStageId}>
+                              Removed stage (pick another or Any stage)
+                            </SelectItem>
+                          ) : null}
                           {stages.map((s) => (
                             <SelectItem key={s.id} value={s.id}>
                               {s.name}
@@ -276,7 +302,9 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         </SelectContent>
                       </Select>
                     )}
-                    <span className="text-muted-foreground">→</span>
+                    <span className="text-muted-foreground hidden sm:inline">
+                      →
+                    </span>
                     <Select
                       value={action}
                       onValueChange={(v) => {
@@ -288,17 +316,26 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         );
                       }}
                     >
-                      <SelectTrigger className="w-40">
+                      <SelectTrigger className="min-w-44 w-full sm:w-auto sm:min-w-52">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(ACTION_LABELS) as WorkflowAction[]).map(
-                          (a) => (
-                            <SelectItem key={a} value={a}>
-                              {ACTION_LABELS[a]}
+                        {actionOptions.map((a) => {
+                          const meta = WORKFLOW_ACTION_META[a];
+                          const label = meta?.label ?? a;
+                          const description =
+                            meta?.description ?? "No description available.";
+                          return (
+                            <SelectItem key={a} value={a} textValue={label}>
+                              <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                                <span>{label}</span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  {description}
+                                </span>
+                              </span>
                             </SelectItem>
-                          ),
-                        )}
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <Button

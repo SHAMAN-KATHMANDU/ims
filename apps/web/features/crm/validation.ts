@@ -74,14 +74,15 @@ export const WorkflowRuleSchema = z
     ruleOrder: z.number().int().min(0).optional(),
   })
   .superRefine((value, ctx) => {
+    // Match API/workflow.engine: null = any stage; undefined/"" = incomplete.
     if (
       (value.trigger === "STAGE_ENTER" || value.trigger === "STAGE_EXIT") &&
-      !value.triggerStageId
+      (value.triggerStageId === undefined || value.triggerStageId === "")
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["triggerStageId"],
-        message: "Select a stage for stage-based workflow rules",
+        message: "Select a specific stage or Any stage",
       });
     }
 
