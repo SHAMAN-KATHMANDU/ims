@@ -94,14 +94,15 @@ const CreateWorkflowRuleBaseSchema = z.object({
 
 export const CreateWorkflowRuleSchema =
   CreateWorkflowRuleBaseSchema.superRefine((value, ctx) => {
+    // Engine: null triggerStageId = match any stage. Undefined/empty = not chosen (invalid).
     if (
       (value.trigger === "STAGE_ENTER" || value.trigger === "STAGE_EXIT") &&
-      !value.triggerStageId
+      (value.triggerStageId === undefined || value.triggerStageId === "")
     ) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         path: ["triggerStageId"],
-        message: "triggerStageId is required for stage-based rules",
+        message: "Choose a specific stage or Any stage for this trigger",
       });
     }
 

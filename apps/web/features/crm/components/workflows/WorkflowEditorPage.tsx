@@ -70,8 +70,8 @@ import type {
 import { useEnvFeatureFlag } from "@/features/flags";
 import {
   EnvFeature,
-  WORKFLOW_ACTION_LABELS,
-  WORKFLOW_TRIGGER_LABELS,
+  getWorkflowActionLabel,
+  getWorkflowTriggerLabel,
 } from "@repo/shared";
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -573,8 +573,8 @@ export default function WorkflowEditorPage() {
                                 variant="secondary"
                                 className="text-xs"
                               >
-                                {WORKFLOW_TRIGGER_LABELS[r.trigger]} →{" "}
-                                {WORKFLOW_ACTION_LABELS[r.action]}
+                                {getWorkflowTriggerLabel(r.trigger)} →{" "}
+                                {getWorkflowActionLabel(r.action)}
                               </Badge>
                             ))}
                           </div>
@@ -795,12 +795,12 @@ export default function WorkflowEditorPage() {
                       key={`${templateToInstall.templateKey}-${index}`}
                       className="text-sm text-muted-foreground"
                     >
-                      {WORKFLOW_TRIGGER_LABELS[rule.trigger]}
+                      {getWorkflowTriggerLabel(rule.trigger)}
                       {rule.triggerStageLabel
                         ? ` (${rule.triggerStageLabel})`
                         : ""}
                       {" -> "}
-                      {WORKFLOW_ACTION_LABELS[rule.action]}
+                      {getWorkflowActionLabel(rule.action)}
                     </p>
                   ))}
                 </div>

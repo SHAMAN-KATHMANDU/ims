@@ -867,16 +867,19 @@ export function AutomationForm({
                           {events.map((eventName) => {
                             const meta =
                               AUTOMATION_TRIGGER_EVENT_CATALOG[eventName];
+                            const label = meta?.label ?? eventName;
+                            const description =
+                              meta?.description ?? "No description available.";
                             return (
                               <SelectItem
                                 key={eventName}
                                 value={eventName}
-                                textValue={`${meta.label} ${eventName}`}
+                                textValue={`${label} ${eventName}`}
                               >
                                 <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
-                                  <span>{meta.label}</span>
+                                  <span>{label}</span>
                                   <span className="text-xs font-normal text-muted-foreground">
-                                    {meta.description}
+                                    {description}
                                   </span>
                                 </span>
                               </SelectItem>

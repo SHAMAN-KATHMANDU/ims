@@ -54,6 +54,47 @@ describe("WorkflowForm", () => {
     expect(screen.getByText("Any stage")).toBeInTheDocument();
   });
 
+  it("submits stage enter rule with Any stage (null triggerStageId)", async () => {
+    const onSubmit = vi.fn();
+
+    render(
+      <WorkflowForm
+        mode="edit"
+        pipelines={[{ id: "p1", name: "Main Pipeline" }]}
+        stages={[{ id: "s1", name: "New" }]}
+        defaultValues={{
+          name: "Flow",
+          isActive: true,
+          rules: [
+            {
+              trigger: "STAGE_ENTER",
+              triggerStageId: null,
+              action: "CREATE_TASK",
+              actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
+            },
+          ],
+        }}
+        onSubmit={onSubmit}
+        onCancel={onCancel}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0]?.[0]).toEqual(
+      expect.objectContaining({
+        rules: [
+          expect.objectContaining({
+            trigger: "STAGE_ENTER",
+            triggerStageId: null,
+            action: "CREATE_TASK",
+          }),
+        ],
+      }),
+    );
+  });
+
   it("calls onCancel when cancel button is clicked", () => {
     render(
       <WorkflowForm

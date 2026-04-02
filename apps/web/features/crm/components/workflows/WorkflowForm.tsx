@@ -19,6 +19,8 @@ import {
   WORKFLOW_ACTION_VALUES,
   WORKFLOW_TRIGGER_META,
   WORKFLOW_TRIGGER_VALUES,
+  type WorkflowActionValue,
+  type WorkflowTriggerValue,
 } from "@repo/shared";
 import {
   CreateWorkflowFormSchema,
@@ -113,6 +115,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
   const addRule = () => {
     append({
       trigger: "STAGE_ENTER",
+      triggerStageId: null,
       action: "CREATE_TASK",
       actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
     });
@@ -191,7 +194,27 @@ export function WorkflowForm(props: WorkflowFormProps) {
           <div className="space-y-2">
             {fields.map((field, i) => {
               const action = form.watch(`rules.${i}.action`);
+              const triggerNow = form.watch(`rules.${i}.trigger`);
               const actionConfig = form.watch(`rules.${i}.actionConfig`) ?? {};
+              const stageIdRaw = form.watch(`rules.${i}.triggerStageId`) as
+                | string
+                | null
+                | undefined;
+              const stageIds = new Set(stages.map((s) => s.id));
+              const orphanStageId =
+                typeof stageIdRaw === "string" &&
+                stageIdRaw.length > 0 &&
+                !stageIds.has(stageIdRaw)
+                  ? stageIdRaw
+                  : null;
+              const triggerOptions: WorkflowTriggerValue[] =
+                WORKFLOW_TRIGGER_VALUES.includes(triggerNow)
+                  ? [...WORKFLOW_TRIGGER_VALUES]
+                  : [...WORKFLOW_TRIGGER_VALUES, triggerNow];
+              const actionOptions: WorkflowActionValue[] =
+                WORKFLOW_ACTION_VALUES.includes(action)
+                  ? [...WORKFLOW_ACTION_VALUES]
+                  : [...WORKFLOW_ACTION_VALUES, action];
               const updateConfig = (key: string, value: unknown) => {
                 form.setValue(`rules.${i}.actionConfig`, {
                   ...actionConfig,
@@ -229,18 +252,17 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {WORKFLOW_TRIGGER_VALUES.map((t) => {
+                        {triggerOptions.map((t) => {
                           const meta = WORKFLOW_TRIGGER_META[t];
+                          const label = meta?.label ?? t;
+                          const description =
+                            meta?.description ?? "No description available.";
                           return (
-                            <SelectItem
-                              key={t}
-                              value={t}
-                              textValue={meta.label}
-                            >
+                            <SelectItem key={t} value={t} textValue={label}>
                               <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
-                                <span>{meta.label}</span>
+                                <span>{label}</span>
                                 <span className="text-xs font-normal text-muted-foreground">
-                                  {meta.description}
+                                  {description}
                                 </span>
                               </span>
                             </SelectItem>
@@ -267,6 +289,11 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__any__">Any stage</SelectItem>
+                          {orphanStageId ? (
+                            <SelectItem value={orphanStageId}>
+                              Removed stage (pick another or Any stage)
+                            </SelectItem>
+                          ) : null}
                           {stages.map((s) => (
                             <SelectItem key={s.id} value={s.id}>
                               {s.name}
@@ -293,18 +320,17 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {WORKFLOW_ACTION_VALUES.map((a) => {
+                        {actionOptions.map((a) => {
                           const meta = WORKFLOW_ACTION_META[a];
+                          const label = meta?.label ?? a;
+                          const description =
+                            meta?.description ?? "No description available.";
                           return (
-                            <SelectItem
-                              key={a}
-                              value={a}
-                              textValue={meta.label}
-                            >
+                            <SelectItem key={a} value={a} textValue={label}>
                               <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
-                                <span>{meta.label}</span>
+                                <span>{label}</span>
                                 <span className="text-xs font-normal text-muted-foreground">
-                                  {meta.description}
+                                  {description}
                                 </span>
                               </span>
                             </SelectItem>

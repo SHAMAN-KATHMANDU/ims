@@ -60,14 +60,35 @@ describe("Workflow Schemas", () => {
       ).toThrow();
     });
 
-    it("rejects stage-based rules without a trigger stage", () => {
+    it("rejects stage-based rules when trigger stage is unset (undefined)", () => {
       expect(() =>
         CreateWorkflowRuleSchema.parse({
           trigger: "STAGE_ENTER",
           action: "CREATE_TASK",
           actionConfig: { taskTitle: "Follow up" },
         }),
-      ).toThrow(/triggerStageId is required/);
+      ).toThrow(/Choose a specific stage or Any stage/);
+    });
+
+    it("accepts stage-based rules with null triggerStageId (any stage)", () => {
+      const result = CreateWorkflowRuleSchema.parse({
+        trigger: "STAGE_ENTER",
+        triggerStageId: null,
+        action: "CREATE_TASK",
+        actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
+      });
+      expect(result.triggerStageId).toBeNull();
+    });
+
+    it("rejects stage-based rules with empty triggerStageId", () => {
+      expect(() =>
+        CreateWorkflowRuleSchema.parse({
+          trigger: "STAGE_EXIT",
+          triggerStageId: "",
+          action: "CREATE_TASK",
+          actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
+        }),
+      ).toThrow(/Choose a specific stage or Any stage/);
     });
   });
 
