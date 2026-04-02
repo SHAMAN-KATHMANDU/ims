@@ -95,6 +95,11 @@ describe("AutomationForm", () => {
 
     render(<AutomationForm defaultValues={baseValues} onSubmit={onSubmit} />);
 
+    expect(screen.getByText("Low stock detected")).toBeInTheDocument();
+    expect(
+      screen.getByText("When inventory falls below the configured minimum."),
+    ).toBeInTheDocument();
+
     fireEvent.click(screen.getByRole("button", { name: /save automation/i }));
 
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));

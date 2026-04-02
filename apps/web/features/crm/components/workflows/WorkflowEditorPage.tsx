@@ -59,8 +59,6 @@ import {
 import { usePipelines } from "../../hooks/use-pipelines";
 import type {
   Workflow,
-  WorkflowTrigger,
-  WorkflowAction,
   WorkflowTemplate,
 } from "../../services/workflow.service";
 import { WorkflowForm } from "./WorkflowForm";
@@ -70,28 +68,11 @@ import type {
   UpdateWorkflowFormValues,
 } from "../../validation";
 import { useEnvFeatureFlag } from "@/features/flags";
-import { EnvFeature } from "@repo/shared";
-
-const TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
-  STAGE_ENTER: "Stage enter",
-  STAGE_EXIT: "Stage exit",
-  DEAL_CREATED: "Deal created",
-  DEAL_WON: "Deal won",
-  DEAL_LOST: "Deal lost",
-  PURCHASE_COUNT_CHANGED: "Purchase count changed",
-};
-
-const ACTION_LABELS: Record<WorkflowAction, string> = {
-  CREATE_TASK: "Create task",
-  SEND_NOTIFICATION: "Send notification",
-  MOVE_STAGE: "Move stage",
-  UPDATE_FIELD: "Update field",
-  CREATE_ACTIVITY: "Create activity",
-  CREATE_DEAL: "Create deal",
-  UPDATE_CONTACT_FIELD: "Update contact field",
-  APPLY_TAG: "Apply tag",
-  REMOVE_TAG: "Remove tag",
-};
+import {
+  EnvFeature,
+  WORKFLOW_ACTION_LABELS,
+  WORKFLOW_TRIGGER_LABELS,
+} from "@repo/shared";
 
 const DEFAULT_PAGE_SIZE = 10;
 
@@ -592,8 +573,8 @@ export default function WorkflowEditorPage() {
                                 variant="secondary"
                                 className="text-xs"
                               >
-                                {TRIGGER_LABELS[r.trigger]} →{" "}
-                                {ACTION_LABELS[r.action]}
+                                {WORKFLOW_TRIGGER_LABELS[r.trigger]} →{" "}
+                                {WORKFLOW_ACTION_LABELS[r.action]}
                               </Badge>
                             ))}
                           </div>
@@ -814,12 +795,12 @@ export default function WorkflowEditorPage() {
                       key={`${templateToInstall.templateKey}-${index}`}
                       className="text-sm text-muted-foreground"
                     >
-                      {TRIGGER_LABELS[rule.trigger]}
+                      {WORKFLOW_TRIGGER_LABELS[rule.trigger]}
                       {rule.triggerStageLabel
                         ? ` (${rule.triggerStageLabel})`
                         : ""}
                       {" -> "}
-                      {ACTION_LABELS[rule.action]}
+                      {WORKFLOW_ACTION_LABELS[rule.action]}
                     </p>
                   ))}
                 </div>

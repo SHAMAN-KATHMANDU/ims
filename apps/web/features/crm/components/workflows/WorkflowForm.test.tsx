@@ -35,6 +35,25 @@ describe("WorkflowForm", () => {
     });
   });
 
+  it("shows rules help text for stage triggers and Any stage", () => {
+    render(
+      <WorkflowForm
+        mode="edit"
+        pipelines={[{ id: "p1", name: "Main Pipeline" }]}
+        stages={[]}
+        defaultValues={{ name: "Existing flow", isActive: true, rules: [] }}
+        onSubmit={vi.fn()}
+        onCancel={onCancel}
+      />,
+    );
+
+    expect(
+      screen.getByText(/require a specific stage unless you choose/),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Stage entered")).toBeInTheDocument();
+    expect(screen.getByText("Any stage")).toBeInTheDocument();
+  });
+
   it("calls onCancel when cancel button is clicked", () => {
     render(
       <WorkflowForm
