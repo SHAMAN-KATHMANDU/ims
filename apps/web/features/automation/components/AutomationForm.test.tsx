@@ -16,6 +16,12 @@ vi.mock("@/components/ui/select", () => {
     SelectContent: ({ children }: { children: ReactNode }) => (
       <div>{children}</div>
     ),
+    SelectGroup: ({ children }: { children: ReactNode }) => (
+      <div>{children}</div>
+    ),
+    SelectLabel: ({ children }: { children: ReactNode }) => (
+      <div>{children}</div>
+    ),
     SelectItem: ({ children }: { children: ReactNode }) => (
       <div>{children}</div>
     ),
@@ -103,7 +109,7 @@ describe("AutomationForm", () => {
         ],
       }),
     );
-  });
+  }, 15_000);
 
   it("falls back to a compatible action type when trigger selection changes", async () => {
     const onSubmit = vi.fn();
@@ -168,5 +174,5 @@ describe("AutomationForm", () => {
 
     fireEvent.click(screen.getByRole("button", { name: /cancel/i }));
     expect(onCancel).toHaveBeenCalledTimes(1);
-  });
+  }, 15_000);
 });

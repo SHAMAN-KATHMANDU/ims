@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { LayoutTemplate } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -12,6 +13,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
@@ -95,6 +104,7 @@ const AUTOMATION_TEMPLATES: Array<{
     whenItRuns: [
       "Fires when the platform emits a low-stock signal for a variation.",
       "Uses event inventory.stock.low_detected.",
+      "After applying: set Scope to Location and pick the warehouse (or Global for all sites), then save.",
     ],
     whatItDoes: [
       "Opens a transfer draft using suggested movement data from the event.",
@@ -213,6 +223,7 @@ export function AutomationBuilderPage() {
   const [draftValues, setDraftValues] = useState<
     AutomationDefinitionFormValues | undefined
   >(undefined);
+  const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
   const createAutomation = useCreateAutomationDefinition();
   const updateAutomation = useUpdateAutomationDefinition();
   const archiveAutomation = useArchiveAutomationDefinition();
@@ -298,12 +309,21 @@ export function AutomationBuilderPage() {
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_minmax(320px,420px)]">
         <div className="space-y-4">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search automations"
+              className="min-w-[12rem] flex-1"
             />
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => setTemplatesDialogOpen(true)}
+            >
+              <LayoutTemplate className="mr-2 h-4 w-4" aria-hidden />
+              Automation templates
+            </Button>
             {editing || draftValues ? (
               <Button
                 variant="outline"
@@ -317,43 +337,77 @@ export function AutomationBuilderPage() {
             ) : null}
           </div>
 
-          <div className="grid gap-3 md:grid-cols-3">
-            {AUTOMATION_TEMPLATES.map((template) => (
-              <div key={template.id} className="rounded-lg border p-3">
-                <h3 className="font-medium">{template.name}</h3>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {template.description}
-                </p>
-                <div className="mt-3 space-y-2 text-xs text-muted-foreground">
-                  <p className="font-medium text-foreground">When it runs</p>
-                  <ul className="list-disc space-y-1 pl-4">
-                    {template.whenItRuns.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
-                  <p className="pt-1 font-medium text-foreground">
-                    What it does
-                  </p>
-                  <ul className="list-disc space-y-1 pl-4">
-                    {template.whatItDoes.map((line) => (
-                      <li key={line}>{line}</li>
-                    ))}
-                  </ul>
+          <Dialog
+            open={templatesDialogOpen}
+            onOpenChange={setTemplatesDialogOpen}
+          >
+            <DialogContent
+              className="flex max-h-[min(90vh,720px)] max-w-3xl flex-col gap-0 p-0"
+              allowDismiss={true}
+            >
+              <DialogHeader className="shrink-0 space-y-1 border-b px-6 py-4 text-left">
+                <DialogTitle>Automation templates</DialogTitle>
+                <DialogDescription>
+                  Pick a starter: we load it into the form on the right so you
+                  can adjust scope, triggers, and steps before saving.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+                <div className="grid gap-4 sm:grid-cols-1">
+                  {AUTOMATION_TEMPLATES.map((template) => (
+                    <div
+                      key={template.id}
+                      data-testid={`automation-template-${template.id}`}
+                      className="rounded-lg border bg-card p-4 shadow-sm"
+                    >
+                      <h3 className="font-medium">{template.name}</h3>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {template.description}
+                      </p>
+                      <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                        <p className="font-medium text-foreground">
+                          When it runs
+                        </p>
+                        <ul className="list-disc space-y-1 pl-4">
+                          {template.whenItRuns.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                        <p className="pt-1 font-medium text-foreground">
+                          What it does
+                        </p>
+                        <ul className="list-disc space-y-1 pl-4">
+                          {template.whatItDoes.map((line) => (
+                            <li key={line}>{line}</li>
+                          ))}
+                        </ul>
+                      </div>
+                      <Button
+                        className="mt-4"
+                        size="sm"
+                        onClick={() => {
+                          setEditing(null);
+                          setDraftValues(template.values);
+                          setTemplatesDialogOpen(false);
+                        }}
+                      >
+                        Use this template
+                      </Button>
+                    </div>
+                  ))}
                 </div>
-                <Button
-                  className="mt-3"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    setEditing(null);
-                    setDraftValues(template.values);
-                  }}
-                >
-                  Use template
-                </Button>
               </div>
-            ))}
-          </div>
+              <DialogFooter className="shrink-0 border-t px-6 py-3 sm:justify-start">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  onClick={() => setTemplatesDialogOpen(false)}
+                >
+                  Close
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           <div className="space-y-3">
             {definitionsError ? (

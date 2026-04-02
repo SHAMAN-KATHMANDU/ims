@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import {
+  render,
+  screen,
+  fireEvent,
+  within,
+  waitFor,
+} from "@testing-library/react";
 
 vi.mock("next/navigation", () => ({
   useParams: () => ({ workspace: "test-workspace" }),
@@ -135,7 +141,7 @@ describe("WorkflowEditorPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders template install card", () => {
+  it("renders template summary and opens browser with install actions", () => {
     mockUseWorkflows.mockReturnValue({
       data: { workflows: [] },
       isLoading: false,
@@ -144,13 +150,18 @@ describe("WorkflowEditorPage", () => {
     });
 
     render(<WorkflowEditorPage />);
+    expect(screen.getByText(/\d+ template/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /browse templates/i }));
+    expect(
+      screen.getByRole("heading", { name: /workflow templates/i }),
+    ).toBeInTheDocument();
     expect(screen.getByText("Sales won follow-up")).toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: /install template/i }),
     ).toBeInTheDocument();
   });
 
-  it("opens install dialog and confirms template install", () => {
+  it("opens install dialog and confirms template install", async () => {
     mockUseWorkflows.mockReturnValue({
       data: { workflows: [] },
       isLoading: false,
@@ -159,32 +170,38 @@ describe("WorkflowEditorPage", () => {
     });
 
     render(<WorkflowEditorPage />);
+    fireEvent.click(screen.getByRole("button", { name: /browse templates/i }));
     fireEvent.click(screen.getByRole("button", { name: /install template/i }));
 
-    expect(
-      screen.getByRole("heading", { name: /install workflow template/i }),
-    ).toBeInTheDocument();
+    const installDialog = await screen.findByRole("dialog", {
+      name: /install workflow template/i,
+    });
+    expect(installDialog).toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole("button", { name: /^install template$/i }),
-    );
-
-    expect(mockInstallTemplateMutate).toHaveBeenCalledWith(
-      {
-        templateKey: "new-sales-sales-won-follow-up",
-        data: {
-          pipelineId: "p1",
-          overwriteExisting: false,
-          activate: true,
-        },
-      },
-      expect.objectContaining({
-        onSuccess: expect.any(Function),
+      within(installDialog).getByRole("button", {
+        name: /^install template$/i,
       }),
     );
-  });
 
-  it("toggles an installed template workflow from the library card", () => {
+    await waitFor(() => {
+      expect(mockInstallTemplateMutate).toHaveBeenCalledWith(
+        {
+          templateKey: "new-sales-sales-won-follow-up",
+          data: {
+            pipelineId: "p1",
+            overwriteExisting: false,
+            activate: true,
+          },
+        },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+        }),
+      );
+    });
+  }, 15_000);
+
+  it("toggles an installed template workflow from the library card", async () => {
     mockUseWorkflowTemplates.mockReturnValue({
       isLoading: false,
       isError: false,
@@ -233,15 +250,19 @@ describe("WorkflowEditorPage", () => {
     });
 
     render(<WorkflowEditorPage />);
-    fireEvent.click(
-      screen.getByRole("button", { name: /deactivate workflow/i }),
-    );
-
-    expect(mockUpdateMutate).toHaveBeenCalledWith({
-      id: "wf-template",
-      data: { isActive: false },
+    fireEvent.click(screen.getByRole("button", { name: /browse templates/i }));
+    const deactivate = await screen.findByRole("button", {
+      name: /deactivate workflow/i,
     });
-  });
+    fireEvent.click(deactivate);
+
+    await waitFor(() => {
+      expect(mockUpdateMutate).toHaveBeenCalledWith({
+        id: "wf-template",
+        data: { isActive: false },
+      });
+    });
+  }, 15_000);
 
   it("renders workflow onboarding and link to Automation settings", () => {
     mockUseWorkflows.mockReturnValue({

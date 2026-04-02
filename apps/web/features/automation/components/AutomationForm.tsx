@@ -10,7 +10,9 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
@@ -24,15 +26,23 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { Trash2 } from "lucide-react";
+import { Package, Trash2 } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePipelines } from "@/features/crm";
 import { useActiveLocations } from "@/features/locations";
 import {
+  AUTOMATION_ACTION_TYPE_DESCRIPTIONS,
   AUTOMATION_ACTION_TYPE_VALUES,
+  AUTOMATION_CONDITION_OPERATOR_META,
+  AUTOMATION_CONDITION_OPERATORS,
+  AUTOMATION_EXECUTION_MODE_LABELS,
   AUTOMATION_EXECUTION_MODE_VALUES,
   AUTOMATION_SCOPE_VALUES,
+  AUTOMATION_STATUS_LABELS,
   AUTOMATION_STATUS_VALUES,
-  AUTOMATION_TRIGGER_EVENT_VALUES,
+  AUTOMATION_TRIGGER_EVENT_CATALOG,
+  AUTOMATION_EVENT_GROUP_ORDER,
+  getAutomationTriggerEventsByGroup,
   isAutomationActionAllowedForEvent,
   type AutomationActionTypeValue,
   type AutomationCondition,
@@ -49,16 +59,19 @@ interface AutomationFormProps {
   isSubmitting?: boolean;
 }
 
-const ACTION_LABELS: Record<AutomationActionTypeValue, string> = {
-  "workitem.create": "Create work item",
-  "notification.send": "Send notification",
-  "transfer.create_draft": "Create transfer draft",
-  "record.update_field": "Update record field",
-  "crm.contact.update": "Update CRM contact",
-  "crm.company.update": "Update CRM company",
-  "crm.deal.move_stage": "Move CRM deal stage",
-  "crm.activity.create": "Create CRM activity",
-  "webhook.emit": "Emit webhook",
+const AUTOMATION_EVENT_GROUP_LABELS: Record<
+  (typeof AUTOMATION_EVENT_GROUP_ORDER)[number],
+  string
+> = {
+  CRM: "CRM",
+  SALES: "Sales",
+  INVENTORY: "Inventory",
+  TRANSFERS: "Transfers",
+  CATALOG: "Catalog",
+  MEMBERS: "Members",
+  WORK_ITEMS: "Work items",
+  VENDORS: "Vendors",
+  LOCATIONS: "Locations",
 };
 
 const SCOPE_LABELS = {
@@ -67,6 +80,10 @@ const SCOPE_LABELS = {
   LOCATION: "Location",
   PRODUCT_VARIATION: "Product variation",
 } as const;
+
+function triggerUsesInventoryEvent(eventName: string): boolean {
+  return eventName.startsWith("inventory.");
+}
 
 function getDefaultActionConfig(actionType: AutomationActionTypeValue) {
   switch (actionType) {
@@ -474,6 +491,17 @@ export function AutomationForm({
     );
   }, [selectedTriggerEvents]);
 
+  const triggerEventsByGroup = useMemo(
+    () => getAutomationTriggerEventsByGroup(),
+    [],
+  );
+
+  const hasInventoryTrigger = useMemo(
+    () =>
+      selectedTriggerEvents.some((t) => triggerUsesInventoryEvent(t.eventName)),
+    [selectedTriggerEvents],
+  );
+
   useEffect(() => {
     stepArray.fields.forEach((_, index) => {
       const actionType = form.getValues(`steps.${index}.actionType`);
@@ -586,6 +614,16 @@ export function AutomationForm({
             <FormDescription>
               Required for CRM pipeline, location, or product variation scopes.
               Global scope ignores this field.
+              {hasInventoryTrigger ? (
+                <>
+                  {" "}
+                  <strong>Inventory events</strong> (stock adjustments, low
+                  stock, thresholds) are emitted per <strong>warehouse</strong>
+                  —set scope to <strong>Location</strong> and pick one site
+                  below for a focused demo, or stay on <strong>Global</strong>{" "}
+                  to react when any location reports low stock.
+                </>
+              ) : null}
             </FormDescription>
             {scopeType === "CRM_PIPELINE" ? (
               <Select
@@ -647,6 +685,61 @@ export function AutomationForm({
               </p>
             ) : null}
           </div>
+          {hasInventoryTrigger ? (
+            <Alert className="border-primary/20 bg-primary/5 md:col-span-2">
+              <Package className="text-primary" aria-hidden />
+              <AlertTitle>
+                Low stock and inventory scope (quick setup)
+              </AlertTitle>
+              <AlertDescription className="space-y-3 text-muted-foreground">
+                <ol className="list-decimal space-y-1.5 pl-5 text-sm">
+                  <li>
+                    Choose <strong>Location</strong> under Scope, then select a
+                    warehouse in <strong>Scope target</strong>—this automation
+                    runs only when that site reports low stock or threshold
+                    events.
+                  </li>
+                  <li>
+                    Or keep <strong>Global</strong> to use the same steps for{" "}
+                    <strong>every</strong> warehouse (still one automation
+                    definition).
+                  </li>
+                  <li>
+                    After saving, use <strong>SHADOW</strong> mode and trigger a
+                    low-stock scenario in test data; check{" "}
+                    <strong>Recent runs</strong> on the Automation page.
+                  </li>
+                </ol>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      form.setValue("scopeType", "LOCATION", {
+                        shouldValidate: true,
+                      });
+                    }}
+                  >
+                    Set scope to Location
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      form.setValue("scopeType", "GLOBAL", {
+                        shouldValidate: true,
+                      });
+                      form.setValue("scopeId", "", { shouldValidate: true });
+                    }}
+                  >
+                    Use Global (all warehouses)
+                  </Button>
+                </div>
+              </AlertDescription>
+            </Alert>
+          ) : null}
           <div className="space-y-2">
             <Label htmlFor="automation-status">Status</Label>
             <Select
@@ -664,7 +757,7 @@ export function AutomationForm({
               <SelectContent>
                 {AUTOMATION_STATUS_VALUES.map((status) => (
                   <SelectItem key={status} value={status}>
-                    {status}
+                    {AUTOMATION_STATUS_LABELS[status]}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -687,16 +780,18 @@ export function AutomationForm({
               <SelectContent>
                 {AUTOMATION_EXECUTION_MODE_VALUES.map((mode) => (
                   <SelectItem key={mode} value={mode}>
-                    {mode}
+                    {AUTOMATION_EXECUTION_MODE_LABELS[mode]}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
             <FormDescription>
-              <strong>LIVE</strong> performs real actions.{" "}
-              <strong>SHADOW</strong> simulates steps and records previews in
-              run history without changing data—use while testing, then switch
-              to LIVE.
+              <strong>{AUTOMATION_EXECUTION_MODE_LABELS.LIVE}</strong> performs
+              real actions.{" "}
+              <strong>{AUTOMATION_EXECUTION_MODE_LABELS.SHADOW}</strong>{" "}
+              simulates steps and records previews in run history without
+              changing data—use while testing, then switch to{" "}
+              {AUTOMATION_EXECUTION_MODE_LABELS.LIVE}.
             </FormDescription>
           </div>
           <div className="space-y-2 rounded-md border p-3 md:col-span-2">
@@ -738,6 +833,13 @@ export function AutomationForm({
               Add trigger
             </Button>
           </div>
+          <FormDescription>
+            Optional conditions use a path into the event payload (for example{" "}
+            <code className="rounded bg-muted px-1">total</code> or{" "}
+            <code className="rounded bg-muted px-1">payload.amount</code>), an
+            operator, and a value. Use <strong>Exists</strong> to require a
+            field without comparing its value.
+          </FormDescription>
           {triggerArray.fields.map((field, index) => (
             <div key={field.id} className="space-y-3 rounded-md border p-3">
               <div className="grid gap-2 md:grid-cols-[1fr_140px_auto]">
@@ -753,12 +855,36 @@ export function AutomationForm({
                   <SelectTrigger>
                     <SelectValue placeholder="Event" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {AUTOMATION_TRIGGER_EVENT_VALUES.map((eventName) => (
-                      <SelectItem key={eventName} value={eventName}>
-                        {eventName}
-                      </SelectItem>
-                    ))}
+                  <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))]">
+                    {AUTOMATION_EVENT_GROUP_ORDER.map((group) => {
+                      const events = triggerEventsByGroup[group];
+                      if (!events?.length) return null;
+                      return (
+                        <SelectGroup key={group}>
+                          <SelectLabel>
+                            {AUTOMATION_EVENT_GROUP_LABELS[group]}
+                          </SelectLabel>
+                          {events.map((eventName) => {
+                            const meta =
+                              AUTOMATION_TRIGGER_EVENT_CATALOG[eventName];
+                            return (
+                              <SelectItem
+                                key={eventName}
+                                value={eventName}
+                                textValue={`${meta.label} ${eventName}`}
+                              >
+                                <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                                  <span>{meta.label}</span>
+                                  <span className="text-xs font-normal text-muted-foreground">
+                                    {meta.description}
+                                  </span>
+                                </span>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectGroup>
+                      );
+                    })}
                   </SelectContent>
                 </Select>
                 <Input
@@ -874,21 +1000,28 @@ export function AutomationForm({
                               <SelectValue placeholder="Operator" />
                             </SelectTrigger>
                             <SelectContent>
-                              {[
-                                "eq",
-                                "neq",
-                                "gt",
-                                "gte",
-                                "lt",
-                                "lte",
-                                "contains",
-                                "in",
-                                "exists",
-                              ].map((operator) => (
-                                <SelectItem key={operator} value={operator}>
-                                  {operator}
-                                </SelectItem>
-                              ))}
+                              {AUTOMATION_CONDITION_OPERATORS.map(
+                                (operator) => {
+                                  const opMeta =
+                                    AUTOMATION_CONDITION_OPERATOR_META[
+                                      operator
+                                    ];
+                                  return (
+                                    <SelectItem
+                                      key={operator}
+                                      value={operator}
+                                      textValue={opMeta.label}
+                                    >
+                                      <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                                        <span>{opMeta.label}</span>
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                          {opMeta.description}
+                                        </span>
+                                      </span>
+                                    </SelectItem>
+                                  );
+                                },
+                              )}
                             </SelectContent>
                           </Select>
                           {condition.operator === "exists" ? (
@@ -1038,11 +1171,24 @@ export function AutomationForm({
                       <SelectValue placeholder="Action" />
                     </SelectTrigger>
                     <SelectContent>
-                      {compatibleActionTypes.map((action) => (
-                        <SelectItem key={action} value={action}>
-                          {ACTION_LABELS[action]}
-                        </SelectItem>
-                      ))}
+                      {compatibleActionTypes.map((action) => {
+                        const meta =
+                          AUTOMATION_ACTION_TYPE_DESCRIPTIONS[action];
+                        return (
+                          <SelectItem
+                            key={action}
+                            value={action}
+                            textValue={meta.label}
+                          >
+                            <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                              <span>{meta.label}</span>
+                              <span className="text-xs font-normal text-muted-foreground">
+                                {meta.description}
+                              </span>
+                            </span>
+                          </SelectItem>
+                        );
+                      })}
                     </SelectContent>
                   </Select>
                   <div className="flex items-center gap-2">
