@@ -18,6 +18,7 @@ import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -561,6 +562,11 @@ export function AutomationForm({
                 ))}
               </SelectContent>
             </Select>
+            <FormDescription>
+              Global runs tenant-wide. CRM pipeline, location, or product
+              variation limits events to that target—choose the matching scope
+              target below when required.
+            </FormDescription>
           </div>
           <FormField
             control={form.control}
@@ -577,6 +583,10 @@ export function AutomationForm({
           />
           <div className="space-y-2">
             <Label htmlFor="automation-scope-target">Scope target</Label>
+            <FormDescription>
+              Required for CRM pipeline, location, or product variation scopes.
+              Global scope ignores this field.
+            </FormDescription>
             {scopeType === "CRM_PIPELINE" ? (
               <Select
                 value={form.watch("scopeId") || ""}
@@ -682,16 +692,23 @@ export function AutomationForm({
                 ))}
               </SelectContent>
             </Select>
+            <FormDescription>
+              <strong>LIVE</strong> performs real actions.{" "}
+              <strong>SHADOW</strong> simulates steps and records previews in
+              run history without changing data—use while testing, then switch
+              to LIVE.
+            </FormDescription>
           </div>
           <div className="space-y-2 rounded-md border p-3 md:col-span-2">
             <div className="flex items-center justify-between gap-3">
               <div className="space-y-1">
                 <Label>Suppress legacy CRM workflows</Label>
-                <p className="text-xs text-muted-foreground">
-                  When enabled on CRM automations, matching legacy CRM workflow
-                  rules are skipped to avoid duplicate side effects during
-                  migration.
-                </p>
+                <FormDescription className="mt-1">
+                  When enabled, matching rules from{" "}
+                  <strong>Settings → CRM → Workflows</strong> are skipped for
+                  the same deal events so you do not double-create tasks or
+                  notifications while both systems are in use.
+                </FormDescription>
               </div>
               <Switch
                 checked={form.watch("suppressLegacyWorkflows")}

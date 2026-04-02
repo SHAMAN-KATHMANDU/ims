@@ -48,7 +48,7 @@ ON "workflow_runs"("workflow_id", "dedupe_key");
 
 ALTER TABLE "workflow_runs"
 ADD CONSTRAINT "workflow_runs_tenant_id_fkey"
-FOREIGN KEY ("tenant_id") REFERENCES "tenants"("tenant_id")
+FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id")
 ON DELETE CASCADE ON UPDATE CASCADE;
 
 ALTER TABLE "workflow_runs"
