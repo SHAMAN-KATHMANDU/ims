@@ -43,6 +43,22 @@ function generateSaleCode(): string {
 }
 
 export class DealService {
+  private async syncContactJourneyTypeToPipeline(
+    tenantId: string,
+    contactId: string | null | undefined,
+    pipelineName: string | null | undefined,
+  ): Promise<void> {
+    const normalizedPipelineName = pipelineName?.trim();
+    if (!contactId || !normalizedPipelineName) return;
+
+    const contactRepository = (
+      await import("@/modules/contacts/contact.repository")
+    ).default;
+    await contactRepository.updateContactByWorkflow(tenantId, contactId, {
+      journeyType: normalizedPipelineName,
+    });
+  }
+
   async create(tenantId: string, data: CreateDealDto, userId: string) {
     const pipeline = await dealRepository.findDefaultPipeline(
       tenantId,
@@ -97,6 +113,11 @@ export class DealService {
           error: err instanceof Error ? err.message : String(err),
         }),
       );
+    await this.syncContactJourneyTypeToPipeline(
+      tenantId,
+      deal.contactId,
+      pipeline.name,
+    );
     await executeWorkflowRules({
       trigger: "DEAL_CREATED",
       deal: toDealContext(deal),
@@ -157,6 +178,8 @@ export class DealService {
 
     const pipelineWillChange =
       patch.pipelineId != null && patch.pipelineId !== existing.pipelineId;
+    let targetPipelineName: string | null = null;
+
     if (pipelineWillChange) {
       const pl = await dealRepository.findDefaultPipeline(
         tenantId,
@@ -170,6 +193,7 @@ export class DealService {
       if (!resolved) {
         throw createError("Stage not found in target pipeline", 400);
       }
+      targetPipelineName = pl.name;
       patch.stage = resolved.name;
     }
 
@@ -224,6 +248,12 @@ export class DealService {
         previousStage: existing.stage,
         userId: existing.assignedToId,
       }).catch(logWorkflowErr("STAGE_ENTER"));
+
+      await this.syncContactJourneyTypeToPipeline(
+        tenantId,
+        deal.contactId,
+        targetPipelineName,
+      );
 
       await pipelineTransitionService
         .handleDealEvent({
@@ -425,7 +455,12 @@ export class DealService {
     );
     if (!deal) throw createError("Deal not found", 404);
 
-    await this.runPostPipelineEnterEffects(existing, deal, resolved.name);
+    await this.runPostPipelineEnterEffects(
+      existing,
+      deal,
+      resolved.name,
+      pl.name,
+    );
     return deal;
   }
 
@@ -514,7 +549,12 @@ export class DealService {
           null,
         );
         if (!deal) return;
-        await this.runPostPipelineEnterEffects(existing, deal, resolved.name);
+        await this.runPostPipelineEnterEffects(
+          existing,
+          deal,
+          resolved.name,
+          pl.name,
+        );
         return;
       }
 
@@ -620,7 +660,14 @@ export class DealService {
       Awaited<ReturnType<typeof dealRepository.createDealRevision>>
     >,
     newStage: string,
+    pipelineName?: string | null,
   ): Promise<void> {
+    await this.syncContactJourneyTypeToPipeline(
+      deal.tenantId,
+      deal.contactId,
+      pipelineName ?? ("pipeline" in deal ? deal.pipeline?.name : undefined),
+    );
+
     if (!existing.assignedToId) return;
 
     await dealRepository.createNotification(

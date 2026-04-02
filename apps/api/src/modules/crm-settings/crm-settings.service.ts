@@ -134,6 +134,78 @@ export class CrmSettingsService {
     void id;
     throw createError(JOURNEY_TYPE_MANAGED_BY_PIPELINES_ERROR, 403);
   }
+
+  async syncJourneyTypeToPipelineRename(
+    tenantId: string,
+    oldName: string,
+    newName: string,
+  ): Promise<void> {
+    const normalizedOldName = oldName.trim();
+    const normalizedNewName = newName.trim();
+    if (!normalizedOldName || !normalizedNewName) return;
+    if (normalizedOldName === normalizedNewName) {
+      await crmSettingsRepository.upsertJourneyTypeByName(
+        tenantId,
+        normalizedNewName,
+      );
+      return;
+    }
+
+    const existingJourneyType =
+      await crmSettingsRepository.findJourneyTypeByName(
+        tenantId,
+        normalizedOldName,
+      );
+    if (existingJourneyType) {
+      const targetJourneyType =
+        await crmSettingsRepository.findJourneyTypeByName(
+          tenantId,
+          normalizedNewName,
+        );
+
+      if (targetJourneyType) {
+        await crmSettingsRepository.deleteJourneyType(existingJourneyType.id);
+      } else {
+        await crmSettingsRepository.renameJourneyTypeByName(
+          tenantId,
+          normalizedOldName,
+          normalizedNewName,
+        );
+      }
+    }
+
+    const contactRepository = (await import("../contacts/contact.repository"))
+      .default;
+    await contactRepository.renameJourneyTypeForPipeline(
+      tenantId,
+      normalizedOldName,
+      normalizedNewName,
+    );
+  }
+
+  async syncJourneyTypeToPipelineDelete(
+    tenantId: string,
+    pipelineName: string,
+  ): Promise<void> {
+    const normalizedPipelineName = pipelineName.trim();
+    if (!normalizedPipelineName) return;
+
+    const existingJourneyType =
+      await crmSettingsRepository.findJourneyTypeByName(
+        tenantId,
+        normalizedPipelineName,
+      );
+    if (existingJourneyType) {
+      await crmSettingsRepository.deleteJourneyType(existingJourneyType.id);
+    }
+
+    const contactRepository = (await import("../contacts/contact.repository"))
+      .default;
+    await contactRepository.clearJourneyTypeForPipeline(
+      tenantId,
+      normalizedPipelineName,
+    );
+  }
 }
 
 export default new CrmSettingsService();

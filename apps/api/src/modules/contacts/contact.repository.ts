@@ -632,15 +632,16 @@ export class ContactRepository {
   async updateContactByWorkflow(
     tenantId: string,
     contactId: string,
-    data: { source?: string | null },
+    data: { source?: string | null; journeyType?: string | null },
   ): Promise<void> {
     const existing = await prisma.contact.findFirst({
       where: { id: contactId, tenantId, deletedAt: null },
       select: { id: true },
     });
     if (!existing) return;
-    const patch: { source?: string | null } = {};
+    const patch: { source?: string | null; journeyType?: string | null } = {};
     if (data.source !== undefined) patch.source = data.source;
+    if (data.journeyType !== undefined) patch.journeyType = data.journeyType;
     if (Object.keys(patch).length === 0) return;
     await prisma.contact.update({ where: { id: contactId }, data: patch });
   }
@@ -677,6 +678,39 @@ export class ContactRepository {
         company: { select: { id: true, name: true } },
         owner: { select: { id: true, username: true } },
         tagLinks: { include: { tag: { select: { id: true, name: true } } } },
+      },
+    });
+  }
+
+  async renameJourneyTypeForPipeline(
+    tenantId: string,
+    oldName: string,
+    newName: string,
+  ): Promise<void> {
+    await prisma.contact.updateMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        journeyType: oldName,
+      },
+      data: {
+        journeyType: newName,
+      },
+    });
+  }
+
+  async clearJourneyTypeForPipeline(
+    tenantId: string,
+    journeyTypeName: string,
+  ): Promise<void> {
+    await prisma.contact.updateMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        journeyType: journeyTypeName,
+      },
+      data: {
+        journeyType: null,
       },
     });
   }

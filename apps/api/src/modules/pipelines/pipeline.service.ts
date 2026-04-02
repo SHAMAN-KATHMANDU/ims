@@ -57,6 +57,18 @@ export class PipelineService {
       ),
     );
 
+    const journeyTypes = pipelines.map((pipeline) => pipeline.name);
+    const crmSettingsService = (
+      await import("@/modules/crm-settings/crm-settings.service")
+    ).default;
+    for (const journeyTypeName of journeyTypes) {
+      await crmSettingsService.syncJourneyTypeToPipelineRename(
+        tenantId,
+        journeyTypeName,
+        journeyTypeName,
+      );
+    }
+
     const contactRepo = (await import("@/modules/contacts/contact.repository"))
       .default;
     const tagNames = [
@@ -75,7 +87,7 @@ export class PipelineService {
       }
     }
 
-    return { pipelines, workflows, journeyTypes: [], tags: tagNames };
+    return { pipelines, workflows, journeyTypes, tags: tagNames };
   }
 
   async getAll(tenantId: string, query?: ListPipelinesQueryDto) {
