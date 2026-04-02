@@ -24,9 +24,6 @@ vi.mock("../services/crm-settings.service", () => ({
   updateCrmSource: vi.fn(),
   deleteCrmSource: vi.fn(),
   getCrmJourneyTypes: (...args: unknown[]) => mockGetCrmJourneyTypes(...args),
-  createCrmJourneyType: vi.fn(),
-  updateCrmJourneyType: vi.fn(),
-  deleteCrmJourneyType: vi.fn(),
 }));
 
 const wrapper = ({ children }: { children: React.ReactNode }) => (

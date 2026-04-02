@@ -79,6 +79,7 @@ import {
   TrendingUp,
   Clock,
 } from "lucide-react";
+import { getActiveJourneyType } from "../../utils/journey-type";
 
 interface ContactDetailProps {
   contactId: string;
@@ -318,8 +319,7 @@ export function ContactDetail({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
-  const latestActiveDeal =
-    contact.deals?.find((d) => d.status === "OPEN") ?? contact.deals?.[0];
+  const activeJourneyType = getActiveJourneyType(contact.deals);
   const fullName = [contact.firstName, contact.lastName]
     .filter(Boolean)
     .join(" ");
@@ -382,12 +382,10 @@ export function ContactDetail({
               Born {new Date(contact.birthDate).toLocaleDateString()}
             </span>
           )}
-          {dealsEnabled && latestActiveDeal && (
+          {dealsEnabled && activeJourneyType && (
             <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300">
               <Handshake className="h-3 w-3" />
-              {latestActiveDeal.pipeline?.name
-                ? `${latestActiveDeal.pipeline.name} · ${latestActiveDeal.stage}`
-                : latestActiveDeal.stage}
+              {activeJourneyType}
             </span>
           )}
           {contact.purchaseCount > 0 && (
@@ -552,7 +550,7 @@ export function ContactDetail({
               </div>
 
               {/* CRM Fields */}
-              {(contact.source || contact.journeyType) && (
+              {(contact.source || activeJourneyType) && (
                 <div>
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                     CRM Info
@@ -567,14 +565,14 @@ export function ContactDetail({
                         <p className="text-sm font-medium">{contact.source}</p>
                       </div>
                     )}
-                    {contact.journeyType && (
+                    {activeJourneyType && (
                       <div className="rounded-lg border bg-card p-3">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                           <TrendingUp className="h-3 w-3" />
                           Journey Type
                         </div>
                         <p className="text-sm font-medium">
-                          {contact.journeyType}
+                          {activeJourneyType}
                         </p>
                       </div>
                     )}
@@ -607,7 +605,7 @@ export function ContactDetail({
               )}
 
               {!contact.source &&
-                !contact.journeyType &&
+                !activeJourneyType &&
                 !contact.notes?.length &&
                 !(
                   (dealsEnabled && contact.deals?.length) ||
@@ -618,7 +616,7 @@ export function ContactDetail({
                     <UserIcon className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No overview data yet.</p>
                     <p className="text-xs mt-1">
-                      Edit this contact to add source, journey type, and more.
+                      Edit this contact to add source and more.
                     </p>
                   </div>
                 )}
@@ -1076,9 +1074,13 @@ export function ContactDetail({
                                 {d.status}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
-                                {d.pipeline?.name
-                                  ? `${d.pipeline.name} · ${d.stage}`
-                                  : d.stage}
+                                {getActiveJourneyType([
+                                  {
+                                    stage: d.stage,
+                                    status: d.status,
+                                    pipeline: d.pipeline ?? null,
+                                  },
+                                ]) ?? d.stage}
                               </span>
                             </div>
                           </div>

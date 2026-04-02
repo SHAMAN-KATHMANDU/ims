@@ -82,10 +82,10 @@ const DEFAULT_ACTION_CONFIG: Partial<
 > = {
   CREATE_TASK: { taskTitle: "Follow up", dueDateDays: 1 },
   SEND_NOTIFICATION: { title: "", message: "" },
-  MOVE_STAGE: { targetStageId: "", targetPipelineId: undefined },
+  MOVE_STAGE: { targetStageId: undefined, targetPipelineId: undefined },
   UPDATE_FIELD: { field: "expectedCloseDate", value: "" },
   CREATE_ACTIVITY: { type: "CALL", subject: "", notes: null },
-  CREATE_DEAL: { pipelineId: "", stageId: "", title: "" },
+  CREATE_DEAL: { pipelineId: undefined, stageId: undefined, title: "" },
   UPDATE_CONTACT_FIELD: { field: "source", value: "" },
   APPLY_TAG: { tag: "" },
   REMOVE_TAG: { tag: "" },
@@ -269,7 +269,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         <SelectContent>
                           <SelectItem value="__any__">Any stage</SelectItem>
                           {stages.map((s) => (
-                            <SelectItem key={s.id} value={s.name}>
+                            <SelectItem key={s.id} value={s.id}>
                               {s.name}
                             </SelectItem>
                           ))}
@@ -568,7 +568,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
                                 )?.stages ?? [])
                               : stages
                             ).map((s) => (
-                              <SelectItem key={s.id} value={s.name}>
+                              <SelectItem key={s.id} value={s.id}>
                                 {s.name}
                               </SelectItem>
                             ))}
@@ -684,7 +684,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
                                 (p) => p.id === actionConfig.pipelineId,
                               )?.stages ?? []
                             ).map((s) => (
-                              <SelectItem key={s.id} value={s.name}>
+                              <SelectItem key={s.id} value={s.id}>
                                 {s.name}
                               </SelectItem>
                             ))}
@@ -715,9 +715,6 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="source">Source</SelectItem>
-                          <SelectItem value="journeyType">
-                            Journey type
-                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <Input

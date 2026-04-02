@@ -36,14 +36,6 @@ export class PipelineService {
       closedWonStageName: data.closedWonStageName ?? undefined,
       closedLostStageName: data.closedLostStageName ?? undefined,
     });
-    const crmSettingsService = (
-      await import("@/modules/crm-settings/crm-settings.service")
-    ).default;
-    await crmSettingsService.syncJourneyTypeToPipelineRename(
-      tenantId,
-      pipeline.name,
-      pipeline.name,
-    );
     return pipeline;
   }
 
@@ -152,18 +144,7 @@ export class PipelineService {
       updateData.closedLostStageName = data.closedLostStageName;
     }
 
-    const updatedPipeline = await pipelineRepository.update(id, updateData);
-    if (data.name !== undefined) {
-      const crmSettingsService = (
-        await import("@/modules/crm-settings/crm-settings.service")
-      ).default;
-      await crmSettingsService.syncJourneyTypeToPipelineRename(
-        tenantId,
-        existing.name,
-        updatedPipeline.name,
-      );
-    }
-    return updatedPipeline;
+    return pipelineRepository.update(id, updateData);
   }
 
   async delete(
@@ -189,13 +170,6 @@ export class PipelineService {
       deletedBy: ctx.userId,
       deleteReason: ctx.reason ?? null,
     });
-    const crmSettingsService = (
-      await import("@/modules/crm-settings/crm-settings.service")
-    ).default;
-    await crmSettingsService.syncJourneyTypeToPipelineDelete(
-      tenantId,
-      existing.name,
-    );
     await createDeleteAuditLog({
       userId: ctx.userId,
       tenantId,

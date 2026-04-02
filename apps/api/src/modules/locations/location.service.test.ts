@@ -4,6 +4,7 @@ import type { LocationRepository } from "./location.repository";
 import type { UpdateLocationDto } from "./location.schema";
 import { createError } from "@/middlewares/errorHandler";
 
+const mockPublishDomainEvent = vi.fn().mockResolvedValue(undefined);
 const mockFindByName = vi.fn();
 const mockFindByNameExcluding = vi.fn();
 const mockCreate = vi.fn();
@@ -36,6 +37,16 @@ const mockRepo: LocationRepository = {
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
+  },
+}));
 
 const locationService = new LocationService(mockRepo);
 
@@ -62,6 +73,13 @@ describe("LocationService", () => {
       expect(result.location.name).toBe("Warehouse A");
       expect(result.restored).toBe(false);
       expect(mockCreate).toHaveBeenCalled();
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "locations.location.created",
+          entityId: "loc1",
+        }),
+      );
     });
 
     it("throws 409 when location name already exists", async () => {
@@ -131,6 +149,38 @@ describe("LocationService", () => {
       );
 
       expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it("publishes an automation event after update", async () => {
+      mockFindById.mockResolvedValue({
+        id: "loc1",
+        name: "Warehouse A",
+        type: "WAREHOUSE",
+        tenantId: "t1",
+      });
+      mockUpdate.mockResolvedValue({
+        id: "loc1",
+        name: "Warehouse B",
+        type: "WAREHOUSE",
+        isActive: true,
+        isDefaultWarehouse: false,
+        updatedAt: new Date("2026-04-02T00:00:00.000Z"),
+      });
+
+      const result = await locationService.update(
+        "loc1",
+        { name: "Warehouse B" },
+        "t1",
+      );
+
+      expect(result.name).toBe("Warehouse B");
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "locations.location.updated",
+          entityId: "loc1",
+        }),
+      );
     });
   });
 

@@ -2,15 +2,24 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 
 const mockUseWorkflows = vi.fn();
+const mockUseWorkflowTemplates = vi.fn();
 const mockUsePipelines = vi.fn();
 const mockCreateMutate = vi.fn();
+const mockInstallTemplateMutate = vi.fn();
 const mockUpdateMutate = vi.fn();
 const mockDeleteMutate = vi.fn();
+const mockUseEnvFeatureFlag = vi.fn(() => true);
 
 vi.mock("../../hooks/use-workflows", () => ({
   useWorkflows: (...args: unknown[]) => mockUseWorkflows(...args),
+  useWorkflowTemplates: (...args: unknown[]) =>
+    mockUseWorkflowTemplates(...args),
   useCreateWorkflow: () => ({
     mutate: mockCreateMutate,
+    isPending: false,
+  }),
+  useInstallWorkflowTemplate: () => ({
+    mutate: mockInstallTemplateMutate,
     isPending: false,
   }),
   useUpdateWorkflow: () => ({
@@ -27,13 +36,58 @@ vi.mock("../../hooks/use-pipelines", () => ({
   usePipelines: (...args: unknown[]) => mockUsePipelines(...args),
 }));
 
+vi.mock("@/features/flags", () => ({
+  useEnvFeatureFlag: () => mockUseEnvFeatureFlag(),
+}));
+
 import WorkflowEditorPage from "./WorkflowEditorPage";
 
 describe("WorkflowEditorPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUseEnvFeatureFlag.mockReturnValue(true);
     mockUsePipelines.mockReturnValue({
       data: { pipelines: [{ id: "p1", name: "Main", stages: [] }] },
+    });
+    mockUseWorkflowTemplates.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      error: null,
+      data: {
+        templates: [
+          {
+            templateKey: "new-sales-sales-won-follow-up",
+            name: "Sales won follow-up",
+            description: "Follow-up automation",
+            category: "DEFAULT",
+            difficulty: "BEGINNER",
+            version: 1,
+            recommended: true,
+            supportedObjects: ["DEAL", "TASK"],
+            pipelineType: "NEW_SALES",
+            isInstalled: false,
+            isOutdated: false,
+            installedWorkflowId: null,
+            installedWorkflowName: null,
+            installedPipelineId: null,
+            installedPipelineName: null,
+            installedAt: null,
+            isActive: false,
+            installedCount: 0,
+            installState: "AVAILABLE",
+            availablePipelines: [{ id: "p1", name: "Main", type: "NEW_SALES" }],
+            rulesPreview: [
+              {
+                trigger: "DEAL_WON",
+                triggerStageId: null,
+                triggerStageLabel: null,
+                action: "CREATE_TASK",
+                ruleOrder: 0,
+              },
+            ],
+          },
+        ],
+      },
     });
   });
 
@@ -75,5 +129,113 @@ describe("WorkflowEditorPage", () => {
     expect(
       screen.getByRole("heading", { name: "New Workflow" }),
     ).toBeInTheDocument();
+  });
+
+  it("renders template install card", () => {
+    mockUseWorkflows.mockReturnValue({
+      data: { workflows: [] },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<WorkflowEditorPage />);
+    expect(screen.getByText("Sales won follow-up")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: /install template/i }),
+    ).toBeInTheDocument();
+  });
+
+  it("opens install dialog and confirms template install", () => {
+    mockUseWorkflows.mockReturnValue({
+      data: { workflows: [] },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<WorkflowEditorPage />);
+    fireEvent.click(screen.getByRole("button", { name: /install template/i }));
+
+    expect(
+      screen.getByRole("heading", { name: /install workflow template/i }),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", { name: /^install template$/i }),
+    );
+
+    expect(mockInstallTemplateMutate).toHaveBeenCalledWith(
+      {
+        templateKey: "new-sales-sales-won-follow-up",
+        data: {
+          pipelineId: "p1",
+          overwriteExisting: false,
+          activate: true,
+        },
+      },
+      expect.objectContaining({
+        onSuccess: expect.any(Function),
+      }),
+    );
+  });
+
+  it("toggles an installed template workflow from the library card", () => {
+    mockUseWorkflowTemplates.mockReturnValue({
+      isLoading: false,
+      isError: false,
+      error: null,
+      data: {
+        templates: [
+          {
+            templateKey: "new-sales-sales-won-follow-up",
+            name: "Sales won follow-up",
+            description: "Follow-up automation",
+            category: "DEFAULT",
+            difficulty: "BEGINNER",
+            version: 1,
+            recommended: true,
+            supportedObjects: ["DEAL", "TASK"],
+            pipelineType: "NEW_SALES",
+            isInstalled: true,
+            isOutdated: false,
+            installedWorkflowId: "wf-template",
+            installedWorkflowName: "Sales won follow-up",
+            installedPipelineId: "p1",
+            installedPipelineName: "Main",
+            installedAt: null,
+            isActive: true,
+            installedCount: 1,
+            installState: "INSTALLED",
+            availablePipelines: [{ id: "p1", name: "Main", type: "NEW_SALES" }],
+            rulesPreview: [
+              {
+                trigger: "DEAL_WON",
+                triggerStageId: null,
+                triggerStageLabel: null,
+                action: "CREATE_TASK",
+                ruleOrder: 0,
+              },
+            ],
+          },
+        ],
+      },
+    });
+    mockUseWorkflows.mockReturnValue({
+      data: { workflows: [] },
+      isLoading: false,
+      isError: false,
+      error: null,
+    });
+
+    render(<WorkflowEditorPage />);
+    fireEvent.click(
+      screen.getByRole("button", { name: /deactivate workflow/i }),
+    );
+
+    expect(mockUpdateMutate).toHaveBeenCalledWith({
+      id: "wf-template",
+      data: { isActive: false },
+    });
   });
 });

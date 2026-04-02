@@ -3,6 +3,7 @@ import { ProductService } from "./product.service";
 import type { ProductRepository } from "./product.repository";
 import { createError } from "@/middlewares/errorHandler";
 
+const mockPublishDomainEvent = vi.fn().mockResolvedValue(undefined);
 const mockFindProductById = vi.fn();
 const mockFindProductForUpdate = vi.fn();
 const mockSoftDeleteProduct = vi.fn();
@@ -19,6 +20,16 @@ const mockRepo = {
 
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
+  },
 }));
 
 const productService = new ProductService(mockRepo);
@@ -63,6 +74,30 @@ describe("ProductService", () => {
       ).rejects.toMatchObject(createError("Product not found", 404));
 
       expect(mockSoftDeleteProduct).not.toHaveBeenCalled();
+    });
+
+    it("publishes an automation event after delete", async () => {
+      mockFindProductForUpdate.mockResolvedValue({
+        id: "p1",
+        name: "Widget",
+        imsCode: "W001",
+        categoryId: "c1",
+        vendorId: "v1",
+      });
+      mockSoftDeleteProduct.mockResolvedValue(undefined);
+
+      await productService.delete("p1", {
+        userId: "u1",
+        tenantId: "t1",
+      });
+
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "catalog.product.updated",
+          entityId: "p1",
+        }),
+      );
     });
   });
 

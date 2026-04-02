@@ -6,7 +6,6 @@ const mockCreate = vi.fn();
 const mockFindById = vi.fn();
 const mockCreateDealRevision = vi.fn();
 const mockExecuteWorkflowRules = vi.fn().mockResolvedValue(undefined);
-const mockUpdateContactByWorkflow = vi.fn();
 
 vi.mock("@/modules/workflows/workflow.engine", () => ({
   executeWorkflowRules: (...args: unknown[]) =>
@@ -32,14 +31,6 @@ vi.mock("./deal.repository", () => ({
   },
 }));
 
-vi.mock("@/modules/contacts/contact.repository", () => ({
-  default: {
-    updateContactByWorkflow: (...args: unknown[]) =>
-      mockUpdateContactByWorkflow(...args),
-    incrementPurchaseCount: vi.fn(),
-  },
-}));
-
 import { DealService } from "./deal.service";
 
 const dealService = new DealService();
@@ -62,7 +53,7 @@ describe("DealService", () => {
       expect(mockCreate).not.toHaveBeenCalled();
     });
 
-    it("syncs contact journey type to the selected pipeline name", async () => {
+    it("creates a deal without mutating contact journey type metadata", async () => {
       mockFindDefaultPipeline.mockResolvedValue({
         id: "p1",
         name: "New Sales",
@@ -79,9 +70,13 @@ describe("DealService", () => {
         "u1",
       );
 
-      expect(mockUpdateContactByWorkflow).toHaveBeenCalledWith("t1", "c1", {
-        journeyType: "New Sales",
-      });
+      expect(mockCreate).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ name: "Deal 1", contactId: "c1" }),
+        "u1",
+        "Lead",
+        "p1",
+      );
     });
   });
 
@@ -164,9 +159,6 @@ describe("DealService", () => {
         "u1",
         null,
       );
-      expect(mockUpdateContactByWorkflow).toHaveBeenCalledWith("t1", "c1", {
-        journeyType: "Remarketing",
-      });
     });
   });
 });

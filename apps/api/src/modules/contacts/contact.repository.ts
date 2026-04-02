@@ -10,6 +10,37 @@ import type {
   AddCommunicationDto,
 } from "./contact.schema";
 
+type JourneyTypeOption = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
+function formatJourneyTypeLabel(
+  pipelineName: string | null | undefined,
+  stageName: string | null | undefined,
+): string | null {
+  const normalizedPipelineName = pipelineName?.trim();
+  const normalizedStageName = stageName?.trim();
+  if (!normalizedPipelineName || !normalizedStageName) {
+    return null;
+  }
+  return `${normalizedPipelineName}(${normalizedStageName})`;
+}
+
+function parseJourneyTypeLabel(
+  value: string,
+): { pipelineName: string; stageName: string } | null {
+  const trimmedValue = value.trim();
+  const match = /^(?<pipelineName>.+)\((?<stageName>.+)\)$/.exec(trimmedValue);
+  const pipelineName = match?.groups?.pipelineName?.trim();
+  const stageName = match?.groups?.stageName?.trim();
+  if (!pipelineName || !stageName) {
+    return null;
+  }
+  return { pipelineName, stageName };
+}
+
 const CONTACT_LIST_INCLUDE = {
   company: { select: { id: true, name: true } },
   owner: { select: { id: true, username: true } },
@@ -156,7 +187,24 @@ export class ContactRepository {
     if (tagId) where.tagLinks = { some: { tagId } };
     if (ownerId) where.ownedById = ownerId;
     if (source) where.source = source;
-    if (journeyType) where.journeyType = journeyType;
+    if (journeyType) {
+      const parsedJourneyType = parseJourneyTypeLabel(journeyType);
+      if (!parsedJourneyType) {
+        return createPaginationResult([], 0, page, limit);
+      }
+      where.deals = {
+        some: {
+          deletedAt: null,
+          isLatest: true,
+          status: "OPEN",
+          stage: parsedJourneyType.stageName,
+          pipeline: {
+            name: parsedJourneyType.pipelineName,
+            deletedAt: null,
+          },
+        },
+      };
+    }
 
     const skip = (page - 1) * limit;
 
@@ -417,6 +465,15 @@ export class ContactRepository {
       include: {
         company: { select: { name: true } },
         tagLinks: { include: { tag: { select: { name: true } } } },
+        deals: {
+          where: { deletedAt: null, isLatest: true, status: "OPEN" },
+          orderBy: { updatedAt: "desc" },
+          take: 1,
+          select: {
+            stage: true,
+            pipeline: { select: { id: true, name: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -656,6 +713,52 @@ export class ContactRepository {
         journeyType: null,
       },
     });
+  }
+
+  async findDerivedJourneyTypes(
+    tenantId: string,
+    search?: string,
+  ): Promise<JourneyTypeOption[]> {
+    const activeDeals = await prisma.deal.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        isLatest: true,
+        status: "OPEN",
+        pipeline: { deletedAt: null },
+      },
+      select: {
+        stage: true,
+        pipeline: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [{ pipeline: { name: "asc" } }, { stage: "asc" }],
+    });
+
+    const journeyTypeMap = new Map<string, JourneyTypeOption>();
+    for (const deal of activeDeals) {
+      const label = formatJourneyTypeLabel(deal.pipeline?.name, deal.stage);
+      if (!label) continue;
+      const id = `${deal.pipeline.id}:${deal.stage}`;
+      if (!journeyTypeMap.has(id)) {
+        journeyTypeMap.set(id, {
+          id,
+          name: label,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    const normalizedSearch = search?.trim().toLowerCase();
+    return Array.from(journeyTypeMap.values()).filter((journeyType) =>
+      normalizedSearch
+        ? journeyType.name.toLowerCase().includes(normalizedSearch)
+        : true,
+    );
   }
 }
 

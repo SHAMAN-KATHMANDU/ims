@@ -82,6 +82,8 @@ export interface CreateTransferRepoData {
   fromLocationId: string;
   toLocationId: string;
   createdById: string;
+  sourceInventorySignalId?: string | null;
+  automationRunId?: string | null;
   notes: string | null;
   items: Array<{
     variationId: string;
@@ -129,6 +131,8 @@ export class TransferRepository {
         status: "PENDING",
         notes: data.notes,
         createdById: data.createdById,
+        sourceInventorySignalId: data.sourceInventorySignalId ?? null,
+        automationRunId: data.automationRunId ?? null,
         items: {
           create: data.items.map((item) => ({
             variationId: item.variationId,
@@ -138,6 +142,22 @@ export class TransferRepository {
         },
       },
       include: transferWithItemsInclude,
+    });
+  }
+
+  async findActiveAutoDraftTransferBySignal(signalId: string) {
+    return prisma.transfer.findFirst({
+      where: {
+        sourceInventorySignalId: signalId,
+        status: {
+          in: ["PENDING", "APPROVED", "IN_TRANSIT"],
+        },
+      },
+      select: {
+        id: true,
+        transferCode: true,
+        status: true,
+      },
     });
   }
 

@@ -1,97 +1,63 @@
 import { z } from "zod";
-import { WORKFLOW_TRIGGER_VALUES, WORKFLOW_ACTION_VALUES } from "@repo/shared";
+import {
+  CRM_WORKFLOW_TEMPLATES,
+  WORKFLOW_TRIGGER_VALUES,
+  WORKFLOW_ACTION_VALUES,
+  TaskDealLinkSchema,
+  type TaskDealLink,
+  CreateTaskConfigSchema,
+  type CreateTaskConfig,
+  SendNotificationConfigSchema,
+  type SendNotificationConfig,
+  MoveStageConfigSchema,
+  type MoveStageConfig,
+  UPDATE_FIELD_ALLOWED,
+  UpdateFieldConfigSchema,
+  type UpdateFieldConfig,
+  CreateActivityConfigSchema,
+  type CreateActivityConfig,
+  CreateDealConfigSchema,
+  type CreateDealConfig,
+  UPDATE_CONTACT_FIELD_ALLOWED,
+  UpdateContactFieldConfigSchema,
+  type UpdateContactFieldConfig,
+  ApplyTagConfigSchema,
+  type ApplyTagConfig,
+  RemoveTagConfigSchema,
+  type RemoveTagConfig,
+  parseWorkflowActionConfig,
+} from "@repo/shared";
+
+export {
+  TaskDealLinkSchema,
+  type TaskDealLink,
+  CreateTaskConfigSchema,
+  type CreateTaskConfig,
+  SendNotificationConfigSchema,
+  type SendNotificationConfig,
+  MoveStageConfigSchema,
+  type MoveStageConfig,
+  UPDATE_FIELD_ALLOWED,
+  UpdateFieldConfigSchema,
+  type UpdateFieldConfig,
+  CreateActivityConfigSchema,
+  type CreateActivityConfig,
+  CreateDealConfigSchema,
+  type CreateDealConfig,
+  UPDATE_CONTACT_FIELD_ALLOWED,
+  UpdateContactFieldConfigSchema,
+  type UpdateContactFieldConfig,
+  ApplyTagConfigSchema,
+  type ApplyTagConfig,
+  RemoveTagConfigSchema,
+  type RemoveTagConfig,
+} from "@repo/shared";
 
 export const WORKFLOW_TRIGGERS = WORKFLOW_TRIGGER_VALUES;
 export const WORKFLOW_ACTIONS = WORKFLOW_ACTION_VALUES;
 
 export const WorkflowTriggerSchema = z.enum(WORKFLOW_TRIGGER_VALUES);
 export const WorkflowActionSchema = z.enum(WORKFLOW_ACTION_VALUES);
-
-export const TaskDealLinkSchema = z.discriminatedUnion("mode", [
-  z.object({ mode: z.literal("CURRENT_DEAL") }),
-  z.object({
-    mode: z.literal("OPEN_DEAL_IN_PIPELINE"),
-    targetPipelineId: z.string().uuid().optional(),
-    targetPipelineType: z
-      .enum(["NEW_SALES", "REMARKETING", "REPURCHASE"])
-      .optional(),
-    stageName: z.string().max(100).optional(),
-  }),
-]);
-export type TaskDealLink = z.infer<typeof TaskDealLinkSchema>;
-
-// Per-action config schemas for validation and security
-export const CreateTaskConfigSchema = z.object({
-  taskTitle: z.string().max(500).optional(),
-  dueDateDays: z.number().int().min(0).max(365).optional(),
-  assigneeId: z.string().uuid().optional(),
-  companyId: z.string().uuid().optional(),
-  taskDealLink: TaskDealLinkSchema.optional(),
-});
-export type CreateTaskConfig = z.infer<typeof CreateTaskConfigSchema>;
-
-export const SendNotificationConfigSchema = z.object({
-  title: z.string().max(255).optional(),
-  message: z.string().max(2000).optional(),
-  userId: z.string().uuid().optional(),
-});
-export type SendNotificationConfig = z.infer<
-  typeof SendNotificationConfigSchema
->;
-
-export const MoveStageConfigSchema = z.object({
-  targetStageId: z.string().min(1, "targetStageId is required").max(100),
-  /** When set, moves the deal to this pipeline and stage; when omitted, only stage changes within the current pipeline. */
-  targetPipelineId: z.string().uuid().optional(),
-});
-export type MoveStageConfig = z.infer<typeof MoveStageConfigSchema>;
-
-export const UPDATE_FIELD_ALLOWED = ["expectedCloseDate"] as const;
-export const UpdateFieldConfigSchema = z.object({
-  field: z.enum(UPDATE_FIELD_ALLOWED),
-  value: z.union([z.number(), z.string(), z.null()]),
-});
-export type UpdateFieldConfig = z.infer<typeof UpdateFieldConfigSchema>;
-
-export const CreateActivityConfigSchema = z.object({
-  type: z.enum(["CALL", "EMAIL", "MEETING"]).optional(),
-  subject: z.string().max(500).optional().nullable(),
-  notes: z.string().max(5000).optional().nullable(),
-});
-export type CreateActivityConfig = z.infer<typeof CreateActivityConfigSchema>;
-
-export const CreateDealConfigSchema = z
-  .object({
-    pipelineId: z.string().uuid().optional(),
-    pipelineType: z.enum(["NEW_SALES", "REMARKETING", "REPURCHASE"]).optional(),
-    stageId: z.string().max(100).optional(),
-    stageName: z.string().max(100).optional(),
-    title: z.string().max(500).optional(),
-  })
-  .refine((value) => value.pipelineId || value.pipelineType, {
-    message: "pipelineId or pipelineType is required",
-  });
-export type CreateDealConfig = z.infer<typeof CreateDealConfigSchema>;
-
-/** Only safe CRM fields — do not allow arbitrary Prisma keys. */
-export const UPDATE_CONTACT_FIELD_ALLOWED = ["source"] as const;
-export const UpdateContactFieldConfigSchema = z.object({
-  field: z.enum(UPDATE_CONTACT_FIELD_ALLOWED),
-  value: z.union([z.string(), z.null()]),
-});
-export type UpdateContactFieldConfig = z.infer<
-  typeof UpdateContactFieldConfigSchema
->;
-
-export const ApplyTagConfigSchema = z.object({
-  tag: z.string().min(1, "tag is required").max(100),
-});
-export type ApplyTagConfig = z.infer<typeof ApplyTagConfigSchema>;
-
-export const RemoveTagConfigSchema = z.object({
-  tag: z.string().min(1, "tag is required").max(100),
-});
-export type RemoveTagConfig = z.infer<typeof RemoveTagConfigSchema>;
 
 const ActionConfigByAction = {
   CREATE_TASK: CreateTaskConfigSchema,
@@ -110,8 +76,7 @@ export function parseActionConfig(
   action: z.infer<typeof WorkflowActionSchema>,
   config: unknown,
 ): z.infer<(typeof ActionConfigByAction)[typeof action]> {
-  const schema = ActionConfigByAction[action];
-  return schema.parse(config ?? {}) as z.infer<
+  return parseWorkflowActionConfig(action, config) as z.infer<
     (typeof ActionConfigByAction)[typeof action]
   >;
 }
@@ -119,7 +84,7 @@ export function parseActionConfig(
 /** Legacy: loose record for backward compatibility where full validation is not required. Prefer parseActionConfig in the engine. */
 export const ActionConfigSchema = z.record(z.unknown());
 
-export const CreateWorkflowRuleSchema = z.object({
+const CreateWorkflowRuleBaseSchema = z.object({
   trigger: WorkflowTriggerSchema,
   triggerStageId: z.string().max(100).optional().nullable(),
   action: WorkflowActionSchema,
@@ -127,7 +92,45 @@ export const CreateWorkflowRuleSchema = z.object({
   ruleOrder: z.number().int().min(0).optional(),
 });
 
-export const UpdateWorkflowRuleSchema = CreateWorkflowRuleSchema.partial();
+export const CreateWorkflowRuleSchema =
+  CreateWorkflowRuleBaseSchema.superRefine((value, ctx) => {
+    if (
+      (value.trigger === "STAGE_ENTER" || value.trigger === "STAGE_EXIT") &&
+      !value.triggerStageId
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["triggerStageId"],
+        message: "triggerStageId is required for stage-based rules",
+      });
+    }
+
+    try {
+      parseActionConfig(value.action, value.actionConfig);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        for (const issue of error.issues) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["actionConfig", ...issue.path],
+            message: issue.message,
+          });
+        }
+        return;
+      }
+
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["actionConfig"],
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid workflow action config",
+      });
+    }
+  });
+
+export const UpdateWorkflowRuleSchema = CreateWorkflowRuleBaseSchema.partial();
 
 export const CreateWorkflowSchema = z.object({
   pipelineId: z.string().uuid(),
@@ -170,8 +173,40 @@ export const WorkflowIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+const WORKFLOW_TEMPLATE_KEYS = CRM_WORKFLOW_TEMPLATES.map(
+  (template) => template.templateKey,
+) as [string, ...string[]];
+
+export const WorkflowTemplateKeyParamSchema = z.object({
+  templateKey: z.enum(WORKFLOW_TEMPLATE_KEYS, {
+    errorMap: () => ({ message: "Unknown workflow template" }),
+  }),
+});
+
+export const InstallWorkflowTemplateSchema = z.object({
+  pipelineId: z.string().uuid().optional(),
+  overwriteExisting: z.boolean().optional().default(false),
+  activate: z.boolean().optional().default(true),
+});
+
+export const GetWorkflowRunsQuerySchema = z.object({
+  limit: z
+    .string()
+    .optional()
+    .transform((v) => Math.min(100, Math.max(1, parseInt(v || "20") || 20))),
+});
+
 export type CreateWorkflowDto = z.infer<typeof CreateWorkflowSchema>;
 export type UpdateWorkflowDto = z.infer<typeof UpdateWorkflowSchema>;
 export type CreateWorkflowRuleDto = z.infer<typeof CreateWorkflowRuleSchema>;
 export type GetWorkflowsQueryDto = z.infer<typeof GetWorkflowsQuerySchema>;
 export type WorkflowIdParamDto = z.infer<typeof WorkflowIdParamSchema>;
+export type WorkflowTemplateKeyParamDto = z.infer<
+  typeof WorkflowTemplateKeyParamSchema
+>;
+export type InstallWorkflowTemplateDto = z.infer<
+  typeof InstallWorkflowTemplateSchema
+>;
+export type GetWorkflowRunsQueryDto = z.infer<
+  typeof GetWorkflowRunsQuerySchema
+>;

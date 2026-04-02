@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { createError } from "@/middlewares/errorHandler";
 
+const mockPublishDomainEvent = vi.fn();
+const mockSyncLowStockSignal = vi.fn();
 const mockFindLocationById = vi.fn();
 const mockGetLocationInventory = vi.fn();
 const mockFindProductById = vi.fn();
@@ -36,6 +38,17 @@ vi.mock("./inventory.repository", () => ({
 vi.mock("@/config/tenantContext", () => ({
   getTenantId: () => "t1",
 }));
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
+    syncLowStockSignal: (...args: unknown[]) => mockSyncLowStockSignal(...args),
+  },
+}));
 
 import { InventoryService } from "./inventory.service";
 
@@ -44,6 +57,8 @@ const inventoryService = new InventoryService();
 describe("InventoryService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSyncLowStockSignal.mockResolvedValue(undefined);
+    mockPublishDomainEvent.mockResolvedValue(undefined);
   });
 
   describe("getLocationInventory", () => {
@@ -115,6 +130,42 @@ describe("InventoryService", () => {
           quantity: 1,
         }),
       ).rejects.toMatchObject(createError("Product variation not found", 404));
+    });
+
+    it("publishes an automation event after inventory adjustment", async () => {
+      mockFindLocationById.mockResolvedValue({
+        id: "loc1",
+        name: "Warehouse A",
+        tenantId: "t1",
+      });
+      mockFindVariationById.mockResolvedValue({
+        id: "var1",
+        product: { id: "p1", imsCode: "P-1", name: "Widget" },
+      });
+      mockFindInventoryByUniqueKey.mockResolvedValue({
+        id: "inv1",
+        quantity: 3,
+      });
+      mockUpdateInventoryQuantity.mockResolvedValue({
+        id: "inv1",
+        quantity: 5,
+        subVariationId: null,
+      });
+
+      const result = await inventoryService.adjustInventory({
+        locationId: "loc1",
+        variationId: "var1",
+        quantity: 2,
+      });
+
+      expect(result.newQuantity).toBe(5);
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "inventory.stock.adjusted",
+          entityId: "inv1",
+        }),
+      );
     });
   });
 });
