@@ -12,6 +12,18 @@ import type {
 
 const GRAPH_API = "https://graph.facebook.com/v19.0";
 
+async function readFacebookGraphErrorMessage(res: Response): Promise<string> {
+  const body = await res.text();
+  try {
+    const parsed = JSON.parse(body) as { error?: { message?: string } };
+    const fromJson = parsed.error?.message;
+    if (fromJson) return fromJson;
+    return body.trim().slice(0, 200) || res.statusText || "Unknown";
+  } catch {
+    return body.trim().slice(0, 200) || res.statusText || "Unknown";
+  }
+}
+
 async function subscribeFacebookPageToWebhooks(
   pageId: string,
   pageAccessToken: string,
@@ -21,11 +33,8 @@ async function subscribeFacebookPageToWebhooks(
     { method: "POST" },
   );
   if (!subscribeRes.ok) {
-    const err = await subscribeRes.json();
-    throw createError(
-      `Failed to subscribe page to webhooks: ${err.error?.message || "Unknown"}`,
-      400,
-    );
+    const msg = await readFacebookGraphErrorMessage(subscribeRes);
+    throw createError(`Failed to subscribe page to webhooks: ${msg}`, 400);
   }
 }
 
@@ -139,9 +148,10 @@ export class MessagingChannelService {
     tenantId: string,
     dto: RegisterManualWebhookVerifyDto,
   ) {
-    const tokenInUse = await messagingChannelRepository.findByWebhookVerifyToken(
-      dto.webhookVerifyToken,
-    );
+    const tokenInUse =
+      await messagingChannelRepository.findByWebhookVerifyToken(
+        dto.webhookVerifyToken,
+      );
     if (tokenInUse) {
       throw createError(
         "This verify token is already used by another channel. Choose a different string.",
