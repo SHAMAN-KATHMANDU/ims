@@ -31,7 +31,8 @@ else
   cp .env.example .env
   success "Created .env from .env.example"
   warn "You MUST edit .env before starting the stack."
-  warn "Required: POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL, CORS_ORIGIN, API_PUBLIC_URL"
+  warn "Required: POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL, CORS_ORIGIN, API_PUBLIC_URL,"
+  warn "  plus S3 (AWS_REGION, PHOTOS_S3_BUCKET, PHOTOS_PUBLIC_URL_PREFIX, PHOTOS_S3_KEY_PREFIX) when NODE_ENV is not development."
   echo ""
   read -r -p "Press ENTER to open .env in nano (or Ctrl+C to edit manually)..." _
   nano .env
@@ -47,7 +48,11 @@ validate_required_vars \
   DATABASE_URL \
   CORS_ORIGIN \
   API_PUBLIC_URL \
-  REDIS_URL
+  REDIS_URL \
+  AWS_REGION \
+  PHOTOS_S3_BUCKET \
+  PHOTOS_PUBLIC_URL_PREFIX \
+  PHOTOS_S3_KEY_PREFIX
 success "All required vars are set"
 
 # -----------------------------------------------------------------------------

@@ -310,12 +310,16 @@ You can set these when running the script or in the cron line (see `setup-backup
 
 Every var consumed by the API is documented in `.env.example`. Critical vars that cause an **immediate API exit** if missing in staging/production:
 
-| Variable         | Description                                                     |
-| ---------------- | --------------------------------------------------------------- |
-| `DATABASE_URL`   | Prisma connection string — host must be the docker service name |
-| `JWT_SECRET`     | Auth token signing key                                          |
-| `CORS_ORIGIN`    | Allowed CORS origin (must match the web domain)                 |
-| `API_PUBLIC_URL` | Public API base URL (Swagger + media links for Messenger)       |
+| Variable                   | Description                                                       |
+| -------------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`             | Prisma connection string — host must be the docker service name   |
+| `JWT_SECRET`               | Auth token signing key                                            |
+| `CORS_ORIGIN`              | Allowed CORS origin (must match the web domain)                   |
+| `API_PUBLIC_URL`           | Public API base URL (Swagger + media links for Messenger)         |
+| `AWS_REGION`               | Required with tenant media S3 settings below                      |
+| `PHOTOS_S3_BUCKET`         | S3 bucket for tenant uploads                                      |
+| `PHOTOS_PUBLIC_URL_PREFIX` | Public base URL for objects (usually `https://bucket.s3.../`)     |
+| `PHOTOS_S3_KEY_PREFIX`     | Must be `dev`, `stage`, or `prod` (isolates keys per environment) |
 
 **Facebook Messenger specific:**
 
@@ -324,6 +328,14 @@ Every var consumed by the API is documented in `.env.example`. Critical vars tha
 | `META_APP_ID`               | Meta App ID from the App Dashboard               |
 | `META_APP_SECRET`           | Verifies `X-Hub-Signature-256` on webhook POSTs  |
 | `CREDENTIAL_ENCRYPTION_KEY` | AES-256-GCM key for stored channel access tokens |
+
+**AI auto-replies (optional — Gemini by default):**
+
+| Variable            | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `AI_REPLY_API_KEY`  | Google AI Studio / Gemini API key; if empty, auto-reply is skipped |
+| `AI_REPLY_PROVIDER` | Default `GEMINI_API`                                               |
+| `AI_REPLY_MODEL`    | Default `gemini-2.5-flash`                                         |
 
 **Database seed (`.env` on EC2):**
 
