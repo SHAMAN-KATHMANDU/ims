@@ -9,6 +9,7 @@ import {
   SheetDescription,
 } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/useMobile";
+import { cn } from "@/lib/utils";
 
 interface ResponsiveDrawerProps {
   open: boolean;
@@ -17,6 +18,10 @@ interface ResponsiveDrawerProps {
   description?: string;
   /** Tailwind max-w suffix — e.g. "xl", "2xl", "3xl". Defaults to "2xl". */
   size?: "sm" | "md" | "lg" | "xl" | "2xl" | "3xl";
+  /** Applies default content spacing for drawer bodies. */
+  bodyPadding?: boolean;
+  /** Additional classes for the scrollable body container. */
+  bodyClassName?: string;
   children: React.ReactNode;
 }
 
@@ -35,6 +40,8 @@ export function ResponsiveDrawer({
   title,
   description,
   size = "2xl",
+  bodyPadding = true,
+  bodyClassName,
   children,
 }: ResponsiveDrawerProps) {
   const isMobile = useIsMobile();
@@ -44,7 +51,7 @@ export function ResponsiveDrawer({
       <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="bottom"
-          className="flex flex-col p-0 gap-0 rounded-t-2xl max-h-[90vh]"
+          className="flex max-h-[90vh] flex-col gap-0 rounded-t-2xl p-0"
           allowDismiss={false}
         >
           <div className="mx-auto mt-3 h-1.5 w-12 rounded-full bg-muted-foreground/20 shrink-0" />
@@ -56,7 +63,15 @@ export function ResponsiveDrawer({
               </SheetDescription>
             )}
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto">{children}</div>
+          <div
+            className={cn(
+              "flex-1 min-h-0 overflow-y-auto overscroll-contain",
+              bodyPadding && "px-6 py-4",
+              bodyClassName,
+            )}
+          >
+            {children}
+          </div>
         </SheetContent>
       </Sheet>
     );
@@ -65,7 +80,7 @@ export function ResponsiveDrawer({
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent
-        className={`flex flex-col p-0 gap-0 w-full ${sizeMap[size]}`}
+        className={`flex h-full max-h-dvh w-full flex-col gap-0 p-0 ${sizeMap[size]}`}
         allowDismiss={false}
       >
         <SheetHeader className="px-6 py-4 border-b shrink-0">
@@ -76,7 +91,15 @@ export function ResponsiveDrawer({
             </SheetDescription>
           )}
         </SheetHeader>
-        <div className="flex-1 overflow-y-auto">{children}</div>
+        <div
+          className={cn(
+            "flex-1 min-h-0 overflow-y-auto overscroll-contain",
+            bodyPadding && "px-6 py-4",
+            bodyClassName,
+          )}
+        >
+          {children}
+        </div>
       </SheetContent>
     </Sheet>
   );

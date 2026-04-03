@@ -2,7 +2,10 @@ import { describe, it, expect } from "vitest";
 import {
   CreateWorkflowSchema,
   CreateWorkflowRuleSchema,
+  GetWorkflowRunsQuerySchema,
+  InstallWorkflowTemplateSchema,
   UpdateWorkflowSchema,
+  WorkflowTemplateKeyParamSchema,
   parseActionConfig,
   type CreateTaskConfig,
   type MoveStageConfig,
@@ -56,6 +59,37 @@ describe("Workflow Schemas", () => {
         }),
       ).toThrow();
     });
+
+    it("rejects stage-based rules when trigger stage is unset (undefined)", () => {
+      expect(() =>
+        CreateWorkflowRuleSchema.parse({
+          trigger: "STAGE_ENTER",
+          action: "CREATE_TASK",
+          actionConfig: { taskTitle: "Follow up" },
+        }),
+      ).toThrow(/Choose a specific stage or Any stage/);
+    });
+
+    it("accepts stage-based rules with null triggerStageId (any stage)", () => {
+      const result = CreateWorkflowRuleSchema.parse({
+        trigger: "STAGE_ENTER",
+        triggerStageId: null,
+        action: "CREATE_TASK",
+        actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
+      });
+      expect(result.triggerStageId).toBeNull();
+    });
+
+    it("rejects stage-based rules with empty triggerStageId", () => {
+      expect(() =>
+        CreateWorkflowRuleSchema.parse({
+          trigger: "STAGE_EXIT",
+          triggerStageId: "",
+          action: "CREATE_TASK",
+          actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
+        }),
+      ).toThrow(/Choose a specific stage or Any stage/);
+    });
   });
 
   describe("UpdateWorkflowSchema", () => {
@@ -65,14 +99,42 @@ describe("Workflow Schemas", () => {
     });
   });
 
+  describe("template schemas", () => {
+    it("accepts known workflow template key", () => {
+      const result = WorkflowTemplateKeyParamSchema.parse({
+        templateKey: "new-sales-sales-won-follow-up",
+      });
+      expect(result.templateKey).toBe("new-sales-sales-won-follow-up");
+    });
+
+    it("rejects unknown workflow template key", () => {
+      expect(() =>
+        WorkflowTemplateKeyParamSchema.parse({
+          templateKey: "missing-template",
+        }),
+      ).toThrow();
+    });
+
+    it("parses install template payload defaults", () => {
+      const result = InstallWorkflowTemplateSchema.parse({});
+      expect(result.overwriteExisting).toBe(false);
+      expect(result.activate).toBe(true);
+    });
+
+    it("parses workflow runs query limit", () => {
+      const result = GetWorkflowRunsQuerySchema.parse({ limit: "15" });
+      expect(result.limit).toBe(15);
+    });
+  });
+
   describe("parseActionConfig", () => {
     it("parses UPDATE_CONTACT_FIELD with allowlisted field", () => {
       const c = parseActionConfig("UPDATE_CONTACT_FIELD", {
-        field: "journeyType",
-        value: "Customer",
+        field: "source",
+        value: "Website",
       }) as UpdateContactFieldConfig;
-      expect(c.field).toBe("journeyType");
-      expect(c.value).toBe("Customer");
+      expect(c.field).toBe("source");
+      expect(c.value).toBe("Website");
     });
 
     it("rejects UPDATE_CONTACT_FIELD with unknown field", () => {
@@ -80,6 +142,15 @@ describe("Workflow Schemas", () => {
         parseActionConfig("UPDATE_CONTACT_FIELD", {
           field: "purchaseCount",
           value: "1",
+        }),
+      ).toThrow();
+    });
+
+    it("rejects UPDATE_CONTACT_FIELD for derived journey type", () => {
+      expect(() =>
+        parseActionConfig("UPDATE_CONTACT_FIELD", {
+          field: "journeyType",
+          value: "New Sales(Lead)",
         }),
       ).toThrow();
     });

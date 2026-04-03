@@ -6,6 +6,7 @@ import { useEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "./sidebar";
 import { TopBar } from "./top-bar";
+import { CommandPalette } from "./command-palette";
 import { useIsMobile } from "@/hooks/useMobile";
 import { useSidebarStore } from "@/store/sidebar-store";
 import { useScrollRestoration } from "@/hooks/useScrollRestoration";
@@ -37,13 +38,11 @@ export function DashboardLayout({ children }: { children: React.ReactNode }) {
       <Sidebar isOpen={isOpen} onToggle={() => toggle(isMobile)} />
       <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <TopBar onMenuClick={handleMenuClick} />
-        <main
-          ref={mainRef}
-          className="min-w-0 flex-1 overflow-auto p-4 md:p-6"
-        >
+        <main ref={mainRef} className="min-w-0 flex-1 overflow-auto p-4 md:p-6">
           {children}
         </main>
       </div>
+      <CommandPalette />
     </div>
   );
 }

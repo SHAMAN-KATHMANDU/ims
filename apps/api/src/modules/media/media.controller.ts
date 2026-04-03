@@ -6,10 +6,13 @@ import { ok, fail } from "@/shared/response";
 import { sendControllerError } from "@/utils/controllerError";
 import {
   ListMediaQuerySchema,
+  MediaAssetIdParamsSchema,
   PresignBodySchema,
   RegisterMediaAssetSchema,
+  UpdateMediaAssetSchema,
 } from "./media.schema";
 import { MediaService } from "./media.service";
+import messagingService from "@/modules/messaging/messaging.service";
 
 const service = new MediaService();
 
@@ -33,10 +36,32 @@ function mapAppError(error: unknown): AppError | null {
 }
 
 class MediaController {
+  updateMediaAsset = async (req: Request, res: Response) => {
+    try {
+      const { tenantId } = getAuthContext(req);
+      const params = MediaAssetIdParamsSchema.parse(req.params);
+      const body = UpdateMediaAssetSchema.parse(req.body);
+      const asset = await service.updateAsset(tenantId, params.id, body);
+      return ok(res, { asset });
+    } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return fail(res, mapZodError(error), 400);
+      }
+      const httpErr = mapAppError(error);
+      if (httpErr?.statusCode && httpErr.message) {
+        return fail(res, httpErr.message, httpErr.statusCode);
+      }
+      return sendControllerError(req, res, error, "media update");
+    }
+  };
+
   async presign(req: Request, res: Response) {
     try {
       const { tenantId } = getAuthContext(req);
       const body = PresignBodySchema.parse(req.body);
+      if (body.purpose === "message_media") {
+        await messagingService.getConversation(tenantId, body.entityId!);
+      }
       const result = await service.presign(tenantId, body);
       return ok(res, result);
     } catch (error: unknown) {
@@ -55,8 +80,12 @@ class MediaController {
     try {
       const { tenantId, userId } = getAuthContext(req);
       const body = RegisterMediaAssetSchema.parse(req.body);
-      const asset = await service.registerAsset(tenantId, userId, body);
-      return ok(res, { asset }, 201);
+      const { asset, created } = await service.registerAsset(
+        tenantId,
+        userId,
+        body,
+      );
+      return ok(res, { asset }, created ? 201 : 200);
     } catch (error: unknown) {
       if (error instanceof ZodError) {
         return fail(res, mapZodError(error), 400);
@@ -76,6 +105,8 @@ class MediaController {
       const { items, nextCursor } = await service.listAssets(tenantId, {
         take: q.limit,
         cursorId: q.cursor,
+        purpose: q.purpose,
+        mimePrefix: q.mimePrefix,
       });
       return ok(res, { items, nextCursor });
     } catch (error: unknown) {
@@ -95,8 +126,15 @@ class MediaController {
       return ok(res, { deleted: true });
     } catch (error: unknown) {
       const httpErr = mapAppError(error);
-      if (httpErr?.statusCode === 404 && httpErr.message) {
-        return fail(res, httpErr.message, 404);
+      if (
+        httpErr?.statusCode &&
+        (httpErr.statusCode === 404 ||
+          httpErr.statusCode === 409 ||
+          httpErr.statusCode === 502 ||
+          httpErr.statusCode === 503) &&
+        httpErr.message
+      ) {
+        return fail(res, httpErr.message, httpErr.statusCode);
       }
       return sendControllerError(req, res, error, "media delete");
     }

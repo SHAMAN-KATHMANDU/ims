@@ -35,6 +35,10 @@ import {
 import contactRepository from "@/modules/contacts/contact.repository";
 import memberRepository from "@/modules/members/member.repository";
 import tenantSettingsService from "@/modules/tenant-settings/tenant-settings.service";
+import pipelineRepository from "@/modules/pipelines/pipeline.repository";
+import dealRepository from "@/modules/deals/deal.repository";
+import { executeWorkflowRules } from "@/modules/workflows/workflow.engine";
+import automationService from "@/modules/automation/automation.service";
 
 // ── Shared types ──────────────────────────────────────────────────────────
 
@@ -98,6 +102,7 @@ export class SaleCalculationError extends Error {
 
 const MANUAL_DISCOUNT_AUTH_THRESHOLD_PERCENT = 20;
 const AUTHORIZED_ROLES = ["admin", "superAdmin", "platformAdmin"];
+const HIGH_VALUE_SALE_THRESHOLD = 5000;
 
 /**
  * Validates items, resolves discounts & promo codes, and computes totals.
@@ -508,6 +513,80 @@ function normalizePayments(
   }));
 }
 
+async function runPurchaseFollowUpWorkflow(input: {
+  tenantId: string;
+  userId: string;
+  contactId: string;
+  memberId?: string | null;
+}): Promise<void> {
+  const remarketingPipeline = await pipelineRepository.findByType(
+    input.tenantId,
+    "REMARKETING",
+  );
+  if (!remarketingPipeline) return;
+
+  const stage =
+    Array.isArray(remarketingPipeline.stages) &&
+    remarketingPipeline.stages.length > 0
+      ? (remarketingPipeline.stages[0] as {
+          name: string;
+          probability?: number;
+        })
+      : null;
+  if (!stage?.name) return;
+
+  let workflowDealId =
+    (
+      await dealRepository.findLatestOpenDealForContactInPipeline(
+        input.tenantId,
+        input.contactId,
+        remarketingPipeline.id,
+      )
+    )?.id ?? null;
+
+  if (!workflowDealId) {
+    const createdDeal = await dealRepository.create(
+      input.tenantId,
+      {
+        name: "Remarketing follow-up",
+        value: 0,
+        stage: stage.name,
+        contactId: input.contactId,
+        memberId: input.memberId ?? undefined,
+        pipelineId: remarketingPipeline.id,
+        assignedToId: input.userId,
+      },
+      input.userId,
+      stage.name,
+      remarketingPipeline.id,
+    );
+    workflowDealId = createdDeal.id;
+  }
+
+  const workflowDeal = await dealRepository.findById(
+    input.tenantId,
+    workflowDealId,
+  );
+  if (!workflowDeal) return;
+
+  await executeWorkflowRules({
+    trigger: "PURCHASE_COUNT_CHANGED",
+    deal: {
+      id: workflowDeal.id,
+      tenantId: workflowDeal.tenantId,
+      pipelineId: workflowDeal.pipelineId,
+      stage: workflowDeal.stage,
+      status: workflowDeal.status,
+      contactId: workflowDeal.contactId,
+      memberId: workflowDeal.memberId,
+      companyId: workflowDeal.companyId,
+      assignedToId: workflowDeal.assignedToId ?? input.userId,
+      createdById: workflowDeal.createdById,
+    },
+    userId: input.userId,
+  });
+}
+
 export async function createSale(
   ctx: CreateSaleContext,
   dto: {
@@ -723,6 +802,12 @@ export async function createSale(
       const { applyLoyaltyTier } =
         await import("@/modules/contacts/loyalty.service");
       await applyLoyaltyTier(resolvedContactId);
+      await runPurchaseFollowUpWorkflow({
+        tenantId: ctx.tenantId,
+        userId: ctx.userId,
+        contactId: resolvedContactId,
+        memberId: member?.id ?? null,
+      });
     } catch {
       // Log but don't fail sale creation
     }
@@ -747,6 +832,74 @@ export async function createSale(
     // Log but don't fail
   }
 
+  await Promise.all(
+    processedItems.map((item) =>
+      automationService.syncLowStockSignal({
+        tenantId: ctx.tenantId,
+        locationId: dto.locationId,
+        variationId: item.variationId,
+        subVariationId: item.subVariationId,
+        actorUserId: ctx.userId,
+        reason: "sale_created",
+      }),
+    ),
+  ).catch(() => {
+    // Do not fail sale creation when automation side effects fail.
+  });
+
+  await automationService
+    .publishDomainEvent({
+      tenantId: ctx.tenantId,
+      eventName: "sales.sale.created",
+      scopeType: "LOCATION",
+      scopeId: finalSale.locationId,
+      entityType: "SALE",
+      entityId: finalSale.id,
+      actorUserId: ctx.userId,
+      dedupeKey: `sale-created:${finalSale.id}`,
+      payload: {
+        saleId: finalSale.id,
+        saleCode: finalSale.saleCode,
+        locationId: finalSale.locationId,
+        memberId: finalSale.memberId,
+        contactId: finalSale.contactId,
+        total: Number(finalSale.total),
+        subtotal: Number(finalSale.subtotal),
+        itemCount: finalSale.items.length,
+      },
+    })
+    .catch(() => {
+      // Do not fail sale creation when automation event publishing fails.
+    });
+
+  if (Number(finalSale.total) >= HIGH_VALUE_SALE_THRESHOLD) {
+    await automationService
+      .publishDomainEvent({
+        tenantId: ctx.tenantId,
+        eventName: "sales.sale.high_value_created",
+        scopeType: "LOCATION",
+        scopeId: finalSale.locationId,
+        entityType: "SALE",
+        entityId: finalSale.id,
+        actorUserId: ctx.userId,
+        dedupeKey: `sale-high-value-created:${finalSale.id}`,
+        payload: {
+          saleId: finalSale.id,
+          saleCode: finalSale.saleCode,
+          locationId: finalSale.locationId,
+          memberId: finalSale.memberId,
+          contactId: finalSale.contactId,
+          total: Number(finalSale.total),
+          subtotal: Number(finalSale.subtotal),
+          itemCount: finalSale.items.length,
+          threshold: HIGH_VALUE_SALE_THRESHOLD,
+        },
+      })
+      .catch(() => {
+        // Do not fail sale creation when automation event publishing fails.
+      });
+  }
+
   return finalSale;
 }
 
@@ -755,12 +908,53 @@ export async function deleteSale(
   userId: string,
   deleteReason?: string | null,
 ) {
+  const sale = await findSaleById(saleId);
   const result = await softDeleteSale(saleId, userId, deleteReason ?? null);
   if (!result) {
     throw Object.assign(new Error("Sale not found or already deleted"), {
       statusCode: 404,
     });
   }
+
+  if (sale) {
+    await Promise.allSettled(
+      sale.items.map((item) =>
+        automationService.syncLowStockSignal({
+          tenantId: sale.tenantId,
+          locationId: sale.locationId,
+          variationId: item.variationId,
+          subVariationId: item.subVariationId,
+          actorUserId: userId,
+          reason: "sale_deleted",
+        }),
+      ),
+    );
+
+    await automationService
+      .publishDomainEvent({
+        tenantId: sale.tenantId,
+        eventName: "sales.sale.deleted",
+        scopeType: "LOCATION",
+        scopeId: sale.locationId,
+        entityType: "SALE",
+        entityId: sale.id,
+        actorUserId: userId,
+        dedupeKey: `sale-deleted:${sale.id}`,
+        payload: {
+          saleId: sale.id,
+          saleCode: sale.saleCode,
+          locationId: sale.locationId,
+          memberId: sale.memberId,
+          contactId: sale.contactId,
+          total: Number(sale.total),
+          deleteReason: deleteReason ?? null,
+        },
+      })
+      .catch(() => {
+        // Do not fail sale deletion when automation event publishing fails.
+      });
+  }
+
   return result;
 }
 
@@ -877,6 +1071,41 @@ export async function editSale(
       statusCode: 500,
     });
   }
+
+  const inventoryKeys = new Map<
+    string,
+    { variationId: string; subVariationId: string | null }
+  >();
+
+  for (const item of sale.items) {
+    const key = `${item.variationId}:${item.subVariationId ?? "base"}`;
+    inventoryKeys.set(key, {
+      variationId: item.variationId,
+      subVariationId: item.subVariationId ?? null,
+    });
+  }
+
+  for (const item of result.items) {
+    const key = `${item.variationId}:${item.subVariationId ?? "base"}`;
+    inventoryKeys.set(key, {
+      variationId: item.variationId,
+      subVariationId: item.subVariationId ?? null,
+    });
+  }
+
+  await Promise.allSettled(
+    Array.from(inventoryKeys.values()).map((item) =>
+      automationService.syncLowStockSignal({
+        tenantId: sale.tenantId,
+        locationId: sale.locationId,
+        variationId: item.variationId,
+        subVariationId: item.subVariationId,
+        actorUserId: userId,
+        reason: "sale_edited",
+      }),
+    ),
+  );
+
   return result;
 }
 

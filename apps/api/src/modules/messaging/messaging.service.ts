@@ -6,6 +6,8 @@ import { outboundQueue } from "@/queues/queue.config";
 import { getProvider } from "@/providers/provider-factory";
 import { decrypt } from "@/utils/encryption";
 import messagingChannelRepository from "@/modules/messaging-channels/messaging-channel.repository";
+import { MediaRepository } from "@/modules/media/media.repository";
+import { keyMatchesMessagePrefix } from "@/lib/s3/s3Key";
 import messagingRepository from "./messaging.repository";
 import type { ProviderCredentials } from "@/providers/messaging-provider.interface";
 import type {
@@ -14,6 +16,8 @@ import type {
   ConversationQuery,
   MessageQuery,
 } from "./messaging.schema";
+
+const messagingMediaAssetRepo = new MediaRepository();
 
 /**
  * Strip NUL and other non-printable control characters (keep tab, LF, CR).
@@ -256,9 +260,39 @@ export class MessagingService {
     }
 
     const safeText = sanitizeMessageText(dto.text);
-    const storedMediaUrl = dto.mediaUrl
-      ? resolveMessagingMediaUrlForStorage(dto.mediaUrl)
-      : undefined;
+    let storedMediaUrl: string | undefined;
+    let mediaAssetId: string | null = null;
+
+    if (dto.mediaAssetId) {
+      const asset = await messagingMediaAssetRepo.findByIdForTenant(
+        dto.mediaAssetId,
+        tenantId,
+      );
+      if (!asset) {
+        throw createError("Media asset not found", 404);
+      }
+      if (asset.purpose !== "message_media") {
+        throw createError("Media asset is not valid for messaging", 400);
+      }
+      if (
+        !keyMatchesMessagePrefix(
+          asset.storageKey,
+          tenantId,
+          conversationId,
+          env.photosS3KeyPrefix,
+          { allowLegacyKeys: env.photosAllowLegacyKeys },
+        )
+      ) {
+        throw createError(
+          "Media asset does not belong to this conversation",
+          400,
+        );
+      }
+      storedMediaUrl = asset.publicUrl;
+      mediaAssetId = asset.id;
+    } else if (dto.mediaUrl) {
+      storedMediaUrl = resolveMessagingMediaUrlForStorage(dto.mediaUrl);
+    }
 
     const message = await messagingRepository.createMessage({
       conversationId,
@@ -271,6 +305,7 @@ export class MessagingService {
         : null,
       sentById: userId,
       replyToId: dto.replyToId ?? null,
+      mediaAssetId,
     });
 
     await outboundQueue.add("outbound", {

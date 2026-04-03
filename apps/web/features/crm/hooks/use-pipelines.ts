@@ -109,6 +109,9 @@ export function useSeedPipelineFramework() {
       qc.invalidateQueries({ queryKey: pipelineKeys.lists() });
       qc.invalidateQueries({ queryKey: ["contacts"] });
       qc.invalidateQueries({ queryKey: ["crm-settings"] });
+      qc.invalidateQueries({ queryKey: ["workflows"] });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
     },
   });
 }

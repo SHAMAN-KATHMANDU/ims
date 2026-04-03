@@ -1,0 +1,1 @@
+ALTER TYPE "AutomationEventStatus" ADD VALUE IF NOT EXISTS 'EXHAUSTED';

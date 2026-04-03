@@ -1,4 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { normalizePhoneOptional } from "@/utils/phone";
 import { getPaginationParams } from "@/utils/pagination";
@@ -29,11 +31,36 @@ export class VendorService {
       normalizedPhone = normalizePhoneOptional(data.phone);
     }
 
-    return this.repo.create(tenantId, {
+    const vendor = await this.repo.create(tenantId, {
       ...data,
       name: trimmedName,
       phone: normalizedPhone,
     });
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "vendors.vendor.created",
+        scopeType: "GLOBAL",
+        entityType: "VENDOR",
+        entityId: vendor.id,
+        dedupeKey: `vendor-created:${vendor.id}`,
+        payload: {
+          vendorId: vendor.id,
+          name: vendor.name,
+          contact: vendor.contact ?? null,
+          address: vendor.address ?? null,
+          phone: vendor.phone ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          vendorId: vendor.id,
+          eventName: "vendors.vendor.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    return vendor;
   }
 
   async findAll(tenantId: string, rawQuery: Record<string, unknown>) {
@@ -94,7 +121,32 @@ export class VendorService {
       updateData.phone = normalizePhoneOptional(data.phone ?? "");
     }
 
-    return this.repo.update(id, updateData);
+    const vendor = await this.repo.update(id, updateData);
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "vendors.vendor.updated",
+        scopeType: "GLOBAL",
+        entityType: "VENDOR",
+        entityId: vendor.id,
+        dedupeKey: `vendor-updated:${vendor.id}:${vendor.updatedAt.toISOString()}`,
+        payload: {
+          vendorId: vendor.id,
+          name: vendor.name,
+          contact: vendor.contact ?? null,
+          address: vendor.address ?? null,
+          phone: vendor.phone ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          vendorId: vendor.id,
+          eventName: "vendors.vendor.updated",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    return vendor;
   }
 
   async delete(

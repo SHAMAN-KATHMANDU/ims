@@ -42,6 +42,11 @@ const TENANT_SCOPED_MODELS = new Set([
   "MessagingChannel",
   "Conversation",
   "MediaAsset",
+  "AutomationDefinition",
+  "AutomationEvent",
+  "AutomationRun",
+  "WorkItem",
+  "InventorySignal",
 ]);
 
 /**

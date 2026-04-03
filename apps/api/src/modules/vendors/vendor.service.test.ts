@@ -3,6 +3,7 @@ import { VendorService } from "./vendor.service";
 import type { VendorRepository } from "./vendor.repository";
 import { createError } from "@/middlewares/errorHandler";
 
+const mockPublishDomainEvent = vi.fn().mockResolvedValue(undefined);
 const mockFindByName = vi.fn();
 const mockFindByNameExcluding = vi.fn();
 const mockCreate = vi.fn();
@@ -28,6 +29,16 @@ const mockRepo: VendorRepository = {
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
 }));
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
+  },
+}));
 
 const vendorService = new VendorService(mockRepo);
 
@@ -52,6 +63,13 @@ describe("VendorService", () => {
       expect(result.name).toBe("Acme Supplies");
       expect(mockFindByName).toHaveBeenCalledWith("t1", "Acme Supplies");
       expect(mockCreate).toHaveBeenCalled();
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "vendors.vendor.created",
+          entityId: "v1",
+        }),
+      );
     });
 
     it("throws 409 when vendor name already exists", async () => {
@@ -106,6 +124,37 @@ describe("VendorService", () => {
       );
 
       expect(mockSoftDelete).not.toHaveBeenCalled();
+    });
+  });
+
+  describe("update", () => {
+    it("publishes an automation event after update", async () => {
+      mockFindByIdWithProductCount.mockResolvedValue({
+        id: "v1",
+        name: "Acme",
+        _count: { products: 0 },
+      });
+      mockUpdate.mockResolvedValue({
+        id: "v1",
+        name: "Acme Updated",
+        contact: null,
+        address: null,
+        phone: null,
+        updatedAt: new Date("2026-04-02T00:00:00.000Z"),
+      });
+
+      const result = await vendorService.update("v1", "t1", {
+        name: "Acme Updated",
+      });
+
+      expect(result.name).toBe("Acme Updated");
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "vendors.vendor.updated",
+          entityId: "v1",
+        }),
+      );
     });
   });
 });

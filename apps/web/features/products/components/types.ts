@@ -29,7 +29,7 @@ export type ProductVariationForm = {
   locationName?: string;
   /** Sub-variant names (e.g. S, M, L). When set, stock is managed per location per sub-variant. */
   subVariants: string[];
-  photos: Array<{ photoUrl: string; isPrimary: boolean }>;
+  photos: Array<{ photoUrl: string; isPrimary: boolean; fileName?: string }>;
   /** EAV: one value per attribute type (e.g. Color=Red, Size=M). */
   attributes?: Array<{ attributeTypeId: string; attributeValueId: string }>;
 };

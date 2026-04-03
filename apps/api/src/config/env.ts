@@ -8,8 +8,17 @@
 
 import dotenv from "dotenv";
 import { z } from "zod";
+import { parsePublicUrlAliases } from "@/lib/s3/publicUrl";
 
 dotenv.config();
+
+function envBool(raw: string | undefined, defaultVal: boolean): boolean {
+  if (raw == null || raw.trim() === "") return defaultVal;
+  const l = raw.trim().toLowerCase();
+  if (["1", "true", "yes"].includes(l)) return true;
+  if (["0", "false", "no"].includes(l)) return false;
+  return defaultVal;
+}
 
 const APP_ENV_VALUES = [
   "development",
@@ -69,7 +78,12 @@ const EnvSchema = z
     AWS_REGION: z.string().optional(),
     PHOTOS_S3_BUCKET: z.string().optional(),
     PHOTOS_PUBLIC_URL_PREFIX: z.string().optional(),
+    PHOTOS_PUBLIC_URL_ALIASES: z.string().optional(),
     PHOTOS_S3_KEY_PREFIX: z.string().optional(),
+    PHOTOS_S3_VERIFY_ON_STARTUP: z.string().optional(),
+    PHOTOS_ALLOW_LEGACY_KEYS: z.string().optional(),
+    PHOTOS_ENFORCE_CONTENT_SNIFF: z.string().optional(),
+    IMS_DEPLOYMENT_TIER: z.string().optional(),
   })
   .transform((raw) => {
     const isDev = raw.NODE_ENV === "development";
@@ -180,8 +194,44 @@ const EnvSchema = z
         : `${photosPublicUrlPrefixRaw}/`
       : "";
 
+    const photosPublicUrlAliases = parsePublicUrlAliases(
+      raw.PHOTOS_PUBLIC_URL_ALIASES,
+    );
+
+    if (!isDev && photosPublicUrlPrefixRaw && photosS3Bucket) {
+      try {
+        const parsed = new URL(photosPublicUrlPrefixRaw).hostname;
+        if (parsed && !photosPublicUrlPrefixRaw.includes(photosS3Bucket)) {
+          console.warn(
+            "IMS: PHOTOS_PUBLIC_URL_PREFIX may not reference PHOTOS_S3_BUCKET; wrong prefix breaks public links (uploads can still succeed).",
+          );
+        }
+      } catch {
+        /* ignore invalid URL for heuristic */
+      }
+    }
+
+    const photosS3KeyPrefixExplicit = Boolean(raw.PHOTOS_S3_KEY_PREFIX?.trim());
+
     function parsePhotosS3KeyPrefix(): PhotosS3KeyPrefix {
       const p = raw.PHOTOS_S3_KEY_PREFIX?.trim().toLowerCase();
+      const bucketConfigured = Boolean(photosS3Bucket);
+      if (!isDev && bucketConfigured) {
+        if (
+          !p ||
+          !PHOTOS_S3_KEY_PREFIX_VALUES.includes(p as PhotosS3KeyPrefix)
+        ) {
+          throw new z.ZodError([
+            {
+              code: "custom",
+              path: ["PHOTOS_S3_KEY_PREFIX"],
+              message:
+                "PHOTOS_S3_KEY_PREFIX is required in staging/production when using S3 (one of: dev, stage, prod).",
+            },
+          ]);
+        }
+        return p as PhotosS3KeyPrefix;
+      }
       if (p) {
         if (!PHOTOS_S3_KEY_PREFIX_VALUES.includes(p as PhotosS3KeyPrefix)) {
           throw new z.ZodError([
@@ -204,6 +254,20 @@ const EnvSchema = z
     const photosS3Configured = Boolean(
       awsRegion && photosS3Bucket && photosPublicUrlPrefix,
     );
+
+    const photosS3VerifyOnStartup = envBool(
+      raw.PHOTOS_S3_VERIFY_ON_STARTUP,
+      !isDev && photosS3Configured,
+    );
+
+    const photosAllowLegacyKeys = envBool(raw.PHOTOS_ALLOW_LEGACY_KEYS, false);
+
+    const photosEnforceContentSniff = envBool(
+      raw.PHOTOS_ENFORCE_CONTENT_SNIFF,
+      false,
+    );
+
+    const imsDeploymentTier = raw.IMS_DEPLOYMENT_TIER?.trim() || null;
 
     return {
       nodeEnv: raw.NODE_ENV,
@@ -237,8 +301,14 @@ const EnvSchema = z
       awsRegion,
       photosS3Bucket,
       photosPublicUrlPrefix,
+      photosPublicUrlAliases,
       photosS3KeyPrefix,
+      photosS3KeyPrefixExplicit,
       photosS3Configured,
+      photosS3VerifyOnStartup,
+      photosAllowLegacyKeys,
+      photosEnforceContentSniff,
+      imsDeploymentTier,
     };
   });
 

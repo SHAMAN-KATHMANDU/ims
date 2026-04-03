@@ -15,12 +15,10 @@ import {
   ChevronRight,
   Plus,
   Package,
-  Ruler,
   Layers,
   Percent,
 } from "lucide-react";
 import { GeneralTab } from "./form-tabs/GeneralTab";
-import { DimensionsTab } from "./form-tabs/DimensionsTab";
 import { VariationsTab } from "./form-tabs/VariationsTab";
 import { DiscountsTab } from "./form-tabs/DiscountsTab";
 import type {
@@ -58,7 +56,11 @@ interface ProductFormProps {
       | Array<{ attributeTypeId: string; attributeValueId: string }>,
   ) => void;
   onUpdateSubVariants: (index: number, subVariants: string[]) => void;
-  onAddPhoto: (variationIndex: number, photoUrl: string) => void;
+  onAddPhoto: (
+    variationIndex: number,
+    photoUrl: string,
+    fileName?: string,
+  ) => void;
   onRemovePhoto: (variationIndex: number, photoIndex: number) => void;
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
   onShowError: (title: string, message: string) => void;
@@ -116,7 +118,7 @@ export function ProductForm({
   }, [open]);
 
   // Tab navigation functions
-  const tabs = ["general", "dimensions", "variations", "discounts"];
+  const tabs = ["general", "variations", "discounts"];
   const currentTabIndex = tabs.indexOf(dialogTab);
   const canGoNext = currentTabIndex < tabs.length - 1;
   const canGoPrev = currentTabIndex > 0;
@@ -152,23 +154,6 @@ export function ProductForm({
         const hasGeneralError = generalKeys.some((k) => errs![k]);
         if (hasGeneralError) validationErrors = errs;
       }
-    } else if (dialogTab === "dimensions") {
-      form.recordWizardValidationAttempt?.("dimensions");
-      await form.triggerValidation?.(["length", "breadth", "height", "weight"]);
-
-      const dimKeys = ["length", "breadth", "height", "weight"] as const;
-      const dimErrors: Record<string, string> = {};
-      for (const key of dimKeys) {
-        const val = values[key];
-        if (val !== undefined && val !== null && String(val).trim() !== "") {
-          const num = Number(val);
-          if (isNaN(num) || num < 0) {
-            dimErrors[key] =
-              `${key.charAt(0).toUpperCase() + key.slice(1)} must be a valid non-negative number`;
-          }
-        }
-      }
-      if (Object.keys(dimErrors).length > 0) validationErrors = dimErrors;
     } else if (dialogTab === "variations") {
       form.recordWizardValidationAttempt?.("variations");
       const errs = validateProduct?.(values);
@@ -237,13 +222,6 @@ export function ProductForm({
             ) {
               errorTab = "general";
             } else if (
-              validationErrors.length ||
-              validationErrors.breadth ||
-              validationErrors.height ||
-              validationErrors.weight
-            ) {
-              errorTab = "dimensions";
-            } else if (
               validationErrors._form ||
               Object.keys(validationErrors).some((key) =>
                 key.startsWith("variation_"),
@@ -283,14 +261,10 @@ export function ProductForm({
     >
       <div className="overflow-y-auto max-h-[calc(90vh-180px)]">
         <Tabs value={dialogTab} onValueChange={setDialogTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="general" className="gap-1.5">
               <Package className="h-4 w-4 shrink-0" aria-hidden />
               <span className="truncate">General</span>
-            </TabsTrigger>
-            <TabsTrigger value="dimensions" className="gap-1.5">
-              <Ruler className="h-4 w-4 shrink-0" aria-hidden />
-              <span className="truncate">Dimensions</span>
             </TabsTrigger>
             <TabsTrigger value="variations" className="gap-1.5">
               <Layers className="h-4 w-4 shrink-0" aria-hidden />
@@ -312,10 +286,6 @@ export function ProductForm({
               mrpBelowCpAccepted={mrpBelowCpAccepted}
               onMrpBelowCpAcceptedChange={onMrpBelowCpAcceptedChange}
             />
-          </TabsContent>
-
-          <TabsContent value="dimensions" className="space-y-4 mt-4">
-            <DimensionsTab form={form} />
           </TabsContent>
 
           <TabsContent value="variations" className="space-y-4 mt-4">

@@ -70,7 +70,7 @@ importers:
         version: 5.2.10
       "@google/genai":
         specifier: ^1.46.0
-        version: 1.46.0
+        version: 1.48.0
       "@opentelemetry/api":
         specifier: ^1.9.0
         version: 1.9.0
@@ -103,7 +103,7 @@ importers:
         version: 3.0.3
       braintrust:
         specifier: ^3.6.0
-        version: 3.6.0(zod@3.25.76)
+        version: 3.7.1(@aws-sdk/credential-provider-web-identity@3.972.26)(zod@3.25.76)
       bullmq:
         specifier: ^5.70.4
         version: 5.71.0
@@ -557,6 +557,9 @@ importers:
       typescript:
         specifier: 5.9.2
         version: 5.9.2
+      vitest:
+        specifier: ^4.0.18
+        version: 4.0.18(@opentelemetry/api@1.9.0)(@types/node@22.15.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2)
 
   packages/typescript-config: {}
 
@@ -1559,10 +1562,10 @@ packages:
         integrity: sha512-8HlA5FtSfz//oFSr2eL7GFXAiE7eIkcGOtx7tjsLKq+as702x9+GU7K95iDeWFapHC4M2hv9RrpXKRTGGBI8Zg==,
       }
 
-  "@google/genai@1.46.0":
+  "@google/genai@1.48.0":
     resolution:
       {
-        integrity: sha512-ewPMN5JkKfgU5/kdco9ZhXBHDPhVqZpMQqIFQhwsHLf8kyZfx1cNpw1pHo1eV6PGEW7EhIBFi3aYZraFndAXqg==,
+        integrity: sha512-plonYK4ML2PrxsRD9SeqmFt76eREWkQdPCglOA6aYDzL1AAbE+7PUnT54SvpWGfws13L0AZEqGSpL7+1IPnTxQ==,
       }
     engines: { node: ">=20.0.0" }
     peerDependencies:
@@ -5912,17 +5915,18 @@ packages:
       }
     engines: { node: ">=18" }
 
+  bowser@2.14.1:
+    resolution:
+      {
+        integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==,
+      }
+
   boxen@8.0.1:
     resolution:
       {
         integrity: sha512-F3PH5k5juxom4xktynS7MoFY+NUWH5LC4CnH11YB8NPew+HLpmBLCybSAEyb2F+4pRXhuhWqFesoQd6DAyc2hw==,
       }
     engines: { node: ">=18" }
-  bowser@2.14.1:
-    resolution:
-      {
-        integrity: sha512-tzPjzCxygAKWFOJP011oxFHs57HzIhOEracIgAePE4pqB3LikALKnSzUyU4MGs9/iCEUuHlAJTjTc5M+u7YEGg==,
-      }
 
   brace-expansion@1.1.12:
     resolution:
@@ -5943,10 +5947,10 @@ packages:
       }
     engines: { node: ">=8" }
 
-  braintrust@3.6.0:
+  braintrust@3.7.1:
     resolution:
       {
-        integrity: sha512-pvU+V499Jn57RcKFxsKI7n6V8vN/GbQEZzrBeCfeSU0zBrsKGX6+xSxqq9dz3H/dcONjao5rmaGHdLdN103JKQ==,
+        integrity: sha512-gtStj9TXgaKAS9LthX9EmhtTolhncdrv5QUzvx3+BDr9zdzwgjSo9kd15oAXefAx/swrqfe/rvf/BlkiFeLpDA==,
       }
     hasBin: true
     peerDependencies:
@@ -6871,10 +6875,10 @@ packages:
         integrity: sha512-t5EcLVS6QPBNqM2z8fakk/NKel+Xzshgt8FFKAn+qwlD1pzZWxh0nVCrvFK7ZDb6XucZeF9z8C7CBWTRIVApAw==,
       }
 
-  dc-browser@1.0.3:
+  dc-browser@1.0.4:
     resolution:
       {
-        integrity: sha512-B2PJFzWouEPzc+jLo+yTgUXaVz0eZjVsfKX9CnUDzezsluxOKOjllBpw0EJJ1KNJGnNzKpZ4dDYtd+jVp0KRNA==,
+        integrity: sha512-7oEtnzNlcE+hr4OvO3GR6Gndgw8BhW+wKOEwMqSleyY7N29jbAxzyW5BaJl7qBCw+6OIxfMWtY0T+6dxq8RWLw==,
       }
 
   debug@2.6.9:
@@ -10279,10 +10283,10 @@ packages:
         integrity: sha512-LDJzPVEEEPR+y48z93A0Ed0yXb8pAByGWo/k5YYdYgpY2/2EsOsksJrq7lOHxryrVOn1ejG6oAp8ahvOIQD8sw==,
       }
 
-  path-to-regexp@0.1.12:
+  path-to-regexp@0.1.13:
     resolution:
       {
-        integrity: sha512-RA1GjUVMnvYFxuqovrEqZoxxW5NUZqbwKtYz/Tt7nXerk0LbLblQmrsgdeOxV5SFHf0UDggjS/bSeOZwt1pmEQ==,
+        integrity: sha512-A/AGNMFN3c8bOlvV9RreMdrv7jsmF9XIfDeCd87+I8RNg6s78BhJxMu69NEMHBSJFxKidViTEdruRwEk/WIKqA==,
       }
 
   path-to-regexp@8.3.0:
@@ -12961,6 +12965,14 @@ packages:
       }
     engines: { node: ">= 10" }
 
+  zod-to-json-schema@3.25.2:
+    resolution:
+      {
+        integrity: sha512-O/PgfnpT1xKSDeQYSCfRI5Gy3hPf91mKVDuYLUHZJMiDFptvP41MSnWofm8dnCm0256ZNfZIM7DSzuSMAFnjHA==,
+      }
+    peerDependencies:
+      zod: ^3.25.28 || ^4
+
   zod@3.25.76:
     resolution:
       {
@@ -12991,6 +13003,10 @@ packages:
 snapshots:
   "@adobe/css-tools@4.4.4": {}
 
+  "@ai-sdk/provider@1.1.3":
+    dependencies:
+      json-schema: 0.4.0
+
   "@alloc/quick-lru@5.2.0": {}
 
   "@apidevtools/json-schema-ref-parser@9.1.2":
@@ -13013,6 +13029,8 @@ snapshots:
       call-me-maybe: 1.0.2
       openapi-types: 12.1.3
       z-schema: 5.0.5
+
+  "@apm-js-collab/code-transformer@0.9.0": {}
 
   "@asamuzakjp/css-color@3.2.0":
     dependencies:
@@ -13400,19 +13418,6 @@ snapshots:
       "@smithy/types": 4.13.1
       tslib: 2.8.1
 
-  zod-to-json-schema@3.25.1:
-    resolution:
-      {
-        integrity: sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==,
-      }
-    peerDependencies:
-      zod: ^3.25 || ^4
-
-  zod@3.25.76:
-    resolution:
-      {
-        integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==,
-      }
   "@aws-sdk/s3-request-presigner@3.1019.0":
     dependencies:
       "@aws-sdk/signature-v4-multi-region": 3.996.14
@@ -13445,11 +13450,6 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  "@ai-sdk/provider@1.1.3":
-    dependencies:
-      json-schema: 0.4.0
-
-  "@alloc/quick-lru@5.2.0": {}
   "@aws-sdk/types@3.973.6":
     dependencies:
       "@smithy/types": 4.13.1
@@ -13478,9 +13478,6 @@ snapshots:
     dependencies:
       tslib: 2.8.1
 
-  "@apm-js-collab/code-transformer@0.9.0": {}
-
-  "@asamuzakjp/css-color@3.2.0":
   "@aws-sdk/util-user-agent-browser@3.972.8":
     dependencies:
       "@aws-sdk/types": 3.973.6
@@ -13871,7 +13868,7 @@ snapshots:
 
   "@fontsource/roboto@5.2.10": {}
 
-  "@google/genai@1.46.0":
+  "@google/genai@1.48.0":
     dependencies:
       google-auth-library: 10.6.2
       p-retry: 4.6.2
@@ -16557,7 +16554,9 @@ snapshots:
       next: 16.1.6(@opentelemetry/api@1.9.0)(@playwright/test@1.58.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       react: 19.2.0
 
-  "@vercel/functions@1.6.0": {}
+  "@vercel/functions@1.6.0(@aws-sdk/credential-provider-web-identity@3.972.26)":
+    optionalDependencies:
+      "@aws-sdk/credential-provider-web-identity": 3.972.26
 
   "@vitest/coverage-v8@4.0.18(vitest@4.0.18(@opentelemetry/api@1.9.0)(@types/node@22.15.3)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.30.2)(terser@5.46.0)(yaml@2.8.2))":
     dependencies:
@@ -17047,6 +17046,8 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  bowser@2.14.1: {}
+
   boxen@8.0.1:
     dependencies:
       ansi-align: 3.0.1
@@ -17057,7 +17058,6 @@ snapshots:
       type-fest: 4.41.0
       widest-line: 5.0.0
       wrap-ansi: 9.0.2
-  bowser@2.14.1: {}
 
   brace-expansion@1.1.12:
     dependencies:
@@ -17072,12 +17072,12 @@ snapshots:
     dependencies:
       fill-range: 7.1.1
 
-  braintrust@3.6.0(zod@3.25.76):
+  braintrust@3.7.1(@aws-sdk/credential-provider-web-identity@3.972.26)(zod@3.25.76):
     dependencies:
       "@ai-sdk/provider": 1.1.3
       "@apm-js-collab/code-transformer": 0.9.0
       "@next/env": 14.2.35
-      "@vercel/functions": 1.6.0
+      "@vercel/functions": 1.6.0(@aws-sdk/credential-provider-web-identity@3.972.26)
       ajv: 8.17.1
       argparse: 2.0.1
       boxen: 8.0.1
@@ -17085,7 +17085,7 @@ snapshots:
       cli-progress: 3.12.0
       cli-table3: 0.6.5
       cors: 2.8.5
-      dc-browser: 1.0.3
+      dc-browser: 1.0.4
       dotenv: 16.6.1
       esbuild: 0.27.3
       eventsource-parser: 1.1.2
@@ -17102,7 +17102,7 @@ snapshots:
       unplugin: 2.3.11
       uuid: 9.0.1
       zod: 3.25.76
-      zod-to-json-schema: 3.25.1(zod@3.25.76)
+      zod-to-json-schema: 3.25.2(zod@3.25.76)
     transitivePeerDependencies:
       - "@aws-sdk/credential-provider-web-identity"
       - supports-color
@@ -17624,7 +17624,7 @@ snapshots:
 
   dayjs@1.11.19: {}
 
-  dc-browser@1.0.3: {}
+  dc-browser@1.0.4: {}
 
   debug@2.6.9:
     dependencies:
@@ -18195,7 +18195,7 @@ snapshots:
       methods: 1.1.2
       on-finished: 2.4.1
       parseurl: 1.3.3
-      path-to-regexp: 0.1.12
+      path-to-regexp: 0.1.13
       proxy-addr: 2.0.7
       qs: 6.14.1
       range-parser: 1.2.1
@@ -19797,7 +19797,7 @@ snapshots:
 
   path-parse@1.0.7: {}
 
-  path-to-regexp@0.1.12: {}
+  path-to-regexp@0.1.13: {}
 
   path-to-regexp@8.3.0: {}
 
@@ -21704,7 +21704,7 @@ snapshots:
       compress-commons: 4.1.2
       readable-stream: 3.6.2
 
-  zod-to-json-schema@3.25.1(zod@3.25.76):
+  zod-to-json-schema@3.25.2(zod@3.25.76):
     dependencies:
       zod: 3.25.76
 

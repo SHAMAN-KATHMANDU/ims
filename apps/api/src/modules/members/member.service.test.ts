@@ -11,6 +11,20 @@ const mockFindExistingById = vi.fn();
 const mockUpdate = vi.fn();
 const mockCheckMember = vi.fn();
 const mockFindForExport = vi.fn();
+const mockPublishDomainEvent = vi.fn();
+
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) =>
+      Promise.resolve(mockPublishDomainEvent(...args)),
+  },
+}));
 
 const mockRepo: MemberRepository = {
   create: mockCreate,
@@ -58,6 +72,14 @@ describe("MemberService", () => {
         email: null,
         notes: null,
       });
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "members.member.created",
+          entityType: "MEMBER",
+          entityId: "m1",
+        }),
+      );
     });
 
     it("returns existing when phone already exists", async () => {
@@ -98,6 +120,9 @@ describe("MemberService", () => {
         id: "m1",
         phone: "+1",
         name: "Alice Updated",
+        email: null,
+        isActive: true,
+        updatedAt: new Date("2024-06-15T00:00:00.000Z"),
       });
 
       const result = await memberService.update("t1", "m1", {
@@ -106,6 +131,14 @@ describe("MemberService", () => {
       expect(result?.conflict).toBe(false);
       expect(result?.member.name).toBe("Alice Updated");
       expect(mockUpdate).toHaveBeenCalled();
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "members.member.updated",
+          entityType: "MEMBER",
+          entityId: "m1",
+        }),
+      );
     });
 
     it("returns null when member not found", async () => {
@@ -114,6 +147,36 @@ describe("MemberService", () => {
       const result = await memberService.update("t1", "missing", { name: "X" });
       expect(result).toBeNull();
       expect(mockUpdate).not.toHaveBeenCalled();
+    });
+
+    it("publishes a status change event when isActive changes", async () => {
+      mockFindById.mockResolvedValue({
+        id: "m1",
+        phone: "+1",
+        name: "Alice",
+        isActive: true,
+      });
+      mockUpdate.mockResolvedValue({
+        id: "m1",
+        phone: "+1",
+        name: "Alice",
+        email: null,
+        isActive: false,
+        updatedAt: new Date("2024-06-16T00:00:00.000Z"),
+      });
+
+      await memberService.update("t1", "m1", {
+        isActive: false,
+      });
+
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "t1",
+          eventName: "members.member.status_changed",
+          entityType: "MEMBER",
+          entityId: "m1",
+        }),
+      );
     });
   });
 });

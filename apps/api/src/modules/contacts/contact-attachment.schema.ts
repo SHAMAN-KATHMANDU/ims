@@ -2,7 +2,8 @@ import { z } from "zod";
 
 export const CreateContactAttachmentSchema = z.object({
   storageKey: z.string().min(1).max(768),
-  publicUrl: z.string().url().max(1024),
+  /** Optional; server stores canonical URL from PHOTOS_PUBLIC_URL_PREFIX. */
+  publicUrl: z.string().url().max(1024).optional(),
   fileName: z.string().min(1).max(255),
   fileSize: z.coerce
     .number()

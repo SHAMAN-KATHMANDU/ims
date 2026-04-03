@@ -35,7 +35,11 @@ interface VariationsTabProps {
       | Array<{ attributeTypeId: string; attributeValueId: string }>,
   ) => void;
   onUpdateSubVariants: (index: number, subVariants: string[]) => void;
-  onAddPhoto: (variationIndex: number, photoUrl: string) => void;
+  onAddPhoto: (
+    variationIndex: number,
+    photoUrl: string,
+    fileName?: string,
+  ) => void;
   onRemovePhoto: (variationIndex: number, photoIndex: number) => void;
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
   attributeTypes?: AttributeType[];
@@ -57,7 +61,7 @@ export function VariationsTab({
   productAttributeTypeIds = [],
   onProductAttributeTypeIdsChange,
 }: VariationsTabProps) {
-  const { uploadFile } = useS3DirectUpload();
+  const { uploadFile, mediaUploadEnabled } = useS3DirectUpload();
   const { toast } = useToast();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryVariationIndex, setLibraryVariationIndex] = useState(0);
@@ -164,6 +168,11 @@ export function VariationsTab({
       )}
       {variations.length > 0 && (
         <div className="space-y-4 border rounded-lg p-4">
+          {!mediaUploadEnabled && (
+            <p className="text-xs text-muted-foreground">
+              Photo upload and media library are disabled in this environment.
+            </p>
+          )}
           {variations.map((variation, index) => (
             <div
               key={index}
@@ -243,6 +252,7 @@ export function VariationsTab({
                   ref={fileInputRef}
                   type="file"
                   className="hidden"
+                  aria-label="Upload variation photo"
                   accept="image/jpeg,image/png,image/gif,image/webp"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
@@ -250,11 +260,11 @@ export function VariationsTab({
                     if (!file) return;
                     const idx = fileTargetIndexRef.current;
                     try {
-                      const { publicUrl } = await uploadFile({
+                      const { publicUrl, fileName } = await uploadFile({
                         file,
                         purpose: "product_photo",
                       });
-                      onAddPhoto(idx, publicUrl);
+                      onAddPhoto(idx, publicUrl, fileName);
                     } catch (err) {
                       toast({
                         title: getApiErrorMessage(err),
@@ -266,30 +276,34 @@ export function VariationsTab({
                 <div className="flex justify-between items-center flex-wrap gap-1">
                   <Label className="text-xs">Photos (Optional)</Label>
                   <div className="flex gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        fileTargetIndexRef.current = index;
-                        fileInputRef.current?.click();
-                      }}
-                      className="h-7 text-xs"
-                    >
-                      <Upload className="h-3 w-3 mr-1" /> Upload
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setLibraryVariationIndex(index);
-                        setLibraryOpen(true);
-                      }}
-                      className="h-7 text-xs"
-                    >
-                      <Images className="h-3 w-3 mr-1" /> Library
-                    </Button>
+                    {mediaUploadEnabled && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            fileTargetIndexRef.current = index;
+                            fileInputRef.current?.click();
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          <Upload className="h-3 w-3 mr-1" /> Upload
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLibraryVariationIndex(index);
+                            setLibraryOpen(true);
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          <Images className="h-3 w-3 mr-1" /> Library
+                        </Button>
+                      </>
+                    )}
                     <Button
                       type="button"
                       variant="ghost"
@@ -314,6 +328,7 @@ export function VariationsTab({
                         <img
                           src={photo.photoUrl}
                           alt={`Variation ${index + 1} photo ${photoIndex + 1}`}
+                          title={photo.fileName || photo.photoUrl}
                           className="h-20 w-full rounded border object-cover"
                           onError={(e) => {
                             e.currentTarget.src =
@@ -323,6 +338,11 @@ export function VariationsTab({
                         {photo.isPrimary && (
                           <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-1 rounded">
                             Primary
+                          </span>
+                        )}
+                        {photo.fileName && (
+                          <span className="absolute right-1 bottom-1 max-w-[95%] truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
+                            {photo.fileName}
                           </span>
                         )}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
@@ -365,7 +385,9 @@ export function VariationsTab({
       <MediaLibraryPickerDialog
         open={libraryOpen}
         onOpenChange={setLibraryOpen}
-        onPick={(url) => onAddPhoto(libraryVariationIndex, url)}
+        onPick={({ publicUrl, fileName }) =>
+          onAddPhoto(libraryVariationIndex, publicUrl, fileName)
+        }
       />
     </div>
   );

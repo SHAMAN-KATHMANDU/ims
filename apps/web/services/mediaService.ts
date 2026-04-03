@@ -1,20 +1,28 @@
 import api from "@/lib/axios";
 import { unwrapApiData } from "@/lib/apiResponse";
 
-export type MediaPurpose = "product_photo" | "contact_attachment" | "library";
+export type MediaPurpose =
+  | "product_photo"
+  | "contact_attachment"
+  | "library"
+  | "message_media";
 
 export type PresignResponse = {
   uploadUrl: string;
   key: string;
   publicUrl: string;
+  /** Normalized Content-Type; use this on the PUT and on register. */
+  contentType: string;
   expiresAt: string;
   maxBytes: number;
+  requiresCompletion: boolean;
 };
 
 export async function presignMedia(body: {
   purpose: MediaPurpose;
   mimeType: string;
   fileName?: string;
+  contentLength: number;
   entityType?: "products" | "contacts" | "library" | "messages";
   entityId?: string;
 }): Promise<PresignResponse> {
@@ -40,6 +48,8 @@ export type MediaAssetRow = {
 export async function listMediaAssets(params?: {
   limit?: number;
   cursor?: string;
+  purpose?: MediaPurpose;
+  mimePrefix?: string;
 }): Promise<{ items: MediaAssetRow[]; nextCursor: string | null }> {
   const res = await api.get("/media/assets", { params });
   return unwrapApiData<{ items: MediaAssetRow[]; nextCursor: string | null }>(
@@ -49,7 +59,7 @@ export async function listMediaAssets(params?: {
 
 export async function registerMediaAsset(body: {
   storageKey: string;
-  publicUrl: string;
+  publicUrl?: string;
   fileName: string;
   mimeType: string;
   byteSize?: number;
@@ -62,4 +72,13 @@ export async function registerMediaAsset(body: {
 export async function deleteMediaAsset(id: string): Promise<void> {
   const res = await api.delete(`/media/assets/${id}`);
   unwrapApiData<{ deleted: boolean }>(res.data);
+}
+
+export async function updateMediaAsset(
+  id: string,
+  data: { fileName: string },
+): Promise<MediaAssetRow> {
+  const res = await api.patch(`/media/assets/${id}`, data);
+  const { asset } = unwrapApiData<{ asset: MediaAssetRow }>(res.data);
+  return asset;
 }

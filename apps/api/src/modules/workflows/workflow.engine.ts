@@ -4,8 +4,13 @@
  * Uses repositories only; no direct Prisma access.
  */
 
-import type { WorkflowTrigger, WorkflowAction } from "@prisma/client";
+import type {
+  PipelineType,
+  WorkflowTrigger,
+  WorkflowAction,
+} from "@prisma/client";
 import workflowRepository from "./workflow.repository";
+import automationRepository from "@/modules/automation/automation.repository";
 import taskRepository from "@/modules/tasks/task.repository";
 import notificationRepository from "@/modules/notifications/notification.repository";
 import dealRepository from "@/modules/deals/deal.repository";
@@ -54,6 +59,20 @@ function resolveStageName(stages: unknown, triggerStageId: string): string {
   return stage?.name ?? triggerStageId;
 }
 
+function mapLegacyWorkflowTriggerToAutomationEvent(
+  trigger: WorkflowTrigger,
+): "crm.deal.created" | "crm.deal.stage_changed" | null {
+  switch (trigger) {
+    case "DEAL_CREATED":
+      return "crm.deal.created";
+    case "STAGE_ENTER":
+    case "STAGE_EXIT":
+      return "crm.deal.stage_changed";
+    default:
+      return null;
+  }
+}
+
 export async function executeWorkflowRules(
   event: WorkflowEvent,
   options?: ExecuteWorkflowRulesOptions,
@@ -72,6 +91,30 @@ export async function executeWorkflowRules(
   }
 
   const rulesPipelineId = options?.rulesPipelineId ?? event.deal.pipelineId;
+  const mappedAutomationEvent = mapLegacyWorkflowTriggerToAutomationEvent(
+    event.trigger,
+  );
+  if (
+    mappedAutomationEvent &&
+    (await automationRepository.hasActiveAutomationSuppressingLegacyWorkflow({
+      tenantId: event.deal.tenantId,
+      pipelineId: rulesPipelineId,
+      eventName: mappedAutomationEvent,
+    }))
+  ) {
+    logger.warn(
+      "Skipping legacy CRM workflow rules in favor of automation",
+      undefined,
+      {
+        dealId: event.deal.id,
+        tenantId: event.deal.tenantId,
+        trigger: event.trigger,
+        pipelineId: rulesPipelineId,
+      },
+    );
+    return;
+  }
+
   const rules = await workflowRepository.findActiveRulesByPipeline(
     event.deal.tenantId,
     rulesPipelineId,
@@ -80,6 +123,7 @@ export async function executeWorkflowRules(
   for (const rule of rules) {
     const ruleWithTrigger = rule as {
       id: string;
+      workflowId?: string;
       trigger: WorkflowTrigger;
       triggerStageId: string | null;
       action: WorkflowAction;
@@ -88,20 +132,67 @@ export async function executeWorkflowRules(
     };
     if (!matchesTrigger(ruleWithTrigger, event)) continue;
 
+    let runId: string | null = null;
     try {
+      if (ruleWithTrigger.workflowId) {
+        const run = await workflowRepository.createWorkflowRun({
+          tenantId: event.deal.tenantId,
+          workflowId: ruleWithTrigger.workflowId,
+          ruleId: ruleWithTrigger.id,
+          trigger: event.trigger,
+          action: ruleWithTrigger.action,
+          status: "RUNNING",
+          entityId: event.deal.id,
+          metadata: {
+            dealId: event.deal.id,
+            pipelineId: event.deal.pipelineId,
+            stage: event.deal.stage,
+            previousStage: event.previousStage ?? null,
+          },
+        });
+        runId = run.id;
+      }
       const config = parseActionConfig(
         ruleWithTrigger.action,
         ruleWithTrigger.actionConfig,
       );
       await executeAction(ruleWithTrigger.action, config, event);
+      if (runId && ruleWithTrigger.workflowId) {
+        await workflowRepository.markWorkflowRunSucceeded(
+          runId,
+          ruleWithTrigger.workflowId,
+        );
+      }
     } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Workflow rule execution failed";
+      try {
+        if (runId && ruleWithTrigger.workflowId) {
+          await workflowRepository.markWorkflowRunFailed(
+            runId,
+            ruleWithTrigger.workflowId,
+            message,
+          );
+        }
+      } catch (historyError) {
+        logger.error("Workflow run history write failed", undefined, {
+          workflowId: ruleWithTrigger.workflowId,
+          ruleId: ruleWithTrigger.id,
+          dealId: event.deal.id,
+          tenantId: event.deal.tenantId,
+          error:
+            historyError instanceof Error
+              ? historyError.message
+              : String(historyError),
+        });
+      }
       logger.error("Workflow rule execution failed", undefined, {
         ruleId: ruleWithTrigger.id,
         dealId: event.deal.id,
         tenantId: event.deal.tenantId,
         trigger: event.trigger,
         action: ruleWithTrigger.action,
-        error: err instanceof Error ? err.message : String(err),
+        error: message,
       });
     }
   }
@@ -170,11 +261,28 @@ async function executeAction(
           );
           dealIdForTask = null;
         } else {
+          const targetPipelineId =
+            link.targetPipelineId ??
+            (link.targetPipelineType
+              ? await resolvePipelineIdByType(
+                  deal.tenantId,
+                  link.targetPipelineType as PipelineType,
+                )
+              : null);
+          if (!targetPipelineId) {
+            logger.warn(
+              "CREATE_TASK OPEN_DEAL_IN_PIPELINE skipped: target pipeline missing",
+              undefined,
+              { dealId: deal.id, tenantId: deal.tenantId },
+            );
+            dealIdForTask = null;
+            break;
+          }
           const open =
             await dealRepository.findLatestOpenDealForContactInPipeline(
               deal.tenantId,
               deal.contactId,
-              link.targetPipelineId,
+              targetPipelineId,
               link.stageName ?? null,
             );
           if (!open) {
@@ -183,7 +291,7 @@ async function executeAction(
               undefined,
               {
                 contactId: deal.contactId,
-                pipelineId: link.targetPipelineId,
+                pipelineId: targetPipelineId,
                 tenantId: deal.tenantId,
               },
             );
@@ -247,25 +355,11 @@ async function executeAction(
       const value = c.value;
       if (value === undefined) return;
 
-      if (c.field === "probability") {
-        const num = typeof value === "number" ? value : Number(value);
-        if (!Number.isFinite(num)) return;
-        await dealRepository.update(
-          deal.id,
-          { probability: Math.min(100, Math.max(0, num)) },
-          "",
-        );
-      } else {
-        const dateStr =
-          value != null && value !== ""
-            ? new Date(value as string).toISOString()
-            : null;
-        await dealRepository.update(
-          deal.id,
-          { expectedCloseDate: dateStr },
-          "",
-        );
-      }
+      const dateStr =
+        value != null && value !== ""
+          ? new Date(value as string).toISOString()
+          : null;
+      await dealRepository.update(deal.id, { expectedCloseDate: dateStr }, "");
       break;
     }
 
@@ -291,41 +385,46 @@ async function executeAction(
 
     case "CREATE_DEAL": {
       const c = config as ActionConfigMap["CREATE_DEAL"];
+      const targetPipelineId =
+        c.pipelineId ??
+        (c.pipelineType
+          ? await resolvePipelineIdByType(
+              deal.tenantId,
+              c.pipelineType as PipelineType,
+            )
+          : null);
+      if (!targetPipelineId) {
+        logger.warn("CREATE_DEAL skipped: target pipeline missing", undefined, {
+          tenantId: deal.tenantId,
+          pipelineId: c.pipelineId,
+          pipelineType: c.pipelineType,
+        });
+        break;
+      }
       const pipeline = await dealRepository.findDefaultPipeline(
         deal.tenantId,
-        c.pipelineId,
+        targetPipelineId,
       );
-      if (!pipeline || pipeline.id !== c.pipelineId) {
+      if (!pipeline || pipeline.id !== targetPipelineId) {
         logger.warn(
           "CREATE_DEAL skipped: pipeline not found or mismatch",
           undefined,
           {
             tenantId: deal.tenantId,
-            pipelineId: c.pipelineId,
+            pipelineId: targetPipelineId,
           },
         );
         break;
       }
       const stages = pipeline.stages;
       let stageName: string;
-      let probability = 0;
       if (c.stageId) {
         stageName = resolveStageName(stages, c.stageId);
-        const isUuid = UUID_REGEX.test(c.stageId);
-        const row = Array.isArray(stages)
-          ? (
-              stages as Array<{
-                id?: string;
-                name: string;
-                probability?: number;
-              }>
-            ).find((s) => (isUuid ? s.id === c.stageId : s.name === stageName))
-          : undefined;
-        probability = Number(row?.probability ?? 0);
+      } else if (c.stageName) {
+        stageName = c.stageName;
       } else if (Array.isArray(stages) && stages.length > 0) {
-        const first = stages[0] as { name: string; probability?: number };
+        const first = stages[0] as { name: string };
         stageName = String(first.name);
-        probability = Number(first.probability ?? 0);
       } else {
         stageName = "Qualification";
       }
@@ -338,9 +437,6 @@ async function executeAction(
           name: c.title?.trim() || "New deal",
           value: 0,
           stage: stageName,
-          probability: Number.isFinite(probability)
-            ? Math.min(100, Math.max(0, probability))
-            : 0,
           contactId: deal.contactId,
           memberId: deal.memberId,
           pipelineId: pipeline.id,
@@ -354,12 +450,10 @@ async function executeAction(
     case "UPDATE_CONTACT_FIELD": {
       const c = config as ActionConfigMap["UPDATE_CONTACT_FIELD"];
       if (!deal.contactId) break;
-      const patch =
-        c.field === "source" ? { source: c.value } : { journeyType: c.value };
       await contactRepository.updateContactByWorkflow(
         deal.tenantId,
         deal.contactId,
-        patch,
+        { source: c.value },
       );
       break;
     }
@@ -389,4 +483,15 @@ async function executeAction(
     default:
       break;
   }
+}
+
+async function resolvePipelineIdByType(
+  tenantId: string,
+  pipelineType: PipelineType,
+): Promise<string | null> {
+  const pipeline = await dealRepository.findPipelineByType(
+    tenantId,
+    pipelineType,
+  );
+  return pipeline?.id ?? null;
 }

@@ -14,6 +14,15 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Trash2 } from "lucide-react";
+import { HelpTopicSheet } from "@/components/help-topic-sheet";
+import {
+  WORKFLOW_ACTION_META,
+  WORKFLOW_ACTION_VALUES,
+  WORKFLOW_TRIGGER_META,
+  WORKFLOW_TRIGGER_VALUES,
+  type WorkflowActionValue,
+  type WorkflowTriggerValue,
+} from "@repo/shared";
 import {
   CreateWorkflowFormSchema,
   UpdateWorkflowFormSchema,
@@ -29,27 +38,6 @@ export interface PipelineStageOption {
   id: string;
   name: string;
 }
-
-const TRIGGER_LABELS: Record<WorkflowTrigger, string> = {
-  STAGE_ENTER: "Stage enter",
-  STAGE_EXIT: "Stage exit",
-  DEAL_CREATED: "Deal created",
-  DEAL_WON: "Deal won",
-  DEAL_LOST: "Deal lost",
-  PURCHASE_COUNT_CHANGED: "Purchase count changed",
-};
-
-const ACTION_LABELS: Record<WorkflowAction, string> = {
-  CREATE_TASK: "Create task",
-  SEND_NOTIFICATION: "Send notification",
-  MOVE_STAGE: "Move stage",
-  UPDATE_FIELD: "Update field",
-  CREATE_ACTIVITY: "Create activity",
-  CREATE_DEAL: "Create deal",
-  UPDATE_CONTACT_FIELD: "Update contact field",
-  APPLY_TAG: "Apply tag",
-  REMOVE_TAG: "Remove tag",
-};
 
 interface PipelineOption {
   id: string;
@@ -82,10 +70,10 @@ const DEFAULT_ACTION_CONFIG: Partial<
 > = {
   CREATE_TASK: { taskTitle: "Follow up", dueDateDays: 1 },
   SEND_NOTIFICATION: { title: "", message: "" },
-  MOVE_STAGE: { targetStageId: "", targetPipelineId: undefined },
-  UPDATE_FIELD: { field: "probability", value: 0 },
+  MOVE_STAGE: { targetStageId: undefined, targetPipelineId: undefined },
+  UPDATE_FIELD: { field: "expectedCloseDate", value: "" },
   CREATE_ACTIVITY: { type: "CALL", subject: "", notes: null },
-  CREATE_DEAL: { pipelineId: "", stageId: "", title: "" },
+  CREATE_DEAL: { pipelineId: undefined, stageId: undefined, title: "" },
   UPDATE_CONTACT_FIELD: { field: "source", value: "" },
   APPLY_TAG: { tag: "" },
   REMOVE_TAG: { tag: "" },
@@ -128,6 +116,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
   const addRule = () => {
     append({
       trigger: "STAGE_ENTER",
+      triggerStageId: null,
       action: "CREATE_TASK",
       actionConfig: { taskTitle: "Follow up", dueDateDays: 1 },
     });
@@ -188,8 +177,20 @@ export function WorkflowForm(props: WorkflowFormProps) {
       </div>
 
       <div>
-        <div className="flex items-center justify-between mb-2">
-          <Label>Rules</Label>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1">
+            <Label>Rules</Label>
+            <HelpTopicSheet
+              topicLabel="Workflow rules"
+              sheetTitle="Workflow rules"
+            >
+              <p>
+                <strong>Stage entered</strong> and <strong>Stage exited</strong>{" "}
+                require a specific stage unless you choose{" "}
+                <strong>Any stage</strong>.
+              </p>
+            </HelpTopicSheet>
+          </div>
           <Button type="button" size="sm" variant="outline" onClick={addRule}>
             <Plus className="h-3 w-3 mr-1" /> Add rule
           </Button>
@@ -202,7 +203,27 @@ export function WorkflowForm(props: WorkflowFormProps) {
           <div className="space-y-2">
             {fields.map((field, i) => {
               const action = form.watch(`rules.${i}.action`);
+              const triggerNow = form.watch(`rules.${i}.trigger`);
               const actionConfig = form.watch(`rules.${i}.actionConfig`) ?? {};
+              const stageIdRaw = form.watch(`rules.${i}.triggerStageId`) as
+                | string
+                | null
+                | undefined;
+              const stageIds = new Set(stages.map((s) => s.id));
+              const orphanStageId =
+                typeof stageIdRaw === "string" &&
+                stageIdRaw.length > 0 &&
+                !stageIds.has(stageIdRaw)
+                  ? stageIdRaw
+                  : null;
+              const triggerOptions: WorkflowTriggerValue[] =
+                WORKFLOW_TRIGGER_VALUES.includes(triggerNow)
+                  ? [...WORKFLOW_TRIGGER_VALUES]
+                  : [...WORKFLOW_TRIGGER_VALUES, triggerNow];
+              const actionOptions: WorkflowActionValue[] =
+                WORKFLOW_ACTION_VALUES.includes(action)
+                  ? [...WORKFLOW_ACTION_VALUES]
+                  : [...WORKFLOW_ACTION_VALUES, action];
               const updateConfig = (key: string, value: unknown) => {
                 form.setValue(`rules.${i}.actionConfig`, {
                   ...actionConfig,
@@ -212,9 +233,21 @@ export function WorkflowForm(props: WorkflowFormProps) {
               return (
                 <div
                   key={field.id}
-                  className="space-y-2 p-2 border rounded bg-muted/30"
+                  className="space-y-3 rounded-lg border bg-card p-3 shadow-sm"
                 >
-                  <div className="flex flex-wrap gap-2 items-center">
+                  <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]">
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Trigger
+                      </Label>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs text-muted-foreground">
+                        Action
+                      </Label>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                     <Select
                       value={form.watch(`rules.${i}.trigger`)}
                       onValueChange={(v) =>
@@ -224,17 +257,26 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         )
                       }
                     >
-                      <SelectTrigger className="w-36">
+                      <SelectTrigger className="min-w-44 w-full sm:w-auto sm:min-w-52">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(TRIGGER_LABELS) as WorkflowTrigger[]).map(
-                          (t) => (
-                            <SelectItem key={t} value={t}>
-                              {TRIGGER_LABELS[t]}
+                        {triggerOptions.map((t) => {
+                          const meta = WORKFLOW_TRIGGER_META[t];
+                          const label = meta?.label ?? t;
+                          const description =
+                            meta?.description ?? "No description available.";
+                          return (
+                            <SelectItem key={t} value={t} textValue={label}>
+                              <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                                <span>{label}</span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  {description}
+                                </span>
+                              </span>
                             </SelectItem>
-                          ),
-                        )}
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     {(form.watch(`rules.${i}.trigger`) === "STAGE_ENTER" ||
@@ -251,20 +293,27 @@ export function WorkflowForm(props: WorkflowFormProps) {
                           )
                         }
                       >
-                        <SelectTrigger className="w-36">
+                        <SelectTrigger className="min-w-40 w-full sm:w-auto sm:min-w-44">
                           <SelectValue placeholder="Stage" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="__any__">Any stage</SelectItem>
+                          {orphanStageId ? (
+                            <SelectItem value={orphanStageId}>
+                              Removed stage (pick another or Any stage)
+                            </SelectItem>
+                          ) : null}
                           {stages.map((s) => (
-                            <SelectItem key={s.id} value={s.name}>
+                            <SelectItem key={s.id} value={s.id}>
                               {s.name}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     )}
-                    <span className="text-muted-foreground">→</span>
+                    <span className="text-muted-foreground hidden sm:inline">
+                      →
+                    </span>
                     <Select
                       value={action}
                       onValueChange={(v) => {
@@ -276,17 +325,26 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         );
                       }}
                     >
-                      <SelectTrigger className="w-40">
+                      <SelectTrigger className="min-w-44 w-full sm:w-auto sm:min-w-52">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {(Object.keys(ACTION_LABELS) as WorkflowAction[]).map(
-                          (a) => (
-                            <SelectItem key={a} value={a}>
-                              {ACTION_LABELS[a]}
+                        {actionOptions.map((a) => {
+                          const meta = WORKFLOW_ACTION_META[a];
+                          const label = meta?.label ?? a;
+                          const description =
+                            meta?.description ?? "No description available.";
+                          return (
+                            <SelectItem key={a} value={a} textValue={label}>
+                              <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                                <span>{label}</span>
+                                <span className="text-xs font-normal text-muted-foreground">
+                                  {description}
+                                </span>
+                              </span>
                             </SelectItem>
-                          ),
-                        )}
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                     <Button
@@ -302,169 +360,215 @@ export function WorkflowForm(props: WorkflowFormProps) {
                   </div>
                   {/* Per-action config fields */}
                   {action === "CREATE_TASK" && (
-                    <div className="flex flex-col gap-2 pl-2 text-sm">
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <Label className="sr-only">Task title</Label>
-                        <Input
-                          placeholder="Task title"
-                          className="h-8 w-40"
-                          value={(actionConfig.taskTitle as string) ?? ""}
-                          onChange={(e) =>
-                            updateConfig(
-                              "taskTitle",
-                              e.target.value || undefined,
-                            )
-                          }
-                        />
-                        <Label className="sr-only">Due in days</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          placeholder="Due in days"
-                          className="h-8 w-24"
-                          value={(actionConfig.dueDateDays as number) ?? ""}
-                          onChange={(e) =>
-                            updateConfig(
-                              "dueDateDays",
-                              e.target.value
-                                ? Number(e.target.value)
-                                : undefined,
-                            )
-                          }
-                        />
-                      </div>
-                      <div className="flex flex-wrap gap-2 items-center">
-                        <Label className="text-muted-foreground whitespace-nowrap">
-                          Link task to
-                        </Label>
-                        <Select
-                          value={
-                            (
-                              actionConfig.taskDealLink as
-                                | { mode?: string }
-                                | undefined
-                            )?.mode === "OPEN_DEAL_IN_PIPELINE"
-                              ? "open_pipeline"
-                              : "current"
-                          }
-                          onValueChange={(v) => {
-                            if (v === "current") {
-                              const { taskDealLink: _t, ...rest } =
-                                actionConfig as Record<string, unknown>;
-                              form.setValue(`rules.${i}.actionConfig`, rest);
-                            } else {
-                              const firstPid = props.pipelines[0]?.id ?? "";
-                              form.setValue(`rules.${i}.actionConfig`, {
-                                ...actionConfig,
-                                taskDealLink: {
-                                  mode: "OPEN_DEAL_IN_PIPELINE",
-                                  targetPipelineId: firstPid,
-                                  stageName: undefined,
-                                },
-                              });
-                            }
-                          }}
+                    <div className="flex flex-col gap-3 border-t border-border pt-3 pl-0 text-sm sm:pl-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-medium text-foreground">
+                          Create task
+                        </span>
+                        <HelpTopicSheet
+                          topicLabel="Task fields and deal linkage"
+                          sheetTitle="Create task: title, due date, and linkage"
                         >
-                          <SelectTrigger className="h-8 w-52">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="current">
-                              Triggering deal
-                            </SelectItem>
-                            <SelectItem value="open_pipeline">
-                              Open deal (other pipeline)
-                            </SelectItem>
-                          </SelectContent>
-                        </Select>
+                          <p>
+                            <strong>Task title</strong> is the name shown on the
+                            task your team will see in their work list.
+                          </p>
+                          <p>
+                            <strong>Due in days</strong> sets a due date
+                            relative to when the rule runs (for example{" "}
+                            <strong>1</strong> means due tomorrow from the run
+                            time).
+                          </p>
+                          <p>
+                            <strong>Link task to → Triggering deal</strong>{" "}
+                            keeps the task associated with the deal that fired
+                            this rule, so context stays on the same opportunity.
+                          </p>
+                          <p>
+                            <strong>Open deal (other pipeline)</strong> links
+                            the task to a deal in a different pipeline. Choose
+                            the pipeline and optionally a stage name so new or
+                            matched deals are found in the right place.
+                          </p>
+                        </HelpTopicSheet>
                       </div>
-                      {(
-                        actionConfig.taskDealLink as
-                          | { mode?: string; targetPipelineId?: string }
-                          | undefined
-                      )?.mode === "OPEN_DEAL_IN_PIPELINE" && (
-                        <div className="flex flex-wrap gap-2 items-center">
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`workflow-task-title-${field.id}`}>
+                            Task title
+                          </Label>
+                          <Input
+                            id={`workflow-task-title-${field.id}`}
+                            placeholder="e.g. Follow up"
+                            className="h-9"
+                            value={(actionConfig.taskTitle as string) ?? ""}
+                            onChange={(e) =>
+                              updateConfig(
+                                "taskTitle",
+                                e.target.value || undefined,
+                              )
+                            }
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor={`workflow-due-days-${field.id}`}>
+                            Due in days
+                          </Label>
+                          <Input
+                            id={`workflow-due-days-${field.id}`}
+                            type="number"
+                            min={0}
+                            placeholder="0"
+                            className="h-9"
+                            value={(actionConfig.dueDateDays as number) ?? ""}
+                            onChange={(e) =>
+                              updateConfig(
+                                "dueDateDays",
+                                e.target.value
+                                  ? Number(e.target.value)
+                                  : undefined,
+                              )
+                            }
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2 items-end">
+                        <div className="space-y-1.5">
+                          <Label
+                            className="text-muted-foreground"
+                            htmlFor={`workflow-task-link-${field.id}`}
+                          >
+                            Link task to
+                          </Label>
                           <Select
                             value={
                               (
-                                actionConfig.taskDealLink as {
-                                  targetPipelineId?: string;
-                                }
-                              ).targetPipelineId ?? ""
-                            }
-                            onValueChange={(pipelineId) => {
-                              form.setValue(`rules.${i}.actionConfig`, {
-                                ...actionConfig,
-                                taskDealLink: {
-                                  mode: "OPEN_DEAL_IN_PIPELINE",
-                                  targetPipelineId: pipelineId,
-                                  stageName: undefined,
-                                },
-                              });
-                            }}
-                          >
-                            <SelectTrigger className="h-8 w-44">
-                              <SelectValue placeholder="Pipeline" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {props.pipelines.map((p) => (
-                                <SelectItem key={p.id} value={p.id}>
-                                  {p.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Select
-                            value={
-                              ((
-                                actionConfig.taskDealLink as {
-                                  stageName?: string;
-                                }
-                              )?.stageName ??
-                                "") ||
-                              "__any_stage__"
+                                actionConfig.taskDealLink as
+                                  | { mode?: string }
+                                  | undefined
+                              )?.mode === "OPEN_DEAL_IN_PIPELINE"
+                                ? "open_pipeline"
+                                : "current"
                             }
                             onValueChange={(v) => {
-                              const link = actionConfig.taskDealLink as {
-                                mode: "OPEN_DEAL_IN_PIPELINE";
-                                targetPipelineId: string;
-                              };
-                              form.setValue(`rules.${i}.actionConfig`, {
-                                ...actionConfig,
-                                taskDealLink: {
-                                  ...link,
-                                  stageName:
-                                    v === "__any_stage__" ? undefined : v,
-                                },
-                              });
+                              if (v === "current") {
+                                const { taskDealLink: _t, ...rest } =
+                                  actionConfig as Record<string, unknown>;
+                                form.setValue(`rules.${i}.actionConfig`, rest);
+                              } else {
+                                const firstPid = props.pipelines[0]?.id ?? "";
+                                form.setValue(`rules.${i}.actionConfig`, {
+                                  ...actionConfig,
+                                  taskDealLink: {
+                                    mode: "OPEN_DEAL_IN_PIPELINE",
+                                    targetPipelineId: firstPid,
+                                    stageName: undefined,
+                                  },
+                                });
+                              }
                             }}
                           >
-                            <SelectTrigger className="h-8 w-40">
-                              <SelectValue placeholder="Stage (any)" />
+                            <SelectTrigger className="h-8 w-52">
+                              <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__any_stage__">
-                                Any stage
+                              <SelectItem value="current">
+                                Triggering deal
                               </SelectItem>
-                              {(
-                                props.pipelines.find(
-                                  (p) =>
-                                    p.id ===
-                                    (
-                                      actionConfig.taskDealLink as {
-                                        targetPipelineId?: string;
-                                      }
-                                    )?.targetPipelineId,
-                                )?.stages ?? []
-                              ).map((s) => (
-                                <SelectItem key={s.id} value={s.name}>
-                                  {s.name}
-                                </SelectItem>
-                              ))}
+                              <SelectItem value="open_pipeline">
+                                Open deal (other pipeline)
+                              </SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                      )}
+                        {(
+                          actionConfig.taskDealLink as
+                            | { mode?: string; targetPipelineId?: string }
+                            | undefined
+                        )?.mode === "OPEN_DEAL_IN_PIPELINE" && (
+                          <div className="flex flex-wrap gap-2 items-center">
+                            <Select
+                              value={
+                                (
+                                  actionConfig.taskDealLink as {
+                                    targetPipelineId?: string;
+                                  }
+                                ).targetPipelineId ?? ""
+                              }
+                              onValueChange={(pipelineId) => {
+                                form.setValue(`rules.${i}.actionConfig`, {
+                                  ...actionConfig,
+                                  taskDealLink: {
+                                    mode: "OPEN_DEAL_IN_PIPELINE",
+                                    targetPipelineId: pipelineId,
+                                    stageName: undefined,
+                                  },
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-8 w-44">
+                                <SelectValue placeholder="Pipeline" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {props.pipelines.map((p) => (
+                                  <SelectItem key={p.id} value={p.id}>
+                                    {p.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Select
+                              value={
+                                ((
+                                  actionConfig.taskDealLink as {
+                                    stageName?: string;
+                                  }
+                                )?.stageName ??
+                                  "") ||
+                                "__any_stage__"
+                              }
+                              onValueChange={(v) => {
+                                const link = actionConfig.taskDealLink as {
+                                  mode: "OPEN_DEAL_IN_PIPELINE";
+                                  targetPipelineId: string;
+                                };
+                                form.setValue(`rules.${i}.actionConfig`, {
+                                  ...actionConfig,
+                                  taskDealLink: {
+                                    ...link,
+                                    stageName:
+                                      v === "__any_stage__" ? undefined : v,
+                                  },
+                                });
+                              }}
+                            >
+                              <SelectTrigger className="h-8 w-40">
+                                <SelectValue placeholder="Stage (any)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__any_stage__">
+                                  Any stage
+                                </SelectItem>
+                                {(
+                                  props.pipelines.find(
+                                    (p) =>
+                                      p.id ===
+                                      (
+                                        actionConfig.taskDealLink as {
+                                          targetPipelineId?: string;
+                                        }
+                                      )?.targetPipelineId,
+                                  )?.stages ?? []
+                                ).map((s) => (
+                                  <SelectItem key={s.id} value={s.name}>
+                                    {s.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                   {action === "SEND_NOTIFICATION" && (
@@ -488,7 +592,23 @@ export function WorkflowForm(props: WorkflowFormProps) {
                     </div>
                   )}
                   {action === "MOVE_STAGE" && (
-                    <div className="flex flex-col gap-2 pl-2 text-sm">
+                    <div className="flex flex-col gap-2 border-t border-border pt-3 pl-0 text-sm sm:pl-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs font-medium text-foreground">
+                          Move deal
+                        </span>
+                        <HelpTopicSheet
+                          topicLabel="Move deal target"
+                          sheetTitle="Target pipeline and stage"
+                        >
+                          <p>
+                            Pick another pipeline to move the deal there when
+                            this rule runs. Leave as this workflow&apos;s
+                            pipeline to only change stage on the current
+                            pipeline.
+                          </p>
+                        </HelpTopicSheet>
+                      </div>
                       <div className="flex flex-wrap gap-2 items-center">
                         <Label className="text-muted-foreground whitespace-nowrap">
                           Target pipeline
@@ -550,18 +670,13 @@ export function WorkflowForm(props: WorkflowFormProps) {
                                 )?.stages ?? [])
                               : stages
                             ).map((s) => (
-                              <SelectItem key={s.id} value={s.name}>
+                              <SelectItem key={s.id} value={s.id}>
                                 {s.name}
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
                       </div>
-                      <p className="text-xs text-muted-foreground max-w-md">
-                        Pick another pipeline to move the deal there when this
-                        rule runs. Leave as this workflow&apos;s pipeline to
-                        only change stage on the current pipeline.
-                      </p>
                     </div>
                   )}
                   {action === "UPDATE_FIELD" && (
@@ -574,9 +689,6 @@ export function WorkflowForm(props: WorkflowFormProps) {
                           <SelectValue placeholder="Field" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="probability">
-                            Probability
-                          </SelectItem>
                           <SelectItem value="expectedCloseDate">
                             Expected close date
                           </SelectItem>
@@ -627,6 +739,9 @@ export function WorkflowForm(props: WorkflowFormProps) {
                   )}
                   {action === "CREATE_DEAL" && (
                     <div className="flex flex-col gap-2 pl-2 text-sm">
+                      <p className="text-xs text-muted-foreground">
+                        New deal pipeline, stage, and title
+                      </p>
                       <div className="flex flex-wrap gap-2 items-center">
                         <Select
                           value={(actionConfig.pipelineId as string) ?? ""}
@@ -666,7 +781,7 @@ export function WorkflowForm(props: WorkflowFormProps) {
                                 (p) => p.id === actionConfig.pipelineId,
                               )?.stages ?? []
                             ).map((s) => (
-                              <SelectItem key={s.id} value={s.name}>
+                              <SelectItem key={s.id} value={s.id}>
                                 {s.name}
                               </SelectItem>
                             ))}
@@ -685,6 +800,9 @@ export function WorkflowForm(props: WorkflowFormProps) {
                   )}
                   {action === "UPDATE_CONTACT_FIELD" && (
                     <div className="flex flex-wrap gap-2 items-center pl-2 text-sm">
+                      <Label className="text-muted-foreground whitespace-nowrap">
+                        Contact field
+                      </Label>
                       <Select
                         value={(actionConfig.field as string) ?? "source"}
                         onValueChange={(v) => updateConfig("field", v)}
@@ -694,9 +812,6 @@ export function WorkflowForm(props: WorkflowFormProps) {
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="source">Source</SelectItem>
-                          <SelectItem value="journeyType">
-                            Journey type
-                          </SelectItem>
                         </SelectContent>
                       </Select>
                       <Input

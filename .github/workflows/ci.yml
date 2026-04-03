@@ -94,6 +94,14 @@ jobs:
           cache: "pnpm"
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Guard Prisma migrations — tenant FK must reference tenants(id)
+        run: |
+          set -e
+          if grep -R 'REFERENCES "tenants"("tenant_id")' apps/api/prisma/migrations --include='*.sql' 2>/dev/null; then
+            echo "::error::Invalid FK in migration SQL: use REFERENCES \"tenants\"(\"id\"). The Tenant primary key column is id, not tenant_id."
+            exit 1
+          fi
+          echo "Prisma migration tenant FK guard OK."
       - name: Lint API (and shared if needed)
         run: pnpm run lint --filter=api --filter=@repo/shared
 
@@ -176,6 +184,23 @@ jobs:
         run: pnpm --filter @repo/shared build
       - name: Run Web tests
         run: pnpm --filter web test:unit
+
+  test-shared:
+    name: Test shared package
+    runs-on: self-hosted
+    needs: [changes]
+    if: needs.changes.outputs.shared == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Run shared package unit tests
+        run: pnpm --filter @repo/shared test
 
   typecheck:
     name: Type check

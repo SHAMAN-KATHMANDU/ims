@@ -1,11 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 const mockFindActiveRulesByPipeline = vi.fn();
+const mockCreateWorkflowRun = vi.fn();
+const mockMarkWorkflowRunSucceeded = vi.fn();
+const mockMarkWorkflowRunFailed = vi.fn();
 const mockTaskCreate = vi.fn();
 const mockNotificationCreate = vi.fn();
 const mockDealUpdate = vi.fn();
 const mockActivityCreate = vi.fn();
 const mockUpdateStageFromAutomation = vi.fn();
+const mockHasActiveAutomationSuppressingLegacyWorkflow = vi.fn();
 
 const { mockShouldSkipWorkflowRules } = vi.hoisted(() => ({
   mockShouldSkipWorkflowRules: vi.fn().mockReturnValue(false),
@@ -15,12 +19,23 @@ vi.mock("./workflow.repository", () => ({
   default: {
     findActiveRulesByPipeline: (...args: unknown[]) =>
       mockFindActiveRulesByPipeline(...args),
+    createWorkflowRun: (...args: unknown[]) => mockCreateWorkflowRun(...args),
+    markWorkflowRunSucceeded: (...args: unknown[]) =>
+      mockMarkWorkflowRunSucceeded(...args),
+    markWorkflowRunFailed: (...args: unknown[]) =>
+      mockMarkWorkflowRunFailed(...args),
   },
 }));
 vi.mock("./workflow-execution-context", () => ({
   shouldSkipWorkflowRules: () => mockShouldSkipWorkflowRules(),
   MAX_WORKFLOW_NESTING_DEPTH: 5,
   runWithIncreasedWorkflowNestingDepth: async <T>(fn: () => Promise<T>) => fn(),
+}));
+vi.mock("@/modules/automation/automation.repository", () => ({
+  default: {
+    hasActiveAutomationSuppressingLegacyWorkflow: (...args: unknown[]) =>
+      mockHasActiveAutomationSuppressingLegacyWorkflow(...args),
+  },
 }));
 vi.mock("@/modules/tasks/task.repository", () => ({
   default: { create: (...args: unknown[]) => mockTaskCreate(...args) },
@@ -64,6 +79,8 @@ const baseDeal = {
 describe("WorkflowEngine", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockCreateWorkflowRun.mockResolvedValue({ id: "run-1" });
+    mockHasActiveAutomationSuppressingLegacyWorkflow.mockResolvedValue(false);
   });
 
   describe("executeWorkflowRules", () => {
@@ -80,6 +97,24 @@ describe("WorkflowEngine", () => {
       expect(mockNotificationCreate).not.toHaveBeenCalled();
       expect(mockUpdateStageFromAutomation).not.toHaveBeenCalled();
       expect(mockActivityCreate).not.toHaveBeenCalled();
+    });
+
+    it("skips legacy CRM workflows when automation suppression is active", async () => {
+      mockHasActiveAutomationSuppressingLegacyWorkflow.mockResolvedValue(true);
+
+      await executeWorkflowRules({
+        trigger: "DEAL_CREATED",
+        deal: baseDeal,
+      });
+
+      expect(
+        mockHasActiveAutomationSuppressingLegacyWorkflow,
+      ).toHaveBeenCalledWith({
+        tenantId: "t1",
+        pipelineId: "p1",
+        eventName: "crm.deal.created",
+      });
+      expect(mockFindActiveRulesByPipeline).not.toHaveBeenCalled();
     });
 
     it("skips rule when trigger does not match", async () => {
@@ -105,6 +140,7 @@ describe("WorkflowEngine", () => {
       mockFindActiveRulesByPipeline.mockResolvedValue([
         {
           id: "r1",
+          workflowId: "wf1",
           trigger: "DEAL_CREATED",
           triggerStageId: null,
           action: "CREATE_TASK",
@@ -129,6 +165,8 @@ describe("WorkflowEngine", () => {
         }),
         "u1",
       );
+      expect(mockCreateWorkflowRun).toHaveBeenCalled();
+      expect(mockMarkWorkflowRunSucceeded).toHaveBeenCalledWith("run-1", "wf1");
     });
 
     it("executes SEND_NOTIFICATION when rule matches", async () => {
@@ -340,14 +378,14 @@ describe("WorkflowEngine", () => {
       );
     });
 
-    it("executes UPDATE_FIELD for probability", async () => {
+    it("executes UPDATE_FIELD for expectedCloseDate", async () => {
       mockFindActiveRulesByPipeline.mockResolvedValue([
         {
           id: "r1",
           trigger: "DEAL_CREATED",
           triggerStageId: null,
           action: "UPDATE_FIELD",
-          actionConfig: { field: "probability", value: 75 },
+          actionConfig: { field: "expectedCloseDate", value: "2026-04-10" },
         },
       ]);
       mockDealUpdate.mockResolvedValue({});
@@ -359,8 +397,33 @@ describe("WorkflowEngine", () => {
 
       expect(mockDealUpdate).toHaveBeenCalledWith(
         "deal-1",
-        { probability: 75 },
+        { expectedCloseDate: "2026-04-10T00:00:00.000Z" },
         "",
+      );
+    });
+
+    it("records failed workflow runs when action execution throws", async () => {
+      mockFindActiveRulesByPipeline.mockResolvedValue([
+        {
+          id: "r1",
+          workflowId: "wf1",
+          trigger: "DEAL_CREATED",
+          triggerStageId: null,
+          action: "UPDATE_FIELD",
+          actionConfig: { field: "expectedCloseDate", value: "2026-04-10" },
+        },
+      ]);
+      mockDealUpdate.mockRejectedValue(new Error("update failed"));
+
+      await executeWorkflowRules({
+        trigger: "DEAL_CREATED",
+        deal: baseDeal,
+      });
+
+      expect(mockMarkWorkflowRunFailed).toHaveBeenCalledWith(
+        "run-1",
+        "wf1",
+        "update failed",
       );
     });
   });

@@ -80,6 +80,8 @@ import type {
   ProductVariationForm,
   ProductDiscountForm,
 } from "./types";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 
 interface CatalogPageProps {
   /** When true, catalog is read-only for all roles (no Add/Bulk Upload/Download/edit/delete). */
@@ -724,7 +726,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     setProductVariations(updated);
   };
 
-  const addPhotoToVariation = (variationIndex: number, photoUrl: string) => {
+  const addPhotoToVariation = (
+    variationIndex: number,
+    photoUrl: string,
+    fileName?: string,
+  ) => {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
@@ -734,7 +740,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     updated[variationIndex] = {
       stockQuantity: variation.stockQuantity || "0",
       subVariants: variation.subVariants ?? [],
-      photos: [...photos, { photoUrl, isPrimary }],
+      photos: [...photos, { photoUrl, isPrimary, fileName }],
     };
     setProductVariations(updated);
   };
@@ -832,15 +838,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   );
 
   return (
-    <div className="space-y-6 pb-24">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
-          Product Catalog
-        </h1>
-        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
-          Manage products and their variations
-        </p>
-      </div>
+    <PageShell className="space-y-6 pb-24">
+      <PageHeader
+        title="Product Catalog"
+        description="Manage products and their variations"
+      />
 
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -1273,6 +1275,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

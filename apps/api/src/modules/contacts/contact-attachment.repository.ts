@@ -21,6 +21,7 @@ export class ContactAttachmentRepository {
     fileSize: number | null;
     mimeType: string;
     uploadedById: string;
+    mediaAssetId?: string | null;
   }): Promise<ContactAttachment> {
     return prisma.contactAttachment.create({
       data: {
@@ -32,6 +33,7 @@ export class ContactAttachmentRepository {
         fileSize: data.fileSize,
         mimeType: data.mimeType,
         uploadedById: data.uploadedById,
+        ...(data.mediaAssetId != null && { mediaAssetId: data.mediaAssetId }),
       },
       include: { uploader: { select: { id: true, username: true } } },
     });

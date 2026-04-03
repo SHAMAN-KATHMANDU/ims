@@ -48,7 +48,6 @@ export default function EditContactPage() {
                 companyId: data.contact.companyId ?? undefined,
                 tagIds: data.contact.tagLinks?.map((l) => l.tag.id),
                 source: data.contact.source ?? undefined,
-                journeyType: data.contact.journeyType ?? undefined,
               }}
               onSubmit={async (formData) => {
                 await updateMutation.mutateAsync({ id, data: formData });

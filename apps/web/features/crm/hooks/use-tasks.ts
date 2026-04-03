@@ -33,8 +33,8 @@ export function useTasksPaginated(params: TaskListParams = {}) {
       page: params.page ?? DEFAULT_PAGE,
       limit: params.limit ?? DEFAULT_LIMIT,
       search: params.search ?? "",
-      sortBy: params.sortBy ?? "dueDate",
-      sortOrder: params.sortOrder ?? "asc",
+      sortBy: params.sortBy ?? "createdAt",
+      sortOrder: params.sortOrder ?? "desc",
       completed: params.completed,
       assignedToId: params.assignedToId,
       dueToday: params.dueToday,
@@ -62,6 +62,7 @@ export function useCreateTask() {
     onSuccess: (_, variables) => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["workflows"] });
       if (variables.contactId) {
         qc.refetchQueries({
           queryKey: contactKeys.detail(variables.contactId),
@@ -86,6 +87,7 @@ export function useUpdateTask() {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
       qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
       const contactId =
         (data as { task?: { contactId?: string | null } })?.task?.contactId ??
         updateData?.contactId;
@@ -107,6 +109,7 @@ export function useCompleteTask() {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: taskKeys.detail(id) });
       qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
       const contactId = (data as { task?: { contactId?: string | null } })?.task
         ?.contactId;
       if (contactId) {
@@ -126,6 +129,7 @@ export function useDeleteTask() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
     },
   });
 }
@@ -137,6 +141,7 @@ export function useBulkCompleteTasks() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
     },
   });
 }
@@ -149,6 +154,7 @@ export function useBulkDeleteTasks() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: taskKeys.lists() });
       qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
     },
   });
 }

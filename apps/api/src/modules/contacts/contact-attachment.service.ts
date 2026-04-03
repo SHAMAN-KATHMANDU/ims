@@ -2,14 +2,22 @@ import fs from "fs";
 import path from "path";
 import { env } from "@/config/env";
 import { buildPublicUrl, keyMatchesContactPrefix } from "@/lib/s3/s3Key";
-import { deleteS3Object } from "@/lib/s3/s3Storage";
+import { isClientPublicUrlCompatible } from "@/lib/s3/publicUrl";
+import {
+  deleteS3Object,
+  isS3CredentialsOrPermissionError,
+} from "@/lib/s3/s3Storage";
 import { createError } from "@/middlewares/errorHandler";
 import type { CreateContactAttachmentDto } from "./contact-attachment.schema";
 import { ContactAttachmentRepository } from "./contact-attachment.repository";
 import type { ContactAttachment } from "@prisma/client";
+import { MediaService } from "@/modules/media/media.service";
 
 export class ContactAttachmentService {
-  constructor(private readonly repo = new ContactAttachmentRepository()) {}
+  constructor(
+    private readonly repo = new ContactAttachmentRepository(),
+    private readonly mediaService = new MediaService(),
+  ) {}
 
   async addS3Attachment(
     tenantId: string,
@@ -23,12 +31,14 @@ export class ContactAttachmentService {
     if (!contact) {
       throw createError("Contact not found", 404);
     }
+    const keyOpts = { allowLegacyKeys: env.photosAllowLegacyKeys };
     if (
       !keyMatchesContactPrefix(
         body.storageKey,
         tenantId,
         contactId,
         env.photosS3KeyPrefix,
+        keyOpts,
       )
     ) {
       throw createError("Storage key does not match this contact", 400);
@@ -36,22 +46,41 @@ export class ContactAttachmentService {
     if (!env.photosS3Configured) {
       throw createError("Object storage is not configured", 503);
     }
-    const expectedUrl = buildPublicUrl(
+    const canonicalPublicUrl = buildPublicUrl(
       body.storageKey,
       env.photosPublicUrlPrefix,
     );
-    if (body.publicUrl !== expectedUrl) {
-      throw createError("publicUrl does not match storage key", 400);
+    if (
+      !isClientPublicUrlCompatible(
+        body.storageKey,
+        body.publicUrl,
+        env.photosPublicUrlPrefix,
+        env.photosPublicUrlAliases,
+      )
+    ) {
+      throw createError(
+        "publicUrl does not match storage key and configured public URL prefix (or aliases)",
+        400,
+      );
     }
+    const { asset } = await this.mediaService.registerAsset(tenantId, userId, {
+      storageKey: body.storageKey,
+      publicUrl: canonicalPublicUrl,
+      fileName: body.fileName,
+      mimeType: body.mimeType,
+      byteSize: body.fileSize ?? undefined,
+      purpose: "contact_attachment",
+    });
     return this.repo.create({
       contactId,
       fileName: body.fileName,
       filePath: `s3:${body.storageKey}`.slice(0, 500),
       storageKey: body.storageKey,
-      publicUrl: body.publicUrl,
+      publicUrl: canonicalPublicUrl,
       fileSize: body.fileSize ?? null,
       mimeType: body.mimeType,
       uploadedById: userId,
+      mediaAssetId: asset.id,
     });
   }
 
@@ -71,8 +100,30 @@ export class ContactAttachmentService {
     if (!attachment) {
       throw createError("Attachment not found", 404);
     }
+    const mediaAssetId = attachment.mediaAssetId;
+    if (mediaAssetId) {
+      await this.repo.deleteById(attachmentId);
+      await this.mediaService.deleteAsset(tenantId, mediaAssetId);
+      return;
+    }
     if (attachment.storageKey) {
-      await deleteS3Object(attachment.storageKey);
+      if (!env.photosS3Configured) {
+        throw createError(
+          "Object storage is not configured; cannot delete stored attachment",
+          503,
+        );
+      }
+      try {
+        await deleteS3Object(attachment.storageKey);
+      } catch (e: unknown) {
+        if (isS3CredentialsOrPermissionError(e)) {
+          throw createError(
+            "Object storage credentials or permissions are invalid",
+            503,
+          );
+        }
+        throw createError("Object storage delete failed; try again later", 502);
+      }
     } else {
       const fullPath = path.join(process.cwd(), "uploads", attachment.filePath);
       if (fs.existsSync(fullPath)) {

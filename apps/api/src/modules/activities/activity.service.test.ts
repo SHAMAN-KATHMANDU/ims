@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
+const mockPublishDomainEvent = vi.fn().mockResolvedValue(undefined);
 const mockCreate = vi.fn();
 const mockFindByContact = vi.fn();
 const mockFindByContactPaginated = vi.fn();
@@ -28,6 +29,16 @@ vi.mock("./activity.repository", () => ({
 
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
+}));
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) => mockPublishDomainEvent(...args),
+  },
 }));
 
 import activityService from "./activity.service";
@@ -66,6 +77,13 @@ describe("ActivityService", () => {
           subject: "Follow-up",
           contactId: "c1",
           createdById: userId,
+        }),
+      );
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId,
+          eventName: "crm.activity.created",
+          entityId: "a1",
         }),
       );
     });

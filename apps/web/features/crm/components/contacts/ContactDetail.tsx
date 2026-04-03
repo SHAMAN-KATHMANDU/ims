@@ -79,6 +79,7 @@ import {
   TrendingUp,
   Clock,
 } from "lucide-react";
+import { getActiveJourneyType } from "../../utils/journey-type";
 
 interface ContactDetailProps {
   contactId: string;
@@ -95,6 +96,7 @@ export function ContactDetail({
 }: ContactDetailProps) {
   const { toast } = useToast();
   const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
   const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
   const dealsEnabled = envDealsEnabled && salesPipelinePlan;
 
@@ -317,7 +319,7 @@ export function ContactDetail({
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   );
 
-  const openDeal = contact.deals?.find((d) => d.status === "OPEN");
+  const activeJourneyType = getActiveJourneyType(contact.deals);
   const fullName = [contact.firstName, contact.lastName]
     .filter(Boolean)
     .join(" ");
@@ -380,10 +382,10 @@ export function ContactDetail({
               Born {new Date(contact.birthDate).toLocaleDateString()}
             </span>
           )}
-          {dealsEnabled && openDeal && (
+          {dealsEnabled && activeJourneyType && (
             <span className="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full bg-blue-50 border border-blue-200 text-blue-700 dark:bg-blue-950 dark:border-blue-800 dark:text-blue-300">
               <Handshake className="h-3 w-3" />
-              {openDeal.stage}
+              {activeJourneyType}
             </span>
           )}
           {contact.purchaseCount > 0 && (
@@ -452,7 +454,11 @@ export function ContactDetail({
                   { value: "files", label: "Files", icon: Paperclip },
                 ] as const
               )
-                .filter((t) => dealsEnabled || t.value !== "deals")
+                .filter(
+                  (t) =>
+                    (dealsEnabled || t.value !== "deals") &&
+                    (mediaUploadEnabled || t.value !== "files"),
+                )
                 .map(({ value, label, icon: Icon }) => (
                   <TabsTrigger
                     key={value}
@@ -492,8 +498,8 @@ export function ContactDetail({
                       Deals
                     </div>
                     <p className="text-sm font-medium">
-                      {contact.deals.filter((d) => d.status === "OPEN").length}{" "}
-                      open / {contact.deals.length} total
+                      {contact.deals.length} latest deal
+                      {contact.deals.length !== 1 ? "s" : ""}
                     </p>
                   </div>
                 )}
@@ -544,7 +550,7 @@ export function ContactDetail({
               </div>
 
               {/* CRM Fields */}
-              {(contact.source || contact.journeyType) && (
+              {(contact.source || activeJourneyType) && (
                 <div>
                   <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                     CRM Info
@@ -559,14 +565,14 @@ export function ContactDetail({
                         <p className="text-sm font-medium">{contact.source}</p>
                       </div>
                     )}
-                    {contact.journeyType && (
+                    {activeJourneyType && (
                       <div className="rounded-lg border bg-card p-3">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
                           <TrendingUp className="h-3 w-3" />
                           Journey Type
                         </div>
                         <p className="text-sm font-medium">
-                          {contact.journeyType}
+                          {activeJourneyType}
                         </p>
                       </div>
                     )}
@@ -599,7 +605,7 @@ export function ContactDetail({
               )}
 
               {!contact.source &&
-                !contact.journeyType &&
+                !activeJourneyType &&
                 !contact.notes?.length &&
                 !(
                   (dealsEnabled && contact.deals?.length) ||
@@ -610,7 +616,7 @@ export function ContactDetail({
                     <UserIcon className="h-8 w-8 mx-auto mb-2 opacity-30" />
                     <p className="text-sm">No overview data yet.</p>
                     <p className="text-xs mt-1">
-                      Edit this contact to add source, journey type, and more.
+                      Edit this contact to add source and more.
                     </p>
                   </div>
                 )}
@@ -1068,7 +1074,13 @@ export function ContactDetail({
                                 {d.status}
                               </Badge>
                               <span className="text-xs text-muted-foreground">
-                                {d.stage}
+                                {getActiveJourneyType([
+                                  {
+                                    stage: d.stage,
+                                    status: d.status,
+                                    pipeline: d.pipeline ?? null,
+                                  },
+                                ]) ?? d.stage}
                               </span>
                             </div>
                           </div>
@@ -1149,68 +1161,70 @@ export function ContactDetail({
             </TabsContent>
 
             {/* ── FILES ────────────────────────────────────────────────── */}
-            <TabsContent value="files" className="mt-0 p-6 space-y-4">
-              <form
-                onSubmit={handleAddAttachment}
-                className="rounded-lg border bg-card"
-              >
-                <div className="px-4 py-3 border-b">
-                  <h3 className="text-sm font-semibold">Upload File</h3>
-                </div>
-                <div className="p-4 space-y-3">
-                  <Input
-                    type="file"
-                    onChange={(e) =>
-                      setAttachmentFile(e.target.files?.[0] ?? null)
-                    }
-                    className="text-sm"
-                  />
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={
-                      !attachmentFile || addAttachmentMutation.isPending
-                    }
-                    className="w-full"
-                  >
-                    <Paperclip className="h-4 w-4 mr-1" />
-                    {addAttachmentMutation.isPending
-                      ? "Uploading..."
-                      : "Upload"}
-                  </Button>
-                </div>
-              </form>
-
-              {contact.attachments && contact.attachments.length > 0 ? (
-                <div className="space-y-2">
-                  {contact.attachments.map((a) => (
-                    <div
-                      key={a.id}
-                      className="rounded-lg border bg-card p-3 flex items-center justify-between gap-2"
+            {mediaUploadEnabled && (
+              <TabsContent value="files" className="mt-0 p-6 space-y-4">
+                <form
+                  onSubmit={handleAddAttachment}
+                  className="rounded-lg border bg-card"
+                >
+                  <div className="px-4 py-3 border-b">
+                    <h3 className="text-sm font-semibold">Upload File</h3>
+                  </div>
+                  <div className="p-4 space-y-3">
+                    <Input
+                      type="file"
+                      onChange={(e) =>
+                        setAttachmentFile(e.target.files?.[0] ?? null)
+                      }
+                      className="text-sm"
+                    />
+                    <Button
+                      type="submit"
+                      size="sm"
+                      disabled={
+                        !attachmentFile || addAttachmentMutation.isPending
+                      }
+                      className="w-full"
                     >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <span className="text-sm truncate">{a.fileName}</span>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
-                        onClick={() => handleDeleteAttachment(a.id)}
-                        disabled={deleteAttachmentMutation.isPending}
+                      <Paperclip className="h-4 w-4 mr-1" />
+                      {addAttachmentMutation.isPending
+                        ? "Uploading..."
+                        : "Upload"}
+                    </Button>
+                  </div>
+                </form>
+
+                {contact.attachments && contact.attachments.length > 0 ? (
+                  <div className="space-y-2">
+                    {contact.attachments.map((a) => (
+                      <div
+                        key={a.id}
+                        className="rounded-lg border bg-card p-3 flex items-center justify-between gap-2"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  <Paperclip className="h-7 w-7 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">No files attached.</p>
-                </div>
-              )}
-            </TabsContent>
+                        <div className="flex items-center gap-2 min-w-0">
+                          <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <span className="text-sm truncate">{a.fileName}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-muted-foreground hover:text-destructive shrink-0"
+                          onClick={() => handleDeleteAttachment(a.id)}
+                          disabled={deleteAttachmentMutation.isPending}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Paperclip className="h-7 w-7 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">No files attached.</p>
+                  </div>
+                )}
+              </TabsContent>
+            )}
           </div>
         </Tabs>
       </div>

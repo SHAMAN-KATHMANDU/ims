@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { parseDate } from "@repo/shared";
 import { createError } from "@/middlewares/errorHandler";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import {
   getPaginationParams,
   getPrismaOrderBy,
@@ -357,6 +359,34 @@ export class ProductService {
     } catch {
       // Audit log failure is non-fatal
     }
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "catalog.product.created",
+        scopeType: "GLOBAL",
+        entityType: "PRODUCT",
+        entityId: product.id,
+        actorUserId: userId,
+        dedupeKey: `product-created:${product.id}`,
+        payload: {
+          productId: product.id,
+          name: product.name,
+          imsCode: product.imsCode ?? null,
+          categoryId: product.categoryId,
+          vendorId: product.vendorId ?? null,
+          costPrice: Number(product.costPrice),
+          mrp: Number(product.mrp),
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          productId: product.id,
+          eventName: "catalog.product.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
 
     return product;
   }
@@ -908,6 +938,34 @@ export class ProductService {
       // Audit log failure is non-fatal
     }
 
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "catalog.product.updated",
+        scopeType: "GLOBAL",
+        entityType: "PRODUCT",
+        entityId: updatedProduct.id,
+        actorUserId: userId,
+        dedupeKey: `product-updated:${updatedProduct.id}:${updatedProduct.updatedAt.toISOString()}`,
+        payload: {
+          productId: updatedProduct.id,
+          name: updatedProduct.name,
+          imsCode: updatedProduct.imsCode ?? null,
+          categoryId: updatedProduct.categoryId,
+          vendorId: updatedProduct.vendorId ?? null,
+          costPrice: Number(updatedProduct.costPrice),
+          mrp: Number(updatedProduct.mrp),
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          productId: updatedProduct.id,
+          eventName: "catalog.product.updated",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
     return updatedProduct;
   }
 
@@ -936,6 +994,33 @@ export class ProductService {
       ip: ctx.ip,
       userAgent: ctx.userAgent,
     });
+    await automationService
+      .publishDomainEvent({
+        tenantId: ctx.tenantId,
+        eventName: "catalog.product.updated",
+        scopeType: "GLOBAL",
+        entityType: "PRODUCT",
+        entityId: id,
+        actorUserId: ctx.userId,
+        dedupeKey: `product-deleted:${id}`,
+        payload: {
+          productId: id,
+          name: existing.name,
+          imsCode: existing.imsCode ?? null,
+          categoryId: existing.categoryId,
+          vendorId: existing.vendorId ?? null,
+          deleted: true,
+          deleteReason: ctx.reason ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId: ctx.tenantId,
+          productId: id,
+          eventName: "catalog.product.updated",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
   }
 
   async deleteVariation(

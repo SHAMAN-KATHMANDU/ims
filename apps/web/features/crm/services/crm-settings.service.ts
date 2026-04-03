@@ -76,22 +76,3 @@ export async function getCrmJourneyTypes(
   );
   return res.data;
 }
-
-export async function createCrmJourneyType(
-  name: string,
-): Promise<{ journeyType: CrmJourneyType }> {
-  const res = await api.post("/crm-settings/journey-types", { name });
-  return res.data;
-}
-
-export async function updateCrmJourneyType(
-  id: string,
-  name: string,
-): Promise<{ journeyType: CrmJourneyType }> {
-  const res = await api.put(`/crm-settings/journey-types/${id}`, { name });
-  return res.data;
-}
-
-export async function deleteCrmJourneyType(id: string): Promise<void> {
-  await api.delete(`/crm-settings/journey-types/${id}`);
-}

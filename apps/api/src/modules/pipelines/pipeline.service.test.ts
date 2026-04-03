@@ -39,8 +39,8 @@ describe("PipelineService", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetDefaultStages.mockReturnValue([
-      { id: "s1", name: "Lead", order: 0, probability: 10 },
-      { id: "s2", name: "Won", order: 1, probability: 100 },
+      { id: "s1", name: "Lead", order: 0 },
+      { id: "s2", name: "Won", order: 1 },
     ]);
   });
 
@@ -52,8 +52,8 @@ describe("PipelineService", () => {
       const result = await pipelineService.create(tenantId, {
         name: "Sales",
         stages: [
-          { id: "s1", name: "Lead", order: 0, probability: 10 },
-          { id: "s2", name: "Won", order: 1, probability: 100 },
+          { id: "s1", name: "Lead", order: 0 },
+          { id: "s2", name: "Won", order: 1 },
         ],
       });
 
@@ -76,8 +76,8 @@ describe("PipelineService", () => {
       expect(mockCreate).toHaveBeenCalledWith(
         expect.objectContaining({
           stages: [
-            { id: "s1", name: "Lead", order: 0, probability: 10 },
-            { id: "s2", name: "Won", order: 1, probability: 100 },
+            { id: "s1", name: "Lead", order: 0 },
+            { id: "s2", name: "Won", order: 1 },
           ],
         }),
       );
@@ -130,7 +130,7 @@ describe("PipelineService", () => {
 
   describe("update", () => {
     it("updates pipeline when found", async () => {
-      const existing = { id: "p1" };
+      const existing = { id: "p1", name: "Sales" };
       const updated = { id: "p1", name: "Sales Updated" };
       mockFindById.mockResolvedValue(existing);
       mockUpdate.mockResolvedValue(updated);
@@ -158,7 +158,7 @@ describe("PipelineService", () => {
 
   describe("delete", () => {
     it("deletes pipeline when no deals", async () => {
-      mockFindById.mockResolvedValue({ id: "p1" });
+      mockFindById.mockResolvedValue({ id: "p1", name: "Sales" });
       mockCountDealsInPipeline.mockResolvedValue(0);
 
       await pipelineService.delete(tenantId, "p1", { userId: "u1" });
@@ -183,7 +183,7 @@ describe("PipelineService", () => {
     });
 
     it("throws 400 when pipeline has deals", async () => {
-      mockFindById.mockResolvedValue({ id: "p1" });
+      mockFindById.mockResolvedValue({ id: "p1", name: "Sales" });
       mockCountDealsInPipeline.mockResolvedValue(5);
 
       await expect(

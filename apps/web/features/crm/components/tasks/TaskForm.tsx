@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { useContactsPaginated } from "../../hooks/use-contacts";
 import { useDealsPaginated } from "../../hooks/use-deals";
 import { useCompaniesForSelect } from "../../hooks/use-companies";
@@ -165,91 +166,65 @@ export function TaskForm(props: TaskFormProps) {
 
       <div>
         <Label>Assign To</Label>
-        <Select
-          value={form.watch("assignedToId") || ""}
-          onValueChange={(v) =>
-            form.setValue("assignedToId", v ? v : undefined)
-          }
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select user" />
-          </SelectTrigger>
-          <SelectContent>
-            {users.map((u) => (
-              <SelectItem key={u.id} value={u.id}>
-                {u.username}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="mt-1">
+          <SearchableSelect
+            options={users.map((u) => ({ value: u.id, label: u.username }))}
+            value={form.watch("assignedToId") || ""}
+            onChange={(value) =>
+              form.setValue("assignedToId", value || undefined)
+            }
+            includeAll
+            allLabel="Unassigned"
+            placeholder="Search users..."
+          />
+        </div>
       </div>
 
       <div>
         <Label>Contact</Label>
-        <Select
-          value={form.watch("contactId") ?? "__none__"}
-          onValueChange={(v) =>
-            form.setValue("contactId", v === "__none__" ? undefined : v)
-          }
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select contact" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">—</SelectItem>
-            {contacts.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.firstName} {c.lastName || ""}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="mt-1">
+          <SearchableSelect
+            options={contacts.map((c) => ({
+              value: c.id,
+              label: `${c.firstName} ${c.lastName || ""}`.trim(),
+            }))}
+            value={form.watch("contactId") || ""}
+            onChange={(value) => form.setValue("contactId", value || undefined)}
+            includeAll
+            allLabel="None"
+            placeholder="Search contacts..."
+          />
+        </div>
       </div>
 
       {dealsEnabled && (
         <div>
           <Label>Deal</Label>
-          <Select
-            value={form.watch("dealId") ?? "__none__"}
-            onValueChange={(v) =>
-              form.setValue("dealId", v === "__none__" ? undefined : v)
-            }
-          >
-            <SelectTrigger className="mt-1">
-              <SelectValue placeholder="Select deal" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__none__">—</SelectItem>
-              {deals.map((d) => (
-                <SelectItem key={d.id} value={d.id}>
-                  {d.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="mt-1">
+            <SearchableSelect
+              options={deals.map((d) => ({ value: d.id, label: d.name }))}
+              value={form.watch("dealId") || ""}
+              onChange={(value) => form.setValue("dealId", value || undefined)}
+              includeAll
+              allLabel="None"
+              placeholder="Search deals..."
+            />
+          </div>
         </div>
       )}
 
       <div>
         <Label>Company</Label>
-        <Select
-          value={form.watch("companyId") || "__none__"}
-          onValueChange={(v) =>
-            form.setValue("companyId", v === "__none__" ? undefined : v)
-          }
-        >
-          <SelectTrigger className="mt-1">
-            <SelectValue placeholder="Select company" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="__none__">—</SelectItem>
-            {companies.map((c) => (
-              <SelectItem key={c.id} value={c.id}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="mt-1">
+          <SearchableSelect
+            options={companies.map((c) => ({ value: c.id, label: c.name }))}
+            value={form.watch("companyId") || ""}
+            onChange={(value) => form.setValue("companyId", value || undefined)}
+            includeAll
+            allLabel="None"
+            placeholder="Search companies..."
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
