@@ -5,6 +5,11 @@ vi.mock("next/navigation", () => ({
   useParams: () => ({ workspace: "test-workspace" }),
 }));
 
+vi.mock("@/features/flags", () => ({
+  EnvFeature: { AUTOMATION_BRANCHING: "AUTOMATION_BRANCHING" },
+  useEnvFeatureFlag: () => false,
+}));
+
 const mockUseAutomationDefinitions = vi.fn();
 const mockUseAutomationRuns = vi.fn();
 const mockCreateMutate = vi.fn();
@@ -212,9 +217,7 @@ describe("AutomationBuilderPage", () => {
   it("opens automation templates dialog with descriptions and apply actions", () => {
     render(<AutomationBuilderPage />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /automation templates/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /^templates$/i }));
 
     expect(
       screen.getByRole("heading", { name: /automation templates/i }),
@@ -222,20 +225,20 @@ describe("AutomationBuilderPage", () => {
     expect(screen.getByText("Sales follow-up")).toBeInTheDocument();
     expect(screen.getByText("Inventory restock")).toBeInTheDocument();
     expect(screen.getByText("Lead routing")).toBeInTheDocument();
+    expect(screen.getByText("New deal checklist")).toBeInTheDocument();
+    expect(screen.getByText("Stock threshold alert")).toBeInTheDocument();
     expect(screen.getAllByText("When it runs").length).toBeGreaterThanOrEqual(
       1,
     );
     expect(
       screen.getAllByRole("button", { name: /use this template/i }).length,
-    ).toBe(3);
+    ).toBe(5);
   });
 
   it("loads chosen template into the editor form and closes the dialog", () => {
     render(<AutomationBuilderPage />);
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /automation templates/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /^templates$/i }));
     const leadCard = screen.getByTestId("automation-template-lead-routing");
     fireEvent.click(
       within(leadCard).getByRole("button", {
@@ -255,15 +258,13 @@ describe("AutomationBuilderPage", () => {
     render(<AutomationBuilderPage />);
 
     const onboardingAlert = screen.getByRole("alert");
-    expect(onboardingAlert.textContent).toMatch(/Automations/);
+    expect(onboardingAlert.textContent).toMatch(/Event automations/);
     expect(within(onboardingAlert).getByText(/SHADOW/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Settings → CRM → Workflows/i }),
+      screen.getByRole("link", { name: /Settings → Deal pipeline rules/i }),
     ).toHaveAttribute("href", "/test-workspace/settings/crm/workflows");
 
-    fireEvent.click(
-      screen.getByRole("button", { name: /automation templates/i }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: /^templates$/i }));
     const templatesDialog = screen.getByRole("dialog", {
       name: /automation templates/i,
     });

@@ -278,10 +278,15 @@ describe("WorkflowEditorPage", () => {
 
     render(<WorkflowEditorPage />);
 
-    expect(screen.getByText(/What pipeline workflows do/i)).toBeInTheDocument();
     expect(
-      screen.getByRole("link", { name: /Settings → Automation/i }),
+      screen.getByText(/What deal pipeline rules do/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: /Settings → Event automations/i }),
     ).toHaveAttribute("href", "/test-workspace/settings/automation");
+    expect(
+      screen.getByRole("link", { name: /Automations overview/i }),
+    ).toHaveAttribute("href", "/test-workspace/settings/automations");
 
     expect(
       screen.getByRole("button", { name: /How to set up workflows/i }),

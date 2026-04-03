@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { compileLinearStepsToFlowGraph } from "@repo/shared";
 import { AutomationDefinitionFormSchema } from "./validation";
 
 describe("AutomationDefinitionFormSchema", () => {
@@ -239,5 +240,110 @@ describe("AutomationDefinitionFormSchema", () => {
       "OPEN",
       "QUALIFIED",
     ]);
+  });
+
+  it("accepts API-locked branching graph with empty steps when graph is valid", () => {
+    const preservedBranchingFlowGraph = compileLinearStepsToFlowGraph(
+      [
+        {
+          actionType: "notification.send",
+          actionConfig: { title: "A", message: "B" },
+        },
+      ],
+      undefined,
+    );
+
+    const result = AutomationDefinitionFormSchema.parse({
+      name: "Branching via API",
+      description: "",
+      scopeType: "GLOBAL",
+      scopeId: "",
+      triggers: [{ eventName: "crm.contact.created", delayMinutes: 0 }],
+      steps: [],
+      preservedBranchingFlowGraph,
+    });
+
+    expect(result.steps).toEqual([]);
+    expect(result.preservedBranchingFlowGraph).toEqual(
+      preservedBranchingFlowGraph,
+    );
+  });
+
+  it("rejects preserved flowGraph that fails structural validation", () => {
+    const result = AutomationDefinitionFormSchema.safeParse({
+      name: "Bad graph",
+      description: "",
+      scopeType: "GLOBAL",
+      scopeId: "",
+      triggers: [{ eventName: "crm.contact.created", delayMinutes: 0 }],
+      steps: [],
+      preservedBranchingFlowGraph: { nodes: [], edges: [] },
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(
+        result.error.issues.some((i) =>
+          i.path.includes("preservedBranchingFlowGraph"),
+        ),
+      ).toBe(true);
+    }
+  });
+
+  it("rejects preserved graph when actions do not match triggers", () => {
+    const preservedBranchingFlowGraph = compileLinearStepsToFlowGraph(
+      [
+        {
+          actionType: "transfer.create_draft",
+          actionConfig: { payloadPath: "suggestedTransfer" },
+        },
+      ],
+      undefined,
+    );
+
+    const result = AutomationDefinitionFormSchema.safeParse({
+      name: "Trigger action mismatch",
+      description: "",
+      scopeType: "GLOBAL",
+      scopeId: "",
+      triggers: [{ eventName: "crm.contact.created", delayMinutes: 0 }],
+      steps: [],
+      preservedBranchingFlowGraph,
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects mixing preserved graph with linear steps", () => {
+    const result = AutomationDefinitionFormSchema.safeParse({
+      name: "Invalid mix",
+      description: "",
+      scopeType: "GLOBAL",
+      scopeId: "",
+      triggers: [{ eventName: "crm.contact.created", delayMinutes: 0 }],
+      steps: [
+        {
+          actionType: "notification.send",
+          actionConfig: { title: "A", message: "B" },
+          continueOnError: false,
+        },
+      ],
+      preservedBranchingFlowGraph: { nodes: [], edges: [] },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
+  it("rejects empty steps when no preserved graph", () => {
+    const result = AutomationDefinitionFormSchema.safeParse({
+      name: "No steps",
+      description: "",
+      scopeType: "GLOBAL",
+      scopeId: "",
+      triggers: [{ eventName: "crm.contact.created", delayMinutes: 0 }],
+      steps: [],
+    });
+
+    expect(result.success).toBe(false);
   });
 });

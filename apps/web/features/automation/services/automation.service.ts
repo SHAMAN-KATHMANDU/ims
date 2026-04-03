@@ -39,6 +39,8 @@ export interface AutomationDefinition {
   version: number;
   triggers: AutomationTrigger[];
   steps: AutomationStep[];
+  /** Phase 3 DAG body when persisted without linear `steps` (BR-19). */
+  flowGraph?: unknown | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -50,6 +52,8 @@ export interface AutomationRunStep {
   errorMessage?: string | null;
   startedAt: string;
   completedAt?: string | null;
+  automationStepId?: string | null;
+  graphNodeId?: string | null;
 }
 
 export interface AutomationRun {
@@ -84,11 +88,13 @@ export interface CreateAutomationDefinitionInput {
     conditions?: AutomationCondition[];
     delayMinutes?: number;
   }>;
-  steps: Array<{
+  steps?: Array<{
     actionType: AutomationActionTypeValue;
     actionConfig: AutomationActionConfigValue;
     continueOnError?: boolean;
   }>;
+  /** Phase 3 graph body; when set, `steps` must be empty on the API. */
+  flowGraph?: unknown | null;
 }
 
 export type UpdateAutomationDefinitionInput =

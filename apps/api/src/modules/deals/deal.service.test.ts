@@ -16,6 +16,13 @@ vi.mock("@/modules/pipeline-transitions/pipeline-transition.service", () => ({
   default: { handleDealEvent: vi.fn().mockResolvedValue(undefined) },
 }));
 
+vi.mock("@/modules/contacts/contact.repository", () => ({
+  default: {
+    updateContactByWorkflow: vi.fn().mockResolvedValue(undefined),
+    incrementPurchaseCount: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 vi.mock("./deal.repository", () => ({
   default: {
     findDefaultPipeline: (...args: unknown[]) =>

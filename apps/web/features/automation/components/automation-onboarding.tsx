@@ -26,26 +26,36 @@ export function AutomationOnboarding(): React.ReactElement {
   const workflowsHref = workspace
     ? `/${workspace}/settings/crm/workflows`
     : "/settings/crm/workflows";
+  const overviewHref = workspace
+    ? `/${workspace}/settings/automations`
+    : "/settings/automations";
   const [guideOpen, setGuideOpen] = React.useState(false);
 
   return (
     <div className="space-y-3">
       <Alert className="border-primary/25 bg-primary/5">
         <Info className="text-primary" aria-hidden />
-        <AlertTitle>Automations</AlertTitle>
+        <AlertTitle>Event automations</AlertTitle>
         <AlertDescription className="text-muted-foreground space-y-3">
           <p className="text-sm">
-            Automations listen for platform events, apply optional conditions,
-            then run steps in order. Use{" "}
+            Event automations listen for platform events, apply optional
+            conditions, then run steps in order. Use{" "}
             <strong className="text-foreground">SHADOW</strong> to validate
             before switching to{" "}
-            <strong className="text-foreground">LIVE</strong>. Pipeline deal
-            rules live in{" "}
+            <strong className="text-foreground">LIVE</strong>. Deal-only
+            pipeline rules live in{" "}
             <Link
               href={workflowsHref}
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
-              Settings → CRM → Workflows
+              Settings → Deal pipeline rules
+            </Link>
+            . Compare both on{" "}
+            <Link
+              href={overviewHref}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Automations overview
             </Link>
             .
           </p>
@@ -97,7 +107,7 @@ export function AutomationOnboarding(): React.ReactElement {
                   href={workflowsHref}
                   className="font-medium text-primary underline-offset-4 hover:underline"
                 >
-                  Settings → CRM → Workflows
+                  Settings → Deal pipeline rules
                 </Link>
                 .
               </p>

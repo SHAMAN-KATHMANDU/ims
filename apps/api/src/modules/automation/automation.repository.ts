@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { basePrisma } from "@/config/prisma";
 import type {
   CreateAutomationDefinitionDto,
@@ -49,7 +49,10 @@ export interface CreateAutomationRunInput {
 
 export interface CreateAutomationRunStepInput {
   automationRunId: string;
-  automationStepId: string;
+  /** Set for linear `AutomationStep` runs. */
+  automationStepId?: string | null;
+  /** Set for Phase 3 graph `action` nodes. */
+  graphNodeId?: string | null;
   status: "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
   output?: Prisma.InputJsonValue | null;
   errorMessage?: string | null;
@@ -142,6 +145,11 @@ export class AutomationRepository {
     data: CreateAutomationDefinitionDto,
   ) {
     return basePrisma.$transaction(async (tx) => {
+      const hasGraph =
+        data.flowGraph != null &&
+        typeof data.flowGraph === "object" &&
+        !Array.isArray(data.flowGraph);
+
       const definition = await tx.automationDefinition.create({
         data: {
           tenantId,
@@ -156,15 +164,22 @@ export class AutomationRepository {
           createdById: userId,
           updatedById: userId,
           publishedAt: new Date(),
+          ...(hasGraph
+            ? {
+                flowGraph: data.flowGraph as Prisma.InputJsonValue,
+              }
+            : {}),
         },
       });
 
       await tx.automationTrigger.createMany({
         data: toTriggerCreateMany(definition.id, data.triggers),
       });
-      await tx.automationStep.createMany({
-        data: toStepCreateMany(definition.id, data.steps),
-      });
+      if (!hasGraph) {
+        await tx.automationStep.createMany({
+          data: toStepCreateMany(definition.id, data.steps),
+        });
+      }
 
       return tx.automationDefinition.findUniqueOrThrow({
         where: { id: definition.id },
@@ -180,30 +195,42 @@ export class AutomationRepository {
     data: UpdateAutomationDefinitionDto,
   ) {
     return basePrisma.$transaction(async (tx) => {
-      await tx.automationDefinition.updateMany({
-        where: { id, tenantId },
-        data: {
-          ...(data.name !== undefined ? { name: data.name.trim() } : {}),
-          ...(data.description !== undefined
-            ? { description: data.description?.trim() ?? null }
-            : {}),
-          ...(data.scopeType !== undefined
-            ? { scopeType: data.scopeType }
-            : {}),
-          ...(data.scopeId !== undefined
-            ? { scopeId: data.scopeId ?? null }
-            : {}),
-          ...(data.status !== undefined ? { status: data.status } : {}),
-          ...(data.executionMode !== undefined
-            ? { executionMode: data.executionMode }
-            : {}),
-          ...(data.suppressLegacyWorkflows !== undefined
-            ? { suppressLegacyWorkflows: data.suppressLegacyWorkflows }
-            : {}),
-          updatedById: userId,
-          publishedAt: new Date(),
-          version: { increment: 1 },
-        },
+      const flowProvided = data.flowGraph !== undefined;
+      const stepsProvided = data.steps !== undefined;
+
+      const definitionPatch: Prisma.AutomationDefinitionUpdateInput = {
+        ...(data.name !== undefined ? { name: data.name.trim() } : {}),
+        ...(data.description !== undefined
+          ? { description: data.description?.trim() ?? null }
+          : {}),
+        ...(data.scopeType !== undefined ? { scopeType: data.scopeType } : {}),
+        ...(data.scopeId !== undefined
+          ? { scopeId: data.scopeId ?? null }
+          : {}),
+        ...(data.status !== undefined ? { status: data.status } : {}),
+        ...(data.executionMode !== undefined
+          ? { executionMode: data.executionMode }
+          : {}),
+        ...(data.suppressLegacyWorkflows !== undefined
+          ? { suppressLegacyWorkflows: data.suppressLegacyWorkflows }
+          : {}),
+        updatedBy: { connect: { id: userId } },
+        publishedAt: new Date(),
+        version: { increment: 1 },
+      };
+
+      if (flowProvided) {
+        definitionPatch.flowGraph =
+          data.flowGraph === null
+            ? Prisma.JsonNull
+            : (data.flowGraph as Prisma.InputJsonValue);
+      } else if (stepsProvided && data.steps && data.steps.length > 0) {
+        definitionPatch.flowGraph = Prisma.JsonNull;
+      }
+
+      await tx.automationDefinition.update({
+        where: { id },
+        data: definitionPatch,
       });
 
       if (data.triggers) {
@@ -213,11 +240,21 @@ export class AutomationRepository {
         });
       }
 
-      if (data.steps) {
+      if (flowProvided && data.flowGraph != null) {
         await tx.automationStep.deleteMany({ where: { automationId: id } });
-        await tx.automationStep.createMany({
-          data: toStepCreateMany(id, data.steps),
-        });
+      }
+
+      if (
+        stepsProvided &&
+        (!flowProvided || data.flowGraph === null) &&
+        data.steps
+      ) {
+        await tx.automationStep.deleteMany({ where: { automationId: id } });
+        if (data.steps.length > 0) {
+          await tx.automationStep.createMany({
+            data: toStepCreateMany(id, data.steps),
+          });
+        }
       }
 
       return tx.automationDefinition.findFirstOrThrow({
@@ -429,7 +466,8 @@ export class AutomationRepository {
     return basePrisma.automationRunStep.create({
       data: {
         automationRunId: input.automationRunId,
-        automationStepId: input.automationStepId,
+        automationStepId: input.automationStepId ?? null,
+        graphNodeId: input.graphNodeId ?? null,
         status: input.status,
         output: input.output ?? null,
         errorMessage: input.errorMessage ?? null,

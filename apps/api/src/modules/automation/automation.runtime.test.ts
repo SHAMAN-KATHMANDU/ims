@@ -18,6 +18,8 @@ const mockCreateTransferLog = vi.fn();
 const mockUserFindFirst = vi.fn();
 const mockContactUpdate = vi.fn();
 const mockCompanyUpdate = vi.fn();
+const mockCreateWorkItem = vi.fn();
+const mockFindFailedLiveRunsForEventReplay = vi.fn();
 
 vi.mock("@/config/env", () => ({
   env: {
@@ -92,11 +94,16 @@ vi.mock("./automation.repository", () => ({
     completeDelayedRun: vi.fn(),
     failDelayedRun: vi.fn(),
     findDefinitionById: vi.fn(),
-    findFailedLiveRunsForEventReplay: vi.fn().mockResolvedValue([]),
+    findFailedLiveRunsForEventReplay: (...args: unknown[]) =>
+      mockFindFailedLiveRunsForEventReplay(...args),
+    createWorkItem: (...args: unknown[]) => mockCreateWorkItem(...args),
   },
 }));
 
-import { processAutomationEventById } from "./automation.runtime";
+import {
+  processAutomationEventById,
+  resumeFailedAutomationRunsForEvent,
+} from "./automation.runtime";
 
 const baseEvent = {
   id: "event-1",
@@ -133,6 +140,8 @@ describe("automation.runtime", () => {
     mockContactUpdate.mockResolvedValue({ id: "contact-1" });
     mockCompanyUpdate.mockResolvedValue({ id: "company-1" });
     mockCreateDelayedRun.mockResolvedValue({ id: "delayed-1" });
+    mockCreateWorkItem.mockResolvedValue({ id: "wi-1" });
+    mockFindFailedLiveRunsForEventReplay.mockResolvedValue([]);
   });
 
   it("enqueues delayed automation instead of running immediately", async () => {
@@ -497,5 +506,100 @@ describe("automation.runtime", () => {
     expect(mockMarkEventFailed).not.toHaveBeenCalled();
 
     vi.unstubAllGlobals();
+  });
+
+  it("resumes failed graph runs using frozen branch decisions (BR-16)", async () => {
+    const entryId = "11111111-1111-1111-1111-111111111111";
+    const ifId = "22222222-2222-2222-2222-222222222222";
+    const actionId = "33333333-3333-3333-3333-333333333333";
+    const noopFalseId = "44444444-4444-4444-4444-444444444444";
+    const noopEndId = "55555555-5555-5555-5555-555555555555";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: ifId,
+          kind: "if" as const,
+          config: {
+            conditions: [
+              { path: "runHot", operator: "eq" as const, value: true },
+            ],
+          },
+        },
+        {
+          id: actionId,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Task",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        { id: noopFalseId, kind: "noop" as const },
+        { id: noopEndId, kind: "noop" as const },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: ifId },
+        { fromNodeId: ifId, toNodeId: actionId, edgeKey: "true" },
+        { fromNodeId: ifId, toNodeId: noopFalseId, edgeKey: "false" },
+        { fromNodeId: actionId, toNodeId: noopEndId },
+      ],
+    };
+
+    mockFindFailedLiveRunsForEventReplay.mockResolvedValue([
+      {
+        id: "run-graph-1",
+        tenantId: "tenant-1",
+        automationEventId: "event-1",
+        status: "FAILED",
+        executionMode: "LIVE",
+        stepOutput: {
+          __automationGraph: { branchDecisions: { [ifId]: "true" } },
+        },
+        runSteps: [
+          {
+            id: "rs-action",
+            graphNodeId: actionId,
+            automationStepId: null,
+            status: "FAILED",
+            output: null,
+          },
+        ],
+        automation: {
+          id: "auto-graph-1",
+          status: "ACTIVE",
+          executionMode: "LIVE",
+          flowGraph,
+          steps: [],
+          triggers: [
+            {
+              id: "tr-1",
+              eventName: "inventory.stock.low_detected",
+              conditionGroups: null,
+            },
+          ],
+        },
+      },
+    ]);
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { runHot: false },
+    });
+
+    const resumed = await resumeFailedAutomationRunsForEvent(
+      "tenant-1",
+      "event-1",
+    );
+
+    expect(resumed).toBe(1);
+    expect(mockCreateWorkItem).toHaveBeenCalledTimes(1);
+    expect(
+      mockUpdateRun.mock.calls.some((c) => c[1]?.status === "SUCCEEDED"),
+    ).toBe(true);
   });
 });

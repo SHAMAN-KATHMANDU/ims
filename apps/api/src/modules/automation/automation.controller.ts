@@ -1,5 +1,11 @@
 import type { Request, Response } from "express";
 import { ZodError } from "zod";
+import {
+  EnvFeature,
+  isEnvFeatureEnabled,
+  parseFeatureFlagsEnv,
+} from "@repo/shared";
+import { env } from "@/config/env";
 import { getAuthContext } from "@/shared/auth/getAuthContext";
 import { ok, fail } from "@/shared/response";
 import { sendControllerError } from "@/utils/controllerError";
@@ -12,6 +18,24 @@ import {
   ReplayAutomationEventSchema,
   UpdateAutomationDefinitionSchema,
 } from "./automation.schema";
+
+function isAutomationBranchingEnvEnabled(): boolean {
+  return isEnvFeatureEnabled(
+    EnvFeature.AUTOMATION_BRANCHING,
+    env.appEnv,
+    parseFeatureFlagsEnv(env.featureFlags),
+  );
+}
+
+/** Non-null object `flowGraph` (authoring a DAG). `null` clears graph on update. */
+function hasNonNullFlowGraphPayload(flowGraph: unknown): boolean {
+  return (
+    flowGraph !== undefined &&
+    flowGraph !== null &&
+    typeof flowGraph === "object" &&
+    !Array.isArray(flowGraph)
+  );
+}
 
 class AutomationController {
   getDefinitions = async (req: Request, res: Response) => {
@@ -52,6 +76,17 @@ class AutomationController {
   createDefinition = async (req: Request, res: Response) => {
     try {
       const { tenantId, userId } = getAuthContext(req);
+      const raw = req.body as Record<string, unknown>;
+      if (
+        !isAutomationBranchingEnvEnabled() &&
+        hasNonNullFlowGraphPayload(raw.flowGraph)
+      ) {
+        return fail(
+          res,
+          "Automation branching (flowGraph) is not available in this environment.",
+          404,
+        );
+      }
       const body = CreateAutomationDefinitionSchema.parse(req.body);
       const automation = await automationService.createDefinition(
         tenantId,
@@ -75,6 +110,18 @@ class AutomationController {
     try {
       const { tenantId, userId } = getAuthContext(req);
       const { id } = AutomationIdParamSchema.parse(req.params);
+      const raw = req.body as Record<string, unknown>;
+      if (
+        !isAutomationBranchingEnvEnabled() &&
+        Object.prototype.hasOwnProperty.call(raw, "flowGraph") &&
+        hasNonNullFlowGraphPayload(raw.flowGraph)
+      ) {
+        return fail(
+          res,
+          "Automation branching (flowGraph) is not available in this environment.",
+          404,
+        );
+      }
       const body = UpdateAutomationDefinitionSchema.parse(req.body);
       const automation = await automationService.updateDefinition(
         tenantId,

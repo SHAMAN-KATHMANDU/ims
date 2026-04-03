@@ -2,6 +2,10 @@ import type { ReactNode } from "react";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AutomationForm } from "./AutomationForm";
+
+vi.mock("@/features/flags", () => ({
+  useEnvFeatureFlag: () => false,
+}));
 import type { AutomationDefinitionFormValues } from "../validation";
 
 vi.mock("@/components/ui/select", () => {

@@ -1,12 +1,16 @@
 import type { Prisma } from "@prisma/client";
 import {
   AUTOMATION_TRIGGER_EVENT_VALUES,
+  AutomationFlowGraphPayloadSchema,
   EnvFeature,
   isEnvFeatureEnabled,
+  MAX_AUTOMATION_FLOW_GRAPH_NODES,
   parseFeatureFlagsEnv,
   parseAutomationActionConfig,
+  validateAutomationFlowGraphStructure,
   type AutomationActionConfigValue,
   type AutomationCondition,
+  type ValidatedFlowGraph,
   type CrmCompanyUpdateActionConfig,
   type CrmContactUpdateActionConfig,
   type WorkItemCreateActionConfig,
@@ -48,6 +52,19 @@ interface RuntimeContext {
   outputs: Record<string, unknown>;
   lastOutput: unknown;
 }
+
+/** BR-16: replay uses persisted `branchDecisions` for nodes in this set; never re-evaluate those. */
+type LiveGraphResumeSeed = {
+  branchDecisions: Record<string, string>;
+  context: RuntimeContext;
+  existingByNodeId: Map<
+    string,
+    {
+      runStepId: string;
+      status: "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+    }
+  >;
+};
 
 const MAX_AUTOMATION_EVENT_ATTEMPTS = 8;
 const AUTOMATION_RETRY_SWEEP_LIMIT = 20;
@@ -360,11 +377,414 @@ function sortAutomationSteps(automation: AutomationDefinitionGraph) {
   return [...automation.steps].sort((a, b) => a.stepOrder - b.stepOrder);
 }
 
+function parseValidatedFlowGraphFromDb(
+  flowGraph: unknown,
+): ValidatedFlowGraph | null {
+  if (
+    flowGraph == null ||
+    typeof flowGraph !== "object" ||
+    Array.isArray(flowGraph)
+  ) {
+    return null;
+  }
+  const parsed = AutomationFlowGraphPayloadSchema.safeParse(flowGraph);
+  if (!parsed.success) return null;
+  const s = validateAutomationFlowGraphStructure(parsed.data);
+  return s.ok ? s.validated : null;
+}
+
+function graphEvalRoot(context: RuntimeContext): Record<string, unknown> {
+  return {
+    ...context.event.payload,
+    outputs: context.outputs,
+    lastOutput: context.lastOutput,
+  };
+}
+
+async function finalizeGraphRunSuccess(
+  runId: string,
+  context: RuntimeContext,
+  branchDecisions: Record<string, string>,
+) {
+  await automationRepository.updateRun(runId, {
+    status: "SUCCEEDED",
+    stepOutput: {
+      ...context.outputs,
+      __automationGraph: { branchDecisions },
+    } as Prisma.InputJsonValue,
+    completedAt: new Date(),
+  });
+}
+
+async function runLiveAutomationGraphBody(
+  automation: AutomationDefinitionGraph,
+  event: AutomationEventPayload,
+  runId: string,
+  validated: ValidatedFlowGraph,
+  resume?: LiveGraphResumeSeed,
+): Promise<{ failed: boolean }> {
+  const { nodesById, outgoing, entryId } = validated;
+  const branchDecisions = resume
+    ? { ...resume.branchDecisions }
+    : ({} as Record<string, string>);
+  const resumeFrozenNodeIds = resume
+    ? new Set(Object.keys(resume.branchDecisions))
+    : new Set<string>();
+  const context: RuntimeContext = resume
+    ? resume.context
+    : {
+        event,
+        outputs: {},
+        lastOutput: null,
+      };
+  const existingByNodeId = resume
+    ? new Map(resume.existingByNodeId)
+    : new Map<
+        string,
+        {
+          runStepId: string;
+          status: "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+        }
+      >();
+
+  async function persistGraphFailureState(message: string): Promise<void> {
+    await automationRepository.updateRun(runId, {
+      status: "FAILED",
+      errorMessage: message,
+      stepOutput: {
+        ...context.outputs,
+        __automationGraph: { branchDecisions },
+      } as Prisma.InputJsonValue,
+      completedAt: new Date(),
+    });
+  }
+
+  async function failGraphRun(message: string): Promise<{ failed: true }> {
+    await persistGraphFailureState(message);
+    return { failed: true };
+  }
+
+  let currentId = entryId;
+  let visits = 0;
+  const cap = MAX_AUTOMATION_FLOW_GRAPH_NODES * 2;
+
+  while (true) {
+    if (++visits > cap) {
+      return await failGraphRun("Automation graph exceeded visit safety cap");
+    }
+
+    const node = nodesById.get(currentId);
+    if (!node) {
+      return await failGraphRun(`Unknown graph node: ${currentId}`);
+    }
+
+    if (node.kind === "entry" || node.kind === "noop") {
+      const outs = outgoing.get(currentId) ?? [];
+      if (outs.length === 0) {
+        await finalizeGraphRunSuccess(runId, context, branchDecisions);
+        return { failed: false };
+      }
+      currentId = outs[0]!.toNodeId;
+      continue;
+    }
+
+    if (node.kind === "if") {
+      const outs = outgoing.get(currentId) ?? [];
+      let key: string;
+      if (resumeFrozenNodeIds.has(node.id)) {
+        const frozen = branchDecisions[node.id];
+        if (frozen !== "true" && frozen !== "false") {
+          return await failGraphRun(
+            `if node ${node.id}: invalid frozen branch for resume`,
+          );
+        }
+        key = frozen;
+      } else {
+        const root = graphEvalRoot(context);
+        const pass = node.config.conditions.every((c) =>
+          evaluateCondition(root, c as AutomationCondition),
+        );
+        key = pass ? "true" : "false";
+        branchDecisions[node.id] = key;
+      }
+      const edge = outs.find((o) => o.edgeKey === key);
+      if (!edge) {
+        return await failGraphRun(`if node ${node.id} missing "${key}" edge`);
+      }
+      currentId = edge.toNodeId;
+      continue;
+    }
+
+    if (node.kind === "switch") {
+      const outs = outgoing.get(currentId) ?? [];
+      let picked: (typeof outs)[number] | undefined;
+
+      if (resumeFrozenNodeIds.has(node.id)) {
+        const frozenKey = branchDecisions[node.id];
+        if (frozenKey == null || frozenKey === "") {
+          await automationRepository.updateRun(runId, {
+            status: "FAILED",
+            errorMessage: `switch node ${node.id}: missing frozen branch for resume`,
+            completedAt: new Date(),
+          });
+          return { failed: true };
+        }
+        picked = outs.find(
+          (o) => (o.edgeKey ?? "default") === String(frozenKey),
+        );
+        if (!picked) {
+          await automationRepository.updateRun(runId, {
+            status: "FAILED",
+            errorMessage: `switch node ${node.id}: resume could not resolve frozen branch`,
+            completedAt: new Date(),
+          });
+          return { failed: true };
+        }
+      } else {
+        const root = graphEvalRoot(context);
+        const disc = getPathValue(root, node.config.discriminantPath);
+        if (disc !== null && typeof disc === "object") {
+          return await failGraphRun("Switch discriminant must be a scalar");
+        }
+        const strDisc = String(disc);
+        picked = outs.find(
+          (o) =>
+            o.edgeKey != null &&
+            o.edgeKey !== "default" &&
+            String(o.edgeKey) === strDisc,
+        );
+        if (!picked) picked = outs.find((o) => o.edgeKey === "default");
+        if (!picked) {
+          return await failGraphRun(
+            `switch node ${node.id} has no matching edge`,
+          );
+        }
+      }
+      branchDecisions[node.id] = picked.edgeKey ?? "default";
+      currentId = picked.toNodeId;
+      continue;
+    }
+
+    if (node.kind === "action") {
+      const actionType = node.config.actionType;
+      const continueOnError = node.config.continueOnError ?? false;
+      const prev = existingByNodeId.get(node.id);
+      let runStepId: string;
+
+      if (prev && (prev.status === "FAILED" || prev.status === "RUNNING")) {
+        runStepId = prev.runStepId;
+        await automationRepository.updateRunStep(runStepId, {
+          status: "RUNNING",
+          errorMessage: null,
+          completedAt: null,
+        });
+      } else if (prev?.status === "SUCCEEDED") {
+        const outs = outgoing.get(currentId) ?? [];
+        if (outs.length !== 1) {
+          return await failGraphRun(
+            `action node ${node.id} must have exactly one outgoing edge`,
+          );
+        }
+        currentId = outs[0]!.toNodeId;
+        continue;
+      } else if (!prev) {
+        const created = await automationRepository.createRunStep({
+          automationRunId: runId,
+          automationStepId: null,
+          graphNodeId: node.id,
+          status: "RUNNING",
+        });
+        runStepId = created.id;
+      } else {
+        const outs = outgoing.get(currentId) ?? [];
+        if (outs.length !== 1) {
+          return await failGraphRun(
+            `action node ${node.id} must have exactly one outgoing edge`,
+          );
+        }
+        currentId = outs[0]!.toNodeId;
+        continue;
+      }
+
+      try {
+        if (!isActionAllowedForEvent(actionType, event.eventName)) {
+          throw new Error(
+            `Action "${actionType}" cannot run for "${event.eventName}"`,
+          );
+        }
+        const parsedConfig = parseAutomationActionConfig(
+          actionType as never,
+          node.config.actionConfig,
+        );
+        const handler = actionHandlers[actionType];
+        if (!handler) {
+          throw new Error(`No handler registered for "${actionType}"`);
+        }
+        const output = await handler({
+          automation,
+          config: parsedConfig,
+          context,
+          runId,
+        });
+        context.outputs[node.id] = output ?? null;
+        context.lastOutput = output ?? null;
+        await automationRepository.updateRunStep(runStepId, {
+          status: "SUCCEEDED",
+          output: (output as Prisma.InputJsonValue | undefined) ?? null,
+          completedAt: new Date(),
+        });
+        existingByNodeId.set(node.id, { runStepId, status: "SUCCEEDED" });
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Automation step execution failed";
+        await automationRepository.updateRunStep(runStepId, {
+          status: "FAILED",
+          errorMessage: message,
+          completedAt: new Date(),
+        });
+        existingByNodeId.set(node.id, { runStepId, status: "FAILED" });
+        if (!continueOnError) {
+          await persistGraphFailureState(message);
+          if (error instanceof AutomationProcessingError) {
+            throw error;
+          }
+          return { failed: true };
+        }
+      }
+
+      const outs = outgoing.get(currentId) ?? [];
+      if (outs.length === 0) {
+        await finalizeGraphRunSuccess(runId, context, branchDecisions);
+        return { failed: false };
+      }
+      if (outs.length !== 1) {
+        return await failGraphRun(
+          `action node ${node.id} must have exactly one outgoing edge`,
+        );
+      }
+      currentId = outs[0]!.toNodeId;
+      continue;
+    }
+
+    return await failGraphRun("Unsupported graph node");
+  }
+}
+
+async function runShadowAutomationGraph(
+  automation: AutomationDefinitionGraph,
+  event: AutomationEventPayload,
+  runId: string,
+  validated: ValidatedFlowGraph,
+): Promise<void> {
+  const { nodesById, outgoing, entryId } = validated;
+  const branchDecisions: Record<string, string> = {};
+  const shadowOutputs: Record<string, unknown> = {};
+  const context: RuntimeContext = {
+    event,
+    outputs: shadowOutputs,
+    lastOutput: null,
+  };
+  let currentId = entryId;
+  let visits = 0;
+  const cap = MAX_AUTOMATION_FLOW_GRAPH_NODES * 2;
+
+  while (true) {
+    if (++visits > cap) break;
+    const node = nodesById.get(currentId);
+    if (!node) break;
+
+    if (node.kind === "entry" || node.kind === "noop") {
+      const outs = outgoing.get(currentId) ?? [];
+      if (outs.length === 0) break;
+      currentId = outs[0]!.toNodeId;
+      continue;
+    }
+
+    if (node.kind === "if") {
+      const root = graphEvalRoot(context);
+      const pass = node.config.conditions.every((c) =>
+        evaluateCondition(root, c as AutomationCondition),
+      );
+      const key = pass ? "true" : "false";
+      branchDecisions[node.id] = key;
+      const outs = outgoing.get(currentId) ?? [];
+      const edge = outs.find((o) => o.edgeKey === key);
+      if (!edge) break;
+      currentId = edge.toNodeId;
+      continue;
+    }
+
+    if (node.kind === "switch") {
+      const root = graphEvalRoot(context);
+      const disc = getPathValue(root, node.config.discriminantPath);
+      if (disc !== null && typeof disc === "object") break;
+      const strDisc = String(disc);
+      const outs = outgoing.get(currentId) ?? [];
+      let picked = outs.find(
+        (o) =>
+          o.edgeKey != null &&
+          o.edgeKey !== "default" &&
+          String(o.edgeKey) === strDisc,
+      );
+      if (!picked) picked = outs.find((o) => o.edgeKey === "default");
+      if (!picked) break;
+      branchDecisions[node.id] = picked.edgeKey ?? "default";
+      currentId = picked.toNodeId;
+      continue;
+    }
+
+    if (node.kind === "action") {
+      const parsedConfig = parseAutomationActionConfig(
+        node.config.actionType as never,
+        node.config.actionConfig,
+      );
+      const renderedConfig = renderTemplateValue(parsedConfig, context);
+      const preview = buildShadowStepPreview(
+        node.config.actionType,
+        renderedConfig,
+      );
+      shadowOutputs[node.id] = preview;
+      await automationRepository.createRunStep({
+        automationRunId: runId,
+        automationStepId: null,
+        graphNodeId: node.id,
+        status: "SKIPPED",
+        output: preview as Prisma.InputJsonValue,
+        errorMessage: "Shadow mode: side effects were not executed",
+      });
+      const outs = outgoing.get(currentId) ?? [];
+      if (outs.length === 0) break;
+      if (outs.length !== 1) break;
+      currentId = outs[0]!.toNodeId;
+      continue;
+    }
+    break;
+  }
+
+  await automationRepository.updateRun(runId, {
+    status: "SKIPPED",
+    errorMessage: "Shadow mode: side effects were not executed",
+    stepOutput: {
+      ...shadowOutputs,
+      __automationGraph: { branchDecisions },
+    } as Prisma.InputJsonValue,
+    completedAt: new Date(),
+  });
+}
+
 async function runShadowAutomation(
   automation: AutomationDefinitionGraph,
   event: AutomationEventPayload,
   runId: string,
 ): Promise<void> {
+  const validatedGraph = parseValidatedFlowGraphFromDb(automation.flowGraph);
+  if (validatedGraph) {
+    await runShadowAutomationGraph(automation, event, runId, validatedGraph);
+    return;
+  }
+
   const shadowOutputs: Record<string, unknown> = {};
   const context: RuntimeContext = {
     event,
@@ -526,6 +946,12 @@ async function runMatchedAutomation(
     return;
   }
 
+  const validatedGraph = parseValidatedFlowGraphFromDb(automation.flowGraph);
+  if (validatedGraph) {
+    await runLiveAutomationGraphBody(automation, event, run.id, validatedGraph);
+    return;
+  }
+
   const sortedSteps = sortAutomationSteps(automation);
   const context: RuntimeContext = {
     event,
@@ -582,6 +1008,87 @@ export async function resumeFailedAutomationRunsForEvent(
     if (!eventRow || eventRow.tenantId !== tenantId) continue;
 
     const event = eventRowToPayload(eventRow);
+
+    if (run.automation.flowGraph) {
+      const validatedGraph = parseValidatedFlowGraphFromDb(
+        run.automation.flowGraph,
+      );
+      if (!validatedGraph) continue;
+
+      const rawOutput =
+        run.stepOutput != null &&
+        typeof run.stepOutput === "object" &&
+        !Array.isArray(run.stepOutput)
+          ? (run.stepOutput as Record<string, unknown>)
+          : {};
+      const graphMeta = rawOutput.__automationGraph as
+        | { branchDecisions?: Record<string, string> }
+        | undefined;
+      const persistedBranchDecisions = {
+        ...(graphMeta?.branchDecisions ?? {}),
+      };
+
+      const outputs: Record<string, unknown> = {};
+      let lastOutput: unknown = null;
+      const existingByNodeId = new Map<
+        string,
+        {
+          runStepId: string;
+          status: "RUNNING" | "SUCCEEDED" | "FAILED" | "SKIPPED";
+        }
+      >();
+
+      let hasResumableGraphAction = false;
+      for (const rs of run.runSteps) {
+        if (!rs.graphNodeId) continue;
+        existingByNodeId.set(rs.graphNodeId, {
+          runStepId: rs.id,
+          status: rs.status,
+        });
+        if (rs.status === "SUCCEEDED") {
+          outputs[rs.graphNodeId] =
+            rs.output != null ? (rs.output as unknown) : null;
+          lastOutput = rs.output ?? null;
+        }
+        if (rs.status === "FAILED" || rs.status === "RUNNING") {
+          hasResumableGraphAction = true;
+        }
+      }
+
+      if (!hasResumableGraphAction) continue;
+
+      await automationRepository.updateRun(run.id, {
+        status: "RUNNING",
+        completedAt: null,
+        errorMessage: null,
+        stepOutput: {
+          ...outputs,
+          __automationGraph: { branchDecisions: persistedBranchDecisions },
+        } as Prisma.InputJsonValue,
+      });
+
+      const graphContext: RuntimeContext = {
+        event,
+        outputs,
+        lastOutput,
+      };
+
+      await runLiveAutomationGraphBody(
+        run.automation,
+        event,
+        run.id,
+        validatedGraph,
+        {
+          branchDecisions: persistedBranchDecisions,
+          context: graphContext,
+          existingByNodeId,
+        },
+      );
+
+      resumed += 1;
+      continue;
+    }
+
     const sortedSteps = sortAutomationSteps(run.automation);
 
     const existingByStepId = new Map<

@@ -7,6 +7,7 @@ import {
   AUTOMATION_TRIGGER_EVENT_VALUES,
   AutomationConditionSchema,
   isAutomationActionAllowedForEvent,
+  parseAndValidateAutomationFlowGraph,
   parseAutomationActionConfig,
 } from "@repo/shared";
 
@@ -38,6 +39,15 @@ export const AutomationStepFormSchema = z
     }
   });
 
+export function hasPreservedBranchingFlowGraphShape(value: unknown): boolean {
+  return (
+    value !== undefined &&
+    value !== null &&
+    typeof value === "object" &&
+    !Array.isArray(value)
+  );
+}
+
 export const AutomationDefinitionFormSchema = z
   .object({
     name: z.string().min(1, "Name is required").max(255),
@@ -48,9 +58,53 @@ export const AutomationDefinitionFormSchema = z
     executionMode: z.enum(AUTOMATION_EXECUTION_MODE_VALUES).default("LIVE"),
     suppressLegacyWorkflows: z.boolean().default(false),
     triggers: z.array(AutomationTriggerFormSchema).min(1),
-    steps: z.array(AutomationStepFormSchema).min(1),
+    steps: z.array(AutomationStepFormSchema),
+    /**
+     * API-authored branching graph (if/switch). When set, `steps` must be empty;
+     * the graph is preserved on save and is not editable in the linear/canvas UI yet.
+     */
+    preservedBranchingFlowGraph: z.unknown().optional(),
   })
   .superRefine((value, ctx) => {
+    const graphLocked = hasPreservedBranchingFlowGraphShape(
+      value.preservedBranchingFlowGraph,
+    );
+
+    if (graphLocked && value.steps.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["steps"],
+        message:
+          "Branching graph is locked from the API; remove steps or clear preservedBranchingFlowGraph",
+      });
+      return;
+    }
+
+    if (!graphLocked && value.steps.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["steps"],
+        message:
+          "At least one step is required when no branching graph is locked",
+      });
+      return;
+    }
+
+    if (graphLocked) {
+      const eventNames = value.triggers.map((t) => t.eventName);
+      const graphValidation = parseAndValidateAutomationFlowGraph(
+        value.preservedBranchingFlowGraph,
+        eventNames,
+      );
+      if (graphValidation.ok === false) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["preservedBranchingFlowGraph"],
+          message: graphValidation.errors.join("; "),
+        });
+      }
+    }
+
     const triggerEvents = value.triggers.map((trigger) => trigger.eventName);
 
     for (const [index, step] of value.steps.entries()) {

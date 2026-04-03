@@ -23,6 +23,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { useDebounce } from "@/hooks/useDebounce";
 import { AutomationForm } from "./AutomationForm";
@@ -47,150 +48,67 @@ import type {
   CreateAutomationDefinitionInput,
   UpdateAutomationDefinitionInput,
 } from "../services/automation.service";
-import type { AutomationDefinitionFormValues } from "../validation";
+import {
+  hasPreservedBranchingFlowGraphShape,
+  type AutomationDefinitionFormValues,
+} from "../validation";
+import {
+  AUTOMATION_TEMPLATE_CATALOG,
+  AUTOMATION_TEMPLATE_CATEGORIES,
+  AUTOMATION_TEMPLATE_CATEGORY_LABELS,
+  compileLinearStepsToFlowGraph,
+  searchAutomationTemplates,
+  tryDecompileLinearChainFlowGraph,
+  tryDecompileLinearChainFlowGraphWithIds,
+  type AutomationTemplateCatalogEntry,
+  type AutomationTemplateCategory,
+} from "@repo/shared";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
+import {
+  describeBranchDecisionLines,
+  extractGraphBranchDecisions,
+} from "../utils/automation-flow-graph-view";
 
-const AUTOMATION_TEMPLATES: Array<{
-  id: string;
-  name: string;
-  description: string;
-  whenItRuns: string[];
-  whatItDoes: string[];
-  values: AutomationDefinitionFormValues;
-}> = [
-  {
-    id: "sales-follow-up",
-    name: "Sales follow-up",
-    description: "Create a work item after a high-value sale.",
-    whenItRuns: [
-      "Fires when a sale is created and the order total meets your threshold.",
-      "Uses event sales.sale.high_value_created (example condition: total ≥ 5000).",
-    ],
-    whatItDoes: [
-      "Creates a high-priority FOLLOW_UP work item for your team.",
-      "Includes the sale code in the task description for quick lookup.",
-    ],
-    values: {
-      name: "High-value sale follow-up",
-      description: "Assign a follow-up task when a high-value sale is created.",
-      scopeType: "LOCATION",
-      scopeId: "",
-      status: "ACTIVE",
-      executionMode: "LIVE",
-      suppressLegacyWorkflows: false,
-      triggers: [
-        {
-          eventName: "sales.sale.high_value_created",
-          conditions: [{ path: "total", operator: "gte", value: 5000 }],
-          delayMinutes: 0,
-        },
-      ],
-      steps: [
-        {
-          actionType: "workitem.create",
-          actionConfig: {
-            title: "Follow up on premium sale",
-            type: "FOLLOW_UP",
-            priority: "HIGH",
-            description: "Reach out after sale {{event.payload.saleCode}}",
-          },
-          continueOnError: false,
-        },
-      ],
-    },
-  },
-  {
-    id: "inventory-restock",
-    name: "Inventory restock",
-    description: "Draft a transfer when stock drops below threshold.",
-    whenItRuns: [
-      "Fires when the platform emits a low-stock signal for a variation.",
-      "Uses event inventory.stock.low_detected.",
-      "After applying: set Scope to Location and pick the warehouse (or Global for all sites), then save.",
-    ],
-    whatItDoes: [
-      "Opens a transfer draft using suggested movement data from the event.",
-      "Lets staff review and confirm before stock moves.",
-    ],
-    values: {
-      name: "Inventory restock draft",
-      description: "Create a transfer draft when low stock is detected.",
-      scopeType: "LOCATION",
-      scopeId: "",
-      status: "ACTIVE",
-      executionMode: "LIVE",
-      suppressLegacyWorkflows: false,
-      triggers: [
-        {
-          eventName: "inventory.stock.low_detected",
-          conditions: [],
-          delayMinutes: 0,
-        },
-      ],
-      steps: [
-        {
-          actionType: "transfer.create_draft",
-          actionConfig: {
-            payloadPath: "suggestedTransfer",
-          },
-          continueOnError: false,
-        },
-      ],
-    },
-  },
-  {
-    id: "lead-routing",
-    name: "Lead routing",
-    description:
-      "Create activity and update contact status after lead conversion.",
-    whenItRuns: [
-      "Fires when a lead is converted to a contact or customer record.",
-      "Uses event crm.lead.converted.",
-    ],
-    whatItDoes: [
-      "Sets the contact status to CUSTOMER (adjust field/value after install if needed).",
-      "Logs a CALL-type activity so the team sees follow-up context.",
-    ],
-    values: {
-      name: "Lead conversion routing",
-      description: "Keep CRM records in sync when a lead converts.",
-      scopeType: "GLOBAL",
-      scopeId: "",
-      status: "ACTIVE",
-      executionMode: "LIVE",
-      suppressLegacyWorkflows: false,
-      triggers: [
-        {
-          eventName: "crm.lead.converted",
-          conditions: [],
-          delayMinutes: 0,
-        },
-      ],
-      steps: [
-        {
-          actionType: "crm.contact.update",
-          actionConfig: {
-            contactIdTemplate: "{{event.payload.contactId}}",
-            field: "status",
-            value: "CUSTOMER",
-          },
-          continueOnError: false,
-        },
-        {
-          actionType: "crm.activity.create",
-          actionConfig: {
-            type: "CALL",
-            subject: "Converted lead follow-up",
-          },
-          continueOnError: true,
-        },
-      ],
-    },
-  },
-];
+function catalogTemplateToFormValues(
+  entry: AutomationTemplateCatalogEntry,
+): AutomationDefinitionFormValues {
+  const v = entry.values;
+  return {
+    ...v,
+    description: v.description ?? "",
+    scopeId: v.scopeId ?? "",
+  };
+}
 
 function toFormValues(
   automation: AutomationDefinition,
 ): AutomationDefinitionFormValues {
+  const stepsFromGraph =
+    automation.flowGraph && automation.steps.length === 0
+      ? tryDecompileLinearChainFlowGraph(automation.flowGraph)
+      : null;
+
+  const isNonLinearGraphOnly =
+    Boolean(automation.flowGraph) &&
+    automation.steps.length === 0 &&
+    stepsFromGraph === null;
+
+  const steps = isNonLinearGraphOnly
+    ? []
+    : automation.steps.length > 0
+      ? automation.steps.map((step) => ({
+          actionType: step.actionType,
+          actionConfig: step.actionConfig,
+          continueOnError: step.continueOnError,
+        }))
+      : stepsFromGraph != null
+        ? stepsFromGraph.map((step) => ({
+            actionType: step.actionType,
+            actionConfig: step.actionConfig,
+            continueOnError: step.continueOnError ?? false,
+          }))
+        : [];
+
   return {
     name: automation.name,
     description: automation.description ?? "",
@@ -209,15 +127,17 @@ function toFormValues(
         })) ?? [],
       delayMinutes: trigger.delayMinutes,
     })),
-    steps: automation.steps.map((step) => ({
-      actionType: step.actionType,
-      actionConfig: step.actionConfig,
-      continueOnError: step.continueOnError,
-    })),
+    steps,
+    ...(isNonLinearGraphOnly
+      ? { preservedBranchingFlowGraph: automation.flowGraph }
+      : {}),
   };
 }
 
 export function AutomationBuilderPage() {
+  const automationBranchingEnabled = useEnvFeatureFlag(
+    EnvFeature.AUTOMATION_BRANCHING,
+  );
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
   const [editing, setEditing] = useState<AutomationDefinition | null>(null);
@@ -225,8 +145,19 @@ export function AutomationBuilderPage() {
     AutomationDefinitionFormValues | undefined
   >(undefined);
   const [templatesDialogOpen, setTemplatesDialogOpen] = useState(false);
+  const [templateCategory, setTemplateCategory] = useState<
+    AutomationTemplateCategory | "ALL"
+  >("ALL");
+  const [templateQuery, setTemplateQuery] = useState("");
+  const debouncedTemplateQuery = useDebounce(templateQuery, 200);
   /** Blank create flow when not editing and no template draft */
   const [composerOpen, setComposerOpen] = useState(false);
+
+  const filteredAutomationTemplates = useMemo(() => {
+    const searched = searchAutomationTemplates(debouncedTemplateQuery);
+    if (templateCategory === "ALL") return searched;
+    return searched.filter((t) => t.category === templateCategory);
+  }, [debouncedTemplateQuery, templateCategory]);
   const createAutomation = useCreateAutomationDefinition();
   const updateAutomation = useUpdateAutomationDefinition();
   const archiveAutomation = useArchiveAutomationDefinition();
@@ -244,6 +175,11 @@ export function AutomationBuilderPage() {
     limit: 25,
   });
   const selectedAutomationId = editing?.id ?? data?.automations[0]?.id ?? "";
+  const definitionForRuns = useMemo(() => {
+    if (!data?.automations.length || !selectedAutomationId) return null;
+    if (editing?.id === selectedAutomationId) return editing;
+    return data.automations.find((a) => a.id === selectedAutomationId) ?? null;
+  }, [data?.automations, editing, selectedAutomationId]);
   const {
     data: runsData,
     isLoading: runsLoading,
@@ -259,21 +195,92 @@ export function AutomationBuilderPage() {
     [editing],
   );
 
+  /** Stable node ids when re-saving a graph-only linear chain without add/remove steps. */
+  const editingLinearChainMeta = useMemo(() => {
+    if (!editing?.flowGraph || editing.steps.length > 0) return null;
+    return tryDecompileLinearChainFlowGraphWithIds(editing.flowGraph);
+  }, [editing]);
+
+  const flowCompileStableIds = useMemo(() => {
+    if (!editingLinearChainMeta) return null;
+    return {
+      entryId: editingLinearChainMeta.entryNodeId,
+      actionNodeIds: editingLinearChainMeta.actionNodeIds,
+    };
+  }, [editingLinearChainMeta]);
+
   const showAutomationForm =
     editing !== null || draftValues !== undefined || composerOpen;
 
+  const beginEditAutomation = (automation: AutomationDefinition) => {
+    setEditing(automation);
+  };
+
   const buildPayload = (
     values: AutomationDefinitionFormValues,
-  ): CreateAutomationDefinitionInput => ({
-    ...values,
-    scopeId: values.scopeId || null,
-    steps: values.steps.map((step) => ({
-      actionType: step.actionType,
-      actionConfig:
-        step.actionConfig as CreateAutomationDefinitionInput["steps"][number]["actionConfig"],
-      continueOnError: step.continueOnError,
-    })),
-  });
+  ): CreateAutomationDefinitionInput => {
+    const base = {
+      name: values.name,
+      description: values.description || null,
+      scopeType: values.scopeType,
+      scopeId: values.scopeId || null,
+      status: values.status,
+      executionMode: values.executionMode,
+      suppressLegacyWorkflows: values.suppressLegacyWorkflows,
+      triggers: values.triggers.map((trigger) => ({
+        eventName: trigger.eventName,
+        conditions: trigger.conditions,
+        delayMinutes: trigger.delayMinutes,
+      })),
+    };
+
+    if (
+      automationBranchingEnabled &&
+      hasPreservedBranchingFlowGraphShape(values.preservedBranchingFlowGraph)
+    ) {
+      return {
+        ...base,
+        steps: [],
+        flowGraph: values.preservedBranchingFlowGraph as NonNullable<
+          CreateAutomationDefinitionInput["flowGraph"]
+        >,
+      };
+    }
+
+    if (automationBranchingEnabled && values.steps.length > 0) {
+      const stableIds =
+        editingLinearChainMeta &&
+        values.steps.length === editingLinearChainMeta.actionNodeIds.length
+          ? {
+              entryId: editingLinearChainMeta.entryNodeId,
+              actionNodeIds: editingLinearChainMeta.actionNodeIds,
+            }
+          : undefined;
+      return {
+        ...base,
+        steps: [],
+        flowGraph: compileLinearStepsToFlowGraph(
+          values.steps.map((step) => ({
+            actionType: step.actionType,
+            actionConfig: step.actionConfig,
+            continueOnError: step.continueOnError,
+          })),
+          stableIds,
+        ),
+      };
+    }
+
+    return {
+      ...base,
+      steps: values.steps.map((step) => ({
+        actionType: step.actionType,
+        actionConfig: step.actionConfig as NonNullable<
+          CreateAutomationDefinitionInput["steps"]
+        >[number]["actionConfig"],
+        continueOnError: step.continueOnError,
+      })),
+    };
+  };
 
   const handleSubmit = (values: AutomationDefinitionFormValues) => {
     const payload = buildPayload(values);
@@ -302,15 +309,19 @@ export function AutomationBuilderPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-semibold tracking-tight">Automation</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Event automations
+        </h1>
         <p className="text-sm text-muted-foreground">
           Manage cross-system automations for CRM, sales, inventory, transfers,
           and work items.
         </p>
         <p className="text-sm text-muted-foreground">
           Use the guide below for concepts and setup; open{" "}
-          <strong>Automation templates</strong> for ready-made starters.
-          Pipeline deal rules live under CRM → Workflows.
+          <strong>Templates</strong> for ready-made starters. Deal pipeline
+          rules live under{" "}
+          <strong className="text-foreground">Deal pipeline rules</strong> in
+          settings.
         </p>
       </div>
 
@@ -343,7 +354,7 @@ export function AutomationBuilderPage() {
               onClick={() => setTemplatesDialogOpen(true)}
             >
               <LayoutTemplate className="mr-2 h-4 w-4" aria-hidden />
-              Automation templates
+              Templates
             </Button>
             {showAutomationForm ? (
               <Button
@@ -362,7 +373,13 @@ export function AutomationBuilderPage() {
 
           <Dialog
             open={templatesDialogOpen}
-            onOpenChange={setTemplatesDialogOpen}
+            onOpenChange={(open) => {
+              setTemplatesDialogOpen(open);
+              if (!open) {
+                setTemplateQuery("");
+                setTemplateCategory("ALL");
+              }
+            }}
           >
             <DialogContent
               className="flex max-h-[min(90vh,720px)] max-w-3xl flex-col gap-0 p-0"
@@ -372,21 +389,66 @@ export function AutomationBuilderPage() {
                 <DialogTitle>Automation templates</DialogTitle>
                 <DialogDescription>
                   Pick a starter: we load it into the editor below so you can
-                  adjust scope, triggers, and steps before saving.
+                  adjust scope, triggers, and steps before saving.{" "}
+                  {AUTOMATION_TEMPLATE_CATALOG.length} templates available.
                 </DialogDescription>
               </DialogHeader>
+              <div className="shrink-0 space-y-3 border-b px-6 py-3">
+                <Input
+                  value={templateQuery}
+                  onChange={(e) => setTemplateQuery(e.target.value)}
+                  placeholder="Search by name, tag, or description…"
+                  aria-label="Search templates"
+                />
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={templateCategory === "ALL" ? "default" : "outline"}
+                    onClick={() => setTemplateCategory("ALL")}
+                  >
+                    All
+                  </Button>
+                  {AUTOMATION_TEMPLATE_CATEGORIES.map((cat) => (
+                    <Button
+                      key={cat}
+                      type="button"
+                      size="sm"
+                      variant={templateCategory === cat ? "default" : "outline"}
+                      onClick={() => setTemplateCategory(cat)}
+                    >
+                      {AUTOMATION_TEMPLATE_CATEGORY_LABELS[cat]}
+                    </Button>
+                  ))}
+                </div>
+              </div>
               <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
                 <div className="grid gap-4 sm:grid-cols-1">
-                  {AUTOMATION_TEMPLATES.map((template) => (
+                  {filteredAutomationTemplates.map((template) => (
                     <div
                       key={template.id}
                       data-testid={`automation-template-${template.id}`}
                       className="rounded-lg border bg-card p-4 shadow-sm"
                     >
-                      <h3 className="font-medium">{template.name}</h3>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="font-medium">{template.name}</h3>
+                        <Badge variant="secondary">
+                          {
+                            AUTOMATION_TEMPLATE_CATEGORY_LABELS[
+                              template.category
+                            ]
+                          }
+                        </Badge>
+                        <Badge variant="outline">{template.difficulty}</Badge>
+                      </div>
                       <p className="mt-1 text-sm text-muted-foreground">
                         {template.description}
                       </p>
+                      {template.tags.length ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          {template.tags.join(" · ")}
+                        </p>
+                      ) : null}
                       <div className="mt-3 space-y-2 text-xs text-muted-foreground">
                         <p className="font-medium text-foreground">
                           When it runs
@@ -410,7 +472,7 @@ export function AutomationBuilderPage() {
                         size="sm"
                         onClick={() => {
                           setEditing(null);
-                          setDraftValues(template.values);
+                          setDraftValues(catalogTemplateToFormValues(template));
                           setTemplatesDialogOpen(false);
                         }}
                       >
@@ -419,6 +481,11 @@ export function AutomationBuilderPage() {
                     </div>
                   ))}
                 </div>
+                {filteredAutomationTemplates.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No templates match your filters.
+                  </p>
+                ) : null}
               </div>
               <DialogFooter className="shrink-0 border-t px-6 py-3 sm:justify-start">
                 <Button
@@ -479,14 +546,18 @@ export function AutomationBuilderPage() {
                     ) : null}
                     <p className="text-sm text-muted-foreground">
                       {automation.triggers.length} trigger(s) ·{" "}
-                      {automation.steps.length} step(s)
+                      {automation.steps.length > 0
+                        ? `${automation.steps.length} step(s)`
+                        : automation.flowGraph
+                          ? "Graph body"
+                          : "0 steps"}
                     </p>
                   </div>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => setEditing(automation)}
+                      onClick={() => beginEditAutomation(automation)}
                     >
                       Edit
                     </Button>
@@ -536,9 +607,32 @@ export function AutomationBuilderPage() {
             {!isLoading &&
             !definitionsError &&
             data?.automations.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No automation definitions yet.
-              </p>
+              <div className="rounded-lg border border-dashed p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  No automation definitions yet. Start from a template or create
+                  a blank automation.
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    onClick={() => setTemplatesDialogOpen(true)}
+                  >
+                    <LayoutTemplate className="mr-2 h-4 w-4" aria-hidden />
+                    Browse templates
+                  </Button>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      setEditing(null);
+                      setDraftValues(undefined);
+                      setComposerOpen(true);
+                    }}
+                  >
+                    Create automation
+                  </Button>
+                </div>
+              </div>
             ) : null}
 
             {data?.pagination && data.pagination.totalPages > 1 ? (
@@ -555,6 +649,7 @@ export function AutomationBuilderPage() {
             <h2 className="mb-3 font-medium">{title}</h2>
             <AutomationForm
               defaultValues={editing ? toFormValues(editing) : draftValues}
+              linearFlowCompileStableIds={flowCompileStableIds}
               onSubmit={handleSubmit}
               isSubmitting={
                 createAutomation.isPending ||
@@ -591,8 +686,12 @@ export function AutomationBuilderPage() {
                   <strong>Full replay</strong> re-queues the original event from
                   scratch (all matching automations may run again).{" "}
                   <strong>Resume failed steps</strong> continues this run from
-                  the first failed step when you want to avoid duplicating steps
-                  that already succeeded.
+                  the first failed linear step or graph action when you want to
+                  avoid duplicating work that already succeeded. Graph runs may
+                  show <strong>Branch decisions</strong> (frozen{" "}
+                  <code className="text-xs">if</code> /{" "}
+                  <code className="text-xs">switch</code> outcomes) on each row
+                  when the API recorded them.
                 </p>
               </HelpTopicSheet>
             </div>
@@ -608,109 +707,139 @@ export function AutomationBuilderPage() {
             ) : null}
             {!runsLoading && !runsError && runsData?.runs.length ? (
               <div className="space-y-3">
-                {runsData.runs.map((run) => (
-                  <div key={run.id} className="rounded-md border p-3">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium">{run.eventName}</span>
-                      <span className="text-xs text-muted-foreground">
-                        {run.status} · {run.executionMode}
-                      </span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {run.entityType} · {run.entityId}
-                    </p>
-                    {run.errorMessage ? (
-                      <p className="mt-2 text-xs text-destructive">
-                        {run.errorMessage}
+                {runsData.runs.map((run) => {
+                  const branchDecisions = extractGraphBranchDecisions(
+                    run.stepOutput ?? undefined,
+                  );
+                  const branchLines =
+                    branchDecisions != null
+                      ? describeBranchDecisionLines(
+                          definitionForRuns?.flowGraph,
+                          branchDecisions,
+                        )
+                      : null;
+                  return (
+                    <div key={run.id} className="rounded-md border p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium">{run.eventName}</span>
+                        <span className="text-xs text-muted-foreground">
+                          {run.status} · {run.executionMode}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {run.entityType} · {run.entityId}
                       </p>
-                    ) : null}
-                    {run.automationEventId && run.status === "FAILED" ? (
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="outline">
-                              Full replay
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Queue a full replay?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Re-queues the original event from scratch so all
-                                matching automations can run again. Use “Resume
-                                failed steps” instead if you only want to retry
-                                a failed run without duplicating side effects
-                                from steps that already succeeded.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  replayAutomationEvent.mutate({
-                                    eventId: run.automationEventId!,
-                                    payload: { reprocessFromStart: true },
-                                  })
-                                }
-                              >
-                                Full replay
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button size="sm" variant="secondary">
-                              Resume failed steps
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Resume from the failed step?
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Continues this failed run from the first failed
-                                step. If nothing is eligible, a full replay is
-                                queued instead.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() =>
-                                  replayAutomationEvent.mutate({
-                                    eventId: run.automationEventId!,
-                                    payload: { reprocessFromStart: false },
-                                  })
-                                }
-                              >
-                                Resume
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
-                      </div>
-                    ) : null}
-                    {run.runSteps.length ? (
-                      <div className="mt-2 space-y-1">
-                        {run.runSteps.map((step) => (
-                          <p
-                            key={step.id}
-                            className="text-xs text-muted-foreground"
-                          >
-                            {step.status}
-                            {step.output
-                              ? ` · ${JSON.stringify(step.output)}`
-                              : ""}
+                      {run.errorMessage ? (
+                        <p className="mt-2 text-xs text-destructive">
+                          {run.errorMessage}
+                        </p>
+                      ) : null}
+                      {branchLines?.length ? (
+                        <div
+                          className="mt-2 space-y-0.5 text-xs text-muted-foreground"
+                          title="Frozen routing choices for this graph run (BR-16)"
+                        >
+                          <p className="font-medium text-foreground">
+                            Branch decisions
                           </p>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-                ))}
+                          <ul className="list-disc space-y-0.5 pl-4">
+                            {branchLines.map((line, i) => (
+                              <li key={`${run.id}-branch-${i}`}>{line}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                      {run.automationEventId && run.status === "FAILED" ? (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="outline">
+                                Full replay
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Queue a full replay?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Re-queues the original event from scratch so
+                                  all matching automations can run again. Use
+                                  “Resume failed steps” instead if you only want
+                                  to retry a failed run without duplicating side
+                                  effects from steps that already succeeded.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    replayAutomationEvent.mutate({
+                                      eventId: run.automationEventId!,
+                                      payload: { reprocessFromStart: true },
+                                    })
+                                  }
+                                >
+                                  Full replay
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button size="sm" variant="secondary">
+                                Resume failed steps
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Resume from the failed step?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Continues this failed run from the first
+                                  failed linear step or graph action. If nothing
+                                  is eligible, a full replay is queued instead.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() =>
+                                    replayAutomationEvent.mutate({
+                                      eventId: run.automationEventId!,
+                                      payload: { reprocessFromStart: false },
+                                    })
+                                  }
+                                >
+                                  Resume
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        </div>
+                      ) : null}
+                      {run.runSteps.length ? (
+                        <div className="mt-2 space-y-1">
+                          {run.runSteps.map((step) => (
+                            <p
+                              key={step.id}
+                              className="text-xs text-muted-foreground"
+                            >
+                              {step.status}
+                              {step.graphNodeId
+                                ? ` · node ${step.graphNodeId}`
+                                : ""}
+                              {step.output
+                                ? ` · ${JSON.stringify(step.output)}`
+                                : ""}
+                            </p>
+                          ))}
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
             ) : null}
             {!runsLoading &&
