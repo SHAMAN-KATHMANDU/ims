@@ -269,11 +269,15 @@ const EnvSchema = z
 
     const imsDeploymentTier = raw.IMS_DEPLOYMENT_TIER?.trim() || null;
 
+    const manualMessengerConnectAllowed =
+      isDev || appEnv === "staging" || appEnv === "staging-production";
+
     return {
       nodeEnv: raw.NODE_ENV,
       isDev,
       isStaging,
       isProd,
+      manualMessengerConnectAllowed,
       port: raw.PORT,
       host: raw.HOST.trim() || "0.0.0.0",
       jwtSecret: raw.JWT_SECRET ?? "",

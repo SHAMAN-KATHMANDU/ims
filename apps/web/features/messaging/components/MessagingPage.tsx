@@ -10,8 +10,14 @@ import { ConversationList } from "./ConversationList";
 import { ChatPanel } from "./ChatPanel";
 import { ManualConnectDialog } from "./ManualConnectDialog";
 import { Button } from "@/components/ui/button";
+import { getAppEnv } from "@/config/env";
 
-const isDevRuntime = process.env.NODE_ENV === "development";
+function isManualMessengerConnectAllowed(): boolean {
+  const e = getAppEnv();
+  return e === "development" || e === "staging" || e === "staging-production";
+}
+
+const allowManualMessengerConnect = isManualMessengerConnectAllowed();
 
 export function MessagingPage() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -21,7 +27,7 @@ export function MessagingPage() {
 
   const { data: channels = [], isLoading: channelsLoading } =
     useMessagingChannels({
-      enabled: isDevRuntime,
+      enabled: allowManualMessengerConnect,
     });
 
   // Establish socket connection for real-time updates
@@ -35,7 +41,7 @@ export function MessagingPage() {
   );
 
   const showDevConnect =
-    isDevRuntime &&
+    allowManualMessengerConnect &&
     !channelsLoading &&
     (channels.length === 0 || pendingManualSetup != null);
 
