@@ -58,6 +58,23 @@ const EnvSchema = z
     META_APP_ID: z.string().optional(),
     META_APP_SECRET: z.string().optional(),
     CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    AI_REPLY_PROVIDER: z
+      .enum(["OPENAI_RESPONSES", "OPENAI_COMPAT_CHAT", "GEMINI_API"])
+      .optional()
+      .default("GEMINI_API"),
+    AI_REPLY_MODEL: z.string().optional().default("gemini-2.5-flash"),
+    AI_REPLY_API_KEY: z.string().optional().default(""),
+    AI_REPLY_BASE_URL: z
+      .string()
+      .optional()
+      .default("https://generativelanguage.googleapis.com/v1beta"),
+    AI_REPLY_ENABLED_DEFAULT: z
+      .string()
+      .optional()
+      .default("false")
+      .transform((v) => v.toLowerCase() === "true"),
+    BRAINTRUST_API_KEY: z.string().optional().default(""),
+    BRAINTRUST_PROJECT_NAME: z.string().optional().default("IMS AI Replies"),
     AWS_REGION: z.string().optional(),
     PHOTOS_S3_BUCKET: z.string().optional(),
     PHOTOS_PUBLIC_URL_PREFIX: z.string().optional(),
@@ -252,11 +269,15 @@ const EnvSchema = z
 
     const imsDeploymentTier = raw.IMS_DEPLOYMENT_TIER?.trim() || null;
 
+    const manualMessengerConnectAllowed =
+      isDev || appEnv === "staging" || appEnv === "staging-production";
+
     return {
       nodeEnv: raw.NODE_ENV,
       isDev,
       isStaging,
       isProd,
+      manualMessengerConnectAllowed,
       port: raw.PORT,
       host: raw.HOST.trim() || "0.0.0.0",
       jwtSecret: raw.JWT_SECRET ?? "",
@@ -274,6 +295,13 @@ const EnvSchema = z
       metaAppId: raw.META_APP_ID?.trim() ?? "",
       metaAppSecret: raw.META_APP_SECRET?.trim() ?? "",
       credentialEncryptionKey: raw.CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "",
+      aiReplyProvider: raw.AI_REPLY_PROVIDER,
+      aiReplyModel: raw.AI_REPLY_MODEL.trim(),
+      aiReplyApiKey: raw.AI_REPLY_API_KEY.trim(),
+      aiReplyBaseUrl: raw.AI_REPLY_BASE_URL.trim(),
+      aiReplyEnabledDefault: raw.AI_REPLY_ENABLED_DEFAULT,
+      braintrustApiKey: raw.BRAINTRUST_API_KEY.trim(),
+      braintrustProjectName: raw.BRAINTRUST_PROJECT_NAME.trim(),
       awsRegion,
       photosS3Bucket,
       photosPublicUrlPrefix,

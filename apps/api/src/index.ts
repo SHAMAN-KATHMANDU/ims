@@ -4,6 +4,7 @@ import { basePrisma as prisma } from "@/config/prisma";
 import dbConnect from "@/config/dbConnect";
 import { env } from "@/config/env";
 import { logger } from "@/config/logger";
+import "@/config/braintrust";
 import { verifyS3Connectivity } from "@/lib/s3/s3Storage";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
 import { startUploadCleanupCron } from "@/jobs/uploadCleanup";
@@ -14,6 +15,7 @@ import { setupSocketIO } from "@/config/socket.config";
 import "@/queues/inbound-message.worker";
 import "@/queues/outbound-message.worker";
 import "@/queues/status-update.worker";
+import "@/queues/ai-reply.worker";
 
 // Note: dotenv.config() is called in env.ts - do not call it here
 const PORT = env.port;

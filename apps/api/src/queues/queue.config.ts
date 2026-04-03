@@ -72,3 +72,23 @@ export const statusQueue = new Queue("messaging-status", {
     },
   },
 });
+
+/**
+ * AI reply queue - generates optional automated responses for inbound messages.
+ */
+export const aiReplyQueue = new Queue("messaging-ai-reply", {
+  connection: redisConnection,
+  defaultJobOptions: {
+    attempts: 2,
+    backoff: {
+      type: "exponential",
+      delay: 2000,
+    },
+    removeOnComplete: {
+      age: 86400, // 24 hours
+    },
+    removeOnFail: {
+      age: 604800, // 7 days
+    },
+  },
+});

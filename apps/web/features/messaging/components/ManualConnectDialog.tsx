@@ -24,6 +24,7 @@ import {
   useRegisterManualWebhookVerify,
   useCompleteManualMessagingChannel,
 } from "../hooks/use-messaging-channels";
+import { apiBaseUrl } from "@/config/env";
 
 interface ManualConnectDialogProps {
   open: boolean;
@@ -103,11 +104,16 @@ export function ManualConnectDialog({
     step1Form.formState.isSubmitting ||
     step2Form.formState.isSubmitting;
 
+  const publicWebhookCallbackUrl =
+    apiBaseUrl.startsWith("http://") || apiBaseUrl.startsWith("https://")
+      ? `${apiBaseUrl.replace(/\/$/, "")}/webhooks/messenger`
+      : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Connect Messenger (local dev)</DialogTitle>
+          <DialogTitle>Connect Messenger (manual setup)</DialogTitle>
           <DialogDescription>
             {step === 1 ? (
               <>
@@ -127,15 +133,29 @@ export function ManualConnectDialog({
 
         <div className="rounded-md border bg-muted/40 p-3 text-xs text-muted-foreground">
           <p className="font-medium text-foreground">Webhook callback URL</p>
-          <p className="mt-1">
-            <code className="break-all">
-              https://&#123;your-ngrok-host&#125;/api/v1/webhooks/messenger
-            </code>
-          </p>
-          <p className="mt-2">
-            Run <code className="rounded bg-muted px-1">ngrok http 4000</code>{" "}
-            (or your API port) and paste the HTTPS host above.
-          </p>
+          {publicWebhookCallbackUrl ? (
+            <>
+              <p className="mt-1">
+                <code className="break-all">{publicWebhookCallbackUrl}</code>
+              </p>
+              <p className="mt-2">
+                Paste this URL in Meta&apos;s webhook callback URL field.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="mt-1">
+                <code className="break-all">
+                  https://&#123;your-ngrok-host&#125;/api/v1/webhooks/messenger
+                </code>
+              </p>
+              <p className="mt-2">
+                Run{" "}
+                <code className="rounded bg-muted px-1">ngrok http 4000</code>{" "}
+                (or your API port) and paste the HTTPS host above.
+              </p>
+            </>
+          )}
         </div>
 
         {step === 1 ? (

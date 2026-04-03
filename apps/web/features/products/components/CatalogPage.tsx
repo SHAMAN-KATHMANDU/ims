@@ -886,9 +886,9 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         {canManageProducts && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -995,7 +995,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
               onChange={handleLocationChange}
               placeholder="Location"
               allLabel="All"
-              className="h-9 w-[130px] text-sm shrink-0"
+              className="h-9 min-w-0 flex-1 text-sm sm:w-[130px] sm:flex-none sm:shrink-0"
             />
             <Popover>
               <PopoverTrigger asChild>
@@ -1008,7 +1008,10 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                   Filters
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-3" align="end">
+              <PopoverContent
+                className="w-[min(calc(100vw-2rem),20rem)] p-3 sm:w-80"
+                align="end"
+              >
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox

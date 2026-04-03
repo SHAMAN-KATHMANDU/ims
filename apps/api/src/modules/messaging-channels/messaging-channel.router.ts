@@ -23,7 +23,7 @@ messagingChannelRouter.get(
  * /messaging-channels/manual-connect/webhook-verify:
  *   post:
  *     operationId: registerManualWebhookVerify
- *     summary: "Manual connect step 1 — save webhook verify token (development only)"
+ *     summary: "Manual connect step 1 — save webhook verify token (development / staging only)"
  *     description: >
  *       Persists the verify token so Meta GET webhook verification can succeed before any page token is stored.
  *       After Meta shows verification success, call POST .../manual-connect/{channelId}/complete with page credentials.
@@ -57,7 +57,7 @@ messagingChannelRouter.get(
  * /messaging-channels/manual-connect/{channelId}/complete:
  *   post:
  *     operationId: completeManualConnectMessagingChannel
- *     summary: "Manual connect step 2 — page token and subscription (development only)"
+ *     summary: "Manual connect step 2 — page token and subscription (development / staging only)"
  *     tags: [Messaging]
  *     security:
  *       - bearerAuth: []
