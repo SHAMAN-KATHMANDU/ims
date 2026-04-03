@@ -129,6 +129,17 @@ const EnvSchema = z
           },
         ]);
       }
+      const credKey = raw.CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "";
+      if (!/^[0-9a-fA-F]{64}$/.test(credKey)) {
+        throw new z.ZodError([
+          {
+            code: "custom",
+            path: ["CREDENTIAL_ENCRYPTION_KEY"],
+            message:
+              "CREDENTIAL_ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes) for AES-256-GCM. Required for Messenger credentials. Generate with: node -e \"console.log(require('crypto').randomBytes(32).toString('hex'))\"",
+          },
+        ]);
+      }
     }
 
     let corsOrigin: string | string[];

@@ -72,6 +72,12 @@ if [[ "$POSTGRES_PASSWORD" == "STRONG-RANDOM-PASSWORD-HERE" ]]; then
 fi
 success "Placeholder values replaced"
 
+if [[ ! "${CREDENTIAL_ENCRYPTION_KEY}" =~ ^[0-9a-fA-F]{64}$ ]]; then
+  error "CREDENTIAL_ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes)."
+  exit 1
+fi
+success "CREDENTIAL_ENCRYPTION_KEY format is valid"
+
 # -----------------------------------------------------------------------------
 # 4. Create backup directory on host
 # -----------------------------------------------------------------------------
