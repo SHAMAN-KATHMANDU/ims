@@ -727,6 +727,335 @@ describe("automation.runtime", () => {
     );
   });
 
+  it("records SHADOW preview for linear flowGraph without side effects", async () => {
+    const entryId = "c0c0c0c0-c0c0-40c0-80c0-c0c0c0c0c0c0";
+    const actionNodeId = "c1c1c1c1-c1c1-41c1-81c1-c1c1c1c1c1c1";
+    const flowGraph = compileLinearStepsToFlowGraph(
+      [
+        {
+          actionType: "workitem.create",
+          actionConfig: {
+            title: "Shadow graph",
+            type: "TASK",
+            priority: "HIGH",
+          },
+          continueOnError: false,
+        },
+      ],
+      { entryId, actionNodeIds: [actionNodeId] },
+    );
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-shadow-linear",
+        executionMode: "SHADOW",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(mockCreateRunStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        automationRunId: "run-1",
+        graphNodeId: actionNodeId,
+        automationStepId: null,
+        status: "SKIPPED",
+        output: expect.objectContaining({ simulated: true }),
+      }),
+    );
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        status: "SKIPPED",
+        stepOutput: expect.objectContaining({
+          [actionNodeId]: expect.objectContaining({ simulated: true }),
+          __automationGraph: { branchDecisions: {} },
+        }),
+      }),
+    );
+    expect(mockMarkEventProcessed).toHaveBeenCalledWith("event-1");
+  });
+
+  it("SHADOW if false path records branch decision without sibling action preview", async () => {
+    const entryId = "d0d0d0d0-d0d0-40d0-80d0-d0d0d0d0d0d0";
+    const ifId = "d1d1d1d1-d1d1-41d1-81d1-d1d1d1d1d1d1";
+    const actionTrueId = "d2d2d2d2-d2d2-42d2-82d2-d2d2d2d2d2d2";
+    const endId = "d3d3d3d3-d3d3-43d3-83d3-d3d3d3d3d3d3";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: ifId,
+          kind: "if" as const,
+          config: {
+            conditions: [
+              { path: "flag", operator: "eq" as const, value: true },
+            ],
+          },
+        },
+        {
+          id: actionTrueId,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Shadow true only",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        { id: endId, kind: "noop" as const },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: ifId },
+        { fromNodeId: ifId, toNodeId: actionTrueId, edgeKey: "true" },
+        { fromNodeId: ifId, toNodeId: endId, edgeKey: "false" },
+        { fromNodeId: actionTrueId, toNodeId: endId },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, flag: false },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-shadow-if-false",
+        executionMode: "SHADOW",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(mockCreateRunStep).not.toHaveBeenCalled();
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        status: "SKIPPED",
+        stepOutput: expect.objectContaining({
+          __automationGraph: {
+            branchDecisions: { [ifId]: "false" },
+          },
+        }),
+      }),
+    );
+  });
+
+  it("SHADOW if true path previews only the taken branch action", async () => {
+    const entryId = "e0e0e0e0-e0e0-40e0-80e0-e0e0e0e0e0e0";
+    const ifId = "e1e1e1e1-e1e1-41e1-81e1-e1e1e1e1e1e1";
+    const actionTrueId = "e2e2e2e2-e2e2-42e2-82e2-e2e2e2e2e2e2";
+    const endId = "e3e3e3e3-e3e3-43e3-83e3-e3e3e3e3e3e3";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: ifId,
+          kind: "if" as const,
+          config: {
+            conditions: [
+              { path: "flag", operator: "eq" as const, value: true },
+            ],
+          },
+        },
+        {
+          id: actionTrueId,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Shadow hot",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        { id: endId, kind: "noop" as const },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: ifId },
+        { fromNodeId: ifId, toNodeId: actionTrueId, edgeKey: "true" },
+        { fromNodeId: ifId, toNodeId: endId, edgeKey: "false" },
+        { fromNodeId: actionTrueId, toNodeId: endId },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, flag: true },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-shadow-if-true",
+        executionMode: "SHADOW",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(mockCreateRunStep).toHaveBeenCalledTimes(1);
+    expect(mockCreateRunStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        graphNodeId: actionTrueId,
+        status: "SKIPPED",
+        output: expect.objectContaining({ simulated: true }),
+      }),
+    );
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        stepOutput: expect.objectContaining({
+          __automationGraph: {
+            branchDecisions: { [ifId]: "true" },
+          },
+        }),
+      }),
+    );
+  });
+
+  it("executes LIVE switch on matching edge key and records branch decision", async () => {
+    const entryId = "f0f0f0f0-f0f0-40f0-80f0-f0f0f0f0f0f0";
+    const swId = "f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1";
+    const aEast = "f2f2f2f2-f2f2-42f2-82f2-f2f2f2f2f2f2";
+    const aWest = "f3f3f3f3-f3f3-43f3-83f3-f3f3f3f3f3f3";
+    const aDefault = "f4f4f4f4-f4f4-44f4-84f4-f4f4f4f4f4f4";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: swId,
+          kind: "switch" as const,
+          config: { discriminantPath: "region" },
+        },
+        {
+          id: aEast,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "East branch",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aWest,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "West branch",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aDefault,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Default branch",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: swId },
+        { fromNodeId: swId, toNodeId: aEast, edgeKey: "east" },
+        { fromNodeId: swId, toNodeId: aWest, edgeKey: "west" },
+        { fromNodeId: swId, toNodeId: aDefault, edgeKey: "default" },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, region: "west" },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-switch-west",
+        executionMode: "LIVE",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).toHaveBeenCalledTimes(1);
+    expect(mockCreateWorkItem).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: "West branch",
+      }),
+    );
+    expect(mockCreateRunStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        graphNodeId: aWest,
+        automationStepId: null,
+      }),
+    );
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        status: "SUCCEEDED",
+        stepOutput: expect.objectContaining({
+          __automationGraph: {
+            branchDecisions: { [swId]: "west" },
+          },
+        }),
+      }),
+    );
+  });
+
   it("resumes failed graph runs using frozen branch decisions (BR-16)", async () => {
     const entryId = "11111111-1111-1111-1111-111111111111";
     const ifId = "22222222-2222-2222-2222-222222222222";
