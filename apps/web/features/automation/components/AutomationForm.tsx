@@ -20,12 +20,12 @@ import { Switch } from "@/components/ui/switch";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { HelpTopicSheet } from "@/components/help-topic-sheet";
 import { Package, Trash2 } from "lucide-react";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { usePipelines } from "@/features/crm";
@@ -569,7 +569,16 @@ export function AutomationForm({
             )}
           />
           <div className="space-y-2">
-            <Label htmlFor="automation-scope-type">Scope</Label>
+            <div className="flex items-center gap-1">
+              <Label htmlFor="automation-scope-type">Scope</Label>
+              <HelpTopicSheet topicLabel="Scope" sheetTitle="Automation scope">
+                <p>
+                  Global runs tenant-wide. CRM pipeline, location, or product
+                  variation limits events to that target—choose the matching
+                  scope target below when required.
+                </p>
+              </HelpTopicSheet>
+            </div>
             <Select
               value={scopeType}
               onValueChange={(next) =>
@@ -590,11 +599,6 @@ export function AutomationForm({
                 ))}
               </SelectContent>
             </Select>
-            <FormDescription>
-              Global runs tenant-wide. CRM pipeline, location, or product
-              variation limits events to that target—choose the matching scope
-              target below when required.
-            </FormDescription>
           </div>
           <FormField
             control={form.control}
@@ -610,21 +614,28 @@ export function AutomationForm({
             )}
           />
           <div className="space-y-2">
-            <Label htmlFor="automation-scope-target">Scope target</Label>
-            <FormDescription>
-              Required for CRM pipeline, location, or product variation scopes.
-              Global scope ignores this field.
-              {hasInventoryTrigger ? (
-                <>
-                  {" "}
-                  <strong>Inventory events</strong> (stock adjustments, low
-                  stock, thresholds) are emitted per <strong>warehouse</strong>
-                  —set scope to <strong>Location</strong> and pick one site
-                  below for a focused demo, or stay on <strong>Global</strong>{" "}
-                  to react when any location reports low stock.
-                </>
-              ) : null}
-            </FormDescription>
+            <div className="flex items-center gap-1">
+              <Label htmlFor="automation-scope-target">Scope target</Label>
+              <HelpTopicSheet
+                topicLabel="Scope target"
+                sheetTitle="Scope target"
+              >
+                <p>
+                  Required for CRM pipeline, location, or product variation
+                  scopes. Global scope ignores this field.
+                </p>
+                {hasInventoryTrigger ? (
+                  <p>
+                    <strong>Inventory events</strong> (stock adjustments, low
+                    stock, thresholds) are emitted per{" "}
+                    <strong>warehouse</strong>—set scope to{" "}
+                    <strong>Location</strong> and pick one site below for a
+                    focused setup, or stay on <strong>Global</strong> to react
+                    when any location reports low stock.
+                  </p>
+                ) : null}
+              </HelpTopicSheet>
+            </div>
             {scopeType === "CRM_PIPELINE" ? (
               <Select
                 value={form.watch("scopeId") || ""}
@@ -688,54 +699,66 @@ export function AutomationForm({
           {hasInventoryTrigger ? (
             <Alert className="border-primary/20 bg-primary/5 md:col-span-2">
               <Package className="text-primary" aria-hidden />
-              <AlertTitle>
-                Low stock and inventory scope (quick setup)
-              </AlertTitle>
-              <AlertDescription className="space-y-3 text-muted-foreground">
-                <ol className="list-decimal space-y-1.5 pl-5 text-sm">
-                  <li>
-                    Choose <strong>Location</strong> under Scope, then select a
-                    warehouse in <strong>Scope target</strong>—this automation
-                    runs only when that site reports low stock or threshold
-                    events.
-                  </li>
-                  <li>
-                    Or keep <strong>Global</strong> to use the same steps for{" "}
-                    <strong>every</strong> warehouse (still one automation
-                    definition).
-                  </li>
-                  <li>
-                    After saving, use <strong>SHADOW</strong> mode and trigger a
-                    low-stock scenario in test data; check{" "}
-                    <strong>Recent runs</strong> on the Automation page.
-                  </li>
-                </ol>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      form.setValue("scopeType", "LOCATION", {
-                        shouldValidate: true,
-                      });
-                    }}
+              <AlertTitle>Inventory events</AlertTitle>
+              <AlertDescription className="text-muted-foreground">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <p className="text-sm">
+                    Low-stock and threshold signals are emitted per warehouse.
+                    Use <strong>Location</strong> scope for one site or{" "}
+                    <strong>Global</strong> for all sites.
+                  </p>
+                  <HelpTopicSheet
+                    topicLabel="Inventory scope setup"
+                    sheetTitle="Low stock and inventory scope"
                   >
-                    Set scope to Location
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      form.setValue("scopeType", "GLOBAL", {
-                        shouldValidate: true,
-                      });
-                      form.setValue("scopeId", "", { shouldValidate: true });
-                    }}
-                  >
-                    Use Global (all warehouses)
-                  </Button>
+                    <ol className="list-decimal space-y-2 pl-5">
+                      <li>
+                        Choose <strong>Location</strong> under Scope, then
+                        select a warehouse in <strong>Scope target</strong>—this
+                        automation runs only when that site reports low stock or
+                        threshold events.
+                      </li>
+                      <li>
+                        Or keep <strong>Global</strong> to use the same steps
+                        for <strong>every</strong> warehouse (still one
+                        automation definition).
+                      </li>
+                      <li>
+                        After saving, use <strong>SHADOW</strong> mode and
+                        trigger a low-stock scenario in test data; check{" "}
+                        <strong>Recent runs</strong> on the Automation page.
+                      </li>
+                    </ol>
+                    <div className="flex flex-wrap gap-2 pt-3">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          form.setValue("scopeType", "LOCATION", {
+                            shouldValidate: true,
+                          });
+                        }}
+                      >
+                        Set scope to Location
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          form.setValue("scopeType", "GLOBAL", {
+                            shouldValidate: true,
+                          });
+                          form.setValue("scopeId", "", {
+                            shouldValidate: true,
+                          });
+                        }}
+                      >
+                        Use Global (all warehouses)
+                      </Button>
+                    </div>
+                  </HelpTopicSheet>
                 </div>
               </AlertDescription>
             </Alert>
@@ -764,7 +787,22 @@ export function AutomationForm({
             </Select>
           </div>
           <div className="space-y-2">
-            <Label htmlFor="automation-execution-mode">Execution mode</Label>
+            <div className="flex items-center gap-1">
+              <Label htmlFor="automation-execution-mode">Execution mode</Label>
+              <HelpTopicSheet
+                topicLabel="Execution mode"
+                sheetTitle="Execution mode"
+              >
+                <p>
+                  <strong>{AUTOMATION_EXECUTION_MODE_LABELS.LIVE}</strong>{" "}
+                  performs real actions.{" "}
+                  <strong>{AUTOMATION_EXECUTION_MODE_LABELS.SHADOW}</strong>{" "}
+                  simulates steps and records previews in run history without
+                  changing data—use while testing, then switch to{" "}
+                  {AUTOMATION_EXECUTION_MODE_LABELS.LIVE}.
+                </p>
+              </HelpTopicSheet>
+            </div>
             <Select
               value={form.watch("executionMode")}
               onValueChange={(next) =>
@@ -785,25 +823,24 @@ export function AutomationForm({
                 ))}
               </SelectContent>
             </Select>
-            <FormDescription>
-              <strong>{AUTOMATION_EXECUTION_MODE_LABELS.LIVE}</strong> performs
-              real actions.{" "}
-              <strong>{AUTOMATION_EXECUTION_MODE_LABELS.SHADOW}</strong>{" "}
-              simulates steps and records previews in run history without
-              changing data—use while testing, then switch to{" "}
-              {AUTOMATION_EXECUTION_MODE_LABELS.LIVE}.
-            </FormDescription>
           </div>
           <div className="space-y-2 rounded-md border p-3 md:col-span-2">
             <div className="flex items-center justify-between gap-3">
-              <div className="space-y-1">
-                <Label>Suppress legacy CRM workflows</Label>
-                <FormDescription className="mt-1">
-                  When enabled, matching rules from{" "}
-                  <strong>Settings → CRM → Workflows</strong> are skipped for
-                  the same deal events so you do not double-create tasks or
-                  notifications while both systems are in use.
-                </FormDescription>
+              <div className="flex min-w-0 flex-1 items-start gap-1">
+                <Label className="leading-normal">
+                  Suppress legacy CRM workflows
+                </Label>
+                <HelpTopicSheet
+                  topicLabel="Suppress legacy CRM workflows"
+                  sheetTitle="Suppress legacy CRM workflows"
+                >
+                  <p>
+                    When enabled, matching rules from{" "}
+                    <strong>Settings → CRM → Workflows</strong> are skipped for
+                    the same deal events so you do not double-create tasks or
+                    notifications while both systems are in use.
+                  </p>
+                </HelpTopicSheet>
               </div>
               <Switch
                 checked={form.watch("suppressLegacyWorkflows")}
@@ -816,8 +853,23 @@ export function AutomationForm({
         </div>
 
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label>Triggers</Label>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <Label>Triggers</Label>
+              <HelpTopicSheet
+                topicLabel="Triggers and conditions"
+                sheetTitle="Triggers and conditions"
+              >
+                <p>
+                  Optional conditions use a path into the event payload (for
+                  example <code className="rounded bg-muted px-1">total</code>{" "}
+                  or{" "}
+                  <code className="rounded bg-muted px-1">payload.amount</code>
+                  ), an operator, and a value. Use <strong>Exists</strong> to
+                  require a field without comparing its value.
+                </p>
+              </HelpTopicSheet>
+            </div>
             <Button
               type="button"
               variant="outline"
@@ -833,13 +885,6 @@ export function AutomationForm({
               Add trigger
             </Button>
           </div>
-          <FormDescription>
-            Optional conditions use a path into the event payload (for example{" "}
-            <code className="rounded bg-muted px-1">total</code> or{" "}
-            <code className="rounded bg-muted px-1">payload.amount</code>), an
-            operator, and a value. Use <strong>Exists</strong> to require a
-            field without comparing its value.
-          </FormDescription>
           {triggerArray.fields.map((field, index) => (
             <div key={field.id} className="space-y-3 rounded-md border p-3">
               <div className="grid gap-2 md:grid-cols-[1fr_140px_auto]">
@@ -1130,9 +1175,13 @@ export function AutomationForm({
         </div>
 
         <div className="space-y-3">
-          <p className="text-xs text-muted-foreground">{stepAutoAdjustNote}</p>
-          <div className="flex items-center justify-between">
-            <Label>Steps</Label>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1">
+              <Label>Steps</Label>
+              <HelpTopicSheet topicLabel="Automation steps" sheetTitle="Steps">
+                <p>{stepAutoAdjustNote}</p>
+              </HelpTopicSheet>
+            </div>
             <Button
               type="button"
               variant="outline"

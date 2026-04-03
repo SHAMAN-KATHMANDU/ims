@@ -1,27 +1,28 @@
 /**
- * Shared dark theme and colour palette for all analytics/reports pages.
- * Based on the reference dashboard design. Only used inside analytics views
- * so the rest of the app stays unchanged.
+ * Shared dark theme for analytics/reports pages. Colour values are defined in
+ * app/globals.css on `[data-reports].reports-container` so one place can tune
+ * the palette (including future light/analytics-theme variants).
  */
+import type React from "react";
 
-/* ─── PALETTE ─── */
+/* ─── PALETTE (CSS variables — set on [data-reports].reports-container) ─── */
 export const C = {
-  bg: "#0d1117",
-  card: "#161b22",
-  border: "#30363d",
-  text: "#e6edf3",
+  bg: "var(--analytics-bg)",
+  card: "var(--analytics-card)",
+  border: "var(--analytics-border)",
+  text: "var(--analytics-text)",
   /** text-muted */
-  tm: "#8b949e",
+  tm: "var(--analytics-tm)",
   /** text-dim */
-  td: "#656d76",
-  accent: "#c9885a",
-  thamel: "#58a6ff",
-  gongabu: "#3fb950",
-  rubys: "#d2a8ff",
-  online: "#f0883e",
-  teal: "#39d2c0",
-  red: "#f85149",
-  gold: "#e3b341",
+  td: "var(--analytics-td)",
+  accent: "var(--analytics-accent)",
+  thamel: "var(--analytics-thamel)",
+  gongabu: "var(--analytics-gongabu)",
+  rubys: "var(--analytics-rubys)",
+  online: "var(--analytics-online)",
+  teal: "var(--analytics-teal)",
+  red: "var(--analytics-red)",
+  gold: "var(--analytics-gold)",
 } as const;
 
 /** Ordered chart series colours for generic indexed access. */
@@ -134,7 +135,7 @@ export interface ChartTooltipProps {
 
 /** Recharts tooltip container style — matches AnalyticsChartTooltip for wrapper/content. */
 export const tooltipStyle: React.CSSProperties = {
-  background: "#1c2333",
+  background: "var(--analytics-tooltip-bg)",
   border: `1px solid ${C.border}`,
   borderRadius: 8,
   fontSize: 12,
@@ -167,7 +168,7 @@ export const ANALYTICS_GLOBAL_CSS = `
   [data-analytics] .recharts-text{fill:${C.tm}!important;font-size:11px!important}
   [data-analytics] select:focus{border-color:${C.accent}}
   [data-analytics] select option{background:${C.card};color:${C.text}}
-  .analytics-tooltip{background:#1c2333;border:1px solid ${C.border};border-radius:8px;font-size:12px;padding:10px 14px;color:${C.text}}
+  .analytics-tooltip{background:var(--analytics-tooltip-bg);border:1px solid ${C.border};border-radius:8px;font-size:12px;padding:10px 14px;color:${C.text}}
   .analytics-tooltip-label{font-weight:600;color:${C.text};margin-bottom:6px}
   .analytics-tooltip-row{margin-bottom:2px}
   .analytics-tooltip-row[data-color="accent"]{color:${C.accent}}
@@ -257,6 +258,3 @@ export const ANALYTICS_GLOBAL_CSS = `
 /** Mono font family string */
 export const MONO_FONT =
   "'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace";
-
-// Need React import for CSSProperties type
-import type React from "react";

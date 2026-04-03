@@ -155,6 +155,7 @@ describe("AutomationBuilderPage", () => {
   it("creates a new automation from the form payload", () => {
     render(<AutomationBuilderPage />);
 
+    fireEvent.click(screen.getByRole("button", { name: /create automation/i }));
     fireEvent.click(screen.getByRole("button", { name: /submit form/i }));
 
     expect(mockCreateMutate).toHaveBeenCalledWith(
@@ -250,41 +251,57 @@ describe("AutomationBuilderPage", () => {
     ).toBeInTheDocument();
   });
 
-  it("renders onboarding guide with SHADOW and pipeline workflow cues", () => {
+  it("renders onboarding guide with SHADOW and pipeline workflow cues", async () => {
     render(<AutomationBuilderPage />);
 
-    expect(screen.getByText(/What automations do/i)).toBeInTheDocument();
     const onboardingAlert = screen.getByRole("alert");
+    expect(onboardingAlert.textContent).toMatch(/Automations/);
     expect(within(onboardingAlert).getByText(/SHADOW/i)).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /Settings → CRM → Workflows/i }),
     ).toHaveAttribute("href", "/test-workspace/settings/crm/workflows");
 
-    expect(
-      screen.getByRole("button", { name: /How automations work/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Setup checklist/i }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: /Pipeline workflows vs automations/i,
-      }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", {
-        name: /Inventory, low stock, and locations/i,
-      }),
-    ).toBeInTheDocument();
-
     fireEvent.click(
       screen.getByRole("button", { name: /automation templates/i }),
     );
+    const templatesDialog = screen.getByRole("dialog", {
+      name: /automation templates/i,
+    });
     expect(screen.getAllByText("When it runs").length).toBeGreaterThanOrEqual(
       1,
     );
     expect(screen.getAllByText("What it does").length).toBeGreaterThanOrEqual(
       1,
     );
+    const templatesFooter = templatesDialog.querySelector(
+      '[data-slot="dialog-footer"]',
+    );
+    expect(templatesFooter).toBeTruthy();
+    fireEvent.click(
+      within(templatesFooter as HTMLElement).getByRole("button", {
+        name: /^close$/i,
+      }),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /^learn more$/i }));
+    const guide = await screen.findByRole("dialog", {
+      name: /automation guide/i,
+    });
+    expect(
+      within(guide).getByRole("button", { name: /How automations work/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(guide).getByRole("button", { name: /Setup checklist/i }),
+    ).toBeInTheDocument();
+    expect(
+      within(guide).getByRole("button", {
+        name: /Pipeline workflows vs automations/i,
+      }),
+    ).toBeInTheDocument();
+    expect(
+      within(guide).getByRole("button", {
+        name: /Inventory, low stock, and locations/i,
+      }),
+    ).toBeInTheDocument();
   });
 });

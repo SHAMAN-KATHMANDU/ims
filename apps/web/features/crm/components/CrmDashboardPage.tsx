@@ -15,6 +15,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Handshake, Target, CheckSquare } from "lucide-react";
 import { ReportsLineChart } from "@/components/reports-charts";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 
 export function CrmDashboardPage() {
   const params = useParams();
@@ -26,25 +28,26 @@ export function CrmDashboardPage() {
 
   if (isLoading || !d) {
     return (
-      <div className="space-y-6">
-        <h1 className="text-3xl font-bold">CRM Overview</h1>
+      <PageShell className="space-y-6">
+        <PageHeader
+          title="CRM Overview"
+          description="Sales overview and key metrics"
+        />
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {[1, 2, 3, 4].map((i) => (
             <Skeleton key={i} className="h-32" />
           ))}
         </div>
-      </div>
+      </PageShell>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold">CRM Overview</h1>
-        <p className="text-muted-foreground mt-1">
-          Sales overview and key metrics
-        </p>
-      </div>
+    <PageShell className="space-y-6">
+      <PageHeader
+        title="CRM Overview"
+        description="Sales overview and key metrics"
+      />
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
@@ -159,6 +162,6 @@ export function CrmDashboardPage() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </PageShell>
   );
 }
