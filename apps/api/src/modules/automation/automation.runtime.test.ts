@@ -1056,6 +1056,111 @@ describe("automation.runtime", () => {
     );
   });
 
+  it("LIVE switch follows default edge when discriminant matches no other key", async () => {
+    const entryId = "61616161-6161-4161-8161-616161616161";
+    const swId = "62626262-6262-4262-8262-626262626262";
+    const aEast = "63636363-6363-4363-8363-636363636363";
+    const aWest = "64646464-6464-4464-8464-646464646464";
+    const aDefault = "65656565-6565-4565-8565-656565656565";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: swId,
+          kind: "switch" as const,
+          config: { discriminantPath: "region" },
+        },
+        {
+          id: aEast,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "East only",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aWest,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "West only",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aDefault,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Default only",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: swId },
+        { fromNodeId: swId, toNodeId: aEast, edgeKey: "east" },
+        { fromNodeId: swId, toNodeId: aWest, edgeKey: "west" },
+        { fromNodeId: swId, toNodeId: aDefault, edgeKey: "default" },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, region: "north" },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-switch-default",
+        executionMode: "LIVE",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).toHaveBeenCalledTimes(1);
+    expect(mockCreateWorkItem).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Default only" }),
+    );
+    expect(mockCreateRunStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        graphNodeId: aDefault,
+        automationStepId: null,
+      }),
+    );
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        stepOutput: expect.objectContaining({
+          __automationGraph: {
+            branchDecisions: { [swId]: "default" },
+          },
+        }),
+      }),
+    );
+  });
+
   it("SHADOW switch previews only the chosen branch action", async () => {
     const entryId = "91919191-9191-4191-8191-919191919191";
     const swId = "92929292-9292-4292-8292-929292929292";

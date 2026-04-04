@@ -358,4 +358,110 @@ describe("Automation API integration", () => {
       }
     },
   );
+
+  it.skipIf(!databaseUrlConfigured)(
+    "returns 400 when flowGraph switch omits required default edge",
+    async () => {
+      const tenantId = randomUUID();
+      const userId = randomUUID();
+      const slug = `auto-inv-${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+      const passwordHash = await hashPassword("automation-it-pass");
+
+      await basePrisma.tenant.create({
+        data: {
+          id: tenantId,
+          name: "Automation Invalid Graph IT",
+          slug,
+          plan: "STARTER",
+          isActive: true,
+          isTrial: false,
+          subscriptionStatus: "ACTIVE",
+        },
+      });
+
+      await basePrisma.user.create({
+        data: {
+          id: userId,
+          tenantId,
+          username: `admin-${slug}`,
+          password: passwordHash,
+          role: "admin",
+        },
+      });
+
+      const token = signAdminToken({ userId, tenantId, tenantSlug: slug });
+      const triggerEvent = "crm.contact.created" as const;
+
+      const entrySw = randomUUID();
+      const switchId = randomUUID();
+      const aEast = randomUUID();
+      const aWest = randomUUID();
+
+      const switchNoDefault = {
+        nodes: [
+          { id: entrySw, kind: "entry" as const },
+          {
+            id: switchId,
+            kind: "switch" as const,
+            config: { discriminantPath: "segment" },
+          },
+          {
+            id: aEast,
+            kind: "action" as const,
+            config: {
+              actionType: "notification.send" as const,
+              actionConfig: {
+                type: "INFO" as const,
+                title: "East",
+                message: "x",
+              },
+            },
+          },
+          {
+            id: aWest,
+            kind: "action" as const,
+            config: {
+              actionType: "notification.send" as const,
+              actionConfig: {
+                type: "INFO" as const,
+                title: "West",
+                message: "x",
+              },
+            },
+          },
+        ],
+        edges: [
+          { fromNodeId: entrySw, toNodeId: switchId },
+          { fromNodeId: switchId, toNodeId: aEast, edgeKey: "east" },
+          { fromNodeId: switchId, toNodeId: aWest, edgeKey: "west" },
+        ],
+      };
+
+      const invalid = parseAndValidateAutomationFlowGraph(switchNoDefault, [
+        triggerEvent,
+      ]);
+      expect(invalid.ok).toBe(false);
+
+      try {
+        const res = await apiRequest(app)
+          .post("/api/v1/automation/definitions")
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            name: `Invalid switch ${slug.slice(0, 6)}`,
+            scopeType: "GLOBAL",
+            triggers: [{ eventName: triggerEvent }],
+            steps: [],
+            flowGraph: switchNoDefault,
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(String(res.body.message)).toMatch(/default/i);
+      } finally {
+        await basePrisma.tenant.delete({ where: { id: tenantId } });
+      }
+    },
+  );
 });
