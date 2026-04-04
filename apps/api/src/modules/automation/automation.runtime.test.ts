@@ -1430,6 +1430,90 @@ describe("automation.runtime", () => {
     );
   });
 
+  it("SHADOW switch stops preview when discriminant is a non-scalar object", async () => {
+    const entryId = "51515151-5151-4151-8151-515151515151";
+    const swId = "52525252-5252-4252-8252-525252525252";
+    const aEast = "53535353-5353-4353-8353-535353535353";
+    const aDefault = "54545454-5454-4454-8454-545454545454";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: swId,
+          kind: "switch" as const,
+          config: { discriminantPath: "region" },
+        },
+        {
+          id: aEast,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Shadow east",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aDefault,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Shadow default",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: swId },
+        { fromNodeId: swId, toNodeId: aEast, edgeKey: "east" },
+        { fromNodeId: swId, toNodeId: aDefault, edgeKey: "default" },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, region: { nested: "x" } },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-shadow-bad-disc",
+        executionMode: "SHADOW",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(mockCreateRunStep).not.toHaveBeenCalled();
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        status: "SKIPPED",
+        stepOutput: expect.objectContaining({
+          __automationGraph: {
+            branchDecisions: {},
+          },
+        }),
+      }),
+    );
+  });
+
   it("resumes failed graph runs using frozen branch decisions (BR-16)", async () => {
     const entryId = "11111111-1111-1111-1111-111111111111";
     const ifId = "22222222-2222-2222-2222-222222222222";

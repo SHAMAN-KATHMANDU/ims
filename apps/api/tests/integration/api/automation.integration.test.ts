@@ -464,4 +464,85 @@ describe("Automation API integration", () => {
       }
     },
   );
+
+  it.skipIf(!databaseUrlConfigured)(
+    "returns 400 when both flowGraph and steps are provided (BR-19)",
+    async () => {
+      const tenantId = randomUUID();
+      const userId = randomUUID();
+      const slug = `auto-dual-${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+      const passwordHash = await hashPassword("automation-it-pass");
+
+      await basePrisma.tenant.create({
+        data: {
+          id: tenantId,
+          name: "Automation Dual Authority IT",
+          slug,
+          plan: "STARTER",
+          isActive: true,
+          isTrial: false,
+          subscriptionStatus: "ACTIVE",
+        },
+      });
+
+      await basePrisma.user.create({
+        data: {
+          id: userId,
+          tenantId,
+          username: `admin-${slug}`,
+          password: passwordHash,
+          role: "admin",
+        },
+      });
+
+      const token = signAdminToken({ userId, tenantId, tenantSlug: slug });
+      const triggerEvent = "crm.contact.created" as const;
+
+      const flowGraph = compileLinearStepsToFlowGraph(
+        [
+          {
+            actionType: "notification.send",
+            actionConfig: {
+              type: "INFO" as const,
+              title: "G",
+              message: "Graph",
+            },
+          },
+        ],
+        undefined,
+      );
+
+      try {
+        const res = await apiRequest(app)
+          .post("/api/v1/automation/definitions")
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            name: `Dual ${slug.slice(0, 6)}`,
+            scopeType: "GLOBAL",
+            triggers: [{ eventName: triggerEvent }],
+            steps: [
+              {
+                actionType: "notification.send",
+                actionConfig: {
+                  type: "INFO",
+                  title: "S",
+                  message: "Step",
+                },
+              },
+            ],
+            flowGraph,
+          });
+
+        expect(res.status).toBe(400);
+        expect(res.body.success).toBe(false);
+        expect(String(res.body.message)).toMatch(
+          /flowGraph is set.*steps must be empty/i,
+        );
+      } finally {
+        await basePrisma.tenant.delete({ where: { id: tenantId } });
+      }
+    },
+  );
 });
