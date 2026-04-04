@@ -67,7 +67,7 @@ test.describe("Event automations — branching enabled (default E2E server)", ()
       page.getByRole("heading", { name: /event automations/i }),
     ).toBeVisible({ timeout: 120_000 });
 
-    await page.getByRole("button", { name: /^create automation$/i }).click();
+    await page.getByTestId("automation-open-create-composer").click();
     await expect(
       page.getByTestId("automation-editor-tab-flow-chart"),
     ).toBeVisible({ timeout: 60_000 });
@@ -150,7 +150,7 @@ test.describe("Event automations — branching disabled", () => {
       page.getByRole("heading", { name: /event automations/i }),
     ).toBeVisible({ timeout: 120_000 });
 
-    await page.getByRole("button", { name: /^create automation$/i }).click();
+    await page.getByTestId("automation-open-create-composer").click();
     await expect(page.getByTestId("automation-flow-canvas")).toBeVisible({
       timeout: 120_000,
     });

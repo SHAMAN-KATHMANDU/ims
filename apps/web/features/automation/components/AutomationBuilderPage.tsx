@@ -228,6 +228,10 @@ export function AutomationBuilderPage() {
   const showAutomationForm =
     editing !== null || draftValues !== undefined || composerOpen;
 
+  /** Avoid two identical "Create automation" buttons (toolbar + empty state). */
+  const showEmptyDefinitionsCtas =
+    !isLoading && !definitionsError && (data?.automations.length ?? 0) === 0;
+
   const beginEditAutomation = (automation: AutomationDefinition) => {
     setEditing(automation);
   };
@@ -345,16 +349,20 @@ export function AutomationBuilderPage() {
 
       <div className="space-y-8">
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div
+            className="flex flex-wrap gap-2"
+            data-testid="automation-builder-toolbar"
+          >
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search automations"
               className="min-w-[12rem] flex-1"
             />
-            {!showAutomationForm ? (
+            {!showAutomationForm && !showEmptyDefinitionsCtas ? (
               <Button
                 type="button"
+                data-testid="automation-open-create-composer"
                 onClick={() => {
                   setEditing(null);
                   setDraftValues(undefined);
@@ -639,6 +647,7 @@ export function AutomationBuilderPage() {
                   </Button>
                   <Button
                     type="button"
+                    data-testid="automation-open-create-composer"
                     onClick={() => {
                       setEditing(null);
                       setDraftValues(undefined);
