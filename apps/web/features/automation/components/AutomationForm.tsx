@@ -349,6 +349,21 @@ export function AutomationForm({
             </div>
           ) : null}
 
+          {visualBuilderEnabled && editorTab === "flow" ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Edit <strong className="font-medium text-foreground">name</strong>
+              , <strong className="font-medium text-foreground">scope</strong>,
+              and{" "}
+              <strong className="font-medium text-foreground">triggers</strong>{" "}
+              on the{" "}
+              <strong className="font-medium text-foreground">
+                All fields
+              </strong>{" "}
+              tab. On this chart, click a step to configure its action, or drag
+              cards to reorder.
+            </p>
+          ) : null}
+
           {visualBuilderEnabled ? (
             <p className="border-b pb-3 text-xs leading-relaxed text-muted-foreground">
               The{" "}
