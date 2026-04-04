@@ -7,6 +7,7 @@ import {
   AutomationStatusSchema,
   AutomationTriggerEventSchema,
   isAutomationActionAllowedForEvent,
+  parseAndValidateAutomationFlowGraph,
   parseAutomationActionConfig,
 } from "@repo/shared";
 
@@ -57,7 +58,16 @@ export const CreateAutomationStepSchema = z
     }
   });
 
-const AutomationDefinitionFieldsSchema = z.object({
+function hasFlowGraphObject(flowGraph: unknown): boolean {
+  return (
+    flowGraph !== undefined &&
+    flowGraph !== null &&
+    typeof flowGraph === "object" &&
+    !Array.isArray(flowGraph)
+  );
+}
+
+const AutomationDefinitionFieldsBaseSchema = z.object({
   name: z.string().min(1).max(255),
   description: z.string().max(1000).optional().nullable(),
   scopeType: AutomationScopeSchema,
@@ -66,8 +76,52 @@ const AutomationDefinitionFieldsSchema = z.object({
   executionMode: AutomationExecutionModeSchema.optional(),
   suppressLegacyWorkflows: z.boolean().optional(),
   triggers: z.array(CreateAutomationTriggerSchema).min(1),
-  steps: z.array(CreateAutomationStepSchema).min(1),
+  steps: z.array(CreateAutomationStepSchema).default([]),
+  /** Phase 3 DAG. When set, `steps` must be empty (BR-19). */
+  flowGraph: z.unknown().optional().nullable(),
 });
+
+export const CreateAutomationDefinitionSchema =
+  AutomationDefinitionFieldsBaseSchema.superRefine((value, ctx) => {
+    const hasGraph = hasFlowGraphObject(value.flowGraph);
+
+    if (hasGraph && value.steps.length > 0) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["steps"],
+        message:
+          "When flowGraph is set, steps must be empty (author actions inside the graph only)",
+      });
+    }
+
+    if (!hasGraph && value.steps.length < 1) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["steps"],
+        message: "At least one step is required when flowGraph is not provided",
+      });
+    }
+
+    if (hasGraph) {
+      const events = value.triggers.map((t) => t.eventName);
+      const graphValidation = parseAndValidateAutomationFlowGraph(
+        value.flowGraph,
+        events,
+      );
+      if (graphValidation.ok === false) {
+        for (const msg of graphValidation.errors) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["flowGraph"],
+            message: msg,
+          });
+        }
+      }
+      return;
+    }
+
+    validateActionCompatibility(value, ctx);
+  });
 
 function validateActionCompatibility(
   value: {
@@ -103,13 +157,21 @@ function validateActionCompatibility(
   }
 }
 
-export const CreateAutomationDefinitionSchema =
-  AutomationDefinitionFieldsSchema.superRefine(validateActionCompatibility);
-
 export const UpdateAutomationDefinitionSchema =
-  AutomationDefinitionFieldsSchema.partial().superRefine(
-    validateActionCompatibility,
-  );
+  AutomationDefinitionFieldsBaseSchema.partial().superRefine((value, ctx) => {
+    if (
+      hasFlowGraphObject(value.flowGraph) &&
+      value.steps &&
+      value.steps.length > 0
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["steps"],
+        message:
+          "When flowGraph is set, steps must be empty (author actions inside the graph only)",
+      });
+    }
+  });
 
 export const GetAutomationDefinitionsQuerySchema = z.object({
   page: z

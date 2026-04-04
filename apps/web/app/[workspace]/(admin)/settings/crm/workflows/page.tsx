@@ -5,7 +5,7 @@ import { WorkflowEditorPage } from "@/features/crm";
 import { EnvFeature } from "@/features/flags";
 import { Feature } from "@repo/shared";
 
-export const metadata = { title: "Pipeline Workflows" };
+export const metadata = { title: "Deal pipeline rules" };
 
 /** Pipeline workflow automation – admin/superAdmin only, requires Sales Pipeline plan. */
 export default function WorkflowsPage() {

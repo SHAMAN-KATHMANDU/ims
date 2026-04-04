@@ -32,6 +32,8 @@ import {
   ListChecks,
   KeyRound,
   Zap,
+  GitBranch,
+  LayoutGrid,
   BrainCircuit,
 } from "lucide-react";
 import type { UserRole } from "@/utils/auth";
@@ -49,6 +51,8 @@ export interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
   roles: UserRole[];
   envFeature?: EnvFeature;
+  /** When set, the item is shown if any of these env features is enabled (ignores `envFeature`). */
+  envFeaturesAny?: EnvFeature[];
   feature?: Feature;
   children?: NavItem[];
   href?: string;
@@ -348,16 +352,23 @@ export const dashboardNavSections: NavSection[] = [
         feature: Feature.SALES_PIPELINE,
       },
       {
+        path: "settings/automations",
+        label: "Automations overview",
+        icon: LayoutGrid,
+        roles: ["admin", "superAdmin"],
+        envFeaturesAny: [EnvFeature.AUTOMATION, EnvFeature.CRM_WORKFLOWS],
+      },
+      {
         path: "settings/automation",
-        label: "Automation",
+        label: "Event automations",
         icon: Zap,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.AUTOMATION,
       },
       {
         path: "settings/crm/workflows",
-        label: "Workflows",
-        icon: Zap,
+        label: "Deal pipeline rules",
+        icon: GitBranch,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.CRM_WORKFLOWS,
         feature: Feature.SALES_PIPELINE,
@@ -420,11 +431,17 @@ export function filterDashboardNavSections(
       ...section,
       items: section.items
         .filter((item) => item.roles.includes(userRole))
-        .filter(
-          (item) =>
+        .filter((item) => {
+          if (item.envFeaturesAny && item.envFeaturesAny.length > 0) {
+            return item.envFeaturesAny.some((f) =>
+              isEnvFeatureEnabled(f, appEnv, enabledEnvFlagsSet),
+            );
+          }
+          return (
             !item.envFeature ||
-            isEnvFeatureEnabled(item.envFeature, appEnv, enabledEnvFlagsSet),
-        )
+            isEnvFeatureEnabled(item.envFeature, appEnv, enabledEnvFlagsSet)
+          );
+        })
         .filter((item) => !item.feature || planFeatures[item.feature] === true)
         .map((item) => ({
           ...item,

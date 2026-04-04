@@ -56,7 +56,7 @@ concurrency:
 jobs:
   resolve-tag:
     name: Resolve tag
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     permissions:
       contents: write
     outputs:
@@ -147,7 +147,7 @@ jobs:
 
   build-api:
     name: Build API (prod)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [resolve-tag]
     permissions:
       contents: read
@@ -189,7 +189,7 @@ jobs:
 
   build-web:
     name: Build Web (prod)
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [resolve-tag]
     permissions:
       contents: read
@@ -244,7 +244,7 @@ jobs:
 
   create-release:
     name: Create GitHub Release
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     needs: [resolve-tag, build-api, build-web]
     if: github.event.inputs.create_github_release == 'true'
     permissions:

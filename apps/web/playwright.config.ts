@@ -1,9 +1,20 @@
 import { defineConfig, devices } from "@playwright/test";
+import { EnvFeature } from "@repo/shared";
 
 const DEFAULT_E2E_PORT = 3100;
 const resolvedPort = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "", 10);
 const e2ePort = Number.isFinite(resolvedPort) ? resolvedPort : DEFAULT_E2E_PORT;
 const baseURL = process.env.BASE_URL ?? `http://localhost:${e2ePort}`;
+
+/** Whitelist all env features except branching so AT-UI-001 can run in a dedicated job. */
+const NEXT_PUBLIC_FEATURE_FLAGS_WITHOUT_AUTOMATION_BRANCHING = (
+  Object.values(EnvFeature) as EnvFeature[]
+)
+  .filter((f) => f !== EnvFeature.AUTOMATION_BRANCHING)
+  .join(",");
+
+const e2eAutomationBranchingOff =
+  process.env.E2E_AUTOMATION_BRANCHING_OFF === "1";
 
 export default defineConfig({
   testDir: "./e2e",
@@ -41,5 +52,14 @@ export default defineConfig({
     url: baseURL,
     reuseExistingServer: !process.env.CI,
     timeout: 180 * 1000,
+    env: {
+      ...process.env,
+      ...(e2eAutomationBranchingOff
+        ? {
+            NEXT_PUBLIC_FEATURE_FLAGS:
+              NEXT_PUBLIC_FEATURE_FLAGS_WITHOUT_AUTOMATION_BRANCHING,
+          }
+        : {}),
+    },
   },
 });

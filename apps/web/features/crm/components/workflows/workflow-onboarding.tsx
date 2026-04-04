@@ -17,12 +17,15 @@ export function WorkflowOnboarding() {
   const automationHref = workspace
     ? `/${workspace}/settings/automation`
     : "/settings/automation";
+  const overviewHref = workspace
+    ? `/${workspace}/settings/automations`
+    : "/settings/automations";
 
   return (
     <div className="space-y-4">
       <Alert className="border-primary/25 bg-primary/5">
         <Info className="text-primary" aria-hidden />
-        <AlertTitle>What pipeline workflows do</AlertTitle>
+        <AlertTitle>What deal pipeline rules do</AlertTitle>
         <AlertDescription className="space-y-2 text-muted-foreground">
           <p>
             A workflow belongs to <strong>one CRM pipeline</strong>. Each{" "}
@@ -39,9 +42,16 @@ export function WorkflowOnboarding() {
               href={automationHref}
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
-              Settings → Automation
+              Settings → Event automations
             </Link>{" "}
-            instead.
+            instead. See{" "}
+            <Link
+              href={overviewHref}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Automations overview
+            </Link>{" "}
+            for a short comparison.
           </p>
         </AlertDescription>
       </Alert>

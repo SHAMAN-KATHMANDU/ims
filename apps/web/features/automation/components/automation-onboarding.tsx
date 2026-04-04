@@ -19,33 +19,60 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
 
 export function AutomationOnboarding(): React.ReactElement {
+  const automationBranchingEnabled = useEnvFeatureFlag(
+    EnvFeature.AUTOMATION_BRANCHING,
+  );
   const params = useParams();
   const workspace = (params?.workspace as string) ?? "";
   const workflowsHref = workspace
     ? `/${workspace}/settings/crm/workflows`
     : "/settings/crm/workflows";
+  const overviewHref = workspace
+    ? `/${workspace}/settings/automations`
+    : "/settings/automations";
   const [guideOpen, setGuideOpen] = React.useState(false);
 
   return (
     <div className="space-y-3">
       <Alert className="border-primary/25 bg-primary/5">
         <Info className="text-primary" aria-hidden />
-        <AlertTitle>Automations</AlertTitle>
+        <AlertTitle>Event automations</AlertTitle>
         <AlertDescription className="text-muted-foreground space-y-3">
           <p className="text-sm">
-            Automations listen for platform events, apply optional conditions,
-            then run steps in order. Use{" "}
-            <strong className="text-foreground">SHADOW</strong> to validate
+            Event automations listen for platform events, apply optional trigger
+            conditions, then{" "}
+            {automationBranchingEnabled ? (
+              <>
+                execute actions along{" "}
+                <strong className="text-foreground">one path</strong>—either
+                ordered steps or a flow chart with optional{" "}
+                <code className="rounded bg-muted px-1 text-xs">if</code> /{" "}
+                <code className="rounded bg-muted px-1 text-xs">switch</code>{" "}
+                routing (one branch per run).
+              </>
+            ) : (
+              <>run steps in order.</>
+            )}{" "}
+            Use <strong className="text-foreground">SHADOW</strong> to validate
             before switching to{" "}
-            <strong className="text-foreground">LIVE</strong>. Pipeline deal
-            rules live in{" "}
+            <strong className="text-foreground">LIVE</strong>. Deal-only
+            pipeline rules live in{" "}
             <Link
               href={workflowsHref}
               className="font-medium text-primary underline-offset-4 hover:underline"
             >
-              Settings → CRM → Workflows
+              Settings → Deal pipeline rules
+            </Link>
+            . Compare both on{" "}
+            <Link
+              href={overviewHref}
+              className="font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Automations overview
             </Link>
             .
           </p>
@@ -81,9 +108,19 @@ export function AutomationOnboarding(): React.ReactElement {
                 example <code className="rounded bg-muted px-1">sales.*</code>,{" "}
                 <code className="rounded bg-muted px-1">crm.*</code>, or{" "}
                 <code className="rounded bg-muted px-1">inventory.*</code>),
-                applies optional <strong>conditions</strong> and delays, then
-                runs <strong>steps in order</strong> (create work items, CRM
-                updates, webhooks, and more).
+                applies optional <strong>conditions</strong> and delays, then{" "}
+                {automationBranchingEnabled ? (
+                  <>
+                    runs actions along <strong>one path</strong>—ordered steps
+                    or flow-chart routing (create work items, CRM updates,
+                    webhooks, and more).
+                  </>
+                ) : (
+                  <>
+                    runs <strong>steps in order</strong> (create work items, CRM
+                    updates, webhooks, and more).
+                  </>
+                )}
               </p>
               <p>
                 <strong>LIVE</strong> runs real actions. <strong>SHADOW</strong>{" "}
@@ -97,7 +134,7 @@ export function AutomationOnboarding(): React.ReactElement {
                   href={workflowsHref}
                   className="font-medium text-primary underline-offset-4 hover:underline"
                 >
-                  Settings → CRM → Workflows
+                  Settings → Deal pipeline rules
                 </Link>
                 .
               </p>
@@ -116,8 +153,23 @@ export function AutomationOnboarding(): React.ReactElement {
                     minutes.
                   </p>
                   <p>
-                    <strong>Steps</strong> run sequentially. Later steps can use
-                    outputs from earlier ones. Enable{" "}
+                    <strong>Steps</strong> run sequentially along the path that
+                    runs for each event
+                    {automationBranchingEnabled ? (
+                      <>
+                        {" "}
+                        (including a single branch through each{" "}
+                        <code className="rounded bg-muted px-1 text-xs">
+                          if
+                        </code>{" "}
+                        or{" "}
+                        <code className="rounded bg-muted px-1 text-xs">
+                          switch
+                        </code>{" "}
+                        when you use the flow chart)
+                      </>
+                    ) : null}
+                    . Later steps can use outputs from earlier ones. Enable{" "}
                     <strong>Continue on error</strong> on a step if you want
                     following steps to run even when that step fails.
                   </p>
@@ -140,7 +192,14 @@ export function AutomationOnboarding(): React.ReactElement {
                     </li>
                     <li>
                       Add <strong>steps</strong> (actions) in the order they
-                      should run.
+                      should run
+                      {automationBranchingEnabled ? (
+                        <>
+                          , or build branching on the{" "}
+                          <strong>Flow chart</strong> tab when enabled
+                        </>
+                      ) : null}
+                      .
                     </li>
                     <li>
                       Set execution mode to <strong>SHADOW</strong>, save, and

@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
-import { useFieldArray, useForm } from "react-hook-form";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,14 +49,36 @@ import {
 } from "@repo/shared";
 import {
   AutomationDefinitionFormSchema,
+  hasPreservedBranchingFlowGraphShape,
   type AutomationDefinitionFormValues,
 } from "../validation";
+import { useEnvFeatureFlag } from "@/features/flags";
+import { EnvFeature } from "@repo/shared";
+import { cn } from "@/lib/utils";
+import { ReactFlowProvider } from "@xyflow/react";
+import {
+  ActionConfigFields,
+  getDefaultActionConfig,
+} from "./automation-action-config-fields";
+import {
+  AutomationFlowCompileMetaProvider,
+  type AutomationFlowCompileStableIds,
+} from "./automation-flow-compile-meta-context";
+import { AutomationBranchingAuthoringPanel } from "./AutomationBranchingAuthoringPanel";
+import { exitBranchingToLinear } from "./automation-exit-branching";
+import { AutomationFlowCanvas } from "./AutomationFlowCanvas";
+import { AutomationFlowGraphPreview } from "./AutomationFlowGraphPreview";
 
 interface AutomationFormProps {
   defaultValues?: AutomationDefinitionFormValues;
   onSubmit: (values: AutomationDefinitionFormValues) => void;
   onCancel?: () => void;
   isSubmitting?: boolean;
+  /**
+   * When editing a graph-backed linear chain, reuse these node ids in the
+   * “stored graph” preview (matches save payload from the builder).
+   */
+  linearFlowCompileStableIds?: AutomationFlowCompileStableIds | null;
 }
 
 const AUTOMATION_EVENT_GROUP_LABELS: Record<
@@ -83,49 +105,6 @@ const SCOPE_LABELS = {
 
 function triggerUsesInventoryEvent(eventName: string): boolean {
   return eventName.startsWith("inventory.");
-}
-
-function getDefaultActionConfig(actionType: AutomationActionTypeValue) {
-  switch (actionType) {
-    case "workitem.create":
-      return { title: "Follow up", type: "TASK", priority: "MEDIUM" };
-    case "notification.send":
-      return { title: "Automation notice", message: "Action completed" };
-    case "transfer.create_draft":
-      return { payloadPath: "suggestedTransfer" };
-    case "record.update_field":
-      return {
-        entityType: "DEAL",
-        entityIdTemplate: "{{event.entityId}}",
-        field: "status",
-        value: "OPEN",
-      };
-    case "crm.contact.update":
-      return {
-        contactIdTemplate: "{{event.payload.contactId}}",
-        field: "status",
-        value: "QUALIFIED",
-      };
-    case "crm.company.update":
-      return {
-        companyIdTemplate: "{{event.payload.companyId}}",
-        field: "website",
-        value: "https://example.com",
-      };
-    case "crm.deal.move_stage":
-      return {
-        dealIdTemplate: "{{event.entityId}}",
-        targetStageId: "",
-      };
-    case "crm.activity.create":
-      return { type: "CALL", subject: "Automation activity" };
-    case "webhook.emit":
-      return {
-        url: "https://example.com/webhook",
-        method: "POST",
-        timeoutSeconds: 10,
-      };
-  }
 }
 
 function getDefaultCondition(): AutomationCondition {
@@ -169,269 +148,12 @@ function getScopeIdPlaceholder(
   }
 }
 
-function ActionConfigFields({
-  actionType,
-  value,
-  onChange,
-}: {
-  actionType: AutomationActionTypeValue;
-  value: Record<string, unknown>;
-  onChange: (next: Record<string, unknown>) => void;
-}) {
-  const update = (key: string, nextValue: unknown) =>
-    onChange({ ...value, [key]: nextValue });
-
-  if (actionType === "workitem.create") {
-    return (
-      <div className="grid gap-2 md:grid-cols-2">
-        <Input
-          placeholder="Title"
-          value={String(value.title ?? "")}
-          onChange={(e) => update("title", e.target.value)}
-        />
-        <Select
-          value={String(value.type ?? "TASK")}
-          onValueChange={(next) => update("type", next)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Work item type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="TASK">Task</SelectItem>
-            <SelectItem value="APPROVAL">Approval</SelectItem>
-            <SelectItem value="TRANSFER_REQUEST">Transfer request</SelectItem>
-            <SelectItem value="RESTOCK_REQUEST">Restock request</SelectItem>
-            <SelectItem value="FOLLOW_UP">Follow up</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="Description"
-          value={String(value.description ?? "")}
-          onChange={(e) => update("description", e.target.value)}
-        />
-        <Select
-          value={String(value.priority ?? "MEDIUM")}
-          onValueChange={(next) => update("priority", next)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Priority" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="LOW">Low</SelectItem>
-            <SelectItem value="MEDIUM">Medium</SelectItem>
-            <SelectItem value="HIGH">High</SelectItem>
-            <SelectItem value="URGENT">Urgent</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-    );
-  }
-
-  if (actionType === "notification.send") {
-    return (
-      <div className="grid gap-2">
-        <Input
-          placeholder="Notification title"
-          value={String(value.title ?? "")}
-          onChange={(e) => update("title", e.target.value)}
-        />
-        <Input
-          placeholder="Notification message"
-          value={String(value.message ?? "")}
-          onChange={(e) => update("message", e.target.value)}
-        />
-      </div>
-    );
-  }
-
-  if (actionType === "transfer.create_draft") {
-    return (
-      <div className="grid gap-2">
-        <Input
-          placeholder="Payload path"
-          value={String(value.payloadPath ?? "suggestedTransfer")}
-          onChange={(e) => update("payloadPath", e.target.value)}
-        />
-        <Input
-          placeholder="Optional notes override"
-          value={String(value.notes ?? "")}
-          onChange={(e) => update("notes", e.target.value)}
-        />
-      </div>
-    );
-  }
-
-  if (actionType === "webhook.emit") {
-    return (
-      <div className="grid gap-2 md:grid-cols-2">
-        <Input
-          placeholder="Webhook URL"
-          value={String(value.url ?? "")}
-          onChange={(e) => update("url", e.target.value)}
-        />
-        <Select
-          value={String(value.method ?? "POST")}
-          onValueChange={(next) => update("method", next)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Method" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="POST">POST</SelectItem>
-            <SelectItem value="PUT">PUT</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="Payload path"
-          value={String(value.payloadPath ?? "")}
-          onChange={(e) => update("payloadPath", e.target.value)}
-        />
-        <Input
-          type="number"
-          min={1}
-          max={60}
-          placeholder="Timeout seconds"
-          value={String(value.timeoutSeconds ?? 10)}
-          onChange={(e) =>
-            update(
-              "timeoutSeconds",
-              e.target.value ? Number(e.target.value) : undefined,
-            )
-          }
-        />
-      </div>
-    );
-  }
-
-  if (actionType === "crm.deal.move_stage") {
-    return (
-      <div className="grid gap-2 md:grid-cols-2">
-        <Input
-          placeholder="Deal id template"
-          value={String(value.dealIdTemplate ?? "{{event.entityId}}")}
-          onChange={(e) => update("dealIdTemplate", e.target.value)}
-        />
-        <Input
-          placeholder="Target stage id"
-          value={String(value.targetStageId ?? "")}
-          onChange={(e) => update("targetStageId", e.target.value)}
-        />
-      </div>
-    );
-  }
-
-  if (actionType === "crm.activity.create") {
-    return (
-      <div className="grid gap-2 md:grid-cols-2">
-        <Select
-          value={String(value.type ?? "CALL")}
-          onValueChange={(next) => update("type", next)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Activity type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="CALL">Call</SelectItem>
-            <SelectItem value="EMAIL">Email</SelectItem>
-            <SelectItem value="MEETING">Meeting</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="Subject"
-          value={String(value.subject ?? "")}
-          onChange={(e) => update("subject", e.target.value)}
-        />
-      </div>
-    );
-  }
-
-  if (actionType === "crm.contact.update") {
-    return (
-      <div className="grid gap-2 md:grid-cols-3">
-        <Input
-          placeholder="Contact id template"
-          value={String(
-            value.contactIdTemplate ?? "{{event.payload.contactId}}",
-          )}
-          onChange={(e) => update("contactIdTemplate", e.target.value)}
-        />
-        <Select
-          value={String(value.field ?? "status")}
-          onValueChange={(next) => update("field", next)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Field" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="source">Source</SelectItem>
-            <SelectItem value="email">Email</SelectItem>
-            <SelectItem value="phone">Phone</SelectItem>
-            <SelectItem value="ownerId">Owner</SelectItem>
-            <SelectItem value="status">Status</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="New value"
-          value={String(value.value ?? "")}
-          onChange={(e) => update("value", e.target.value)}
-        />
-      </div>
-    );
-  }
-
-  if (actionType === "crm.company.update") {
-    return (
-      <div className="grid gap-2 md:grid-cols-3">
-        <Input
-          placeholder="Company id template"
-          value={String(
-            value.companyIdTemplate ?? "{{event.payload.companyId}}",
-          )}
-          onChange={(e) => update("companyIdTemplate", e.target.value)}
-        />
-        <Select
-          value={String(value.field ?? "website")}
-          onValueChange={(next) => update("field", next)}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Field" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="website">Website</SelectItem>
-            <SelectItem value="address">Address</SelectItem>
-            <SelectItem value="phone">Phone</SelectItem>
-          </SelectContent>
-        </Select>
-        <Input
-          placeholder="New value"
-          value={String(value.value ?? "")}
-          onChange={(e) => update("value", e.target.value)}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <Textarea
-      rows={4}
-      value={JSON.stringify(value, null, 2)}
-      onChange={(e) => {
-        try {
-          onChange(JSON.parse(e.target.value) as Record<string, unknown>);
-        } catch {
-          onChange(value);
-        }
-      }}
-    />
-  );
-}
-
 export function AutomationForm({
   defaultValues,
   onSubmit,
   onCancel,
   isSubmitting,
+  linearFlowCompileStableIds = null,
 }: AutomationFormProps) {
   const initialValues = useMemo<AutomationDefinitionFormValues>(
     () =>
@@ -457,6 +179,7 @@ export function AutomationForm({
             continueOnError: false,
           },
         ],
+        branchingCanvasAuthoring: false,
       },
     [defaultValues],
   );
@@ -480,6 +203,12 @@ export function AutomationForm({
     control: form.control,
     name: "steps",
   });
+  const preservedBranchingFlowGraph = form.watch("preservedBranchingFlowGraph");
+  const branchingCanvasAuthoring =
+    form.watch("branchingCanvasAuthoring") ?? false;
+  const branchingGraphLocked =
+    hasPreservedBranchingFlowGraphShape(preservedBranchingFlowGraph) &&
+    !branchingCanvasAuthoring;
   const selectedTriggerEvents = form.watch("triggers");
   const compatibleActionTypes = useMemo(() => {
     const events = selectedTriggerEvents.map((trigger) => trigger.eventName);
@@ -503,6 +232,9 @@ export function AutomationForm({
   );
 
   useEffect(() => {
+    if (branchingGraphLocked) {
+      return;
+    }
     stepArray.fields.forEach((_, index) => {
       const actionType = form.getValues(`steps.${index}.actionType`);
       if (compatibleActionTypes.includes(actionType)) {
@@ -523,9 +255,15 @@ export function AutomationForm({
         { shouldValidate: true },
       );
     });
-  }, [compatibleActionTypes, form, stepArray.fields]);
+  }, [branchingGraphLocked, compatibleActionTypes, form, stepArray.fields]);
 
+  const lastResetSnapshotRef = useRef<string | null>(null);
   useEffect(() => {
+    const snap = JSON.stringify(initialValues);
+    if (lastResetSnapshotRef.current === snap) {
+      return;
+    }
+    lastResetSnapshotRef.current = snap;
     form.reset(initialValues);
   }, [form, initialValues]);
 
@@ -538,779 +276,1053 @@ export function AutomationForm({
     }
   }, [form, scopeType]);
 
+  const visualBuilderEnabled = useEnvFeatureFlag(
+    EnvFeature.AUTOMATION_VISUAL_BUILDER,
+  );
+  const automationBranchingEnabled = useEnvFeatureFlag(
+    EnvFeature.AUTOMATION_BRANCHING,
+  );
+  const [editorTab, setEditorTab] = useState<"flow" | "form">("form");
+  const formSectionRef = useRef<HTMLDivElement>(null);
+  const flowSectionRef = useRef<HTMLElement>(null);
+
   return (
-    <Form {...form}>
-      <form
-        className="space-y-5 rounded-lg border p-4"
-        onSubmit={form.handleSubmit(onSubmit)}
-        noValidate
-      >
-        {Object.keys(errors).length > 0 ? (
-          <div
-            role="alert"
-            className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
-          >
-            Some fields need attention. Review the messages below and try again.
-          </div>
-        ) : null}
-
-        <div className="grid gap-4 md:grid-cols-2">
-          <FormField
+    <AutomationFlowCompileMetaProvider value={linearFlowCompileStableIds}>
+      <Form {...form}>
+        <form
+          className="space-y-5 rounded-lg border p-4"
+          onSubmit={form.handleSubmit(onSubmit)}
+          noValidate
+        >
+          <Controller
             control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Name</FormLabel>
-                <FormControl>
-                  <Input {...field} autoComplete="off" />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+            name="preservedBranchingFlowGraph"
+            render={() => <span className="sr-only" aria-hidden />}
           />
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label htmlFor="automation-scope-type">Scope</Label>
-              <HelpTopicSheet topicLabel="Scope" sheetTitle="Automation scope">
-                <p>
-                  Global runs tenant-wide. CRM pipeline, location, or product
-                  variation limits events to that target—choose the matching
-                  scope target below when required.
-                </p>
-              </HelpTopicSheet>
-            </div>
-            <Select
-              value={scopeType}
-              onValueChange={(next) =>
-                form.setValue(
-                  "scopeType",
-                  next as AutomationDefinitionFormValues["scopeType"],
-                )
-              }
+          <Controller
+            control={form.control}
+            name="branchingCanvasAuthoring"
+            render={() => <span className="sr-only" aria-hidden />}
+          />
+          {Object.keys(errors).length > 0 ? (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 text-sm text-destructive"
             >
-              <SelectTrigger id="automation-scope-type">
-                <SelectValue placeholder="Select scope" />
-              </SelectTrigger>
-              <SelectContent>
-                {AUTOMATION_SCOPE_VALUES.map((scope) => (
-                  <SelectItem key={scope} value={scope}>
-                    {SCOPE_LABELS[scope]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <FormField
-            control={form.control}
-            name="description"
-            render={({ field }) => (
-              <FormItem className="md:col-span-2">
-                <FormLabel>Description</FormLabel>
-                <FormControl>
-                  <Textarea rows={3} {...field} value={field.value ?? ""} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label htmlFor="automation-scope-target">Scope target</Label>
-              <HelpTopicSheet
-                topicLabel="Scope target"
-                sheetTitle="Scope target"
-              >
-                <p>
-                  Required for CRM pipeline, location, or product variation
-                  scopes. Global scope ignores this field.
-                </p>
-                {hasInventoryTrigger ? (
-                  <p>
-                    <strong>Inventory events</strong> (stock adjustments, low
-                    stock, thresholds) are emitted per{" "}
-                    <strong>warehouse</strong>—set scope to{" "}
-                    <strong>Location</strong> and pick one site below for a
-                    focused setup, or stay on <strong>Global</strong> to react
-                    when any location reports low stock.
-                  </p>
-                ) : null}
-              </HelpTopicSheet>
+              Some fields need attention. Review the messages below and try
+              again.
             </div>
-            {scopeType === "CRM_PIPELINE" ? (
-              <Select
-                value={form.watch("scopeId") || ""}
-                onValueChange={(next) => form.setValue("scopeId", next)}
-              >
-                <SelectTrigger id="automation-scope-target">
-                  <SelectValue placeholder={getScopeIdPlaceholder(scopeType)} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(pipelineData?.pipelines ?? []).map((pipeline) => (
-                    <SelectItem key={pipeline.id} value={pipeline.id}>
-                      {pipeline.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null}
-            {scopeType === "LOCATION" ? (
-              <Select
-                value={form.watch("scopeId") || ""}
-                onValueChange={(next) => form.setValue("scopeId", next)}
-              >
-                <SelectTrigger id="automation-scope-target">
-                  <SelectValue placeholder={getScopeIdPlaceholder(scopeType)} />
-                </SelectTrigger>
-                <SelectContent>
-                  {(locationData ?? []).map((location) => (
-                    <SelectItem key={location.id} value={location.id}>
-                      {location.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            ) : null}
-            {scopeType === "PRODUCT_VARIATION" ? (
-              <Input
-                id="automation-scope-target"
-                placeholder={getScopeIdPlaceholder(scopeType)}
-                aria-invalid={!!errors.scopeId}
-                aria-describedby={
-                  errors.scopeId ? "automation-scope-target-error" : undefined
-                }
-                {...form.register("scopeId")}
-              />
-            ) : null}
-            {scopeType === "GLOBAL" ? (
-              <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
-                This automation applies across the tenant.
-              </div>
-            ) : null}
-            {errors.scopeId?.message ? (
-              <p
-                id="automation-scope-target-error"
-                role="alert"
-                className="text-sm text-destructive"
-              >
-                {errors.scopeId.message}
-              </p>
-            ) : null}
-          </div>
-          {hasInventoryTrigger ? (
-            <Alert className="border-primary/20 bg-primary/5 md:col-span-2">
-              <Package className="text-primary" aria-hidden />
-              <AlertTitle>Inventory events</AlertTitle>
-              <AlertDescription className="text-muted-foreground">
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-                  <p className="text-sm">
-                    Low-stock and threshold signals are emitted per warehouse.
-                    Use <strong>Location</strong> scope for one site or{" "}
-                    <strong>Global</strong> for all sites.
-                  </p>
-                  <HelpTopicSheet
-                    topicLabel="Inventory scope setup"
-                    sheetTitle="Low stock and inventory scope"
-                  >
-                    <ol className="list-decimal space-y-2 pl-5">
-                      <li>
-                        Choose <strong>Location</strong> under Scope, then
-                        select a warehouse in <strong>Scope target</strong>—this
-                        automation runs only when that site reports low stock or
-                        threshold events.
-                      </li>
-                      <li>
-                        Or keep <strong>Global</strong> to use the same steps
-                        for <strong>every</strong> warehouse (still one
-                        automation definition).
-                      </li>
-                      <li>
-                        After saving, use <strong>SHADOW</strong> mode and
-                        trigger a low-stock scenario in test data; check{" "}
-                        <strong>Recent runs</strong> on the Automation page.
-                      </li>
-                    </ol>
-                    <div className="flex flex-wrap gap-2 pt-3">
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          form.setValue("scopeType", "LOCATION", {
-                            shouldValidate: true,
-                          });
-                        }}
-                      >
-                        Set scope to Location
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          form.setValue("scopeType", "GLOBAL", {
-                            shouldValidate: true,
-                          });
-                          form.setValue("scopeId", "", {
-                            shouldValidate: true,
-                          });
-                        }}
-                      >
-                        Use Global (all warehouses)
-                      </Button>
-                    </div>
-                  </HelpTopicSheet>
-                </div>
-              </AlertDescription>
-            </Alert>
           ) : null}
-          <div className="space-y-2">
-            <Label htmlFor="automation-status">Status</Label>
-            <Select
-              value={form.watch("status")}
-              onValueChange={(next) =>
-                form.setValue(
-                  "status",
-                  next as AutomationDefinitionFormValues["status"],
-                )
-              }
-            >
-              <SelectTrigger id="automation-status">
-                <SelectValue placeholder="Select status" />
-              </SelectTrigger>
-              <SelectContent>
-                {AUTOMATION_STATUS_VALUES.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {AUTOMATION_STATUS_LABELS[status]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <div className="flex items-center gap-1">
-              <Label htmlFor="automation-execution-mode">Execution mode</Label>
-              <HelpTopicSheet
-                topicLabel="Execution mode"
-                sheetTitle="Execution mode"
-              >
-                <p>
-                  <strong>{AUTOMATION_EXECUTION_MODE_LABELS.LIVE}</strong>{" "}
-                  performs real actions.{" "}
-                  <strong>{AUTOMATION_EXECUTION_MODE_LABELS.SHADOW}</strong>{" "}
-                  simulates steps and records previews in run history without
-                  changing data—use while testing, then switch to{" "}
-                  {AUTOMATION_EXECUTION_MODE_LABELS.LIVE}.
-                </p>
-              </HelpTopicSheet>
-            </div>
-            <Select
-              value={form.watch("executionMode")}
-              onValueChange={(next) =>
-                form.setValue(
-                  "executionMode",
-                  next as AutomationDefinitionFormValues["executionMode"],
-                )
-              }
-            >
-              <SelectTrigger id="automation-execution-mode">
-                <SelectValue placeholder="Select execution mode" />
-              </SelectTrigger>
-              <SelectContent>
-                {AUTOMATION_EXECUTION_MODE_VALUES.map((mode) => (
-                  <SelectItem key={mode} value={mode}>
-                    {AUTOMATION_EXECUTION_MODE_LABELS[mode]}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2 rounded-md border p-3 md:col-span-2">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 flex-1 items-start gap-1">
-                <Label className="leading-normal">
-                  Suppress legacy CRM workflows
-                </Label>
-                <HelpTopicSheet
-                  topicLabel="Suppress legacy CRM workflows"
-                  sheetTitle="Suppress legacy CRM workflows"
-                >
-                  <p>
-                    When enabled, matching rules from{" "}
-                    <strong>Settings → CRM → Workflows</strong> are skipped for
-                    the same deal events so you do not double-create tasks or
-                    notifications while both systems are in use.
-                  </p>
-                </HelpTopicSheet>
-              </div>
-              <Switch
-                checked={form.watch("suppressLegacyWorkflows")}
-                onCheckedChange={(checked) =>
-                  form.setValue("suppressLegacyWorkflows", checked)
-                }
-              />
-            </div>
-          </div>
-        </div>
 
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              <Label>Triggers</Label>
-              <HelpTopicSheet
-                topicLabel="Triggers and conditions"
-                sheetTitle="Triggers and conditions"
+          {visualBuilderEnabled ? (
+            <div className="flex flex-wrap gap-2 border-b pb-3">
+              <Button
+                type="button"
+                size="sm"
+                variant={editorTab === "form" ? "default" : "outline"}
+                onClick={() => {
+                  setEditorTab("form");
+                  formSectionRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
+                data-testid="automation-editor-tab-all-fields"
               >
-                <p>
-                  Optional conditions use a path into the event payload (for
-                  example <code className="rounded bg-muted px-1">total</code>{" "}
-                  or{" "}
-                  <code className="rounded bg-muted px-1">payload.amount</code>
-                  ), an operator, and a value. Use <strong>Exists</strong> to
-                  require a field without comparing its value.
-                </p>
-              </HelpTopicSheet>
+                All fields
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant={editorTab === "flow" ? "default" : "outline"}
+                onClick={() => {
+                  setEditorTab("flow");
+                  flowSectionRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
+                data-testid="automation-editor-tab-flow-chart"
+              >
+                Flow chart
+              </Button>
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                triggerArray.append({
-                  eventName: "sales.sale.created",
-                  conditions: [],
-                  delayMinutes: 0,
-                })
-              }
+          ) : null}
+
+          {visualBuilderEnabled ? (
+            <p className="border-b pb-3 text-xs leading-relaxed text-muted-foreground">
+              The{" "}
+              <strong className="font-medium text-foreground">
+                All fields
+              </strong>{" "}
+              column and{" "}
+              <strong className="font-medium text-foreground">
+                Flow chart
+              </strong>{" "}
+              share the same automation
+              {branchingCanvasAuthoring && automationBranchingEnabled
+                ? "—edit conditional routing under All fields; the flow column shows a live preview."
+                : "—edit triggers, steps, and branching in either place (shown side by side on wide screens)."}
+            </p>
+          ) : null}
+
+          <div
+            className={cn(
+              visualBuilderEnabled &&
+                "grid gap-6 lg:grid-cols-[minmax(0,1.1fr)_minmax(300px,1fr)] lg:items-start",
+            )}
+          >
+            <div
+              ref={formSectionRef}
+              id="automation-form-fields"
+              className={cn("space-y-5", visualBuilderEnabled && "min-w-0")}
             >
-              Add trigger
-            </Button>
-          </div>
-          {triggerArray.fields.map((field, index) => (
-            <div key={field.id} className="space-y-3 rounded-md border p-3">
-              <div className="grid gap-2 md:grid-cols-[1fr_140px_auto]">
-                <Select
-                  value={form.watch(`triggers.${index}.eventName`)}
-                  onValueChange={(next) =>
-                    form.setValue(
-                      `triggers.${index}.eventName`,
-                      next as AutomationDefinitionFormValues["triggers"][number]["eventName"],
-                    )
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Event" />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))]">
-                    {AUTOMATION_EVENT_GROUP_ORDER.map((group) => {
-                      const events = triggerEventsByGroup[group];
-                      if (!events?.length) return null;
-                      return (
-                        <SelectGroup key={group}>
-                          <SelectLabel>
-                            {AUTOMATION_EVENT_GROUP_LABELS[group]}
-                          </SelectLabel>
-                          {events.map((eventName) => {
-                            const meta =
-                              AUTOMATION_TRIGGER_EVENT_CATALOG[eventName];
-                            const label = meta?.label ?? eventName;
-                            const description =
-                              meta?.description ?? "No description available.";
-                            return (
-                              <SelectItem
-                                key={eventName}
-                                value={eventName}
-                                textValue={`${label} ${eventName}`}
-                              >
-                                <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
-                                  <span>{label}</span>
-                                  <span className="text-xs font-normal text-muted-foreground">
-                                    {description}
-                                  </span>
-                                </span>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectGroup>
-                      );
-                    })}
-                  </SelectContent>
-                </Select>
-                <Input
-                  type="number"
-                  min={0}
-                  {...form.register(`triggers.${index}.delayMinutes`, {
-                    valueAsNumber: true,
-                  })}
-                  placeholder="Delay min"
+              <div className="grid gap-4 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Name</FormLabel>
+                      <FormControl>
+                        <Input {...field} autoComplete="off" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  aria-label={`Remove trigger ${index + 1}`}
-                  onClick={() => triggerArray.remove(index)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor="automation-scope-type">Scope</Label>
+                    <HelpTopicSheet
+                      topicLabel="Scope"
+                      sheetTitle="Automation scope"
+                    >
+                      <p>
+                        Global runs tenant-wide. CRM pipeline, location, or
+                        product variation limits events to that target—choose
+                        the matching scope target below when required.
+                      </p>
+                    </HelpTopicSheet>
+                  </div>
+                  <Select
+                    value={scopeType}
+                    onValueChange={(next) =>
+                      form.setValue(
+                        "scopeType",
+                        next as AutomationDefinitionFormValues["scopeType"],
+                      )
+                    }
+                  >
+                    <SelectTrigger id="automation-scope-type">
+                      <SelectValue placeholder="Select scope" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUTOMATION_SCOPE_VALUES.map((scope) => (
+                        <SelectItem key={scope} value={scope}>
+                          {SCOPE_LABELS[scope]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem className="md:col-span-2">
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          rows={3}
+                          {...field}
+                          value={field.value ?? ""}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor="automation-scope-target">
+                      Scope target
+                    </Label>
+                    <HelpTopicSheet
+                      topicLabel="Scope target"
+                      sheetTitle="Scope target"
+                    >
+                      <p>
+                        Required for CRM pipeline, location, or product
+                        variation scopes. Global scope ignores this field.
+                      </p>
+                      {hasInventoryTrigger ? (
+                        <p>
+                          <strong>Inventory events</strong> (stock adjustments,
+                          low stock, thresholds) are emitted per{" "}
+                          <strong>warehouse</strong>—set scope to{" "}
+                          <strong>Location</strong> and pick one site below for
+                          a focused setup, or stay on <strong>Global</strong> to
+                          react when any location reports low stock.
+                        </p>
+                      ) : null}
+                    </HelpTopicSheet>
+                  </div>
+                  {scopeType === "CRM_PIPELINE" ? (
+                    <Select
+                      value={form.watch("scopeId") || ""}
+                      onValueChange={(next) => form.setValue("scopeId", next)}
+                    >
+                      <SelectTrigger id="automation-scope-target">
+                        <SelectValue
+                          placeholder={getScopeIdPlaceholder(scopeType)}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(pipelineData?.pipelines ?? []).map((pipeline) => (
+                          <SelectItem key={pipeline.id} value={pipeline.id}>
+                            {pipeline.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                  {scopeType === "LOCATION" ? (
+                    <Select
+                      value={form.watch("scopeId") || ""}
+                      onValueChange={(next) => form.setValue("scopeId", next)}
+                    >
+                      <SelectTrigger id="automation-scope-target">
+                        <SelectValue
+                          placeholder={getScopeIdPlaceholder(scopeType)}
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {(locationData ?? []).map((location) => (
+                          <SelectItem key={location.id} value={location.id}>
+                            {location.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : null}
+                  {scopeType === "PRODUCT_VARIATION" ? (
+                    <Input
+                      id="automation-scope-target"
+                      placeholder={getScopeIdPlaceholder(scopeType)}
+                      aria-invalid={!!errors.scopeId}
+                      aria-describedby={
+                        errors.scopeId
+                          ? "automation-scope-target-error"
+                          : undefined
+                      }
+                      {...form.register("scopeId")}
+                    />
+                  ) : null}
+                  {scopeType === "GLOBAL" ? (
+                    <div className="rounded-md border border-dashed px-3 py-2 text-sm text-muted-foreground">
+                      This automation applies across the tenant.
+                    </div>
+                  ) : null}
+                  {errors.scopeId?.message ? (
+                    <p
+                      id="automation-scope-target-error"
+                      role="alert"
+                      className="text-sm text-destructive"
+                    >
+                      {errors.scopeId.message}
+                    </p>
+                  ) : null}
+                </div>
+                {hasInventoryTrigger ? (
+                  <Alert className="border-primary/20 bg-primary/5 md:col-span-2">
+                    <Package className="text-primary" aria-hidden />
+                    <AlertTitle>Inventory events</AlertTitle>
+                    <AlertDescription className="text-muted-foreground">
+                      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <p className="text-sm">
+                          Low-stock and threshold signals are emitted per
+                          warehouse. Use <strong>Location</strong> scope for one
+                          site or <strong>Global</strong> for all sites.
+                        </p>
+                        <HelpTopicSheet
+                          topicLabel="Inventory scope setup"
+                          sheetTitle="Low stock and inventory scope"
+                        >
+                          <ol className="list-decimal space-y-2 pl-5">
+                            <li>
+                              Choose <strong>Location</strong> under Scope, then
+                              select a warehouse in{" "}
+                              <strong>Scope target</strong>
+                              —this automation runs only when that site reports
+                              low stock or threshold events.
+                            </li>
+                            <li>
+                              Or keep <strong>Global</strong> to use the same
+                              steps for <strong>every</strong> warehouse (still
+                              one automation definition).
+                            </li>
+                            <li>
+                              After saving, use <strong>SHADOW</strong> mode and
+                              trigger a low-stock scenario in test data; check{" "}
+                              <strong>Recent runs</strong> on the Event
+                              automations page.
+                            </li>
+                          </ol>
+                          <div className="flex flex-wrap gap-2 pt-3">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                form.setValue("scopeType", "LOCATION", {
+                                  shouldValidate: true,
+                                });
+                              }}
+                            >
+                              Set scope to Location
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                form.setValue("scopeType", "GLOBAL", {
+                                  shouldValidate: true,
+                                });
+                                form.setValue("scopeId", "", {
+                                  shouldValidate: true,
+                                });
+                              }}
+                            >
+                              Use Global (all warehouses)
+                            </Button>
+                          </div>
+                        </HelpTopicSheet>
+                      </div>
+                    </AlertDescription>
+                  </Alert>
+                ) : null}
+                <div className="space-y-2">
+                  <Label htmlFor="automation-status">Status</Label>
+                  <Select
+                    value={form.watch("status")}
+                    onValueChange={(next) =>
+                      form.setValue(
+                        "status",
+                        next as AutomationDefinitionFormValues["status"],
+                      )
+                    }
+                  >
+                    <SelectTrigger id="automation-status">
+                      <SelectValue placeholder="Select status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUTOMATION_STATUS_VALUES.map((status) => (
+                        <SelectItem key={status} value={status}>
+                          {AUTOMATION_STATUS_LABELS[status]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1">
+                    <Label htmlFor="automation-execution-mode">
+                      Execution mode
+                    </Label>
+                    <HelpTopicSheet
+                      topicLabel="Execution mode"
+                      sheetTitle="Execution mode"
+                    >
+                      <p>
+                        <strong>{AUTOMATION_EXECUTION_MODE_LABELS.LIVE}</strong>{" "}
+                        performs real actions.{" "}
+                        <strong>
+                          {AUTOMATION_EXECUTION_MODE_LABELS.SHADOW}
+                        </strong>{" "}
+                        simulates steps and records previews in run history
+                        without changing data—use while testing, then switch to{" "}
+                        {AUTOMATION_EXECUTION_MODE_LABELS.LIVE}.
+                      </p>
+                    </HelpTopicSheet>
+                  </div>
+                  <Select
+                    value={form.watch("executionMode")}
+                    onValueChange={(next) =>
+                      form.setValue(
+                        "executionMode",
+                        next as AutomationDefinitionFormValues["executionMode"],
+                      )
+                    }
+                  >
+                    <SelectTrigger id="automation-execution-mode">
+                      <SelectValue placeholder="Select execution mode" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {AUTOMATION_EXECUTION_MODE_VALUES.map((mode) => (
+                        <SelectItem key={mode} value={mode}>
+                          {AUTOMATION_EXECUTION_MODE_LABELS[mode]}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2 rounded-md border p-3 md:col-span-2">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 items-start gap-1">
+                      <Label className="leading-normal">
+                        Suppress legacy CRM workflows
+                      </Label>
+                      <HelpTopicSheet
+                        topicLabel="Suppress legacy CRM workflows"
+                        sheetTitle="Suppress legacy CRM workflows"
+                      >
+                        <p>
+                          When enabled, matching rules from{" "}
+                          <strong>Settings → Deal pipeline rules</strong> are
+                          skipped for the same deal events so you do not
+                          double-create tasks or notifications while both
+                          systems are in use.
+                        </p>
+                      </HelpTopicSheet>
+                    </div>
+                    <Switch
+                      checked={form.watch("suppressLegacyWorkflows")}
+                      onCheckedChange={(checked) =>
+                        form.setValue("suppressLegacyWorkflows", checked)
+                      }
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <Label className="text-xs text-muted-foreground">
-                    Conditions
-                  </Label>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
+                    <Label>Triggers</Label>
+                    <HelpTopicSheet
+                      topicLabel="Triggers and conditions"
+                      sheetTitle="Triggers and conditions"
+                    >
+                      <p>
+                        Optional conditions use a path into the event payload
+                        (for example{" "}
+                        <code className="rounded bg-muted px-1">total</code> or{" "}
+                        <code className="rounded bg-muted px-1">
+                          payload.amount
+                        </code>
+                        ), an operator, and a value. Use <strong>Exists</strong>{" "}
+                        to require a field without comparing its value.
+                      </p>
+                    </HelpTopicSheet>
+                  </div>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => {
-                      const current =
-                        form.getValues(`triggers.${index}.conditions`) ?? [];
-                      form.setValue(`triggers.${index}.conditions`, [
-                        ...current,
-                        getDefaultCondition(),
-                      ]);
-                    }}
+                    onClick={() =>
+                      triggerArray.append({
+                        eventName: "sales.sale.created",
+                        conditions: [],
+                        delayMinutes: 0,
+                      })
+                    }
                   >
-                    Add condition
+                    Add trigger
                   </Button>
                 </div>
-                {(form.watch(`triggers.${index}.conditions`) ?? []).map(
-                  (condition, conditionIndex) => {
-                    const conditionFieldErrors =
-                      errors.triggers?.[index]?.conditions?.[conditionIndex];
-                    return (
-                      <div
-                        key={`${field.id}-condition-${conditionIndex}`}
-                        className="space-y-1"
+                {triggerArray.fields.map((field, index) => (
+                  <div
+                    key={field.id}
+                    className="space-y-3 rounded-md border p-3"
+                  >
+                    <div className="grid gap-2 md:grid-cols-[1fr_140px_auto]">
+                      <Select
+                        value={form.watch(`triggers.${index}.eventName`)}
+                        onValueChange={(next) =>
+                          form.setValue(
+                            `triggers.${index}.eventName`,
+                            next as AutomationDefinitionFormValues["triggers"][number]["eventName"],
+                          )
+                        }
                       >
-                        <div className="grid gap-2 md:grid-cols-[1.2fr_160px_1fr_auto]">
-                          <Input
-                            placeholder="Payload path"
-                            aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} path`}
-                            value={String(condition.path ?? "")}
-                            onChange={(e) =>
-                              form.setValue(
-                                `triggers.${index}.conditions.${conditionIndex}.path`,
-                                e.target.value,
-                                { shouldValidate: true },
-                              )
-                            }
-                          />
-                          <Select
-                            value={condition.operator}
-                            onValueChange={(next) => {
-                              const op =
-                                next as AutomationCondition["operator"];
-                              form.setValue(
-                                `triggers.${index}.conditions.${conditionIndex}.operator`,
-                                op,
-                                { shouldValidate: false },
-                              );
-                              if (op === "exists") {
-                                form.setValue(
-                                  `triggers.${index}.conditions.${conditionIndex}.value`,
-                                  undefined,
-                                  { shouldValidate: true },
-                                );
-                              } else if (op === "in") {
-                                const v = form.getValues(
-                                  `triggers.${index}.conditions.${conditionIndex}.value`,
-                                );
-                                if (Array.isArray(v)) {
-                                  form.setValue(
-                                    `triggers.${index}.conditions.${conditionIndex}.value`,
-                                    v.map(String).join(", "),
-                                    { shouldValidate: true },
-                                  );
-                                } else if (typeof v !== "string") {
-                                  form.setValue(
-                                    `triggers.${index}.conditions.${conditionIndex}.value`,
-                                    "",
-                                    { shouldValidate: true },
-                                  );
-                                }
-                              } else if (NUMERIC_OPERATORS.has(op)) {
-                                const v = form.getValues(
-                                  `triggers.${index}.conditions.${conditionIndex}.value`,
-                                );
-                                const n = Number(v);
-                                form.setValue(
-                                  `triggers.${index}.conditions.${conditionIndex}.value`,
-                                  Number.isFinite(n) ? n : 0,
-                                  { shouldValidate: true },
-                                );
-                              }
-                            }}
-                          >
-                            <SelectTrigger
-                              aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} operator`}
-                            >
-                              <SelectValue placeholder="Operator" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {AUTOMATION_CONDITION_OPERATORS.map(
-                                (operator) => {
-                                  const opMeta =
-                                    AUTOMATION_CONDITION_OPERATOR_META[
-                                      operator
-                                    ];
+                        <SelectTrigger>
+                          <SelectValue placeholder="Event" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-[min(24rem,var(--radix-select-content-available-height))]">
+                          {AUTOMATION_EVENT_GROUP_ORDER.map((group) => {
+                            const events = triggerEventsByGroup[group];
+                            if (!events?.length) return null;
+                            return (
+                              <SelectGroup key={group}>
+                                <SelectLabel>
+                                  {AUTOMATION_EVENT_GROUP_LABELS[group]}
+                                </SelectLabel>
+                                {events.map((eventName) => {
+                                  const meta =
+                                    AUTOMATION_TRIGGER_EVENT_CATALOG[eventName];
+                                  const label = meta?.label ?? eventName;
+                                  const description =
+                                    meta?.description ??
+                                    "No description available.";
                                   return (
                                     <SelectItem
-                                      key={operator}
-                                      value={operator}
-                                      textValue={opMeta.label}
+                                      key={eventName}
+                                      value={eventName}
+                                      textValue={`${label} ${eventName}`}
                                     >
                                       <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
-                                        <span>{opMeta.label}</span>
+                                        <span>{label}</span>
                                         <span className="text-xs font-normal text-muted-foreground">
-                                          {opMeta.description}
+                                          {description}
                                         </span>
                                       </span>
                                     </SelectItem>
                                   );
-                                },
-                              )}
-                            </SelectContent>
-                          </Select>
-                          {condition.operator === "exists" ? (
-                            <span className="self-center px-1 text-sm text-muted-foreground">
-                              No value
-                            </span>
-                          ) : null}
-                          {condition.operator === "in" ? (
-                            <Textarea
-                              rows={2}
-                              placeholder='e.g. ["A","B"] or A, B'
-                              aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} value`}
-                              value={formatConditionValueForDisplay(
-                                condition.operator,
-                                condition.value,
-                              )}
-                              onChange={(e) =>
+                                })}
+                              </SelectGroup>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
+                      <Input
+                        type="number"
+                        min={0}
+                        {...form.register(`triggers.${index}.delayMinutes`, {
+                          valueAsNumber: true,
+                        })}
+                        placeholder="Delay min"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        aria-label={`Remove trigger ${index + 1}`}
+                        onClick={() => triggerArray.remove(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs text-muted-foreground">
+                          Conditions
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const current =
+                              form.getValues(`triggers.${index}.conditions`) ??
+                              [];
+                            form.setValue(`triggers.${index}.conditions`, [
+                              ...current,
+                              getDefaultCondition(),
+                            ]);
+                          }}
+                        >
+                          Add condition
+                        </Button>
+                      </div>
+                      {(form.watch(`triggers.${index}.conditions`) ?? []).map(
+                        (condition, conditionIndex) => {
+                          const conditionFieldErrors =
+                            errors.triggers?.[index]?.conditions?.[
+                              conditionIndex
+                            ];
+                          return (
+                            <div
+                              key={`${field.id}-condition-${conditionIndex}`}
+                              className="space-y-1"
+                            >
+                              <div className="grid gap-2 md:grid-cols-[1.2fr_160px_1fr_auto]">
+                                <Input
+                                  placeholder="Payload path"
+                                  aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} path`}
+                                  value={String(condition.path ?? "")}
+                                  onChange={(e) =>
+                                    form.setValue(
+                                      `triggers.${index}.conditions.${conditionIndex}.path`,
+                                      e.target.value,
+                                      { shouldValidate: true },
+                                    )
+                                  }
+                                />
+                                <Select
+                                  value={condition.operator}
+                                  onValueChange={(next) => {
+                                    const op =
+                                      next as AutomationCondition["operator"];
+                                    form.setValue(
+                                      `triggers.${index}.conditions.${conditionIndex}.operator`,
+                                      op,
+                                      { shouldValidate: false },
+                                    );
+                                    if (op === "exists") {
+                                      form.setValue(
+                                        `triggers.${index}.conditions.${conditionIndex}.value`,
+                                        undefined,
+                                        { shouldValidate: true },
+                                      );
+                                    } else if (op === "in") {
+                                      const v = form.getValues(
+                                        `triggers.${index}.conditions.${conditionIndex}.value`,
+                                      );
+                                      if (Array.isArray(v)) {
+                                        form.setValue(
+                                          `triggers.${index}.conditions.${conditionIndex}.value`,
+                                          v.map(String).join(", "),
+                                          { shouldValidate: true },
+                                        );
+                                      } else if (typeof v !== "string") {
+                                        form.setValue(
+                                          `triggers.${index}.conditions.${conditionIndex}.value`,
+                                          "",
+                                          { shouldValidate: true },
+                                        );
+                                      }
+                                    } else if (NUMERIC_OPERATORS.has(op)) {
+                                      const v = form.getValues(
+                                        `triggers.${index}.conditions.${conditionIndex}.value`,
+                                      );
+                                      const n = Number(v);
+                                      form.setValue(
+                                        `triggers.${index}.conditions.${conditionIndex}.value`,
+                                        Number.isFinite(n) ? n : 0,
+                                        { shouldValidate: true },
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <SelectTrigger
+                                    aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} operator`}
+                                  >
+                                    <SelectValue placeholder="Operator" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    {AUTOMATION_CONDITION_OPERATORS.map(
+                                      (operator) => {
+                                        const opMeta =
+                                          AUTOMATION_CONDITION_OPERATOR_META[
+                                            operator
+                                          ];
+                                        return (
+                                          <SelectItem
+                                            key={operator}
+                                            value={operator}
+                                            textValue={opMeta.label}
+                                          >
+                                            <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                                              <span>{opMeta.label}</span>
+                                              <span className="text-xs font-normal text-muted-foreground">
+                                                {opMeta.description}
+                                              </span>
+                                            </span>
+                                          </SelectItem>
+                                        );
+                                      },
+                                    )}
+                                  </SelectContent>
+                                </Select>
+                                {condition.operator === "exists" ? (
+                                  <span className="self-center px-1 text-sm text-muted-foreground">
+                                    No value
+                                  </span>
+                                ) : null}
+                                {condition.operator === "in" ? (
+                                  <Textarea
+                                    rows={2}
+                                    placeholder='e.g. ["A","B"] or A, B'
+                                    aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} value`}
+                                    value={formatConditionValueForDisplay(
+                                      condition.operator,
+                                      condition.value,
+                                    )}
+                                    onChange={(e) =>
+                                      form.setValue(
+                                        `triggers.${index}.conditions.${conditionIndex}.value`,
+                                        e.target.value,
+                                        { shouldValidate: true },
+                                      )
+                                    }
+                                  />
+                                ) : null}
+                                {NUMERIC_OPERATORS.has(condition.operator) ? (
+                                  <Input
+                                    type="number"
+                                    aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} numeric value`}
+                                    value={
+                                      condition.value === "" ||
+                                      condition.value === undefined ||
+                                      condition.value === null
+                                        ? ""
+                                        : String(condition.value)
+                                    }
+                                    onChange={(e) => {
+                                      const raw = e.target.value;
+                                      form.setValue(
+                                        `triggers.${index}.conditions.${conditionIndex}.value`,
+                                        raw === "" ? "" : Number(raw),
+                                        { shouldValidate: true },
+                                      );
+                                    }}
+                                  />
+                                ) : null}
+                                {condition.operator !== "exists" &&
+                                condition.operator !== "in" &&
+                                !NUMERIC_OPERATORS.has(condition.operator) ? (
+                                  <Input
+                                    placeholder="Value"
+                                    aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} value`}
+                                    value={
+                                      condition.value == null
+                                        ? ""
+                                        : String(condition.value)
+                                    }
+                                    onChange={(e) =>
+                                      form.setValue(
+                                        `triggers.${index}.conditions.${conditionIndex}.value`,
+                                        e.target.value,
+                                        { shouldValidate: true },
+                                      )
+                                    }
+                                  />
+                                ) : null}
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  aria-label={`Remove condition ${conditionIndex + 1} on trigger ${index + 1}`}
+                                  onClick={() => {
+                                    const current =
+                                      form.getValues(
+                                        `triggers.${index}.conditions`,
+                                      ) ?? [];
+                                    form.setValue(
+                                      `triggers.${index}.conditions`,
+                                      current.filter(
+                                        (_, i) => i !== conditionIndex,
+                                      ),
+                                    );
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              {conditionFieldErrors?.path?.message ? (
+                                <p
+                                  role="alert"
+                                  className="text-xs text-destructive"
+                                >
+                                  {conditionFieldErrors.path.message}
+                                </p>
+                              ) : null}
+                              {conditionFieldErrors?.value?.message ? (
+                                <p
+                                  role="alert"
+                                  className="text-xs text-destructive"
+                                >
+                                  {String(conditionFieldErrors.value.message)}
+                                </p>
+                              ) : null}
+                            </div>
+                          );
+                        },
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1">
+                    <Label>Steps</Label>
+                    <HelpTopicSheet
+                      topicLabel="Automation steps"
+                      sheetTitle="Steps"
+                    >
+                      <p>{stepAutoAdjustNote}</p>
+                    </HelpTopicSheet>
+                  </div>
+                  {!branchingGraphLocked && !branchingCanvasAuthoring ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        stepArray.append({
+                          actionType: "notification.send",
+                          actionConfig:
+                            getDefaultActionConfig("notification.send"),
+                          continueOnError: false,
+                        })
+                      }
+                    >
+                      Add step
+                    </Button>
+                  ) : null}
+                </div>
+                {branchingGraphLocked ? (
+                  <div className="space-y-2">
+                    {!visualBuilderEnabled ? (
+                      <Alert>
+                        <AlertTitle>Branching graph (read-only)</AlertTitle>
+                        <AlertDescription>
+                          This automation uses a saved{" "}
+                          <code className="text-xs">flowGraph</code>. Enable the
+                          visual builder to see a read-only diagram in{" "}
+                          <strong>Flow chart</strong>, or edit metadata and
+                          triggers here; graph shape is not editable in the UI
+                          for this definition.
+                        </AlertDescription>
+                      </Alert>
+                    ) : null}
+                    {errors.preservedBranchingFlowGraph?.message ? (
+                      <p role="alert" className="text-sm text-destructive">
+                        {String(errors.preservedBranchingFlowGraph.message)}
+                      </p>
+                    ) : null}
+                    <p className="text-sm text-muted-foreground">
+                      Actions live inside the branching graph (not in a linear
+                      step list). Use the flow chart for a diagram; name, scope,
+                      triggers, and execution settings stay editable here.
+                    </p>
+                  </div>
+                ) : null}
+                {automationBranchingEnabled &&
+                branchingCanvasAuthoring &&
+                !branchingGraphLocked ? (
+                  <div
+                    className="space-y-3 rounded-md border border-dashed border-primary/25 bg-muted/10 p-3"
+                    data-testid="automation-branching-authoring"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Conditional routing
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          exitBranchingToLinear(form, compatibleActionTypes)
+                        }
+                      >
+                        Back to linear steps
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      One shared graph drives this form and the flow chart.
+                      {visualBuilderEnabled
+                        ? " The chart column shows a preview while you edit here."
+                        : null}
+                    </p>
+                    <AutomationBranchingAuthoringPanel
+                      compatibleActionTypes={compatibleActionTypes}
+                      showGraphPreview={!visualBuilderEnabled}
+                    />
+                  </div>
+                ) : null}
+                {!branchingGraphLocked && !branchingCanvasAuthoring
+                  ? stepArray.fields.map((field, index) => {
+                      const actionType = form.watch(
+                        `steps.${index}.actionType`,
+                      );
+                      const config =
+                        (form.watch(`steps.${index}.actionConfig`) as Record<
+                          string,
+                          unknown
+                        >) ?? {};
+
+                      return (
+                        <div
+                          key={field.id}
+                          className="space-y-3 rounded-md border p-3"
+                        >
+                          <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
+                            <Select
+                              value={actionType}
+                              onValueChange={(next) => {
+                                const typed = next as AutomationActionTypeValue;
                                 form.setValue(
-                                  `triggers.${index}.conditions.${conditionIndex}.value`,
-                                  e.target.value,
-                                  { shouldValidate: true },
-                                )
-                              }
-                            />
-                          ) : null}
-                          {NUMERIC_OPERATORS.has(condition.operator) ? (
-                            <Input
-                              type="number"
-                              aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} numeric value`}
-                              value={
-                                condition.value === "" ||
-                                condition.value === undefined ||
-                                condition.value === null
-                                  ? ""
-                                  : String(condition.value)
-                              }
-                              onChange={(e) => {
-                                const raw = e.target.value;
+                                  `steps.${index}.actionType`,
+                                  typed,
+                                );
                                 form.setValue(
-                                  `triggers.${index}.conditions.${conditionIndex}.value`,
-                                  raw === "" ? "" : Number(raw),
-                                  { shouldValidate: true },
+                                  `steps.${index}.actionConfig`,
+                                  getDefaultActionConfig(typed),
                                 );
                               }}
-                            />
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Action" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {compatibleActionTypes.map((action) => {
+                                  const meta =
+                                    AUTOMATION_ACTION_TYPE_DESCRIPTIONS[action];
+                                  return (
+                                    <SelectItem
+                                      key={action}
+                                      value={action}
+                                      textValue={meta.label}
+                                    >
+                                      <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
+                                        <span>{meta.label}</span>
+                                        <span className="text-xs font-normal text-muted-foreground">
+                                          {meta.description}
+                                        </span>
+                                      </span>
+                                    </SelectItem>
+                                  );
+                                })}
+                              </SelectContent>
+                            </Select>
+                            <div className="flex items-center gap-2">
+                              <Switch
+                                checked={form.watch(
+                                  `steps.${index}.continueOnError`,
+                                )}
+                                onCheckedChange={(checked) =>
+                                  form.setValue(
+                                    `steps.${index}.continueOnError`,
+                                    checked,
+                                  )
+                                }
+                              />
+                              <Label>Continue on error</Label>
+                            </div>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              aria-label={`Remove step ${index + 1}`}
+                              onClick={() => stepArray.remove(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {errors.steps?.[index]?.actionType?.message ? (
+                            <p
+                              role="alert"
+                              className="text-xs text-destructive"
+                            >
+                              {errors.steps[index]?.actionType?.message}
+                            </p>
                           ) : null}
-                          {condition.operator !== "exists" &&
-                          condition.operator !== "in" &&
-                          !NUMERIC_OPERATORS.has(condition.operator) ? (
-                            <Input
-                              placeholder="Value"
-                              aria-label={`Trigger ${index + 1} condition ${conditionIndex + 1} value`}
-                              value={
-                                condition.value == null
-                                  ? ""
-                                  : String(condition.value)
-                              }
-                              onChange={(e) =>
-                                form.setValue(
-                                  `triggers.${index}.conditions.${conditionIndex}.value`,
-                                  e.target.value,
-                                  { shouldValidate: true },
-                                )
-                              }
-                            />
-                          ) : null}
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            aria-label={`Remove condition ${conditionIndex + 1} on trigger ${index + 1}`}
-                            onClick={() => {
-                              const current =
-                                form.getValues(
-                                  `triggers.${index}.conditions`,
-                                ) ?? [];
+
+                          <ActionConfigFields
+                            actionType={actionType}
+                            value={config}
+                            onChange={(next) =>
                               form.setValue(
-                                `triggers.${index}.conditions`,
-                                current.filter((_, i) => i !== conditionIndex),
-                              );
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
+                                `steps.${index}.actionConfig`,
+                                next,
+                                {
+                                  shouldValidate: true,
+                                },
+                              )
+                            }
+                          />
+                          {errors.steps?.[index]?.actionConfig &&
+                          typeof errors.steps[index]?.actionConfig ===
+                            "object" &&
+                          "message" in
+                            (errors.steps[index]?.actionConfig as object) ? (
+                            <p
+                              role="alert"
+                              className="text-xs text-destructive"
+                            >
+                              {String(
+                                (
+                                  errors.steps[index]?.actionConfig as {
+                                    message?: string;
+                                  }
+                                ).message,
+                              )}
+                            </p>
+                          ) : null}
                         </div>
-                        {conditionFieldErrors?.path?.message ? (
-                          <p role="alert" className="text-xs text-destructive">
-                            {conditionFieldErrors.path.message}
-                          </p>
-                        ) : null}
-                        {conditionFieldErrors?.value?.message ? (
-                          <p role="alert" className="text-xs text-destructive">
-                            {String(conditionFieldErrors.value.message)}
-                          </p>
-                        ) : null}
-                      </div>
-                    );
-                  },
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="space-y-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-1">
-              <Label>Steps</Label>
-              <HelpTopicSheet topicLabel="Automation steps" sheetTitle="Steps">
-                <p>{stepAutoAdjustNote}</p>
-              </HelpTopicSheet>
-            </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                stepArray.append({
-                  actionType: "notification.send",
-                  actionConfig: getDefaultActionConfig("notification.send"),
-                  continueOnError: false,
-                })
-              }
-            >
-              Add step
-            </Button>
-          </div>
-          {stepArray.fields.map((field, index) => {
-            const actionType = form.watch(`steps.${index}.actionType`);
-            const config =
-              (form.watch(`steps.${index}.actionConfig`) as Record<
-                string,
-                unknown
-              >) ?? {};
-
-            return (
-              <div key={field.id} className="space-y-3 rounded-md border p-3">
-                <div className="grid gap-3 md:grid-cols-[1fr_auto_auto] md:items-center">
-                  <Select
-                    value={actionType}
-                    onValueChange={(next) => {
-                      const typed = next as AutomationActionTypeValue;
-                      form.setValue(`steps.${index}.actionType`, typed);
-                      form.setValue(
-                        `steps.${index}.actionConfig`,
-                        getDefaultActionConfig(typed),
                       );
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Action" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {compatibleActionTypes.map((action) => {
-                        const meta =
-                          AUTOMATION_ACTION_TYPE_DESCRIPTIONS[action];
-                        return (
-                          <SelectItem
-                            key={action}
-                            value={action}
-                            textValue={meta.label}
-                          >
-                            <span className="flex flex-col items-start gap-0.5 py-0.5 text-left">
-                              <span>{meta.label}</span>
-                              <span className="text-xs font-normal text-muted-foreground">
-                                {meta.description}
-                              </span>
-                            </span>
-                          </SelectItem>
-                        );
-                      })}
-                    </SelectContent>
-                  </Select>
-                  <div className="flex items-center gap-2">
-                    <Switch
-                      checked={form.watch(`steps.${index}.continueOnError`)}
-                      onCheckedChange={(checked) =>
-                        form.setValue(`steps.${index}.continueOnError`, checked)
-                      }
-                    />
-                    <Label>Continue on error</Label>
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    aria-label={`Remove step ${index + 1}`}
-                    onClick={() => stepArray.remove(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-
-                {errors.steps?.[index]?.actionType?.message ? (
-                  <p role="alert" className="text-xs text-destructive">
-                    {errors.steps[index]?.actionType?.message}
-                  </p>
-                ) : null}
-
-                <ActionConfigFields
-                  actionType={actionType}
-                  value={config}
-                  onChange={(next) =>
-                    form.setValue(`steps.${index}.actionConfig`, next, {
-                      shouldValidate: true,
                     })
-                  }
-                />
-                {errors.steps?.[index]?.actionConfig &&
-                typeof errors.steps[index]?.actionConfig === "object" &&
-                "message" in (errors.steps[index]?.actionConfig as object) ? (
-                  <p role="alert" className="text-xs text-destructive">
-                    {String(
-                      (
-                        errors.steps[index]?.actionConfig as {
-                          message?: string;
-                        }
-                      ).message,
-                    )}
-                  </p>
-                ) : null}
+                  : null}
               </div>
-            );
-          })}
-        </div>
+            </div>
 
-        <div className="flex gap-2">
-          <Button
-            type="submit"
-            disabled={isSubmitting}
-            aria-busy={isSubmitting}
-          >
-            {isSubmitting ? "Saving..." : "Save automation"}
-          </Button>
-          {onCancel ? (
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
+            {visualBuilderEnabled ? (
+              <aside
+                ref={flowSectionRef}
+                id="automation-flow-section"
+                aria-label="Flow chart"
+                className="min-w-0 space-y-3 border-t border-border pt-5 lg:border-t-0 lg:border-l lg:border-border lg:pl-6 lg:pt-0"
+              >
+                <div>
+                  <h2 className="text-base font-semibold tracking-tight">
+                    Flow chart
+                  </h2>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    {branchingCanvasAuthoring && automationBranchingEnabled
+                      ? "Live preview of the routing graph. Edit the timeline under All fields → Steps."
+                      : "Same triggers and steps as the list on the left. Click a step node to edit its action here; reorder by dragging."}
+                  </p>
+                </div>
+                {branchingGraphLocked ? (
+                  <div className="space-y-3">
+                    <Alert>
+                      <AlertTitle>Branching graph (read-only)</AlertTitle>
+                      <AlertDescription>
+                        This automation uses conditional routing in its{" "}
+                        <code className="text-xs">flowGraph</code>. You can edit
+                        name, scope, triggers, and execution settings in{" "}
+                        <strong>All fields</strong>. The graph shape is not
+                        editable in the UI for this definition (imported or
+                        non-template branching).
+                      </AlertDescription>
+                    </Alert>
+                    <ReactFlowProvider>
+                      <AutomationFlowGraphPreview
+                        flowGraph={preservedBranchingFlowGraph}
+                      />
+                    </ReactFlowProvider>
+                    {errors.preservedBranchingFlowGraph?.message ? (
+                      <p
+                        role="alert"
+                        className="text-sm text-destructive"
+                        id="automation-preserved-graph-error-aside"
+                      >
+                        {String(errors.preservedBranchingFlowGraph.message)}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <ReactFlowProvider>
+                    <AutomationFlowCanvas />
+                  </ReactFlowProvider>
+                )}
+              </aside>
+            ) : null}
+          </div>
+
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              disabled={isSubmitting}
+              aria-busy={isSubmitting}
+            >
+              {isSubmitting ? "Saving..." : "Save automation"}
             </Button>
-          ) : null}
-        </div>
-      </form>
-    </Form>
+            {onCancel ? (
+              <Button type="button" variant="outline" onClick={onCancel}>
+                Cancel
+              </Button>
+            ) : null}
+          </div>
+        </form>
+      </Form>
+    </AutomationFlowCompileMetaProvider>
   );
 }

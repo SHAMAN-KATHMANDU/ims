@@ -1408,6 +1408,8 @@ model AutomationDefinition {
   executionMode AutomationExecutionMode @default(LIVE) @map("execution_mode")
   suppressLegacyWorkflows Boolean       @default(false) @map("suppress_legacy_workflows")
   version       Int                     @default(1)
+  /// Phase 3 DAG body (JSON). When set, `steps` must be empty (BR-19).
+  flowGraph     Json?                   @map("flow_graph")
   createdById   String                  @map("created_by_id")
   updatedById   String?                 @map("updated_by_id")
   publishedAt   DateTime?               @map("published_at")
@@ -1510,6 +1512,8 @@ model AutomationRun {
   dedupeKey         String?             @map("dedupe_key") @db.VarChar(255)
   actorUserId       String?             @map("actor_user_id")
   triggerPayload    Json                @map("trigger_payload")
+  /// Phase 3: copy of `AutomationDefinition.flowGraph` at run start for resume (EC-12 / AT-RSU-004).
+  flowGraphSnapshot Json?               @map("flow_graph_snapshot")
   stepOutput        Json?               @map("step_output")
   errorMessage      String?             @map("error_message") @db.VarChar(2000)
   startedAt         DateTime            @default(now()) @map("started_at")
@@ -1532,18 +1536,21 @@ model AutomationRun {
 model AutomationRunStep {
   id               String              @id @default(uuid()) @map("automation_run_step_id")
   automationRunId  String              @map("automation_run_id")
-  automationStepId String              @map("automation_step_id")
+  /// Null when this row records a graph `action` node (use graphNodeId).
+  automationStepId String?             @map("automation_step_id")
+  graphNodeId      String?             @map("graph_node_id") @db.VarChar(36)
   status           AutomationRunStatus
   output           Json?
   errorMessage     String?             @map("error_message") @db.VarChar(2000)
   startedAt        DateTime            @default(now()) @map("started_at")
   completedAt      DateTime?           @map("completed_at")
 
-  run  AutomationRun  @relation(fields: [automationRunId], references: [id], onDelete: Cascade)
-  step AutomationStep @relation(fields: [automationStepId], references: [id], onDelete: Cascade)
+  run  AutomationRun   @relation(fields: [automationRunId], references: [id], onDelete: Cascade)
+  step AutomationStep? @relation(fields: [automationStepId], references: [id], onDelete: Cascade)
 
   @@index([automationRunId])
   @@index([automationStepId])
+  @@index([graphNodeId])
   @@map("automation_run_steps")
 }
 
