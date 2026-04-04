@@ -1608,6 +1608,7 @@ describe("automation.runtime", () => {
     );
   });
 
+  // AT-RSU-001 / AT-RSU-002 — resume follows frozen branch; payload change does not re-pick if/switch.
   it("resumes failed graph runs using frozen branch decisions (BR-16)", async () => {
     const entryId = "11111111-1111-1111-1111-111111111111";
     const ifId = "22222222-2222-2222-2222-222222222222";
@@ -1700,6 +1701,211 @@ describe("automation.runtime", () => {
     expect(mockCreateWorkItem).toHaveBeenCalledTimes(1);
     expect(
       mockUpdateRun.mock.calls.some((c) => c[1]?.status === "SUCCEEDED"),
+    ).toBe(true);
+  });
+
+  // AT-RSU-003 — switch id present in branchDecisions map but empty frozen key: no guess, resume fails.
+  it("resume fails when persisted switch branch key is empty string", async () => {
+    const entryId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const swId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const aEast = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const aDefault = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+    const noopId = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: swId,
+          kind: "switch" as const,
+          config: { discriminantPath: "region" },
+        },
+        {
+          id: aEast,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "East task",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aDefault,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Default task",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        { id: noopId, kind: "noop" as const },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: swId },
+        { fromNodeId: swId, toNodeId: aEast, edgeKey: "east" },
+        { fromNodeId: swId, toNodeId: aDefault, edgeKey: "default" },
+        { fromNodeId: aEast, toNodeId: noopId },
+        { fromNodeId: aDefault, toNodeId: noopId },
+      ],
+    };
+
+    mockFindFailedLiveRunsForEventReplay.mockResolvedValue([
+      {
+        id: "run-sw-bad",
+        tenantId: "tenant-1",
+        automationEventId: "event-1",
+        status: "FAILED",
+        executionMode: "LIVE",
+        stepOutput: {
+          __automationGraph: { branchDecisions: { [swId]: "" } },
+        },
+        runSteps: [
+          {
+            id: "rs-east",
+            graphNodeId: aEast,
+            automationStepId: null,
+            status: "FAILED",
+            output: null,
+          },
+        ],
+        automation: {
+          id: "auto-sw-bad",
+          status: "ACTIVE",
+          executionMode: "LIVE",
+          flowGraph,
+          steps: [],
+          triggers: [
+            {
+              id: "tr-1",
+              eventName: "inventory.stock.low_detected",
+              conditionGroups: null,
+            },
+          ],
+        },
+      },
+    ]);
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, region: "east" },
+    });
+
+    const resumed = await resumeFailedAutomationRunsForEvent(
+      "tenant-1",
+      "event-1",
+    );
+
+    expect(resumed).toBe(1);
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(
+      mockUpdateRun.mock.calls.some(
+        (c) =>
+          c[1]?.status === "FAILED" &&
+          String(c[1]?.errorMessage ?? "").match(/missing frozen branch/i),
+      ),
+    ).toBe(true);
+  });
+
+  // AT-RSU-003 — invalid frozen if key (not true/false).
+  it("resume fails when persisted if branch key is not true or false", async () => {
+    const entryId = "11111111-1111-1111-1111-111111111111";
+    const ifId = "22222222-2222-2222-2222-222222222222";
+    const actionId = "33333333-3333-3333-3333-333333333333";
+    const noopFalseId = "44444444-4444-4444-4444-444444444444";
+    const noopEndId = "55555555-5555-5555-5555-555555555555";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: ifId,
+          kind: "if" as const,
+          config: {
+            conditions: [
+              { path: "runHot", operator: "eq" as const, value: true },
+            ],
+          },
+        },
+        {
+          id: actionId,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Task",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        { id: noopFalseId, kind: "noop" as const },
+        { id: noopEndId, kind: "noop" as const },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: ifId },
+        { fromNodeId: ifId, toNodeId: actionId, edgeKey: "true" },
+        { fromNodeId: ifId, toNodeId: noopFalseId, edgeKey: "false" },
+        { fromNodeId: actionId, toNodeId: noopEndId },
+      ],
+    };
+
+    mockFindFailedLiveRunsForEventReplay.mockResolvedValue([
+      {
+        id: "run-if-bad",
+        tenantId: "tenant-1",
+        automationEventId: "event-1",
+        status: "FAILED",
+        executionMode: "LIVE",
+        stepOutput: {
+          __automationGraph: { branchDecisions: { [ifId]: "maybe" } },
+        },
+        runSteps: [
+          {
+            id: "rs-action",
+            graphNodeId: actionId,
+            automationStepId: null,
+            status: "FAILED",
+            output: null,
+          },
+        ],
+        automation: {
+          id: "auto-if-bad",
+          status: "ACTIVE",
+          executionMode: "LIVE",
+          flowGraph,
+          steps: [],
+          triggers: [
+            {
+              id: "tr-1",
+              eventName: "inventory.stock.low_detected",
+              conditionGroups: null,
+            },
+          ],
+        },
+      },
+    ]);
+
+    mockFindEventById.mockResolvedValue(baseEvent);
+
+    const resumed = await resumeFailedAutomationRunsForEvent(
+      "tenant-1",
+      "event-1",
+    );
+
+    expect(resumed).toBe(1);
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(
+      mockUpdateRun.mock.calls.some(
+        (c) =>
+          c[1]?.status === "FAILED" &&
+          String(c[1]?.errorMessage ?? "").match(/invalid frozen branch/i),
+      ),
     ).toBe(true);
   });
 });

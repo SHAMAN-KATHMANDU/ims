@@ -343,17 +343,19 @@ Each row is one automatable case. **Trace** maps to §2 (BR / V), §14 (EC), or 
 
 Use this table to find **where** a case is covered. Many AT-VAL rows are satisfied by **`packages/shared/src/automation/automation-flow-graph.test.ts`** (structural validation) and **`apps/web/features/automation/validation.test.ts`** (form + `parseAndValidateAutomationFlowGraph`). Runtime IDs below point at **`apps/api/src/modules/automation/automation.runtime.test.ts`** unless noted. **Integration:** **`apps/api/tests/integration/api/automation.integration.test.ts`**. **Canvas if/switch authoring:** canonical compile/extract in **`packages/shared/src/automation/automation-flow-graph.ts`** (`compileIfElseFlowGraph`, `compileSwitchFlowGraph`, `tryExtractIfElseAuthoringFromGraph`, `tryExtractSwitchAuthoringFromGraph`); UI in **`apps/web/features/automation/components/AutomationBranchingAuthoringPanel.tsx`** + **`AutomationFlowCanvas.tsx`** (requires `AUTOMATION_BRANCHING`).
 
-| ID(s)                             | Primary location / test name (keyword)                                                                                               |
-| --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
-| AT-VAL-001–029                    | Shared `automation-flow-graph.test.ts` + `parseAndValidateAutomationFlowGraph` paths; spot-check `automation.schema` / API on create |
-| AT-LIV-001–003, 005–007, 017–018  | `automation.runtime.test.ts` — LIVE if/switch path tests                                                                             |
-| AT-LIV-004, AT-EC-004             | Comment `AT-LIV-004` — `LIVE switch matches numeric discriminant…`                                                                   |
-| AT-LIV-009–011, AT-EC-002         | `LIVE switch fails when discriminant is a non-scalar object` (+ related LIVE failures)                                               |
-| AT-SHD-001–004                    | `SHADOW` describe block — `AT-SHD-003` on `SHADOW switch previews only the chosen branch action`                                     |
-| AT-SHD + coercion                 | `SHADOW switch matches numeric discriminant…` (SHADOW + `String` coercion + `branchDecisions`)                                       |
-| AT-VAL-019, AT-EC-005             | Integration: dual authority POST/PUT; API Zod + `validateMergedAutomationDefinition`                                                 |
-| AT-UI-002 (partial)               | Flow canvas **If / else graph** / **Switch graph** when branching env enabled; not full freeform DAG                                 |
-| AT-RSU-_, AT-MIG-_, AT-UI-001/003 | Not fully mapped here — add rows as tests land                                                                                       |
+| ID(s)                                    | Primary location / test name (keyword)                                                                                               |
+| ---------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| AT-VAL-001–029                           | Shared `automation-flow-graph.test.ts` + `parseAndValidateAutomationFlowGraph` paths; spot-check `automation.schema` / API on create |
+| AT-LIV-001–003, 005–007, 017–018         | `automation.runtime.test.ts` — LIVE if/switch path tests                                                                             |
+| AT-LIV-004, AT-EC-004                    | Comment `AT-LIV-004` — `LIVE switch matches numeric discriminant…`                                                                   |
+| AT-LIV-009–011, AT-EC-002                | `LIVE switch fails when discriminant is a non-scalar object` (+ related LIVE failures)                                               |
+| AT-SHD-001–004                           | `SHADOW` describe block — `AT-SHD-003` on `SHADOW switch previews only the chosen branch action`                                     |
+| AT-SHD + coercion                        | `SHADOW switch matches numeric discriminant…` (SHADOW + `String` coercion + `branchDecisions`)                                       |
+| AT-VAL-019, AT-EC-005                    | Integration: dual authority POST/PUT; API Zod + `validateMergedAutomationDefinition`                                                 |
+| AT-UI-002 (partial)                      | Flow canvas **If / else graph** / **Switch graph** when branching env enabled; not full freeform DAG                                 |
+| AT-RSU-001 / AT-RSU-002                  | `resumes failed graph runs using frozen branch decisions (BR-16)`                                                                    |
+| AT-RSU-003 (partial)                     | `resume fails when persisted switch branch key is empty string`; `resume fails when persisted if branch key is not true or false`    |
+| AT-RSU-004–005, AT-MIG-\_, AT-UI-001/003 | Not fully mapped here — add rows as tests land                                                                                       |
 
 ---
 
@@ -422,3 +424,4 @@ Use this table to find **where** a case is covered. Many AT-VAL rows are satisfi
 | 1.3     | 2026-04-03 | Edge cases §14; BR-18–BR-25; V-8–V-12; §7.1 completion semantics; switch coercion; resume/versioning    |
 | 1.4     | 2026-04-03 | §10 individual test catalog (AT-VAL-_, AT-LIV-_, AT-SHD-_, AT-RSU-_, AT-MIG-_, AT-UI-_, AT-EC-\*)       |
 | 1.5     | 2026-04-04 | §10.8 traceability index; canvas if/switch authoring (canonical graph); SHADOW switch coercion test tag |
+| 1.6     | 2026-04-04 | §10.8 AT-RSU resume rows; runtime tests for corrupt frozen switch/if keys (AT-RSU-003 partial)          |
