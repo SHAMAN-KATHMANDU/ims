@@ -60,6 +60,7 @@ import {
   searchAutomationTemplates,
   tryDecompileLinearChainFlowGraph,
   tryDecompileLinearChainFlowGraphWithIds,
+  tryExtractComposableFlowSegments,
   tryExtractIfElseAuthoringFromGraph,
   tryExtractSwitchAuthoringFromGraph,
   type AutomationTemplateCatalogEntry,
@@ -115,7 +116,8 @@ function toFormValues(
 
   const branchingCanvasAuthoring =
     Boolean(isNonLinearGraphOnly && automation.flowGraph) &&
-    (tryExtractIfElseAuthoringFromGraph(automation.flowGraph) != null ||
+    (tryExtractComposableFlowSegments(automation.flowGraph) != null ||
+      tryExtractIfElseAuthoringFromGraph(automation.flowGraph) != null ||
       tryExtractSwitchAuthoringFromGraph(automation.flowGraph) != null);
 
   return {

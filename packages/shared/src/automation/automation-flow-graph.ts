@@ -835,3 +835,458 @@ export function tryExtractSwitchAuthoringFromGraph(
     },
   };
 }
+
+/** One row in the composable branching timeline (Phase B UI). */
+export type ComposableFlowSegment =
+  | {
+      kind: "action";
+      step: LinearAutomationFlowStepInput;
+      /** Stable action node id when re-saving */
+      actionNodeId?: string;
+    }
+  | {
+      kind: "if_else";
+      conditions: AutomationCondition[];
+      trueStep: LinearAutomationFlowStepInput;
+      falseStep: LinearAutomationFlowStepInput;
+      ids?: Pick<
+        IfElseFlowGraphCompileIds,
+        "ifNodeId" | "trueActionId" | "falseActionId" | "noopId"
+      >;
+    }
+  | {
+      kind: "switch";
+      discriminantPath: string;
+      cases: Array<{ edgeKey: string; step: LinearAutomationFlowStepInput }>;
+      defaultStep: LinearAutomationFlowStepInput;
+      ids?: Pick<
+        SwitchFlowGraphCompileIds,
+        "switchId" | "noopId" | "caseActionIds" | "defaultActionId"
+      >;
+    };
+
+export type CompileComposableFlowSegmentsOptions = {
+  entryId?: string;
+};
+
+function extractComposableIfElseAtIfNode(
+  nodesById: ValidatedFlowGraph["nodesById"],
+  outgoing: ValidatedFlowGraph["outgoing"],
+  ifNodeId: string,
+): {
+  segment: Extract<ComposableFlowSegment, { kind: "if_else" }>;
+  noopId: string;
+} | null {
+  const ifNode = nodesById.get(ifNodeId);
+  if (!ifNode || ifNode.kind !== "if") return null;
+
+  const ifOuts = outgoing.get(ifNodeId) ?? [];
+  if (ifOuts.length !== 2) return null;
+  const trueEdge = ifOuts.find((o) => o.edgeKey === "true");
+  const falseEdge = ifOuts.find((o) => o.edgeKey === "false");
+  if (!trueEdge || !falseEdge) return null;
+
+  const trueNode = nodesById.get(trueEdge.toNodeId);
+  const falseNode = nodesById.get(falseEdge.toNodeId);
+  if (!trueNode || trueNode.kind !== "action") return null;
+  if (!falseNode || falseNode.kind !== "action") return null;
+
+  const trueOuts = outgoing.get(trueNode.id) ?? [];
+  const falseOuts = outgoing.get(falseNode.id) ?? [];
+  if (trueOuts.length !== 1 || falseOuts.length !== 1) return null;
+  if (trueOuts[0]!.toNodeId !== falseOuts[0]!.toNodeId) return null;
+
+  const noopId = trueOuts[0]!.toNodeId;
+  const noop = nodesById.get(noopId);
+  if (!noop || noop.kind !== "noop") return null;
+
+  return {
+    segment: {
+      kind: "if_else",
+      conditions: [...ifNode.config.conditions],
+      trueStep: linearStepFromActionNode(trueNode),
+      falseStep: linearStepFromActionNode(falseNode),
+      ids: {
+        ifNodeId,
+        trueActionId: trueNode.id,
+        falseActionId: falseNode.id,
+        noopId,
+      },
+    },
+    noopId,
+  };
+}
+
+function extractComposableSwitchAtSwitchNode(
+  nodesById: ValidatedFlowGraph["nodesById"],
+  outgoing: ValidatedFlowGraph["outgoing"],
+  switchId: string,
+): {
+  segment: Extract<ComposableFlowSegment, { kind: "switch" }>;
+  noopId: string;
+} | null {
+  const sw = nodesById.get(switchId);
+  if (!sw || sw.kind !== "switch") return null;
+
+  const swOuts = outgoing.get(switchId) ?? [];
+  if (swOuts.length < 2) return null;
+
+  const defaultEdges = swOuts.filter((o) => o.edgeKey === "default");
+  if (defaultEdges.length !== 1) return null;
+  const defaultTo = defaultEdges[0]!.toNodeId;
+  const defaultNode = nodesById.get(defaultTo);
+  if (!defaultNode || defaultNode.kind !== "action") return null;
+
+  const caseEdges = swOuts.filter((o) => o.edgeKey !== "default");
+  if (caseEdges.length < 1) return null;
+
+  const noopFromDefault = outgoing.get(defaultNode.id) ?? [];
+  if (noopFromDefault.length !== 1) return null;
+  const noopId = noopFromDefault[0]!.toNodeId;
+  const noop = nodesById.get(noopId);
+  if (!noop || noop.kind !== "noop") return null;
+
+  const cases: SwitchAuthoringExtract["cases"] = [];
+  const caseActionIds: string[] = [];
+
+  for (const e of caseEdges) {
+    const key = e.edgeKey;
+    if (key == null || key === "") return null;
+    const act = nodesById.get(e.toNodeId);
+    if (!act || act.kind !== "action") return null;
+    const actOuts = outgoing.get(act.id) ?? [];
+    if (actOuts.length !== 1 || actOuts[0]!.toNodeId !== noopId) return null;
+    cases.push({ edgeKey: key, step: linearStepFromActionNode(act) });
+    caseActionIds.push(act.id);
+  }
+
+  return {
+    segment: {
+      kind: "switch",
+      discriminantPath: sw.config.discriminantPath,
+      cases,
+      defaultStep: linearStepFromActionNode(defaultNode),
+      ids: {
+        switchId,
+        noopId,
+        caseActionIds,
+        defaultActionId: defaultNode.id,
+      },
+    },
+    noopId,
+  };
+}
+
+/**
+ * If the graph is a linear chain of composable segments (entry → actions and/or
+ * canonical if/switch blocks whose shared noop may continue), returns segments
+ * for the timeline UI. Otherwise `null`.
+ */
+export function tryExtractComposableFlowSegments(
+  raw: unknown,
+): ComposableFlowSegment[] | null {
+  const parsed = AutomationFlowGraphPayloadSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  const structural = validateAutomationFlowGraphStructure(parsed.data);
+  if (!structural.ok) return null;
+  const { nodesById, outgoing, entryId } = structural.validated;
+
+  const segments: ComposableFlowSegment[] = [];
+  let cur = entryId;
+
+  for (let iter = 0; iter < MAX_AUTOMATION_FLOW_GRAPH_NODES + 10; iter++) {
+    const outs = outgoing.get(cur) ?? [];
+    if (outs.length === 0) {
+      break;
+    }
+    if (outs.length !== 1) {
+      return null;
+    }
+
+    const nextId = outs[0]!.toNodeId;
+    const next = nodesById.get(nextId);
+    if (!next) return null;
+
+    if (next.kind === "action") {
+      segments.push({
+        kind: "action",
+        step: linearStepFromActionNode(next),
+        actionNodeId: next.id,
+      });
+      cur = nextId;
+      continue;
+    }
+
+    if (next.kind === "if") {
+      const ex = extractComposableIfElseAtIfNode(nodesById, outgoing, nextId);
+      if (!ex) return null;
+      segments.push(ex.segment);
+      cur = ex.noopId;
+      continue;
+    }
+
+    if (next.kind === "switch") {
+      const ex = extractComposableSwitchAtSwitchNode(
+        nodesById,
+        outgoing,
+        nextId,
+      );
+      if (!ex) return null;
+      segments.push(ex.segment);
+      cur = ex.noopId;
+      continue;
+    }
+
+    return null;
+  }
+
+  return segments.length > 0 ? segments : null;
+}
+
+/** Rough node/edge counts after {@link compileComposableFlowSegments} (for BR-11 UI caps). */
+export function estimateComposableSegmentsFootprint(
+  segments: ComposableFlowSegment[],
+): { nodeCount: number; edgeCount: number } {
+  let nodeCount = 1;
+  let edgeCount = 0;
+  for (const seg of segments) {
+    if (seg.kind === "action") {
+      nodeCount += 1;
+      edgeCount += 1;
+    } else if (seg.kind === "if_else") {
+      nodeCount += 4;
+      edgeCount += 5;
+    } else {
+      const n = seg.cases.length;
+      nodeCount += 3 + n;
+      edgeCount += 2 * n + 3;
+    }
+  }
+  return { nodeCount, edgeCount };
+}
+
+export function composableSegmentsFitBr11Limits(
+  segments: ComposableFlowSegment[],
+): boolean {
+  const { nodeCount, edgeCount } =
+    estimateComposableSegmentsFootprint(segments);
+  if (nodeCount > MAX_AUTOMATION_FLOW_GRAPH_NODES) return false;
+  if (edgeCount > MAX_AUTOMATION_FLOW_GRAPH_EDGES) return false;
+  for (const seg of segments) {
+    if (
+      seg.kind === "if_else" &&
+      seg.conditions.length > MAX_CONDITIONS_PER_IF_NODE
+    ) {
+      return false;
+    }
+    if (seg.kind === "switch") {
+      const outEdges = seg.cases.length + 1;
+      if (outEdges > MAX_SWITCH_OUT_EDGES) return false;
+    }
+  }
+  return true;
+}
+
+/**
+ * Builds a valid DAG: one `entry`, then a linear sequence of action nodes and/or
+ * canonical if/switch subgraphs (each if/switch merges to a `noop` that may link onward).
+ */
+export function compileComposableFlowSegments(
+  segments: ComposableFlowSegment[],
+  options?: CompileComposableFlowSegmentsOptions,
+): AutomationFlowGraphPayload {
+  if (segments.length < 1) {
+    throw new Error(
+      "compileComposableFlowSegments requires at least one segment",
+    );
+  }
+
+  const entryId = isValidUuid(options?.entryId)
+    ? options!.entryId!
+    : randomUuid();
+
+  const nodes: AutomationFlowGraphPayload["nodes"] = [
+    { id: entryId, kind: "entry" },
+  ];
+  const edges: AutomationFlowGraphPayload["edges"] = [];
+  let tail = entryId;
+
+  for (const seg of segments) {
+    if (seg.kind === "action") {
+      const id =
+        seg.actionNodeId && isValidUuid(seg.actionNodeId)
+          ? seg.actionNodeId
+          : randomUuid();
+      nodes.push({
+        id,
+        kind: "action",
+        config: {
+          actionType: seg.step.actionType,
+          actionConfig: seg.step.actionConfig,
+          ...(seg.step.continueOnError
+            ? { continueOnError: true as const }
+            : {}),
+        },
+      });
+      edges.push({ fromNodeId: tail, toNodeId: id });
+      tail = id;
+    } else if (seg.kind === "if_else") {
+      if (seg.conditions.length < 1) {
+        throw new Error("if_else segment requires at least one condition");
+      }
+      const ifNodeId =
+        seg.ids?.ifNodeId && isValidUuid(seg.ids.ifNodeId)
+          ? seg.ids!.ifNodeId!
+          : randomUuid();
+      const trueActionId =
+        seg.ids?.trueActionId && isValidUuid(seg.ids.trueActionId)
+          ? seg.ids!.trueActionId!
+          : randomUuid();
+      const falseActionId =
+        seg.ids?.falseActionId && isValidUuid(seg.ids.falseActionId)
+          ? seg.ids!.falseActionId!
+          : randomUuid();
+      const noopId =
+        seg.ids?.noopId && isValidUuid(seg.ids.noopId)
+          ? seg.ids!.noopId!
+          : randomUuid();
+
+      nodes.push(
+        {
+          id: ifNodeId,
+          kind: "if",
+          config: { conditions: seg.conditions },
+        },
+        {
+          id: trueActionId,
+          kind: "action",
+          config: {
+            actionType: seg.trueStep.actionType,
+            actionConfig: seg.trueStep.actionConfig,
+            ...(seg.trueStep.continueOnError
+              ? { continueOnError: true as const }
+              : {}),
+          },
+        },
+        {
+          id: falseActionId,
+          kind: "action",
+          config: {
+            actionType: seg.falseStep.actionType,
+            actionConfig: seg.falseStep.actionConfig,
+            ...(seg.falseStep.continueOnError
+              ? { continueOnError: true as const }
+              : {}),
+          },
+        },
+        { id: noopId, kind: "noop" },
+      );
+      edges.push(
+        { fromNodeId: tail, toNodeId: ifNodeId },
+        {
+          fromNodeId: ifNodeId,
+          toNodeId: trueActionId,
+          edgeKey: "true",
+        },
+        {
+          fromNodeId: ifNodeId,
+          toNodeId: falseActionId,
+          edgeKey: "false",
+        },
+        { fromNodeId: trueActionId, toNodeId: noopId },
+        { fromNodeId: falseActionId, toNodeId: noopId },
+      );
+      tail = noopId;
+    } else {
+      const path = seg.discriminantPath.trim();
+      if (path.length < 1) {
+        throw new Error("switch segment requires discriminantPath");
+      }
+      if (seg.cases.length < 1) {
+        throw new Error("switch segment requires at least one case");
+      }
+
+      const switchId =
+        seg.ids?.switchId && isValidUuid(seg.ids.switchId)
+          ? seg.ids!.switchId!
+          : randomUuid();
+      const noopId =
+        seg.ids?.noopId && isValidUuid(seg.ids.noopId)
+          ? seg.ids!.noopId!
+          : randomUuid();
+
+      const prevCaseIds = seg.ids?.caseActionIds;
+      const caseActionIds =
+        Array.isArray(prevCaseIds) &&
+        prevCaseIds.length === seg.cases.length &&
+        prevCaseIds.every((id) => isValidUuid(id))
+          ? [...prevCaseIds]
+          : seg.cases.map(() => randomUuid());
+
+      const defaultActionId =
+        seg.ids?.defaultActionId && isValidUuid(seg.ids.defaultActionId)
+          ? seg.ids!.defaultActionId!
+          : randomUuid();
+
+      nodes.push(
+        {
+          id: switchId,
+          kind: "switch",
+          config: { discriminantPath: path },
+        },
+        ...seg.cases.map((c, i) => ({
+          id: caseActionIds[i]!,
+          kind: "action" as const,
+          config: {
+            actionType: c.step.actionType,
+            actionConfig: c.step.actionConfig,
+            ...(c.step.continueOnError
+              ? { continueOnError: true as const }
+              : {}),
+          },
+        })),
+        {
+          id: defaultActionId,
+          kind: "action",
+          config: {
+            actionType: seg.defaultStep.actionType,
+            actionConfig: seg.defaultStep.actionConfig,
+            ...(seg.defaultStep.continueOnError
+              ? { continueOnError: true as const }
+              : {}),
+          },
+        },
+        { id: noopId, kind: "noop" },
+      );
+
+      edges.push({ fromNodeId: tail, toNodeId: switchId });
+      for (let i = 0; i < seg.cases.length; i++) {
+        edges.push({
+          fromNodeId: switchId,
+          toNodeId: caseActionIds[i]!,
+          edgeKey: seg.cases[i]!.edgeKey,
+        });
+      }
+      edges.push({
+        fromNodeId: switchId,
+        toNodeId: defaultActionId,
+        edgeKey: "default",
+      });
+      for (let i = 0; i < seg.cases.length; i++) {
+        edges.push({
+          fromNodeId: caseActionIds[i]!,
+          toNodeId: noopId,
+        });
+      }
+      edges.push({ fromNodeId: defaultActionId, toNodeId: noopId });
+      tail = noopId;
+    }
+  }
+
+  const graph = { nodes, edges };
+  const structural = validateAutomationFlowGraphStructure(graph);
+  if (!structural.ok) {
+    throw new Error(structural.errors.join("; "));
+  }
+  return graph;
+}

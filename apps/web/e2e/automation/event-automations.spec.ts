@@ -71,6 +71,7 @@ test.describe("Event automations — branching enabled (default E2E server)", ()
     await expect(
       page.getByTestId("automation-editor-tab-flow-chart"),
     ).toBeVisible({ timeout: 60_000 });
+    await page.getByTestId("automation-editor-tab-flow-chart").click();
 
     await expect(page.getByTestId("automation-flow-canvas")).toBeVisible({
       timeout: 120_000,
@@ -83,11 +84,16 @@ test.describe("Event automations — branching enabled (default E2E server)", ()
     ).toBeVisible();
 
     await page.getByTestId("automation-flow-if-else-graph").click();
+    await page.getByTestId("automation-editor-tab-all-fields").click();
     await expect(
       page.getByTestId("automation-branching-authoring"),
     ).toBeVisible({
       timeout: 30_000,
     });
+    await page.getByTestId("automation-editor-tab-flow-chart").click();
+    await expect(
+      page.getByTestId("automation-branching-flow-preview"),
+    ).toBeVisible({ timeout: 30_000 });
   });
 
   test("AT-UI-003: recent run shows chosen path and branches not taken", async ({
@@ -151,6 +157,7 @@ test.describe("Event automations — branching disabled", () => {
     ).toBeVisible({ timeout: 120_000 });
 
     await page.getByTestId("automation-open-create-composer").click();
+    await page.getByTestId("automation-editor-tab-flow-chart").click();
     await expect(page.getByTestId("automation-flow-canvas")).toBeVisible({
       timeout: 120_000,
     });
