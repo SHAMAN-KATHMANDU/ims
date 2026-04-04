@@ -1056,6 +1056,196 @@ describe("automation.runtime", () => {
     );
   });
 
+  it("SHADOW switch previews only the chosen branch action", async () => {
+    const entryId = "91919191-9191-4191-8191-919191919191";
+    const swId = "92929292-9292-4292-8292-929292929292";
+    const aEast = "93939393-9393-4393-8393-939393939393";
+    const aWest = "94949494-9494-4494-8494-949494949494";
+    const aDefault = "95959595-9595-4595-8595-959595959595";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: swId,
+          kind: "switch" as const,
+          config: { discriminantPath: "region" },
+        },
+        {
+          id: aEast,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "SHADOW east",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aWest,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "SHADOW west",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aDefault,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "SHADOW default",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: swId },
+        { fromNodeId: swId, toNodeId: aEast, edgeKey: "east" },
+        { fromNodeId: swId, toNodeId: aWest, edgeKey: "west" },
+        { fromNodeId: swId, toNodeId: aDefault, edgeKey: "default" },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, region: "east" },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-shadow-switch-east",
+        executionMode: "SHADOW",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(mockCreateRunStep).toHaveBeenCalledTimes(1);
+    expect(mockCreateRunStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        graphNodeId: aEast,
+        status: "SKIPPED",
+        output: expect.objectContaining({ simulated: true }),
+      }),
+    );
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        status: "SKIPPED",
+        stepOutput: expect.objectContaining({
+          __automationGraph: {
+            branchDecisions: { [swId]: "east" },
+          },
+        }),
+      }),
+    );
+  });
+
+  it("LIVE switch matches numeric discriminant to string edge key (String coercion)", async () => {
+    const entryId = "81818181-8181-4181-8181-818181818181";
+    const swId = "82828282-8282-4282-8282-828282828282";
+    const aOne = "83838383-8383-4383-8383-838383838383";
+    const aDefault = "84848484-8484-4484-8484-848484848484";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: swId,
+          kind: "switch" as const,
+          config: { discriminantPath: "code" },
+        },
+        {
+          id: aOne,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Coerced one",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aDefault,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Coerced default",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: swId },
+        { fromNodeId: swId, toNodeId: aOne, edgeKey: "1" },
+        { fromNodeId: swId, toNodeId: aDefault, edgeKey: "default" },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, code: 1 },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-switch-coerce",
+        executionMode: "LIVE",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).toHaveBeenCalledTimes(1);
+    expect(mockCreateWorkItem).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Coerced one" }),
+    );
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        stepOutput: expect.objectContaining({
+          __automationGraph: {
+            branchDecisions: { [swId]: "1" },
+          },
+        }),
+      }),
+    );
+  });
+
   it("resumes failed graph runs using frozen branch decisions (BR-16)", async () => {
     const entryId = "11111111-1111-1111-1111-111111111111";
     const ifId = "22222222-2222-2222-2222-222222222222";
