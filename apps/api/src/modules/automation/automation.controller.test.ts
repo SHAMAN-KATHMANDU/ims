@@ -18,6 +18,13 @@ vi.mock("@/utils/controllerError", () => ({
   sendControllerError: vi.fn(),
 }));
 
+vi.mock("@/config/env", () => ({
+  env: Object.freeze({
+    appEnv: "production",
+    featureFlags: undefined,
+  }),
+}));
+
 import automationController from "./automation.controller";
 import automationService from "./automation.service";
 import { sendControllerError } from "@/utils/controllerError";
@@ -56,6 +63,37 @@ describe("automation.controller", () => {
         success: true,
       }),
     );
+  });
+
+  it("returns 404 when flowGraph is set and AUTOMATION_BRANCHING is off", async () => {
+    const req = makeReq({
+      body: {
+        name: "Graph auto",
+        scopeType: "GLOBAL",
+        triggers: [{ eventName: "inventory.stock.low_detected" }],
+        flowGraph: { nodes: [], edges: [] },
+        steps: [],
+      },
+    });
+    const res = mockRes() as Response;
+
+    await automationController.createDefinition(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockService.createDefinition).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 on update with non-null flowGraph when AUTOMATION_BRANCHING is off", async () => {
+    const req = makeReq({
+      params: { id: "00000000-0000-0000-0000-000000000001" },
+      body: { flowGraph: { nodes: [], edges: [] } },
+    });
+    const res = mockRes() as Response;
+
+    await automationController.updateDefinition(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(404);
+    expect(mockService.updateDefinition).not.toHaveBeenCalled();
   });
 
   it("returns 201 on create success", async () => {

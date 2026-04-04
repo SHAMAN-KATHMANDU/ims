@@ -1,3 +1,10 @@
+import {
+  isAutomationActionAllowedForEvent,
+  parseAndValidateAutomationFlowGraph,
+  parseAutomationActionConfig,
+  type AutomationActionTypeValue,
+  type AutomationTriggerEventValue,
+} from "@repo/shared";
 import { createError } from "@/middlewares/errorHandler";
 import type { Prisma } from "@prisma/client";
 import { createPaginationResult } from "@/utils/pagination";
@@ -15,6 +22,81 @@ import {
 } from "./automation.runtime";
 
 const LOW_STOCK_THRESHOLD = 5;
+
+function hasPersistedFlowGraph(flowGraph: unknown): boolean {
+  return (
+    flowGraph != null &&
+    typeof flowGraph === "object" &&
+    !Array.isArray(flowGraph)
+  );
+}
+
+function validateMergedAutomationDefinition(
+  existing: NonNullable<
+    Awaited<ReturnType<typeof automationRepository.findDefinitionById>>
+  >,
+  patch: UpdateAutomationDefinitionDto,
+): void {
+  const triggers = patch.triggers ?? existing.triggers;
+  const eventNames = triggers.map((t) => t.eventName);
+
+  const nextFlow =
+    patch.flowGraph !== undefined ? patch.flowGraph : existing.flowGraph;
+  const nextSteps =
+    patch.steps ??
+    existing.steps.map((s) => ({
+      actionType: s.actionType,
+      actionConfig: s.actionConfig as Record<string, unknown>,
+      continueOnError: s.continueOnError,
+    }));
+
+  if (hasPersistedFlowGraph(nextFlow)) {
+    if (nextSteps.length > 0) {
+      throw createError(
+        "Graph automations cannot include linear steps; clear steps or remove flowGraph",
+        400,
+      );
+    }
+    const graphValidation = parseAndValidateAutomationFlowGraph(
+      nextFlow,
+      eventNames,
+    );
+    if (graphValidation.ok === false) {
+      throw createError(graphValidation.errors.join("; "), 400);
+    }
+    return;
+  }
+
+  if (nextSteps.length < 1) {
+    throw createError(
+      "At least one step is required when no flowGraph is set",
+      400,
+    );
+  }
+
+  for (const [index, step] of nextSteps.entries()) {
+    try {
+      parseAutomationActionConfig(
+        step.actionType as AutomationActionTypeValue,
+        step.actionConfig,
+      );
+    } catch {
+      throw createError(`Invalid action config at step ${index}`, 400);
+    }
+    const compatible = eventNames.some((ev) =>
+      isAutomationActionAllowedForEvent(
+        step.actionType as AutomationActionTypeValue,
+        ev as AutomationTriggerEventValue,
+      ),
+    );
+    if (!compatible) {
+      throw createError(
+        `Action "${step.actionType}" is not compatible with the selected triggers`,
+        400,
+      );
+    }
+  }
+}
 
 function resolveLowStockThreshold(
   inventory: {
@@ -117,6 +199,7 @@ export class AutomationService {
       id,
     );
     if (!existing) throw createError("Automation not found", 404);
+    validateMergedAutomationDefinition(existing, data);
     return automationRepository.updateDefinition(tenantId, id, userId, data);
   }
 

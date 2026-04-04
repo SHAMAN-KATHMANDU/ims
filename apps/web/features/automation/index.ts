@@ -1,4 +1,5 @@
 export { AutomationBuilderPage } from "./components/AutomationBuilderPage";
+export { AutomationsHubPage } from "./components/AutomationsHubPage";
 export {
   useAutomationDefinitions,
   useAutomationRuns,

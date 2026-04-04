@@ -28,7 +28,7 @@ concurrency:
 jobs:
   clean-docker-hub:
     name: Clean Docker Hub tags
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     env:
       HUB_USER: ${{ secrets.DOCKERHUB_USERNAME }}
       HUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -104,7 +104,7 @@ jobs:
 
   clean-actions-cache:
     name: Clean GitHub Actions cache
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     steps:
       - name: Delete caches older than 14 days
         uses: actions/github-script@v7

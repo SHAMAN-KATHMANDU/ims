@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     hasRecentAutoReply: vi.fn(),
     listRecentMessages: vi.fn(),
     createPendingOutboundMessage: vi.fn(),
+    getTenantSystemPrompt: vi.fn(),
   },
   generateReply: vi.fn(),
 }));
@@ -96,6 +97,7 @@ describe("AiReplyService", () => {
         textContent: "Do you have this in stock?",
       },
     ]);
+    mocks.repoMock.getTenantSystemPrompt.mockResolvedValue(null);
     mocks.generateReply.mockResolvedValue({ text: "Yes, it is available." });
     mocks.repoMock.createPendingOutboundMessage.mockResolvedValue({
       id: "m-out-1",

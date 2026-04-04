@@ -8,18 +8,23 @@ import { describe, it, expect } from "vitest";
 import app from "@/config/express.config";
 import { apiRequest } from "@tests/helpers/api";
 
+const databaseUrlConfigured = Boolean(process.env.DATABASE_URL?.trim());
+
 describe("API integration", () => {
   describe("health endpoint", () => {
-    it("returns 200 with healthy status", async () => {
-      const res = await apiRequest(app).get("/health");
+    it.skipIf(!databaseUrlConfigured)(
+      "returns 200 with healthy status",
+      async () => {
+        const res = await apiRequest(app).get("/health");
 
-      expect(res.status).toBe(200);
-      expect(res.body).toMatchObject({
-        status: "healthy",
-        timestamp: expect.any(String),
-        version: expect.any(String),
-      });
-    });
+        expect(res.status).toBe(200);
+        expect(res.body).toMatchObject({
+          status: "healthy",
+          timestamp: expect.any(String),
+          version: expect.any(String),
+        });
+      },
+    );
   });
 
   describe("auth bypass - protected routes", () => {

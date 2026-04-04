@@ -17,7 +17,8 @@
         "PLAYWRIGHT_PORT",
         "E2E_TENANT_SLUG",
         "E2E_USERNAME",
-        "E2E_PASSWORD"
+        "E2E_PASSWORD",
+        "E2E_AUTOMATION_BRANCHING_OFF"
       ]
     },
     "prisma:generate": {

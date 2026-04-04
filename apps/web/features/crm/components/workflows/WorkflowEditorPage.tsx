@@ -63,6 +63,7 @@ import type {
 } from "../../services/workflow.service";
 import { WorkflowForm } from "./WorkflowForm";
 import { WorkflowOnboarding } from "./workflow-onboarding";
+import { WorkflowRulesBoard } from "./WorkflowRulesBoard";
 import type {
   CreateWorkflowFormValues,
   UpdateWorkflowFormValues,
@@ -70,8 +71,10 @@ import type {
 import { useEnvFeatureFlag } from "@/features/flags";
 import {
   EnvFeature,
+  WORKFLOW_TEMPLATE_CATEGORIES,
   getWorkflowActionLabel,
   getWorkflowTriggerLabel,
+  type WorkflowTemplateCategory,
 } from "@repo/shared";
 
 const DEFAULT_PAGE_SIZE = 10;
@@ -135,11 +138,44 @@ export default function WorkflowEditorPage() {
   const [templatePipelineId, setTemplatePipelineId] = useState<string>("");
   const [templateShouldActivate, setTemplateShouldActivate] = useState(true);
   const [templatesBrowserOpen, setTemplatesBrowserOpen] = useState(false);
+  const [templateCategoryFilter, setTemplateCategoryFilter] = useState<
+    WorkflowTemplateCategory | "ALL"
+  >("ALL");
+  const [templateSearchInput, setTemplateSearchInput] = useState("");
+  const debouncedTemplateSearch = useDebounce(templateSearchInput, 250);
+  const [beginnerTemplatesOnly, setBeginnerTemplatesOnly] = useState(false);
 
   const workflows = useMemo(() => data?.workflows ?? [], [data?.workflows]);
   const pagination = data?.pagination;
   const pipelines = pipelinesData?.pipelines ?? [];
-  const templates = templatesData?.templates ?? [];
+  const templates = useMemo(
+    () => templatesData?.templates ?? [],
+    [templatesData?.templates],
+  );
+  const filteredWorkflowTemplates = useMemo(() => {
+    let list = templates;
+    if (templateCategoryFilter !== "ALL") {
+      list = list.filter((t) => t.category === templateCategoryFilter);
+    }
+    if (beginnerTemplatesOnly) {
+      list = list.filter((t) => t.difficulty === "BEGINNER");
+    }
+    const q = debouncedTemplateSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter(
+        (t) =>
+          t.name.toLowerCase().includes(q) ||
+          t.description.toLowerCase().includes(q) ||
+          t.templateKey.toLowerCase().includes(q),
+      );
+    }
+    return list;
+  }, [
+    templates,
+    templateCategoryFilter,
+    beginnerTemplatesOnly,
+    debouncedTemplateSearch,
+  ]);
   const selectedTemplatePipeline =
     templateToInstall?.availablePipelines.find(
       (pipeline) => pipeline.id === templatePipelineId,
@@ -240,7 +276,7 @@ export default function WorkflowEditorPage() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">
-          Pipeline Workflows
+          Deal pipeline rules
         </h1>
         <p className="text-muted-foreground text-sm mt-1">
           Automate actions when deals move through pipeline stages.
@@ -297,7 +333,14 @@ export default function WorkflowEditorPage() {
 
       <Dialog
         open={templatesBrowserOpen}
-        onOpenChange={setTemplatesBrowserOpen}
+        onOpenChange={(open) => {
+          setTemplatesBrowserOpen(open);
+          if (!open) {
+            setTemplateCategoryFilter("ALL");
+            setTemplateSearchInput("");
+            setBeginnerTemplatesOnly(false);
+          }
+        }}
       >
         <DialogContent
           className="flex max-h-[min(90vh,800px)] max-w-5xl flex-col gap-0 p-0"
@@ -310,6 +353,49 @@ export default function WorkflowEditorPage() {
               pipeline, then adjust rules in the workflow table below.
             </DialogDescription>
           </DialogHeader>
+          <div className="shrink-0 space-y-3 border-b px-6 py-3">
+            <Input
+              value={templateSearchInput}
+              onChange={(e) => setTemplateSearchInput(e.target.value)}
+              placeholder="Search templates by name or description…"
+              aria-label="Search workflow templates"
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant={
+                  templateCategoryFilter === "ALL" ? "default" : "outline"
+                }
+                onClick={() => setTemplateCategoryFilter("ALL")}
+              >
+                All categories
+              </Button>
+              {WORKFLOW_TEMPLATE_CATEGORIES.map((cat) => (
+                <Button
+                  key={cat}
+                  type="button"
+                  size="sm"
+                  variant={
+                    templateCategoryFilter === cat ? "default" : "outline"
+                  }
+                  onClick={() => setTemplateCategoryFilter(cat)}
+                >
+                  {cat.replaceAll("_", " ")}
+                </Button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <Switch
+                id="wf-templates-beginner"
+                checked={beginnerTemplatesOnly}
+                onCheckedChange={setBeginnerTemplatesOnly}
+              />
+              <Label htmlFor="wf-templates-beginner" className="text-sm">
+                Beginner-friendly only
+              </Label>
+            </div>
+          </div>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
             {isTemplatesLoading ? (
               <div className="space-y-2">
@@ -329,9 +415,14 @@ export default function WorkflowEditorPage() {
               <p className="text-sm text-muted-foreground">
                 No workflow templates are available right now.
               </p>
+            ) : filteredWorkflowTemplates.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
+                No templates match your filters. Clear search or category to see
+                more.
+              </p>
             ) : (
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-2">
-                {templates.map((template) => {
+                {filteredWorkflowTemplates.map((template) => {
                   return (
                     <div
                       key={template.templateKey}
@@ -668,6 +759,16 @@ export default function WorkflowEditorPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
+            {editWorkflow && editWorkflow.rules.length > 0 ? (
+              <div className="mb-6 space-y-2">
+                <p className="text-sm font-medium">Rule map</p>
+                <p className="text-xs text-muted-foreground">
+                  Saved rules shown left-to-right per row. Edit below and save
+                  to refresh after the next open.
+                </p>
+                <WorkflowRulesBoard rules={editWorkflow.rules} />
+              </div>
+            ) : null}
             {(showCreate || editWorkflow) &&
               (editWorkflow ? (
                 <WorkflowForm
