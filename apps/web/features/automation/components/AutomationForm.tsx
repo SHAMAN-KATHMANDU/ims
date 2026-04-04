@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
@@ -255,7 +255,13 @@ export function AutomationForm({
     });
   }, [branchingGraphLocked, compatibleActionTypes, form, stepArray.fields]);
 
+  const lastResetSnapshotRef = useRef<string | null>(null);
   useEffect(() => {
+    const snap = JSON.stringify(initialValues);
+    if (lastResetSnapshotRef.current === snap) {
+      return;
+    }
+    lastResetSnapshotRef.current = snap;
     form.reset(initialValues);
   }, [form, initialValues]);
 
@@ -321,6 +327,21 @@ export function AutomationForm({
                 All fields
               </Button>
             </div>
+          ) : null}
+
+          {visualBuilderEnabled && editorTab === "flow" ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Edit <strong className="font-medium text-foreground">name</strong>
+              , <strong className="font-medium text-foreground">scope</strong>,
+              and{" "}
+              <strong className="font-medium text-foreground">triggers</strong>{" "}
+              on the{" "}
+              <strong className="font-medium text-foreground">
+                All fields
+              </strong>{" "}
+              tab. On this chart, click a step to configure its action, or drag
+              cards to reorder.
+            </p>
           ) : null}
 
           {visualBuilderEnabled ? (

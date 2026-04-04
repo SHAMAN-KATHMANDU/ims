@@ -219,6 +219,12 @@ export function AutomationBuilderPage() {
     };
   }, [editingLinearChainMeta]);
 
+  /** Inline `toFormValues(editing)` produced a new object every render → form.reset loop (React #185). */
+  const automationFormDefaultValues = useMemo(
+    () => (editing ? toFormValues(editing) : draftValues),
+    [editing, draftValues],
+  );
+
   const showAutomationForm =
     editing !== null || draftValues !== undefined || composerOpen;
 
@@ -658,7 +664,8 @@ export function AutomationBuilderPage() {
           <div className="rounded-lg border p-4">
             <h2 className="mb-3 font-medium">{title}</h2>
             <AutomationForm
-              defaultValues={editing ? toFormValues(editing) : draftValues}
+              key={editing?.id ?? (draftValues ? "draft" : "new")}
+              defaultValues={automationFormDefaultValues}
               linearFlowCompileStableIds={flowCompileStableIds}
               onSubmit={handleSubmit}
               isSubmitting={
