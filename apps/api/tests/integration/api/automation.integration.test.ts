@@ -545,4 +545,189 @@ describe("Automation API integration", () => {
       }
     },
   );
+
+  it.skipIf(!databaseUrlConfigured)(
+    "returns 400 on PUT when both flowGraph and non-empty steps are sent (BR-19)",
+    async () => {
+      const tenantId = randomUUID();
+      const userId = randomUUID();
+      const slug = `auto-put-dual-${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+      const passwordHash = await hashPassword("automation-it-pass");
+
+      await basePrisma.tenant.create({
+        data: {
+          id: tenantId,
+          name: "Automation PUT Dual IT",
+          slug,
+          plan: "STARTER",
+          isActive: true,
+          isTrial: false,
+          subscriptionStatus: "ACTIVE",
+        },
+      });
+
+      await basePrisma.user.create({
+        data: {
+          id: userId,
+          tenantId,
+          username: `admin-${slug}`,
+          password: passwordHash,
+          role: "admin",
+        },
+      });
+
+      const token = signAdminToken({ userId, tenantId, tenantSlug: slug });
+      const triggerEvent = "crm.contact.created" as const;
+
+      const flowGraph = compileLinearStepsToFlowGraph(
+        [
+          {
+            actionType: "notification.send",
+            actionConfig: {
+              type: "INFO" as const,
+              title: "G",
+              message: "Graph",
+            },
+          },
+        ],
+        undefined,
+      );
+
+      try {
+        const createRes = await apiRequest(app)
+          .post("/api/v1/automation/definitions")
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            name: `Put dual ${slug.slice(0, 6)}`,
+            scopeType: "GLOBAL",
+            triggers: [{ eventName: triggerEvent }],
+            steps: [],
+            flowGraph,
+          });
+
+        expect(createRes.status).toBe(201);
+        const defId = createRes.body.data.automation.id as string;
+
+        const putRes = await apiRequest(app)
+          .put(`/api/v1/automation/definitions/${defId}`)
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            flowGraph,
+            steps: [
+              {
+                actionType: "notification.send",
+                actionConfig: {
+                  type: "INFO",
+                  title: "S",
+                  message: "Step",
+                },
+              },
+            ],
+          });
+
+        expect(putRes.status).toBe(400);
+        expect(putRes.body.success).toBe(false);
+        expect(String(putRes.body.message)).toMatch(
+          /When flowGraph is set, steps must be empty/i,
+        );
+      } finally {
+        await basePrisma.tenant.delete({ where: { id: tenantId } });
+      }
+    },
+  );
+
+  it.skipIf(!databaseUrlConfigured)(
+    "returns 400 on PUT when only steps are sent but definition already has flowGraph",
+    async () => {
+      const tenantId = randomUUID();
+      const userId = randomUUID();
+      const slug = `auto-put-merge-${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+      const passwordHash = await hashPassword("automation-it-pass");
+
+      await basePrisma.tenant.create({
+        data: {
+          id: tenantId,
+          name: "Automation PUT Merge IT",
+          slug,
+          plan: "STARTER",
+          isActive: true,
+          isTrial: false,
+          subscriptionStatus: "ACTIVE",
+        },
+      });
+
+      await basePrisma.user.create({
+        data: {
+          id: userId,
+          tenantId,
+          username: `admin-${slug}`,
+          password: passwordHash,
+          role: "admin",
+        },
+      });
+
+      const token = signAdminToken({ userId, tenantId, tenantSlug: slug });
+      const triggerEvent = "crm.contact.created" as const;
+
+      const flowGraph = compileLinearStepsToFlowGraph(
+        [
+          {
+            actionType: "notification.send",
+            actionConfig: {
+              type: "INFO" as const,
+              title: "G",
+              message: "Graph",
+            },
+          },
+        ],
+        undefined,
+      );
+
+      try {
+        const createRes = await apiRequest(app)
+          .post("/api/v1/automation/definitions")
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            name: `Put merge ${slug.slice(0, 6)}`,
+            scopeType: "GLOBAL",
+            triggers: [{ eventName: triggerEvent }],
+            steps: [],
+            flowGraph,
+          });
+
+        expect(createRes.status).toBe(201);
+        const defId = createRes.body.data.automation.id as string;
+
+        const putRes = await apiRequest(app)
+          .put(`/api/v1/automation/definitions/${defId}`)
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            steps: [
+              {
+                actionType: "notification.send",
+                actionConfig: {
+                  type: "INFO",
+                  title: "S",
+                  message: "Step",
+                },
+              },
+            ],
+          });
+
+        expect(putRes.status).toBe(400);
+        expect(putRes.body.success).toBe(false);
+        expect(String(putRes.body.message)).toMatch(
+          /Graph automations cannot include linear steps/i,
+        );
+      } finally {
+        await basePrisma.tenant.delete({ where: { id: tenantId } });
+      }
+    },
+  );
 });
