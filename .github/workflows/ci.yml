@@ -255,6 +255,8 @@ jobs:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
       REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-for-ci
+      # Required by prisma db seed (plan limits + platform admin); ephemeral CI DB only
+      SEED_PLATFORM_ADMIN_PASSWORD: ci-e2e-platform-admin-ChangeMe123!
       NODE_ENV: development
     steps:
       - uses: actions/checkout@v4
