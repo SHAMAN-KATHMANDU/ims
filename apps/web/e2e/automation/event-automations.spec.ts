@@ -84,11 +84,16 @@ test.describe("Event automations — branching enabled (default E2E server)", ()
     ).toBeVisible();
 
     await page.getByTestId("automation-flow-if-else-graph").click();
+    await page.getByTestId("automation-editor-tab-all-fields").click();
     await expect(
       page.getByTestId("automation-branching-authoring"),
     ).toBeVisible({
       timeout: 30_000,
     });
+    await page.getByTestId("automation-editor-tab-flow-chart").click();
+    await expect(
+      page.getByTestId("automation-branching-flow-preview"),
+    ).toBeVisible({ timeout: 30_000 });
   });
 
   test("AT-UI-003: recent run shows chosen path and branches not taken", async ({

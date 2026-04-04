@@ -43,7 +43,7 @@ import {
   getDefaultActionConfig,
 } from "./automation-action-config-fields";
 import { useAutomationFlowCompileStableIds } from "./automation-flow-compile-meta-context";
-import { AutomationBranchingAuthoringPanel } from "./AutomationBranchingAuthoringPanel";
+import { exitBranchingToLinear } from "./automation-exit-branching";
 import { AutomationFlowGraphPreview } from "./AutomationFlowGraphPreview";
 import type { AutomationDefinitionFormValues } from "../validation";
 import {
@@ -106,6 +106,10 @@ export function AutomationFlowCanvas(): React.ReactElement {
   const branchingCanvasAuthoring = useWatch({
     control: form.control,
     name: "branchingCanvasAuthoring",
+  });
+  const preservedBranchingFlowGraph = useWatch({
+    control: form.control,
+    name: "preservedBranchingFlowGraph",
   });
 
   const slice = useMemo(
@@ -212,24 +216,7 @@ export function AutomationFlowCanvas(): React.ReactElement {
   }, [form]);
 
   const backToLinearSteps = useCallback(() => {
-    const first =
-      compatibleActionTypes[0] ??
-      ("notification.send" as AutomationActionTypeValue);
-    form.setValue("branchingCanvasAuthoring", false, { shouldValidate: true });
-    form.setValue("preservedBranchingFlowGraph", undefined, {
-      shouldValidate: true,
-    });
-    form.setValue(
-      "steps",
-      [
-        {
-          actionType: first,
-          actionConfig: getDefaultActionConfig(first),
-          continueOnError: false,
-        },
-      ],
-      { shouldValidate: true },
-    );
+    exitBranchingToLinear(form, compatibleActionTypes);
   }, [compatibleActionTypes, form]);
 
   const flowCompileStableIds = useAutomationFlowCompileStableIds();
@@ -316,7 +303,7 @@ export function AutomationFlowCanvas(): React.ReactElement {
     return (
       <div
         className="flex min-h-[440px] flex-col gap-4 rounded-lg border bg-muted/20"
-        data-testid="automation-branching-authoring"
+        data-testid="automation-branching-flow-preview"
       >
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
           <Button
@@ -328,11 +315,22 @@ export function AutomationFlowCanvas(): React.ReactElement {
             Back to linear steps
           </Button>
         </div>
-        <AutomationBranchingAuthoringPanel
-          compatibleActionTypes={compatibleActionTypes}
-        />
+        <div className="px-3">
+          <p className="mb-2 text-xs text-muted-foreground">
+            Edit routing blocks under{" "}
+            <strong className="font-medium text-foreground">All fields</strong>{" "}
+            → Steps. This panel stays in sync with the same graph.
+          </p>
+          <ReactFlowProvider>
+            <AutomationFlowGraphPreview
+              flowGraph={preservedBranchingFlowGraph}
+              className="h-[min(420px,55vh)] min-h-[260px] w-full rounded-md border bg-background"
+              overlayHint={null}
+            />
+          </ReactFlowProvider>
+        </div>
         <p className="px-3 text-xs text-muted-foreground">
-          Saving persists the previewed{" "}
+          Saving persists the{" "}
           <code className="rounded bg-muted px-0.5 text-[10px]">flowGraph</code>{" "}
           with no separate linear steps.
         </p>

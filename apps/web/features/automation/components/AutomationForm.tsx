@@ -64,6 +64,8 @@ import {
   AutomationFlowCompileMetaProvider,
   type AutomationFlowCompileStableIds,
 } from "./automation-flow-compile-meta-context";
+import { AutomationBranchingAuthoringPanel } from "./AutomationBranchingAuthoringPanel";
+import { exitBranchingToLinear } from "./automation-exit-branching";
 import { AutomationFlowCanvas } from "./AutomationFlowCanvas";
 import { AutomationFlowGraphPreview } from "./AutomationFlowGraphPreview";
 
@@ -277,6 +279,9 @@ export function AutomationForm({
   const visualBuilderEnabled = useEnvFeatureFlag(
     EnvFeature.AUTOMATION_VISUAL_BUILDER,
   );
+  const automationBranchingEnabled = useEnvFeatureFlag(
+    EnvFeature.AUTOMATION_BRANCHING,
+  );
   const [editorTab, setEditorTab] = useState<"flow" | "form">("form");
   const formSectionRef = useRef<HTMLDivElement>(null);
   const flowSectionRef = useRef<HTMLElement>(null);
@@ -354,8 +359,10 @@ export function AutomationForm({
               <strong className="font-medium text-foreground">
                 Flow chart
               </strong>{" "}
-              use the same automation—edit triggers, steps, and branching in
-              either place (shown side by side on wide screens).
+              share the same automation
+              {branchingCanvasAuthoring && automationBranchingEnabled
+                ? "—edit conditional routing under All fields; the flow column shows a live preview."
+                : "—edit triggers, steps, and branching in either place (shown side by side on wide screens)."}
             </p>
           ) : null}
 
@@ -1040,7 +1047,7 @@ export function AutomationForm({
                       <p>{stepAutoAdjustNote}</p>
                     </HelpTopicSheet>
                   </div>
-                  {!branchingGraphLocked ? (
+                  {!branchingGraphLocked && !branchingCanvasAuthoring ? (
                     <Button
                       type="button"
                       variant="outline"
@@ -1062,13 +1069,14 @@ export function AutomationForm({
                   <div className="space-y-2">
                     {!visualBuilderEnabled ? (
                       <Alert>
-                        <AlertTitle>Branching graph</AlertTitle>
+                        <AlertTitle>Branching graph (read-only)</AlertTitle>
                         <AlertDescription>
-                          When the visual builder is enabled, use the{" "}
-                          <strong>Flow chart</strong> column for a read-only
-                          diagram, or inspect{" "}
-                          <code className="text-xs">flowGraph</code> via the
-                          API.
+                          This automation uses a saved{" "}
+                          <code className="text-xs">flowGraph</code>. Enable the
+                          visual builder to see a read-only diagram in{" "}
+                          <strong>Flow chart</strong>, or edit metadata and
+                          triggers here; graph shape is not editable in the UI
+                          for this definition.
                         </AlertDescription>
                       </Alert>
                     ) : null}
@@ -1078,12 +1086,47 @@ export function AutomationForm({
                       </p>
                     ) : null}
                     <p className="text-sm text-muted-foreground">
-                      Steps are defined inside the branching graph (not as a
-                      linear list).
+                      Actions live inside the branching graph (not in a linear
+                      step list). Use the flow chart for a diagram; name, scope,
+                      triggers, and execution settings stay editable here.
                     </p>
                   </div>
                 ) : null}
-                {!branchingGraphLocked
+                {automationBranchingEnabled &&
+                branchingCanvasAuthoring &&
+                !branchingGraphLocked ? (
+                  <div
+                    className="space-y-3 rounded-md border border-dashed border-primary/25 bg-muted/10 p-3"
+                    data-testid="automation-branching-authoring"
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="text-sm font-medium text-foreground">
+                        Conditional routing
+                      </p>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() =>
+                          exitBranchingToLinear(form, compatibleActionTypes)
+                        }
+                      >
+                        Back to linear steps
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      One shared graph drives this form and the flow chart.
+                      {visualBuilderEnabled
+                        ? " The chart column shows a preview while you edit here."
+                        : null}
+                    </p>
+                    <AutomationBranchingAuthoringPanel
+                      compatibleActionTypes={compatibleActionTypes}
+                      showGraphPreview={!visualBuilderEnabled}
+                    />
+                  </div>
+                ) : null}
+                {!branchingGraphLocked && !branchingCanvasAuthoring
                   ? stepArray.fields.map((field, index) => {
                       const actionType = form.watch(
                         `steps.${index}.actionType`,
@@ -1222,8 +1265,9 @@ export function AutomationForm({
                     Flow chart
                   </h2>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    Same triggers and steps as the list on the left. Click a
-                    step node to edit its action here; reorder by dragging.
+                    {branchingCanvasAuthoring && automationBranchingEnabled
+                      ? "Live preview of the routing graph. Edit the timeline under All fields → Steps."
+                      : "Same triggers and steps as the list on the left. Click a step node to edit its action here; reorder by dragging."}
                   </p>
                 </div>
                 {branchingGraphLocked ? (

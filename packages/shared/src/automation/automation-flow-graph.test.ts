@@ -1,11 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  compileComposableFlowSegments,
   compileIfElseFlowGraph,
   compileLinearStepsToFlowGraph,
   compileSwitchFlowGraph,
+  composableSegmentsFitBr11Limits,
   parseAndValidateAutomationFlowGraph,
   tryDecompileLinearChainFlowGraph,
   tryDecompileLinearChainFlowGraphWithIds,
+  tryExtractComposableFlowSegments,
   tryExtractIfElseAuthoringFromGraph,
   tryExtractSwitchAuthoringFromGraph,
   validateAutomationFlowGraphStructure,
@@ -317,5 +320,78 @@ describe("automation-flow-graph", () => {
       ex.ids,
     );
     expect(rebuilt).toEqual(graph);
+  });
+
+  it("compileComposableFlowSegments + tryExtractComposableFlowSegments round-trip single if_else", () => {
+    const segments = [
+      {
+        kind: "if_else" as const,
+        conditions: [{ path: "total", operator: "gte" as const, value: 10 }],
+        trueStep: {
+          actionType: "notification.send" as const,
+          actionConfig: { type: "INFO" as const, title: "T", message: "t" },
+        },
+        falseStep: {
+          actionType: "notification.send" as const,
+          actionConfig: { type: "WARN" as const, title: "F", message: "f" },
+        },
+      },
+    ];
+    const graph = compileComposableFlowSegments(segments);
+    const v = parseAndValidateAutomationFlowGraph(graph, [
+      "inventory.stock.adjusted",
+    ]);
+    expect(v.ok).toBe(true);
+    const back = tryExtractComposableFlowSegments(graph);
+    expect(back).not.toBeNull();
+    if (!back) return;
+    const entryId = graph.nodes.find((n) => n.kind === "entry")?.id;
+    const rebuilt = compileComposableFlowSegments(back, { entryId });
+    expect(rebuilt).toEqual(graph);
+  });
+
+  it("compileComposableFlowSegments chains action then if_else (parseAndValidate)", () => {
+    const segments = [
+      {
+        kind: "action" as const,
+        step: {
+          actionType: "notification.send" as const,
+          actionConfig: { type: "INFO" as const, title: "A", message: "a" },
+        },
+      },
+      {
+        kind: "if_else" as const,
+        conditions: [{ path: "x", operator: "eq" as const, value: 1 }],
+        trueStep: {
+          actionType: "notification.send" as const,
+          actionConfig: { type: "INFO" as const, title: "T", message: "t" },
+        },
+        falseStep: {
+          actionType: "notification.send" as const,
+          actionConfig: { type: "INFO" as const, title: "F", message: "f" },
+        },
+      },
+    ];
+    const graph = compileComposableFlowSegments(segments);
+    const v = parseAndValidateAutomationFlowGraph(graph, [
+      "inventory.stock.adjusted",
+    ]);
+    expect(v.ok).toBe(true);
+    const back = tryExtractComposableFlowSegments(graph);
+    expect(back).not.toBeNull();
+    const entryId = graph.nodes.find((n) => n.kind === "entry")?.id;
+    const rebuilt = compileComposableFlowSegments(back!, { entryId });
+    expect(rebuilt).toEqual(graph);
+  });
+
+  it("composableSegmentsFitBr11Limits rejects oversized segment list", () => {
+    const manyActions = Array.from({ length: 70 }, () => ({
+      kind: "action" as const,
+      step: {
+        actionType: "notification.send" as const,
+        actionConfig: { type: "INFO" as const, title: "x", message: "m" },
+      },
+    }));
+    expect(composableSegmentsFitBr11Limits(manyActions)).toBe(false);
   });
 });
