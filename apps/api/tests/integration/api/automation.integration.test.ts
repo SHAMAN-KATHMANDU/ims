@@ -11,7 +11,10 @@ import { env } from "@/config/env";
 import { basePrisma } from "@/config/prisma";
 import { apiRequest, withAuth } from "@tests/helpers/api";
 import { hashPassword } from "../../../prisma/seeds/utils";
-import { compileLinearStepsToFlowGraph } from "@repo/shared";
+import {
+  compileLinearStepsToFlowGraph,
+  parseAndValidateAutomationFlowGraph,
+} from "@repo/shared";
 
 const databaseUrlConfigured = Boolean(process.env.DATABASE_URL?.trim());
 
@@ -141,6 +144,215 @@ describe("Automation API integration", () => {
         };
         expect(graphAfter.nodes?.length ?? 0).toBe(nodeCountBefore);
         expect(patchRes.body.data.automation.steps?.length ?? 0).toBe(0);
+      } finally {
+        await basePrisma.tenant.delete({ where: { id: tenantId } });
+      }
+    },
+  );
+
+  it.skipIf(!databaseUrlConfigured)(
+    "creates definitions with if and switch flowGraphs",
+    async () => {
+      const tenantId = randomUUID();
+      const userId = randomUUID();
+      const slug = `auto-br-${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+
+      const passwordHash = await hashPassword("automation-it-pass");
+
+      await basePrisma.tenant.create({
+        data: {
+          id: tenantId,
+          name: "Automation Branching IT Tenant",
+          slug,
+          plan: "STARTER",
+          isActive: true,
+          isTrial: false,
+          subscriptionStatus: "ACTIVE",
+        },
+      });
+
+      await basePrisma.user.create({
+        data: {
+          id: userId,
+          tenantId,
+          username: `admin-${slug}`,
+          password: passwordHash,
+          role: "admin",
+        },
+      });
+
+      const token = signAdminToken({ userId, tenantId, tenantSlug: slug });
+      const triggerEvent = "crm.contact.created" as const;
+
+      const entryIf = randomUUID();
+      const ifNodeId = randomUUID();
+      const actionIfTrue = randomUUID();
+      const actionIfFalse = randomUUID();
+      const endIf = randomUUID();
+
+      const ifFlowGraph = {
+        nodes: [
+          { id: entryIf, kind: "entry" as const },
+          {
+            id: ifNodeId,
+            kind: "if" as const,
+            config: {
+              conditions: [
+                { path: "priority", operator: "eq" as const, value: "high" },
+              ],
+            },
+          },
+          {
+            id: actionIfTrue,
+            kind: "action" as const,
+            config: {
+              actionType: "notification.send" as const,
+              actionConfig: {
+                type: "INFO" as const,
+                title: "High",
+                message: "If true",
+              },
+            },
+          },
+          {
+            id: actionIfFalse,
+            kind: "action" as const,
+            config: {
+              actionType: "notification.send" as const,
+              actionConfig: {
+                type: "INFO" as const,
+                title: "Other",
+                message: "If false",
+              },
+            },
+          },
+          { id: endIf, kind: "noop" as const },
+        ],
+        edges: [
+          { fromNodeId: entryIf, toNodeId: ifNodeId },
+          { fromNodeId: ifNodeId, toNodeId: actionIfTrue, edgeKey: "true" },
+          { fromNodeId: ifNodeId, toNodeId: actionIfFalse, edgeKey: "false" },
+          { fromNodeId: actionIfTrue, toNodeId: endIf },
+          { fromNodeId: actionIfFalse, toNodeId: endIf },
+        ],
+      };
+
+      const ifValidation = parseAndValidateAutomationFlowGraph(ifFlowGraph, [
+        triggerEvent,
+      ]);
+      expect(ifValidation.ok).toBe(true);
+
+      const entrySw = randomUUID();
+      const switchId = randomUUID();
+      const aEast = randomUUID();
+      const aWest = randomUUID();
+      const aDefault = randomUUID();
+
+      const switchFlowGraph = {
+        nodes: [
+          { id: entrySw, kind: "entry" as const },
+          {
+            id: switchId,
+            kind: "switch" as const,
+            config: { discriminantPath: "segment" },
+          },
+          {
+            id: aEast,
+            kind: "action" as const,
+            config: {
+              actionType: "notification.send" as const,
+              actionConfig: {
+                type: "INFO" as const,
+                title: "East",
+                message: "Switch east",
+              },
+            },
+          },
+          {
+            id: aWest,
+            kind: "action" as const,
+            config: {
+              actionType: "notification.send" as const,
+              actionConfig: {
+                type: "INFO" as const,
+                title: "West",
+                message: "Switch west",
+              },
+            },
+          },
+          {
+            id: aDefault,
+            kind: "action" as const,
+            config: {
+              actionType: "notification.send" as const,
+              actionConfig: {
+                type: "INFO" as const,
+                title: "Default",
+                message: "Switch default",
+              },
+            },
+          },
+        ],
+        edges: [
+          { fromNodeId: entrySw, toNodeId: switchId },
+          { fromNodeId: switchId, toNodeId: aEast, edgeKey: "east" },
+          { fromNodeId: switchId, toNodeId: aWest, edgeKey: "west" },
+          { fromNodeId: switchId, toNodeId: aDefault, edgeKey: "default" },
+        ],
+      };
+
+      const swValidation = parseAndValidateAutomationFlowGraph(
+        switchFlowGraph,
+        [triggerEvent],
+      );
+      expect(swValidation.ok).toBe(true);
+
+      try {
+        const resIf = await apiRequest(app)
+          .post("/api/v1/automation/definitions")
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            name: `If graph ${slug.slice(0, 6)}`,
+            description: "branching if integration",
+            scopeType: "GLOBAL",
+            triggers: [{ eventName: triggerEvent }],
+            steps: [],
+            flowGraph: ifFlowGraph,
+          });
+
+        expect(resIf.status).toBe(201);
+        expect(resIf.body.success).toBe(true);
+        expect(resIf.body.data.automation.flowGraph).toBeTruthy();
+        const ifNodes = (
+          resIf.body.data.automation.flowGraph as { nodes: unknown[] }
+        ).nodes;
+        expect(ifNodes.some((n: { kind?: string }) => n.kind === "if")).toBe(
+          true,
+        );
+
+        const resSw = await apiRequest(app)
+          .post("/api/v1/automation/definitions")
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            name: `Switch graph ${slug.slice(0, 6)}`,
+            description: "branching switch integration",
+            scopeType: "GLOBAL",
+            triggers: [{ eventName: triggerEvent }],
+            steps: [],
+            flowGraph: switchFlowGraph,
+          });
+
+        expect(resSw.status).toBe(201);
+        expect(resSw.body.success).toBe(true);
+        expect(resSw.body.data.automation.flowGraph).toBeTruthy();
+        const swNodes = (
+          resSw.body.data.automation.flowGraph as { nodes: unknown[] }
+        ).nodes;
+        expect(
+          swNodes.some((n: { kind?: string }) => n.kind === "switch"),
+        ).toBe(true);
       } finally {
         await basePrisma.tenant.delete({ where: { id: tenantId } });
       }

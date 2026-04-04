@@ -1246,6 +1246,85 @@ describe("automation.runtime", () => {
     );
   });
 
+  it("LIVE switch fails when discriminant is a non-scalar object", async () => {
+    const entryId = "71717171-7171-4171-8171-717171717171";
+    const swId = "72727272-7272-4272-8272-727272727272";
+    const aOne = "73737373-7373-4373-8373-737373737373";
+    const aDefault = "74747474-7474-4474-8474-747474747474";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: swId,
+          kind: "switch" as const,
+          config: { discriminantPath: "region" },
+        },
+        {
+          id: aOne,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Scalar path",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aDefault,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Default path",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: swId },
+        { fromNodeId: swId, toNodeId: aOne, edgeKey: "east" },
+        { fromNodeId: swId, toNodeId: aDefault, edgeKey: "default" },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, region: { nested: "x" } },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-switch-bad-disc",
+        executionMode: "LIVE",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        status: "FAILED",
+        errorMessage: "Switch discriminant must be a scalar",
+      }),
+    );
+  });
+
   it("resumes failed graph runs using frozen branch decisions (BR-16)", async () => {
     const entryId = "11111111-1111-1111-1111-111111111111";
     const ifId = "22222222-2222-2222-2222-222222222222";
