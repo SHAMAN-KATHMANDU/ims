@@ -1801,13 +1801,117 @@ describe("automation.runtime", () => {
       "event-1",
     );
 
-    expect(resumed).toBe(1);
+    expect(resumed).toBe(0);
     expect(mockCreateWorkItem).not.toHaveBeenCalled();
     expect(
       mockUpdateRun.mock.calls.some(
         (c) =>
           c[1]?.status === "FAILED" &&
-          String(c[1]?.errorMessage ?? "").match(/missing frozen branch/i),
+          String(c[1]?.errorMessage ?? "").match(
+            /branchDecisions for switch node.*missing or empty/i,
+          ),
+      ),
+    ).toBe(true);
+  });
+
+  // AT-RSU-003 / EC-11 — unique path to failed action includes if but branchDecisions omit it (no re-route).
+  it("resume fails when branchDecisions omit if on unique path to failed action", async () => {
+    const entryId = "11111111-1111-1111-1111-111111111111";
+    const ifId = "22222222-2222-2222-2222-222222222222";
+    const actionId = "33333333-3333-3333-3333-333333333333";
+    const noopFalseId = "44444444-4444-4444-4444-444444444444";
+    const noopEndId = "55555555-5555-5555-5555-555555555555";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: ifId,
+          kind: "if" as const,
+          config: {
+            conditions: [
+              { path: "runHot", operator: "eq" as const, value: true },
+            ],
+          },
+        },
+        {
+          id: actionId,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Task",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        { id: noopFalseId, kind: "noop" as const },
+        { id: noopEndId, kind: "noop" as const },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: ifId },
+        { fromNodeId: ifId, toNodeId: actionId, edgeKey: "true" },
+        { fromNodeId: ifId, toNodeId: noopFalseId, edgeKey: "false" },
+        { fromNodeId: actionId, toNodeId: noopEndId },
+      ],
+    };
+
+    mockFindFailedLiveRunsForEventReplay.mockResolvedValue([
+      {
+        id: "run-if-missing-bd",
+        tenantId: "tenant-1",
+        automationEventId: "event-1",
+        status: "FAILED",
+        executionMode: "LIVE",
+        stepOutput: {
+          __automationGraph: { branchDecisions: {} },
+        },
+        runSteps: [
+          {
+            id: "rs-action",
+            graphNodeId: actionId,
+            automationStepId: null,
+            status: "FAILED",
+            output: null,
+          },
+        ],
+        automation: {
+          id: "auto-if-missing-bd",
+          status: "ACTIVE",
+          executionMode: "LIVE",
+          flowGraph,
+          steps: [],
+          triggers: [
+            {
+              id: "tr-1",
+              eventName: "inventory.stock.low_detected",
+              conditionGroups: null,
+            },
+          ],
+        },
+      },
+    ]);
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, runHot: false },
+    });
+
+    const resumed = await resumeFailedAutomationRunsForEvent(
+      "tenant-1",
+      "event-1",
+    );
+
+    expect(resumed).toBe(0);
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(
+      mockUpdateRun.mock.calls.some(
+        (c) =>
+          c[1]?.status === "FAILED" &&
+          String(c[1]?.errorMessage ?? "").match(
+            /branchDecisions for if node.*must be "true" or "false"/i,
+          ),
       ),
     ).toBe(true);
   });
@@ -1898,13 +2002,15 @@ describe("automation.runtime", () => {
       "event-1",
     );
 
-    expect(resumed).toBe(1);
+    expect(resumed).toBe(0);
     expect(mockCreateWorkItem).not.toHaveBeenCalled();
     expect(
       mockUpdateRun.mock.calls.some(
         (c) =>
           c[1]?.status === "FAILED" &&
-          String(c[1]?.errorMessage ?? "").match(/invalid frozen branch/i),
+          String(c[1]?.errorMessage ?? "").match(
+            /branchDecisions for if node.*must be "true" or "false"/i,
+          ),
       ),
     ).toBe(true);
   });

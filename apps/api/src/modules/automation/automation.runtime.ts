@@ -393,6 +393,93 @@ function parseValidatedFlowGraphFromDb(
   return s.ok ? s.validated : null;
 }
 
+/** Count directed paths from `from` to `target` (DAG, small cap). */
+function countPathsToTargetDb(
+  outgoing: ValidatedFlowGraph["outgoing"],
+  from: string,
+  target: string,
+  memo: Map<string, number>,
+): number {
+  if (from === target) return 1;
+  if (memo.has(from)) return memo.get(from)!;
+  let sum = 0;
+  for (const edge of outgoing.get(from) ?? []) {
+    sum += countPathsToTargetDb(outgoing, edge.toNodeId, target, memo);
+    if (sum > 128) break;
+  }
+  memo.set(from, sum);
+  return sum;
+}
+
+/**
+ * When exactly one path exists from `entry` to `target`, returns ordered node ids on that path.
+ */
+function singlePathNodeIdsToTarget(
+  validated: ValidatedFlowGraph,
+  target: string,
+): string[] | null {
+  const { outgoing, entryId } = validated;
+  const memo = new Map<string, number>();
+  if (countPathsToTargetDb(outgoing, entryId, target, memo) !== 1) {
+    return null;
+  }
+
+  const path: string[] = [];
+  let cur = entryId;
+  for (let guard = 0; guard < MAX_AUTOMATION_FLOW_GRAPH_NODES + 5; guard++) {
+    path.push(cur);
+    if (cur === target) return path;
+    const outs = outgoing.get(cur) ?? [];
+    let nextId: string | null = null;
+    for (const o of outs) {
+      const childMemo = new Map<string, number>();
+      if (countPathsToTargetDb(outgoing, o.toNodeId, target, childMemo) > 0) {
+        if (nextId !== null) return null;
+        nextId = o.toNodeId;
+      }
+    }
+    if (nextId === null) return null;
+    cur = nextId;
+  }
+  return null;
+}
+
+/**
+ * AT-RSU-003 / EC-11: if there is exactly one path from entry to the failed action, every `if` /
+ * `switch` on that path must have a persisted branch decision (no silent re-routing on resume).
+ */
+function validatePersistedBranchDecisionsForGraphResume(
+  validated: ValidatedFlowGraph,
+  failedActionGraphNodeId: string,
+  branchDecisions: Record<string, string>,
+): string | null {
+  const pathIds = singlePathNodeIdsToTarget(validated, failedActionGraphNodeId);
+  if (!pathIds) return null;
+
+  const { nodesById, outgoing } = validated;
+  for (const nodeId of pathIds) {
+    const node = nodesById.get(nodeId);
+    if (!node) continue;
+    if (node.kind === "if") {
+      const d = branchDecisions[nodeId];
+      if (d !== "true" && d !== "false") {
+        return `Cannot resume automation graph: branchDecisions for if node ${nodeId} must be "true" or "false"`;
+      }
+    } else if (node.kind === "switch") {
+      const d = branchDecisions[nodeId];
+      if (d == null || d === "") {
+        return `Cannot resume automation graph: branchDecisions for switch node ${nodeId} is missing or empty`;
+      }
+      const outs = outgoing.get(nodeId) ?? [];
+      const matches = outs.some((o) => (o.edgeKey ?? "default") === String(d));
+      if (!matches) {
+        return `Cannot resume automation graph: branchDecisions for switch node ${nodeId} does not match an outgoing edge`;
+      }
+    }
+  }
+  return null;
+}
+
 function graphEvalRoot(context: RuntimeContext): Record<string, unknown> {
   return {
     ...context.event.payload,
@@ -1056,6 +1143,29 @@ export async function resumeFailedAutomationRunsForEvent(
       }
 
       if (!hasResumableGraphAction) continue;
+
+      const failedGraphActionId = run.runSteps.find(
+        (rs) =>
+          rs.graphNodeId != null &&
+          rs.graphNodeId !== "" &&
+          (rs.status === "FAILED" || rs.status === "RUNNING"),
+      )?.graphNodeId;
+
+      if (failedGraphActionId) {
+        const branchResumeErr = validatePersistedBranchDecisionsForGraphResume(
+          validatedGraph,
+          failedGraphActionId,
+          persistedBranchDecisions,
+        );
+        if (branchResumeErr) {
+          await automationRepository.updateRun(run.id, {
+            status: "FAILED",
+            errorMessage: branchResumeErr,
+            completedAt: new Date(),
+          });
+          continue;
+        }
+      }
 
       await automationRepository.updateRun(run.id, {
         status: "RUNNING",
