@@ -177,6 +177,7 @@ export function AutomationForm({
             continueOnError: false,
           },
         ],
+        branchingCanvasAuthoring: false,
       },
     [defaultValues],
   );
@@ -201,9 +202,11 @@ export function AutomationForm({
     name: "steps",
   });
   const preservedBranchingFlowGraph = form.watch("preservedBranchingFlowGraph");
-  const branchingGraphLocked = hasPreservedBranchingFlowGraphShape(
-    preservedBranchingFlowGraph,
-  );
+  const branchingCanvasAuthoring =
+    form.watch("branchingCanvasAuthoring") ?? false;
+  const branchingGraphLocked =
+    hasPreservedBranchingFlowGraphShape(preservedBranchingFlowGraph) &&
+    !branchingCanvasAuthoring;
   const selectedTriggerEvents = form.watch("triggers");
   const compatibleActionTypes = useMemo(() => {
     const events = selectedTriggerEvents.map((trigger) => trigger.eventName);
@@ -283,6 +286,11 @@ export function AutomationForm({
             name="preservedBranchingFlowGraph"
             render={() => <span className="sr-only" aria-hidden />}
           />
+          <Controller
+            control={form.control}
+            name="branchingCanvasAuthoring"
+            render={() => <span className="sr-only" aria-hidden />}
+          />
           {Object.keys(errors).length > 0 ? (
             <div
               role="alert"
@@ -323,9 +331,9 @@ export function AutomationForm({
                     <AlertDescription>
                       This automation uses conditional routing in its{" "}
                       <code className="text-xs">flowGraph</code>. You can edit
-                      name, scope, triggers, and execution settings here; to
-                      change the graph, use the API or a future visual branch
-                      editor.
+                      name, scope, triggers, and execution settings here. The
+                      graph shape is not editable in the UI for this definition
+                      (imported or non-template branching).
                     </AlertDescription>
                   </Alert>
                   <ReactFlowProvider>

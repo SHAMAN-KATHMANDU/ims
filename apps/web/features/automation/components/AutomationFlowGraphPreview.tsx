@@ -98,6 +98,8 @@ const previewNodeTypes = {
 interface AutomationFlowGraphPreviewProps {
   flowGraph: unknown;
   className?: string;
+  /** When `null`, the top-left hint panel is hidden (e.g. canvas authoring preview). */
+  overlayHint?: string | null;
 }
 
 /**
@@ -106,6 +108,7 @@ interface AutomationFlowGraphPreviewProps {
 export function AutomationFlowGraphPreview({
   flowGraph,
   className,
+  overlayHint = "Read-only preview. Edit branching graphs via the API or a future flow editor.",
 }: AutomationFlowGraphPreviewProps): React.ReactElement {
   const layout = useMemo(
     () => tryFlowGraphPayloadToReactFlow(flowGraph),
@@ -143,13 +146,14 @@ export function AutomationFlowGraphPreview({
       >
         <Background gap={16} />
         <Controls showInteractive={false} />
-        <Panel
-          position="top-left"
-          className="m-2 max-w-[220px] rounded border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm backdrop-blur"
-        >
-          Read-only preview. Edit branching graphs via the API or a future flow
-          editor.
-        </Panel>
+        {overlayHint ? (
+          <Panel
+            position="top-left"
+            className="m-2 max-w-[220px] rounded border bg-background/90 px-2 py-1 text-[10px] text-muted-foreground shadow-sm backdrop-blur"
+          >
+            {overlayHint}
+          </Panel>
+        ) : null}
       </ReactFlow>
     </div>
   );

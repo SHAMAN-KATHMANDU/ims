@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  compileIfElseFlowGraph,
   compileLinearStepsToFlowGraph,
+  compileSwitchFlowGraph,
   parseAndValidateAutomationFlowGraph,
   tryDecompileLinearChainFlowGraph,
   tryDecompileLinearChainFlowGraphWithIds,
+  tryExtractIfElseAuthoringFromGraph,
+  tryExtractSwitchAuthoringFromGraph,
   validateAutomationFlowGraphStructure,
 } from "./automation-flow-graph";
 
@@ -249,5 +253,69 @@ describe("automation-flow-graph", () => {
       ],
     };
     expect(tryDecompileLinearChainFlowGraph(graph)).toBeNull();
+  });
+
+  it("compileIfElseFlowGraph round-trips via tryExtractIfElseAuthoringFromGraph", () => {
+    const graph = compileIfElseFlowGraph({
+      conditions: [{ path: "priority", operator: "eq", value: "high" }],
+      trueStep: {
+        actionType: "notification.send",
+        actionConfig: { type: "INFO", title: "T", message: "y" },
+      },
+      falseStep: {
+        actionType: "notification.send",
+        actionConfig: { type: "WARN", title: "F", message: "n" },
+      },
+    });
+    const ex = tryExtractIfElseAuthoringFromGraph(graph);
+    expect(ex).not.toBeNull();
+    if (!ex) return;
+    const rebuilt = compileIfElseFlowGraph(
+      {
+        conditions: ex.conditions,
+        trueStep: ex.trueStep,
+        falseStep: ex.falseStep,
+      },
+      ex.ids,
+    );
+    expect(rebuilt).toEqual(graph);
+  });
+
+  it("compileSwitchFlowGraph round-trips via tryExtractSwitchAuthoringFromGraph", () => {
+    const graph = compileSwitchFlowGraph({
+      discriminantPath: "region",
+      cases: [
+        {
+          edgeKey: "east",
+          step: {
+            actionType: "notification.send",
+            actionConfig: { type: "INFO", title: "E", message: "e" },
+          },
+        },
+        {
+          edgeKey: "west",
+          step: {
+            actionType: "notification.send",
+            actionConfig: { type: "INFO", title: "W", message: "w" },
+          },
+        },
+      ],
+      defaultStep: {
+        actionType: "notification.send",
+        actionConfig: { type: "INFO", title: "D", message: "d" },
+      },
+    });
+    const ex = tryExtractSwitchAuthoringFromGraph(graph);
+    expect(ex).not.toBeNull();
+    if (!ex) return;
+    const rebuilt = compileSwitchFlowGraph(
+      {
+        discriminantPath: ex.discriminantPath,
+        cases: ex.cases,
+        defaultStep: ex.defaultStep,
+      },
+      ex.ids,
+    );
+    expect(rebuilt).toEqual(graph);
   });
 });

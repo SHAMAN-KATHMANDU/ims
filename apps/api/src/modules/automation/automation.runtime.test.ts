@@ -1161,6 +1161,7 @@ describe("automation.runtime", () => {
     );
   });
 
+  // AT-SHD-003 — single-path SHADOW switch + branchDecisions metadata
   it("SHADOW switch previews only the chosen branch action", async () => {
     const entryId = "91919191-9191-4191-8191-919191919191";
     const swId = "92929292-9292-4292-8292-929292929292";
@@ -1266,6 +1267,7 @@ describe("automation.runtime", () => {
     );
   });
 
+  // AT-LIV-004 / AT-EC-004
   it("LIVE switch matches numeric discriminant to string edge key (String coercion)", async () => {
     const entryId = "81818181-8181-4181-8181-818181818181";
     const swId = "82828282-8282-4282-8282-828282828282";
@@ -1351,6 +1353,98 @@ describe("automation.runtime", () => {
     );
   });
 
+  // AT-LIV-004 / AT-EC-004 — numeric discriminant coerced to string edge key (LIVE).
+  it("SHADOW switch matches numeric discriminant to string edge key (String coercion) — AT-SHD-003 + coercion", async () => {
+    const entryId = "61616161-6161-4161-8161-616161616161";
+    const swId = "62626262-6262-4262-8262-626262626262";
+    const aOne = "63636363-6363-4363-8363-636363636363";
+    const aDefault = "64646464-6464-4464-8464-646464646464";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: swId,
+          kind: "switch" as const,
+          config: { discriminantPath: "code" },
+        },
+        {
+          id: aOne,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "SHADOW coerced one",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        {
+          id: aDefault,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "SHADOW coerced default",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: swId },
+        { fromNodeId: swId, toNodeId: aOne, edgeKey: "1" },
+        { fromNodeId: swId, toNodeId: aDefault, edgeKey: "default" },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, code: 1 },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-shadow-switch-coerce",
+        executionMode: "SHADOW",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateWorkItem).not.toHaveBeenCalled();
+    expect(mockCreateRunStep).toHaveBeenCalledTimes(1);
+    expect(mockCreateRunStep).toHaveBeenCalledWith(
+      expect.objectContaining({
+        graphNodeId: aOne,
+        status: "SKIPPED",
+        output: expect.objectContaining({ simulated: true }),
+      }),
+    );
+    expect(mockUpdateRun).toHaveBeenCalledWith(
+      "run-1",
+      expect.objectContaining({
+        stepOutput: expect.objectContaining({
+          __automationGraph: {
+            branchDecisions: { [swId]: "1" },
+          },
+        }),
+      }),
+    );
+  });
+
+  // AT-LIV-009 — non-scalar switch discriminant (LIVE).
   it("LIVE switch fails when discriminant is a non-scalar object", async () => {
     const entryId = "71717171-7171-4171-8171-717171717171";
     const swId = "72727272-7272-4272-8272-727272727272";

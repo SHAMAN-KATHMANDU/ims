@@ -60,6 +60,8 @@ import {
   searchAutomationTemplates,
   tryDecompileLinearChainFlowGraph,
   tryDecompileLinearChainFlowGraphWithIds,
+  tryExtractIfElseAuthoringFromGraph,
+  tryExtractSwitchAuthoringFromGraph,
   type AutomationTemplateCatalogEntry,
   type AutomationTemplateCategory,
 } from "@repo/shared";
@@ -77,6 +79,7 @@ function catalogTemplateToFormValues(
     ...v,
     description: v.description ?? "",
     scopeId: v.scopeId ?? "",
+    branchingCanvasAuthoring: false,
   };
 }
 
@@ -109,6 +112,11 @@ function toFormValues(
           }))
         : [];
 
+  const branchingCanvasAuthoring =
+    Boolean(isNonLinearGraphOnly && automation.flowGraph) &&
+    (tryExtractIfElseAuthoringFromGraph(automation.flowGraph) != null ||
+      tryExtractSwitchAuthoringFromGraph(automation.flowGraph) != null);
+
   return {
     name: automation.name,
     description: automation.description ?? "",
@@ -128,6 +136,7 @@ function toFormValues(
       delayMinutes: trigger.delayMinutes,
     })),
     steps,
+    branchingCanvasAuthoring,
     ...(isNonLinearGraphOnly
       ? { preservedBranchingFlowGraph: automation.flowGraph }
       : {}),

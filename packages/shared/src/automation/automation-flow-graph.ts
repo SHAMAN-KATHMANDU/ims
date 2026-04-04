@@ -4,6 +4,7 @@ import {
   AutomationConditionSchema,
   AutomationTriggerEventSchema,
   isAutomationActionAllowedForEvent,
+  type AutomationCondition,
 } from "./automation-schemas";
 
 export const MAX_AUTOMATION_FLOW_GRAPH_NODES = 64;
@@ -482,4 +483,355 @@ export function tryDecompileLinearChainFlowGraph(
 ): LinearAutomationFlowStepInput[] | null {
   const chain = tryDecompileLinearChainFlowGraphWithIds(raw);
   return chain?.steps ?? null;
+}
+
+/** Stable node ids when re-saving canvas-authored if/else graphs. */
+export type IfElseFlowGraphCompileIds = {
+  entryId: string;
+  ifNodeId: string;
+  trueActionId: string;
+  falseActionId: string;
+  noopId: string;
+};
+
+/**
+ * Canonical if/else DAG: `entry` → `if` → two `action` branches → shared terminal `noop`.
+ */
+export function compileIfElseFlowGraph(
+  input: {
+    conditions: AutomationCondition[];
+    trueStep: LinearAutomationFlowStepInput;
+    falseStep: LinearAutomationFlowStepInput;
+  },
+  stableIds?: Partial<IfElseFlowGraphCompileIds>,
+): AutomationFlowGraphPayload {
+  if (input.conditions.length < 1) {
+    throw new Error("compileIfElseFlowGraph requires at least one condition");
+  }
+
+  const entryId = isValidUuid(stableIds?.entryId)
+    ? stableIds!.entryId!
+    : randomUuid();
+  const ifNodeId = isValidUuid(stableIds?.ifNodeId)
+    ? stableIds!.ifNodeId!
+    : randomUuid();
+  const trueActionId = isValidUuid(stableIds?.trueActionId)
+    ? stableIds!.trueActionId!
+    : randomUuid();
+  const falseActionId = isValidUuid(stableIds?.falseActionId)
+    ? stableIds!.falseActionId!
+    : randomUuid();
+  const noopId = isValidUuid(stableIds?.noopId)
+    ? stableIds!.noopId!
+    : randomUuid();
+
+  const nodes: AutomationFlowGraphPayload["nodes"] = [
+    { id: entryId, kind: "entry" },
+    {
+      id: ifNodeId,
+      kind: "if",
+      config: { conditions: input.conditions },
+    },
+    {
+      id: trueActionId,
+      kind: "action",
+      config: {
+        actionType: input.trueStep.actionType,
+        actionConfig: input.trueStep.actionConfig,
+        ...(input.trueStep.continueOnError
+          ? { continueOnError: true as const }
+          : {}),
+      },
+    },
+    {
+      id: falseActionId,
+      kind: "action",
+      config: {
+        actionType: input.falseStep.actionType,
+        actionConfig: input.falseStep.actionConfig,
+        ...(input.falseStep.continueOnError
+          ? { continueOnError: true as const }
+          : {}),
+      },
+    },
+    { id: noopId, kind: "noop" },
+  ];
+
+  const edges: AutomationFlowGraphPayload["edges"] = [
+    { fromNodeId: entryId, toNodeId: ifNodeId },
+    {
+      fromNodeId: ifNodeId,
+      toNodeId: trueActionId,
+      edgeKey: "true",
+    },
+    {
+      fromNodeId: ifNodeId,
+      toNodeId: falseActionId,
+      edgeKey: "false",
+    },
+    { fromNodeId: trueActionId, toNodeId: noopId },
+    { fromNodeId: falseActionId, toNodeId: noopId },
+  ];
+
+  const graph = { nodes, edges };
+  const structural = validateAutomationFlowGraphStructure(graph);
+  if (!structural.ok) {
+    throw new Error(structural.errors.join("; "));
+  }
+  return graph;
+}
+
+export type SwitchFlowGraphCompileIds = {
+  entryId: string;
+  switchId: string;
+  noopId: string;
+  caseActionIds: string[];
+  defaultActionId: string;
+};
+
+/**
+ * Canonical switch DAG: `entry` → `switch` → one `action` per case + `default` `action` → shared `noop`.
+ * Non-default edges are emitted in `cases` order (first match wins at runtime).
+ */
+export function compileSwitchFlowGraph(
+  input: {
+    discriminantPath: string;
+    cases: Array<{ edgeKey: string; step: LinearAutomationFlowStepInput }>;
+    defaultStep: LinearAutomationFlowStepInput;
+  },
+  stableIds?: Partial<SwitchFlowGraphCompileIds>,
+): AutomationFlowGraphPayload {
+  const path = input.discriminantPath.trim();
+  if (path.length < 1) {
+    throw new Error("compileSwitchFlowGraph requires discriminantPath");
+  }
+  if (input.cases.length < 1) {
+    throw new Error(
+      "compileSwitchFlowGraph requires at least one non-default case",
+    );
+  }
+
+  const entryId = isValidUuid(stableIds?.entryId)
+    ? stableIds!.entryId!
+    : randomUuid();
+  const switchId = isValidUuid(stableIds?.switchId)
+    ? stableIds!.switchId!
+    : randomUuid();
+  const noopId = isValidUuid(stableIds?.noopId)
+    ? stableIds!.noopId!
+    : randomUuid();
+
+  const prevCaseIds = stableIds?.caseActionIds;
+  const caseActionIds =
+    Array.isArray(prevCaseIds) &&
+    prevCaseIds.length === input.cases.length &&
+    prevCaseIds.every((id) => isValidUuid(id))
+      ? [...prevCaseIds]
+      : input.cases.map(() => randomUuid());
+
+  const defaultActionId = isValidUuid(stableIds?.defaultActionId)
+    ? stableIds!.defaultActionId!
+    : randomUuid();
+
+  const nodes: AutomationFlowGraphPayload["nodes"] = [
+    { id: entryId, kind: "entry" },
+    {
+      id: switchId,
+      kind: "switch",
+      config: { discriminantPath: path },
+    },
+    ...input.cases.map((c, i) => ({
+      id: caseActionIds[i]!,
+      kind: "action" as const,
+      config: {
+        actionType: c.step.actionType,
+        actionConfig: c.step.actionConfig,
+        ...(c.step.continueOnError ? { continueOnError: true as const } : {}),
+      },
+    })),
+    {
+      id: defaultActionId,
+      kind: "action",
+      config: {
+        actionType: input.defaultStep.actionType,
+        actionConfig: input.defaultStep.actionConfig,
+        ...(input.defaultStep.continueOnError
+          ? { continueOnError: true as const }
+          : {}),
+      },
+    },
+    { id: noopId, kind: "noop" },
+  ];
+
+  const edges: AutomationFlowGraphPayload["edges"] = [
+    { fromNodeId: entryId, toNodeId: switchId },
+    ...input.cases.map((c, i) => ({
+      fromNodeId: switchId,
+      toNodeId: caseActionIds[i]!,
+      edgeKey: c.edgeKey,
+    })),
+    {
+      fromNodeId: switchId,
+      toNodeId: defaultActionId,
+      edgeKey: "default",
+    },
+    ...input.cases.map((_, i) => ({
+      fromNodeId: caseActionIds[i]!,
+      toNodeId: noopId,
+    })),
+    { fromNodeId: defaultActionId, toNodeId: noopId },
+  ];
+
+  const graph = { nodes, edges };
+  const structural = validateAutomationFlowGraphStructure(graph);
+  if (!structural.ok) {
+    throw new Error(structural.errors.join("; "));
+  }
+  return graph;
+}
+
+function linearStepFromActionNode(
+  n: Extract<FlowGraphNode, { kind: "action" }>,
+): LinearAutomationFlowStepInput {
+  return {
+    actionType: n.config.actionType,
+    actionConfig: { ...n.config.actionConfig },
+    continueOnError: n.config.continueOnError === true ? true : undefined,
+  };
+}
+
+/** Payload for the canvas if/else editor (round-trip with {@link compileIfElseFlowGraph}). */
+export type IfElseAuthoringExtract = {
+  conditions: AutomationCondition[];
+  trueStep: LinearAutomationFlowStepInput;
+  falseStep: LinearAutomationFlowStepInput;
+  ids: IfElseFlowGraphCompileIds;
+};
+
+/**
+ * If `raw` matches the canonical if/else shape from {@link compileIfElseFlowGraph}, returns editor fields + stable ids.
+ */
+export function tryExtractIfElseAuthoringFromGraph(
+  raw: unknown,
+): IfElseAuthoringExtract | null {
+  const parsed = AutomationFlowGraphPayloadSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  const structural = validateAutomationFlowGraphStructure(parsed.data);
+  if (!structural.ok) return null;
+  const { nodesById, outgoing, entryId } = structural.validated;
+
+  const fromEntry = outgoing.get(entryId) ?? [];
+  if (fromEntry.length !== 1) return null;
+  const ifNodeId = fromEntry[0]!.toNodeId;
+  const ifNode = nodesById.get(ifNodeId);
+  if (!ifNode || ifNode.kind !== "if") return null;
+
+  const ifOuts = outgoing.get(ifNodeId) ?? [];
+  if (ifOuts.length !== 2) return null;
+  const trueEdge = ifOuts.find((o) => o.edgeKey === "true");
+  const falseEdge = ifOuts.find((o) => o.edgeKey === "false");
+  if (!trueEdge || !falseEdge) return null;
+
+  const trueNode = nodesById.get(trueEdge.toNodeId);
+  const falseNode = nodesById.get(falseEdge.toNodeId);
+  if (!trueNode || trueNode.kind !== "action") return null;
+  if (!falseNode || falseNode.kind !== "action") return null;
+
+  const trueOuts = outgoing.get(trueNode.id) ?? [];
+  const falseOuts = outgoing.get(falseNode.id) ?? [];
+  if (trueOuts.length !== 1 || falseOuts.length !== 1) return null;
+  if (trueOuts[0]!.toNodeId !== falseOuts[0]!.toNodeId) return null;
+
+  const noopId = trueOuts[0]!.toNodeId;
+  const noop = nodesById.get(noopId);
+  if (!noop || noop.kind !== "noop") return null;
+  if ((outgoing.get(noopId) ?? []).length !== 0) return null;
+
+  return {
+    conditions: [...ifNode.config.conditions],
+    trueStep: linearStepFromActionNode(trueNode),
+    falseStep: linearStepFromActionNode(falseNode),
+    ids: {
+      entryId,
+      ifNodeId,
+      trueActionId: trueNode.id,
+      falseActionId: falseNode.id,
+      noopId,
+    },
+  };
+}
+
+/** Payload for the canvas switch editor (round-trip with {@link compileSwitchFlowGraph}). */
+export type SwitchAuthoringExtract = {
+  discriminantPath: string;
+  cases: Array<{ edgeKey: string; step: LinearAutomationFlowStepInput }>;
+  defaultStep: LinearAutomationFlowStepInput;
+  ids: SwitchFlowGraphCompileIds;
+};
+
+/**
+ * If `raw` matches the canonical switch shape from {@link compileSwitchFlowGraph}, returns editor fields + stable ids.
+ */
+export function tryExtractSwitchAuthoringFromGraph(
+  raw: unknown,
+): SwitchAuthoringExtract | null {
+  if (tryExtractIfElseAuthoringFromGraph(raw) != null) return null;
+
+  const parsed = AutomationFlowGraphPayloadSchema.safeParse(raw);
+  if (!parsed.success) return null;
+  const structural = validateAutomationFlowGraphStructure(parsed.data);
+  if (!structural.ok) return null;
+  const { nodesById, outgoing, entryId } = structural.validated;
+
+  const fromEntry = outgoing.get(entryId) ?? [];
+  if (fromEntry.length !== 1) return null;
+  const switchId = fromEntry[0]!.toNodeId;
+  const sw = nodesById.get(switchId);
+  if (!sw || sw.kind !== "switch") return null;
+
+  const swOuts = outgoing.get(switchId) ?? [];
+  if (swOuts.length < 2) return null;
+
+  const defaultEdges = swOuts.filter((o) => o.edgeKey === "default");
+  if (defaultEdges.length !== 1) return null;
+  const defaultTo = defaultEdges[0]!.toNodeId;
+  const defaultNode = nodesById.get(defaultTo);
+  if (!defaultNode || defaultNode.kind !== "action") return null;
+
+  const caseEdges = swOuts.filter((o) => o.edgeKey !== "default");
+  if (caseEdges.length < 1) return null;
+
+  const noopFromDefault = outgoing.get(defaultNode.id) ?? [];
+  if (noopFromDefault.length !== 1) return null;
+  const noopId = noopFromDefault[0]!.toNodeId;
+  const noop = nodesById.get(noopId);
+  if (!noop || noop.kind !== "noop") return null;
+  if ((outgoing.get(noopId) ?? []).length !== 0) return null;
+
+  const cases: SwitchAuthoringExtract["cases"] = [];
+  const caseActionIds: string[] = [];
+
+  for (const e of caseEdges) {
+    const key = e.edgeKey;
+    if (key == null || key === "") return null;
+    const act = nodesById.get(e.toNodeId);
+    if (!act || act.kind !== "action") return null;
+    const actOuts = outgoing.get(act.id) ?? [];
+    if (actOuts.length !== 1 || actOuts[0]!.toNodeId !== noopId) return null;
+    cases.push({ edgeKey: key, step: linearStepFromActionNode(act) });
+    caseActionIds.push(act.id);
+  }
+
+  return {
+    discriminantPath: sw.config.discriminantPath,
+    cases,
+    defaultStep: linearStepFromActionNode(defaultNode),
+    ids: {
+      entryId,
+      switchId,
+      noopId,
+      caseActionIds,
+      defaultActionId: defaultNode.id,
+    },
+  };
 }

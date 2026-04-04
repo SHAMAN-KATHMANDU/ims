@@ -64,6 +64,11 @@ export const AutomationDefinitionFormSchema = z
      * the graph is preserved on save and is not editable in the linear/canvas UI yet.
      */
     preservedBranchingFlowGraph: z.unknown().optional(),
+    /**
+     * When true with a preserved graph, the flow tab shows the branch canvas editor
+     * (canonical if/switch shapes). Not sent to the API.
+     */
+    branchingCanvasAuthoring: z.boolean().optional(),
   })
   .superRefine((value, ctx) => {
     const graphLocked = hasPreservedBranchingFlowGraphShape(

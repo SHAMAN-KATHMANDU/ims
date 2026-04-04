@@ -31,7 +31,9 @@ import { Switch } from "@/components/ui/switch";
 import {
   AUTOMATION_ACTION_TYPE_DESCRIPTIONS,
   AUTOMATION_ACTION_TYPE_VALUES,
+  compileIfElseFlowGraph,
   compileLinearStepsToFlowGraph,
+  compileSwitchFlowGraph,
   isAutomationActionAllowedForEvent,
 } from "@repo/shared";
 import type { AutomationActionTypeValue } from "@repo/shared";
@@ -41,6 +43,7 @@ import {
   getDefaultActionConfig,
 } from "./automation-action-config-fields";
 import { useAutomationFlowCompileStableIds } from "./automation-flow-compile-meta-context";
+import { AutomationBranchingAuthoringPanel } from "./AutomationBranchingAuthoringPanel";
 import { AutomationFlowGraphPreview } from "./AutomationFlowGraphPreview";
 import type { AutomationDefinitionFormValues } from "../validation";
 import {
@@ -100,6 +103,10 @@ export function AutomationFlowCanvas(): React.ReactElement {
   const flowRef = useRef<ReactFlowInstance | null>(null);
   const triggers = useWatch({ control: form.control, name: "triggers" });
   const steps = useWatch({ control: form.control, name: "steps" });
+  const branchingCanvasAuthoring = useWatch({
+    control: form.control,
+    name: "branchingCanvasAuthoring",
+  });
 
   const slice = useMemo(
     () => ({ triggers: triggers ?? [], steps: steps ?? [] }),
@@ -165,6 +172,65 @@ export function AutomationFlowCanvas(): React.ReactElement {
   const automationBranchingEnabled = useEnvFeatureFlag(
     EnvFeature.AUTOMATION_BRANCHING,
   );
+
+  const startIfElseBranching = useCallback(() => {
+    const notify = getDefaultActionConfig("notification.send");
+    const g = compileIfElseFlowGraph({
+      conditions: [{ path: "total", operator: "gte", value: 1000 }],
+      trueStep: {
+        actionType: "notification.send",
+        actionConfig: notify,
+      },
+      falseStep: {
+        actionType: "notification.send",
+        actionConfig: getDefaultActionConfig("notification.send"),
+      },
+    });
+    form.setValue("branchingCanvasAuthoring", true, { shouldValidate: true });
+    form.setValue("preservedBranchingFlowGraph", g, { shouldValidate: true });
+    form.setValue("steps", [], { shouldValidate: true });
+    setSelectedStepIndex(null);
+  }, [form]);
+
+  const startSwitchBranching = useCallback(() => {
+    const caseStep = {
+      actionType: "notification.send" as const,
+      actionConfig: getDefaultActionConfig("notification.send"),
+    };
+    const g = compileSwitchFlowGraph({
+      discriminantPath: "region",
+      cases: [{ edgeKey: "east", step: caseStep }],
+      defaultStep: {
+        actionType: "notification.send",
+        actionConfig: getDefaultActionConfig("notification.send"),
+      },
+    });
+    form.setValue("branchingCanvasAuthoring", true, { shouldValidate: true });
+    form.setValue("preservedBranchingFlowGraph", g, { shouldValidate: true });
+    form.setValue("steps", [], { shouldValidate: true });
+    setSelectedStepIndex(null);
+  }, [form]);
+
+  const backToLinearSteps = useCallback(() => {
+    const first =
+      compatibleActionTypes[0] ??
+      ("notification.send" as AutomationActionTypeValue);
+    form.setValue("branchingCanvasAuthoring", false, { shouldValidate: true });
+    form.setValue("preservedBranchingFlowGraph", undefined, {
+      shouldValidate: true,
+    });
+    form.setValue(
+      "steps",
+      [
+        {
+          actionType: first,
+          actionConfig: getDefaultActionConfig(first),
+          continueOnError: false,
+        },
+      ],
+      { shouldValidate: true },
+    );
+  }, [compatibleActionTypes, form]);
 
   const flowCompileStableIds = useAutomationFlowCompileStableIds();
 
@@ -246,6 +312,31 @@ export function AutomationFlowCanvas(): React.ReactElement {
         >) ?? {})
       : {};
 
+  if (automationBranchingEnabled && branchingCanvasAuthoring) {
+    return (
+      <div className="flex min-h-[440px] flex-col gap-4 rounded-lg border bg-muted/20">
+        <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={backToLinearSteps}
+          >
+            Back to linear steps
+          </Button>
+        </div>
+        <AutomationBranchingAuthoringPanel
+          compatibleActionTypes={compatibleActionTypes}
+        />
+        <p className="px-3 text-xs text-muted-foreground">
+          Saving persists the previewed{" "}
+          <code className="rounded bg-muted px-0.5 text-[10px]">flowGraph</code>{" "}
+          with no separate linear steps.
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-[440px] flex-col gap-4 rounded-lg border bg-muted/20">
       <div className="h-[360px] w-full">
@@ -286,6 +377,26 @@ export function AutomationFlowCanvas(): React.ReactElement {
             >
               Add step
             </Button>
+            {automationBranchingEnabled ? (
+              <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={startIfElseBranching}
+                >
+                  If / else graph
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={startSwitchBranching}
+                >
+                  Switch graph
+                </Button>
+              </>
+            ) : null}
           </Panel>
         </ReactFlow>
       </div>
@@ -299,10 +410,15 @@ export function AutomationFlowCanvas(): React.ReactElement {
             <code className="rounded bg-muted px-0.5 text-[10px]">
               flowGraph
             </code>{" "}
-            compiled from this line.{" "}
-            <strong className="font-medium text-foreground">If</strong> /{" "}
-            <strong className="font-medium text-foreground">switch</strong>{" "}
-            nodes are added via the API for now.
+            compiled from this line. Use{" "}
+            <strong className="font-medium text-foreground">
+              If / else graph
+            </strong>{" "}
+            or{" "}
+            <strong className="font-medium text-foreground">
+              Switch graph
+            </strong>{" "}
+            on the canvas to author branching here.
           </p>
           <ReactFlowProvider>
             <AutomationFlowGraphPreview
@@ -314,7 +430,7 @@ export function AutomationFlowCanvas(): React.ReactElement {
       ) : null}
       <p className="px-3 text-xs text-muted-foreground">
         {automationBranchingEnabled
-          ? "Drag step cards horizontally to reorder. Saving persists the compiled graph shown above."
+          ? "Drag step cards horizontally to reorder, or start an If/else or Switch graph. Saving persists the graph shown above."
           : "Drag step cards horizontally to reorder. Branching (if/split) is not available yet—steps always run in order."}
       </p>
       {inspectorIndex != null && actionType ? (
