@@ -43,6 +43,8 @@ export interface CreateAutomationRunInput {
   actorUserId?: string | null;
   dedupeKey?: string | null;
   triggerPayload: Prisma.InputJsonValue;
+  /** Phase 3: frozen graph JSON at run start (resume / EC-12). */
+  flowGraphSnapshot?: Prisma.InputJsonValue | null;
   stepOutput?: Prisma.InputJsonValue | null;
   errorMessage?: string | null;
 }
@@ -443,6 +445,9 @@ export class AutomationRepository {
         actorUserId: input.actorUserId ?? null,
         dedupeKey: input.dedupeKey ?? null,
         triggerPayload: input.triggerPayload,
+        ...(input.flowGraphSnapshot !== undefined
+          ? { flowGraphSnapshot: input.flowGraphSnapshot }
+          : {}),
         stepOutput: input.stepOutput ?? null,
         errorMessage: input.errorMessage ?? null,
       },
@@ -459,6 +464,31 @@ export class AutomationRepository {
     return basePrisma.automationRun.update({
       where: { id },
       data,
+    });
+  }
+
+  /**
+   * LIVE graph: atomically persist `stepOutput` (branchDecisions + cursor) and
+   * create the RUNNING action run step — §8.2 / AT-RSU-005 (no half state between them).
+   */
+  async createGraphActionRunStepWithCheckpoint(input: {
+    runId: string;
+    stepOutput: Prisma.InputJsonValue;
+    graphNodeId: string;
+  }) {
+    return basePrisma.$transaction(async (tx) => {
+      await tx.automationRun.update({
+        where: { id: input.runId },
+        data: { stepOutput: input.stepOutput },
+      });
+      return tx.automationRunStep.create({
+        data: {
+          automationRunId: input.runId,
+          automationStepId: null,
+          graphNodeId: input.graphNodeId,
+          status: "RUNNING",
+        },
+      });
     });
   }
 

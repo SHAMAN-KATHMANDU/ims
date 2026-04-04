@@ -488,6 +488,39 @@ function graphEvalRoot(context: RuntimeContext): Record<string, unknown> {
   };
 }
 
+/** Persisted under `stepOutput.__automationGraph` for LIVE graph runs (§8.2). */
+function buildLiveGraphStepOutput(
+  context: RuntimeContext,
+  branchDecisions: Record<string, string>,
+  cursorNodeId: string | null,
+): Prisma.InputJsonValue {
+  const meta: Record<string, unknown> = {
+    branchDecisions: { ...branchDecisions },
+  };
+  if (cursorNodeId != null) {
+    meta.cursorNodeId = cursorNodeId;
+  }
+  return {
+    ...context.outputs,
+    __automationGraph: meta,
+  } as Prisma.InputJsonValue;
+}
+
+async function persistLiveGraphRunCheckpoint(
+  runId: string,
+  context: RuntimeContext,
+  branchDecisions: Record<string, string>,
+  cursorNodeId: string,
+): Promise<void> {
+  await automationRepository.updateRun(runId, {
+    stepOutput: buildLiveGraphStepOutput(
+      context,
+      branchDecisions,
+      cursorNodeId,
+    ),
+  });
+}
+
 async function finalizeGraphRunSuccess(
   runId: string,
   context: RuntimeContext,
@@ -495,10 +528,7 @@ async function finalizeGraphRunSuccess(
 ) {
   await automationRepository.updateRun(runId, {
     status: "SUCCEEDED",
-    stepOutput: {
-      ...context.outputs,
-      __automationGraph: { branchDecisions },
-    } as Prisma.InputJsonValue,
+    stepOutput: buildLiveGraphStepOutput(context, branchDecisions, null),
     completedAt: new Date(),
   });
 }
@@ -534,14 +564,18 @@ async function runLiveAutomationGraphBody(
         }
       >();
 
-  async function persistGraphFailureState(message: string): Promise<void> {
+  async function persistGraphFailureState(
+    message: string,
+    opts?: { failedActionNodeId?: string },
+  ): Promise<void> {
     await automationRepository.updateRun(runId, {
       status: "FAILED",
       errorMessage: message,
-      stepOutput: {
-        ...context.outputs,
-        __automationGraph: { branchDecisions },
-      } as Prisma.InputJsonValue,
+      stepOutput: buildLiveGraphStepOutput(
+        context,
+        branchDecisions,
+        opts?.failedActionNodeId ?? null,
+      ),
       completedAt: new Date(),
     });
   }
@@ -599,6 +633,17 @@ async function runLiveAutomationGraphBody(
         return await failGraphRun(`if node ${node.id} missing "${key}" edge`);
       }
       currentId = edge.toNodeId;
+      if (!resumeFrozenNodeIds.has(node.id)) {
+        const nextNode = nodesById.get(currentId);
+        if (nextNode?.kind !== "action") {
+          await persistLiveGraphRunCheckpoint(
+            runId,
+            context,
+            branchDecisions,
+            currentId,
+          );
+        }
+      }
       continue;
     }
 
@@ -649,6 +694,17 @@ async function runLiveAutomationGraphBody(
       }
       branchDecisions[node.id] = picked.edgeKey ?? "default";
       currentId = picked.toNodeId;
+      if (!resumeFrozenNodeIds.has(node.id)) {
+        const nextNode = nodesById.get(currentId);
+        if (nextNode?.kind !== "action") {
+          await persistLiveGraphRunCheckpoint(
+            runId,
+            context,
+            branchDecisions,
+            currentId,
+          );
+        }
+      }
       continue;
     }
 
@@ -675,12 +731,16 @@ async function runLiveAutomationGraphBody(
         currentId = outs[0]!.toNodeId;
         continue;
       } else if (!prev) {
-        const created = await automationRepository.createRunStep({
-          automationRunId: runId,
-          automationStepId: null,
-          graphNodeId: node.id,
-          status: "RUNNING",
-        });
+        const created =
+          await automationRepository.createGraphActionRunStepWithCheckpoint({
+            runId,
+            stepOutput: buildLiveGraphStepOutput(
+              context,
+              branchDecisions,
+              node.id,
+            ),
+            graphNodeId: node.id,
+          });
         runStepId = created.id;
       } else {
         const outs = outgoing.get(currentId) ?? [];
@@ -733,7 +793,9 @@ async function runLiveAutomationGraphBody(
         });
         existingByNodeId.set(node.id, { runStepId, status: "FAILED" });
         if (!continueOnError) {
-          await persistGraphFailureState(message);
+          await persistGraphFailureState(message, {
+            failedActionNodeId: node.id,
+          });
           if (error instanceof AutomationProcessingError) {
             throw error;
           }
@@ -751,7 +813,14 @@ async function runLiveAutomationGraphBody(
           `action node ${node.id} must have exactly one outgoing edge`,
         );
       }
-      currentId = outs[0]!.toNodeId;
+      const nextAfterAction = outs[0]!.toNodeId;
+      await persistLiveGraphRunCheckpoint(
+        runId,
+        context,
+        branchDecisions,
+        nextAfterAction,
+      );
+      currentId = nextAfterAction;
       continue;
     }
 
@@ -1011,6 +1080,7 @@ async function runMatchedAutomation(
   event: AutomationEventPayload,
   dedupeKey: string | null,
 ): Promise<void> {
+  const validatedGraph = parseValidatedFlowGraphFromDb(automation.flowGraph);
   const run = await createRunSafely({
     tenantId: event.tenantId,
     automationId: automation.id,
@@ -1023,6 +1093,9 @@ async function runMatchedAutomation(
     actorUserId: event.actorUserId,
     dedupeKey,
     triggerPayload: event.payload as Prisma.InputJsonValue,
+    ...(validatedGraph != null && automation.flowGraph != null
+      ? { flowGraphSnapshot: automation.flowGraph as Prisma.InputJsonValue }
+      : {}),
   });
   if (!run || run.status !== "RUNNING") {
     return;
@@ -1033,7 +1106,6 @@ async function runMatchedAutomation(
     return;
   }
 
-  const validatedGraph = parseValidatedFlowGraphFromDb(automation.flowGraph);
   if (validatedGraph) {
     await runLiveAutomationGraphBody(automation, event, run.id, validatedGraph);
     return;
@@ -1096,10 +1168,11 @@ export async function resumeFailedAutomationRunsForEvent(
 
     const event = eventRowToPayload(eventRow);
 
-    if (run.automation.flowGraph) {
-      const validatedGraph = parseValidatedFlowGraphFromDb(
-        run.automation.flowGraph,
-      );
+    const graphSourceForResume =
+      run.flowGraphSnapshot ?? run.automation.flowGraph;
+    if (graphSourceForResume) {
+      const validatedGraph =
+        parseValidatedFlowGraphFromDb(graphSourceForResume);
       if (!validatedGraph) continue;
 
       const rawOutput =

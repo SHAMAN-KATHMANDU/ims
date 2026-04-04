@@ -65,6 +65,8 @@ export interface AutomationRun {
   entityType: string;
   entityId: string;
   errorMessage?: string | null;
+  /** Phase 3: DAG body at run start; resume uses this when present (EC-12). */
+  flowGraphSnapshot?: unknown | null;
   stepOutput?: Record<string, unknown> | null;
   startedAt: string;
   completedAt?: string | null;

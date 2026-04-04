@@ -6,6 +6,7 @@ const mockFindMatchingDefinitions = vi.fn();
 const mockCreateRun = vi.fn();
 const mockFindRunByDedupeKey = vi.fn();
 const mockCreateRunStep = vi.fn();
+const mockCreateGraphActionRunStepWithCheckpoint = vi.fn();
 const mockUpdateRun = vi.fn();
 const mockUpdateRunStep = vi.fn();
 const mockMarkEventProcessed = vi.fn();
@@ -82,6 +83,8 @@ vi.mock("./automation.repository", () => ({
     createRun: (...args: unknown[]) => mockCreateRun(...args),
     findRunByDedupeKey: (...args: unknown[]) => mockFindRunByDedupeKey(...args),
     createRunStep: (...args: unknown[]) => mockCreateRunStep(...args),
+    createGraphActionRunStepWithCheckpoint: (...args: unknown[]) =>
+      mockCreateGraphActionRunStepWithCheckpoint(...args),
     updateRun: (...args: unknown[]) => mockUpdateRun(...args),
     updateRunStep: (...args: unknown[]) => mockUpdateRunStep(...args),
     markEventProcessed: (...args: unknown[]) => mockMarkEventProcessed(...args),
@@ -138,6 +141,9 @@ describe("automation.runtime", () => {
     mockClaimEventForProcessing.mockResolvedValue(true);
     mockCreateRun.mockResolvedValue({ id: "run-1", status: "RUNNING" });
     mockCreateRunStep.mockResolvedValue({ id: "run-step-1" });
+    mockCreateGraphActionRunStepWithCheckpoint.mockResolvedValue({
+      id: "run-step-1",
+    });
     mockUserFindFirst.mockResolvedValue({ id: "user-1" });
     mockContactUpdate.mockResolvedValue({ id: "contact-1" });
     mockCompanyUpdate.mockResolvedValue({ id: "company-1" });
@@ -542,12 +548,21 @@ describe("automation.runtime", () => {
 
     await processAutomationEventById("event-1");
 
-    expect(mockCreateRunStep).toHaveBeenCalledWith(
+    expect(mockCreateRun).toHaveBeenCalledWith(
       expect.objectContaining({
-        automationRunId: "run-1",
-        automationStepId: null,
+        flowGraphSnapshot: flowGraph,
+      }),
+    );
+    expect(mockCreateGraphActionRunStepWithCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "run-1",
         graphNodeId: actionNodeId,
-        status: "RUNNING",
+        stepOutput: expect.objectContaining({
+          __automationGraph: expect.objectContaining({
+            branchDecisions: {},
+            cursorNodeId: actionNodeId,
+          }),
+        }),
       }),
     );
     expect(mockCreateWorkItem).toHaveBeenCalledTimes(1);
@@ -563,6 +578,84 @@ describe("automation.runtime", () => {
       }),
     );
     expect(mockMarkEventProcessed).toHaveBeenCalledWith("event-1");
+  });
+
+  // AT-RSU-005 — transactional checkpoint + first action run step when routing leads to action.
+  it("LIVE if→action uses atomic graph checkpoint when creating the action run step", async () => {
+    const entryId = "f0f0f0f0-f0f0-40f0-80f0-f0f0f0f0f0f0";
+    const ifId = "f1f1f1f1-f1f1-41f1-81f1-f1f1f1f1f1f1";
+    const actionId = "f2f2f2f2-f2f2-42f2-82f2-f2f2f2f2f2f2";
+    const endId = "f3f3f3f3-f3f3-43f3-83f3-f3f3f3f3f3f3";
+
+    const flowGraph = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: ifId,
+          kind: "if" as const,
+          config: {
+            conditions: [
+              { path: "runHot", operator: "eq" as const, value: true },
+            ],
+          },
+        },
+        {
+          id: actionId,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Tx checkpoint",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        { id: endId, kind: "noop" as const },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: ifId },
+        { fromNodeId: ifId, toNodeId: actionId, edgeKey: "true" },
+        { fromNodeId: ifId, toNodeId: endId, edgeKey: "false" },
+        { fromNodeId: actionId, toNodeId: endId },
+      ],
+    };
+
+    mockFindEventById.mockResolvedValue({
+      ...baseEvent,
+      payload: { ...baseEvent.payload, runHot: true },
+    });
+
+    mockFindMatchingDefinitions.mockResolvedValue([
+      {
+        id: "auto-if-tx",
+        executionMode: "LIVE",
+        triggers: [
+          {
+            id: "trigger-1",
+            eventName: "inventory.stock.low_detected",
+            conditionGroups: null,
+          },
+        ],
+        steps: [],
+        flowGraph,
+      },
+    ]);
+
+    await processAutomationEventById("event-1");
+
+    expect(mockCreateGraphActionRunStepWithCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({
+        runId: "run-1",
+        graphNodeId: actionId,
+        stepOutput: expect.objectContaining({
+          __automationGraph: expect.objectContaining({
+            branchDecisions: { [ifId]: "true" },
+            cursorNodeId: actionId,
+          }),
+        }),
+      }),
+    );
   });
 
   it("executes LIVE if false path without running the true-branch action", async () => {
@@ -635,9 +728,9 @@ describe("automation.runtime", () => {
       expect.objectContaining({
         status: "SUCCEEDED",
         stepOutput: expect.objectContaining({
-          __automationGraph: {
+          __automationGraph: expect.objectContaining({
             branchDecisions: { [ifId]: "false" },
-          },
+          }),
         }),
       }),
     );
@@ -707,10 +800,9 @@ describe("automation.runtime", () => {
 
     await processAutomationEventById("event-1");
 
-    expect(mockCreateRunStep).toHaveBeenCalledWith(
+    expect(mockCreateGraphActionRunStepWithCheckpoint).toHaveBeenCalledWith(
       expect.objectContaining({
         graphNodeId: actionTrueId,
-        automationStepId: null,
       }),
     );
     expect(mockCreateWorkItem).toHaveBeenCalledTimes(1);
@@ -719,9 +811,9 @@ describe("automation.runtime", () => {
       expect.objectContaining({
         status: "SUCCEEDED",
         stepOutput: expect.objectContaining({
-          __automationGraph: {
+          __automationGraph: expect.objectContaining({
             branchDecisions: { [ifId]: "true" },
-          },
+          }),
         }),
       }),
     );
@@ -1037,10 +1129,9 @@ describe("automation.runtime", () => {
         title: "West branch",
       }),
     );
-    expect(mockCreateRunStep).toHaveBeenCalledWith(
+    expect(mockCreateGraphActionRunStepWithCheckpoint).toHaveBeenCalledWith(
       expect.objectContaining({
         graphNodeId: aWest,
-        automationStepId: null,
       }),
     );
     expect(mockUpdateRun).toHaveBeenCalledWith(
@@ -1048,9 +1139,9 @@ describe("automation.runtime", () => {
       expect.objectContaining({
         status: "SUCCEEDED",
         stepOutput: expect.objectContaining({
-          __automationGraph: {
+          __automationGraph: expect.objectContaining({
             branchDecisions: { [swId]: "west" },
-          },
+          }),
         }),
       }),
     );
@@ -1143,19 +1234,18 @@ describe("automation.runtime", () => {
     expect(mockCreateWorkItem).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Default only" }),
     );
-    expect(mockCreateRunStep).toHaveBeenCalledWith(
+    expect(mockCreateGraphActionRunStepWithCheckpoint).toHaveBeenCalledWith(
       expect.objectContaining({
         graphNodeId: aDefault,
-        automationStepId: null,
       }),
     );
     expect(mockUpdateRun).toHaveBeenCalledWith(
       "run-1",
       expect.objectContaining({
         stepOutput: expect.objectContaining({
-          __automationGraph: {
+          __automationGraph: expect.objectContaining({
             branchDecisions: { [swId]: "default" },
-          },
+          }),
         }),
       }),
     );
@@ -1341,13 +1431,16 @@ describe("automation.runtime", () => {
     expect(mockCreateWorkItem).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Coerced one" }),
     );
+    expect(mockCreateGraphActionRunStepWithCheckpoint).toHaveBeenCalledWith(
+      expect.objectContaining({ graphNodeId: aOne }),
+    );
     expect(mockUpdateRun).toHaveBeenCalledWith(
       "run-1",
       expect.objectContaining({
         stepOutput: expect.objectContaining({
-          __automationGraph: {
+          __automationGraph: expect.objectContaining({
             branchDecisions: { [swId]: "1" },
-          },
+          }),
         }),
       }),
     );
@@ -2013,5 +2106,91 @@ describe("automation.runtime", () => {
           ),
       ),
     ).toBe(true);
+  });
+
+  // AT-RSU-004 / EC-12 — resume uses frozen graph JSON from the run, not the latest definition.
+  it("resume uses bound flowGraphSnapshot when definition graph was edited", async () => {
+    const entryId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
+    const actionId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
+    const noopV1 = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
+    const noopV2 = "dddddddd-dddd-4ddd-8ddd-dddddddddddd";
+
+    const graphAtRunStart = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        {
+          id: actionId,
+          kind: "action" as const,
+          config: {
+            actionType: "workitem.create" as const,
+            actionConfig: {
+              title: "Bound graph task",
+              type: "TASK",
+              priority: "HIGH",
+            },
+          },
+        },
+        { id: noopV1, kind: "noop" as const },
+      ],
+      edges: [
+        { fromNodeId: entryId, toNodeId: actionId },
+        { fromNodeId: actionId, toNodeId: noopV1 },
+      ],
+    };
+
+    const graphLatestOnDefinition = {
+      nodes: [
+        { id: entryId, kind: "entry" as const },
+        { id: noopV2, kind: "noop" as const },
+      ],
+      edges: [{ fromNodeId: entryId, toNodeId: noopV2 }],
+    };
+
+    mockFindFailedLiveRunsForEventReplay.mockResolvedValue([
+      {
+        id: "run-bound-graph",
+        tenantId: "tenant-1",
+        automationEventId: "event-1",
+        status: "FAILED",
+        executionMode: "LIVE",
+        flowGraphSnapshot: structuredClone(graphAtRunStart),
+        stepOutput: {
+          __automationGraph: { branchDecisions: {} },
+        },
+        runSteps: [
+          {
+            id: "rs-action",
+            graphNodeId: actionId,
+            automationStepId: null,
+            status: "FAILED",
+            output: null,
+          },
+        ],
+        automation: {
+          id: "auto-edited",
+          status: "ACTIVE",
+          executionMode: "LIVE",
+          flowGraph: graphLatestOnDefinition,
+          steps: [],
+          triggers: [
+            {
+              id: "tr-1",
+              eventName: "inventory.stock.low_detected",
+              conditionGroups: null,
+            },
+          ],
+        },
+      },
+    ]);
+
+    mockFindEventById.mockResolvedValue(baseEvent);
+
+    const resumed = await resumeFailedAutomationRunsForEvent(
+      "tenant-1",
+      "event-1",
+    );
+
+    expect(resumed).toBe(1);
+    expect(mockCreateWorkItem).toHaveBeenCalledTimes(1);
   });
 });

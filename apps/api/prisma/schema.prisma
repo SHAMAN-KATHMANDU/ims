@@ -1512,6 +1512,8 @@ model AutomationRun {
   dedupeKey         String?             @map("dedupe_key") @db.VarChar(255)
   actorUserId       String?             @map("actor_user_id")
   triggerPayload    Json                @map("trigger_payload")
+  /// Phase 3: copy of `AutomationDefinition.flowGraph` at run start for resume (EC-12 / AT-RSU-004).
+  flowGraphSnapshot Json?               @map("flow_graph_snapshot")
   stepOutput        Json?               @map("step_output")
   errorMessage      String?             @map("error_message") @db.VarChar(2000)
   startedAt         DateTime            @default(now()) @map("started_at")
