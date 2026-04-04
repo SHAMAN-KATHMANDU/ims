@@ -730,4 +730,210 @@ describe("Automation API integration", () => {
       }
     },
   );
+
+  /** AT-MIG-001 — compiled linear chain: 1 entry + N actions, N edges (terminal action, no trailing noop). */
+  it.skipIf(!databaseUrlConfigured)(
+    "AT-MIG-001: persists compileLinearStepsToFlowGraph(N steps) as graph-only definition",
+    async () => {
+      const tenantId = randomUUID();
+      const userId = randomUUID();
+      const slug = `auto-mig1-${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const passwordHash = await hashPassword("automation-it-pass");
+      const triggerEvent = "crm.contact.created" as const;
+
+      await basePrisma.tenant.create({
+        data: {
+          id: tenantId,
+          name: "AT-MIG-001 Tenant",
+          slug,
+          plan: "STARTER",
+          isActive: true,
+          isTrial: false,
+          subscriptionStatus: "ACTIVE",
+        },
+      });
+
+      await basePrisma.user.create({
+        data: {
+          id: userId,
+          tenantId,
+          username: `admin-${slug}`,
+          password: passwordHash,
+          role: "admin",
+        },
+      });
+
+      const token = signAdminToken({ userId, tenantId, tenantSlug: slug });
+
+      const steps = [
+        {
+          actionType: "notification.send" as const,
+          actionConfig: {
+            type: "INFO" as const,
+            title: "A1",
+            message: "one",
+          },
+        },
+        {
+          actionType: "notification.send" as const,
+          actionConfig: {
+            type: "INFO" as const,
+            title: "A2",
+            message: "two",
+          },
+        },
+        {
+          actionType: "notification.send" as const,
+          actionConfig: {
+            type: "INFO" as const,
+            title: "A3",
+            message: "three",
+          },
+        },
+      ];
+
+      const flowGraph = compileLinearStepsToFlowGraph(steps, undefined);
+      const validated = parseAndValidateAutomationFlowGraph(flowGraph, [
+        triggerEvent,
+      ]);
+      expect(validated.ok).toBe(true);
+
+      const nodes = flowGraph.nodes;
+      const entryNodes = nodes.filter((n) => n.kind === "entry");
+      const actionNodes = nodes.filter((n) => n.kind === "action");
+      expect(entryNodes).toHaveLength(1);
+      expect(actionNodes).toHaveLength(3);
+      expect(flowGraph.edges).toHaveLength(3);
+
+      try {
+        const res = await apiRequest(app)
+          .post("/api/v1/automation/definitions")
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            name: `MIG001 ${slug.slice(0, 6)}`,
+            scopeType: "GLOBAL",
+            triggers: [{ eventName: triggerEvent }],
+            steps: [],
+            flowGraph,
+          });
+
+        expect(res.status).toBe(201);
+        const defId = res.body.data.automation.id as string;
+        expect(res.body.data.automation.steps?.length ?? 0).toBe(0);
+
+        const row = await basePrisma.automationDefinition.findUnique({
+          where: { id: defId },
+          include: { steps: true, triggers: true },
+        });
+        expect(row?.steps.length).toBe(0);
+        expect(row?.flowGraph).toBeTruthy();
+        expect(row?.triggers.some((t) => t.eventName === triggerEvent)).toBe(
+          true,
+        );
+      } finally {
+        await basePrisma.tenant.delete({ where: { id: tenantId } });
+      }
+    },
+  );
+
+  /** AT-MIG-002 / AT-MIG-003 — legacy body: steps only, no flowGraph; DB stays graph-free. */
+  it.skipIf(!databaseUrlConfigured)(
+    "AT-MIG-002/003: creates definition with linear steps only (legacy payload)",
+    async () => {
+      const tenantId = randomUUID();
+      const userId = randomUUID();
+      const slug = `auto-mig23-${randomUUID().replace(/-/g, "").slice(0, 12)}`;
+      const passwordHash = await hashPassword("automation-it-pass");
+      const triggerEvent = "inventory.stock.low_detected" as const;
+
+      await basePrisma.tenant.create({
+        data: {
+          id: tenantId,
+          name: "AT-MIG-002 Tenant",
+          slug,
+          plan: "STARTER",
+          isActive: true,
+          isTrial: false,
+          subscriptionStatus: "ACTIVE",
+        },
+      });
+
+      await basePrisma.user.create({
+        data: {
+          id: userId,
+          tenantId,
+          username: `admin-${slug}`,
+          password: passwordHash,
+          role: "admin",
+        },
+      });
+
+      const token = signAdminToken({ userId, tenantId, tenantSlug: slug });
+
+      const stepsPayload = [
+        {
+          actionType: "notification.send",
+          actionConfig: {
+            type: "INFO",
+            title: "First",
+            message: "legacy-1",
+          },
+        },
+        {
+          actionType: "notification.send",
+          actionConfig: {
+            type: "INFO",
+            title: "Second",
+            message: "legacy-2",
+          },
+        },
+      ];
+
+      try {
+        const res = await apiRequest(app)
+          .post("/api/v1/automation/definitions")
+          .set(withAuth(token))
+          .set("Content-Type", "application/json")
+          .send({
+            name: `MIG23 ${slug.slice(0, 6)}`,
+            scopeType: "GLOBAL",
+            triggers: [{ eventName: triggerEvent, delayMinutes: 0 }],
+            steps: stepsPayload,
+          });
+
+        expect(res.status).toBe(201);
+        expect(res.body.success).toBe(true);
+        const auto = res.body.data.automation;
+        const defId = auto.id as string;
+        expect(auto.steps?.length ?? 0).toBe(2);
+        expect(auto.flowGraph == null).toBe(true);
+
+        const getRes = await apiRequest(app)
+          .get(`/api/v1/automation/definitions/${defId}`)
+          .set(withAuth(token));
+
+        expect(getRes.status).toBe(200);
+        const fetched = getRes.body.data.automation;
+        expect(fetched.steps?.length ?? 0).toBe(2);
+        expect(fetched.flowGraph == null).toBe(true);
+        expect(
+          fetched.triggers?.some(
+            (t: { eventName: string }) => t.eventName === triggerEvent,
+          ),
+        ).toBe(true);
+
+        const row = await basePrisma.automationDefinition.findUnique({
+          where: { id: defId },
+          include: { steps: { orderBy: { stepOrder: "asc" } }, triggers: true },
+        });
+        expect(row?.tenantId).toBe(tenantId);
+        expect(row?.steps.length).toBe(2);
+        expect(row?.flowGraph == null).toBe(true);
+        expect(row?.triggers.length).toBeGreaterThanOrEqual(1);
+      } finally {
+        await basePrisma.tenant.delete({ where: { id: tenantId } });
+      }
+    },
+  );
 });

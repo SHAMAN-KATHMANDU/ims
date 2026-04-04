@@ -359,7 +359,9 @@ Use this table to find **where** a case is covered. Many AT-VAL rows are satisfi
 | AT-RSU-003                       | `validatePersistedBranchDecisionsForGraphResume` in `automation.runtime.ts` (unique path entry→failed action). Tests: `resume fails when branchDecisions omit if on unique path…`; corrupt switch/if keys. Ambiguous multi-path targets skip this check. |
 | AT-RSU-004, AT-EC-012            | `flowGraphSnapshot` on `AutomationRun`; resume prefers snapshot over definition `flowGraph` — test `resume uses bound flowGraphSnapshot when definition graph was edited`                                                                                |
 | AT-RSU-005                       | `createGraphActionRunStepWithCheckpoint` + `persistLiveGraphRunCheckpoint` in `automation.runtime.ts`; test `LIVE if→action uses atomic graph checkpoint when creating the action run step`                                                              |
-| AT-MIG-\_, AT-UI-001/003         | Not fully mapped here — add rows as tests land                                                                                                                                                                                                           |
+| AT-MIG-001                       | Integration: `AT-MIG-001: persists compileLinearStepsToFlowGraph(N steps)…` in `automation.integration.test.ts`                                                                                                                                          |
+| AT-MIG-002, AT-MIG-003           | Integration: `AT-MIG-002/003: creates definition with linear steps only…` (legacy payload + GET + Prisma)                                                                                                                                                |
+| AT-UI-001/003                    | Not fully mapped here — add rows as tests land                                                                                                                                                                                                           |
 
 ---
 
@@ -432,3 +434,4 @@ Use this table to find **where** a case is covered. Many AT-VAL rows are satisfi
 | 1.7     | 2026-04-04 | AT-RSU-003 resume preflight on unique path; corrupt resume attempts do not increment `resumed` count       |
 | 1.8     | 2026-04-04 | AT-RSU-004 / EC-12: `AutomationRun.flowGraphSnapshot`; resume binds to graph at run start (§8.1)           |
 | 1.9     | 2026-04-04 | AT-RSU-005: transactional checkpoint + first action run step; `cursorNodeId` in `__automationGraph` (§8.2) |
+| 1.10    | 2026-04-04 | AT-MIG-001–003 integration tests (linear→graph compile persist; legacy steps-only API)                     |
