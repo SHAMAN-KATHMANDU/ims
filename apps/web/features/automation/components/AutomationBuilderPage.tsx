@@ -219,8 +219,18 @@ export function AutomationBuilderPage() {
     };
   }, [editingLinearChainMeta]);
 
+  /** Inline `toFormValues(editing)` produced a new object every render → form.reset loop (React #185). */
+  const automationFormDefaultValues = useMemo(
+    () => (editing ? toFormValues(editing) : draftValues),
+    [editing, draftValues],
+  );
+
   const showAutomationForm =
     editing !== null || draftValues !== undefined || composerOpen;
+
+  /** Avoid two identical "Create automation" buttons (toolbar + empty state). */
+  const showEmptyDefinitionsCtas =
+    !isLoading && !definitionsError && (data?.automations.length ?? 0) === 0;
 
   const beginEditAutomation = (automation: AutomationDefinition) => {
     setEditing(automation);
@@ -339,16 +349,20 @@ export function AutomationBuilderPage() {
 
       <div className="space-y-8">
         <div className="space-y-4">
-          <div className="flex flex-wrap gap-2">
+          <div
+            className="flex flex-wrap gap-2"
+            data-testid="automation-builder-toolbar"
+          >
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search automations"
               className="min-w-[12rem] flex-1"
             />
-            {!showAutomationForm ? (
+            {!showAutomationForm && !showEmptyDefinitionsCtas ? (
               <Button
                 type="button"
+                data-testid="automation-open-create-composer"
                 onClick={() => {
                   setEditing(null);
                   setDraftValues(undefined);
@@ -633,6 +647,7 @@ export function AutomationBuilderPage() {
                   </Button>
                   <Button
                     type="button"
+                    data-testid="automation-open-create-composer"
                     onClick={() => {
                       setEditing(null);
                       setDraftValues(undefined);
@@ -658,7 +673,8 @@ export function AutomationBuilderPage() {
           <div className="rounded-lg border p-4">
             <h2 className="mb-3 font-medium">{title}</h2>
             <AutomationForm
-              defaultValues={editing ? toFormValues(editing) : draftValues}
+              key={editing?.id ?? (draftValues ? "draft" : "new")}
+              defaultValues={automationFormDefaultValues}
               linearFlowCompileStableIds={flowCompileStableIds}
               onSubmit={handleSubmit}
               isSubmitting={

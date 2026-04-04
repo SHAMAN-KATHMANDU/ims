@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useFormContext, useWatch } from "react-hook-form";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,39 +153,36 @@ export function AutomationBranchingAuthoringPanel({
     () => buildInitialSwitchExtract(preserved),
   );
 
-  const pushIfGraph = useCallback(() => {
-    const g = compileIfElseFlowGraph(
-      {
-        conditions: ifExtract.conditions,
-        trueStep: ifExtract.trueStep,
-        falseStep: ifExtract.falseStep,
-      },
-      ifExtract.ids,
-    );
-    form.setValue("preservedBranchingFlowGraph", g, { shouldValidate: true });
-    form.setValue("steps", [], { shouldValidate: true });
-  }, [form, ifExtract]);
-
-  const pushSwitchGraph = useCallback(() => {
-    const g = compileSwitchFlowGraph(
-      {
-        discriminantPath: switchExtract.discriminantPath,
-        cases: switchExtract.cases,
-        defaultStep: switchExtract.defaultStep,
-      },
-      switchExtract.ids,
-    );
-    form.setValue("preservedBranchingFlowGraph", g, { shouldValidate: true });
-    form.setValue("steps", [], { shouldValidate: true });
-  }, [form, switchExtract]);
-
   useEffect(() => {
-    if (kind === "if_else") {
-      pushIfGraph();
-    } else {
-      pushSwitchGraph();
+    const nextGraph =
+      kind === "if_else"
+        ? compileIfElseFlowGraph(
+            {
+              conditions: ifExtract.conditions,
+              trueStep: ifExtract.trueStep,
+              falseStep: ifExtract.falseStep,
+            },
+            ifExtract.ids,
+          )
+        : compileSwitchFlowGraph(
+            {
+              discriminantPath: switchExtract.discriminantPath,
+              cases: switchExtract.cases,
+              defaultStep: switchExtract.defaultStep,
+            },
+            switchExtract.ids,
+          );
+    const cur = form.getValues("preservedBranchingFlowGraph");
+    if (JSON.stringify(cur ?? null) === JSON.stringify(nextGraph)) {
+      return;
     }
-  }, [kind, pushIfGraph, pushSwitchGraph]);
+    form.setValue("preservedBranchingFlowGraph", nextGraph, {
+      shouldValidate: true,
+    });
+    if ((form.getValues("steps") ?? []).length > 0) {
+      form.setValue("steps", [], { shouldValidate: true });
+    }
+  }, [kind, ifExtract, switchExtract, form]);
 
   const previewGraph = useWatch({
     control: form.control,
