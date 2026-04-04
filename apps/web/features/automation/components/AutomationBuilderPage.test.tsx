@@ -214,6 +214,74 @@ describe("AutomationBuilderPage", () => {
     ).toBeInTheDocument();
   });
 
+  it("renders branch decisions using flowGraphSnapshot for node labels (AT-UI-003)", () => {
+    const ifNodeId = "00000000-0000-4000-8000-000000000021";
+    const noopThen = "00000000-0000-4000-8000-000000000022";
+    const noopElse = "00000000-0000-4000-8000-000000000023";
+    mockUseAutomationRuns.mockReturnValue({
+      data: {
+        runs: [
+          {
+            id: "run-branch",
+            eventName: "crm.deal.created",
+            status: "SUCCEEDED",
+            executionMode: "SHADOW",
+            entityType: "DEAL",
+            entityId: "deal-1",
+            stepOutput: {
+              __automationGraph: {
+                branchDecisions: { [ifNodeId]: "true" },
+              },
+            },
+            flowGraphSnapshot: {
+              nodes: [
+                {
+                  id: ifNodeId,
+                  kind: "if",
+                  config: {
+                    conditions: [
+                      { path: "total", operator: "gte", value: 1000 },
+                    ],
+                  },
+                },
+                { id: noopThen, kind: "noop" },
+                { id: noopElse, kind: "noop" },
+              ],
+              edges: [
+                {
+                  fromNodeId: ifNodeId,
+                  toNodeId: noopThen,
+                  edgeKey: "true",
+                },
+                {
+                  fromNodeId: ifNodeId,
+                  toNodeId: noopElse,
+                  edgeKey: "false",
+                },
+              ],
+            },
+            runSteps: [],
+          },
+        ],
+      },
+    });
+
+    render(<AutomationBuilderPage />);
+
+    expect(
+      screen.getByTestId("automation-run-branch-path-run-branch"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/If → Then \(conditions met\)/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId("automation-run-skipped-branches-run-branch"),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(/If → not taken: Else \(conditions not met\)/i),
+    ).toBeInTheDocument();
+  });
+
   it("opens automation templates dialog with descriptions and apply actions", () => {
     render(<AutomationBuilderPage />);
 

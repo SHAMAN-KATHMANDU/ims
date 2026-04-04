@@ -61,6 +61,54 @@ function humanizeBranchArm(nodeKind: string, key: string): string {
   return `Route: ${key}`;
 }
 
+/**
+ * For each routing node in `decisions`, lists outgoing arms from the graph that
+ * were not taken (single-path execution). Requires a parseable `flowGraph`
+ * with keyed edges from `if` / `switch` nodes.
+ */
+export function describeSkippedBranchArmsLines(
+  flowGraph: unknown | null | undefined,
+  decisions: Record<string, string>,
+): string[] {
+  const parsed = flowGraph
+    ? AutomationFlowGraphPayloadSchema.safeParse(flowGraph)
+    : null;
+  if (!parsed?.success) return [];
+
+  const { nodes, edges } = parsed.data;
+  const byId = new Map<string, GraphNode>();
+  for (const n of nodes) {
+    byId.set(n.id, n);
+  }
+
+  const keysByFrom = new Map<string, string[]>();
+  for (const e of edges) {
+    if (e.edgeKey == null || e.edgeKey === "") continue;
+    const k = String(e.edgeKey);
+    const list = keysByFrom.get(e.fromNodeId) ?? [];
+    list.push(k);
+    keysByFrom.set(e.fromNodeId, list);
+  }
+
+  const lines: string[] = [];
+  for (const [nodeId, chosenKey] of Object.entries(decisions)) {
+    const node = byId.get(nodeId);
+    if (!node || (node.kind !== "if" && node.kind !== "switch")) continue;
+
+    const armKeys = keysByFrom.get(nodeId);
+    if (!armKeys?.length) continue;
+
+    const nodeName = flowGraphNodeLabel(node);
+    const skipped = armKeys.filter((k) => k !== chosenKey);
+    for (const sk of skipped) {
+      lines.push(
+        `${nodeName} → not taken: ${humanizeBranchArm(node.kind, sk)}`,
+      );
+    }
+  }
+  return lines;
+}
+
 export function describeBranchDecisionLines(
   flowGraph: unknown | null | undefined,
   decisions: Record<string, string>,

@@ -21,6 +21,9 @@ export function AutomationsHubPage(): ReactElement {
   const base = workspace ? `/${workspace}` : "";
 
   const eventAutomationsEnabled = useEnvFeatureFlag(EnvFeature.AUTOMATION);
+  const automationBranchingEnabled = useEnvFeatureFlag(
+    EnvFeature.AUTOMATION_BRANCHING,
+  );
   const pipelineRulesEnv = useEnvFeatureFlag(EnvFeature.CRM_WORKFLOWS);
   const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
   const pipelineRulesEnabled = pipelineRulesEnv && salesPipelinePlan;
@@ -57,8 +60,29 @@ export function AutomationsHubPage(): ReactElement {
               </div>
               <CardDescription>
                 When something happens anywhere in the app—sales, inventory,
-                CRM, catalog—run steps in order: create tasks, send
-                notifications, update records, and more.
+                CRM, catalog—
+                {automationBranchingEnabled ? (
+                  <>
+                    run a{" "}
+                    <strong className="text-foreground">single path</strong>{" "}
+                    through your automation: linear steps, or (when you use the
+                    flow chart) one branch at each{" "}
+                    <code className="rounded bg-muted px-0.5 text-[11px]">
+                      if
+                    </code>{" "}
+                    or{" "}
+                    <code className="rounded bg-muted px-0.5 text-[11px]">
+                      switch
+                    </code>
+                    . Create tasks, send notifications, update records, and
+                    more.
+                  </>
+                ) : (
+                  <>
+                    run steps in order: create tasks, send notifications, update
+                    records, and more.
+                  </>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>

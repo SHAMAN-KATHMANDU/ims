@@ -68,6 +68,7 @@ import {
 import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 import {
   describeBranchDecisionLines,
+  describeSkippedBranchArmsLines,
   extractGraphBranchDecisions,
 } from "../utils/automation-flow-graph-view";
 
@@ -690,18 +691,44 @@ export function AutomationBuilderPage() {
                 topicLabel="Recent runs and retries"
                 sheetTitle="Recent runs and retries"
               >
-                <p>
-                  Failed runs can be retried in two ways:{" "}
-                  <strong>Full replay</strong> re-queues the original event from
-                  scratch (all matching automations may run again).{" "}
-                  <strong>Resume failed steps</strong> continues this run from
-                  the first failed linear step or graph action when you want to
-                  avoid duplicating work that already succeeded. Graph runs may
-                  show <strong>Branch decisions</strong> (frozen{" "}
-                  <code className="text-xs">if</code> /{" "}
-                  <code className="text-xs">switch</code> outcomes) on each row
-                  when the API recorded them.
-                </p>
+                <div className="space-y-3 text-sm">
+                  <p>
+                    Failed runs can be retried in two ways:{" "}
+                    <strong>Full replay</strong> re-queues the original event
+                    from scratch (all matching automations may run again).{" "}
+                    <strong>Resume failed steps</strong> continues <em>this</em>{" "}
+                    run from the first failed step—linear order for classic
+                    automations, or the next graph action after the last
+                    successful one when the definition uses a{" "}
+                    <code className="rounded bg-muted px-0.5 text-xs">
+                      flowGraph
+                    </code>
+                    .
+                  </p>
+                  <p>
+                    <strong>Graph runs and routing:</strong> once the system
+                    picks an <code className="text-xs">if</code> or{" "}
+                    <code className="text-xs">switch</code> branch, that choice
+                    is <strong>frozen</strong> for the rest of the run (and on
+                    resume). Changing the event payload before you resume does{" "}
+                    <strong>not</strong> re-evaluate branches. The automation
+                    also keeps the{" "}
+                    <strong>graph version from when the run started</strong>, so
+                    edits to the definition after the run began do not change
+                    how resume walks the graph.
+                  </p>
+                  <p>
+                    Treat retries like any automation: actions should be safe if
+                    run more than once (idempotency). If you are unsure, use{" "}
+                    <strong>Full replay</strong> only when you accept possible
+                    duplicate side effects, or fix the automation first.
+                  </p>
+                  <p>
+                    Rows may list <strong>Chosen path</strong> and{" "}
+                    <strong>Branches not taken</strong> when the API recorded
+                    routing metadata for a graph run.
+                  </p>
+                </div>
               </HelpTopicSheet>
             </div>
           </CardHeader>
@@ -720,13 +747,22 @@ export function AutomationBuilderPage() {
                   const branchDecisions = extractGraphBranchDecisions(
                     run.stepOutput ?? undefined,
                   );
+                  const graphForRunLabels =
+                    run.flowGraphSnapshot ?? definitionForRuns?.flowGraph;
                   const branchLines =
                     branchDecisions != null
                       ? describeBranchDecisionLines(
-                          definitionForRuns?.flowGraph,
+                          graphForRunLabels,
                           branchDecisions,
                         )
                       : null;
+                  const skippedBranchLines =
+                    branchDecisions != null
+                      ? describeSkippedBranchArmsLines(
+                          graphForRunLabels,
+                          branchDecisions,
+                        )
+                      : [];
                   return (
                     <div key={run.id} className="rounded-md border p-3">
                       <div className="flex items-center justify-between gap-2">
@@ -747,13 +783,30 @@ export function AutomationBuilderPage() {
                         <div
                           className="mt-2 space-y-0.5 text-xs text-muted-foreground"
                           title="Frozen routing choices for this graph run (BR-16)"
+                          data-testid={`automation-run-branch-path-${run.id}`}
                         >
                           <p className="font-medium text-foreground">
-                            Branch decisions
+                            Chosen path (routing)
                           </p>
                           <ul className="list-disc space-y-0.5 pl-4">
                             {branchLines.map((line, i) => (
                               <li key={`${run.id}-branch-${i}`}>{line}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                      {skippedBranchLines.length ? (
+                        <div
+                          className="mt-2 space-y-0.5 text-xs text-muted-foreground"
+                          title="Outgoing arms not executed on this run (single-path graph)"
+                          data-testid={`automation-run-skipped-branches-${run.id}`}
+                        >
+                          <p className="font-medium text-foreground">
+                            Branches not taken
+                          </p>
+                          <ul className="list-disc space-y-0.5 pl-4">
+                            {skippedBranchLines.map((line, i) => (
+                              <li key={`${run.id}-skip-${i}`}>{line}</li>
                             ))}
                           </ul>
                         </div>

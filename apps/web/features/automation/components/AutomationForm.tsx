@@ -308,6 +308,7 @@ export function AutomationForm({
                 size="sm"
                 variant={editorTab === "flow" ? "default" : "outline"}
                 onClick={() => setEditorTab("flow")}
+                data-testid="automation-editor-tab-flow-chart"
               >
                 Flow chart
               </Button>

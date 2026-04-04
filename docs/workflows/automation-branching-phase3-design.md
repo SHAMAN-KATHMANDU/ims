@@ -2,14 +2,14 @@
 
 | Field          | Value                                                                                                       |
 | -------------- | ----------------------------------------------------------------------------------------------------------- |
-| **Status**     | Draft — implementation pending                                                                              |
+| **Status**     | Active — Phase 3 DAG behind `AUTOMATION_BRANCHING`; §9 gates tracked below                                  |
 | **Audience**   | Backend, frontend, product, QA                                                                              |
 | **Scope**      | `AutomationDefinition` (event automations) only; excludes CRM `PipelineWorkflow`                            |
 | **Supersedes** | Informal notes in [`automation-branching-future.md`](./automation-branching-future.md) for normative detail |
 
 ### Executive summary
 
-This specification defines a **directed acyclic graph (DAG)** representation for automation bodies, adding **`if`** and **`switch`** routing while preserving today’s **trigger model**, **action handlers**, **LIVE/SHADOW** execution, and **tenant-scoped** behavior. Execution remains **strictly single-path** per run (no parallel branches or merge nodes in version 1). User-facing branch nodes and messaging **must not** ship until validation, runtime, persistence, tests, and run-history UX described herein are complete and protected by an explicit environment flag.
+This specification defines a **directed acyclic graph (DAG)** representation for automation bodies, adding **`if`** and **`switch`** routing while preserving today’s **trigger model**, **action handlers**, **LIVE/SHADOW** execution, and **tenant-scoped** behavior. Execution remains **strictly single-path** per run (no parallel branches or merge nodes in version 1). Graph authoring and non-null `flowGraph` persistence **must** stay behind **`AUTOMATION_BRANCHING`** (API + UI); run-history UX should surface **chosen path** and **branches not taken** when routing metadata exists (**§9**).
 
 ### Conformance
 
@@ -20,7 +20,7 @@ The key words **MUST**, **MUST NOT**, **SHOULD**, **SHOULD NOT**, and **MAY** ar
 - Runtime: [`apps/api/src/modules/automation/automation.runtime.ts`](../../apps/api/src/modules/automation/automation.runtime.ts)
 - Schemas: [`apps/api/src/modules/automation/automation.schema.ts`](../../apps/api/src/modules/automation/automation.schema.ts)
 - Persistence: [`apps/api/prisma/schema.prisma`](../../apps/api/prisma/schema.prisma) — `AutomationDefinition`, `AutomationStep`, `AutomationRun`, `AutomationRunStep`
-- Visual builder (linear today): [`AutomationFlowCanvas.tsx`](../../apps/web/features/automation/components/AutomationFlowCanvas.tsx)
+- Visual builder: [`AutomationFlowCanvas.tsx`](../../apps/web/features/automation/components/AutomationFlowCanvas.tsx) (linear reorder + optional if/switch when `AUTOMATION_BRANCHING` is on)
 
 ---
 
@@ -198,6 +198,8 @@ On failure or intentional pause, persist `cursorNodeId` and a serializable `bran
 
 **Edge cases:** Persist **branch decision and cursor** in the same transactional unit when possible so a crash cannot leave “decision taken” without an advanced cursor (or vice versa). **Implementation:** LIVE graph runs store `branchDecisions` and optional `cursorNodeId` under `stepOutput.__automationGraph`; when the next node after routing is an **`action`**, the run’s `stepOutput` update and the new `AutomationRunStep` (RUNNING) for that action are written in **one** DB transaction. Routing-to-non-action paths use an immediate checkpoint `updateRun` only. If resume starts at a **routing** node with no prior recorded decision for that node, **MUST** treat as corrupt state and fail the resume (do not guess). **Definition versioning:** resumed runs **MUST** execute against the **graph version bound at run start**; `graphNodeId` and `branchDecisions` **MUST** refer to that version, not the latest edited definition.
 
+**Operator summary (non-normative):** **Resume failed steps** continues the **same** automation run from the first failed step—linear step order for legacy definitions, or the next graph **action** after the last success when the body is a `flowGraph`. **Full replay** re-queues the original event from scratch so **all** automations that match the event may run again (possible duplicate side effects). For graph runs, **if/switch outcomes are frozen** after the first evaluation: changing the event payload before resume does **not** re-pick branches. **Edits to the definition after the run started** do not change that run; resume prefers `AutomationRun.flowGraphSnapshot` when present (**§8.1**, EC-12). Retried actions should be **idempotent** where possible. In-app copy: **Recent runs** help sheet on the event automations builder (`AutomationBuilderPage`).
+
 ### 8.3 Migration
 
 1. **Read path:** definitions without a graph continue to use the linear executor or a one-shot in-memory compilation to a canonical DAG.
@@ -208,14 +210,14 @@ On failure or intentional pause, persist `cursorNodeId` and a serializable `bran
 
 ## 9. Product and engineering gates
 
-The following **SHALL** be satisfied before exposing branch nodes in [`AutomationFlowCanvas`](../../apps/web/features/automation/components/AutomationFlowCanvas.tsx) or equivalent:
+The following **SHALL** be satisfied before treating branching as **generally available** in a given deployment (branch nodes in [`AutomationFlowCanvas`](../../apps/web/features/automation/components/AutomationFlowCanvas.tsx) **must** remain off unless `AUTOMATION_BRANCHING` is enabled):
 
-- [ ] Create/update paths validate graph payloads (§6).
-- [ ] LIVE and SHADOW graph execution covered by automated tests.
-- [ ] Run detail UI surfaces **chosen path** and **skipped** subgraphs in a user-comprehensible manner.
-- [ ] Resume behavior documented for operators and enforced in code (§8.2).
-- [ ] `AUTOMATION_BRANCHING` environment flag enforced in API and UI, additive to the visual builder flag.
-- [ ] User-facing copy updated wherever “steps always run in order” is no longer accurate.
+- [x] Create/update paths validate graph payloads (§6) — shared Zod + `parseAndValidateAutomationFlowGraph`; API schema; dual-authority rejected (**AT-VAL-019**).
+- [x] LIVE and SHADOW graph execution covered by automated tests — **`automation.runtime.test.ts`** + **§10.2–10.3** rows; integration spot-checks.
+- [x] Run detail UI surfaces **chosen path** and **skipped** arms — **Recent runs**: “Chosen path (routing)” + “Branches not taken” from `describeBranchDecisionLines` / `describeSkippedBranchArmsLines` (`automation-flow-graph-view.ts`, `flowGraphSnapshot` **§8.1**); **AT-UI-003**.
+- [x] Resume behavior documented for operators and enforced in code (§8.2) — **§8.2** operator summary + in-app help sheet; runtime resume + **AT-RSU-\***.
+- [x] `AUTOMATION_BRANCHING` enforced in **API** and **UI** — API: [`automation.controller.ts`](../../apps/api/src/modules/automation/automation.controller.ts) returns 404 for non-null `flowGraph` on create/update when the flag is off; UI: canvas if/switch controls and `buildPayload` graph saves gated by `useEnvFeatureFlag(EnvFeature.AUTOMATION_BRANCHING)`; **AT-UI-001** E2E (`e2e/automation/event-automations.spec.ts` with `E2E_AUTOMATION_BRANCHING_OFF=1`).
+- [x] User-facing copy is **flag-aware** — hub, onboarding, and canvas helper text distinguish linear-only vs single-path with branching (`AutomationsHubPage`, `automation-onboarding`, `AutomationFlowCanvas`).
 
 ---
 
@@ -315,7 +317,7 @@ Each row is one automatable case. **Trace** maps to §2 (BR / V), §14 (EC), or 
 | --------- | ----- | ----- | -------------------------------- | ----------------------------------------------------------------------- |
 | AT-UI-001 | E     | BR-17 | `AUTOMATION_BRANCHING` disabled  | No branch palette / no branch-node create path that hits graph API      |
 | AT-UI-002 | E     | BR-17 | `AUTOMATION_BRANCHING` enabled   | User can author `if`/`switch` per product UX; persisted graph validates |
-| AT-UI-003 | E     | §9    | Run detail view for branched run | Shows chosen path and skipped arms in line with gate checklist          |
+| AT-UI-003 | E / U | §9    | Run detail view for branched run | E2E (mocked API) + unit tests; shows chosen path and branches not taken |
 
 ### 10.7 Edge-case acceptance (maps 1:1 to §14)
 
@@ -361,7 +363,35 @@ Use this table to find **where** a case is covered. Many AT-VAL rows are satisfi
 | AT-RSU-005                       | `createGraphActionRunStepWithCheckpoint` + `persistLiveGraphRunCheckpoint` in `automation.runtime.ts`; test `LIVE if→action uses atomic graph checkpoint when creating the action run step`                                                              |
 | AT-MIG-001                       | Integration: `AT-MIG-001: persists compileLinearStepsToFlowGraph(N steps)…` in `automation.integration.test.ts`                                                                                                                                          |
 | AT-MIG-002, AT-MIG-003           | Integration: `AT-MIG-002/003: creates definition with linear steps only…` (legacy payload + GET + Prisma)                                                                                                                                                |
-| AT-UI-001/003                    | Not fully mapped here — add rows as tests land                                                                                                                                                                                                           |
+| AT-UI-001                        | E2E `e2e/automation/event-automations.spec.ts` — branching-off project (`E2E_AUTOMATION_BRANCHING_OFF=1`)                                                                                                                                                |
+| AT-UI-002                        | E2E same file — if/switch buttons + branching authoring `data-testid`s                                                                                                                                                                                   |
+| AT-UI-003                        | Unit + E2E: `AutomationBuilderPage.test.tsx`; `automation-flow-graph-view.test.ts`; Playwright `e2e/automation/event-automations.spec.ts` (mocked definitions + runs API)                                                                                |
+
+### 10.9 AT-ID coverage matrix (audit)
+
+Use this as a **rollup** of where each catalog ID is satisfied. **Aliases (AT-EC-\*)** are satisfied when the underlying AT-VAL / AT-LIV / AT-RSU row is. **Gaps** are optional hardening (add a named test or keep as code-review checklist).
+
+| Range              | Primary evidence                                                                                                                                                                                                                                                                                                                                                                      | Notes                                                                                                                                                                                                        |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **AT-VAL-001–029** | `packages/shared/src/automation/automation-flow-graph.test.ts` (`validateAutomationFlowGraphStructure`, cycle / if / switch edge shapes); `apps/web/features/automation/validation.test.ts` (`AutomationDefinitionFormSchema`, `parseAndValidateAutomationFlowGraph`); `apps/api/tests/integration/api/automation.integration.test.ts` (dual authority **AT-VAL-019**, graph persist) | Spot-check that every V-\* row has a matching negative or positive in shared tests; **AT-VAL-025** (template whitelist on graph strings) — confirm explicit case in validation tests if not already present. |
+| **AT-LIV-001–002** | `automation.runtime.test.ts` — `executes LIVE if false path…`, `executes LIVE if true path…`                                                                                                                                                                                                                                                                                          |                                                                                                                                                                                                              |
+| **AT-LIV-003**     | Same — `executes LIVE switch on matching edge key…` (west = second non-default key in edge order)                                                                                                                                                                                                                                                                                     |                                                                                                                                                                                                              |
+| **AT-LIV-004**     | Comment `AT-LIV-004` — LIVE + SHADOW numeric discriminant coercion tests                                                                                                                                                                                                                                                                                                              |                                                                                                                                                                                                              |
+| **AT-LIV-005–006** | _Partial_ — coercion semantics covered by **AT-LIV-004** + switch matcher; add explicit `null` / boolean discriminant tests if product wants row-level tags                                                                                                                                                                                                                           |                                                                                                                                                                                                              |
+| **AT-LIV-007**     | `LIVE switch follows default edge when discriminant matches no other key`                                                                                                                                                                                                                                                                                                             |                                                                                                                                                                                                              |
+| **AT-LIV-008**     | _Gap_ — no-default switch failure at runtime: validation **SHOULD** require `default`; if enforced at validate time, runtime case may be unreachable — document or add integration test                                                                                                                                                                                               |                                                                                                                                                                                                              |
+| **AT-LIV-009–011** | `LIVE switch fails when discriminant is a non-scalar object`; SHADOW variant; array / missing path — confirm dedicated tests or extend object test                                                                                                                                                                                                                                    |                                                                                                                                                                                                              |
+| **AT-LIV-012**     | _Gap_ — explicit `if` condition throw → run failed: add named test if not covered by condition-engine tests                                                                                                                                                                                                                                                                           |                                                                                                                                                                                                              |
+| **AT-LIV-013–015** | _Partial_ — graph `continueOnError` / hard fail: linear + webhook tests exist; **dedicated LIVE graph action** fail/soft-fail rows are good follow-ups                                                                                                                                                                                                                                |                                                                                                                                                                                                              |
+| **AT-LIV-016**     | _Gap_ — `visitedCount` safety cap: fault-injection or unit test on walker guard                                                                                                                                                                                                                                                                                                       |                                                                                                                                                                                                              |
+| **AT-LIV-017**     | `executes LIVE linear flowGraph and sets graphNodeId on run steps` (multi-action path)                                                                                                                                                                                                                                                                                                |                                                                                                                                                                                                              |
+| **AT-LIV-018**     | Covered by switch order tests where non-default wins over `default` (see **AT-LIV-003** / **EC-14** commentary in runtime tests)                                                                                                                                                                                                                                                      |                                                                                                                                                                                                              |
+| **AT-SHD-001–004** | `automation.runtime.test.ts` SHADOW describe block                                                                                                                                                                                                                                                                                                                                    |                                                                                                                                                                                                              |
+| **AT-RSU-001–005** | Resume + corrupt-key + snapshot tests in `automation.runtime.test.ts`; **AT-RSU-005** checkpoint test                                                                                                                                                                                                                                                                                 |                                                                                                                                                                                                              |
+| **AT-MIG-001–003** | `automation.integration.test.ts`                                                                                                                                                                                                                                                                                                                                                      |                                                                                                                                                                                                              |
+| **AT-UI-001–003**  | `e2e/automation/event-automations.spec.ts` (+ **AT-UI-003** unit tests); CI job **e2e-web-automation** runs branching-on then branching-off                                                                                                                                                                                                                                           |                                                                                                                                                                                                              |
+
+**Future / non-blocking product work:** richer “skipped **subgraph**” visualization (downstream of untaken arms); **BR-25** optional routing path log; **Option A** normalized graph tables (**§3**); batch **§8.3** linear→graph migration job.
 
 ---
 
@@ -422,16 +452,18 @@ Use this table to find **where** a case is covered. Many AT-VAL rows are satisfi
 
 ## Document control
 
-| Version | Date       | Authoring notes                                                                                            |
-| ------- | ---------- | ---------------------------------------------------------------------------------------------------------- |
-| 1.0     | 2026-04-03 | Initial                                                                                                    |
-| 1.1     | 2026-04-03 | Restructure: summary tables, merged sections                                                               |
-| 1.2     | 2026-04-03 | RFC 2119 conformance, requirements IDs, glossary, risks, phased delivery, professional metadata            |
-| 1.3     | 2026-04-03 | Edge cases §14; BR-18–BR-25; V-8–V-12; §7.1 completion semantics; switch coercion; resume/versioning       |
-| 1.4     | 2026-04-03 | §10 individual test catalog (AT-VAL-_, AT-LIV-_, AT-SHD-_, AT-RSU-_, AT-MIG-_, AT-UI-_, AT-EC-\*)          |
-| 1.5     | 2026-04-04 | §10.8 traceability index; canvas if/switch authoring (canonical graph); SHADOW switch coercion test tag    |
-| 1.6     | 2026-04-04 | §10.8 AT-RSU resume rows; runtime tests for corrupt frozen switch/if keys (AT-RSU-003 partial)             |
-| 1.7     | 2026-04-04 | AT-RSU-003 resume preflight on unique path; corrupt resume attempts do not increment `resumed` count       |
-| 1.8     | 2026-04-04 | AT-RSU-004 / EC-12: `AutomationRun.flowGraphSnapshot`; resume binds to graph at run start (§8.1)           |
-| 1.9     | 2026-04-04 | AT-RSU-005: transactional checkpoint + first action run step; `cursorNodeId` in `__automationGraph` (§8.2) |
-| 1.10    | 2026-04-04 | AT-MIG-001–003 integration tests (linear→graph compile persist; legacy steps-only API)                     |
+| Version | Date       | Authoring notes                                                                                                            |
+| ------- | ---------- | -------------------------------------------------------------------------------------------------------------------------- |
+| 1.0     | 2026-04-03 | Initial                                                                                                                    |
+| 1.1     | 2026-04-03 | Restructure: summary tables, merged sections                                                                               |
+| 1.2     | 2026-04-03 | RFC 2119 conformance, requirements IDs, glossary, risks, phased delivery, professional metadata                            |
+| 1.3     | 2026-04-03 | Edge cases §14; BR-18–BR-25; V-8–V-12; §7.1 completion semantics; switch coercion; resume/versioning                       |
+| 1.4     | 2026-04-03 | §10 individual test catalog (AT-VAL-_, AT-LIV-_, AT-SHD-_, AT-RSU-_, AT-MIG-_, AT-UI-_, AT-EC-\*)                          |
+| 1.5     | 2026-04-04 | §10.8 traceability index; canvas if/switch authoring (canonical graph); SHADOW switch coercion test tag                    |
+| 1.6     | 2026-04-04 | §10.8 AT-RSU resume rows; runtime tests for corrupt frozen switch/if keys (AT-RSU-003 partial)                             |
+| 1.7     | 2026-04-04 | AT-RSU-003 resume preflight on unique path; corrupt resume attempts do not increment `resumed` count                       |
+| 1.8     | 2026-04-04 | AT-RSU-004 / EC-12: `AutomationRun.flowGraphSnapshot`; resume binds to graph at run start (§8.1)                           |
+| 1.9     | 2026-04-04 | AT-RSU-005: transactional checkpoint + first action run step; `cursorNodeId` in `__automationGraph` (§8.2)                 |
+| 1.10    | 2026-04-04 | AT-MIG-001–003 integration tests (linear→graph compile persist; legacy steps-only API)                                     |
+| 1.11    | 2026-04-04 | §9 gates closed on paper: run-detail chosen path + skipped arms, flag-aware copy, §8.2 operator summary, AT-UI E2E mapping |
+| 1.12    | 2026-04-04 | §10.9 AT-ID coverage matrix; AT-UI-003 Playwright + CI job **e2e-web-automation** (branching on/off)                       |

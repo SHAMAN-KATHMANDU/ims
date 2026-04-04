@@ -222,6 +222,80 @@ jobs:
       - name: Type check
         run: pnpm run check-types
 
+  e2e-web-automation:
+    name: E2E Web (automation)
+    runs-on: self-hosted
+    timeout-minutes: 45
+    needs: [changes]
+    if: needs.changes.outputs.web == 'true' || needs.changes.outputs.shared == 'true'
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: ims_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+      REDIS_URL: redis://localhost:6379
+      JWT_SECRET: test-jwt-secret-for-ci
+      NODE_ENV: development
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build shared and API
+        run: |
+          pnpm --filter @repo/shared build
+          pnpm --filter api exec prisma generate
+          pnpm --filter api exec prisma migrate deploy
+          pnpm --filter api exec prisma db seed
+          pnpm --filter api build
+      - name: Install Playwright Chromium
+        run: pnpm --filter web exec playwright install chromium
+      - name: Start API and run automation E2E
+        run: |
+          set -e
+          pnpm --filter api start &
+          API_PID=$!
+          for i in $(seq 1 90); do
+            if curl -sf http://127.0.0.1:4000/health > /dev/null; then
+              echo "API healthy"
+              break
+            fi
+            if [ "$i" -eq 90 ]; then
+              echo "API did not become healthy in time"
+              kill "$API_PID" 2>/dev/null || true
+              exit 1
+            fi
+            sleep 1
+          done
+          pnpm --filter web run test:e2e:automation:branching-on
+          E2E_AUTOMATION_BRANCHING_OFF=1 pnpm --filter web exec playwright test e2e/automation/event-automations.spec.ts --grep AT-UI-001
+          kill "$API_PID" 2>/dev/null || true
+          wait "$API_PID" 2>/dev/null || true
+
   trivy:
     name: Trivy security scan
     runs-on: self-hosted

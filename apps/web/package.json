@@ -16,7 +16,9 @@
     "test:unit": "vitest run",
     "test:smoke": "vitest run && playwright test",
     "test:e2e": "playwright test",
-    "test:e2e:headed": "playwright test --headed"
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:automation": "playwright test e2e/automation/event-automations.spec.ts",
+    "test:e2e:automation:branching-on": "playwright test e2e/automation/event-automations.spec.ts --grep-invert AT-UI-001"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

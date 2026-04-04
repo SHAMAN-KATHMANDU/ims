@@ -314,7 +314,10 @@ export function AutomationFlowCanvas(): React.ReactElement {
 
   if (automationBranchingEnabled && branchingCanvasAuthoring) {
     return (
-      <div className="flex min-h-[440px] flex-col gap-4 rounded-lg border bg-muted/20">
+      <div
+        className="flex min-h-[440px] flex-col gap-4 rounded-lg border bg-muted/20"
+        data-testid="automation-branching-authoring"
+      >
         <div className="flex flex-wrap items-center gap-2 border-b px-3 py-2">
           <Button
             type="button"
@@ -338,7 +341,10 @@ export function AutomationFlowCanvas(): React.ReactElement {
   }
 
   return (
-    <div className="flex min-h-[440px] flex-col gap-4 rounded-lg border bg-muted/20">
+    <div
+      className="flex min-h-[440px] flex-col gap-4 rounded-lg border bg-muted/20"
+      data-testid="automation-flow-canvas"
+    >
       <div className="h-[360px] w-full">
         <ReactFlow
           nodes={nodes}
@@ -384,6 +390,7 @@ export function AutomationFlowCanvas(): React.ReactElement {
                   size="sm"
                   variant="outline"
                   onClick={startIfElseBranching}
+                  data-testid="automation-flow-if-else-graph"
                 >
                   If / else graph
                 </Button>
@@ -392,6 +399,7 @@ export function AutomationFlowCanvas(): React.ReactElement {
                   size="sm"
                   variant="outline"
                   onClick={startSwitchBranching}
+                  data-testid="automation-flow-switch-graph"
                 >
                   Switch graph
                 </Button>
@@ -430,8 +438,8 @@ export function AutomationFlowCanvas(): React.ReactElement {
       ) : null}
       <p className="px-3 text-xs text-muted-foreground">
         {automationBranchingEnabled
-          ? "Drag step cards horizontally to reorder, or start an If/else or Switch graph. Saving persists the graph shown above."
-          : "Drag step cards horizontally to reorder. Branching (if/split) is not available yet—steps always run in order."}
+          ? "Drag step cards horizontally to reorder, or start an If/else or Switch graph. Saving persists the graph shown above. Each run follows one branch path through routing nodes."
+          : "Drag step cards horizontally to reorder. Conditional branching is off in this environment—steps are saved and executed in list order."}
       </p>
       {inspectorIndex != null && actionType ? (
         <div className="space-y-3 border-t bg-card px-3 py-3">
