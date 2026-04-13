@@ -73,7 +73,107 @@ model Tenant {
   messagingChannels MessagingChannel[]
   conversations     Conversation[]
 
+  // Domain / public site relations
+  domains    TenantDomain[]
+  siteConfig SiteConfig?
+
   @@map("tenants")
+}
+
+// ============================================
+// TENANT DOMAINS & PUBLIC SITE
+// ============================================
+
+model TenantDomain {
+  id           String             @id @default(uuid())
+  tenantId     String             @map("tenant_id")
+  hostname     String             @unique // e.g. "www.acme.com", "ims.acme.com"
+  appType      TenantDomainApp    @map("app_type")
+  isPrimary    Boolean            @default(false) @map("is_primary")
+  verifyToken  String             @map("verify_token")
+  verifiedAt   DateTime?          @map("verified_at")
+  tlsStatus    TenantDomainTls    @default(PENDING) @map("tls_status")
+  tlsLastError String?            @map("tls_last_error")
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([appType])
+  @@map("tenant_domains")
+}
+
+enum TenantDomainApp {
+  WEBSITE
+  IMS
+  API
+}
+
+enum TenantDomainTls {
+  PENDING
+  ACTIVE
+  FAILED
+}
+
+model SiteConfig {
+  id          String   @id @default(uuid())
+  tenantId    String   @unique @map("tenant_id")
+  /// Platform-level flag: this tenant is allowed to use the website feature.
+  /// Toggled by platformAdmin; tenant admins cannot flip this.
+  websiteEnabled Boolean  @default(false) @map("website_enabled")
+  /// Which template (theme) this tenant picked. Null until first choice.
+  templateId  String?  @map("template_id")
+  /// Branding: { name, tagline, logoUrl, faviconUrl, colors: {...}, theme }
+  branding    Json?
+  /// Contact: { email, phone, address, mapUrl, socials: {...} }
+  contact     Json?
+  /// Feature flags: { showProducts, showArticles, showShowrooms, ... }
+  features    Json?
+  /// SEO defaults: { title, description, ogImage, keywords }
+  seo         Json?
+  /// Tenant has clicked "publish" — only published sites are served publicly.
+  isPublished Boolean  @default(false) @map("is_published")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  template SiteTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  @@index([templateId])
+  @@map("site_configs")
+}
+
+/// Catalog of website templates (minimal, luxury, standard, ...).
+/// Managed by platformAdmin; tenants pick one and customize via SiteConfig.
+model SiteTemplate {
+  id              String              @id @default(uuid())
+  slug            String              @unique // "minimal", "luxury", "standard"
+  name            String              // Display name: "Minimal", "Luxury"
+  description     String?
+  tier            SiteTemplateTier    @default(STANDARD)
+  previewImageUrl String?             @map("preview_image_url")
+  /// Default branding payload applied when a tenant first picks this template.
+  /// Shape: { colors: {...}, theme, typography: {...} }
+  defaultBranding Json?               @map("default_branding")
+  /// Default section toggles: { hero, products, showrooms, articles, contact, ... }
+  defaultSections Json?               @map("default_sections")
+  isActive        Boolean             @default(true) @map("is_active")
+  sortOrder       Int                 @default(0) @map("sort_order")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  siteConfigs SiteConfig[]
+
+  @@index([isActive, sortOrder])
+  @@map("site_templates")
+}
+
+enum SiteTemplateTier {
+  MINIMAL
+  STANDARD
+  LUXURY
+  BOUTIQUE
 }
 
 enum PlanTier {

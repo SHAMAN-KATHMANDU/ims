@@ -5,6 +5,7 @@ import { requireEnv } from "./utils";
 import { createEmptyContext } from "./types";
 import { deleteTenantBySlug } from "./cleanup";
 import { seedPlanLimits } from "./01-plan-limits.seed";
+import { seedSiteTemplates } from "./01b-site-templates.seed";
 import { seedSystemTenant } from "./02-system-tenant.seed";
 import { seedTenant } from "./03-tenants.seed";
 import { seedUsers } from "./04-users.seed";
@@ -239,6 +240,7 @@ async function seedPlatformAndPlanLimits(): Promise<void> {
   );
 
   await seedPlanLimits(prisma);
+  await seedSiteTemplates(prisma);
   await seedSystemTenant(
     prisma,
     PLATFORM_ADMIN_USERNAME,

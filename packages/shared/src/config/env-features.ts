@@ -58,6 +58,12 @@ export enum EnvFeature {
   PASSWORD_RESETS = "PASSWORD_RESETS",
   TRANSFER_REQUEST = "TRANSFER_REQUEST",
   MESSAGING = "MESSAGING",
+  /**
+   * Multi-tenant website feature: domain management, template picker,
+   * tenant site editor, and the public /public/* read API. Gated to
+   * development + staging while the feature is being validated.
+   */
+  TENANT_WEBSITES = "TENANT_WEBSITES",
 }
 
 /**
@@ -101,6 +107,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
     MESSAGING: true,
+    TENANT_WEBSITES: true,
   },
   staging: {
     CRM: true,
@@ -138,6 +145,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
     MESSAGING: true,
+    TENANT_WEBSITES: true,
   },
   "staging-production": {
     CRM: true,
@@ -175,6 +183,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
     MESSAGING: false,
+    TENANT_WEBSITES: false,
   },
   production: {
     CRM: true,
@@ -212,6 +221,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     PASSWORD_RESETS: true,
     TRANSFER_REQUEST: true,
     MESSAGING: false,
+    TENANT_WEBSITES: false,
   },
 };
 

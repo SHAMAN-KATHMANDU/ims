@@ -48,6 +48,8 @@ import messagingChannelRouter from "@/modules/messaging-channels/messaging-chann
 import messagingRouter from "@/modules/messaging/messaging.router";
 import trashRouter from "@/modules/trash/trash.router";
 import tenantSettingsRouter from "@/modules/tenant-settings/tenant-settings.router";
+import sitesRouter from "@/modules/sites/sites.router";
+import publicSiteRouter from "@/modules/public-site/public-site.router";
 
 const router = Router();
 
@@ -67,6 +69,11 @@ router.use("/webhooks", webhookRouter);
 // Auth routes (no tenant middleware; tenant from X-Tenant-Slug)
 // ============================================
 router.use("/auth", authRouter);
+
+// ============================================
+// Public website routes (no JWT; tenant resolved from Host header)
+// ============================================
+router.use("/public", publicSiteRouter);
 
 // ============================================
 // Tenant-scoped routes
@@ -102,6 +109,7 @@ router.use("/notifications", notificationRouter);
 router.use("/crm", crmRouter);
 router.use("/crm-settings", crmSettingsRouter);
 router.use("/tenant-settings", tenantSettingsRouter);
+router.use("/sites", sitesRouter);
 router.use("/workflows", workflowRouter);
 router.use("/trash", trashRouter);
 router.use("/messaging-channels", messagingChannelRouter);

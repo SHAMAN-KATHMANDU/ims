@@ -16,6 +16,7 @@ import {
   type PlanTier,
 } from "../hooks/use-tenants";
 import { TenantForm } from "./components/TenantForm";
+import { TenantNavTabs } from "@/features/sites";
 import {
   Card,
   CardContent,
@@ -356,6 +357,12 @@ export function EditTenantPage() {
           {tenant.name} ({tenant.slug})
         </p>
       </div>
+
+      <TenantNavTabs
+        workspace={String(params.workspace ?? "")}
+        tenantId={tenant.id}
+        active="edit"
+      />
 
       <TenantForm
         mode="edit"
