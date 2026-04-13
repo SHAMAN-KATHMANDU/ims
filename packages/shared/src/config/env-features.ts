@@ -65,6 +65,12 @@ export enum EnvFeature {
   TRANSFER_REQUEST = "TRANSFER_REQUEST",
   MESSAGING = "MESSAGING",
   MEDIA_UPLOAD = "MEDIA_UPLOAD",
+  /**
+   * Multi-tenant website feature: domain management, template picker,
+   * tenant site editor, and the public /public/* read API. Gated to
+   * development + staging while the feature is being validated.
+   */
+  TENANT_WEBSITES = "TENANT_WEBSITES",
 }
 
 /**
@@ -112,6 +118,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TRANSFER_REQUEST: true,
     MESSAGING: true,
     MEDIA_UPLOAD: true,
+    TENANT_WEBSITES: true,
   },
   staging: {
     CRM: true,
@@ -153,6 +160,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TRANSFER_REQUEST: true,
     MESSAGING: true,
     MEDIA_UPLOAD: true,
+    TENANT_WEBSITES: true,
   },
   "staging-production": {
     CRM: true,
@@ -194,6 +202,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TRANSFER_REQUEST: true,
     MESSAGING: true,
     MEDIA_UPLOAD: true,
+    TENANT_WEBSITES: false,
   },
   production: {
     CRM: true,
@@ -235,6 +244,7 @@ export const ENV_FEATURE_MATRIX: Record<AppEnv, Record<EnvFeature, boolean>> = {
     TRANSFER_REQUEST: true,
     MESSAGING: false,
     MEDIA_UPLOAD: true,
+    TENANT_WEBSITES: false,
   },
 };
 

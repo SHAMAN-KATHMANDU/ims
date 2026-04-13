@@ -7,11 +7,19 @@ import { Router } from "express";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import platformController from "./platform.controller";
 import trashRouter from "@/modules/trash/trash.router";
+import platformDomainsRouter from "@/modules/platform-domains/platform-domains.router";
+import platformWebsitesRouter from "@/modules/platform-websites/platform-websites.router";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
 const router = Router();
 
 router.use(authorizeRoles("platformAdmin"));
+
+/** Tenant domain management (platformAdmin only — inherited from parent). */
+router.use("/", platformDomainsRouter);
+
+/** Tenant website feature toggle + template picker (platformAdmin only). */
+router.use("/", platformWebsitesRouter);
 
 /**
  * @swagger

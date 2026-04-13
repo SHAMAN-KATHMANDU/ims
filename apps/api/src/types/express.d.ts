@@ -1,5 +1,5 @@
 import { JwtPayload } from "jsonwebtoken";
-import { Tenant } from "@prisma/client";
+import { Tenant, TenantDomainApp } from "@prisma/client";
 
 interface UserPayload extends JwtPayload {
   id: string;
@@ -14,6 +14,8 @@ declare global {
       user?: UserPayload;
       /** Resolved tenant object (set by tenant middleware) */
       tenant?: Tenant;
+      /** App type resolved from the request hostname (set by hostnameResolver) */
+      appType?: TenantDomainApp;
     }
   }
 }

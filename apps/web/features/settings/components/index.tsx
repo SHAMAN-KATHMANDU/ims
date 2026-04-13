@@ -16,7 +16,19 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/useToast";
 import { changePassword } from "@/features/users";
-import { Eye, EyeOff, Plus, Trash2, ArrowUp, ArrowDown } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import {
+  Eye,
+  EyeOff,
+  Plus,
+  Trash2,
+  ArrowUp,
+  ArrowDown,
+  Globe,
+  ChevronRight,
+} from "lucide-react";
+import { useEnvFeatureFlag, EnvFeature } from "@/features/flags";
 import { useAuthStore, selectUser } from "@/store/auth-store";
 import {
   useTenantPaymentMethods,
@@ -48,6 +60,9 @@ type PasswordFormValues = z.infer<typeof passwordSchema>;
 export function SettingsPage() {
   const { toast } = useToast();
   const currentUser = useAuthStore(selectUser);
+  const params = useParams();
+  const workspace = String(params.workspace ?? "");
+  const tenantWebsitesEnabled = useEnvFeatureFlag(EnvFeature.TENANT_WEBSITES);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -266,6 +281,27 @@ export function SettingsPage() {
           Manage your account and preferences
         </p>
       </div>
+
+      {/* Website editor entry — feature-flagged via TENANT_WEBSITES */}
+      {tenantWebsitesEnabled && (
+        <Link
+          href={`/${workspace}/settings/site`}
+          className="block rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-accent/50"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-muted">
+              <Globe className="h-5 w-5" />
+            </div>
+            <div className="flex-1">
+              <div className="font-medium">Website</div>
+              <div className="text-sm text-muted-foreground">
+                Branding, template, and publishing for your public storefront
+              </div>
+            </div>
+            <ChevronRight className="h-5 w-5 text-muted-foreground" />
+          </div>
+        </Link>
+      )}
 
       {/* User Info Card (Read-only) */}
       <Card className="shadow-sm">

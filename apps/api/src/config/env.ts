@@ -58,6 +58,12 @@ const EnvSchema = z
     META_APP_ID: z.string().optional(),
     META_APP_SECRET: z.string().optional(),
     CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    /** Shared secret for /internal/* endpoints (Caddy on_demand_tls ask hook, tenant-site host resolver). */
+    INTERNAL_API_TOKEN: z.string().optional(),
+    /** Shared secret for the tenant-site /api/revalidate endpoint. */
+    REVALIDATE_SECRET: z.string().optional(),
+    /** Internal base URL the API uses to POST revalidation requests to tenant-site. */
+    TENANT_SITE_INTERNAL_URL: z.string().optional(),
     AI_REPLY_PROVIDER: z
       .enum(["OPENAI_RESPONSES", "OPENAI_COMPAT_CHAT", "GEMINI_API"])
       .optional()
@@ -306,6 +312,9 @@ const EnvSchema = z
       metaAppId: raw.META_APP_ID?.trim() ?? "",
       metaAppSecret: raw.META_APP_SECRET?.trim() ?? "",
       credentialEncryptionKey: raw.CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "",
+      internalApiToken: raw.INTERNAL_API_TOKEN?.trim() ?? "",
+      revalidateSecret: raw.REVALIDATE_SECRET?.trim() ?? "",
+      tenantSiteInternalUrl: raw.TENANT_SITE_INTERNAL_URL?.trim() ?? "",
       aiReplyProvider: raw.AI_REPLY_PROVIDER,
       aiReplyModel: raw.AI_REPLY_MODEL.trim(),
       aiReplyApiKey: raw.AI_REPLY_API_KEY.trim(),

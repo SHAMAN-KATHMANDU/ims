@@ -155,4 +155,59 @@ describe("ProductService", () => {
       expect(result.pagination.totalItems).toBe(1);
     });
   });
+
+  describe("findAll totalStock sorting", () => {
+    it("uses totalStock repository path for ascending sort", async () => {
+      mockFindAllProductsByTotalStock.mockResolvedValue({
+        products: [{ id: "p-low" }, { id: "p-high" }],
+        totalItems: 2,
+      });
+
+      const result = await productService.findAll("tenant-1", {
+        page: 1,
+        limit: 10,
+        sortBy: "totalStock",
+        sortOrder: "asc",
+      });
+
+      expect(mockFindAllProductsByTotalStock).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: "tenant-1" }),
+        "asc",
+        0,
+        10,
+      );
+      expect(result.data).toHaveLength(2);
+      expect(result.pagination.totalItems).toBe(2);
+    });
+
+    it("passes lowStock variation ids in totalStock path", async () => {
+      mockGetLowStockVariationIds.mockResolvedValue(["var-1"]);
+      mockFindAllProductsByTotalStock.mockResolvedValue({
+        products: [{ id: "p-1" }],
+        totalItems: 1,
+      });
+
+      const result = await productService.findAll("tenant-1", {
+        page: 1,
+        limit: 10,
+        sortBy: "totalstock",
+        sortOrder: "desc",
+        lowStock: true,
+      });
+
+      expect(mockGetLowStockVariationIds).toHaveBeenCalled();
+      expect(mockFindAllProductsByTotalStock).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId: "tenant-1",
+          lowStock: true,
+          lowStockVariationIds: ["var-1"],
+        }),
+        "desc",
+        0,
+        10,
+      );
+      expect(result.data).toHaveLength(1);
+      expect(result.pagination.totalItems).toBe(1);
+    });
+  });
 });

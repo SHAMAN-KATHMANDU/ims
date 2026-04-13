@@ -1,0 +1,98 @@
+# ============================================================================
+# Shaman IMS — Dev / Staging Caddy config
+# ============================================================================
+# Caddy holds :80 and :443 on the host when the `websites` compose profile is
+# active. It handles TLS for:
+#   1. Platform-owned hostnames (stage-ims.*, stage-api.*) — explicit blocks,
+#      proxied to dev_web:3000 and dev_api:4000
+#   2. Tenant custom domains — single catch-all block with on_demand_tls that
+#      calls the API's /internal/domain-allowed ask hook before issuing certs
+#
+# Deploy: see deploy/dev/setup-caddy.sh
+# Migration from nginx: see deploy/dev/README-caddy-migration.md
+# ============================================================================
+
+{
+    email ops@shamankathmandu.com
+
+    # On-demand TLS gate. Caddy calls this URL with ?domain=<hostname> before
+    # issuing a cert. 200 = proceed, anything else = refuse. Prevents abuse of
+    # our Let's Encrypt quota.
+    #
+    # Auth: the Caddyfile `ask` directive can't inject custom headers, so we
+    # pass the shared internal token via a query param (?_t=<token>). Caddy
+    # substitutes the env var at startup; the token never leaves the docker
+    # network. The API middleware (requireInternalToken) accepts both header
+    # and query-param sources.
+    on_demand_tls {
+        ask http://dev_api:4000/api/v1/internal/domain-allowed?_t={$INTERNAL_API_TOKEN}
+        interval 2m
+        burst 5
+    }
+
+    # Global log format — JSON, shipped to host syslog
+    log {
+        output file /var/log/caddy/access.log {
+            roll_size 100mb
+            roll_keep 10
+        }
+        format json
+    }
+}
+
+# ============================================================================
+# Platform hostnames — explicit blocks, standard TLS (no on-demand)
+# ============================================================================
+
+stage-ims.shamankathmandu.com {
+    encode zstd gzip
+    reverse_proxy dev_web:3000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+}
+
+stage-api.shamankathmandu.com {
+    encode zstd gzip
+    # API needs larger request bodies for bulk upload + media
+    request_body {
+        max_size 50MB
+    }
+    reverse_proxy dev_api:4000 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        # Preserve long-lived WebSocket connections for Socket.IO
+        flush_interval -1
+    }
+}
+
+# ============================================================================
+# Tenant custom domains — on-demand TLS
+# ============================================================================
+# Any hostname that isn't one of the explicit blocks above lands here. Caddy
+# will call the ask hook first; if 200, it issues a cert via ACME and
+# reverse-proxies the request to the tenant-site renderer. The renderer reads
+# the Host header and pulls content from /public/*.
+#
+# The empty-matcher block `https://` catches all remaining hostnames. It is
+# intentionally last so explicit blocks take precedence.
+
+https:// {
+    encode zstd gzip
+
+    tls {
+        on_demand
+    }
+
+    reverse_proxy dev_tenant_site:3100 {
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+        header_up X-Forwarded-Host {host}
+    }
+}
