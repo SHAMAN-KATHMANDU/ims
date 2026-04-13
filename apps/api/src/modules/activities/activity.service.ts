@@ -1,4 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import { createPaginationResult } from "@/utils/pagination";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import activityRepository from "./activity.repository";
@@ -8,7 +10,7 @@ export class ActivityService {
   async create(tenantId: string, userId: string, data: CreateActivityDto) {
     const activityAt = data.activityAt ? new Date(data.activityAt) : new Date();
 
-    return activityRepository.create({
+    const activity = await activityRepository.create({
       tenantId,
       type: data.type,
       subject: data.subject ?? null,
@@ -19,6 +21,33 @@ export class ActivityService {
       dealId: data.dealId || null,
       createdById: userId,
     });
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "crm.activity.created",
+        scopeType: "GLOBAL",
+        entityType: "ACTIVITY",
+        entityId: activity.id,
+        actorUserId: userId,
+        dedupeKey: `activity-created:${activity.id}`,
+        payload: {
+          activityId: activity.id,
+          type: activity.type,
+          subject: activity.subject ?? null,
+          contactId: activity.contactId ?? null,
+          memberId: activity.memberId ?? null,
+          dealId: activity.dealId ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          activityId: activity.id,
+          eventName: "crm.activity.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    return activity;
   }
 
   async getByContact(

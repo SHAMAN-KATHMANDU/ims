@@ -80,6 +80,8 @@ import type {
   ProductVariationForm,
   ProductDiscountForm,
 } from "./types";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 
 interface CatalogPageProps {
   /** When true, catalog is read-only for all roles (no Add/Bulk Upload/Download/edit/delete). */
@@ -724,7 +726,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     setProductVariations(updated);
   };
 
-  const addPhotoToVariation = (variationIndex: number, photoUrl: string) => {
+  const addPhotoToVariation = (
+    variationIndex: number,
+    photoUrl: string,
+    fileName?: string,
+  ) => {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
@@ -734,7 +740,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
     updated[variationIndex] = {
       stockQuantity: variation.stockQuantity || "0",
       subVariants: variation.subVariants ?? [],
-      photos: [...photos, { photoUrl, isPrimary }],
+      photos: [...photos, { photoUrl, isPrimary, fileName }],
     };
     setProductVariations(updated);
   };
@@ -832,13 +838,11 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
   );
 
   return (
-    <div className="space-y-6 pb-24">
-      <div>
-        <h1 className="text-3xl font-bold">Product Catalog</h1>
-        <p className="text-muted-foreground mt-2">
-          Manage products and their variations
-        </p>
-      </div>
+    <PageShell className="space-y-6 pb-24">
+      <PageHeader
+        title="Product Catalog"
+        description="Manage products and their variations"
+      />
 
       {/* Summary cards */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -882,9 +886,9 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
         </Card>
       </div>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-end">
+      <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end">
         {canManageProducts && (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline">
@@ -991,7 +995,7 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
               onChange={handleLocationChange}
               placeholder="Location"
               allLabel="All"
-              className="h-9 w-[130px] text-sm shrink-0"
+              className="h-9 min-w-0 flex-1 text-sm sm:w-[130px] sm:flex-none sm:shrink-0"
             />
             <Popover>
               <PopoverTrigger asChild>
@@ -1004,7 +1008,10 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
                   Filters
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80 p-3" align="end">
+              <PopoverContent
+                className="w-[min(calc(100vw-2rem),20rem)] p-3 sm:w-80"
+                align="end"
+              >
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
                     <Checkbox
@@ -1268,6 +1275,6 @@ export function CatalogPage({ readOnly = false }: CatalogPageProps) {
           </div>
         </div>
       )}
-    </div>
+    </PageShell>
   );
 }

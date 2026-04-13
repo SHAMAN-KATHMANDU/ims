@@ -7,6 +7,7 @@ import { getProvider } from "@/providers/provider-factory";
 import { decrypt } from "@/utils/encryption";
 import { getIO } from "@/config/socket.config";
 import { logger } from "@/config/logger";
+import { aiReplyQueue } from "./queue.config";
 import type { MessagingChannel, MessagingProvider } from "@prisma/client";
 import type { NormalizedInboundEvent } from "@/providers/messaging-provider.interface";
 import messagingRepository from "@/modules/messaging/messaging.repository";
@@ -274,6 +275,15 @@ const inboundWorker = new Worker<InboundJobData>(
             replyToId,
           },
         });
+
+        if (event.eventType === "message") {
+          await aiReplyQueue.add("ai-reply", {
+            tenantId,
+            conversationId: conversation.id,
+            inboundMessageId: message.id,
+            providerEventId: event.providerEventId,
+          });
+        }
 
         // Emit real-time events
         const io = getIO();

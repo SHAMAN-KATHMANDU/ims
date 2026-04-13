@@ -10,6 +10,37 @@ import type {
   AddCommunicationDto,
 } from "./contact.schema";
 
+type JourneyTypeOption = {
+  id: string;
+  name: string;
+  createdAt: string;
+};
+
+function formatJourneyTypeLabel(
+  pipelineName: string | null | undefined,
+  stageName: string | null | undefined,
+): string | null {
+  const normalizedPipelineName = pipelineName?.trim();
+  const normalizedStageName = stageName?.trim();
+  if (!normalizedPipelineName || !normalizedStageName) {
+    return null;
+  }
+  return `${normalizedPipelineName}(${normalizedStageName})`;
+}
+
+function parseJourneyTypeLabel(
+  value: string,
+): { pipelineName: string; stageName: string } | null {
+  const trimmedValue = value.trim();
+  const match = /^(?<pipelineName>.+)\((?<stageName>.+)\)$/.exec(trimmedValue);
+  const pipelineName = match?.groups?.pipelineName?.trim();
+  const stageName = match?.groups?.stageName?.trim();
+  if (!pipelineName || !stageName) {
+    return null;
+  }
+  return { pipelineName, stageName };
+}
+
 const CONTACT_LIST_INCLUDE = {
   company: { select: { id: true, name: true } },
   owner: { select: { id: true, username: true } },
@@ -17,10 +48,19 @@ const CONTACT_LIST_INCLUDE = {
   tagLinks: { include: { tag: { select: { id: true, name: true } } } },
   _count: { select: { deals: true, tasks: true } },
   deals: {
-    where: { status: "OPEN" as const, deletedAt: null },
-    orderBy: { createdAt: "desc" as const },
-    take: 1,
-    select: { stage: true },
+    where: { deletedAt: null, isLatest: true },
+    orderBy: [{ status: "asc" as const }, { updatedAt: "desc" as const }] as {
+      status?: "asc" | "desc";
+      updatedAt?: "asc" | "desc";
+    }[],
+    take: 3,
+    select: {
+      id: true,
+      stage: true,
+      status: true,
+      pipelineId: true,
+      pipeline: { select: { id: true, name: true, type: true } },
+    },
   },
 } as const;
 
@@ -52,13 +92,20 @@ const CONTACT_DETAIL_INCLUDE = {
     include: { creator: { select: { id: true, username: true } } },
   },
   deals: {
-    where: { deletedAt: null },
+    where: { deletedAt: null, isLatest: true },
+    orderBy: [{ status: "asc" as const }, { updatedAt: "desc" as const }] as {
+      status?: "asc" | "desc";
+      updatedAt?: "asc" | "desc";
+    }[],
     select: {
       id: true,
       name: true,
       value: true,
       stage: true,
       status: true,
+      pipelineId: true,
+      isLatest: true,
+      pipeline: { select: { id: true, name: true, type: true } },
       expectedCloseDate: true,
     },
   },
@@ -96,6 +143,16 @@ export interface FindAllContactsParams {
 }
 
 export class ContactRepository {
+  private async ensureSalesSource(contactId: string): Promise<void> {
+    await prisma.contact.updateMany({
+      where: {
+        id: contactId,
+        OR: [{ source: null }, { source: "" }],
+      },
+      data: { source: "Sales" },
+    });
+  }
+
   async findAll(tenantId: string, query: Record<string, unknown>) {
     const { page, limit, sortBy, sortOrder, search } =
       getPaginationParams(query);
@@ -130,7 +187,24 @@ export class ContactRepository {
     if (tagId) where.tagLinks = { some: { tagId } };
     if (ownerId) where.ownedById = ownerId;
     if (source) where.source = source;
-    if (journeyType) where.journeyType = journeyType;
+    if (journeyType) {
+      const parsedJourneyType = parseJourneyTypeLabel(journeyType);
+      if (!parsedJourneyType) {
+        return createPaginationResult([], 0, page, limit);
+      }
+      where.deals = {
+        some: {
+          deletedAt: null,
+          isLatest: true,
+          status: "OPEN",
+          stage: parsedJourneyType.stageName,
+          pipeline: {
+            name: parsedJourneyType.pipelineName,
+            deletedAt: null,
+          },
+        },
+      };
+    }
 
     const skip = (page - 1) * limit;
 
@@ -171,7 +245,6 @@ export class ContactRepository {
         companyId: data.companyId || null,
         memberId: data.memberId || null,
         source: data.source || null,
-        journeyType: data.journeyType || null,
         gender: data.gender?.trim() || null,
         birthDate: data.birthDate ? new Date(data.birthDate) : null,
         ownedById: userId,
@@ -213,9 +286,6 @@ export class ContactRepository {
         }),
         ...(data.memberId !== undefined && { memberId: data.memberId || null }),
         ...(data.source !== undefined && { source: data.source || null }),
-        ...(data.journeyType !== undefined && {
-          journeyType: data.journeyType || null,
-        }),
         ...(data.gender !== undefined && {
           gender: data.gender?.trim() || null,
         }),
@@ -395,6 +465,15 @@ export class ContactRepository {
       include: {
         company: { select: { name: true } },
         tagLinks: { include: { tag: { select: { name: true } } } },
+        deals: {
+          where: { deletedAt: null, isLatest: true, status: "OPEN" },
+          orderBy: { updatedAt: "desc" },
+          take: 1,
+          select: {
+            stage: true,
+            pipeline: { select: { id: true, name: true } },
+          },
+        },
       },
       orderBy: { createdAt: "desc" },
     });
@@ -428,7 +507,10 @@ export class ContactRepository {
       },
       select: { id: true },
     });
-    if (existing) return existing;
+    if (existing) {
+      await this.ensureSalesSource(existing.id);
+      return existing;
+    }
     const nameParts = (member.name || "").trim().split(/\s+/);
     const firstName = nameParts[0] || "Customer";
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
@@ -484,7 +566,10 @@ export class ContactRepository {
       where: { tenantId, deletedAt: null, phone: data.phone },
       select: { id: true },
     });
-    if (existing) return existing;
+    if (existing) {
+      await this.ensureSalesSource(existing.id);
+      return existing;
+    }
     const nameParts = (data.name || "").trim().split(/\s+/);
     const firstName = nameParts[0] || "Customer";
     const lastName = nameParts.length > 1 ? nameParts.slice(1).join(" ") : null;
@@ -595,6 +680,85 @@ export class ContactRepository {
         tagLinks: { include: { tag: { select: { id: true, name: true } } } },
       },
     });
+  }
+
+  async renameJourneyTypeForPipeline(
+    tenantId: string,
+    oldName: string,
+    newName: string,
+  ): Promise<void> {
+    await prisma.contact.updateMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        journeyType: oldName,
+      },
+      data: {
+        journeyType: newName,
+      },
+    });
+  }
+
+  async clearJourneyTypeForPipeline(
+    tenantId: string,
+    journeyTypeName: string,
+  ): Promise<void> {
+    await prisma.contact.updateMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        journeyType: journeyTypeName,
+      },
+      data: {
+        journeyType: null,
+      },
+    });
+  }
+
+  async findDerivedJourneyTypes(
+    tenantId: string,
+    search?: string,
+  ): Promise<JourneyTypeOption[]> {
+    const activeDeals = await prisma.deal.findMany({
+      where: {
+        tenantId,
+        deletedAt: null,
+        isLatest: true,
+        status: "OPEN",
+        pipeline: { deletedAt: null },
+      },
+      select: {
+        stage: true,
+        pipeline: {
+          select: {
+            id: true,
+            name: true,
+          },
+        },
+      },
+      orderBy: [{ pipeline: { name: "asc" } }, { stage: "asc" }],
+    });
+
+    const journeyTypeMap = new Map<string, JourneyTypeOption>();
+    for (const deal of activeDeals) {
+      const label = formatJourneyTypeLabel(deal.pipeline?.name, deal.stage);
+      if (!label) continue;
+      const id = `${deal.pipeline.id}:${deal.stage}`;
+      if (!journeyTypeMap.has(id)) {
+        journeyTypeMap.set(id, {
+          id,
+          name: label,
+          createdAt: new Date().toISOString(),
+        });
+      }
+    }
+
+    const normalizedSearch = search?.trim().toLowerCase();
+    return Array.from(journeyTypeMap.values()).filter((journeyType) =>
+      normalizedSearch
+        ? journeyType.name.toLowerCase().includes(normalizedSearch)
+        : true,
+    );
   }
 }
 

@@ -13,18 +13,34 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
-import { LogOut, Menu, Settings, Bug, Building2, Bell } from "lucide-react";
+import {
+  LogOut,
+  Menu,
+  Settings,
+  Bug,
+  Building2,
+  Bell,
+  Images,
+  Trash2,
+} from "lucide-react";
 import { useAuth } from "@/features/auth";
 import { useToast } from "@/hooks/useToast";
 import { ReportErrorDialog } from "./ReportErrorDialog";
 import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { MediaLibraryPanel } from "@/components/media/MediaLibraryPanel";
 import { useIsMobile } from "@/hooks/useMobile";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
 import {
   useNotifications,
   useUnreadNotificationCount,
   useDeleteAllNotifications,
 } from "@/features/crm";
-import { Trash2 } from "lucide-react";
 
 function NotificationsBell({ basePath }: { basePath: string }) {
   const { data: countData } = useUnreadNotificationCount();
@@ -113,6 +129,8 @@ export function TopBar({ onMenuClick }: TopBarProps) {
   const { toast } = useToast();
   const isMobile = useIsMobile();
   const [reportErrorOpen, setReportErrorOpen] = useState(false);
+  const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
+  const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
 
   const handleLogout = async () => {
     try {
@@ -183,6 +201,17 @@ export function TopBar({ onMenuClick }: TopBarProps) {
               )}
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {user?.role !== "platformAdmin" && mediaUploadEnabled && (
+              <DropdownMenuItem
+                onSelect={(e) => {
+                  e.preventDefault();
+                  setMediaLibraryOpen(true);
+                }}
+              >
+                <Images className="mr-2 h-4 w-4" />
+                Media library
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem asChild>
               <Link href={settingsPath} className="flex items-center w-full">
                 <Settings className="mr-2 h-4 w-4" />
@@ -204,6 +233,21 @@ export function TopBar({ onMenuClick }: TopBarProps) {
           open={reportErrorOpen}
           onOpenChange={setReportErrorOpen}
         />
+        {user?.role !== "platformAdmin" && mediaUploadEnabled && (
+          <Sheet open={mediaLibraryOpen} onOpenChange={setMediaLibraryOpen}>
+            <SheetContent
+              side="right"
+              className="flex h-full w-full flex-col overflow-hidden sm:max-w-md"
+            >
+              <SheetHeader>
+                <SheetTitle>Media library</SheetTitle>
+              </SheetHeader>
+              <div className="min-h-0 flex-1 overflow-y-auto px-6 pb-4">
+                <MediaLibraryPanel fullPageHref={`${basePath}/media`} />
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
       </div>
     </header>
   );

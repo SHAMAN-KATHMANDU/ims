@@ -281,10 +281,12 @@ export function LocationsPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-6">
       <div>
-        <h1 className="text-3xl font-bold">Locations</h1>
-        <p className="text-muted-foreground mt-2">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">
+          Locations
+        </h1>
+        <p className="text-muted-foreground mt-2 text-sm sm:text-base">
           Manage warehouses and showrooms
           {locationsUsage && (
             <span className="ml-2 text-sm">
@@ -300,8 +302,8 @@ export function LocationsPage() {
 
       <div className="flex flex-col gap-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-          <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
-            <div className="relative max-w-sm">
+          <div className="flex w-full min-w-0 flex-col gap-4 sm:w-auto sm:flex-row sm:flex-wrap sm:items-end sm:gap-3">
+            <div className="relative w-full sm:max-w-sm">
               <Label htmlFor="locations-search" className="sr-only">
                 Search by name or address
               </Label>
@@ -314,7 +316,7 @@ export function LocationsPage() {
                 className="pl-9"
               />
             </div>
-            <div className="flex flex-col gap-2 sm:w-[180px]">
+            <div className="flex w-full flex-col gap-2 sm:w-[180px]">
               <Label htmlFor="locations-type">Type</Label>
               <Select value={typeFilter} onValueChange={handleTypeChange}>
                 <SelectTrigger id="locations-type">
@@ -327,7 +329,7 @@ export function LocationsPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="flex flex-col gap-2 sm:w-[180px]">
+            <div className="flex w-full flex-col gap-2 sm:w-[180px]">
               <Label htmlFor="locations-status">Status</Label>
               <Select value={statusFilter} onValueChange={handleStatusChange}>
                 <SelectTrigger id="locations-status">
@@ -398,7 +400,7 @@ export function LocationsPage() {
       </div>
 
       {canManageLocations && selectedLocationIds.size > 0 && (
-        <div className="flex items-center gap-2 rounded-md border bg-muted/50 px-3 py-1.5">
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-muted/50 px-3 py-2 sm:py-1.5">
           <span className="text-sm font-medium">
             {selectedLocationIds.size} selected
           </span>
@@ -407,7 +409,7 @@ export function LocationsPage() {
             size="sm"
             onClick={() => setBulkDeleteOpen(true)}
             disabled={deleteLocationMutation.isPending}
-            className="h-7 gap-1.5 text-destructive hover:text-destructive"
+            className="h-9 gap-1.5 text-destructive hover:text-destructive sm:h-7"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Deactivate
@@ -416,7 +418,7 @@ export function LocationsPage() {
             variant="ghost"
             size="sm"
             onClick={() => clearSelection()}
-            className="h-7 gap-1.5"
+            className="h-9 gap-1.5 sm:h-7"
             aria-label="Clear selection"
           >
             <X className="h-3.5 w-3.5" />

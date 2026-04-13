@@ -70,7 +70,6 @@ export class PipelineTransitionService {
 
   /**
    * New Sales Closed Won -> Remarketing R1 (Post-Purchase Follow-up)
-   * - Set journeyType = "Customer"
    * - purchaseCount already incremented by deal.service/sale.service
    */
   private async handleNewSalesWon(
@@ -90,17 +89,12 @@ export class PipelineTransitionService {
     );
     if (!firstStage) return { transitioned: false };
 
-    await this.updateContactJourneyAndTags(deal.contactId, {
-      journeyType: "Customer",
-    });
-
     const newDeal = await this.createDealInPipeline({
       tenantId: deal.tenantId,
       contactId: deal.contactId,
       memberId: deal.memberId,
       pipelineId: remarketingPipeline.id,
       stage: firstStage.name,
-      probability: firstStage.probability ?? 20,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Remarketing — Post-Purchase`,
@@ -129,7 +123,6 @@ export class PipelineTransitionService {
 
   /**
    * New Sales Closed Lost -> Remarketing R2 (Dormant)
-   * - Set journeyType = "Lost Lead"
    * - Apply tag "Re-engage"
    * - Create follow-up task in 30 days
    */
@@ -151,7 +144,6 @@ export class PipelineTransitionService {
     if (!dormantStage) return { transitioned: false };
 
     await this.updateContactJourneyAndTags(deal.contactId, {
-      journeyType: "Lost Lead",
       addTags: ["Re-engage"],
     });
 
@@ -161,7 +153,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: remarketingPipeline.id,
       stage: dormantStage.name,
-      probability: dormantStage.probability ?? 5,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Remarketing — Re-engage`,
@@ -263,7 +254,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: repurchasePipeline.id,
       stage: returnedStage.name,
-      probability: returnedStage.probability ?? 30,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Repurchase — Returning Customer`,
@@ -323,7 +313,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: remarketingPipeline.id,
       stage: firstStage.name,
-      probability: firstStage.probability ?? 20,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Remarketing — Post-Purchase`,
@@ -382,7 +371,6 @@ export class PipelineTransitionService {
       memberId: deal.memberId,
       pipelineId: remarketingPipeline.id,
       stage: dormantStage.name,
-      probability: dormantStage.probability ?? 5,
       assignedToId: deal.assignedToId,
       createdById: deal.createdById,
       name: `Remarketing — Re-engage (from Repurchase)`,
@@ -423,12 +411,10 @@ export class PipelineTransitionService {
   private getStageByName(
     stages: unknown,
     name: string,
-  ): { name: string; probability?: number } | null {
+  ): { name: string } | null {
     if (!stages || !Array.isArray(stages)) return null;
     return (
-      (stages as Array<{ name: string; probability?: number }>).find(
-        (s) => s.name === name,
-      ) ?? null
+      (stages as Array<{ name: string }>).find((s) => s.name === name) ?? null
     );
   }
 
@@ -456,7 +442,6 @@ export class PipelineTransitionService {
     memberId: string | null;
     pipelineId: string;
     stage: string;
-    probability: number;
     assignedToId: string;
     createdById: string;
     name: string;
@@ -469,7 +454,6 @@ export class PipelineTransitionService {
         name: data.name,
         value: 0,
         stage: data.stage,
-        probability: data.probability,
         contactId: data.contactId,
         memberId: data.memberId,
         pipelineId: data.pipelineId,
@@ -482,7 +466,6 @@ export class PipelineTransitionService {
   private async updateContactJourneyAndTags(
     contactId: string,
     updates: {
-      journeyType?: string;
       addTags?: string[];
       removeTags?: string[];
     },
@@ -492,16 +475,6 @@ export class PipelineTransitionService {
       select: { tenantId: true },
     });
     if (!contact) return;
-
-    if (updates.journeyType) {
-      await contactRepository.updateContactByWorkflow(
-        contact.tenantId,
-        contactId,
-        {
-          journeyType: updates.journeyType,
-        },
-      );
-    }
 
     if (updates.addTags?.length) {
       for (const tagName of updates.addTags) {

@@ -18,18 +18,25 @@ interface KpiCardsProps {
   items: KpiCardItem[];
   isLoading?: boolean;
   className?: string;
+  /** `compact` uses denser cards with ring instead of drop shadow */
+  density?: "default" | "compact";
 }
 
-export function KpiCards({ items, isLoading, className }: KpiCardsProps) {
+export function KpiCards({
+  items,
+  isLoading,
+  className,
+  density = "compact",
+}: KpiCardsProps) {
+  const gridClass =
+    className ??
+    "grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6";
+  const cardVariant = density === "compact" ? "stat" : "default";
+
   return (
-    <div
-      className={
-        className ??
-        "grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6"
-      }
-    >
+    <div className={gridClass}>
       {items.map((item, i) => (
-        <Card key={i} className="min-w-0 shadow-sm">
+        <Card key={i} variant={cardVariant} className="min-w-0">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{item.label}</CardTitle>
             {item.icon && (

@@ -40,6 +40,19 @@
   --destructive: oklch(0.58 0.18 25);
   --destructive-foreground: oklch(0.99 0 0); /* pure white */
 
+  --success: oklch(0.55 0.14 155);
+  --success-foreground: oklch(0.99 0.01 155);
+
+  --warning: oklch(0.78 0.14 85);
+  --warning-foreground: oklch(0.22 0.04 85);
+
+  --info: oklch(0.55 0.14 250);
+  --info-foreground: oklch(0.99 0.02 250);
+
+  /* Motion */
+  --duration-fast: 150ms;
+  --duration-normal: 200ms;
+
   /* UI chrome */
   --border: oklch(0.9 0.01 95);
   --input: oklch(0.9 0.01 95);
@@ -94,6 +107,15 @@
   --destructive: oklch(0.45 0.16 25);
   --destructive-foreground: oklch(0.98 0 0); /* near white */
 
+  --success: oklch(0.62 0.14 155);
+  --success-foreground: oklch(0.12 0.03 155);
+
+  --warning: oklch(0.72 0.12 85);
+  --warning-foreground: oklch(0.15 0.04 85);
+
+  --info: oklch(0.62 0.12 250);
+  --info-foreground: oklch(0.98 0.02 250);
+
   --border: oklch(0.32 0.01 95);
   --input: oklch(0.32 0.01 95);
   --ring: oklch(0.7 0.09 150);
@@ -143,6 +165,12 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
 
   --color-border: var(--border);
   --color-input: var(--input);
@@ -186,13 +214,13 @@
       sans-serif;
   }
 
-  /* Form section titles */
+  /* Form section titles — caption role uses muted text + primary accent bar */
   .form-section-title {
     font-size: 12px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 1.5px;
-    color: var(--accent);
+    color: var(--muted-foreground);
     margin-bottom: 16px;
     font-family: var(--font-space-mono), monospace;
     display: flex;
@@ -204,48 +232,41 @@
     content: "";
     width: 3px;
     height: 12px;
-    background: var(--accent);
+    background: var(--primary);
     border-radius: 2px;
   }
 
-  /* Glassmorphism panels */
+  /* Form panels — token-based for light and dark */
   .form-panel {
-    background: rgba(255, 255, 255, 0.02);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 16px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: calc(var(--radius) + 4px);
     padding: 24px;
-    -webkit-backdrop-filter: blur(10px);
-    backdrop-filter: blur(10px);
-    transition: border-color 0.3s ease;
+    transition:
+      border-color var(--duration-normal) ease,
+      box-shadow var(--duration-normal) ease;
   }
 
   .form-panel:hover {
-    border-color: rgba(255, 255, 255, 0.12);
+    border-color: color-mix(in oklch, var(--border) 70%, var(--foreground));
+  }
+
+  .dark .form-panel {
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
   }
 
   /* Surface color utility */
   .bg-surface {
-    background: rgba(255, 255, 255, 0.03);
+    background: color-mix(in oklch, var(--muted) 85%, transparent);
   }
 
   .bg-surface\/50 {
-    background: rgba(255, 255, 255, 0.015);
+    background: color-mix(in oklch, var(--muted) 45%, transparent);
   }
 
   .bg-surface\/80 {
-    background: rgba(255, 255, 255, 0.024);
-  }
-
-  /* Hide spinner controls for number inputs */
-  input[type="number"]::-webkit-outer-spin-button,
-  input[type="number"]::-webkit-inner-spin-button {
-    -webkit-appearance: none;
-    margin: 0;
-  }
-
-  input[type="number"] {
-    -moz-appearance: textfield;
-    appearance: textfield;
+    background: color-mix(in oklch, var(--muted) 72%, transparent);
   }
 
   /* Hide spinner controls for number inputs */
@@ -268,6 +289,25 @@
 }
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
+}
+
+/* Analytics / reports pages — bridge to reportTheme.ts via CSS variables */
+[data-reports].reports-container {
+  --analytics-bg: #0d1117;
+  --analytics-card: #161b22;
+  --analytics-border: #30363d;
+  --analytics-text: #e6edf3;
+  --analytics-tm: #8b949e;
+  --analytics-td: #656d76;
+  --analytics-accent: #c9885a;
+  --analytics-thamel: #58a6ff;
+  --analytics-gongabu: #3fb950;
+  --analytics-rubys: #d2a8ff;
+  --analytics-online: #f0883e;
+  --analytics-teal: #39d2c0;
+  --analytics-red: #f85149;
+  --analytics-gold: #e3b341;
+  --analytics-tooltip-bg: #1c2333;
 }
 
 /* =========================

@@ -2,6 +2,7 @@
 
 import type { Contact } from "../../services/contact.service";
 import {
+  SortableTableHead,
   Table,
   TableBody,
   TableCell,
@@ -13,25 +14,42 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Mail, Phone } from "lucide-react";
+import type { SortOrder } from "@/components/ui/table";
+import { getActiveJourneyType } from "../../utils/journey-type";
+
+type ContactEmptyVariant = "empty" | "no-results";
 
 interface ContactTableProps {
   contacts: Contact[];
   isLoading: boolean;
+  /** Background refetch — table stays visible with dimmed state */
+  isFetching?: boolean;
   basePath: string;
   dealsEnabled: boolean;
+  sortBy: string;
+  sortOrder: SortOrder;
+  onSort: (sortBy: string, sortOrder: "asc" | "desc" | "none") => void;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
+  emptyVariant?: ContactEmptyVariant;
+  onClearFilters?: () => void;
 }
 
 export function ContactTable({
   contacts,
   isLoading,
+  isFetching = false,
   basePath: _basePath,
   dealsEnabled,
+  sortBy,
+  sortOrder,
+  onSort,
   onView,
   onEdit,
   onDelete,
+  emptyVariant = "empty",
+  onClearFilters,
 }: ContactTableProps) {
   if (isLoading) {
     return (
@@ -88,19 +106,45 @@ export function ContactTable({
   }
 
   if (contacts.length === 0) {
+    if (emptyVariant === "no-results") {
+      return (
+        <div className="rounded-md border py-8 text-center space-y-3 px-4">
+          <p className="text-muted-foreground text-sm">
+            No contacts match your search or filters. Try different keywords or
+            clear filters to see everyone.
+          </p>
+          {onClearFilters ? (
+            <Button variant="outline" size="sm" onClick={onClearFilters}>
+              Clear filters
+            </Button>
+          ) : null}
+        </div>
+      );
+    }
     return (
-      <div className="rounded-md border py-8 text-center text-muted-foreground">
-        No contacts found
+      <div className="rounded-md border py-8 text-center text-muted-foreground px-4 space-y-1">
+        <p className="font-medium text-foreground">No contacts yet</p>
+        <p className="text-sm">
+          Add a contact or import a list to get started.
+        </p>
       </div>
     );
   }
 
+  const dimmed = isFetching && !isLoading;
+
   return (
-    <>
+    <div
+      className={
+        dimmed
+          ? "opacity-70 transition-opacity duration-[var(--duration-normal,200ms)]"
+          : "transition-opacity duration-[var(--duration-normal,200ms)]"
+      }
+    >
       {/* ── Mobile card list ─────────────────────────────────────────── */}
       <div className="sm:hidden space-y-2">
         {contacts.map((c) => {
-          const openDealStage = c.deals?.[0]?.stage;
+          const activeJourneyType = getActiveJourneyType(c.deals);
           const fullName = [c.firstName, c.lastName].filter(Boolean).join(" ");
           return (
             <div key={c.id} className="rounded-lg border bg-card p-3 space-y-2">
@@ -111,9 +155,9 @@ export function ContactTable({
                 >
                   {fullName}
                 </button>
-                {dealsEnabled && openDealStage && (
+                {dealsEnabled && activeJourneyType && (
                   <Badge variant="outline" className="text-xs shrink-0">
-                    {openDealStage}
+                    {activeJourneyType}
                   </Badge>
                 )}
               </div>
@@ -189,10 +233,38 @@ export function ContactTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Name</TableHead>
-              <TableHead>Email</TableHead>
-              <TableHead>Phone</TableHead>
-              <TableHead>Company</TableHead>
+              <SortableTableHead
+                sortKey="firstName"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Name
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="email"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Email
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="phone"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Phone
+              </SortableTableHead>
+              <SortableTableHead
+                sortKey="companyId"
+                currentSortBy={sortBy}
+                currentSortOrder={sortOrder}
+                onSort={onSort}
+              >
+                Company
+              </SortableTableHead>
               <TableHead>Tags</TableHead>
               {dealsEnabled && <TableHead>Deal Stage</TableHead>}
               <TableHead className="text-right">Actions</TableHead>
@@ -200,7 +272,7 @@ export function ContactTable({
           </TableHeader>
           <TableBody>
             {contacts.map((c) => {
-              const openDealStage = c.deals?.[0]?.stage;
+              const activeJourneyType = getActiveJourneyType(c.deals);
               return (
                 <TableRow key={c.id}>
                   <TableCell>
@@ -220,9 +292,9 @@ export function ContactTable({
                   </TableCell>
                   {dealsEnabled && (
                     <TableCell>
-                      {openDealStage ? (
+                      {activeJourneyType ? (
                         <Badge variant="outline" className="text-xs">
-                          {openDealStage}
+                          {activeJourneyType}
                         </Badge>
                       ) : (
                         "—"
@@ -259,6 +331,6 @@ export function ContactTable({
           </TableBody>
         </Table>
       </div>
-    </>
+    </div>
   );
 }

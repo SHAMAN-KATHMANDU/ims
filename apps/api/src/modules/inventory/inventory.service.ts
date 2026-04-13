@@ -1,4 +1,5 @@
 import { createError } from "@/middlewares/errorHandler";
+import { logger } from "@/config/logger";
 import {
   getPaginationParams,
   createPaginationResult,
@@ -6,6 +7,7 @@ import {
 import { getTenantId } from "@/config/tenantContext";
 import inventoryRepository from "./inventory.repository";
 import type { AdjustInventoryDto, SetInventoryDto } from "./inventory.schema";
+import automationService from "@/modules/automation/automation.service";
 
 export class InventoryService {
   async getLocationInventory(
@@ -155,6 +157,43 @@ export class InventoryService {
       );
     }
 
+    await automationService.syncLowStockSignal({
+      tenantId: location.tenantId,
+      locationId: data.locationId,
+      variationId: data.variationId,
+      subVariationId,
+      reason: "inventory_adjustment",
+    });
+
+    await automationService
+      .publishDomainEvent({
+        tenantId: location.tenantId,
+        eventName: "inventory.stock.adjusted",
+        scopeType: "LOCATION",
+        scopeId: data.locationId,
+        entityType: "LOCATION_INVENTORY",
+        entityId: inventory.id,
+        dedupeKey: `inventory-adjusted:${inventory.id}:${inventory.quantity}:${data.quantity}`,
+        payload: {
+          locationId: data.locationId,
+          locationName: location.name,
+          variationId: data.variationId,
+          subVariationId,
+          previousQuantity,
+          adjustmentAmount: data.quantity,
+          newQuantity: inventory.quantity,
+          reason: data.reason || "Manual adjustment",
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId: location.tenantId,
+          inventoryId: inventory.id,
+          eventName: "inventory.stock.adjusted",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
     return {
       locationId: data.locationId,
       locationName: location.name,
@@ -199,6 +238,40 @@ export class InventoryService {
       subVariationId,
       data.quantity,
     );
+
+    await automationService.syncLowStockSignal({
+      tenantId: location.tenantId,
+      locationId: data.locationId,
+      variationId: data.variationId,
+      subVariationId,
+      reason: "inventory_set",
+    });
+
+    await automationService
+      .publishDomainEvent({
+        tenantId: location.tenantId,
+        eventName: "inventory.stock.set",
+        scopeType: "LOCATION",
+        scopeId: data.locationId,
+        entityType: "LOCATION_INVENTORY",
+        entityId: inventory.id,
+        dedupeKey: `inventory-set:${inventory.id}:${inventory.quantity}`,
+        payload: {
+          locationId: data.locationId,
+          locationName: location.name,
+          variationId: data.variationId,
+          subVariationId,
+          quantity: inventory.quantity,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId: location.tenantId,
+          inventoryId: inventory.id,
+          eventName: "inventory.stock.set",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
 
     return {
       id: inventory.id,

@@ -18,7 +18,7 @@ datasource db {
 
 model Tenant {
   id                 String             @id @default(uuid())
-  name               String             // Display name: "Acme Corp"
+  name               String // Display name: "Acme Corp"
   slug               String             @unique // URL slug: "acme" -> acme.ims.app
   plan               PlanTier           @default(STARTER)
   planExpiresAt      DateTime?          @map("plan_expires_at")
@@ -40,38 +40,47 @@ model Tenant {
   users                 User[]
   passwordResetRequests PasswordResetRequest[]
   categories            Category[]
-  products       Product[]
-  discountTypes  DiscountType[]
-  vendors        Vendor[]
-  locations      Location[]
-  transfers      Transfer[]
-  members        Member[]
-  sales          Sale[]
-  promoCodes     PromoCode[]
-  auditLogs      AuditLog[]
-  errorReports   ErrorReport[]
-  subscriptions    Subscription[]
-  payments         TenantPayment[]
-  attributeTypes   AttributeType[]
-  productVariations ProductVariation[]
+  products              Product[]
+  discountTypes         DiscountType[]
+  vendors               Vendor[]
+  locations             Location[]
+  transfers             Transfer[]
+  members               Member[]
+  sales                 Sale[]
+  promoCodes            PromoCode[]
+  auditLogs             AuditLog[]
+  errorReports          ErrorReport[]
+  subscriptions         Subscription[]
+  payments              TenantPayment[]
+  attributeTypes        AttributeType[]
+  productVariations     ProductVariation[]
 
   // CRM relations
-  companies      Company[]
-  contactTags    ContactTag[]
-  contacts       Contact[]
-  leads          Lead[]
-  pipelines       Pipeline[]
-  pipelineWorkflows PipelineWorkflow[]
-  deals          Deal[]
-  tasks          Task[]
-  activities     Activity[]
-  crmSources       CrmSource[]
-  crmJourneyTypes  CrmJourneyType[]
-  remarketingSequences RemarketingSequence[]
+  companies             Company[]
+  contactTags           ContactTag[]
+  contacts              Contact[]
+  leads                 Lead[]
+  pipelines             Pipeline[]
+  pipelineWorkflows     PipelineWorkflow[]
+  workflowRuns          WorkflowRun[]
+  automationDefinitions   AutomationDefinition[]
+  automationEvents        AutomationEvent[]
+  automationRuns          AutomationRun[]
+  automationDelayedRuns   AutomationDelayedRun[]
+  workItems             WorkItem[]
+  inventorySignals      InventorySignal[]
+  deals                 Deal[]
+  tasks                 Task[]
+  activities            Activity[]
+  crmSources            CrmSource[]
+  crmJourneyTypes       CrmJourneyType[]
+  remarketingSequences  RemarketingSequence[]
 
   // Messaging relations
   messagingChannels MessagingChannel[]
   conversations     Conversation[]
+
+  mediaAssets MediaAsset[]
 
   // Domain / public site relations
   domains    TenantDomain[]
@@ -308,34 +317,43 @@ model User {
   updatedAt   DateTime  @updatedAt
 
   // Relations
-  tenant            Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant                         Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   passwordResetRequestsRequested PasswordResetRequest[] @relation("ResetRequester")
   passwordResetRequestsHandled   PasswordResetRequest[] @relation("ResetHandler")
-  productsCreated   Product[]     @relation("ProductCreator")
-  transfersCreated  Transfer[]    @relation("TransferCreator")
-  transfersApproved Transfer[]    @relation("TransferApprover")
-  transferLogs      TransferLog[]
-  salesCreated      Sale[]        @relation("SaleCreator")
-  salesDeleted      Sale[]        @relation("SaleDeletedBy")
-  salesEdited       Sale[]        @relation("SaleEditedBy")
-  saleItemsApprovedForDiscount SaleItem[] @relation("DiscountApprover")
-  auditLogs         AuditLog[]
-  errorReports      ErrorReport[]
+  productsCreated                Product[]              @relation("ProductCreator")
+  transfersCreated               Transfer[]             @relation("TransferCreator")
+  transfersApproved              Transfer[]             @relation("TransferApprover")
+  transferLogs                   TransferLog[]
+  salesCreated                   Sale[]                 @relation("SaleCreator")
+  salesDeleted                   Sale[]                 @relation("SaleDeletedBy")
+  salesEdited                    Sale[]                 @relation("SaleEditedBy")
+  saleItemsApprovedForDiscount   SaleItem[]             @relation("DiscountApprover")
+  auditLogs                      AuditLog[]
+  errorReports                   ErrorReport[]
 
   // CRM relations
-  assignedLeads         Lead[]            @relation("LeadAssignedTo")
-  assignedDeals         Deal[]            @relation("DealAssignedTo")
-  assignedTasks         Task[]
-  contactNotes          ContactNote[]
-  contactCommunications ContactCommunication[]
-  contactAttachments    ContactAttachment[]
-  notifications         Notification[]
-  ownedContacts         Contact[]         @relation("ContactOwner")
-  createdContacts       Contact[]         @relation("ContactCreator")
-  activitiesCreated     Activity[]
-  dealsCreated          Deal[]            @relation("DealCreator")
-  dealsEdited           Deal[]            @relation("DealEditedBy")
-  leadsCreated          Lead[]            @relation("LeadCreator")
+  assignedLeads                Lead[]                 @relation("LeadAssignedTo")
+  assignedDeals                Deal[]                 @relation("DealAssignedTo")
+  assignedTasks                Task[]
+  automationDefinitionsCreated AutomationDefinition[] @relation("AutomationDefinitionCreator")
+  automationDefinitionsUpdated AutomationDefinition[] @relation("AutomationDefinitionUpdater")
+  automationEventsTriggered    AutomationEvent[]      @relation("AutomationEventActor")
+  automationRunsStarted        AutomationRun[]        @relation("AutomationRunActor")
+  workItemsAssigned            WorkItem[]             @relation("WorkItemAssignee")
+  workItemsCreated             WorkItem[]             @relation("WorkItemCreator")
+  workItemsCompleted           WorkItem[]             @relation("WorkItemCompleter")
+  inventorySignalsDetected     InventorySignal[]      @relation("InventorySignalDetector")
+  contactNotes                 ContactNote[]
+  contactCommunications        ContactCommunication[]
+  contactAttachments           ContactAttachment[]
+  notifications                Notification[]
+  ownedContacts                Contact[]              @relation("ContactOwner")
+  createdContacts              Contact[]              @relation("ContactCreator")
+  activitiesCreated            Activity[]
+  dealsCreated                 Deal[]                 @relation("DealCreator")
+  dealsEdited                  Deal[]                 @relation("DealEditedBy")
+  leadsCreated                 Lead[]                 @relation("LeadCreator")
+  mediaAssetsUploaded          MediaAsset[]
 
   // Messaging relations
   assignedConversations Conversation[]    @relation("ConversationAssignedTo")
@@ -410,7 +428,7 @@ model SubCategory {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  category Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  category Category  @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   products Product[]
 
   @@unique([categoryId, name])
@@ -418,29 +436,29 @@ model SubCategory {
 }
 
 model Product {
-  id            String   @id @default(uuid()) @map("product_id")
-  tenantId      String   @map("tenant_id")
+  id            String    @id @default(uuid()) @map("product_id")
+  tenantId      String    @map("tenant_id")
   /// Product code / barcode (POS lookup). When omitted on create, auto-filled as {tenantSlug}-{categoryLetter}{subCategoryLetter?}{seq}.
-  imsCode       String   @map("ims_code") @db.VarChar(100)
-  name          String   @map("product_name") @db.VarChar(255)
-  categoryId    String   @map("category_id")
+  imsCode       String    @map("ims_code") @db.VarChar(100)
+  name          String    @map("product_name") @db.VarChar(255)
+  categoryId    String    @map("category_id")
   /// Optional sub-category label for further grouping within a category (denormalized name)
-  subCategory   String?  @map("sub_category") @db.VarChar(255)
+  subCategory   String?   @map("sub_category") @db.VarChar(255)
   /// Optional relation to sub-category entity
-  subCategoryId String?  @map("sub_category_id")
-  description   String?  @db.Text
-  length        Decimal? @db.Decimal(10, 2)
-  breadth       Decimal? @db.Decimal(10, 2)
-  height        Decimal? @db.Decimal(10, 2)
-  weight        Decimal? @db.Decimal(10, 2)
+  subCategoryId String?   @map("sub_category_id")
+  description   String?   @db.Text
+  length        Decimal?  @db.Decimal(10, 2)
+  breadth       Decimal?  @db.Decimal(10, 2)
+  height        Decimal?  @db.Decimal(10, 2)
+  weight        Decimal?  @db.Decimal(10, 2)
   /// Base cost price (for margin analytics)
-  costPrice     Decimal  @map("cost_price") @db.Decimal(10, 2)
+  costPrice     Decimal   @map("cost_price") @db.Decimal(10, 2)
   /// MRP / list price (before discounts)
-  mrp           Decimal  @db.Decimal(10, 2)
+  mrp           Decimal   @db.Decimal(10, 2)
   /// Default selling price used as the base for discount calculations
-  finalSp       Decimal  @default(0) @map("final_sp") @db.Decimal(10, 2)
+  finalSp       Decimal   @default(0) @map("final_sp") @db.Decimal(10, 2)
   /// Optional vendor this product is sourced from
-  vendorId      String?  @map("vendor_id")
+  vendorId      String?   @map("vendor_id")
   createdById   String    @map("created_by_id")
   dateCreated   DateTime  @default(now()) @map("date_created")
   dateModified  DateTime  @updatedAt @map("date_modified")
@@ -448,16 +466,16 @@ model Product {
   deletedBy     String?   @map("deleted_by")
   deleteReason  String?   @map("delete_reason") @db.VarChar(500)
 
-  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  category     Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  createdBy    User             @relation("ProductCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  vendor       Vendor?          @relation(fields: [vendorId], references: [id], onDelete: SetNull)
-  subCategoryRel SubCategory?   @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
-  variations           ProductVariation[]
-  discounts            ProductDiscount[]
-  promoCodes           PromoCodeProduct[]
+  tenant                Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category              Category               @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  createdBy             User                   @relation("ProductCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  vendor                Vendor?                @relation(fields: [vendorId], references: [id], onDelete: SetNull)
+  subCategoryRel        SubCategory?           @relation(fields: [subCategoryId], references: [id], onDelete: SetNull)
+  variations            ProductVariation[]
+  discounts             ProductDiscount[]
+  promoCodes            PromoCodeProduct[]
   productAttributeTypes ProductAttributeType[]
-  dealLineItems        DealLineItem[]
+  dealLineItems         DealLineItem[]
 
   @@map("products")
 }
@@ -475,8 +493,8 @@ model AttributeType {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  values    AttributeValue[]
+  tenant                Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  values                AttributeValue[]
   productAttributeTypes ProductAttributeType[]
   variationAttributes   ProductVariationAttribute[]
 
@@ -493,7 +511,7 @@ model AttributeValue {
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
 
-  attributeType         AttributeType              @relation(fields: [attributeTypeId], references: [id], onDelete: Cascade)
+  attributeType              AttributeType               @relation(fields: [attributeTypeId], references: [id], onDelete: Cascade)
   productVariationAttributes ProductVariationAttribute[]
 
   @@unique([attributeTypeId, value])
@@ -523,15 +541,17 @@ model ProductVariation {
   finalSpOverride   Decimal? @map("final_sp_override") @db.Decimal(10, 2)
   isActive          Boolean  @default(true) @map("is_active")
   stockQuantity     Int      @default(0) @map("stock_quantity")
+  lowStockThreshold Int?     @map("low_stock_threshold")
   createdAt         DateTime @default(now()) @map("created_at")
   updatedAt         DateTime @updatedAt @map("updated_at")
 
-  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  product           Product                   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  tenant            Tenant                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  product           Product                     @relation(fields: [productId], references: [id], onDelete: Cascade)
   attributes        ProductVariationAttribute[]
   subVariations     ProductSubVariation[]
   photos            VariationPhoto[]
   locationInventory LocationInventory[]
+  inventorySignals  InventorySignal[]
   transferItems     TransferItem[]
   saleItems         SaleItem[]
   dealLineItems     DealLineItem[]
@@ -541,13 +561,13 @@ model ProductVariation {
 
 /// EAV: links a variation to one value per attribute type (e.g. Color=Red, Size=M)
 model ProductVariationAttribute {
-  variationId       String @map("variation_id")
-  attributeTypeId   String @map("attribute_type_id")
-  attributeValueId  String @map("attribute_value_id")
+  variationId      String @map("variation_id")
+  attributeTypeId  String @map("attribute_type_id")
+  attributeValueId String @map("attribute_value_id")
 
   variation      ProductVariation @relation(fields: [variationId], references: [id], onDelete: Cascade)
-  attributeType  AttributeType   @relation(fields: [attributeTypeId], references: [id], onDelete: Cascade)
-  attributeValue AttributeValue  @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
+  attributeType  AttributeType    @relation(fields: [attributeTypeId], references: [id], onDelete: Cascade)
+  attributeValue AttributeValue   @relation(fields: [attributeValueId], references: [id], onDelete: Cascade)
 
   @@id([variationId, attributeTypeId])
   @@map("product_variation_attributes")
@@ -557,11 +577,13 @@ model ProductSubVariation {
   id          String   @id @default(uuid()) @map("sub_variation_id")
   variationId String   @map("variation_id")
   name        String   @db.VarChar(100)
+  lowStockThreshold Int? @map("low_stock_threshold")
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
   variation         ProductVariation    @relation(fields: [variationId], references: [id], onDelete: Cascade)
   locationInventory LocationInventory[]
+  inventorySignals  InventorySignal[]
   transferItems     TransferItem[]
   saleItems         SaleItem[]
 
@@ -582,14 +604,14 @@ model VariationPhoto {
 }
 
 model DiscountType {
-  id                String    @id @default(uuid()) @map("discount_type_id")
-  tenantId          String    @map("tenant_id")
-  name              String    @map("type_name") @db.VarChar(100)
-  description       String?   @db.Text
+  id                String   @id @default(uuid()) @map("discount_type_id")
+  tenantId          String   @map("tenant_id")
+  name              String   @map("type_name") @db.VarChar(100)
+  description       String?  @db.Text
   /// Default percentage off (0–100) when this discount type is used; optional
-  defaultPercentage Decimal?  @map("default_percentage") @db.Decimal(5, 2)
-  createdAt         DateTime  @default(now()) @map("created_at")
-  updatedAt         DateTime  @updatedAt @map("updated_at")
+  defaultPercentage Decimal? @map("default_percentage") @db.Decimal(5, 2)
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   tenant           Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   productDiscounts ProductDiscount[]
@@ -670,11 +692,13 @@ model Location {
   createdAt          DateTime     @default(now()) @map("created_at")
   updatedAt          DateTime     @updatedAt @map("updated_at")
 
-  tenant        Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  inventory     LocationInventory[]
-  transfersFrom Transfer[]          @relation("TransferFrom")
-  transfersTo   Transfer[]          @relation("TransferTo")
-  sales         Sale[]
+  tenant                Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  inventory             LocationInventory[]
+  inventorySignals      InventorySignal[]
+  recommendedForSignals InventorySignal[]   @relation("InventorySignalRecommendedSource")
+  transfersFrom         Transfer[]          @relation("TransferFrom")
+  transfersTo           Transfer[]          @relation("TransferTo")
+  sales                 Sale[]
 
   @@unique([tenantId, name])
   @@map("locations")
@@ -694,12 +718,48 @@ model LocationInventory {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  location     Location              @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  variation    ProductVariation      @relation(fields: [variationId], references: [id], onDelete: Cascade)
-  subVariation ProductSubVariation?  @relation(fields: [subVariationId], references: [id], onDelete: Cascade)
+  location     Location             @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  variation    ProductVariation     @relation(fields: [variationId], references: [id], onDelete: Cascade)
+  subVariation ProductSubVariation? @relation(fields: [subVariationId], references: [id], onDelete: Cascade)
 
   @@unique([locationId, variationId, subVariationId])
   @@map("location_inventory")
+}
+
+enum InventorySignalStatus {
+  ACTIVE
+  RESOLVED
+}
+
+model InventorySignal {
+  id                          String                @id @default(uuid()) @map("inventory_signal_id")
+  tenantId                    String                @map("tenant_id")
+  locationId                  String                @map("location_id")
+  variationId                 String                @map("variation_id")
+  subVariationId              String?               @map("sub_variation_id")
+  status                      InventorySignalStatus @default(ACTIVE)
+  threshold                   Int
+  currentQuantity             Int                   @map("current_quantity")
+  recommendedSourceLocationId String?               @map("recommended_source_location_id")
+  detectedById                String?               @map("detected_by_id")
+  metadata                    Json?
+  detectedAt                  DateTime              @default(now()) @map("detected_at")
+  resolvedAt                  DateTime?             @map("resolved_at")
+  createdAt                   DateTime              @default(now()) @map("created_at")
+  updatedAt                   DateTime              @updatedAt @map("updated_at")
+
+  tenant                    Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location                  Location             @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  variation                 ProductVariation     @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  subVariation              ProductSubVariation? @relation(fields: [subVariationId], references: [id], onDelete: SetNull)
+  recommendedSourceLocation Location?            @relation("InventorySignalRecommendedSource", fields: [recommendedSourceLocationId], references: [id], onDelete: SetNull)
+  detectedBy                User?                @relation("InventorySignalDetector", fields: [detectedById], references: [id], onDelete: SetNull)
+  workItemLinks             WorkItemLink[]
+  transfers                 Transfer[]            @relation("TransferSourceInventorySignal")
+
+  @@index([tenantId, status])
+  @@index([locationId, variationId, subVariationId])
+  @@map("inventory_signals")
 }
 
 // ============================================
@@ -716,6 +776,8 @@ model Transfer {
   notes          String?        @db.Text
   createdById    String         @map("created_by_id")
   approvedById   String?        @map("approved_by_id")
+  sourceInventorySignalId String? @map("source_inventory_signal_id")
+  automationRunId String? @map("automation_run_id")
   createdAt      DateTime       @default(now()) @map("created_at")
   approvedAt     DateTime?      @map("approved_at")
   completedAt    DateTime?      @map("completed_at")
@@ -725,10 +787,14 @@ model Transfer {
   toLocation   Location       @relation("TransferTo", fields: [toLocationId], references: [id], onDelete: Restrict)
   createdBy    User           @relation("TransferCreator", fields: [createdById], references: [id], onDelete: Restrict)
   approvedBy   User?          @relation("TransferApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  sourceInventorySignal InventorySignal? @relation("TransferSourceInventorySignal", fields: [sourceInventorySignalId], references: [id], onDelete: SetNull)
+  automationRun AutomationRun? @relation(fields: [automationRunId], references: [id], onDelete: SetNull)
   items        TransferItem[]
   logs         TransferLog[]
 
   @@unique([tenantId, transferCode])
+  @@index([sourceInventorySignalId, status])
+  @@index([automationRunId])
   @@map("transfers")
 }
 
@@ -747,9 +813,9 @@ model TransferItem {
   subVariationId String? @map("sub_variation_id")
   quantity       Int
 
-  transfer     Transfer              @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  variation    ProductVariation      @relation(fields: [variationId], references: [id], onDelete: Restrict)
-  subVariation ProductSubVariation?  @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
+  transfer     Transfer             @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  variation    ProductVariation     @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  subVariation ProductSubVariation? @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
 
   @@unique([transferId, variationId, subVariationId])
   @@map("transfer_items")
@@ -818,41 +884,41 @@ enum MemberStatus {
 }
 
 model Sale {
-  id               String   @id @default(uuid()) @map("sale_id")
-  tenantId         String   @map("tenant_id")
-  saleCode         String   @map("sale_code") @db.VarChar(50)
-  type             SaleType @default(GENERAL)
-  isCreditSale     Boolean  @default(false) @map("is_credit_sale")
-  locationId       String   @map("location_id")
-  memberId         String?  @map("member_id")
-  contactId        String?  @map("contact_id")
-  subtotal         Decimal  @db.Decimal(12, 2)
-  discount         Decimal  @default(0) @db.Decimal(12, 2)
-  promoDiscount    Decimal  @default(0) @map("promo_discount") @db.Decimal(12, 2)
-  total            Decimal  @db.Decimal(12, 2)
-  notes            String?  @db.Text
-  promoCodesUsed   Json?    @map("promo_codes_used")
-  createdById      String   @map("created_by_id")
-  createdAt        DateTime @default(now()) @map("created_at")
-  deletedAt        DateTime? @map("deleted_at")
-  deletedById      String?   @map("deleted_by")
-  deleteReason     String?   @map("delete_reason") @db.VarChar(500)
-  parentSaleId     String?   @map("parent_sale_id")
-  revisionNo       Int       @default(1) @map("revision_no")
-  isLatest         Boolean   @default(true) @map("is_latest")
-  editReason       String?   @map("edit_reason") @db.VarChar(500)
-  editedById       String?   @map("edited_by_id")
-  editedAt         DateTime? @map("edited_at")
+  id             String    @id @default(uuid()) @map("sale_id")
+  tenantId       String    @map("tenant_id")
+  saleCode       String    @map("sale_code") @db.VarChar(50)
+  type           SaleType  @default(GENERAL)
+  isCreditSale   Boolean   @default(false) @map("is_credit_sale")
+  locationId     String    @map("location_id")
+  memberId       String?   @map("member_id")
+  contactId      String?   @map("contact_id")
+  subtotal       Decimal   @db.Decimal(12, 2)
+  discount       Decimal   @default(0) @db.Decimal(12, 2)
+  promoDiscount  Decimal   @default(0) @map("promo_discount") @db.Decimal(12, 2)
+  total          Decimal   @db.Decimal(12, 2)
+  notes          String?   @db.Text
+  promoCodesUsed Json?     @map("promo_codes_used")
+  createdById    String    @map("created_by_id")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  deletedAt      DateTime? @map("deleted_at")
+  deletedById    String?   @map("deleted_by")
+  deleteReason   String?   @map("delete_reason") @db.VarChar(500)
+  parentSaleId   String?   @map("parent_sale_id")
+  revisionNo     Int       @default(1) @map("revision_no")
+  isLatest       Boolean   @default(true) @map("is_latest")
+  editReason     String?   @map("edit_reason") @db.VarChar(500)
+  editedById     String?   @map("edited_by_id")
+  editedAt       DateTime? @map("edited_at")
 
-  tenant     Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  location   Location     @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  member     Member?      @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  contact    Contact?     @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  createdBy  User         @relation("SaleCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  deletedBy  User?        @relation("SaleDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
-  editedBy   User?        @relation("SaleEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
-  parentSale Sale?        @relation("SaleRevisions", fields: [parentSaleId], references: [id], onDelete: SetNull)
-  revisions  Sale[]       @relation("SaleRevisions")
+  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location   Location      @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  member     Member?       @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  contact    Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  createdBy  User          @relation("SaleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  deletedBy  User?         @relation("SaleDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  editedBy   User?         @relation("SaleEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
+  parentSale Sale?         @relation("SaleRevisions", fields: [parentSaleId], references: [id], onDelete: SetNull)
+  revisions  Sale[]        @relation("SaleRevisions")
   items      SaleItem[]
   payments   SalePayment[]
 
@@ -890,10 +956,10 @@ model SaleItem {
   /// Reason for manual discount (required when manual discount is applied)
   discountReason        String?  @map("discount_reason") @db.VarChar(500)
 
-  sale               Sale                  @relation(fields: [saleId], references: [id], onDelete: Cascade)
-  variation          ProductVariation      @relation(fields: [variationId], references: [id], onDelete: Restrict)
-  subVariation       ProductSubVariation?  @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
-  discountApprovedBy User?                 @relation("DiscountApprover", fields: [discountApprovedById], references: [id], onDelete: SetNull)
+  sale               Sale                 @relation(fields: [saleId], references: [id], onDelete: Cascade)
+  variation          ProductVariation     @relation(fields: [variationId], references: [id], onDelete: Restrict)
+  subVariation       ProductSubVariation? @relation(fields: [subVariationId], references: [id], onDelete: Restrict)
+  discountApprovedBy User?                @relation("DiscountApprover", fields: [discountApprovedById], references: [id], onDelete: SetNull)
 
   @@map("sale_items")
 }
@@ -903,11 +969,11 @@ model SaleItem {
 // ============================================
 
 model SalePayment {
-  id        String        @id @default(uuid()) @map("payment_id")
-  saleId    String        @map("sale_id")
-  method    String        @db.VarChar(32)
-  amount    Decimal       @db.Decimal(12, 2)
-  createdAt DateTime      @default(now()) @map("created_at")
+  id        String   @id @default(uuid()) @map("payment_id")
+  saleId    String   @map("sale_id")
+  method    String   @db.VarChar(32)
+  amount    Decimal  @db.Decimal(12, 2)
+  createdAt DateTime @default(now()) @map("created_at")
 
   sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
@@ -1026,7 +1092,7 @@ model Company {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
 
-  tenant   Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts Contact[]
   deals    Deal[]
   tasks    Task[]
@@ -1041,11 +1107,11 @@ model ContactTag {
   name      String   @db.VarChar(100)
   createdAt DateTime @default(now()) @map("created_at")
 
-  tenant   Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contacts ContactTagLink[]
 
-  @@index([tenantId])
   @@unique([tenantId, name])
+  @@index([tenantId])
   @@map("contact_tags")
 }
 
@@ -1053,7 +1119,7 @@ model ContactTagLink {
   contactId String @map("contact_id")
   tagId     String @map("tag_id")
 
-  contact Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  contact Contact    @relation(fields: [contactId], references: [id], onDelete: Cascade)
   tag     ContactTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([contactId, tagId])
@@ -1061,55 +1127,55 @@ model ContactTagLink {
 }
 
 model Contact {
-  id            String   @id @default(uuid()) @map("contact_id")
-  tenantId      String   @map("tenant_id")
-  firstName     String   @map("first_name") @db.VarChar(255)
-  lastName      String?  @map("last_name") @db.VarChar(255)
-  email         String?  @db.VarChar(255)
-  phone         String?  @db.VarChar(50)
-  gender        String?  @db.VarChar(20)
+  id            String    @id @default(uuid()) @map("contact_id")
+  tenantId      String    @map("tenant_id")
+  firstName     String    @map("first_name") @db.VarChar(255)
+  lastName      String?   @map("last_name") @db.VarChar(255)
+  email         String?   @db.VarChar(255)
+  phone         String?   @db.VarChar(50)
+  gender        String?   @db.VarChar(20)
   birthDate     DateTime? @map("birth_date")
-  companyId     String?  @map("company_id")
-  memberId      String?  @unique @map("member_id")
+  companyId     String?   @map("company_id")
+  memberId      String?   @unique @map("member_id")
   ownedById     String    @map("owned_by_id")
   createdById   String    @map("created_by_id")
-  source        String?  @db.VarChar(100)
-  journeyType   String?  @map("journey_type") @db.VarChar(100)
-  purchaseCount Int      @default(0) @map("purchase_count")
+  source        String?   @db.VarChar(100)
+  journeyType   String?   @map("journey_type") @db.VarChar(100)
+  purchaseCount Int       @default(0) @map("purchase_count")
   deletedAt     DateTime? @map("deleted_at")
-  deletedBy     String?  @map("deleted_by")
-  deleteReason  String?  @map("delete_reason") @db.VarChar(500)
+  deletedBy     String?   @map("deleted_by")
+  deleteReason  String?   @map("delete_reason") @db.VarChar(500)
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  tenant                Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  company               Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  member                Member?                @relation(fields: [memberId], references: [id], onDelete: SetNull)
-  owner                 User                   @relation("ContactOwner", fields: [ownedById], references: [id], onDelete: Restrict)
-  creator               User                   @relation("ContactCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  tagLinks              ContactTagLink[]
-  notes                 ContactNote[]
-  attachments           ContactAttachment[]
-  communications        ContactCommunication[]
-  deals                 Deal[]
-  tasks                 Task[]
-  activities            Activity[]
-  sales                 Sale[]
-  remarketingSequences  RemarketingSequence[]
+  tenant               Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  company              Company?               @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  member               Member?                @relation(fields: [memberId], references: [id], onDelete: SetNull)
+  owner                User                   @relation("ContactOwner", fields: [ownedById], references: [id], onDelete: Restrict)
+  creator              User                   @relation("ContactCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tagLinks             ContactTagLink[]
+  notes                ContactNote[]
+  attachments          ContactAttachment[]
+  communications       ContactCommunication[]
+  deals                Deal[]
+  tasks                Task[]
+  activities           Activity[]
+  sales                Sale[]
+  remarketingSequences RemarketingSequence[]
 
   // Messaging relations
-  conversations  Conversation[]
+  conversations Conversation[]
 
   @@index([tenantId])
   @@map("contacts")
 }
 
 model ContactNote {
-  id        String   @id @default(uuid()) @map("note_id")
-  contactId String   @map("contact_id")
-  content   String   @db.Text
-  createdById String @map("created_by_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id          String   @id @default(uuid()) @map("note_id")
+  contactId   String   @map("contact_id")
+  content     String   @db.Text
+  createdById String   @map("created_by_id")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   creator User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
@@ -1118,19 +1184,49 @@ model ContactNote {
 }
 
 model ContactAttachment {
-  id        String   @id @default(uuid()) @map("attachment_id")
-  contactId String   @map("contact_id")
-  fileName  String   @map("file_name") @db.VarChar(255)
-  filePath  String   @map("file_path") @db.VarChar(500)
-  fileSize  Int?     @map("file_size")
-  mimeType  String?  @map("mime_type") @db.VarChar(100)
-  uploadedById String @map("uploaded_by_id")
-  createdAt DateTime @default(now()) @map("created_at")
+  id           String   @id @default(uuid()) @map("attachment_id")
+  contactId    String   @map("contact_id")
+  fileName     String   @map("file_name") @db.VarChar(255)
+  filePath     String   @map("file_path") @db.VarChar(500)
+  /// S3 object key for direct-upload attachments (null = legacy disk path in filePath).
+  storageKey   String?  @map("storage_key") @db.VarChar(768)
+  /// Canonical public URL when stored in S3.
+  publicUrl    String?  @map("public_url") @db.VarChar(1024)
+  fileSize     Int?     @map("file_size")
+  mimeType     String?  @map("mime_type") @db.VarChar(100)
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+  /// Row in tenant media library when registered (S3 direct uploads).
+  mediaAssetId String?  @map("media_asset_id")
 
-  contact   Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
-  uploader  User    @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  contact    Contact     @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  uploader   User        @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  mediaAsset MediaAsset? @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
 
+  @@index([mediaAssetId])
   @@map("contact_attachments")
+}
+
+model MediaAsset {
+  id           String   @id @default(uuid()) @map("media_asset_id")
+  tenantId     String   @map("tenant_id")
+  storageKey   String   @map("storage_key") @db.VarChar(768)
+  publicUrl    String   @map("public_url") @db.VarChar(1024)
+  fileName     String   @map("file_name") @db.VarChar(255)
+  mimeType     String   @map("mime_type") @db.VarChar(120)
+  byteSize     Int?     @map("byte_size")
+  purpose      String   @map("purpose") @db.VarChar(64)
+  uploadedById String   @map("uploaded_by_id")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  tenant             Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  uploader           User                @relation(fields: [uploadedById], references: [id], onDelete: Restrict)
+  contactAttachments ContactAttachment[]
+  messages           Message[]
+
+  @@unique([tenantId, storageKey])
+  @@index([tenantId, createdAt(sort: Desc)])
+  @@map("media_assets")
 }
 
 enum CommunicationType {
@@ -1140,13 +1236,13 @@ enum CommunicationType {
 }
 
 model ContactCommunication {
-  id        String            @id @default(uuid()) @map("communication_id")
-  contactId String            @map("contact_id")
-  type      CommunicationType
-  subject   String?           @db.VarChar(500)
-  notes     String?           @db.Text
-  createdById String          @map("created_by_id")
-  createdAt DateTime         @default(now()) @map("created_at")
+  id          String            @id @default(uuid()) @map("communication_id")
+  contactId   String            @map("contact_id")
+  type        CommunicationType
+  subject     String?           @db.VarChar(500)
+  notes       String?           @db.Text
+  createdById String            @map("created_by_id")
+  createdAt   DateTime          @default(now()) @map("created_at")
 
   contact Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
   creator User    @relation(fields: [createdById], references: [id], onDelete: Restrict)
@@ -1164,7 +1260,7 @@ enum LeadStatus {
 
 model Lead {
   id           String     @id @default(uuid()) @map("lead_id")
-  tenantId     String    @map("tenant_id")
+  tenantId     String     @map("tenant_id")
   name         String     @map("lead_name") @db.VarChar(255)
   email        String?    @db.VarChar(255)
   phone        String?    @db.VarChar(50)
@@ -1181,9 +1277,9 @@ model Lead {
   createdAt    DateTime   @default(now()) @map("created_at")
   updatedAt    DateTime   @updatedAt @map("updated_at")
 
-  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  assignedTo  User   @relation("LeadAssignedTo", fields: [assignedToId], references: [id], onDelete: Restrict)
-  creator     User   @relation("LeadCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  tenant        Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  assignedTo    User   @relation("LeadAssignedTo", fields: [assignedToId], references: [id], onDelete: Restrict)
+  creator       User   @relation("LeadCreator", fields: [createdById], references: [id], onDelete: Restrict)
   convertedDeal Deal?
 
   @@index([tenantId])
@@ -1198,21 +1294,21 @@ enum PipelineType {
 }
 
 model Pipeline {
-  id           String       @id @default(uuid()) @map("pipeline_id")
-  tenantId     String       @map("tenant_id")
-  name         String       @db.VarChar(255)
-  type         PipelineType @default(GENERAL)
-  stages       Json         // Array of { id, name, order, probability }
+  id                  String       @id @default(uuid()) @map("pipeline_id")
+  tenantId            String       @map("tenant_id")
+  name                String       @db.VarChar(255)
+  type                PipelineType @default(GENERAL)
+  stages              Json // Array of { id, name, order, probability }
   /// When set, marking a deal WON sets deal.stage to this name (must match a stage name in `stages` JSON).
-  closedWonStageName  String?  @map("closed_won_stage_name") @db.VarChar(100)
+  closedWonStageName  String?      @map("closed_won_stage_name") @db.VarChar(100)
   /// When set, marking a deal LOST sets deal.stage to this name.
-  closedLostStageName String?  @map("closed_lost_stage_name") @db.VarChar(100)
-  isDefault    Boolean      @default(false) @map("is_default")
-  deletedAt    DateTime?    @map("deleted_at")
-  deletedBy    String?      @map("deleted_by")
-  deleteReason String?      @map("delete_reason") @db.VarChar(500)
-  createdAt    DateTime     @default(now()) @map("created_at")
-  updatedAt    DateTime     @updatedAt @map("updated_at")
+  closedLostStageName String?      @map("closed_lost_stage_name") @db.VarChar(100)
+  isDefault           Boolean      @default(false) @map("is_default")
+  deletedAt           DateTime?    @map("deleted_at")
+  deletedBy           String?      @map("deleted_by")
+  deleteReason        String?      @map("delete_reason") @db.VarChar(500)
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
 
   tenant            Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   deals             Deal[]
@@ -1243,22 +1339,117 @@ enum WorkflowAction {
   REMOVE_TAG
 }
 
-model PipelineWorkflow {
-  id         String   @id @default(uuid()) @map("workflow_id")
-  tenantId   String   @map("tenant_id")
-  pipelineId String   @map("pipeline_id")
-  name       String   @db.VarChar(255)
-  isActive   Boolean  @default(true) @map("is_active")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+enum WorkflowOrigin {
+  CUSTOM
+  TEMPLATE
+  SYSTEM
+}
 
-  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  pipeline Pipeline      @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
-  rules    WorkflowRule[]
+enum WorkflowRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+enum AutomationScopeType {
+  GLOBAL
+  CRM_PIPELINE
+  LOCATION
+  PRODUCT_VARIATION
+}
+
+enum AutomationStatus {
+  ACTIVE
+  INACTIVE
+  ARCHIVED
+}
+
+enum AutomationSource {
+  MANUAL
+  TEMPLATE
+  MIGRATED_CRM
+}
+
+enum AutomationExecutionMode {
+  LIVE
+  SHADOW
+}
+
+enum AutomationEventStatus {
+  PENDING
+  PROCESSING
+  PROCESSED
+  FAILED
+  EXHAUSTED
+}
+
+enum AutomationRunStatus {
+  RUNNING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
+enum AutomationDelayedRunStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum WorkItemType {
+  TASK
+  APPROVAL
+  TRANSFER_REQUEST
+  RESTOCK_REQUEST
+  FOLLOW_UP
+}
+
+enum WorkItemStatus {
+  OPEN
+  IN_PROGRESS
+  BLOCKED
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkItemPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+model PipelineWorkflow {
+  id              String         @id @default(uuid()) @map("workflow_id")
+  tenantId        String         @map("tenant_id")
+  pipelineId      String         @map("pipeline_id")
+  name            String         @db.VarChar(255)
+  description     String?        @db.VarChar(500)
+  isActive        Boolean        @default(true) @map("is_active")
+  templateKey     String?        @map("template_key") @db.VarChar(120)
+  templateVersion Int?           @map("template_version")
+  origin          WorkflowOrigin @default(CUSTOM)
+  version         Int            @default(1)
+  publishedAt     DateTime?      @map("published_at")
+  lastRunAt       DateTime?      @map("last_run_at")
+  lastErrorAt     DateTime?      @map("last_error_at")
+  runCount        Int            @default(0) @map("run_count")
+  failureCount    Int            @default(0) @map("failure_count")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  pipeline     Pipeline       @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  rules        WorkflowRule[]
+  workflowRuns WorkflowRun[]
 
   @@unique([tenantId, pipelineId, name])
+  @@unique([tenantId, templateKey])
   @@index([tenantId])
   @@index([pipelineId])
+  @@index([tenantId, templateKey])
   @@map("pipeline_workflows")
 }
 
@@ -1279,6 +1470,262 @@ model WorkflowRule {
   @@map("workflow_rules")
 }
 
+model WorkflowRun {
+  id           String            @id @default(uuid()) @map("workflow_run_id")
+  tenantId     String            @map("tenant_id")
+  workflowId   String            @map("workflow_id")
+  ruleId       String?           @map("rule_id")
+  trigger      WorkflowTrigger
+  action       WorkflowAction?
+  status       WorkflowRunStatus
+  entityType   String            @default("DEAL") @map("entity_type") @db.VarChar(50)
+  entityId     String            @map("entity_id")
+  dedupeKey    String?           @map("dedupe_key") @db.VarChar(255)
+  attempt      Int               @default(1)
+  errorMessage String?           @map("error_message") @db.VarChar(2000)
+  metadata     Json?
+  startedAt    DateTime          @default(now()) @map("started_at")
+  completedAt  DateTime?         @map("completed_at")
+
+  tenant   Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  workflow PipelineWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@unique([workflowId, dedupeKey])
+  @@index([tenantId, workflowId, startedAt])
+  @@index([workflowId, status])
+  @@map("workflow_runs")
+}
+
+model AutomationDefinition {
+  id            String                  @id @default(uuid()) @map("automation_definition_id")
+  tenantId      String                  @map("tenant_id")
+  name          String                  @db.VarChar(255)
+  description   String?                 @db.VarChar(1000)
+  scopeType     AutomationScopeType     @map("scope_type")
+  scopeId       String?                 @map("scope_id")
+  status        AutomationStatus        @default(ACTIVE)
+  source        AutomationSource        @default(MANUAL)
+  executionMode AutomationExecutionMode @default(LIVE) @map("execution_mode")
+  suppressLegacyWorkflows Boolean       @default(false) @map("suppress_legacy_workflows")
+  version       Int                     @default(1)
+  /// Phase 3 DAG body (JSON). When set, `steps` must be empty (BR-19).
+  flowGraph     Json?                   @map("flow_graph")
+  createdById   String                  @map("created_by_id")
+  updatedById   String?                 @map("updated_by_id")
+  publishedAt   DateTime?               @map("published_at")
+  createdAt     DateTime                @default(now()) @map("created_at")
+  updatedAt     DateTime                @updatedAt @map("updated_at")
+
+  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy User                @relation("AutomationDefinitionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy User?               @relation("AutomationDefinitionUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  triggers    AutomationTrigger[]
+  steps       AutomationStep[]
+  runs        AutomationRun[]
+  delayedRuns AutomationDelayedRun[]
+  workItems   WorkItem[]
+
+  @@unique([tenantId, scopeType, scopeId, name])
+  @@index([tenantId, status])
+  @@index([tenantId, scopeType, scopeId])
+  @@map("automation_definitions")
+}
+
+model AutomationTrigger {
+  id              String   @id @default(uuid()) @map("automation_trigger_id")
+  automationId    String   @map("automation_definition_id")
+  eventName       String   @map("event_name") @db.VarChar(120)
+  conditionGroups Json?    @map("condition_groups")
+  delayMinutes    Int      @default(0) @map("delay_minutes")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  automation  AutomationDefinition   @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  delayedRuns AutomationDelayedRun[]
+
+  @@index([automationId])
+  @@index([eventName])
+  @@map("automation_triggers")
+}
+
+model AutomationStep {
+  id              String   @id @default(uuid()) @map("automation_step_id")
+  automationId    String   @map("automation_definition_id")
+  stepOrder       Int      @default(0) @map("step_order")
+  actionType      String   @map("action_type") @db.VarChar(120)
+  actionConfig    Json     @map("action_config")
+  continueOnError Boolean  @default(false) @map("continue_on_error")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  automation AutomationDefinition @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  runSteps   AutomationRunStep[]
+
+  @@index([automationId, stepOrder])
+  @@map("automation_steps")
+}
+
+model AutomationEvent {
+  id           String                @id @default(uuid()) @map("automation_event_id")
+  tenantId     String                @map("tenant_id")
+  eventName    String                @map("event_name") @db.VarChar(120)
+  scopeType    AutomationScopeType?  @map("scope_type")
+  scopeId      String?               @map("scope_id")
+  entityType   String                @map("entity_type") @db.VarChar(100)
+  entityId     String                @map("entity_id")
+  actorUserId  String?               @map("actor_user_id")
+  dedupeKey    String?               @map("dedupe_key") @db.VarChar(255)
+  status       AutomationEventStatus @default(PENDING)
+  attempts     Int                   @default(0)
+  payload      Json
+  errorMessage String?               @map("error_message") @db.VarChar(2000)
+  occurredAt   DateTime              @map("occurred_at")
+  lastAttemptAt DateTime?            @map("last_attempt_at")
+  nextAttemptAt DateTime             @default(now()) @map("next_attempt_at")
+  processingStartedAt DateTime?      @map("processing_started_at")
+  processedAt  DateTime?             @map("processed_at")
+  createdAt    DateTime              @default(now()) @map("created_at")
+  updatedAt    DateTime              @updatedAt @map("updated_at")
+
+  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor        User?                  @relation("AutomationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  runs         AutomationRun[]
+  delayedRuns  AutomationDelayedRun[]
+
+  @@unique([tenantId, dedupeKey])
+  @@index([tenantId, status, nextAttemptAt])
+  @@index([tenantId, status, occurredAt])
+  @@index([tenantId, eventName, scopeType, scopeId])
+  @@map("automation_events")
+}
+
+model AutomationRun {
+  id                String              @id @default(uuid()) @map("automation_run_id")
+  tenantId          String              @map("tenant_id")
+  automationId      String              @map("automation_definition_id")
+  automationEventId String?             @map("automation_event_id")
+  status            AutomationRunStatus
+  executionMode     AutomationExecutionMode @default(LIVE) @map("execution_mode")
+  eventName         String              @map("event_name") @db.VarChar(120)
+  entityType        String              @map("entity_type") @db.VarChar(100)
+  entityId          String              @map("entity_id")
+  dedupeKey         String?             @map("dedupe_key") @db.VarChar(255)
+  actorUserId       String?             @map("actor_user_id")
+  triggerPayload    Json                @map("trigger_payload")
+  /// Phase 3: copy of `AutomationDefinition.flowGraph` at run start for resume (EC-12 / AT-RSU-004).
+  flowGraphSnapshot Json?               @map("flow_graph_snapshot")
+  stepOutput        Json?               @map("step_output")
+  errorMessage      String?             @map("error_message") @db.VarChar(2000)
+  startedAt         DateTime            @default(now()) @map("started_at")
+  completedAt       DateTime?           @map("completed_at")
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  automation AutomationDefinition @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  event      AutomationEvent?     @relation(fields: [automationEventId], references: [id], onDelete: SetNull)
+  actor      User?                @relation("AutomationRunActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  runSteps   AutomationRunStep[]
+  workItems  WorkItem[]
+  transfers  Transfer[]
+
+  @@unique([automationId, dedupeKey])
+  @@index([tenantId, automationId, startedAt])
+  @@index([automationId, status])
+  @@map("automation_runs")
+}
+
+model AutomationRunStep {
+  id               String              @id @default(uuid()) @map("automation_run_step_id")
+  automationRunId  String              @map("automation_run_id")
+  /// Null when this row records a graph `action` node (use graphNodeId).
+  automationStepId String?             @map("automation_step_id")
+  graphNodeId      String?             @map("graph_node_id") @db.VarChar(36)
+  status           AutomationRunStatus
+  output           Json?
+  errorMessage     String?             @map("error_message") @db.VarChar(2000)
+  startedAt        DateTime            @default(now()) @map("started_at")
+  completedAt      DateTime?           @map("completed_at")
+
+  run  AutomationRun   @relation(fields: [automationRunId], references: [id], onDelete: Cascade)
+  step AutomationStep? @relation(fields: [automationStepId], references: [id], onDelete: Cascade)
+
+  @@index([automationRunId])
+  @@index([automationStepId])
+  @@index([graphNodeId])
+  @@map("automation_run_steps")
+}
+
+model AutomationDelayedRun {
+  id                     String                     @id @default(uuid()) @map("automation_delayed_run_id")
+  tenantId               String                     @map("tenant_id")
+  automationEventId      String                     @map("automation_event_id")
+  automationDefinitionId String                   @map("automation_definition_id")
+  automationTriggerId    String                     @map("automation_trigger_id")
+  fireAt                 DateTime                   @map("fire_at")
+  status                 AutomationDelayedRunStatus @default(PENDING)
+  errorMessage           String?                    @map("error_message") @db.VarChar(2000)
+  createdAt              DateTime                   @default(now()) @map("created_at")
+  processedAt            DateTime?                  @map("processed_at")
+
+  tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event      AutomationEvent      @relation(fields: [automationEventId], references: [id], onDelete: Cascade)
+  automation AutomationDefinition @relation(fields: [automationDefinitionId], references: [id], onDelete: Cascade)
+  trigger    AutomationTrigger    @relation(fields: [automationTriggerId], references: [id], onDelete: Cascade)
+
+  @@unique([automationEventId, automationDefinitionId, automationTriggerId])
+  @@index([tenantId, status, fireAt])
+  @@map("automation_delayed_runs")
+}
+
+model WorkItem {
+  id              String           @id @default(uuid()) @map("work_item_id")
+  tenantId        String           @map("tenant_id")
+  automationId    String?          @map("automation_definition_id")
+  automationRunId String?          @map("automation_run_id")
+  type            WorkItemType
+  status          WorkItemStatus   @default(OPEN)
+  priority        WorkItemPriority @default(MEDIUM)
+  title           String           @db.VarChar(255)
+  description     String?          @db.Text
+  dueDate         DateTime?        @map("due_date")
+  slaDueAt        DateTime?        @map("sla_due_at")
+  assignedToId    String?          @map("assigned_to_id")
+  createdById     String?          @map("created_by_id")
+  completedAt     DateTime?        @map("completed_at")
+  completedById   String?          @map("completed_by_id")
+  prefillPayload  Json?            @map("prefill_payload")
+  metadata        Json?
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
+
+  tenant        Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  automation    AutomationDefinition? @relation(fields: [automationId], references: [id], onDelete: SetNull)
+  automationRun AutomationRun?        @relation(fields: [automationRunId], references: [id], onDelete: SetNull)
+  assignedTo    User?                 @relation("WorkItemAssignee", fields: [assignedToId], references: [id], onDelete: SetNull)
+  createdBy     User?                 @relation("WorkItemCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  completedBy   User?                 @relation("WorkItemCompleter", fields: [completedById], references: [id], onDelete: SetNull)
+  links         WorkItemLink[]
+
+  @@index([tenantId, status, priority])
+  @@index([assignedToId, status])
+  @@map("work_items")
+}
+
+model WorkItemLink {
+  id                String   @id @default(uuid()) @map("work_item_link_id")
+  workItemId        String   @map("work_item_id")
+  entityType        String   @map("entity_type") @db.VarChar(100)
+  entityId          String   @map("entity_id")
+  inventorySignalId String?  @map("inventory_signal_id")
+  createdAt         DateTime @default(now()) @map("created_at")
+
+  workItem        WorkItem         @relation(fields: [workItemId], references: [id], onDelete: Cascade)
+  inventorySignal InventorySignal? @relation(fields: [inventorySignalId], references: [id], onDelete: SetNull)
+
+  @@index([workItemId])
+  @@index([entityType, entityId])
+  @@map("work_item_links")
+}
+
 enum DealStatus {
   OPEN
   WON
@@ -1286,49 +1733,49 @@ enum DealStatus {
 }
 
 model Deal {
-  id                 String    @id @default(uuid()) @map("deal_id")
-  tenantId           String   @map("tenant_id")
-  name               String    @map("deal_name") @db.VarChar(255)
-  value              Decimal   @db.Decimal(12, 2)
-  stage              String    @db.VarChar(100)
-  probability        Int       @default(0) // 0-100
-  status             DealStatus @default(OPEN)
-  expectedCloseDate  DateTime? @map("expected_close_date")
-  closedAt           DateTime? @map("closed_at")
-  lostReason         String?   @map("lost_reason") @db.VarChar(255)
-  contactId          String?   @map("contact_id")
-  memberId           String?   @map("member_id")
-  companyId          String?   @map("company_id")
-  pipelineId         String    @map("pipeline_id")
-  assignedToId       String    @map("assigned_to_id")
-  createdById        String    @map("created_by_id")
-  leadId             String?   @unique @map("lead_id")
-  deletedAt          DateTime? @map("deleted_at")
-  deletedBy          String?   @map("deleted_by")
-  deleteReason       String?   @map("delete_reason") @db.VarChar(500)
-  parentDealId       String?   @map("parent_deal_id")
-  revisionNo         Int       @default(1) @map("revision_no")
-  isLatest           Boolean   @default(true) @map("is_latest")
-  editReason         String?   @map("edit_reason") @db.VarChar(500)
-  editedById         String?   @map("edited_by_id")
-  editedAt           DateTime? @map("edited_at")
-  createdAt          DateTime  @default(now()) @map("created_at")
-  updatedAt          DateTime  @updatedAt @map("updated_at")
+  id                String     @id @default(uuid()) @map("deal_id")
+  tenantId          String     @map("tenant_id")
+  name              String     @map("deal_name") @db.VarChar(255)
+  value             Decimal    @db.Decimal(12, 2)
+  stage             String     @db.VarChar(100)
+  probability       Int        @default(0) // 0-100
+  status            DealStatus @default(OPEN)
+  expectedCloseDate DateTime?  @map("expected_close_date")
+  closedAt          DateTime?  @map("closed_at")
+  lostReason        String?    @map("lost_reason") @db.VarChar(255)
+  contactId         String?    @map("contact_id")
+  memberId          String?    @map("member_id")
+  companyId         String?    @map("company_id")
+  pipelineId        String     @map("pipeline_id")
+  assignedToId      String     @map("assigned_to_id")
+  createdById       String     @map("created_by_id")
+  leadId            String?    @unique @map("lead_id")
+  deletedAt         DateTime?  @map("deleted_at")
+  deletedBy         String?    @map("deleted_by")
+  deleteReason      String?    @map("delete_reason") @db.VarChar(500)
+  parentDealId      String?    @map("parent_deal_id")
+  revisionNo        Int        @default(1) @map("revision_no")
+  isLatest          Boolean    @default(true) @map("is_latest")
+  editReason        String?    @map("edit_reason") @db.VarChar(500)
+  editedById        String?    @map("edited_by_id")
+  editedAt          DateTime?  @map("edited_at")
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
 
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact    Contact?  @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  member     Member?   @relation("DealMember", fields: [memberId], references: [id], onDelete: SetNull)
-  company    Company?  @relation(fields: [companyId], references: [id], onDelete: SetNull)
-  pipeline   Pipeline  @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
-  assignedTo User      @relation("DealAssignedTo", fields: [assignedToId], references: [id], onDelete: Restrict)
-  creator    User      @relation("DealCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  editedBy   User?     @relation("DealEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
-  lead       Lead?     @relation(fields: [leadId], references: [id], onDelete: SetNull)
-  parentDeal Deal?    @relation("DealRevisions", fields: [parentDealId], references: [id], onDelete: SetNull)
-  revisions  Deal[]    @relation("DealRevisions")
-  tasks      Task[]
-  activities Activity[]
-  lineItems  DealLineItem[]
+  tenant               Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact              Contact?              @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  member               Member?               @relation("DealMember", fields: [memberId], references: [id], onDelete: SetNull)
+  company              Company?              @relation(fields: [companyId], references: [id], onDelete: SetNull)
+  pipeline             Pipeline              @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
+  assignedTo           User                  @relation("DealAssignedTo", fields: [assignedToId], references: [id], onDelete: Restrict)
+  creator              User                  @relation("DealCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  editedBy             User?                 @relation("DealEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
+  lead                 Lead?                 @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  parentDeal           Deal?                 @relation("DealRevisions", fields: [parentDealId], references: [id], onDelete: SetNull)
+  revisions            Deal[]                @relation("DealRevisions")
+  tasks                Task[]
+  activities           Activity[]
+  lineItems            DealLineItem[]
   remarketingSequences RemarketingSequence[]
 
   @@index([tenantId])
@@ -1338,14 +1785,14 @@ model Deal {
 }
 
 model DealLineItem {
-  id          String   @id @default(uuid()) @map("deal_line_item_id")
-  dealId      String   @map("deal_id")
-  productId   String   @map("product_id")
-  variationId String?  @map("variation_id")
-  quantity    Int      @default(1)
-  unitPrice   Decimal  @default(0) @map("unit_price") @db.Decimal(12, 2)
-  deal        Deal     @relation(fields: [dealId], references: [id], onDelete: Cascade)
-  product     Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  id          String            @id @default(uuid()) @map("deal_line_item_id")
+  dealId      String            @map("deal_id")
+  productId   String            @map("product_id")
+  variationId String?           @map("variation_id")
+  quantity    Int               @default(1)
+  unitPrice   Decimal           @default(0) @map("unit_price") @db.Decimal(12, 2)
+  deal        Deal              @relation(fields: [dealId], references: [id], onDelete: Cascade)
+  product     Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
   variation   ProductVariation? @relation(fields: [variationId], references: [id], onDelete: SetNull)
 
   @@index([dealId])
@@ -1366,25 +1813,25 @@ enum TaskWorkflowStatus {
 }
 
 model Task {
-  id           String    @id @default(uuid()) @map("task_id")
-  tenantId     String    @map("tenant_id")
-  title        String    @db.VarChar(500)
-  dueDate      DateTime? @map("due_date")
-  completed    Boolean   @default(false)
+  id           String             @id @default(uuid()) @map("task_id")
+  tenantId     String             @map("tenant_id")
+  title        String             @db.VarChar(500)
+  dueDate      DateTime?          @map("due_date")
+  completed    Boolean            @default(false)
   status       TaskWorkflowStatus @default(OPEN) @map("workflow_status")
-  priority     TaskPriority @default(MEDIUM)
-  contactId    String?   @map("contact_id")
-  memberId     String?   @map("member_id")
-  dealId       String?   @map("deal_id")
-  companyId    String?   @map("company_id")
-  assignedToId String    @map("assigned_to_id")
-  deletedAt    DateTime? @map("deleted_at")
-  deletedBy    String?   @map("deleted_by")
-  deleteReason String?   @map("delete_reason") @db.VarChar(500)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  priority     TaskPriority       @default(MEDIUM)
+  contactId    String?            @map("contact_id")
+  memberId     String?            @map("member_id")
+  dealId       String?            @map("deal_id")
+  companyId    String?            @map("company_id")
+  assignedToId String             @map("assigned_to_id")
+  deletedAt    DateTime?          @map("deleted_at")
+  deletedBy    String?            @map("deleted_by")
+  deleteReason String?            @map("delete_reason") @db.VarChar(500)
+  createdAt    DateTime           @default(now()) @map("created_at")
+  updatedAt    DateTime           @updatedAt @map("updated_at")
 
-  tenant     Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contact    Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
   member     Member?  @relation("TaskMember", fields: [memberId], references: [id], onDelete: SetNull)
   deal       Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
@@ -1403,26 +1850,26 @@ enum ActivityType {
 }
 
 model Activity {
-  id         String       @id @default(uuid()) @map("activity_id")
-  tenantId   String      @map("tenant_id")
-  type       ActivityType
-  subject    String?      @db.VarChar(500)
-  notes      String?      @db.Text
-  activityAt DateTime    @map("activity_at")
-  contactId  String?     @map("contact_id")
-  memberId   String?     @map("member_id")
-  dealId     String?     @map("deal_id")
-  createdById String     @map("created_by_id")
-  deletedAt  DateTime?   @map("deleted_at")
-  deletedBy  String?     @map("deleted_by")
-  deleteReason String?   @map("delete_reason") @db.VarChar(500)
-  createdAt  DateTime    @default(now()) @map("created_at")
+  id           String       @id @default(uuid()) @map("activity_id")
+  tenantId     String       @map("tenant_id")
+  type         ActivityType
+  subject      String?      @db.VarChar(500)
+  notes        String?      @db.Text
+  activityAt   DateTime     @map("activity_at")
+  contactId    String?      @map("contact_id")
+  memberId     String?      @map("member_id")
+  dealId       String?      @map("deal_id")
+  createdById  String       @map("created_by_id")
+  deletedAt    DateTime?    @map("deleted_at")
+  deletedBy    String?      @map("deleted_by")
+  deleteReason String?      @map("delete_reason") @db.VarChar(500)
+  createdAt    DateTime     @default(now()) @map("created_at")
 
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contact   Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  member    Member?  @relation("ActivityMember", fields: [memberId], references: [id], onDelete: SetNull)
-  deal      Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
-  creator   User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
+  tenant  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  contact Contact? @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  member  Member?  @relation("ActivityMember", fields: [memberId], references: [id], onDelete: SetNull)
+  deal    Deal?    @relation(fields: [dealId], references: [id], onDelete: SetNull)
+  creator User     @relation(fields: [createdById], references: [id], onDelete: Restrict)
 
   @@index([tenantId])
   @@map("activities")
@@ -1558,32 +2005,32 @@ enum MessageContentType {
 
 /// A tenant's connected messaging channel (e.g., a Facebook Page).
 model MessagingChannel {
-  id                 String            @id @default(uuid()) @map("channel_id")
-  tenantId           String            @map("tenant_id")
-  provider           MessagingProvider
-  name               String            @db.VarChar(255)
-  status             ChannelStatus     @default(PENDING)
+  id       String            @id @default(uuid()) @map("channel_id")
+  tenantId String            @map("tenant_id")
+  provider MessagingProvider
+  name     String            @db.VarChar(255)
+  status   ChannelStatus     @default(PENDING)
 
   /// Facebook Page ID — used for inbound routing. Null until manual setup step 2 (after webhook verify).
-  externalId         String?           @map("external_id") @db.VarChar(255)
+  externalId String? @map("external_id") @db.VarChar(255)
 
   /// Encrypted per-channel credentials (JSON, encrypted at rest).
   /// Facebook: { pageAccessToken: "..." }. Null until credentials are supplied.
-  credentialsEnc     String?           @map("credentials_enc") @db.Text
+  credentialsEnc String? @map("credentials_enc") @db.Text
 
   /// Meta GET verification; must be unique when set so webhook challenge resolves the right row.
-  webhookVerifyToken String?           @unique @map("webhook_verify_token") @db.VarChar(255)
+  webhookVerifyToken String? @unique @map("webhook_verify_token") @db.VarChar(255)
 
   /// Non-sensitive provider metadata (page name, category, URL).
-  metadata           Json?
+  metadata Json?
 
-  connectedAt        DateTime?         @map("connected_at")
-  disconnectedAt     DateTime?         @map("disconnected_at")
-  createdAt          DateTime          @default(now()) @map("created_at")
-  updatedAt          DateTime          @updatedAt @map("updated_at")
+  connectedAt    DateTime? @map("connected_at")
+  disconnectedAt DateTime? @map("disconnected_at")
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
 
-  tenant             Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  conversations      Conversation[]
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  conversations Conversation[]
 
   @@unique([provider, externalId])
   @@index([tenantId])
@@ -1593,44 +2040,44 @@ model MessagingChannel {
 
 /// A conversation thread between a tenant (via a channel) and an external participant.
 model Conversation {
-  id              String              @id @default(uuid()) @map("conversation_id")
-  tenantId        String              @map("tenant_id")
-  channelId       String              @map("channel_id")
+  id        String @id @default(uuid()) @map("conversation_id")
+  tenantId  String @map("tenant_id")
+  channelId String @map("channel_id")
 
   /// Page-scoped User ID (PSID) for Facebook Messenger.
-  participantId   String              @map("participant_id") @db.VarChar(255)
+  participantId String @map("participant_id") @db.VarChar(255)
 
   /// Resolved display name of the external participant.
-  participantName String?             @map("participant_name") @db.VarChar(255)
+  participantName String? @map("participant_name") @db.VarChar(255)
 
   /// Profile picture URL from the messaging provider (e.g. Facebook Graph API).
   participantProfilePictureUrl String? @map("participant_profile_picture_url") @db.Text
 
   /// Link to IMS Contact (auto-matched or manually linked).
-  contactId       String?             @map("contact_id")
+  contactId String? @map("contact_id")
 
-  status          ConversationStatus  @default(OPEN)
+  status ConversationStatus @default(OPEN)
 
   /// User currently assigned to handle this conversation.
-  assignedToId    String?             @map("assigned_to_id")
+  assignedToId String? @map("assigned_to_id")
 
   /// Timestamp of the last message (for sorting).
-  lastMessageAt   DateTime?           @map("last_message_at")
+  lastMessageAt DateTime? @map("last_message_at")
 
   /// Snippet of the last message for list views.
-  lastMessageText String?             @map("last_message_text") @db.VarChar(500)
+  lastMessageText String? @map("last_message_text") @db.VarChar(500)
 
   /// Count of unread inbound messages.
-  unreadCount     Int                 @default(0) @map("unread_count")
+  unreadCount Int @default(0) @map("unread_count")
 
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  channel         MessagingChannel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
-  contact         Contact?            @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  assignedTo      User?               @relation("ConversationAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
-  messages        Message[]
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  channel    MessagingChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  contact    Contact?         @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  assignedTo User?            @relation("ConversationAssignedTo", fields: [assignedToId], references: [id], onDelete: SetNull)
+  messages   Message[]
 
   @@unique([channelId, participantId])
   @@index([tenantId])
@@ -1641,46 +2088,50 @@ model Conversation {
 
 /// Individual message within a conversation.
 model Message {
-  id                String             @id @default(uuid()) @map("message_id")
-  conversationId    String             @map("conversation_id")
-  direction         MessageDirection
-  status            MessageStatus      @default(PENDING)
-  contentType       MessageContentType @default(TEXT) @map("content_type")
+  id             String             @id @default(uuid()) @map("message_id")
+  conversationId String             @map("conversation_id")
+  direction      MessageDirection
+  status         MessageStatus      @default(PENDING)
+  contentType    MessageContentType @default(TEXT) @map("content_type")
 
   /// Text content (or caption for media messages).
-  textContent       String?            @map("text_content") @db.Text
+  textContent String? @map("text_content") @db.Text
 
   /// Structured media/payload content (provider-agnostic JSON).
-  mediaPayload      Json?              @map("media_payload")
+  mediaPayload Json?   @map("media_payload")
+  /// Dashboard-uploaded media registered in the tenant media library.
+  mediaAssetId String? @map("media_asset_id")
 
   /// Provider's message ID for deduplication and status tracking.
-  providerMessageId String?            @map("provider_message_id") @db.VarChar(255)
+  providerMessageId String? @map("provider_message_id") @db.VarChar(255)
 
   /// ID of the IMS user who sent this outbound message (null for inbound).
-  sentById          String?            @map("sent_by_id")
+  sentById String? @map("sent_by_id")
 
   /// Error details if sending failed.
-  errorDetails      Json?              @map("error_details")
+  errorDetails Json? @map("error_details")
 
   /// Timestamps for delivery tracking.
-  sentAt            DateTime?          @map("sent_at")
-  deliveredAt       DateTime?          @map("delivered_at")
-  readAt            DateTime?          @map("read_at")
-  createdAt         DateTime           @default(now()) @map("created_at")
+  sentAt      DateTime? @map("sent_at")
+  deliveredAt DateTime? @map("delivered_at")
+  readAt      DateTime? @map("read_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
 
   /// When set, this message was edited in the inbox UI.
-  editedAt          DateTime?          @map("edited_at")
+  editedAt DateTime? @map("edited_at")
 
   /// Optional reply reference (same conversation).
-  replyToId         String?            @map("reply_to_id")
+  replyToId String? @map("reply_to_id")
 
-  conversation      Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  sentBy            User?              @relation("MessageSender", fields: [sentById], references: [id], onDelete: SetNull)
-  replyTo           Message?           @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
-  replies           Message[]          @relation("MessageReplies")
-  reactions         MessageReaction[]
+  conversation Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  sentBy       User?             @relation("MessageSender", fields: [sentById], references: [id], onDelete: SetNull)
+  replyTo      Message?          @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies      Message[]         @relation("MessageReplies")
+  reactions    MessageReaction[]
+  mediaAsset   MediaAsset?       @relation(fields: [mediaAssetId], references: [id], onDelete: Restrict)
 
   @@index([conversationId, createdAt])
+  @@index([mediaAssetId])
   @@index([providerMessageId])
   @@index([replyToId])
   @@map("messages")
@@ -1688,19 +2139,19 @@ model Message {
 
 /// Emoji reaction on a message (dashboard user and/or external Messenger participant).
 model MessageReaction {
-  id        String   @id @default(uuid()) @map("reaction_id")
-  messageId String   @map("message_id")
+  id                    String   @id @default(uuid()) @map("reaction_id")
+  messageId             String   @map("message_id")
   /// Set when the reaction was added from the tenant dashboard API.
-  userId    String?  @map("user_id")
+  userId                String?  @map("user_id")
   /// Set when the reaction came from a Messenger webhook (PSID).
-  externalParticipantId String? @map("external_participant_id") @db.VarChar(255)
+  externalParticipantId String?  @map("external_participant_id") @db.VarChar(255)
   /// Stable reactor identity: `u:<userId>` or `e:<externalParticipantId>`.
-  reactionOwnerKey String @map("reaction_owner_key") @db.VarChar(200)
-  emoji     String   @db.VarChar(32)
-  createdAt DateTime @default(now()) @map("created_at")
+  reactionOwnerKey      String   @map("reaction_owner_key") @db.VarChar(200)
+  emoji                 String   @db.VarChar(32)
+  createdAt             DateTime @default(now()) @map("created_at")
 
-  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
-  user      User?    @relation("MessageReactions", fields: [userId], references: [id], onDelete: Cascade)
+  message Message @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user    User?   @relation("MessageReactions", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([messageId, emoji, reactionOwnerKey])
   @@index([messageId])
@@ -1709,17 +2160,17 @@ model MessageReaction {
 
 /// Idempotency tracking for inbound webhook events.
 model WebhookEvent {
-  id              String            @id @default(uuid()) @map("event_id")
+  id String @id @default(uuid()) @map("event_id")
 
   /// Provider-assigned event/message ID for deduplication.
-  providerEventId String            @unique @map("provider_event_id") @db.VarChar(255)
+  providerEventId String @unique @map("provider_event_id") @db.VarChar(255)
 
-  provider        MessagingProvider
-  eventType       String            @db.VarChar(100)
-  processedAt     DateTime          @default(now()) @map("processed_at")
+  provider    MessagingProvider
+  eventType   String            @db.VarChar(100)
+  processedAt DateTime          @default(now()) @map("processed_at")
 
   /// Raw event payload for debugging/replay.
-  rawPayload      Json?             @map("raw_payload")
+  rawPayload Json? @map("raw_payload")
 
   @@index([providerEventId])
   @@map("webhook_events")

@@ -1,13 +1,17 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createPaginationResult } from "@/utils/pagination";
+import { logger } from "@/config/logger";
 import workflowRepository from "./workflow.repository";
 import {
   parseActionConfig,
   type CreateWorkflowDto,
   type CreateWorkflowRuleDto,
   type GetWorkflowsQueryDto,
+  type GetWorkflowRunsQueryDto,
+  type InstallWorkflowTemplateDto,
   type UpdateWorkflowDto,
 } from "./workflow.schema";
+import pipelineRepository from "@/modules/pipelines/pipeline.repository";
 
 function validateRulesActionConfig(
   rules: CreateWorkflowRuleDto[] | undefined,
@@ -25,6 +29,16 @@ function validateRulesActionConfig(
 }
 
 export class WorkflowService {
+  async reseedFrameworkDefaults(
+    tenantId: string,
+    pipelines: Array<{
+      id: string;
+      type: "NEW_SALES" | "REMARKETING" | "REPURCHASE";
+    }>,
+  ) {
+    return workflowRepository.replaceFrameworkDefaults(tenantId, pipelines);
+  }
+
   async getAll(tenantId: string, query?: GetWorkflowsQueryDto) {
     const page = query?.page;
     const limit = query?.limit;
@@ -56,6 +70,10 @@ export class WorkflowService {
     return workflowRepository.findByPipeline(tenantId, pipelineId);
   }
 
+  async getTemplateCatalog(tenantId: string) {
+    return workflowRepository.findTemplateCatalog(tenantId);
+  }
+
   async getById(tenantId: string, id: string) {
     const workflow = await workflowRepository.findById(tenantId, id);
     if (!workflow) throw createError("Workflow not found", 404);
@@ -65,6 +83,29 @@ export class WorkflowService {
   async create(tenantId: string, data: CreateWorkflowDto) {
     validateRulesActionConfig(data.rules);
     return workflowRepository.create(tenantId, data);
+  }
+
+  async installTemplate(
+    tenantId: string,
+    templateKey: string,
+    data: InstallWorkflowTemplateDto,
+  ) {
+    const installResult = await workflowRepository.installTemplate(
+      tenantId,
+      templateKey,
+      {
+        pipelineId: data.pipelineId,
+        overwriteExisting: data.overwriteExisting,
+        activate: data.activate,
+      },
+    );
+    logger.request("Workflow template install completed", undefined, {
+      tenantId,
+      templateKey,
+      pipelineId: installResult.workflow.pipelineId,
+      outcome: installResult.outcome,
+    });
+    return installResult;
   }
 
   async update(tenantId: string, id: string, data: UpdateWorkflowDto) {
@@ -83,6 +124,38 @@ export class WorkflowService {
     const existing = await workflowRepository.findById(tenantId, id);
     if (!existing) throw createError("Workflow not found", 404);
     await workflowRepository.delete(id, tenantId);
+  }
+
+  async getRuns(
+    tenantId: string,
+    workflowId: string,
+    query: GetWorkflowRunsQueryDto,
+  ) {
+    const existing = await workflowRepository.findById(tenantId, workflowId);
+    if (!existing) throw createError("Workflow not found", 404);
+    const runs = await workflowRepository.findRecentRuns(
+      tenantId,
+      workflowId,
+      query.limit,
+    );
+    return { runs };
+  }
+
+  async restoreMissingDefaults(tenantId: string) {
+    const pipelines = await Promise.all([
+      pipelineRepository.findByType(tenantId, "NEW_SALES"),
+      pipelineRepository.findByType(tenantId, "REMARKETING"),
+      pipelineRepository.findByType(tenantId, "REPURCHASE"),
+    ]);
+
+    const frameworkPipelines = pipelines.filter(
+      (pipeline) => pipeline != null && pipeline.type !== "GENERAL",
+    );
+
+    return workflowRepository.replaceFrameworkDefaults(
+      tenantId,
+      frameworkPipelines,
+    );
   }
 }
 

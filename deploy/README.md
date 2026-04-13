@@ -23,6 +23,7 @@ deploy/
 │   ├── setup-nginx.sh     # Install nginx/certbot + HTTPS
 │   ├── setup-backups.sh   # One-time: AWS CLI + cron for nightly S3 offsite sync
 │   ├── backup-s3.sh       # Sync DB dumps (+ dev: .env) to S3 (cron or manual)
+│   ├── migrate-deploy.sh  # One-off prisma migrate deploy via dev_api image
 │   └── seed.sh            # Interactive DB seed (orchestrated via Prisma)
 └── prod/              # Production EC2 — copy this folder to the prod server
     ├── functions.sh       # Bash helpers (sourced by all scripts in this folder)
@@ -40,6 +41,7 @@ deploy/
     ├── setup-nginx.sh     # Install nginx/certbot + HTTPS
     ├── setup-backups.sh   # One-time: AWS CLI + cron for nightly S3 offsite sync
     ├── backup-s3.sh       # Sync DB dumps, uploads volume, .env to S3 (cron or manual)
+    ├── migrate-deploy.sh  # One-off prisma migrate deploy via prod_api image
     ├── seed.sh            # Interactive DB seed (same flow as dev; confirm before prompts)
     └── backup-db.sh       # On-demand manual database backup
 ```
@@ -102,25 +104,26 @@ sudo ./setup-nginx.sh  # install nginx + HTTPS
 
 Run all scripts from `/home/ubuntu/deploy/` (they resolve their own directory automatically):
 
-| Script             | Usage                             | Description                                                                                 |
-| ------------------ | --------------------------------- | ------------------------------------------------------------------------------------------- |
-| `setup.sh`         | `./setup.sh`                      | First-time setup: .env, docker login, validation                                            |
-| `up.sh`            | `./up.sh`                         | Start app stack + watchtower                                                                |
-| `down.sh`          | `./down.sh`                       | Stop everything (volumes preserved)                                                         |
-| `down.sh`          | `./down.sh --volumes`             | Stop + delete volumes (**data loss!**)                                                      |
-| `restart.sh`       | `./restart.sh`                    | Restart all services                                                                        |
-| `restart.sh`       | `./restart.sh api`                | Restart one service (api/web/db/redis/backup/watchtower)                                    |
-| `logs.sh`          | `./logs.sh`                       | Last 100 lines from all services                                                            |
-| `logs.sh`          | `./logs.sh api -f`                | Follow API logs                                                                             |
-| `logs.sh`          | `./logs.sh api --tail 50`         | Last 50 lines from API                                                                      |
-| `status.sh`        | `./status.sh`                     | Container status + CPU/mem + disk usage                                                     |
-| `health.sh`        | `./health.sh`                     | Quick health probe (exits 0=pass, 1=fail)                                                   |
-| `setup-nginx.sh`   | `sudo ./setup-nginx.sh`           | Install nginx + certbot + HTTPS certs                                                       |
-| `seed.sh`          | `./seed.sh`                       | Interactive DB seed (see below)                                                             |
-| `seed.sh`          | `./seed.sh --reset`               | **Dev only** — `prisma migrate reset` then seed (destructive)                               |
-| `backup-db.sh`     | `./backup-db.sh`                  | On-demand manual DB dump **(prod only)** → `/home/ubuntu/backups`                           |
-| `setup-backups.sh` | `./setup-backups.sh`              | **Dev & prod** — install `awscli`, verify IAM, cron @ 02:00 for `./backup-s3.sh`            |
-| `backup-s3.sh`     | `BACKUPS_BUCKET=b ./backup-s3.sh` | **Dev & prod** — push local backups to S3 (see [Offsite backups (S3)](#offsite-backups-s3)) |
+| Script              | Usage                             | Description                                                                                   |
+| ------------------- | --------------------------------- | --------------------------------------------------------------------------------------------- |
+| `setup.sh`          | `./setup.sh`                      | First-time setup: .env, docker login, validation                                              |
+| `up.sh`             | `./up.sh`                         | Start app stack + watchtower                                                                  |
+| `down.sh`           | `./down.sh`                       | Stop everything (volumes preserved)                                                           |
+| `down.sh`           | `./down.sh --volumes`             | Stop + delete volumes (**data loss!**)                                                        |
+| `restart.sh`        | `./restart.sh`                    | Restart all services                                                                          |
+| `restart.sh`        | `./restart.sh api`                | Restart one service (api/web/db/redis/backup/watchtower)                                      |
+| `logs.sh`           | `./logs.sh`                       | Last 100 lines from all services                                                              |
+| `logs.sh`           | `./logs.sh api -f`                | Follow API logs                                                                               |
+| `logs.sh`           | `./logs.sh api --tail 50`         | Last 50 lines from API                                                                        |
+| `status.sh`         | `./status.sh`                     | Container status + CPU/mem + disk usage                                                       |
+| `health.sh`         | `./health.sh`                     | Quick health probe (exits 0=pass, 1=fail)                                                     |
+| `setup-nginx.sh`    | `sudo ./setup-nginx.sh`           | Install nginx + certbot + HTTPS certs                                                         |
+| `seed.sh`           | `./seed.sh`                       | Interactive DB seed (see below)                                                               |
+| `seed.sh`           | `./seed.sh --reset`               | **Dev only** — `prisma migrate reset` then seed (destructive)                                 |
+| `backup-db.sh`      | `./backup-db.sh`                  | On-demand manual DB dump **(prod only)** → `/home/ubuntu/backups`                             |
+| `migrate-deploy.sh` | `./migrate-deploy.sh`             | Run `prisma migrate deploy` once using the **same** API image as Compose (dev or prod folder) |
+| `setup-backups.sh`  | `./setup-backups.sh`              | **Dev & prod** — install `awscli`, verify IAM, cron @ 02:00 for `./backup-s3.sh`              |
+| `backup-s3.sh`      | `BACKUPS_BUCKET=b ./backup-s3.sh` | **Dev & prod** — push local backups to S3 (see [Offsite backups (S3)](#offsite-backups-s3))   |
 
 ### Database seed (`./seed.sh`)
 
@@ -218,6 +221,39 @@ gunzip -c /home/ubuntu/backups/<backup-file>.sql.gz | \
 
 (Use `dev_db` instead of `prod_db` on staging.)
 
+### One-off `migrate deploy` (dev / prod)
+
+The API container **already runs** `prisma migrate deploy` on every start (`apps/api/docker-entrypoint.sh`). Use `./migrate-deploy.sh` when you want to apply pending migrations **without** restarting the long-running Node process, or to verify migrations against the DB using the **exact** migration files baked into the current pulled image:
+
+```bash
+cd /home/ubuntu/deploy
+./migrate-deploy.sh
+```
+
+**Rule:** The migration files inside the API image must match the rows in `_prisma_migrations` (Prisma stores checksums). If you apply migrations from a **newer** git tree than the running image (e.g. ad-hoc fix), **rebuild and deploy the API image from that same commit** immediately so the app binary and Prisma client match the database schema.
+
+### Failed Prisma migrations (P3009)
+
+**Symptom:** API container exits in a loop; logs show `migrate deploy` failed and `P3009` / “failed migrations in the target database”.
+
+**Typical causes:** invalid SQL in a migration (e.g. foreign key referencing a non-existent referenced column), or a partially applied migration after a crash.
+
+**Before changing production data:** run `./backup-db.sh` (prod) or rely on recent `postgres-backup-local` dumps.
+
+**Recovery (outline):**
+
+1. Inspect the failed row:  
+   `docker compose exec -T prod_db psql -U postgres -d ims -c "SELECT migration_name, logs FROM _prisma_migrations WHERE finished_at IS NULL;"`  
+   (use `dev_db` on staging).
+
+2. If Postgres **rolled back** the migration transaction (common), the schema may have no partial objects. Mark the migration as rolled back, fix the migration SQL **in git**, redeploy an image that contains the fix, then run `migrate deploy` again:  
+   `npx prisma migrate resolve --rolled-back "<migration_folder_name>"`  
+   (run with the same `DATABASE_URL` and `prisma/migrations` as your release). See [Prisma: production troubleshooting](https://pris.ly/d/migrate-resolve).
+
+3. If the migration **partially** applied (objects left in the DB), you must manually align the database with what Prisma expects, or roll back objects, **then** `migrate resolve` and redeploy. When in doubt, restore from backup and replay migrations from a corrected image.
+
+**Prevention:** CI runs `prisma migrate deploy` on a fresh Postgres database for API tests; merged migrations must apply cleanly. Review raw SQL for FK targets (`tenants` → always reference `"id"`).
+
 ---
 
 ## Offsite backups (S3)
@@ -274,12 +310,16 @@ You can set these when running the script or in the cron line (see `setup-backup
 
 Every var consumed by the API is documented in `.env.example`. Critical vars that cause an **immediate API exit** if missing in staging/production:
 
-| Variable         | Description                                                     |
-| ---------------- | --------------------------------------------------------------- |
-| `DATABASE_URL`   | Prisma connection string — host must be the docker service name |
-| `JWT_SECRET`     | Auth token signing key                                          |
-| `CORS_ORIGIN`    | Allowed CORS origin (must match the web domain)                 |
-| `API_PUBLIC_URL` | Public API base URL (Swagger + media links for Messenger)       |
+| Variable                   | Description                                                       |
+| -------------------------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`             | Prisma connection string — host must be the docker service name   |
+| `JWT_SECRET`               | Auth token signing key                                            |
+| `CORS_ORIGIN`              | Allowed CORS origin (must match the web domain)                   |
+| `API_PUBLIC_URL`           | Public API base URL (Swagger + media links for Messenger)         |
+| `AWS_REGION`               | Required with tenant media S3 settings below                      |
+| `PHOTOS_S3_BUCKET`         | S3 bucket for tenant uploads                                      |
+| `PHOTOS_PUBLIC_URL_PREFIX` | Public base URL for objects (usually `https://bucket.s3.../`)     |
+| `PHOTOS_S3_KEY_PREFIX`     | Must be `dev`, `stage`, or `prod` (isolates keys per environment) |
 
 **Facebook Messenger specific:**
 
@@ -288,6 +328,14 @@ Every var consumed by the API is documented in `.env.example`. Critical vars tha
 | `META_APP_ID`               | Meta App ID from the App Dashboard               |
 | `META_APP_SECRET`           | Verifies `X-Hub-Signature-256` on webhook POSTs  |
 | `CREDENTIAL_ENCRYPTION_KEY` | AES-256-GCM key for stored channel access tokens |
+
+**AI auto-replies (optional — Gemini by default):**
+
+| Variable            | Description                                                        |
+| ------------------- | ------------------------------------------------------------------ |
+| `AI_REPLY_API_KEY`  | Google AI Studio / Gemini API key; if empty, auto-reply is skipped |
+| `AI_REPLY_PROVIDER` | Default `GEMINI_API`                                               |
+| `AI_REPLY_MODEL`    | Default `gemini-2.5-flash`                                         |
 
 **Database seed (`.env` on EC2):**
 
@@ -310,19 +358,20 @@ Every var consumed by the API is documented in `.env.example`. Critical vars tha
 
 ## Troubleshooting
 
-| Symptom                         | Fix                                                                                                                                                                |
-| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Containers exit on start        | `./logs.sh api` — check for missing env vars in `.env`                                                                                                             |
-| API returns 401 on webhook POST | `META_APP_SECRET` wrong/missing, or `proxy_request_buffering` is on — re-run `sudo ./setup-nginx.sh`                                                               |
-| Socket.IO connections fail      | Check `location /ws/` has `Upgrade`/`Connection` headers in nginx; `./logs.sh api -f` for errors                                                                   |
-| Uploads > 1MB return 413        | nginx `client_max_body_size` not applied — re-run `sudo ./setup-nginx.sh`                                                                                          |
-| Watchtower can't pull images    | Run `docker login` on the EC2 instance                                                                                                                             |
-| Nginx 502 Bad Gateway           | Containers not running on `localhost:3000`/`4000` — check `./status.sh`                                                                                            |
-| 301 redirect loop (Cloudflare)  | nginx uses `X-Forwarded-Proto` to avoid double-redirect; set Cloudflare to "Full" SSL mode                                                                         |
-| Certbot fails                   | DNS A records must point to this EC2's public IP before certbot runs                                                                                               |
-| `Network ims-dev not found`     | Run `./up.sh` first to create the network, then Watchtower connects to it                                                                                          |
-| S3 backup / `aws` errors        | Ensure IAM instance profile is attached; run `aws sts get-caller-identity`. Check `tail -f /home/ubuntu/backups/s3-sync.log`                                       |
-| `prod_uploads` not syncing      | **Prod:** stack must have created the volume; run `./backup-s3.sh` after `./up.sh`. Volume name may differ — script tries `deploy_prod_uploads` or `*prod_uploads` |
+| Symptom                         | Fix                                                                                                                                                                       |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Containers exit on start        | `./logs.sh api` — check for missing env vars in `.env`                                                                                                                    |
+| API returns 401 on webhook POST | `META_APP_SECRET` wrong/missing, or `proxy_request_buffering` is on — re-run `sudo ./setup-nginx.sh`                                                                      |
+| Socket.IO connections fail      | Check `location /ws/` has `Upgrade`/`Connection` headers in nginx; `./logs.sh api -f` for errors                                                                          |
+| Uploads > 1MB return 413        | nginx `client_max_body_size` not applied — re-run `sudo ./setup-nginx.sh`                                                                                                 |
+| Watchtower can't pull images    | Run `docker login` on the EC2 instance                                                                                                                                    |
+| Nginx 502 Bad Gateway           | Containers not running on `localhost:3000`/`4000` — check `./status.sh`                                                                                                   |
+| 301 redirect loop (Cloudflare)  | nginx uses `X-Forwarded-Proto` to avoid double-redirect; set Cloudflare to "Full" SSL mode                                                                                |
+| Certbot fails                   | DNS A records must point to this EC2's public IP before certbot runs                                                                                                      |
+| `Network ims-dev not found`     | Run `./up.sh` first to create the network, then Watchtower connects to it                                                                                                 |
+| S3 backup / `aws` errors        | Ensure IAM instance profile is attached; run `aws sts get-caller-identity`. Check `tail -f /home/ubuntu/backups/s3-sync.log`                                              |
+| `prod_uploads` not syncing      | **Prod:** stack must have created the volume; run `./backup-s3.sh` after `./up.sh`. Volume name may differ — script tries `deploy_prod_uploads` or `*prod_uploads`        |
+| API loop / `P3009` migrations   | See [Failed Prisma migrations (P3009)](#failed-prisma-migrations-p3009); fix DB + `migrate resolve`, then ship an image built from the same commit as `prisma/migrations` |
 
 ---
 

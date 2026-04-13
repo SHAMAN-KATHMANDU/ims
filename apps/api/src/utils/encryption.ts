@@ -1,16 +1,30 @@
 import crypto from "crypto";
 import { env } from "@/config/env";
+import { createError } from "@/middlewares/errorHandler";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
+
+const CRED_KEY_HEX64 = /^[0-9a-fA-F]{64}$/;
+
+function requireCredentialEncryptionKey(): Buffer {
+  const hex = env.credentialEncryptionKey;
+  if (!CRED_KEY_HEX64.test(hex)) {
+    throw createError(
+      "CREDENTIAL_ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes). Set it in the API environment to connect Messenger.",
+      503,
+    );
+  }
+  return Buffer.from(hex, "hex");
+}
 
 /**
  * Encrypt a plaintext string using AES-256-GCM.
  * Returns base64(iv + authTag + ciphertext).
  */
 export function encrypt(plaintext: string): string {
-  const key = Buffer.from(env.credentialEncryptionKey, "hex");
+  const key = requireCredentialEncryptionKey();
   const iv = crypto.randomBytes(IV_LENGTH);
   const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
 
@@ -27,7 +41,7 @@ export function encrypt(plaintext: string): string {
  * Decrypt a base64-encoded ciphertext created by encrypt().
  */
 export function decrypt(encryptedBase64: string): string {
-  const key = Buffer.from(env.credentialEncryptionKey, "hex");
+  const key = requireCredentialEncryptionKey();
   const buffer = Buffer.from(encryptedBase64, "base64");
 
   const iv = buffer.subarray(0, IV_LENGTH);

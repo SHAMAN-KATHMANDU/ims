@@ -64,7 +64,6 @@ export default function EditDealPage() {
                 value: Number(deal.value),
                 pipelineId: deal.pipelineId,
                 stage: deal.stage,
-                probability: deal.probability,
                 expectedCloseDate: deal.expectedCloseDate
                   ? new Date(deal.expectedCloseDate).toISOString().slice(0, 10)
                   : "",

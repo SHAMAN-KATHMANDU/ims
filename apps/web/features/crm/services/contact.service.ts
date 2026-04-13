@@ -1,5 +1,6 @@
 import api from "@/lib/axios";
 import type { PaginationMeta } from "@/lib/apiTypes";
+import { unwrapApiData } from "@/lib/apiResponse";
 
 export interface ContactTag {
   id: string;
@@ -37,7 +38,13 @@ export interface Contact {
   owner?: { id: string; username: string };
   tagLinks?: Array<{ tag: ContactTag }>;
   _count?: { deals: number; tasks: number };
-  deals?: Array<{ stage: string }>;
+  deals?: Array<{
+    id: string;
+    stage: string;
+    status: string;
+    pipelineId: string;
+    pipeline?: { id: string; name: string; type?: string | null } | null;
+  }>;
 }
 
 export type ContactNote = {
@@ -51,6 +58,8 @@ export type ContactAttachment = {
   id: string;
   fileName: string;
   filePath: string;
+  storageKey?: string | null;
+  publicUrl?: string | null;
   fileSize?: number;
   mimeType?: string;
   createdAt: string;
@@ -72,6 +81,9 @@ export type ContactDeal = {
   value: number;
   stage: string;
   status: string;
+  pipelineId: string;
+  pipeline?: { id: string; name: string; type?: string | null } | null;
+  isLatest?: boolean;
   expectedCloseDate?: string | null;
 };
 
@@ -129,7 +141,6 @@ export interface CreateContactData {
   memberId?: string;
   tagIds?: string[];
   source?: string;
-  journeyType?: string;
 }
 
 export interface UpdateContactData {
@@ -143,7 +154,6 @@ export interface UpdateContactData {
   memberId?: string;
   tagIds?: string[];
   source?: string;
-  journeyType?: string;
 }
 
 export async function getContacts(
@@ -163,7 +173,9 @@ export async function getContactById(
 export async function createContact(
   data: CreateContactData,
 ): Promise<{ contact: Contact }> {
-  const res = await api.post("/contacts", data);
+  const res = await api.post("/contacts", data, {
+    skipGlobalErrorToast: true,
+  } as Parameters<typeof api.post>[2]);
   return res.data;
 }
 
@@ -171,7 +183,9 @@ export async function updateContact(
   id: string,
   data: UpdateContactData,
 ): Promise<{ contact: Contact }> {
-  const res = await api.put(`/contacts/${id}`, data);
+  const res = await api.put(`/contacts/${id}`, data, {
+    skipGlobalErrorToast: true,
+  } as Parameters<typeof api.put>[2]);
   return res.data;
 }
 
@@ -235,12 +249,16 @@ export async function deleteContactNote(
 
 export async function addContactAttachment(
   contactId: string,
-  file: File,
-): Promise<{ attachment: ContactAttachment }> {
-  const formData = new FormData();
-  formData.append("file", file);
-  const res = await api.post(`/contacts/${contactId}/attachments`, formData);
-  return res.data;
+  payload: {
+    storageKey: string;
+    publicUrl?: string;
+    fileName: string;
+    mimeType: string;
+    fileSize?: number;
+  },
+): Promise<{ message: string; attachment: ContactAttachment }> {
+  const res = await api.post(`/contacts/${contactId}/attachments`, payload);
+  return unwrapApiData(res.data);
 }
 
 export async function deleteContactAttachment(

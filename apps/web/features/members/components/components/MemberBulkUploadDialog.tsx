@@ -132,7 +132,10 @@ export function MemberBulkUploadDialog({
     <>
       {!inline && (
         <DialogHeader>
-          <DialogTitle>Bulk Upload Members</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-4 w-4 text-muted-foreground" aria-hidden />
+            Bulk Upload Members
+          </DialogTitle>
           <DialogDescription>
             Upload an Excel or CSV file to create multiple members at once.
             Download the template to see required and optional column headers.

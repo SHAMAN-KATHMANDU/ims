@@ -72,6 +72,7 @@ describe("TransferService", () => {
         fromLocationId: "loc1",
         toLocationId: "loc2",
         status: "PENDING",
+        items: [{ variationId: "v1", quantity: 5 }],
       });
 
       const result = await transferService.create("t1", "u1", {

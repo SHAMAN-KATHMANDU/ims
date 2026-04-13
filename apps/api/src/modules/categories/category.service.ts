@@ -1,4 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import { getPaginationParams } from "@/utils/pagination";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import categoryRepository, { CategoryRepository } from "./category.repository";
@@ -24,6 +26,28 @@ export class CategoryService {
       throw err;
     }
     const category = await this.repo.create(tenantId, data);
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "catalog.category.created",
+        scopeType: "GLOBAL",
+        entityType: "CATEGORY",
+        entityId: category.id,
+        dedupeKey: `category-created:${category.id}`,
+        payload: {
+          categoryId: category.id,
+          name: category.name,
+          description: category.description ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          categoryId: category.id,
+          eventName: "catalog.category.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     return { category, restored: false };
   }
 
@@ -73,7 +97,30 @@ export class CategoryService {
     if (data.description !== undefined)
       updateData.description = data.description ?? null;
 
-    return this.repo.update(id, updateData);
+    const category = await this.repo.update(id, updateData);
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "catalog.category.updated",
+        scopeType: "GLOBAL",
+        entityType: "CATEGORY",
+        entityId: category.id,
+        dedupeKey: `category-updated:${category.id}:${category.updatedAt.toISOString()}`,
+        payload: {
+          categoryId: category.id,
+          name: category.name,
+          description: category.description ?? null,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          categoryId: category.id,
+          eventName: "catalog.category.updated",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    return category;
   }
 
   async delete(

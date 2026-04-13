@@ -108,7 +108,6 @@ export function DealDetail({ dealId, basePath, onEdit }: DealDetailProps) {
       <div className="space-y-2 text-sm">
         <p>Stage: {deal.stage}</p>
         <p>Status: {deal.status}</p>
-        <p>Probability: {deal.probability}%</p>
         {deal.expectedCloseDate && (
           <p>
             Expected close:{" "}

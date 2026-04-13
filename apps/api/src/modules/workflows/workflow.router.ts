@@ -1,13 +1,67 @@
 import { Router } from "express";
+import { EnvFeature } from "@repo/shared";
 import authorizeRoles from "@/middlewares/roleMiddleware";
 import { enforcePlanFeature } from "@/middlewares/enforcePlanLimits";
+import { enforceEnvFeature } from "@/middlewares/enforceEnvFeature";
 import { asyncHandler } from "@/middlewares/errorHandler";
 import workflowController from "./workflow.controller";
 
 const workflowRouter = Router();
 
 workflowRouter.use(authorizeRoles("admin", "superAdmin"));
+workflowRouter.use(enforceEnvFeature(EnvFeature.CRM_WORKFLOWS));
 workflowRouter.use(enforcePlanFeature("salesPipeline"));
+
+/**
+ * @swagger
+ * /workflows/templates:
+ *   get:
+ *     summary: List workflow templates
+ *     description: Returns the ready-made workflow catalog with tenant install state and available pipelines.
+ *     tags: [Workflows]
+ *     security: [{ bearerAuth: [] }]
+ *     responses:
+ *       200:
+ *         description: Workflow template catalog
+ */
+workflowRouter.get("/templates", asyncHandler(workflowController.getTemplates));
+
+/**
+ * @swagger
+ * /workflows/templates/{templateKey}/install:
+ *   post:
+ *     summary: Install or reinstall a workflow template
+ *     description: Installs a ready-made workflow template onto a compatible tenant pipeline. Returns whether the template was newly installed, reused, or overwritten.
+ *     tags: [Workflows]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: templateKey
+ *         required: true
+ *         schema: { type: string }
+ *     requestBody:
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               pipelineId: { type: string, format: uuid }
+ *               overwriteExisting: { type: boolean }
+ *               activate: { type: boolean }
+ *     responses:
+ *       201:
+ *         description: Workflow template installed for the first time
+ *       200:
+ *         description: Existing template reused or overwritten
+ *       400:
+ *         description: Invalid pipeline or stage mapping for the selected template
+ *       404:
+ *         description: Unknown workflow template
+ */
+workflowRouter.post(
+  "/templates/:templateKey/install",
+  asyncHandler(workflowController.installTemplate),
+);
 
 /**
  * @swagger
@@ -98,6 +152,33 @@ workflowRouter.get("/", asyncHandler(workflowController.getAll));
  *             schema: { $ref: '#/components/schemas/Error' }
  */
 workflowRouter.get("/:id", asyncHandler(workflowController.getById));
+
+/**
+ * @swagger
+ * /workflows/{id}/runs:
+ *   get:
+ *     summary: List recent workflow runs
+ *     description: Returns recent execution history for a workflow.
+ *     tags: [Workflows]
+ *     security: [{ bearerAuth: [] }]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema: { type: string, format: uuid }
+ *       - in: query
+ *         name: limit
+ *         required: false
+ *         schema: { type: integer, default: 20 }
+ *     responses:
+ *       200:
+ *         description: Recent workflow runs
+ *       404:
+ *         description: Workflow not found
+ *       400:
+ *         description: Validation error
+ */
+workflowRouter.get("/:id/runs", asyncHandler(workflowController.getRuns));
 
 /**
  * @swagger

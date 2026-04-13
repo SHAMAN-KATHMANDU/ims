@@ -14,14 +14,12 @@ export class PipelineService {
       id: string;
       name: string;
       order: number;
-      probability: number;
     }> =
       Array.isArray(data.stages) && data.stages.length > 0
         ? (data.stages as Array<{
             id: string;
             name: string;
             order: number;
-            probability: number;
           }>)
         : pipelineRepository.getDefaultStages();
 
@@ -29,7 +27,7 @@ export class PipelineService {
       await pipelineRepository.clearDefaultForTenant(tenantId);
     }
 
-    return pipelineRepository.create({
+    const pipeline = await pipelineRepository.create({
       tenantId,
       name: data.name,
       type: data.type ?? "GENERAL",
@@ -38,30 +36,37 @@ export class PipelineService {
       closedWonStageName: data.closedWonStageName ?? undefined,
       closedLostStageName: data.closedLostStageName ?? undefined,
     });
+    return pipeline;
   }
 
   async seedFramework(tenantId: string) {
     const pipelines = await pipelineRepository.seedFrameworkPipelines(tenantId);
-
-    const crmSettingsRepo = (
-      await import("@/modules/crm-settings/crm-settings.repository")
+    const workflowService = (
+      await import("@/modules/workflows/workflow.service")
     ).default;
+    const workflows = await workflowService.reseedFrameworkDefaults(
+      tenantId,
+      pipelines.filter(
+        (
+          pipeline,
+        ): pipeline is {
+          id: string;
+          name: string;
+          type: "NEW_SALES" | "REMARKETING" | "REPURCHASE";
+        } => pipeline.type !== "GENERAL",
+      ),
+    );
 
-    const journeyTypes = [
-      "New",
-      "Engaging",
-      "Customer",
-      "Lost Lead",
-      "Returning Customer",
-      "VIP Customer",
-      "Cold",
-    ];
-    for (const name of journeyTypes) {
-      try {
-        await crmSettingsRepo.createJourneyType(tenantId, { name });
-      } catch {
-        // Already exists — skip
-      }
+    const journeyTypes = pipelines.map((pipeline) => pipeline.name);
+    const crmSettingsService = (
+      await import("@/modules/crm-settings/crm-settings.service")
+    ).default;
+    for (const journeyTypeName of journeyTypes) {
+      await crmSettingsService.syncJourneyTypeToPipelineRename(
+        tenantId,
+        journeyTypeName,
+        journeyTypeName,
+      );
     }
 
     const contactRepo = (await import("@/modules/contacts/contact.repository"))
@@ -82,7 +87,7 @@ export class PipelineService {
       }
     }
 
-    return { pipelines, journeyTypes, tags: tagNames };
+    return { pipelines, workflows, journeyTypes, tags: tagNames };
   }
 
   async getAll(tenantId: string, query?: ListPipelinesQueryDto) {
@@ -129,7 +134,6 @@ export class PipelineService {
         id: string;
         name: string;
         order: number;
-        probability: number;
       }>;
     }
     if (data.isDefault !== undefined) updateData.isDefault = data.isDefault;

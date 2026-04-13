@@ -6,9 +6,12 @@ vi.mock("./workflow.service", () => ({
     getAll: vi.fn(),
     getByPipeline: vi.fn(),
     getById: vi.fn(),
+    getTemplateCatalog: vi.fn(),
+    installTemplate: vi.fn(),
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+    getRuns: vi.fn(),
   },
 }));
 vi.mock("@/utils/controllerError", () => ({
@@ -204,6 +207,82 @@ describe("WorkflowController", () => {
       await workflowController.getById(req, res);
 
       expect(sendControllerError).toHaveBeenCalled();
+    });
+  });
+
+  describe("getTemplates", () => {
+    it("returns 200 with workflow templates", async () => {
+      const templates = [
+        { templateKey: "new-sales-sales-won-follow-up", isInstalled: false },
+      ];
+      mockService.getTemplateCatalog.mockResolvedValue(templates);
+      const req = makeReq();
+      const res = mockRes() as Response;
+
+      await workflowController.getTemplates(req, res);
+
+      expect(mockService.getTemplateCatalog).toHaveBeenCalledWith("t1");
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({ templates }),
+      );
+    });
+  });
+
+  describe("installTemplate", () => {
+    it("returns 201 with outcome on fresh install", async () => {
+      const workflow = {
+        id: "wf1",
+        templateKey: "new-sales-sales-won-follow-up",
+      };
+      mockService.installTemplate.mockResolvedValue({
+        outcome: "installed",
+        workflow,
+      });
+      const req = makeReq({
+        params: { templateKey: "new-sales-sales-won-follow-up" },
+        body: {
+          pipelineId: "00000000-0000-0000-0000-000000000001",
+          overwriteExisting: true,
+        },
+      });
+      const res = mockRes() as Response;
+
+      await workflowController.installTemplate(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Workflow template installed successfully",
+          outcome: "installed",
+          workflow,
+        }),
+      );
+    });
+
+    it("returns 200 when template is reused", async () => {
+      mockService.installTemplate.mockResolvedValue({
+        outcome: "reused",
+        workflow: {
+          id: "wf1",
+          templateKey: "new-sales-sales-won-follow-up",
+        },
+      });
+      const req = makeReq({
+        params: { templateKey: "new-sales-sales-won-follow-up" },
+        body: {},
+      });
+      const res = mockRes() as Response;
+
+      await workflowController.installTemplate(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(
+        expect.objectContaining({
+          message: "Workflow template already installed",
+          outcome: "reused",
+        }),
+      );
     });
   });
 
@@ -416,6 +495,28 @@ describe("WorkflowController", () => {
       await workflowController.delete(req, res);
 
       expect(sendControllerError).toHaveBeenCalled();
+    });
+  });
+
+  describe("getRuns", () => {
+    it("returns 200 with workflow runs", async () => {
+      const runs = [{ id: "run-1", status: "SUCCEEDED" }];
+      mockService.getRuns.mockResolvedValue({ runs });
+      const req = makeReq({
+        params: { id: "00000000-0000-0000-0000-000000000001" },
+        query: { limit: "5" },
+      });
+      const res = mockRes() as Response;
+
+      await workflowController.getRuns(req, res);
+
+      expect(mockService.getRuns).toHaveBeenCalledWith(
+        "t1",
+        "00000000-0000-0000-0000-000000000001",
+        { limit: 5 },
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ runs }));
     });
   });
 });

@@ -7,6 +7,7 @@ import {
   ContactProfileFieldsSchema,
   WORKFLOW_TRIGGER_VALUES,
   WORKFLOW_ACTION_VALUES,
+  parseWorkflowActionConfig,
 } from "@repo/shared";
 
 export const ContactSchema = z
@@ -36,7 +37,6 @@ export const DealSchema = z.object({
   companyId: z.string().uuid().optional().nullable(),
   pipelineId: z.string().uuid().optional(),
   expectedCloseDate: z.string().optional(),
-  probability: z.coerce.number().min(0).max(100).optional(),
 });
 
 export const TaskSchema = z.object({
@@ -65,13 +65,51 @@ export const LogActivitySchema = z.object({
   activityAt: z.string().min(1, "Date and time is required"),
 });
 
-export const WorkflowRuleSchema = z.object({
-  trigger: z.enum(WORKFLOW_TRIGGER_VALUES),
-  triggerStageId: z.string().max(100).optional().nullable(),
-  action: z.enum(WORKFLOW_ACTION_VALUES),
-  actionConfig: z.record(z.unknown()).default({}),
-  ruleOrder: z.number().int().min(0).optional(),
-});
+export const WorkflowRuleSchema = z
+  .object({
+    trigger: z.enum(WORKFLOW_TRIGGER_VALUES),
+    triggerStageId: z.string().max(100).optional().nullable(),
+    action: z.enum(WORKFLOW_ACTION_VALUES),
+    actionConfig: z.record(z.unknown()).default({}),
+    ruleOrder: z.number().int().min(0).optional(),
+  })
+  .superRefine((value, ctx) => {
+    // Match API/workflow.engine: null = any stage; undefined/"" = incomplete.
+    if (
+      (value.trigger === "STAGE_ENTER" || value.trigger === "STAGE_EXIT") &&
+      (value.triggerStageId === undefined || value.triggerStageId === "")
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["triggerStageId"],
+        message: "Select a specific stage or Any stage",
+      });
+    }
+
+    try {
+      parseWorkflowActionConfig(value.action, value.actionConfig);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        for (const issue of error.issues) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["actionConfig", ...issue.path],
+            message: issue.message,
+          });
+        }
+        return;
+      }
+
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["actionConfig"],
+        message:
+          error instanceof Error
+            ? error.message
+            : "Invalid workflow action config",
+      });
+    }
+  });
 
 export const CreateWorkflowFormSchema = z.object({
   pipelineId: z.string().uuid("Select a pipeline"),

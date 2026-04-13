@@ -16,6 +16,13 @@ vi.mock("@/modules/pipeline-transitions/pipeline-transition.service", () => ({
   default: { handleDealEvent: vi.fn().mockResolvedValue(undefined) },
 }));
 
+vi.mock("@/modules/contacts/contact.repository", () => ({
+  default: {
+    updateContactByWorkflow: vi.fn().mockResolvedValue(undefined),
+    incrementPurchaseCount: vi.fn().mockResolvedValue(undefined),
+  },
+}));
+
 vi.mock("./deal.repository", () => ({
   default: {
     findDefaultPipeline: (...args: unknown[]) =>
@@ -51,6 +58,32 @@ describe("DealService", () => {
       );
 
       expect(mockCreate).not.toHaveBeenCalled();
+    });
+
+    it("creates a deal without mutating contact journey type metadata", async () => {
+      mockFindDefaultPipeline.mockResolvedValue({
+        id: "p1",
+        name: "New Sales",
+        stages: [{ id: "st1", name: "Lead", probability: 10 }],
+      });
+      mockCreate.mockResolvedValue({
+        ...baseDealRow,
+        contactId: "c1",
+      });
+
+      await dealService.create(
+        "t1",
+        { name: "Deal 1", contactId: "c1", pipelineId: "p1" },
+        "u1",
+      );
+
+      expect(mockCreate).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({ name: "Deal 1", contactId: "c1" }),
+        "u1",
+        "Lead",
+        "p1",
+      );
     });
   });
 
@@ -92,14 +125,16 @@ describe("DealService", () => {
     });
 
     it("runs STAGE_EXIT with source rules pipeline then revision when moving to another pipeline", async () => {
-      mockFindById.mockResolvedValue({ ...baseDealRow });
+      mockFindById.mockResolvedValue({ ...baseDealRow, contactId: "c1" });
       mockFindDefaultPipeline.mockResolvedValue({
         id: "p2",
+        name: "Remarketing",
         stages: [{ id: "st2", name: "Qualification", probability: 5 }],
       });
       mockCreateDealRevision.mockResolvedValue({
         ...baseDealRow,
         id: "d1-rev",
+        contactId: "c1",
         pipelineId: "p2",
         stage: "Qualification",
       });
@@ -125,7 +160,8 @@ describe("DealService", () => {
         expect.objectContaining({
           pipelineId: "p2",
           stage: "Qualification",
-          probability: 5,
+          status: "OPEN",
+          closedAt: null,
         }),
         "u1",
         null,

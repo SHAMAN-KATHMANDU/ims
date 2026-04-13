@@ -43,6 +43,7 @@ import notificationRouter from "@/modules/notifications/notification.router";
 import crmRouter from "@/modules/crm/crm.router";
 import crmSettingsRouter from "@/modules/crm-settings/crm-settings.router";
 import workflowRouter from "@/modules/workflows/workflow.router";
+import automationRouter from "@/modules/automation/automation.router";
 import webhookRouter from "@/modules/webhooks/webhook.router";
 import messagingChannelRouter from "@/modules/messaging-channels/messaging-channel.router";
 import messagingRouter from "@/modules/messaging/messaging.router";
@@ -51,6 +52,8 @@ import tenantSettingsRouter from "@/modules/tenant-settings/tenant-settings.rout
 import sitesRouter from "@/modules/sites/sites.router";
 import publicSiteRouter from "@/modules/public-site/public-site.router";
 import internalRouter from "@/modules/internal/internal.router";
+import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
+import mediaRouter from "@/modules/media/media.router";
 
 const router = Router();
 
@@ -118,8 +121,11 @@ router.use("/crm-settings", crmSettingsRouter);
 router.use("/tenant-settings", tenantSettingsRouter);
 router.use("/sites", sitesRouter);
 router.use("/workflows", workflowRouter);
+router.use("/automation", automationRouter);
 router.use("/trash", trashRouter);
 router.use("/messaging-channels", messagingChannelRouter);
 router.use("/messaging", messagingRouter);
+router.use("/ai-settings", aiSettingsRouter);
+router.use("/media", mediaRouter);
 
 export default router;

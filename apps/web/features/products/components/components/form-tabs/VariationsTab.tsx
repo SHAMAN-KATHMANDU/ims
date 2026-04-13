@@ -1,5 +1,6 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { NumericInput } from "@/components/ui/numeric-input";
 import { Label } from "@/components/ui/label";
@@ -11,11 +12,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Trash2, Plus } from "lucide-react";
+import { Trash2, Plus, Upload, Images } from "lucide-react";
 import type { ProductVariationForm } from "../../types";
 import type { UseFormReturn } from "@/hooks/useForm";
 import type { ProductFormValues } from "../../types";
 import type { AttributeType } from "@/features/products";
+import { useS3DirectUpload } from "@/hooks/useS3DirectUpload";
+import { MediaLibraryPickerDialog } from "@/components/media/MediaLibraryPickerDialog";
+import { useToast } from "@/hooks/useToast";
+import { getApiErrorMessage } from "@/lib/api-error";
 
 interface VariationsTabProps {
   variations: ProductVariationForm[];
@@ -30,7 +35,11 @@ interface VariationsTabProps {
       | Array<{ attributeTypeId: string; attributeValueId: string }>,
   ) => void;
   onUpdateSubVariants: (index: number, subVariants: string[]) => void;
-  onAddPhoto: (variationIndex: number, photoUrl: string) => void;
+  onAddPhoto: (
+    variationIndex: number,
+    photoUrl: string,
+    fileName?: string,
+  ) => void;
   onRemovePhoto: (variationIndex: number, photoIndex: number) => void;
   onSetPrimaryPhoto: (variationIndex: number, photoIndex: number) => void;
   attributeTypes?: AttributeType[];
@@ -52,6 +61,13 @@ export function VariationsTab({
   productAttributeTypeIds = [],
   onProductAttributeTypeIdsChange,
 }: VariationsTabProps) {
+  const { uploadFile, mediaUploadEnabled } = useS3DirectUpload();
+  const { toast } = useToast();
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryVariationIndex, setLibraryVariationIndex] = useState(0);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileTargetIndexRef = useRef(0);
+
   const selectedTypes = attributeTypes.filter((t) =>
     productAttributeTypeIds.includes(t.id),
   );
@@ -152,6 +168,11 @@ export function VariationsTab({
       )}
       {variations.length > 0 && (
         <div className="space-y-4 border rounded-lg p-4">
+          {!mediaUploadEnabled && (
+            <p className="text-xs text-muted-foreground">
+              Photo upload and media library are disabled in this environment.
+            </p>
+          )}
           {variations.map((variation, index) => (
             <div
               key={index}
@@ -227,22 +248,77 @@ export function VariationsTab({
               )}
 
               <div className="space-y-2">
-                <div className="flex justify-between items-center">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  className="hidden"
+                  aria-label="Upload variation photo"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (!file) return;
+                    const idx = fileTargetIndexRef.current;
+                    try {
+                      const { publicUrl, fileName } = await uploadFile({
+                        file,
+                        purpose: "product_photo",
+                      });
+                      onAddPhoto(idx, publicUrl, fileName);
+                    } catch (err) {
+                      toast({
+                        title: getApiErrorMessage(err),
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                />
+                <div className="flex justify-between items-center flex-wrap gap-1">
                   <Label className="text-xs">Photos (Optional)</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => {
-                      const photoUrl = prompt("Enter photo URL:");
-                      if (photoUrl && photoUrl.trim()) {
-                        onAddPhoto(index, photoUrl.trim());
-                      }
-                    }}
-                    className="h-7 text-xs"
-                  >
-                    <Plus className="h-3 w-3 mr-1" /> Add Photo
-                  </Button>
+                  <div className="flex gap-1">
+                    {mediaUploadEnabled && (
+                      <>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            fileTargetIndexRef.current = index;
+                            fileInputRef.current?.click();
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          <Upload className="h-3 w-3 mr-1" /> Upload
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setLibraryVariationIndex(index);
+                            setLibraryOpen(true);
+                          }}
+                          className="h-7 text-xs"
+                        >
+                          <Images className="h-3 w-3 mr-1" /> Library
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        const photoUrl = prompt("Enter photo URL:");
+                        if (photoUrl && photoUrl.trim()) {
+                          onAddPhoto(index, photoUrl.trim());
+                        }
+                      }}
+                      className="h-7 text-xs"
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> URL
+                    </Button>
+                  </div>
                 </div>
                 {variation.photos && variation.photos.length > 0 && (
                   <div className="grid grid-cols-3 gap-2">
@@ -252,6 +328,7 @@ export function VariationsTab({
                         <img
                           src={photo.photoUrl}
                           alt={`Variation ${index + 1} photo ${photoIndex + 1}`}
+                          title={photo.fileName || photo.photoUrl}
                           className="h-20 w-full rounded border object-cover"
                           onError={(e) => {
                             e.currentTarget.src =
@@ -261,6 +338,11 @@ export function VariationsTab({
                         {photo.isPrimary && (
                           <span className="absolute top-1 left-1 bg-primary text-primary-foreground text-xs px-1 rounded">
                             Primary
+                          </span>
+                        )}
+                        {photo.fileName && (
+                          <span className="absolute right-1 bottom-1 max-w-[95%] truncate rounded bg-black/70 px-1.5 py-0.5 text-[10px] text-white">
+                            {photo.fileName}
                           </span>
                         )}
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1">
@@ -300,6 +382,13 @@ export function VariationsTab({
         Add at least one variation (default stock required). Variant name can be
         auto-filled from attribute values. The first variation is the default.
       </p>
+      <MediaLibraryPickerDialog
+        open={libraryOpen}
+        onOpenChange={setLibraryOpen}
+        onPick={({ publicUrl, fileName }) =>
+          onAddPhoto(libraryVariationIndex, publicUrl, fileName)
+        }
+      />
     </div>
   );
 }

@@ -42,7 +42,7 @@ export class TaskRepository {
       "id",
     ];
     const orderBy = getPrismaOrderBy(sortBy, sortOrder, allowedSortFields) || {
-      dueDate: "asc",
+      createdAt: "desc",
     };
 
     const where: Record<string, unknown> = { tenantId, deletedAt: null };

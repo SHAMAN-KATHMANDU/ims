@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { ZodError } from "zod";
 import { getAuthContext } from "@/shared/auth/getAuthContext";
+import { ok, fail } from "@/shared/response";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import { DeleteBodySchema } from "@/shared/schemas/deleteBody.schema";
@@ -13,7 +14,11 @@ import {
   AddCommunicationSchema,
   ListTagsQuerySchema,
 } from "./contact.schema";
+import { CreateContactAttachmentSchema } from "./contact-attachment.schema";
+import { ContactAttachmentService } from "./contact-attachment.service";
 import contactService from "./contact.service";
+
+const contactAttachmentService = new ContactAttachmentService();
 
 class ContactController {
   create = async (req: Request, res: Response) => {
@@ -244,20 +249,24 @@ class ContactController {
   addAttachment = async (req: Request, res: Response) => {
     try {
       const { tenantId, userId } = getAuthContext(req);
-      const file = (req as any).file as Express.Multer.File | undefined;
-      if (!file) return res.status(400).json({ message: "No file uploaded" });
-      const attachment = await contactService.addAttachment(
+      const body = CreateContactAttachmentSchema.parse(req.body);
+      const attachment = await contactAttachmentService.addS3Attachment(
         tenantId,
-        req.params.id,
-        file,
         userId,
+        req.params.id,
+        body,
       );
-      return res.status(201).json({ message: "Attachment added", attachment });
+      return ok(res, { message: "Attachment added", attachment }, 201);
     } catch (error: unknown) {
+      if (error instanceof ZodError) {
+        return fail(res, error.errors[0]?.message ?? "Validation error", 400);
+      }
       if ((error as AppError).statusCode) {
-        return res
-          .status((error as AppError).statusCode!)
-          .json({ message: (error as AppError).message });
+        return fail(
+          res,
+          (error as AppError).message,
+          (error as AppError).statusCode!,
+        );
       }
       return sendControllerError(req, res, error, "Add attachment error");
     }
@@ -265,18 +274,20 @@ class ContactController {
 
   deleteAttachment = async (req: Request, res: Response) => {
     try {
-      const tenantId = getAuthContext(req).tenantId;
-      await contactService.deleteAttachment(
+      const { tenantId } = getAuthContext(req);
+      await contactAttachmentService.deleteAttachment(
         tenantId,
         req.params.id,
         req.params.attachmentId,
       );
-      return res.status(200).json({ message: "Attachment deleted" });
+      return ok(res, { message: "Attachment deleted" });
     } catch (error: unknown) {
       if ((error as AppError).statusCode) {
-        return res
-          .status((error as AppError).statusCode!)
-          .json({ message: (error as AppError).message });
+        return fail(
+          res,
+          (error as AppError).message,
+          (error as AppError).statusCode!,
+        );
       }
       return sendControllerError(req, res, error, "Delete attachment error");
     }

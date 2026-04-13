@@ -24,6 +24,8 @@ import {
   type GetContactTagsParams,
 } from "../services/contact.service";
 import { DEFAULT_PAGE, DEFAULT_LIMIT } from "@/lib/apiTypes";
+import { useS3DirectUpload } from "@/hooks/useS3DirectUpload";
+import { crmKeys } from "./use-crm";
 
 export const contactKeys = {
   all: ["contacts"] as const,
@@ -74,7 +76,12 @@ export function useCreateContact() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (data: CreateContactData) => createContact(data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+    },
   });
 }
 
@@ -86,6 +93,9 @@ export function useUpdateContact() {
     onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: contactKeys.lists() });
       qc.invalidateQueries({ queryKey: contactKeys.detail(id) });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
     },
   });
 }
@@ -94,7 +104,12 @@ export function useDeleteContact() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteContact(id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+    },
   });
 }
 
@@ -102,8 +117,10 @@ export function useCreateContactTag() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (name: string) => createContactTag(name),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+    },
   });
 }
 
@@ -112,8 +129,10 @@ export function useUpdateContactTag() {
   return useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) =>
       updateContactTag(id, name),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+    },
   });
 }
 
@@ -121,8 +140,10 @@ export function useDeleteContactTag() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) => deleteContactTag(id),
-    onSuccess: () =>
-      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: [...contactKeys.all, "tags"] });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+    },
   });
 }
 
@@ -146,8 +167,21 @@ export function useDeleteContactNote(contactId: string) {
 
 export function useAddContactAttachment(contactId: string) {
   const qc = useQueryClient();
+  const { uploadFile } = useS3DirectUpload();
   return useMutation({
-    mutationFn: (file: File) => addContactAttachment(contactId, file),
+    mutationFn: async (file: File) => {
+      const { key, contentType } = await uploadFile({
+        file,
+        purpose: "contact_attachment",
+        entityId: contactId,
+      });
+      return addContactAttachment(contactId, {
+        storageKey: key,
+        fileName: file.name,
+        mimeType: contentType,
+        fileSize: file.size,
+      });
+    },
     onSuccess: () =>
       qc.invalidateQueries({ queryKey: contactKeys.detail(contactId) }),
   });
@@ -180,7 +214,12 @@ export function useImportContacts() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (file: File) => importContactsCsv(file),
-    onSuccess: () => qc.invalidateQueries({ queryKey: contactKeys.lists() }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: contactKeys.lists() });
+      qc.invalidateQueries({ queryKey: crmKeys.all });
+      qc.invalidateQueries({ queryKey: ["tasks", "list"] });
+      qc.invalidateQueries({ queryKey: ["deals", "list"] });
+    },
   });
 }
 

@@ -52,3 +52,46 @@ In `infra/variables.tf` you can set `my_ip` to your current public IP so the sec
 ---
 
 **Next:** Run Terraform from the `infra/` directory (see [infra/README.md](../infra/README.md)).
+
+## 5. S3 tenant media (`ims-shaman-photos`) — CORS for browser uploads
+
+The web app uploads files **directly to S3** using presigned `PUT` URLs from the API. The bucket must allow your frontend origin.
+
+1. In **S3** → bucket `ims-shaman-photos` → **Permissions** → **Cross-origin resource sharing (CORS)**.
+2. Add a configuration like (replace `https://app.example.com` with your real app origin(s)):
+
+```json
+[
+  {
+    "AllowedHeaders": ["*"],
+    "AllowedMethods": ["GET", "HEAD", "PUT"],
+    "AllowedOrigins": ["https://app.example.com", "http://localhost:3000"],
+    "ExposeHeaders": ["ETag"],
+    "MaxAgeSeconds": 3000
+  }
+]
+```
+
+- **PUT** is required for presigned uploads.
+- **GET** / **HEAD** support loading public objects in the browser.
+- If the SDK sends extra headers (e.g. `x-amz-*`), `AllowedHeaders: ["*"]` keeps configuration simple; tighten in production if you prefer.
+
+API environment variables (see `apps/api/.env.example`):
+
+- **Core:** `AWS_REGION`, `PHOTOS_S3_BUCKET`, `PHOTOS_PUBLIC_URL_PREFIX`, plus IAM role or `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` on the API host.
+- **Prefix:** `PHOTOS_S3_KEY_PREFIX` (`dev` | `stage` | `prod`) — first path segment so dev/stage/prod do not overwrite objects. **Required** in staging/production when the bucket is configured (no silent `NODE_ENV` fallback there).
+- **Aliases:** `PHOTOS_PUBLIC_URL_ALIASES` — comma-separated public URL prefixes (e.g. CloudFront). Register/finalize accepts a client `publicUrl` only if it matches the canonical URL built from `PHOTOS_PUBLIC_URL_PREFIX` or one of these aliases; the API always persists the primary canonical URL.
+- **Startup:** `PHOTOS_S3_VERIFY_ON_STARTUP` — defaults to verifying bucket access (`HeadBucket`) when not in development and S3 is configured; set to `0` / `false` to skip.
+- **Hardening / migration:** `PHOTOS_ALLOW_LEGACY_KEYS` — short window to validate old keys of the form `tenants/{tenantId}/...` without the `{env}/` prefix. `PHOTOS_ENFORCE_CONTENT_SNIFF` — optional magic-byte check on register (S3 range read). `IMS_DEPLOYMENT_TIER` is optional documentation-only.
+
+### Presigned PUT behavior
+
+The API signs `PUT` with fixed **Content-Type** and **Content-Length** (exact file size). The browser must send the same headers or S3 returns 4xx. Wrong `PHOTOS_PUBLIC_URL_PREFIX` breaks **links**, not uploads.
+
+### Threat model (high level)
+
+Presigned URLs are time-limited writes to a single object key under a tenant-scoped layout. Tenants authenticate to obtain URLs; the key encodes tenant id and purpose. Operators should use short-lived credentials on the API host and least-privilege IAM (`s3:PutObject`, `s3:DeleteObject`, `s3:GetObject` on the bucket/prefix).
+
+### Orphans and lifecycle
+
+Objects may exist without a `MediaAsset` row if the client uploads but never calls register/finalize. Mitigations: operational metrics (`media.presign.issued` vs `media.register.completed` logs), and optional S3 lifecycle rules on a future `pending/` or `unregistered/` prefix. A full reconcile job is not included in v1.

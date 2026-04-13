@@ -139,6 +139,15 @@ export class CrmSettingsRepository {
     });
   }
 
+  async upsertJourneyTypeByName(tenantId: string, name: string) {
+    return prisma.crmJourneyType.upsert({
+      where: { tenantId_name: { tenantId, name: name.trim() } },
+      update: {},
+      create: { tenantId, name: name.trim() },
+      select: { id: true, name: true, createdAt: true },
+    });
+  }
+
   async updateJourneyType(id: string, data: UpdateCrmJourneyTypeDto) {
     return prisma.crmJourneyType.update({
       where: { id },
@@ -147,8 +156,36 @@ export class CrmSettingsRepository {
     });
   }
 
+  async renameJourneyTypeByName(
+    tenantId: string,
+    oldName: string,
+    newName: string,
+  ) {
+    return prisma.crmJourneyType.update({
+      where: {
+        tenantId_name: {
+          tenantId,
+          name: oldName.trim(),
+        },
+      },
+      data: { name: newName.trim() },
+      select: { id: true, name: true, createdAt: true },
+    });
+  }
+
   async deleteJourneyType(id: string) {
     return prisma.crmJourneyType.delete({ where: { id } });
+  }
+
+  async deleteJourneyTypeByName(tenantId: string, name: string) {
+    return prisma.crmJourneyType.delete({
+      where: {
+        tenantId_name: {
+          tenantId,
+          name: name.trim(),
+        },
+      },
+    });
   }
 }
 

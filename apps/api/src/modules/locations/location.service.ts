@@ -1,4 +1,6 @@
 import { createError } from "@/middlewares/errorHandler";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
 import { getPaginationParams } from "@/utils/pagination";
 import locationRepository, { LocationRepository } from "./location.repository";
@@ -10,8 +12,7 @@ export class LocationService {
   async create(tenantId: string, data: CreateLocationDto) {
     const existing = await this.repo.findByName(tenantId, data.name);
     if (existing) {
-      const isDeactivated =
-        existing.deletedAt !== null || !existing.isActive;
+      const isDeactivated = existing.deletedAt !== null || !existing.isActive;
       if (isDeactivated) {
         let restored = await this.repo.restore(existing.id);
         if (data.isDefaultWarehouse === true) {
@@ -30,6 +31,31 @@ export class LocationService {
     }
 
     const location = await this.repo.create(tenantId, data);
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "locations.location.created",
+        scopeType: "LOCATION",
+        scopeId: location.id,
+        entityType: "LOCATION",
+        entityId: location.id,
+        dedupeKey: `location-created:${location.id}`,
+        payload: {
+          locationId: location.id,
+          name: location.name,
+          type: location.type,
+          isActive: location.isActive,
+          isDefaultWarehouse: location.isDefaultWarehouse ?? false,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          locationId: location.id,
+          eventName: "locations.location.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
     return { location, restored: false };
   }
 
@@ -103,7 +129,33 @@ export class LocationService {
       }
     }
 
-    return this.repo.update(id, updateData);
+    const location = await this.repo.update(id, updateData);
+    await automationService
+      .publishDomainEvent({
+        tenantId: existing.tenantId,
+        eventName: "locations.location.updated",
+        scopeType: "LOCATION",
+        scopeId: location.id,
+        entityType: "LOCATION",
+        entityId: location.id,
+        dedupeKey: `location-updated:${location.id}:${location.updatedAt.toISOString()}`,
+        payload: {
+          locationId: location.id,
+          name: location.name,
+          type: location.type,
+          isActive: location.isActive,
+          isDefaultWarehouse: location.isDefaultWarehouse ?? false,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId: existing.tenantId,
+          locationId: location.id,
+          eventName: "locations.location.updated",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+    return location;
   }
 
   async delete(

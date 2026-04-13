@@ -25,7 +25,12 @@ export class LoginPage {
   async login(username: string, password: string) {
     await this.usernameInput.fill(username);
     await this.passwordInput.fill(password);
-    await this.loginButton.click();
+    await Promise.all([
+      this.page.waitForURL((url) => !url.pathname.endsWith("/login"), {
+        timeout: 30_000,
+      }),
+      this.loginButton.click(),
+    ]);
   }
 
   async expectError(message: string | RegExp) {

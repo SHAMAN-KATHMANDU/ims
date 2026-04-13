@@ -31,7 +31,8 @@ else
   cp .env.example .env
   success "Created .env from .env.example"
   warn "You MUST edit .env before starting the stack."
-  warn "Required: POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL, CORS_ORIGIN, API_PUBLIC_URL"
+  warn "Required: POSTGRES_PASSWORD, JWT_SECRET, DATABASE_URL, CORS_ORIGIN, API_PUBLIC_URL,"
+  warn "  S3 (AWS_REGION, PHOTOS_*) and CREDENTIAL_ENCRYPTION_KEY (64 hex chars) for staging/production API."
   echo ""
   read -r -p "Press ENTER to open .env in nano (or Ctrl+C to edit manually)..." _
   nano .env
@@ -47,8 +48,23 @@ validate_required_vars \
   DATABASE_URL \
   CORS_ORIGIN \
   API_PUBLIC_URL \
-  REDIS_URL
+  REDIS_URL \
+  AWS_REGION \
+  PHOTOS_S3_BUCKET \
+  PHOTOS_PUBLIC_URL_PREFIX \
+  PHOTOS_S3_KEY_PREFIX \
+  CREDENTIAL_ENCRYPTION_KEY
 success "All required vars are set"
+
+set -a
+# shellcheck source=/dev/null
+source .env
+set +a
+if [[ ! "${CREDENTIAL_ENCRYPTION_KEY}" =~ ^[0-9a-fA-F]{64}$ ]]; then
+  error "CREDENTIAL_ENCRYPTION_KEY must be exactly 64 hexadecimal characters (32 bytes). See apps/api/.env.example."
+  exit 1
+fi
+success "CREDENTIAL_ENCRYPTION_KEY format is valid"
 
 # -----------------------------------------------------------------------------
 # 4. Docker Hub login (for pulling private images)

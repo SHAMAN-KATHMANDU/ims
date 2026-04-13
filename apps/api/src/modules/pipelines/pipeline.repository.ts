@@ -4,11 +4,11 @@ import prisma from "@/config/prisma";
 import type { PipelineType } from "@prisma/client";
 
 const DEFAULT_STAGES = [
-  { id: "1", name: "Qualification", order: 1, probability: 10 },
-  { id: "2", name: "Proposal", order: 2, probability: 30 },
-  { id: "3", name: "Negotiation", order: 3, probability: 60 },
-  { id: "4", name: "Closed Won", order: 4, probability: 100 },
-  { id: "5", name: "Closed Lost", order: 5, probability: 0 },
+  { id: "1", name: "Qualification", order: 1 },
+  { id: "2", name: "Proposal", order: 2 },
+  { id: "3", name: "Negotiation", order: 3 },
+  { id: "4", name: "Closed Won", order: 4 },
+  { id: "5", name: "Closed Lost", order: 5 },
 ];
 
 export interface CreatePipelineData {
@@ -19,7 +19,6 @@ export interface CreatePipelineData {
     id: string;
     name: string;
     order: number;
-    probability: number;
   }>;
   isDefault: boolean;
   closedWonStageName?: string | null;
@@ -32,7 +31,6 @@ export interface UpdatePipelineData {
     id: string;
     name: string;
     order: number;
-    probability: number;
   }>;
   isDefault?: boolean;
   closedWonStageName?: string | null;
@@ -171,13 +169,11 @@ export class PipelineRepository {
       id: string;
       name: string;
       order: number;
-      probability: number;
     }> =>
       names.map((name, i) => ({
         id: randomUUID(),
         name,
         order: i + 1,
-        probability: probabilities[i] ?? 0,
       }));
 
     const frameworkTypes: PipelineType[] = [
@@ -193,25 +189,45 @@ export class PipelineRepository {
         type: { in: frameworkTypes },
         deletedAt: null,
       },
-      select: { type: true },
+      select: { id: true, type: true },
     });
-    const existingTypes = new Set(existing.map((p) => p.type));
 
     const results: Array<{ id: string; name: string; type: PipelineType }> = [];
+    let defaultAssigned = false;
 
     for (const tmpl of CRM_PIPELINE_TEMPLATES) {
       if (!frameworkTypeSet.has(tmpl.type as PipelineType)) continue;
-      if (existingTypes.has(tmpl.type as PipelineType)) continue;
+      const existingPipeline = existing.find(
+        (pipeline) => pipeline.type === (tmpl.type as PipelineType),
+      );
+      const shouldBeDefault = tmpl.suggestAsDefault && !defaultAssigned;
+      const stages = makeStages(tmpl.stageNames, [...tmpl.probabilities]);
+      let p;
 
-      const p = await this.create({
-        tenantId,
-        name: tmpl.name,
-        type: tmpl.type as PipelineType,
-        stages: makeStages(tmpl.stageNames, [...tmpl.probabilities]),
-        isDefault: tmpl.suggestAsDefault,
-        closedWonStageName: tmpl.closedWonStageName ?? null,
-        closedLostStageName: tmpl.closedLostStageName ?? null,
-      });
+      if (existingPipeline) {
+        p = await this.update(existingPipeline.id, {
+          name: tmpl.name,
+          stages,
+          isDefault: shouldBeDefault,
+          closedWonStageName: tmpl.closedWonStageName ?? null,
+          closedLostStageName: tmpl.closedLostStageName ?? null,
+        });
+      } else {
+        p = await this.create({
+          tenantId,
+          name: tmpl.name,
+          type: tmpl.type as PipelineType,
+          stages,
+          isDefault: shouldBeDefault,
+          closedWonStageName: tmpl.closedWonStageName ?? null,
+          closedLostStageName: tmpl.closedLostStageName ?? null,
+        });
+      }
+
+      if (shouldBeDefault) {
+        await this.clearDefaultForTenantExcept(tenantId, p.id);
+        defaultAssigned = true;
+      }
       results.push({ id: p.id, name: p.name, type: p.type });
     }
 

@@ -10,7 +10,6 @@ import { toast } from "sonner";
 import {
   getMessages,
   sendMessage,
-  uploadMessagingMedia,
   addMessageReaction,
   removeMessageReaction,
   editConversationMessage,
@@ -84,15 +83,6 @@ export function useSendMessage(conversationId: string) {
       void qc.invalidateQueries({ queryKey: messageKeys.list(conversationId) });
       void qc.invalidateQueries({ queryKey: conversationKeys.lists() });
     },
-  });
-}
-
-export function useUploadMessagingMedia(conversationId: string) {
-  return useMutation({
-    mutationFn: (args: {
-      file: File;
-      onProgress?: (percent: number) => void;
-    }) => uploadMessagingMedia(conversationId, args.file, args.onProgress),
   });
 }
 

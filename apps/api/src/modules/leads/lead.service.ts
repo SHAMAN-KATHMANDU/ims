@@ -1,5 +1,7 @@
 import { createError } from "@/middlewares/errorHandler";
 import { createDeleteAuditLog } from "@/shared/audit/createDeleteAuditLog";
+import { logger } from "@/config/logger";
+import automationService from "@/modules/automation/automation.service";
 import { normalizePhoneOptional } from "@/utils/phone";
 import leadRepository from "./lead.repository";
 import type {
@@ -25,7 +27,7 @@ export class LeadService {
       }
     }
 
-    return leadRepository.create({
+    const lead = await leadRepository.create({
       tenantId,
       name: data.name,
       email: data.email ?? null,
@@ -37,6 +39,37 @@ export class LeadService {
       assignedToId: assigneeId,
       createdById: userId,
     });
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "crm.lead.created",
+        scopeType: "GLOBAL",
+        entityType: "LEAD",
+        entityId: lead.id,
+        actorUserId: userId,
+        dedupeKey: `crm-lead-created:${lead.id}`,
+        payload: {
+          leadId: lead.id,
+          name: lead.name,
+          email: lead.email ?? null,
+          phone: lead.phone ?? null,
+          companyName: lead.companyName ?? null,
+          status: lead.status,
+          source: lead.source ?? null,
+          assignedToId: lead.assignedToId,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          leadId: lead.id,
+          eventName: "crm.lead.created",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
+    return lead;
   }
 
   async getAll(tenantId: string, query: Record<string, unknown>) {
@@ -210,6 +243,34 @@ export class LeadService {
     await leadRepository.markLeadConverted(id);
     const updatedLead = await leadRepository.findLeadByIdWithDeal(id);
 
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "crm.lead.converted",
+        scopeType: "GLOBAL",
+        entityType: "LEAD",
+        entityId: lead.id,
+        actorUserId: userId,
+        dedupeKey: `crm-lead-converted:${lead.id}`,
+        payload: {
+          leadId: lead.id,
+          contactId: contact.id,
+          dealId: deal.id,
+          memberId,
+          pipelineId: deal.pipelineId,
+          assignedToId: lead.assignedToId,
+          status: "CONVERTED",
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          leadId: lead.id,
+          eventName: "crm.lead.converted",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
+
     return { lead: updatedLead, contact, deal };
   }
 
@@ -236,6 +297,31 @@ export class LeadService {
         resourceId: lead.id,
       });
     }
+
+    await automationService
+      .publishDomainEvent({
+        tenantId,
+        eventName: "crm.lead.assigned",
+        scopeType: "GLOBAL",
+        entityType: "LEAD",
+        entityId: lead.id,
+        actorUserId: userId,
+        dedupeKey: `crm-lead-assigned:${lead.id}:${data.assignedToId}`,
+        payload: {
+          leadId: lead.id,
+          assignedToId: lead.assignedToId,
+          previousAssignedToId: existing.assignedToId,
+          status: lead.status,
+        },
+      })
+      .catch((error) => {
+        logger.error("Automation event publishing failed", undefined, {
+          tenantId,
+          leadId: lead.id,
+          eventName: "crm.lead.assigned",
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
 
     return lead;
   }

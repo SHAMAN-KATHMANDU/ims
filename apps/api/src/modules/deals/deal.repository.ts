@@ -1,4 +1,5 @@
 import prisma from "@/config/prisma";
+import type { PipelineType } from "@prisma/client";
 import {
   getPaginationParams,
   createPaginationResult,
@@ -197,6 +198,13 @@ export class DealRepository {
     });
   }
 
+  async findPipelineByType(tenantId: string, pipelineType: PipelineType) {
+    return prisma.pipeline.findFirst({
+      where: { tenantId, type: pipelineType, deletedAt: null },
+      select: { id: true, name: true, type: true },
+    });
+  }
+
   async findDefaultPipeline(tenantId: string, pipelineId?: string | null) {
     if (pipelineId) {
       const byId = await prisma.pipeline.findFirst({
@@ -227,7 +235,7 @@ export class DealRepository {
         name: data.name.trim(),
         value: Number(data.value) || 0,
         stage,
-        probability: Math.min(100, Math.max(0, Number(data.probability) || 0)),
+        probability: 0,
         status: "OPEN",
         expectedCloseDate: data.expectedCloseDate
           ? new Date(data.expectedCloseDate)
@@ -250,9 +258,6 @@ export class DealRepository {
       }),
       ...(data.value !== undefined && { value: Number(data.value) }),
       ...(data.stage !== undefined && { stage: data.stage }),
-      ...(data.probability !== undefined && {
-        probability: Math.min(100, Math.max(0, Number(data.probability))),
-      }),
       ...(data.status !== undefined && { status: data.status }),
       ...(data.expectedCloseDate !== undefined && {
         expectedCloseDate: data.expectedCloseDate
@@ -338,10 +343,6 @@ export class DealRepository {
           ? Number(updates.value)
           : Number(parent.value);
       const stage = updates.stage ?? parent.stage;
-      const probability =
-        updates.probability !== undefined
-          ? Math.min(100, Math.max(0, Number(updates.probability)))
-          : parent.probability;
       const status = updates.status ?? parent.status;
       const expectedCloseDate =
         updates.expectedCloseDate !== undefined
@@ -388,7 +389,7 @@ export class DealRepository {
           name,
           value,
           stage,
-          probability,
+          probability: parent.probability,
           status,
           expectedCloseDate,
           closedAt,

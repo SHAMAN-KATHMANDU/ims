@@ -992,7 +992,11 @@ export function ProductPage() {
     setProductVariations(updated);
   };
 
-  const addPhotoToVariation = (variationIndex: number, photoUrl: string) => {
+  const addPhotoToVariation = (
+    variationIndex: number,
+    photoUrl: string,
+    fileName?: string,
+  ) => {
     const updated = [...productVariations];
     const variation = updated[variationIndex];
     if (!variation) return;
@@ -1000,7 +1004,7 @@ export function ProductPage() {
     const isPrimary = photos.length === 0;
     updated[variationIndex] = {
       ...variation,
-      photos: [...photos, { photoUrl, isPrimary }],
+      photos: [...photos, { photoUrl, isPrimary, fileName }],
     };
     setProductVariations(updated);
   };

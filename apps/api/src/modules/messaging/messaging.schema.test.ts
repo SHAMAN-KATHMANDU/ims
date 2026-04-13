@@ -38,7 +38,15 @@ describe("SendMessageSchema", () => {
     ).toThrow();
   });
 
-  it("requires text or mediaUrl", () => {
+  it("accepts mediaAssetId without mediaUrl (library-backed upload)", () => {
+    const parsed = SendMessageSchema.parse({
+      mediaAssetId: "550e8400-e29b-41d4-a716-446655440000",
+      mediaType: "image",
+    });
+    expect(parsed.mediaAssetId).toBe("550e8400-e29b-41d4-a716-446655440000");
+  });
+
+  it("requires text or mediaUrl or mediaAssetId", () => {
     expect(() => SendMessageSchema.parse({})).toThrow();
   });
 
@@ -67,9 +75,7 @@ describe("AddReactionSchema", () => {
   });
 
   it("rejects emoji longer than 32 chars", () => {
-    expect(() =>
-      AddReactionSchema.parse({ emoji: "a".repeat(33) }),
-    ).toThrow();
+    expect(() => AddReactionSchema.parse({ emoji: "a".repeat(33) })).toThrow();
   });
 });
 

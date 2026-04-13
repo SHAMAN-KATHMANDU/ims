@@ -32,7 +32,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Search, Plus, Upload, Download } from "lucide-react";
+import {
+  Search,
+  Plus,
+  Upload,
+  Download,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import {
   DataTablePagination,
   type PaginationState,
@@ -57,6 +64,11 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import type { CreateContactData } from "../../services/contact.service";
+import type { SortOrder } from "@/components/ui/table";
+import { PageHeader } from "@/components/layout/page-header";
+import { PageShell } from "@/components/layout/page-shell";
+import { Spinner } from "@/components/ui/spinner";
+import { Badge } from "@/components/ui/badge";
 
 type DrawerMode = "view" | "new" | "edit" | null;
 
@@ -68,6 +80,7 @@ export function ContactsPage() {
   const { toast } = useToast();
   const isDesktop = useIsDesktop();
   const envDealsEnabled = useEnvFeatureFlag(EnvFeature.CRM_DEALS);
+  const pipelinesEnabled = useEnvFeatureFlag(EnvFeature.CRM_PIPELINES_TAB);
   const salesPipelinePlan = useFeatureFlag(Feature.SALES_PIPELINE);
   const dealsEnabled = envDealsEnabled && salesPipelinePlan;
 
@@ -75,8 +88,8 @@ export function ContactsPage() {
   const [pageSize, setPageSize] = useState(DEFAULT_LIMIT);
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebounce(search, 300);
-  const [sortBy] = useState("createdAt");
-  const [sortOrder] = useState<"asc" | "desc">("desc");
+  const [sortBy, setSortBy] = useState("createdAt");
+  const [sortOrder, setSortOrder] = useState<SortOrder>("desc");
   const [companyId, setCompanyId] = useState<string>("");
   const [tagId, setTagId] = useState<string>("");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
@@ -87,13 +100,14 @@ export function ContactsPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [deleteConfirmStep, setDeleteConfirmStep] = useState<1 | 2>(1);
   const [deleteConfirmName, setDeleteConfirmName] = useState("");
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
-  const { data, isLoading } = useContactsPaginated({
+  const { data, isLoading, isFetching } = useContactsPaginated({
     page,
     limit: pageSize,
     search: debouncedSearch,
     sortBy,
-    sortOrder,
+    sortOrder: sortOrder === "none" ? "desc" : sortOrder,
     companyId: companyId || undefined,
     tagId: tagId || undefined,
     source: sourceFilter === "all" ? undefined : sourceFilter,
@@ -104,8 +118,12 @@ export function ContactsPage() {
   const { data: contactToDeleteData } = useContact(deleteId || "");
   const { data: companiesData } = useCompaniesForSelect();
   const { data: tagsData } = useContactTags();
-  const { data: sourcesData } = useCrmSources();
-  const { data: journeyTypesData } = useCrmJourneyTypes();
+  const { data: sourcesData } = useCrmSources(undefined, {
+    enabled: pipelinesEnabled,
+  });
+  const { data: journeyTypesData } = useCrmJourneyTypes(undefined, {
+    enabled: pipelinesEnabled,
+  });
   const companies = companiesData?.companies ?? [];
   const tags = tagsData?.tags ?? [];
   const sources = sourcesData?.sources ?? [];
@@ -115,7 +133,40 @@ export function ContactsPage() {
   const createMutation = useCreateContact();
   const updateMutation = useUpdateContact();
 
+  const hasStructuredFilters =
+    !!companyId ||
+    !!tagId ||
+    (pipelinesEnabled && sourceFilter !== "all") ||
+    (pipelinesEnabled && journeyTypeFilter !== "all");
+
+  const activeFilterCount =
+    (companyId ? 1 : 0) +
+    (tagId ? 1 : 0) +
+    (pipelinesEnabled && sourceFilter !== "all" ? 1 : 0) +
+    (pipelinesEnabled && journeyTypeFilter !== "all" ? 1 : 0);
+
+  const clearContactFilters = useCallback(() => {
+    setCompanyId("");
+    setTagId("");
+    setSourceFilter("all");
+    setJourneyTypeFilter("all");
+    setSearch("");
+    setPage(DEFAULT_PAGE);
+  }, []);
+
+  const selectedCompanyLabel =
+    companies.find((c) => c.id === companyId)?.name ?? null;
+  const selectedTagLabel = tags.find((t) => t.id === tagId)?.name ?? null;
+
   const contacts = data?.data ?? [];
+
+  const contactEmptyVariant =
+    !isLoading &&
+    contacts.length === 0 &&
+    (hasStructuredFilters || debouncedSearch.trim())
+      ? "no-results"
+      : "empty";
+
   const pagination = data?.pagination
     ? ({
         currentPage: data.pagination.currentPage,
@@ -261,103 +312,264 @@ export function ContactsPage() {
   const drawerOpen = drawerMode !== null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h1 className="text-3xl font-bold">Contacts</h1>
-        <div className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setImportOpen(true)}
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Import
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExport}>
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Button onClick={openNew}>
-            <Plus className="h-4 w-4 mr-2" />
-            Add Contact
-          </Button>
-        </div>
-      </div>
+    <PageShell className="space-y-4">
+      <PageHeader
+        title="Contacts"
+        actions={
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setImportOpen(true)}
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Import
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleExport}>
+              <Download className="h-4 w-4 mr-2" />
+              Export
+            </Button>
+            <Button onClick={openNew}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add Contact
+            </Button>
+          </>
+        }
+      />
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 z-10 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
-            placeholder="Search contacts..."
+            placeholder="Search contacts…"
             value={search}
             onChange={handleSearchChange}
-            className="pl-9"
+            className="pl-9 pr-10"
+            aria-busy={isFetching && !isLoading}
           />
+          {isFetching && !isLoading ? (
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
+              <Spinner className="size-4" />
+            </span>
+          ) : null}
         </div>
-        <CompanyCombobox
-          companies={companies}
-          value={companyId}
-          onValueChange={(v) => {
-            setCompanyId(v);
-            setPage(DEFAULT_PAGE);
-          }}
-        />
-        <TagCombobox
-          tags={tags}
-          value={tagId}
-          onValueChange={(v) => {
-            setTagId(v);
-            setPage(DEFAULT_PAGE);
-          }}
-        />
-        <Select
-          value={sourceFilter}
-          onValueChange={(v) => {
-            setSourceFilter(v);
-            setPage(DEFAULT_PAGE);
-          }}
+        <Button
+          type="button"
+          variant="outline"
+          className="shrink-0 gap-2 sm:self-stretch"
+          onClick={() => setFiltersOpen(true)}
         >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Source" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All sources</SelectItem>
-            {sources.map((s) => (
-              <SelectItem key={s.id} value={s.name}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          value={journeyTypeFilter}
-          onValueChange={(v) => {
-            setJourneyTypeFilter(v);
-            setPage(DEFAULT_PAGE);
-          }}
-        >
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Journey type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All journey types</SelectItem>
-            {journeyTypes.map((jt) => (
-              <SelectItem key={jt.id} value={jt.name}>
-                {jt.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          <SlidersHorizontal className="size-4" />
+          Filters
+          {activeFilterCount > 0 ? (
+            <Badge variant="secondary" className="h-5 min-w-5 px-1.5">
+              {activeFilterCount}
+            </Badge>
+          ) : null}
+        </Button>
       </div>
+
+      {(activeFilterCount > 0 || debouncedSearch.trim()) && (
+        <div className="flex flex-wrap items-center gap-2">
+          {debouncedSearch.trim() ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              <span className="text-muted-foreground">Search:</span>
+              {debouncedSearch.trim()}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Clear search"
+                onClick={() => {
+                  setSearch("");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          {selectedCompanyLabel ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              Company: {selectedCompanyLabel}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Remove company filter"
+                onClick={() => {
+                  setCompanyId("");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          {selectedTagLabel ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              Tag: {selectedTagLabel}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Remove tag filter"
+                onClick={() => {
+                  setTagId("");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          {pipelinesEnabled && sourceFilter !== "all" ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              Source: {sourceFilter}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Remove source filter"
+                onClick={() => {
+                  setSourceFilter("all");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          {pipelinesEnabled && journeyTypeFilter !== "all" ? (
+            <Badge variant="outline" className="gap-1 pr-1 font-normal">
+              Journey: {journeyTypeFilter}
+              <button
+                type="button"
+                className="rounded-sm p-0.5 hover:bg-muted"
+                aria-label="Remove journey filter"
+                onClick={() => {
+                  setJourneyTypeFilter("all");
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <X className="size-3.5" />
+              </button>
+            </Badge>
+          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-muted-foreground"
+            onClick={clearContactFilters}
+          >
+            Clear all
+          </Button>
+        </div>
+      )}
+
+      <ResponsiveDrawer
+        open={filtersOpen}
+        onOpenChange={setFiltersOpen}
+        title="Filters"
+        description="Narrow the contact list. Changes apply immediately."
+        size="md"
+      >
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Company</p>
+            <CompanyCombobox
+              companies={companies}
+              value={companyId}
+              onValueChange={(v) => {
+                setCompanyId(v);
+                setPage(DEFAULT_PAGE);
+              }}
+            />
+          </div>
+          <div className="space-y-2">
+            <p className="text-sm font-medium">Tag</p>
+            <TagCombobox
+              tags={tags}
+              value={tagId}
+              onValueChange={(v) => {
+                setTagId(v);
+                setPage(DEFAULT_PAGE);
+              }}
+            />
+          </div>
+          {pipelinesEnabled ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Source</p>
+              <Select
+                value={sourceFilter}
+                onValueChange={(v) => {
+                  setSourceFilter(v);
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Source" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All sources</SelectItem>
+                  {sources.map((s) => (
+                    <SelectItem key={s.id} value={s.name}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          {pipelinesEnabled ? (
+            <div className="space-y-2">
+              <p className="text-sm font-medium">Journey type</p>
+              <Select
+                value={journeyTypeFilter}
+                onValueChange={(v) => {
+                  setJourneyTypeFilter(v);
+                  setPage(DEFAULT_PAGE);
+                }}
+              >
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Journey type" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All journey types</SelectItem>
+                  {journeyTypes.map((jt) => (
+                    <SelectItem key={jt.id} value={jt.name}>
+                      {jt.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
+          <Button
+            type="button"
+            className="w-full"
+            onClick={() => setFiltersOpen(false)}
+          >
+            Done
+          </Button>
+        </div>
+      </ResponsiveDrawer>
 
       <ContactTable
         contacts={contacts}
         isLoading={isLoading}
+        isFetching={isFetching}
         basePath={basePath}
         dealsEnabled={dealsEnabled}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={(nextSortBy, nextSortOrder) => {
+          setSortBy(nextSortBy);
+          setSortOrder(nextSortOrder === "none" ? "desc" : nextSortOrder);
+          setPage(DEFAULT_PAGE);
+        }}
         onView={openView}
         onEdit={openEdit}
         onDelete={(id) => openDeleteDialog(id)}
+        emptyVariant={contactEmptyVariant}
+        onClearFilters={clearContactFilters}
       />
 
       {pagination && (
@@ -376,6 +588,7 @@ export function ContactsPage() {
         onOpenChange={(o) => !o && closeDrawer()}
         title={drawerTitle}
         size="2xl"
+        bodyPadding={false}
       >
         {drawerMode === "view" && selectedId && (
           <div className="flex flex-col h-full">
@@ -416,7 +629,6 @@ export function ContactsPage() {
                     phone: contactData.contact.phone ?? undefined,
                     companyId: contactData.contact.companyId ?? undefined,
                     source: contactData.contact.source ?? undefined,
-                    journeyType: contactData.contact.journeyType ?? undefined,
                     tagIds:
                       contactData.contact.tagLinks?.map((tl) => tl.tag.id) ??
                       [],
@@ -488,6 +700,6 @@ export function ContactsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </PageShell>
   );
 }

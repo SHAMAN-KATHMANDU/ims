@@ -4,7 +4,7 @@ import {
   enforcePlanLimits,
   enforcePlanFeature,
 } from "@/middlewares/enforcePlanLimits";
-import { uploadAttachment, uploadSingle } from "@/config/multer.config";
+import { uploadSingle } from "@/config/multer.config";
 import contactController from "./contact.controller";
 import { asyncHandler } from "@/middlewares/errorHandler";
 
@@ -303,7 +303,6 @@ contactRouter.delete(
  */
 contactRouter.post(
   "/:id/attachments",
-  uploadAttachment,
   asyncHandler(contactController.addAttachment),
 );
 

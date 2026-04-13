@@ -7,6 +7,25 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 // Monorepo root so Turbopack resolves next and tailwindcss from one place (root has tailwindcss for this)
 const monorepoRoot = path.resolve(__dirname, "..", "..");
 
+/**
+ * Extra `next/image` remote hosts from env (comma-separated hostnames, no protocol).
+ * Example: NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAMES=cdn.example.com,other.s3.region.amazonaws.com
+ */
+function imageRemotePatternsFromEnv() {
+  // eslint-disable-next-line no-undef -- Node.js in config
+  const raw = process.env.NEXT_PUBLIC_IMAGE_REMOTE_HOSTNAMES?.trim();
+  if (!raw) return [];
+  return raw
+    .split(",")
+    .map((h) => h.trim())
+    .filter(Boolean)
+    .map((hostname) => ({
+      protocol: "https",
+      hostname,
+      pathname: "/**",
+    }));
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   turbopack: {
@@ -41,6 +60,12 @@ const nextConfig = {
         hostname: "picsum.photos",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "ims-shaman-photos.s3.ap-south-1.amazonaws.com",
+        pathname: "/**",
+      },
+      ...imageRemotePatternsFromEnv(),
     ],
   },
 

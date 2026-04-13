@@ -245,6 +245,7 @@ export class PlatformRepository {
 
       // CRM defaults: sources, journey types
       const defaultSources = [
+        "Sales",
         "Website",
         "Referral",
         "Social Media",

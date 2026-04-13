@@ -6,6 +6,7 @@
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { contactKeys } from "@/features/crm/hooks/use-contacts";
+import { crmKeys } from "@/features/crm/hooks/use-crm";
 import {
   getSales,
   getSaleById,
@@ -185,6 +186,10 @@ export function useCreateSale() {
       queryClient.removeQueries({ queryKey: productKeys.all });
       queryClient.refetchQueries({ queryKey: productKeys.all });
       queryClient.invalidateQueries({ queryKey: contactKeys.all });
+      queryClient.invalidateQueries({ queryKey: crmKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["deals", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["tasks", "list"] });
+      queryClient.invalidateQueries({ queryKey: ["workflows"] });
     },
   });
 }

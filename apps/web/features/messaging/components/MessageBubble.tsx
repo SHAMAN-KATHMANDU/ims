@@ -45,6 +45,8 @@ import { ReactionPills } from "./ReactionPills";
 
 const TEXT_TRUNCATE_AT = 1000;
 const HOVER_ACTION_DELAY_MS = 400;
+const LONG_PRESS_DELAY_MS = 450;
+const LONG_PRESS_VISIBLE_MS = 2500;
 
 const statusIcons: Record<string, React.ReactNode> = {
   PENDING: <Clock className="size-3 text-muted-foreground" />,
@@ -103,7 +105,7 @@ function actionVisibilityClass(showActions: boolean): string {
     "transition-opacity duration-150",
     showActions
       ? "pointer-events-auto opacity-100"
-      : "pointer-events-none opacity-0 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100",
+      : "pointer-events-none opacity-0",
   );
 }
 
@@ -139,6 +141,13 @@ export function MessageBubble({
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
+  const longPressHideTimerRef = useRef<
+    ReturnType<typeof setTimeout> | undefined
+  >(undefined);
+  const longPressTriggeredRef = useRef(false);
   const { resolvedTheme } = useTheme();
   const pickerTheme = resolvedTheme === "dark" ? "dark" : "light";
 
@@ -169,6 +178,12 @@ export function MessageBubble({
       if (hoverTimerRef.current !== undefined) {
         clearTimeout(hoverTimerRef.current);
       }
+      if (longPressTimerRef.current !== undefined) {
+        clearTimeout(longPressTimerRef.current);
+      }
+      if (longPressHideTimerRef.current !== undefined) {
+        clearTimeout(longPressHideTimerRef.current);
+      }
     };
   }, []);
 
@@ -187,6 +202,55 @@ export function MessageBubble({
       hoverTimerRef.current = undefined;
     }
     setShowActions(false);
+  };
+
+  const clearLongPressTimers = (): void => {
+    if (longPressTimerRef.current !== undefined) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = undefined;
+    }
+    if (longPressHideTimerRef.current !== undefined) {
+      clearTimeout(longPressHideTimerRef.current);
+      longPressHideTimerRef.current = undefined;
+    }
+  };
+
+  const showActionsBriefly = (): void => {
+    setShowActions(true);
+    if (longPressHideTimerRef.current !== undefined) {
+      clearTimeout(longPressHideTimerRef.current);
+    }
+    longPressHideTimerRef.current = setTimeout(() => {
+      setShowActions(false);
+      longPressHideTimerRef.current = undefined;
+    }, LONG_PRESS_VISIBLE_MS);
+  };
+
+  const handleTouchStart = (): void => {
+    clearLongPressTimers();
+    longPressTriggeredRef.current = false;
+    longPressTimerRef.current = setTimeout(() => {
+      longPressTriggeredRef.current = true;
+      showActionsBriefly();
+      longPressTimerRef.current = undefined;
+    }, LONG_PRESS_DELAY_MS);
+  };
+
+  const handleTouchEnd = (): void => {
+    if (
+      !longPressTriggeredRef.current &&
+      longPressTimerRef.current !== undefined
+    ) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = undefined;
+    }
+  };
+
+  const handleTouchMove = (): void => {
+    if (longPressTimerRef.current !== undefined) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = undefined;
+    }
   };
 
   const fullText = message.textContent ?? "";
@@ -232,6 +296,7 @@ export function MessageBubble({
   const handleReactFromMenu = (emoji: string): void => {
     onToggleReaction(message.id, emoji);
     setMoreMenuOpen(false);
+    setShowActions(false);
   };
 
   const actionButtonClass = cn(
@@ -500,6 +565,10 @@ export function MessageBubble({
       )}
       onMouseEnter={handleRowMouseEnter}
       onMouseLeave={handleRowMouseLeave}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+      onTouchMove={handleTouchMove}
     >
       {!isOutbound && (
         <ParticipantAvatar
@@ -523,11 +592,14 @@ export function MessageBubble({
             isOutbound ? "right-0" : "left-0",
             showActions
               ? "pointer-events-auto opacity-100"
-              : "pointer-events-none opacity-0 pointer-coarse:pointer-events-auto pointer-coarse:opacity-100",
+              : "pointer-events-none opacity-0",
           )}
         >
           <ReactionBar
-            onSelect={(emoji) => onToggleReaction(message.id, emoji)}
+            onSelect={(emoji) => {
+              onToggleReaction(message.id, emoji);
+              setShowActions(false);
+            }}
             disabled={reactionPending}
           />
         </div>

@@ -7,6 +7,7 @@ const mockUpdate = vi.fn();
 const mockComplete = vi.fn();
 const mockSoftDelete = vi.fn();
 const mockCreateNotification = vi.fn();
+const mockPublishDomainEvent = vi.fn();
 
 vi.mock("./task.repository", () => ({
   default: {
@@ -22,6 +23,19 @@ vi.mock("./task.repository", () => ({
 
 vi.mock("@/shared/audit/createDeleteAuditLog", () => ({
   createDeleteAuditLog: vi.fn().mockResolvedValue(undefined),
+}));
+
+vi.mock("@/config/logger", () => ({
+  logger: {
+    error: vi.fn(),
+  },
+}));
+
+vi.mock("@/modules/automation/automation.service", () => ({
+  default: {
+    publishDomainEvent: (...args: unknown[]) =>
+      Promise.resolve(mockPublishDomainEvent(...args)),
+  },
 }));
 
 import taskService from "./task.service";
@@ -47,6 +61,15 @@ describe("TaskService", () => {
 
       expect(result).toEqual(created);
       expect(mockCreateNotification).not.toHaveBeenCalled();
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId,
+          eventName: "workitems.created",
+          entityType: "WORK_ITEM",
+          entityId: "t1",
+          actorUserId: userId,
+        }),
+      );
     });
 
     it("creates notification when dueDate and assignedToId present", async () => {
@@ -75,6 +98,15 @@ describe("TaskService", () => {
         "t1",
         "Follow up",
         dueDate,
+      );
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventName: "workitems.created",
+          payload: expect.objectContaining({
+            dueDate: dueDate.toISOString(),
+            assignedToId: "u2",
+          }),
+        }),
       );
     });
   });
@@ -144,6 +176,14 @@ describe("TaskService", () => {
 
       expect(result).toEqual(completed);
       expect(mockComplete).toHaveBeenCalledWith("t1");
+      expect(mockPublishDomainEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          tenantId,
+          eventName: "workitems.completed",
+          entityType: "WORK_ITEM",
+          entityId: "t1",
+        }),
+      );
     });
 
     it("throws 404 when task not found", async () => {

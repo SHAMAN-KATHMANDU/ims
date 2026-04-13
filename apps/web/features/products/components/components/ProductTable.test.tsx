@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { ProductTable } from "./ProductTable";
 import type { Product, ProductVariation, Category } from "@/features/products";
 
@@ -65,7 +65,7 @@ describe("ProductTable", () => {
       />,
     );
 
-    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.getByRole("table", { hidden: true })).toBeInTheDocument();
   });
 
   it("renders products when data provided", () => {
@@ -86,7 +86,8 @@ describe("ProductTable", () => {
       />,
     );
 
-    expect(screen.getByText("P-001")).toBeInTheDocument();
-    expect(screen.getByText("Widget")).toBeInTheDocument();
+    const table = screen.getByRole("table", { hidden: true });
+    expect(within(table).getByText("P-001")).toBeInTheDocument();
+    expect(within(table).getByText("Widget")).toBeInTheDocument();
   });
 });
