@@ -11,8 +11,10 @@ import { Prisma, type SiteTemplate } from "@prisma/client";
 import { createError } from "@/middlewares/errorHandler";
 import defaultRepo, { type SiteConfigWithTemplate } from "./sites.repository";
 import type { UpdateSiteConfigInput, PickTemplateInput } from "./sites.schema";
+import { revalidateTenantSite as defaultRevalidate } from "./sites.revalidate";
 
 type Repo = typeof defaultRepo;
+type Revalidate = (tenantId: string) => Promise<void>;
 
 function assertEnabled(config: SiteConfigWithTemplate | null): asserts config {
   if (!config) {
@@ -30,7 +32,10 @@ function assertEnabled(config: SiteConfigWithTemplate | null): asserts config {
 }
 
 export class SitesService {
-  constructor(private readonly repo: Repo = defaultRepo) {}
+  constructor(
+    private readonly repo: Repo = defaultRepo,
+    private readonly revalidate: Revalidate = defaultRevalidate,
+  ) {}
 
   async getConfig(tenantId: string): Promise<SiteConfigWithTemplate> {
     const config = await this.repo.findConfig(tenantId);
@@ -59,7 +64,9 @@ export class SitesService {
     if (input.features !== undefined) data.features = toJson(input.features);
     if (input.seo !== undefined) data.seo = toJson(input.seo);
 
-    return this.repo.updateConfig(tenantId, data);
+    const result = await this.repo.updateConfig(tenantId, data);
+    await this.revalidate(tenantId);
+    return result;
   }
 
   async listTemplates(tenantId: string): Promise<SiteTemplate[]> {
@@ -95,7 +102,9 @@ export class SitesService {
           : (template.defaultSections as Prisma.InputJsonValue);
     }
 
-    return this.repo.updateConfig(tenantId, data);
+    const result = await this.repo.updateConfig(tenantId, data);
+    await this.revalidate(tenantId);
+    return result;
   }
 
   async publish(tenantId: string): Promise<SiteConfigWithTemplate> {
@@ -106,13 +115,21 @@ export class SitesService {
       throw createError("Pick a template before publishing your site.", 400);
     }
 
-    return this.repo.updateConfig(tenantId, { isPublished: true });
+    const result = await this.repo.updateConfig(tenantId, {
+      isPublished: true,
+    });
+    await this.revalidate(tenantId);
+    return result;
   }
 
   async unpublish(tenantId: string): Promise<SiteConfigWithTemplate> {
     const current = await this.repo.findConfig(tenantId);
     assertEnabled(current);
-    return this.repo.updateConfig(tenantId, { isPublished: false });
+    const result = await this.repo.updateConfig(tenantId, {
+      isPublished: false,
+    });
+    await this.revalidate(tenantId);
+    return result;
   }
 }
 

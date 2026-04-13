@@ -46,6 +46,12 @@ const EnvSchema = z
     META_APP_ID: z.string().optional(),
     META_APP_SECRET: z.string().optional(),
     CREDENTIAL_ENCRYPTION_KEY: z.string().optional(),
+    /** Shared secret for /internal/* endpoints (Caddy on_demand_tls ask hook, tenant-site host resolver). */
+    INTERNAL_API_TOKEN: z.string().optional(),
+    /** Shared secret for the tenant-site /api/revalidate endpoint. */
+    REVALIDATE_SECRET: z.string().optional(),
+    /** Internal base URL the API uses to POST revalidation requests to tenant-site. */
+    TENANT_SITE_INTERNAL_URL: z.string().optional(),
   })
   .transform((raw) => {
     const isDev = raw.NODE_ENV === "development";
@@ -136,7 +142,9 @@ const EnvSchema = z
       corsOrigin,
       publicApiUrl,
       publicServerOrigin:
-        publicServerOrigin.length > 0 ? publicServerOrigin : "http://localhost:4000",
+        publicServerOrigin.length > 0
+          ? publicServerOrigin
+          : "http://localhost:4000",
       appEnv,
       featureFlags: raw.FEATURE_FLAGS?.trim(),
       features: {} as const,
@@ -144,6 +152,9 @@ const EnvSchema = z
       metaAppId: raw.META_APP_ID?.trim() ?? "",
       metaAppSecret: raw.META_APP_SECRET?.trim() ?? "",
       credentialEncryptionKey: raw.CREDENTIAL_ENCRYPTION_KEY?.trim() ?? "",
+      internalApiToken: raw.INTERNAL_API_TOKEN?.trim() ?? "",
+      revalidateSecret: raw.REVALIDATE_SECRET?.trim() ?? "",
+      tenantSiteInternalUrl: raw.TENANT_SITE_INTERNAL_URL?.trim() ?? "",
     };
   });
 

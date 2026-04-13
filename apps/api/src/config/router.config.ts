@@ -50,6 +50,7 @@ import trashRouter from "@/modules/trash/trash.router";
 import tenantSettingsRouter from "@/modules/tenant-settings/tenant-settings.router";
 import sitesRouter from "@/modules/sites/sites.router";
 import publicSiteRouter from "@/modules/public-site/public-site.router";
+import internalRouter from "@/modules/internal/internal.router";
 
 const router = Router();
 
@@ -74,6 +75,12 @@ router.use("/auth", authRouter);
 // Public website routes (no JWT; tenant resolved from Host header)
 // ============================================
 router.use("/public", publicSiteRouter);
+
+// ============================================
+// Internal server-to-server hooks (no JWT; shared-secret token)
+// Used by Caddy on_demand_tls and the tenant-site Next.js renderer.
+// ============================================
+router.use("/internal", internalRouter);
 
 // ============================================
 // Tenant-scoped routes

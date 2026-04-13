@@ -11,7 +11,8 @@ const mockRepo = {
   findTemplateBySlug: vi.fn(),
 } as unknown as Repo;
 
-const service = new SitesService(mockRepo);
+const mockRevalidate = vi.fn().mockResolvedValue(undefined);
+const service = new SitesService(mockRepo, mockRevalidate);
 
 function config(overrides: Record<string, unknown> = {}) {
   return {

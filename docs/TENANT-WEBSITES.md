@@ -460,17 +460,24 @@ FEATURE_FLAGS=CRM,SALES,PRODUCTS,SETTINGS
 
 ---
 
-## 9. What's still NOT built
+## 9. Rollout status by phase
 
-The full original plan had two more pieces that this change doesn't include:
+| #   | Piece                                                               | Status | Shipped in                     |
+| --- | ------------------------------------------------------------------- | ------ | ------------------------------ |
+| 1   | Data model + migrations                                             | ✅     | PR #348                        |
+| 2   | Platform admin domain + website management (API)                    | ✅     | PR #348                        |
+| 3   | Tenant-scoped `/sites/*` API                                        | ✅     | PR #348                        |
+| 4   | Public `/public/*` API + hostname resolver                          | ✅     | PR #348                        |
+| 5   | Platform admin UI (domains + website + template picker)             | ✅     | PR #348                        |
+| 6   | Tenant site editor UI (branding + contact + SEO)                    | ✅     | PR #348                        |
+| 7   | `/internal/*` endpoints (Caddy ask hook, tenant-site host resolver) | ✅     | PR #349                        |
+| 8   | Caddy edge proxy (containerized, on_demand_tls) — **dev only**      | ✅     | PR #349                        |
+| 9   | `apps/tenant-site` Next.js SSR renderer (4 templates)               | ✅     | PR #349                        |
+| 10  | Cache-tag revalidation (API → tenant-site webhook)                  | ✅     | PR #349                        |
+| 11  | Prod Caddy cutover                                                  | ⏳     | Separate PR after 72h dev soak |
+| 12  | HSTS preload submission                                             | ⏳     | After prod cutover             |
 
-1. **Edge proxy + TLS** — Something like Caddy or Traefik in front of the API that handles:
-   - Wildcard TLS (Let's Encrypt DNS-01) or on-demand per-domain TLS with a callback to `/internal/domain-allowed?host=...`.
-   - Routing `ims.*` → projectX/web, `api.*` → api, everything else → the tenant-site renderer.
-   - Graceful reloads when new domains are added.
-2. **`apps/tenant-site`** — A dedicated Next.js SSR app that consumes `/public/site`, `/public/products`, etc., and actually renders the HTML. Today the endpoints return JSON; there's no renderer yet. The **existing** `shamanktm-website` is still a static export with hardcoded data and is **not** wired up.
-
-Both are substantial pieces of infra work. They're called out here so nobody thinks we're "done done."
+The remaining items are deliberately out of scope for the current PR. The dev soak window is the gating signal — we don't touch prod Caddy until dev has been serving tenant traffic without incident for 72+ hours. See **§14 Runbooks** for the prod cutover checklist when the time comes.
 
 ---
 
@@ -541,3 +548,258 @@ This change was written to match the house style discovered in `.cursor/rules/*`
 ---
 
 **Questions, confusion, or something not clear? The entire codebase for this change is walkable from section §6's file map — start there and work out.**
+
+---
+
+## 13. Infrastructure — how traffic actually reaches a tenant
+
+This section covers the second PR (Phase 2 "Edge Proxy + TLS" + Phase 3 "Tenant Site Renderer"). It layers on top of §2–§7 and describes what happens on the wire when a real visitor types `www.acme.com` into their browser.
+
+### 13.1 Component overview
+
+```
+                      DNS: *.acme.com → EC2 IP
+                                │
+                                ▼
+                     ┌────────────────────┐
+                     │   Host (EC2)       │
+                     │                    │
+                     │  dev_caddy :443    │   ← holds :80 and :443 (host nginx retired on dev)
+                     │  ─────────────     │
+                     │   on_demand TLS    │
+                     │   ask hook         │
+                     │                    │
+                     └────┬──────┬────────┘
+                          │      │
+                          │      └────────► http://dev_api:4000/api/v1/internal/domain-allowed
+                          │                 (ask hook)
+                          ▼
+             Platform hostname?
+             ┌──────────────────┐
+             │ stage-ims.*      │──► dev_web:3000
+             │ stage-api.*      │──► dev_api:4000
+             └──────────────────┘
+                          │
+                          │ (tenant custom domain)
+                          ▼
+                   ┌──────────────────┐
+                   │ dev_tenant_site  │──► (internal) /api/v1/public/*
+                   │   :3100          │      + Host header passthrough
+                   │   Next.js SSR    │
+                   └──────────────────┘
+```
+
+Everything inside the dotted box is docker compose services on the `ims-dev` network. The only things exposed to the host network are `:80` and `:443` (Caddy), `:3000` (web, for health checks only), `:4000` (api), and `:3100` (tenant-site, for direct-to-container smoke tests).
+
+### 13.2 The Caddy ask hook — why it exists
+
+Let's Encrypt rate-limits certificate issuance (50 per registered domain per week). Without a gate, an attacker could point a thousand random subdomains at our IP and burn through our weekly quota in one afternoon. The `ask` hook is the gate: **every TLS handshake for an unknown hostname triggers a GET to our API**, and Caddy only proceeds with ACME if we return 200.
+
+The strict policy (decision §6.5 of the original plan):
+
+- Hostname must exist in `tenant_domains`
+- `appType` must be `WEBSITE`
+- Tenant must be active
+- **Domain must be verified** (`verifiedAt !== null`)
+- Tenant's `SiteConfig.websiteEnabled` must be `true`
+
+Any failure → 403 → Caddy refuses → visitor sees a browser TLS error → customer realizes their DNS isn't wired up. That's correct — we don't want to issue a cert for a domain the customer hasn't actually validated.
+
+### 13.3 The `/internal/*` endpoints
+
+Two server-to-server endpoints on the API, both gated by `EnvFeature.TENANT_WEBSITES` and the `requireInternalToken` middleware. **No JWT, no tenant context.**
+
+**`GET /api/v1/internal/domain-allowed?domain=<host>&_t=<token>`**
+Called by Caddy's `ask` hook before cert issuance. Returns 200 + `{ allowed: true, tenantId }` or 403 + `{ allowed: false, reason }` where reason ∈ {`unknown_host`, `tenant_inactive`, `ims_not_allowed_via_caddy`, `not_verified`, `website_disabled`}.
+
+**`GET /api/v1/internal/resolve-host?host=<host>`**
+Called by `apps/tenant-site/middleware.ts` on every incoming request. Maps a `Host` header to `{ tenantId, tenantSlug, isPublished, … }` or 404. Used by the Next.js middleware to 404 unknown/unpublished hosts _before_ dispatching any page handler.
+
+### 13.4 Shared-secret authentication
+
+Both `/internal/*` endpoints require `INTERNAL_API_TOKEN`, a random ≥32-char string set in the dev `.env`. The middleware accepts the token via either:
+
+1. **Header** `X-Internal-Token: <secret>` — preferred, used by tenant-site's middleware fetch.
+2. **Query param** `?_t=<secret>` — fallback for Caddy's `ask` hook, because the Caddyfile `ask` directive can't inject custom headers. Both paths use constant-time comparison to avoid leaking the token length via timing.
+
+The token travels only inside the `ims-dev` docker network. Fail-closed: if the env var is empty, the middleware returns **503** for every request (not 200, not 401).
+
+### 13.5 `apps/tenant-site` — Next.js SSR renderer
+
+A single Next.js 15 app serves **all** tenant websites. Tenant is resolved per-request from the `Host` header in `middleware.ts`, which:
+
+1. Reads `req.headers.get("host")`.
+2. Checks its 60-second in-memory cache.
+3. On miss, calls `/api/v1/internal/resolve-host` with the token header.
+4. On success, injects `x-tenant-id`, `x-tenant-slug`, `x-host` onto the downstream request headers.
+5. On failure, returns **404** before any page handler runs.
+
+Server components read those injected headers via `getTenantContext()` and pass the resolved tenantId + host down to the typed fetch layer in `lib/api.ts`, which forwards the original `Host` to `/api/v1/public/*`. The API's existing `resolveTenantFromHostname` middleware then auto-scopes every Prisma query via `runWithTenant`.
+
+**Caching:** every `/public/*` fetch is tagged with `tenant:${tenantId}:<something>` using Next.js 15 `fetch.next.tags`. When a tenant publishes or edits their site, the API fires a `POST /api/revalidate` webhook (guarded by `REVALIDATE_SECRET`) to the renderer, which calls `revalidateTag()` for each tag. Visitors see new content within a second or two, with no full rebuild.
+
+### 13.6 The four templates
+
+`apps/tenant-site/components/templates/` has one layout per template slug plus a `shared.tsx` that holds the common sub-components (`SiteHeader`, `Hero`, `ProductCard`, `ProductGrid`, `ProductDetail`, `ContactBlock`, `SiteFooter`). Each layout takes a `TemplateProps` shape, imports the shared components, arranges them differently, and picks its own padding / typography / section order.
+
+| Slug       | Component        | Feel                                                                   |
+| ---------- | ---------------- | ---------------------------------------------------------------------- |
+| `minimal`  | `MinimalLayout`  | Edge-to-edge hero, 3-column grid, tight type, lots of whitespace       |
+| `standard` | `StandardLayout` | Balanced default, 4-column grid, category chips on the home page       |
+| `luxury`   | `LuxuryLayout`   | Dark backdrop, 3-column grid, "THE COLLECTION" treatment, tracked caps |
+| `boutique` | `BoutiqueLayout` | Warm palette, 3-column grid, story block above products                |
+
+`pickTemplate(slug)` returns the right component; unknown slugs fall back to `StandardLayout`. Branding (name/tagline/logo/colors) is applied via CSS custom properties set on the `<body>` tag in `app/layout.tsx` — `lib/theme.ts` converts a `SiteConfig.branding` payload into `{ "--primary": "#111", "--accent": "#f5f5f5", ... }`. Templates reference those via CSS, so the same component tree themes itself per tenant.
+
+### 13.7 docker-compose profile
+
+The new services are gated by the `websites` compose profile so existing stacks aren't affected:
+
+```bash
+# default stack (postgres, redis, dev_api, dev_web) — unchanged
+docker compose up -d
+
+# with tenant websites (adds dev_tenant_site + dev_caddy)
+docker compose --profile websites up -d
+```
+
+This is intentional: if the `websites` profile isn't active, the stack looks identical to before Phase 2. Rollback = stop the profile services.
+
+### 13.8 Environment variables
+
+Added to `deploy/dev/.env.example`:
+
+| Var                        | Required                              | Purpose                                                   |
+| -------------------------- | ------------------------------------- | --------------------------------------------------------- |
+| `INTERNAL_API_TOKEN`       | yes (when flag on)                    | Shared secret for `/internal/*` endpoints                 |
+| `REVALIDATE_SECRET`        | yes (when flag on)                    | Shared secret for tenant-site's `/api/revalidate` webhook |
+| `TENANT_SITE_INTERNAL_URL` | default `http://dev_tenant_site:3100` | Where the API posts revalidation requests                 |
+
+Generate both secrets with:
+
+```bash
+openssl rand -hex 32
+```
+
+---
+
+## 14. Runbooks
+
+### 14.1 First-time dev cutover (nginx → Caddy)
+
+**Pre-requisites:**
+
+- [ ] The API image on dev contains `/api/v1/internal/*` (check with `curl -s https://stage-api.shamankathmandu.com/api/v1/internal/domain-allowed?_t=x | jq`)
+- [ ] `deploy/dev/.env` has `INTERNAL_API_TOKEN`, `REVALIDATE_SECRET`, `API_PUBLIC_URL` set
+- [ ] You have a second SSH session open for emergency rollback
+
+**Cutover:**
+
+```bash
+cd /home/ubuntu/projectX/deploy/dev
+./setup-caddy.sh
+```
+
+**Success signals:**
+
+- `docker ps` shows `dev_caddy` + `dev_tenant_site` running.
+- `curl -v https://stage-ims.shamankathmandu.com/` returns the IMS login page with a Let's Encrypt cert.
+- `curl -v https://stage-api.shamankathmandu.com/api/v1/` returns `{"message":"API is running", ...}`.
+- `docker logs dev_caddy` shows `issued certificate` lines.
+
+**If things break:**
+
+```bash
+./teardown-caddy.sh   # stops the profile, restarts host nginx
+```
+
+See `deploy/dev/README-caddy-migration.md` for the detailed version.
+
+### 14.2 Smoke-testing on-demand TLS with a scratch domain
+
+1. Pick a domain you control (e.g. `test.example.dev`). Add an A record pointing to the EC2 IP.
+2. In the IMS, log in as platformAdmin. Navigate to a test tenant → Website tab → pick a template → click Enable.
+3. Go to Domains tab → Add domain → `test.example.dev` / `WEBSITE`.
+4. Click **Verify** on the new row → copy the TXT name + value → add it at your DNS registrar.
+5. Wait ~1 minute for DNS propagation, click **Verify now** in the dialog.
+6. In a fresh terminal:
+   ```bash
+   curl -v https://test.example.dev/
+   ```
+7. Watch `docker logs -f dev_caddy` in parallel. Expected sequence:
+   - `handshake received`
+   - `on_demand tls: certificate needed` → ask hook fires
+   - `"allowed":true`
+   - ACME solving (usually 3–10 seconds)
+   - HTTP 200 from the tenant-site renderer
+
+**If you see `{"allowed":false,"reason":"not_verified"}`:** the TXT record isn't set or hasn't propagated. Run `dig _shaman.test.example.dev TXT` to confirm. The system is correctly refusing to burn a cert on an unverified domain.
+
+### 14.3 Publishing triggers cache invalidation — verifying the path
+
+1. Edit branding in `/settings/site` on the tenant side, save.
+2. Hit the tenant's public URL in a browser — new branding should appear within seconds.
+3. `docker logs dev_api | grep 'tenant-site revalidation'` — should be empty (no warnings = success).
+4. `docker logs dev_tenant_site | grep revalidate` — should show `{ revalidated: 3 }` entries.
+
+If revalidation is silently failing, the next ISR window (5 minutes default) will pick up the change anyway — it's a freshness optimization, not a correctness gate.
+
+### 14.4 Rollback (nuclear)
+
+If everything is on fire on dev:
+
+```bash
+# Option A: feature flag kill switch — fastest
+# SSH to dev, edit deploy/dev/.env:
+#   FEATURE_FLAGS=CRM,SALES,PRODUCTS,SETTINGS   (omit TENANT_WEBSITES)
+docker compose restart dev_api
+# Every /internal/*, /public/*, /sites/*, and /platform/*/domains|website* route
+# now 404s. Caddy ask hook starts getting 404s, refuses new certs. Existing
+# certs remain valid for their lifetime. IMS/API/web are unaffected.
+
+# Option B: stop the websites profile entirely
+docker compose --profile websites stop dev_caddy dev_tenant_site
+
+# Option C: full rollback to host nginx
+./teardown-caddy.sh
+```
+
+Every option leaves `dev_api`, `dev_web`, `dev_db`, `dev_redis` untouched.
+
+### 14.5 Going to prod (checklist — DO NOT run without approval)
+
+1. Dev has soaked for ≥72 hours without an `internal_api_token` auth failure, a Caddy `ask hook errored` log line, or a 5xx on `/public/*` at a rate above baseline.
+2. Copy the dev Caddyfile to `deploy/prod/Caddyfile`, swap the explicit `server_name` blocks to `app.shamanyantra.com` + `api.shamanyantra.com`.
+3. Add the `websites` compose profile services to `deploy/prod/docker-compose.yml` with `prod_` prefixes.
+4. Add `INTERNAL_API_TOKEN` + `REVALIDATE_SECRET` to `deploy/prod/.env` (generate fresh secrets; do **not** reuse dev's).
+5. Build and publish `rpandox/prod-tenant-site-ims:prod` via the CI pipeline.
+6. Flip `TENANT_WEBSITES: true` in the `production` row of `packages/shared/src/config/env-features.ts`, rebuild `@repo/shared`, publish `rpandox/prod-api-ims:prod`.
+7. Wait for Watchtower to pull the new API image. Confirm `/internal/domain-allowed` works with a curl from the EC2 host.
+8. Run `deploy/prod/setup-caddy.sh` (the prod version mirrors dev's). **Expect ~30 seconds of blip on `app.shamanyantra.com` / `api.shamanyantra.com`** while nginx stops and Caddy grabs `:443`.
+9. Smoke test all three hostname patterns: prod IMS, prod API, first production tenant's custom domain.
+10. Monitor `docker logs -f prod_caddy prod_api prod_tenant_site` for 30 minutes.
+
+**Prod is its own PR, its own review, its own soak window. Don't bundle it with anything else.**
+
+### 14.6 Observability cheat sheet
+
+| What                    | Where                                                   |
+| ----------------------- | ------------------------------------------------------- |
+| Caddy access logs       | `docker logs dev_caddy` (JSON)                          |
+| Caddy ACME activity     | `docker logs dev_caddy \| grep -i acme`                 |
+| Internal endpoint calls | `docker logs dev_api \| grep internal/`                 |
+| Revalidation hits       | `docker logs dev_tenant_site \| grep revalidate`        |
+| Tenant-site SSR errors  | `docker logs dev_tenant_site \| grep '\[tenant-site\]'` |
+| Prometheus counters     | `/metrics` on `dev_api:4000` (existing endpoint)        |
+
+---
+
+## 15. Glossary additions (from §13–§14)
+
+- **On-demand TLS** — Caddy's feature for issuing certs the first time a hostname is requested, rather than ahead of time. Must be gated by an `ask` hook to prevent abuse.
+- **ACME** — Automatic Certificate Management Environment, the protocol Let's Encrypt uses to issue certs. Caddy speaks it natively.
+- **SNI (Server Name Indication)** — The TLS extension that lets a server host multiple hostnames on one IP. Caddy reads the SNI field to pick the right cert.
+- **Cache tag / revalidateTag** — Next.js 15's mechanism for invalidating specific cached fetches on demand. We tag every fetch with `tenant:${id}:*` so the API can flush them per tenant.
+- **docker-compose profile** — A way to mark services as "only started when a named profile is active." We use `profiles: ["websites"]` so `docker compose up` without `--profile websites` leaves the new services alone.
+- **Fail-closed** — A security posture where missing/invalid configuration causes requests to be denied rather than silently allowed. The `requireInternalToken` middleware is fail-closed.
+- **Stream passthrough (SNI routing)** — An nginx mode where TLS is terminated at the upstream (Caddy) instead of at nginx, with nginx just forwarding the TCP stream based on SNI. Not used in the current dev setup (we chose Caddy-at-:443 instead) but mentioned in §14.5 as a prod alternative.
