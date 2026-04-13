@@ -56,7 +56,9 @@ export async function POST(req: Request) {
 
   const tags = body.tags as string[];
   for (const tag of tags) {
-    revalidateTag(tag);
+    // Next 16: revalidateTag signature is (tag, profile). "default" uses
+    // the default cache profile (stale: 5m, revalidate: 15m).
+    revalidateTag(tag, "default");
   }
 
   return NextResponse.json({ revalidated: tags.length });
