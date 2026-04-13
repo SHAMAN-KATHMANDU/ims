@@ -12,11 +12,11 @@ const nextConfig = {
   },
   // Multi-stage Docker builds need a minimal standalone bundle.
   output: "standalone",
-  // Trust the Host header from Caddy — we need req.headers.get("host") to
-  // reflect the customer-facing domain, not the docker upstream name.
-  experimental: {
-    trustHostHeader: true,
-  },
+  // Host-header passthrough: Next 16 respects the incoming Host header by
+  // default, so middleware.ts / proxy.ts sees the customer-facing domain
+  // from Caddy. No experimental flag needed (Next 15's trustHostHeader was
+  // dropped in 16; the behavior is now the default).
+  //
   // Tenant sites render per-tenant content; we don't want the browser to
   // cache across tenants accidentally. ISR via cache tags handles freshness.
   async headers() {

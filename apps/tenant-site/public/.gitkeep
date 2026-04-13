@@ -1,0 +1,3 @@
+# Tracked so the `public/` directory exists in the Docker build context.
+# Next.js expects `public/` as a conventional static-assets dir even when
+# empty. Replace this file (or add siblings) when you have real assets.
