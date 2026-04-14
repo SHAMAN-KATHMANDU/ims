@@ -71,10 +71,12 @@ export interface PublicTemplate {
   slug: SiteTemplateSlug;
   name: string;
   description: string | null;
-  tier: "MINIMAL" | "STANDARD" | "LUXURY" | "BOUTIQUE";
+  /** Free-text grouping: "minimal" | "editorial" | "dark" | ... */
+  category: string | null;
   previewImageUrl: string | null;
   defaultBranding: Record<string, unknown> | null;
   defaultSections: Record<string, unknown> | null;
+  defaultPages: Record<string, unknown> | null;
 }
 
 export interface PublicSite {

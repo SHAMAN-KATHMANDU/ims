@@ -46,17 +46,19 @@ export interface DomainVerificationInstructions {
   verifiedAt: string | null;
 }
 
-export type SiteTemplateTier = "MINIMAL" | "STANDARD" | "LUXURY" | "BOUTIQUE";
+/** Free-text category that replaces the legacy SiteTemplateTier enum. */
+export type SiteTemplateCategory = string;
 
 export interface SiteTemplate {
   id: string;
   slug: string;
   name: string;
   description: string | null;
-  tier: SiteTemplateTier;
+  category: SiteTemplateCategory | null;
   previewImageUrl: string | null;
   defaultBranding: Record<string, unknown> | null;
   defaultSections: Record<string, unknown> | null;
+  defaultPages: Record<string, unknown> | null;
   isActive: boolean;
   sortOrder: number;
   createdAt: string;

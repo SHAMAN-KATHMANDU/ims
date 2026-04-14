@@ -90,6 +90,9 @@ model Tenant {
   blogPosts      BlogPost[]
   blogCategories BlogCategory[]
 
+  // Custom tenant pages (About, FAQ, Lookbook, ...)
+  tenantPages TenantPage[]
+
   @@map("tenants")
 }
 
@@ -160,33 +163,34 @@ model SiteConfig {
 /// Catalog of website templates (minimal, luxury, standard, ...).
 /// Managed by platformAdmin; tenants pick one and customize via SiteConfig.
 model SiteTemplate {
-  id              String           @id @default(uuid())
-  slug            String           @unique // "minimal", "luxury", "standard"
+  id              String   @id @default(uuid())
+  slug            String   @unique // "minimal", "luxury", "standard", ...
   name            String // Display name: "Minimal", "Luxury"
   description     String?
-  tier            SiteTemplateTier @default(STANDARD)
-  previewImageUrl String?          @map("preview_image_url")
+  /// Free-text category for grouping / filtering in the picker UI.
+  /// Replaces the legacy SiteTemplateTier enum — categories can grow without
+  /// schema migrations now.
+  category        String?  @db.VarChar(40)
+  previewImageUrl String?  @map("preview_image_url")
   /// Default branding payload applied when a tenant first picks this template.
-  /// Shape: { colors: {...}, theme, typography: {...} }
-  defaultBranding Json?            @map("default_branding")
-  /// Default section toggles: { hero, products, showrooms, articles, contact, ... }
-  defaultSections Json?            @map("default_sections")
-  isActive        Boolean          @default(true) @map("is_active")
-  sortOrder       Int              @default(0) @map("sort_order")
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  /// Shape: { colors: {9 tokens}, typography: {heading, body, display, scale, base},
+  ///          spacing: {base, section}, radius, theme }
+  defaultBranding Json?    @map("default_branding")
+  /// Default section toggles: { hero, products, categories, story, ... }.
+  defaultSections Json?    @map("default_sections")
+  /// Default page visibility: { home, products, blog, contact, ... }.
+  /// Tenants can override per-page in SiteConfig.
+  defaultPages    Json?    @map("default_pages")
+  isActive        Boolean  @default(true) @map("is_active")
+  sortOrder       Int      @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   siteConfigs SiteConfig[]
 
   @@index([isActive, sortOrder])
+  @@index([category])
   @@map("site_templates")
-}
-
-enum SiteTemplateTier {
-  MINIMAL
-  STANDARD
-  LUXURY
-  BOUTIQUE
 }
 
 // ============================================
@@ -243,6 +247,37 @@ enum BlogPostStatus {
   DRAFT
   PUBLISHED
   ARCHIVED
+}
+
+// ============================================
+// TENANT CUSTOM PAGES
+// ============================================
+
+/// Tenant-authored static pages (About, FAQ, Shipping, Lookbook, ...).
+/// Served on the tenant-site as /<slug> via a catch-all route; optionally
+/// linked from the site header via showInNav + navOrder.
+model TenantPage {
+  id             String   @id @default(uuid())
+  tenantId       String   @map("tenant_id")
+  slug           String   @db.VarChar(80)
+  title          String   @db.VarChar(200)
+  bodyMarkdown   String   @map("body_markdown")
+  /// Renderer layout variant: "default" | "full-width" | "narrow".
+  /// The tenant-site maps this to width + padding presets.
+  layoutVariant  String   @default("default") @map("layout_variant") @db.VarChar(40)
+  showInNav      Boolean  @default(true) @map("show_in_nav")
+  navOrder       Int      @default(0) @map("nav_order")
+  isPublished    Boolean  @default(false) @map("is_published")
+  seoTitle       String?  @map("seo_title") @db.VarChar(200)
+  seoDescription String?  @map("seo_description")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, isPublished, navOrder])
+  @@map("tenant_pages")
 }
 
 enum PlanTier {
