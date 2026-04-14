@@ -8,6 +8,7 @@ import {
   ContactBlock,
   SiteFooter,
 } from "./shared";
+import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
 
 /**
  * LUXURY — Dark, editorial. Serif headings via --font-heading, taller hero,
@@ -15,7 +16,8 @@ import {
  */
 export async function LuxuryLayout(props: TemplateProps) {
   const ctx = await getTenantContext();
-  const { page, site, products, categories, activeProduct } = props;
+  const { page, site, products, categories, activeProduct, featuredBlogPosts } =
+    props;
 
   return (
     <div data-template="luxury" style={{ background: "var(--bg)" }}>
@@ -45,6 +47,7 @@ export async function LuxuryLayout(props: TemplateProps) {
               <ProductGrid products={products} columns={3} />
             </div>
           </section>
+          <FeaturedBlogSection posts={featuredBlogPosts ?? []} />
         </>
       )}
 

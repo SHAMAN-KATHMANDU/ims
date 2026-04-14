@@ -111,6 +111,44 @@ export interface PublicProductList {
   limit: number;
 }
 
+export interface PublicBlogCategory {
+  id: string;
+  slug: string;
+  name: string;
+}
+
+export interface PublicBlogCategoryWithCount extends PublicBlogCategory {
+  description: string | null;
+  postCount: number;
+  sortOrder: number;
+}
+
+export interface PublicBlogPostListItem {
+  id: string;
+  slug: string;
+  title: string;
+  excerpt: string | null;
+  heroImageUrl: string | null;
+  authorName: string | null;
+  publishedAt: string | null;
+  tags: string[];
+  readingMinutes: number | null;
+  category: PublicBlogCategory | null;
+}
+
+export interface PublicBlogPost extends PublicBlogPostListItem {
+  bodyMarkdown: string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+}
+
+export interface PublicBlogPostList {
+  posts: PublicBlogPostListItem[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
 // ============================================================================
 // Typed wrappers — what pages import
 // ============================================================================
@@ -177,4 +215,92 @@ export function getCategories(host: string, tenantId: string) {
       ? resp
       : ((resp as { categories: PublicCategory[] }).categories ?? []);
   });
+}
+
+// ============================================================================
+// Blog
+// ============================================================================
+
+export async function getBlogPosts(
+  host: string,
+  tenantId: string,
+  query: {
+    page?: number;
+    limit?: number;
+    categorySlug?: string;
+    tag?: string;
+  } = {},
+): Promise<PublicBlogPostList> {
+  const params = new URLSearchParams();
+  if (query.page) params.set("page", String(query.page));
+  if (query.limit) params.set("limit", String(query.limit));
+  if (query.categorySlug) params.set("categorySlug", query.categorySlug);
+  if (query.tag) params.set("tag", query.tag);
+  const suffix = params.toString() ? `?${params.toString()}` : "";
+
+  const resp = await publicFetch<PublicBlogPostList>(
+    `/public/blog/posts${suffix}`,
+    {
+      host,
+      tenantId,
+      tags: [`tenant:${tenantId}:blog`],
+    },
+  );
+  return (
+    resp ?? {
+      posts: [],
+      total: 0,
+      page: query.page ?? 1,
+      limit: query.limit ?? 12,
+    }
+  );
+}
+
+export async function getBlogPostBySlug(
+  host: string,
+  tenantId: string,
+  slug: string,
+): Promise<{ post: PublicBlogPost; related: PublicBlogPostListItem[] } | null> {
+  const resp = await publicFetch<{
+    post: PublicBlogPost;
+    related: PublicBlogPostListItem[];
+  }>(`/public/blog/posts/${encodeURIComponent(slug)}`, {
+    host,
+    tenantId,
+    tags: [`tenant:${tenantId}:blog:${slug}`, `tenant:${tenantId}:blog`],
+  });
+  return resp ?? null;
+}
+
+export async function getFeaturedBlogPosts(
+  host: string,
+  tenantId: string,
+  limit = 3,
+): Promise<PublicBlogPostListItem[]> {
+  const resp = await publicFetch<{ posts: PublicBlogPostListItem[] }>(
+    `/public/blog/featured?limit=${limit}`,
+    {
+      host,
+      tenantId,
+      // Featured section is part of the homepage — tag both so a blog
+      // mutation revalidates the homepage too.
+      tags: [`tenant:${tenantId}:blog`, `tenant:${tenantId}:site`],
+    },
+  );
+  return resp?.posts ?? [];
+}
+
+export async function getBlogCategories(
+  host: string,
+  tenantId: string,
+): Promise<PublicBlogCategoryWithCount[]> {
+  const resp = await publicFetch<{ categories: PublicBlogCategoryWithCount[] }>(
+    "/public/blog/categories",
+    {
+      host,
+      tenantId,
+      tags: [`tenant:${tenantId}:blog`],
+    },
+  );
+  return resp?.categories ?? [];
 }

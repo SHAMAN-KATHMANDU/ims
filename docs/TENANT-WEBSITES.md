@@ -26,6 +26,7 @@
 15. [Glossary additions (from §13–§14)](#15-glossary-additions-from-1314)
 16. **[Dev cutover retrospective (2026-04-13)](#16-dev-cutover-retrospective-2026-04-13)** — the three hotfixes we hit in real life
 17. **[Lessons learned (for the next rollout like this)](#17-lessons-learned-for-the-next-rollout-like-this)**
+18. **[Blog system](#18-blog-system)** — Phase A: tenant-scoped blog with markdown editor + public rendering
 
 > **If you're trying to do the prod cutover:** start at **§14.5** then walk the checklist in **§16** for every gotcha we hit on dev.
 > **If you're onboarding and trying to understand what this is:** read **§1–§5** in order.
@@ -1195,3 +1196,198 @@ await fetch(`${API}/public/site`, {
 8. **Seed scripts that run only on full orchestrated `pnpm seed` calls are landmines.** They're correct locally, but deploys happen in an environment where `pnpm seed` is an explicit one-off. Any new seed needs a corresponding `deploy/<env>/seed-<thing>.sh` helper OR needs to be run as part of the migration pipeline. Otherwise the new table stays empty in every deployed environment until someone notices.
 9. **Docker Hub private repos aren't auto-created on push.** If your `DOCKERHUB_TOKEN` has namespace-wide write access and the existing repos are public, new repos are auto-created. If they're private, you must pre-create them in the Docker Hub UI. Check which flavor you're on before the first CI push.
 10. **Always confirm `req.headers` exists before reading a header.** My `resolveRequestHostname(req)` helper was initially `req.headers["x-forwarded-host"]`, which throws if `req.headers` is undefined. The existing unit tests all mocked `req` without a `headers` field. Switched to `req.headers?.["x-forwarded-host"]` and kept the tests passing without a rewrite.
+
+---
+
+## 18. Blog system
+
+Phase A of the content expansion: a tenant-scoped blog with a markdown editor,
+public rendering on the tenant-site, and cache-tag driven revalidation. Ships
+under the existing `TENANT_WEBSITES` flag — if the website feature is off, the
+blog is off.
+
+### 18.1 Data model
+
+Three new tables:
+
+| Table                   | Purpose                                       | Key fields                                                                                                                                                                              |
+| ----------------------- | --------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `blog_categories`       | Optional grouping (Stories / Craft / Updates) | `tenantId`, `slug`, `name`, `sortOrder`                                                                                                                                                 |
+| `blog_posts`            | Every article, draft or published             | `tenantId`, `slug`, `title`, `bodyMarkdown`, `status` (DRAFT/PUBLISHED/ARCHIVED), `publishedAt`, `categoryId`, `tags[]`, `seoTitle`, `seoDescription`, `heroImageUrl`, `readingMinutes` |
+| — enum `BlogPostStatus` | DRAFT / PUBLISHED / ARCHIVED                  |                                                                                                                                                                                         |
+
+Composite unique: `(tenantId, slug)` for both tables — two tenants can both
+have `/blog/welcome`.
+
+Tags are a Postgres `String[]` on `blog_posts` — no separate tag table yet.
+Adds a GIN index if/when we need faceted search.
+
+`readingMinutes` is computed at write-time from the markdown body (200wpm
+heuristic, stripping fenced code blocks) and stored, so reads don't recompute.
+
+Migration: `apps/api/prisma/migrations/20260415120000_add_blog_posts_and_categories`.
+
+### 18.2 Routes
+
+**Tenant admin (JWT, admin/superAdmin, feature-flagged):**
+
+| Method   | Path                                                   | Purpose                                                                 |
+| -------- | ------------------------------------------------------ | ----------------------------------------------------------------------- |
+| `GET`    | `/blog/posts?page=&limit=&status=&categoryId=&search=` | Paginated list                                                          |
+| `POST`   | `/blog/posts`                                          | Create a draft                                                          |
+| `GET`    | `/blog/posts/:id`                                      | Get one post (full body)                                                |
+| `PATCH`  | `/blog/posts/:id`                                      | Update                                                                  |
+| `POST`   | `/blog/posts/:id/publish`                              | Flip to PUBLISHED, set `publishedAt` on first publish only              |
+| `POST`   | `/blog/posts/:id/unpublish`                            | Back to DRAFT                                                           |
+| `DELETE` | `/blog/posts/:id`                                      | Delete                                                                  |
+| `GET`    | `/blog/categories`                                     | List                                                                    |
+| `POST`   | `/blog/categories`                                     | Create                                                                  |
+| `PATCH`  | `/blog/categories/:id`                                 | Update                                                                  |
+| `DELETE` | `/blog/categories/:id`                                 | Delete — posts in the deleted category fall back to `categoryId = null` |
+
+**Public (no auth, hostname-resolved, published-only):**
+
+| Method | Path                                                 | Purpose                                                          |
+| ------ | ---------------------------------------------------- | ---------------------------------------------------------------- |
+| `GET`  | `/public/blog/posts?page=&limit=&categorySlug=&tag=` | Paginated list of PUBLISHED posts with `publishedAt <= now()`    |
+| `GET`  | `/public/blog/posts/:slug`                           | One post + 3 related from the same category                      |
+| `GET`  | `/public/blog/featured?limit=3`                      | Latest N published posts for homepage "From the journal" section |
+| `GET`  | `/public/blog/categories`                            | All categories with published-post counts                        |
+
+Unknown slug → **404** (never 403) to avoid leaking post existence.
+
+### 18.3 Tenant-site rendering
+
+Four new route paths under `apps/tenant-site/app/blog/`:
+
+- `/blog` — paginated listing with category chips + featured top card
+- `/blog/[slug]` — article page with hero, markdown body, tag footer, related posts
+- `/blog/category/[slug]` — filtered listing
+- `/blog/tag/[tag]` — filtered listing by tag
+
+All four share `components/blog/BlogPageShell.tsx` which reuses the template's
+`SiteHeader` + `SiteFooter` so the chrome is consistent with the homepage.
+
+Homepage integration: each of the four templates (`Minimal`, `Standard`,
+`Luxury`, `Boutique`) renders `<FeaturedBlogSection posts={...} />` between
+the product grid and the footer. Empty array → section renders nothing.
+
+### 18.4 Markdown stack (XSS posture)
+
+```
+markdown → react-markdown
+         ↓  remark-gfm         (tables, strikethrough, task lists)
+         ↓  rehype-slug        (stable anchor IDs)
+         ↓  rehype-autolink-headings
+         ↓  rehype-sanitize    ← strips <script>, <iframe>, on* handlers, etc.
+         → HTML
+```
+
+**Defense in depth**: the editor only ever stores markdown, not HTML, so there
+is no HTML to sanitize at write time. At read time `rehype-sanitize` uses the
+default safe schema. Any future switch to a WYSIWYG editor (Phase B / TipTap)
+must preserve both layers.
+
+### 18.5 Cache tags
+
+| Tag                       | What it covers                                                     | Fires on                                                |
+| ------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------- |
+| `tenant:<id>:blog`        | `/blog`, `/blog/category/*`, `/blog/tag/*`, `getFeaturedBlogPosts` | Any post/category mutation                              |
+| `tenant:<id>:blog:<slug>` | `/blog/[slug]`                                                     | That post's mutations (both old and new slug on rename) |
+| `tenant:<id>:site`        | Homepage (featured-blog section reads from this tag)               | Any post mutation                                       |
+
+`revalidateBlog(tenantId, { slug? })` in `apps/api/src/modules/blog/blog.revalidate.ts`
+fires the same HTTP call as `revalidateTenantSite` — just with the blog tag
+list. Non-fatal on failure (2s timeout, logs, moves on).
+
+### 18.6 Admin UI (nested tab)
+
+`/settings/site` becomes a tabbed layout:
+
+| Tab         | URL                                    | What                                                    |
+| ----------- | -------------------------------------- | ------------------------------------------------------- |
+| Website     | `/{workspace}/settings/site`           | Branding, contact, template, publish (unchanged)        |
+| Blog        | `/{workspace}/settings/site/blog`      | Post list + filters, New post button, Categories dialog |
+| Blog — new  | `/{workspace}/settings/site/blog/new`  | Create form                                             |
+| Blog — edit | `/{workspace}/settings/site/blog/[id]` | Edit form                                               |
+
+The tab nav lives in `SiteTabsNav.tsx` (link-based, not shadcn `Tabs`, so
+each tab can have its own URL and visitors can deep-link).
+
+Both tabs are wrapped at the layout level (`site/layout.tsx`) with
+`<EnvFeaturePageGuard envFeature={EnvFeature.TENANT_WEBSITES}>` +
+`<AuthGuard roles={["admin","superAdmin"]}>`, so page files stay minimal.
+
+**Editor UX:**
+
+- Split-pane markdown (textarea left, live preview right) — same `react-markdown`
+  stack as the renderer, so WYSIWYG stays honest.
+- Thin toolbar: **B**, **I**, **H2**, **H3**, bullet, link, quote, code.
+- Slug auto-generated from title until the user manually edits the slug field
+  (`slugTouched` guards the auto-gen).
+- Tags parsed from a single comma-separated input. Lowercase, deduped, capped at 20.
+- SEO accordion at the bottom with a live Google-style preview. Falls back to
+  title / excerpt when the SEO fields are blank.
+- Hero image: plain URL input for Phase A. Phase B adds a media picker.
+- Publish / Unpublish button only appears in edit mode and fires a separate
+  endpoint (not part of the save payload).
+
+### 18.7 Seed data
+
+`apps/api/prisma/seeds/27-demo-blog.seed.ts`: 3 categories (`stories`, `craft`,
+`updates`), 6 posts (4 published + 2 draft) for the `demo` tenant only.
+Idempotent via `upsert` on `(tenantId, slug)`. Also ensures demo tenant has
+`SiteConfig.websiteEnabled = true, isPublished = true` so the blog routes
+actually render without needing platform admin UI.
+
+Runs as the last step of `fullTenantSeed` — only applied to the `demo` slug.
+
+### 18.8 Test counts (Phase A)
+
+| Area                                                                | Tests   |
+| ------------------------------------------------------------------- | ------- |
+| `apps/api` blog (schema / repo / service / controller / revalidate) | 45      |
+| `apps/api` public-blog (schema / service / controller)              | 21      |
+| `apps/web` tenant-blog (service + validation)                       | 34      |
+| **Total Phase A**                                                   | **100** |
+
+(All green. Full API suite still flaky on the 6 `automation.integration.test.ts`
+tests that need a real DB — pre-existing, unrelated to blog.)
+
+### 18.9 Sitemap
+
+`apps/tenant-site/app/sitemap.ts` now emits:
+
+- `/` `/products` `/contact` `/blog`
+- One entry per **published** blog post at `/blog/<slug>` with `lastModified = publishedAt`
+- One entry per blog category that has `postCount > 0` at `/blog/category/<slug>`
+
+Pagination is handled at generation time with a 50-per-page cap and a 20-page
+safety limit (1000 posts max per tenant in the sitemap).
+
+### 18.10 Out of scope for Phase A
+
+- Media picker / S3 browser for hero image → **Phase B**
+- WYSIWYG (TipTap) editor → **Phase B**
+- Scheduled publishing (`publishedAt` in the future)
+- Post revisions / history
+- Comments / reactions
+- RSS feed (`/blog/rss.xml`) — easy follow-up
+- i18n per post
+- Author as a User FK (we store a plain `authorName` string for now, since
+  marketing staff writing posts may not have IMS accounts)
+
+### 18.11 Editor runbook (§14 addition)
+
+> **Write a post on the demo tenant (dev):**
+>
+> 1. Log into stage IMS as a demo admin.
+> 2. Top nav → Settings → Website card → **Blog** tab.
+> 3. Click **New post**. Title, slug (auto-filled), body in markdown.
+> 4. Save — creates a DRAFT and redirects to the edit page.
+> 5. Click **Publish**. The revalidate hook fires within ~2s.
+> 6. Visit `https://<tenant-host>/blog` — the post is live.
+>
+> **Unpublish / delete:** Edit post → **Unpublish** (back to DRAFT) or trash
+> icon in the list view (hard delete, revalidates the slug tag so the public
+> URL 404s on next visit).
