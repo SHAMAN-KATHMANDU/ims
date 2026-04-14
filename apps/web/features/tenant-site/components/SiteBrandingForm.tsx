@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { MediaPickerField } from "@/components/media/MediaPickerField";
 import {
   Card,
   CardContent,
@@ -108,12 +109,19 @@ export function SiteBrandingForm({
           </div>
 
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="brand-logo">Logo URL</Label>
-            <Input
-              id="brand-logo"
-              placeholder="https://…"
-              disabled={disabled}
-              {...form.register("logoUrl")}
+            <Label htmlFor="brand-logo">Logo</Label>
+            <Controller
+              control={form.control}
+              name="logoUrl"
+              render={({ field }) => (
+                <MediaPickerField
+                  id="brand-logo"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  disabled={disabled}
+                  helperText="PNG or SVG, ideally with a transparent background."
+                />
+              )}
             />
             {form.formState.errors.logoUrl && (
               <p className="text-sm text-destructive">
@@ -123,12 +131,20 @@ export function SiteBrandingForm({
           </div>
 
           <div className="space-y-2 sm:col-span-2">
-            <Label htmlFor="brand-favicon">Favicon URL</Label>
-            <Input
-              id="brand-favicon"
-              placeholder="https://…"
-              disabled={disabled}
-              {...form.register("faviconUrl")}
+            <Label htmlFor="brand-favicon">Favicon</Label>
+            <Controller
+              control={form.control}
+              name="faviconUrl"
+              render={({ field }) => (
+                <MediaPickerField
+                  id="brand-favicon"
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  disabled={disabled}
+                  previewSize={32}
+                  helperText="Square image, 32×32 or 64×64 PNG recommended."
+                />
+              )}
             />
             {form.formState.errors.faviconUrl && (
               <p className="text-sm text-destructive">

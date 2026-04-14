@@ -1,11 +1,14 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize from "rehype-sanitize";
+import { Image as ImageIcon } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import { EnvFeature, useEnvFeatureFlag } from "@/features/flags";
+import { MediaLibraryPickerDialog } from "@/components/media/MediaLibraryPickerDialog";
 
 /**
  * Split-pane markdown editor. Left: textarea. Right: live preview rendered
@@ -26,6 +29,9 @@ export function BlogMarkdownEditor({
   id?: string;
   disabled?: boolean;
 }) {
+  const mediaUploadEnabled = useEnvFeatureFlag(EnvFeature.MEDIA_UPLOAD);
+  const [imagePickerOpen, setImagePickerOpen] = useState(false);
+
   const insert = (before: string, after = "") => {
     const el = document.getElementById(id) as HTMLTextAreaElement | null;
     if (!el) {
@@ -41,6 +47,23 @@ export function BlogMarkdownEditor({
     requestAnimationFrame(() => {
       el.focus();
       const pos = start + before.length + selected.length + after.length;
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const insertAtCursor = (snippet: string) => {
+    const el = document.getElementById(id) as HTMLTextAreaElement | null;
+    if (!el) {
+      onChange(`${value}${snippet}`);
+      return;
+    }
+    const start = el.selectionStart ?? value.length;
+    const end = el.selectionEnd ?? value.length;
+    const next = `${value.slice(0, start)}${snippet}${value.slice(end)}`;
+    onChange(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + snippet.length;
       el.setSelectionRange(pos, pos);
     });
   };
@@ -125,7 +148,30 @@ export function BlogMarkdownEditor({
         >
           Code
         </Button>
+        {mediaUploadEnabled && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => setImagePickerOpen(true)}
+            disabled={disabled}
+          >
+            <ImageIcon className="mr-1.5 h-4 w-4" />
+            Image
+          </Button>
+        )}
       </div>
+
+      {mediaUploadEnabled && (
+        <MediaLibraryPickerDialog
+          open={imagePickerOpen}
+          onOpenChange={setImagePickerOpen}
+          onPick={(asset) => {
+            insertAtCursor(`\n\n![${asset.fileName}](${asset.publicUrl})\n\n`);
+          }}
+          title="Insert image into post"
+        />
+      )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Textarea

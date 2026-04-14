@@ -27,6 +27,7 @@
 16. **[Dev cutover retrospective (2026-04-13)](#16-dev-cutover-retrospective-2026-04-13)** — the three hotfixes we hit in real life
 17. **[Lessons learned (for the next rollout like this)](#17-lessons-learned-for-the-next-rollout-like-this)**
 18. **[Blog system](#18-blog-system)** — Phase A: tenant-scoped blog with markdown editor + public rendering
+19. **[Media picker](#19-media-picker-phase-b)** — Phase B: S3 library picker wired into logo / favicon / blog hero / markdown editor
 
 > **If you're trying to do the prod cutover:** start at **§14.5** then walk the checklist in **§16** for every gotcha we hit on dev.
 > **If you're onboarding and trying to understand what this is:** read **§1–§5** in order.
@@ -1391,3 +1392,104 @@ safety limit (1000 posts max per tenant in the sitemap).
 > **Unpublish / delete:** Edit post → **Unpublish** (back to DRAFT) or trash
 > icon in the list view (hard delete, revalidates the slug tag so the public
 > URL 404s on next visit).
+
+---
+
+## 19. Media picker (Phase B)
+
+Phase B wires the existing media library into the three places that still
+accepted plain URLs — logo, favicon, and blog hero — and adds an **Image**
+toolbar button to the blog markdown editor that inserts `![alt](url)` at the
+cursor. All of it reuses what was already in `apps/api/src/modules/media/`
+and `apps/web/components/media/` — Phase B added **zero** backend code.
+
+### 19.1 New component: `<MediaPickerField>`
+
+`apps/web/components/media/MediaPickerField.tsx` — a drop-in replacement for
+a URL `<Input>` that renders:
+
+- A thumbnail preview (square, configurable `previewSize`)
+- The URL input (so paste-a-URL still works as a fallback)
+- **Browse library** button → opens the existing `MediaLibraryPickerDialog`
+- **Upload** button → hidden `<input type="file">` + `useS3DirectUpload` hook,
+  uploads as `purpose: "library"` and auto-registers in the library
+- **Clear** button → empties the value
+
+When the `MEDIA_UPLOAD` env feature flag is off, the entire button row is
+hidden and the field collapses to a plain URL input. This means callers
+never need to check the flag themselves — `<MediaPickerField>` is safe to
+drop in anywhere.
+
+### 19.2 Integration points
+
+| File                     | Field          | Before                                                       | After                                                                          |
+| ------------------------ | -------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------ |
+| `SiteBrandingForm.tsx`   | `logoUrl`      | Plain `<Input>`                                              | `<MediaPickerField helperText="PNG or SVG…">`                                  |
+| `SiteBrandingForm.tsx`   | `faviconUrl`   | Plain `<Input>`                                              | `<MediaPickerField previewSize={32} helperText="Square 32×32 or 64×64">`       |
+| `BlogPostEditor.tsx`     | `heroImageUrl` | Plain `<Input>` + "Phase B will let you pick from S3" helper | `<MediaPickerField previewSize={96} helperText="16:9 or 4:3">`                 |
+| `BlogMarkdownEditor.tsx` | Body markdown  | No image toolbar button                                      | **Image** button → opens picker → inserts `\n\n![filename](url)\n\n` at cursor |
+
+Every field keeps its existing zod validation — the picker writes the same
+string the user would paste manually, so `z.string().url()` still passes.
+
+### 19.3 Upload flow (unchanged, now reused)
+
+```
+user picks file
+    ↓
+useS3DirectUpload.uploadFile({ purpose: "library", registerInLibrary: true })
+    ↓
+POST /api/v1/media/presign  (server returns presigned PUT URL + maxBytes)
+    ↓
+PUT <s3 url>                (client direct-to-S3 — never touches our API)
+    ↓
+POST /api/v1/media/assets   (register the uploaded object as a MediaAsset row)
+    ↓
+onChange(result.publicUrl)  (field value updated)
+```
+
+The **presign → PUT → register** flow already existed in
+`apps/web/hooks/useS3DirectUpload.ts` and
+`apps/api/src/modules/media/media.service.ts`. MediaPickerField just wraps it.
+
+### 19.4 Purposes + size limits
+
+Phase B uses the existing `"library"` purpose for all three integration
+points. Limits (from `media.constants.ts`):
+
+- `library`: 30 MB, `image/jpeg|jpg|png|gif|webp` (+ whatever else
+  CONTACT_MIMES accepts)
+
+Favicons in `.ico` format (`image/x-icon`) are **not** on the library
+allowlist today — users who need a `.ico` can still paste a URL from
+wherever their favicon lives. Modern PNG favicons (16×16 or 32×32) are fully
+supported and are what we recommend in the helper text.
+
+Adding `image/x-icon` to the `LIBRARY_MIMES` set in
+`apps/api/src/modules/media/media.service.ts` is a one-line follow-up if/when
+a tenant actually asks for it.
+
+### 19.5 Feature flag graceful degradation
+
+| `MEDIA_UPLOAD` flag   | `<MediaPickerField>` renders                                         | `<BlogMarkdownEditor>` toolbar                        |
+| --------------------- | -------------------------------------------------------------------- | ----------------------------------------------------- |
+| **On** (dev, staging) | Thumbnail + URL input + Browse/Upload/Clear buttons + library dialog | B / I / H2 / H3 / • / Link / Quote / Code / **Image** |
+| **Off** (production)  | Thumbnail + URL input only (URL paste still works)                   | No Image button                                       |
+
+Rationale: we don't want a hard failure when media uploads are off — the
+underlying fields (`logoUrl`, `faviconUrl`, `heroImageUrl`) still work with
+pasted URLs from Cloudflare Images / Bunny / any public bucket. The picker
+is strictly additive.
+
+### 19.6 Out of scope for Phase B
+
+- Dedicated `"site_branding"` purpose (today we use `"library"` — works fine,
+  one purpose category for every "tenant admin uploaded a thing")
+- Image cropping / resizing on the client
+- Alt-text editing at pick time (the dialog uses `fileName` as a fallback,
+  which is fine for markdown `![alt]` but suboptimal for accessibility —
+  a dedicated alt field on `MediaAsset` is a good Phase C polish)
+- Bulk selection (the dialog is single-pick only)
+- Drag-and-drop upload (would be a nice touch on top of the hidden file input)
+- TipTap integration — still Phase-C work; for now the markdown editor gets
+  the Image button and that's enough
