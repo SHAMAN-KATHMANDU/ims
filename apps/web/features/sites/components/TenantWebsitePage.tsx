@@ -72,9 +72,11 @@ function TemplateCard({
             {template.description}
           </p>
         )}
-        <Badge variant="secondary" className="mt-auto self-start text-[10px]">
-          {template.tier}
-        </Badge>
+        {template.category && (
+          <Badge variant="secondary" className="mt-auto self-start text-[10px]">
+            {template.category}
+          </Badge>
+        )}
       </div>
     </button>
   );

@@ -117,12 +117,14 @@ export function SiteTemplatePicker({
                           {t.description}
                         </p>
                       )}
-                      <Badge
-                        variant="secondary"
-                        className="mt-auto self-start text-[10px]"
-                      >
-                        {t.tier}
-                      </Badge>
+                      {t.category && (
+                        <Badge
+                          variant="secondary"
+                          className="mt-auto self-start text-[10px]"
+                        >
+                          {t.category}
+                        </Badge>
+                      )}
                     </div>
                   </button>
                 );
