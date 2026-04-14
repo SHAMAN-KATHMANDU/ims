@@ -8,6 +8,7 @@ import {
   ContactBlock,
   SiteFooter,
 } from "./shared";
+import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
 
 /**
  * MINIMAL — Clean, fast, type-forward. Wide whitespace, thin type,
@@ -15,7 +16,8 @@ import {
  */
 export async function MinimalLayout(props: TemplateProps) {
   const ctx = await getTenantContext();
-  const { page, site, products, categories, activeProduct } = props;
+  const { page, site, products, categories, activeProduct, featuredBlogPosts } =
+    props;
 
   return (
     <div data-template="minimal">
@@ -24,11 +26,12 @@ export async function MinimalLayout(props: TemplateProps) {
       {page === "home" && (
         <>
           <Hero site={site} host={ctx.host} variant="minimal" />
-          <section style={{ padding: "3rem 0 5rem" }}>
+          <section style={{ padding: "3rem 0 3rem" }}>
             <div className="container">
               <ProductGrid products={products} columns={3} />
             </div>
           </section>
+          <FeaturedBlogSection posts={featuredBlogPosts ?? []} />
         </>
       )}
 

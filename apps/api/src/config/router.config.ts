@@ -51,6 +51,8 @@ import trashRouter from "@/modules/trash/trash.router";
 import tenantSettingsRouter from "@/modules/tenant-settings/tenant-settings.router";
 import sitesRouter from "@/modules/sites/sites.router";
 import publicSiteRouter from "@/modules/public-site/public-site.router";
+import publicBlogRouter from "@/modules/public-blog/public-blog.router";
+import blogRouter from "@/modules/blog/blog.router";
 import internalRouter from "@/modules/internal/internal.router";
 import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
 import mediaRouter from "@/modules/media/media.router";
@@ -78,6 +80,7 @@ router.use("/auth", authRouter);
 // Public website routes (no JWT; tenant resolved from Host header)
 // ============================================
 router.use("/public", publicSiteRouter);
+router.use("/public/blog", publicBlogRouter);
 
 // ============================================
 // Internal server-to-server hooks (no JWT; shared-secret token)
@@ -120,6 +123,7 @@ router.use("/crm", crmRouter);
 router.use("/crm-settings", crmSettingsRouter);
 router.use("/tenant-settings", tenantSettingsRouter);
 router.use("/sites", sitesRouter);
+router.use("/blog", blogRouter);
 router.use("/workflows", workflowRouter);
 router.use("/automation", automationRouter);
 router.use("/trash", trashRouter);

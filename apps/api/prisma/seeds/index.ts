@@ -31,6 +31,7 @@ import { seedNotifications } from "./23-notifications.seed";
 import { seedAuditLogs } from "./24-audit-logs.seed";
 import { seedErrorReports } from "./25-error-reports.seed";
 import { seedMemberTotals } from "./26-member-totals.seed";
+import { seedDemoBlog } from "./27-demo-blog.seed";
 import { hashPassword } from "./utils";
 
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
@@ -229,6 +230,7 @@ async function fullTenantSeed(
   ctx = await seedAuditLogs(prismaClient, ctx);
   ctx = await seedErrorReports(prismaClient, ctx);
   ctx = await seedMemberTotals(prismaClient, ctx);
+  ctx = await seedDemoBlog(prismaClient, ctx);
 
   console.log(`  ✓ Full seed complete for "${slug}"`);
 }

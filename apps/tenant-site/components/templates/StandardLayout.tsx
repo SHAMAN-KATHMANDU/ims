@@ -8,6 +8,7 @@ import {
   ContactBlock,
   SiteFooter,
 } from "./shared";
+import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
 
 /**
  * STANDARD — Balanced default. Everything on by default, 4-column grid,
@@ -15,7 +16,8 @@ import {
  */
 export async function StandardLayout(props: TemplateProps) {
   const ctx = await getTenantContext();
-  const { page, site, products, categories, activeProduct } = props;
+  const { page, site, products, categories, activeProduct, featuredBlogPosts } =
+    props;
 
   return (
     <div data-template="standard">
@@ -54,7 +56,7 @@ export async function StandardLayout(props: TemplateProps) {
               </div>
             </section>
           )}
-          <section style={{ padding: "2rem 0 5rem" }}>
+          <section style={{ padding: "2rem 0 3rem" }}>
             <div className="container">
               <h2 style={{ fontSize: "1.5rem", marginBottom: "1.5rem" }}>
                 Featured products
@@ -62,6 +64,7 @@ export async function StandardLayout(props: TemplateProps) {
               <ProductGrid products={products} columns={4} />
             </div>
           </section>
+          <FeaturedBlogSection posts={featuredBlogPosts ?? []} />
         </>
       )}
 

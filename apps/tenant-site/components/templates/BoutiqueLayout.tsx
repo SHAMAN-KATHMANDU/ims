@@ -8,6 +8,7 @@ import {
   ContactBlock,
   SiteFooter,
 } from "./shared";
+import { FeaturedBlogSection } from "@/components/blog/FeaturedBlogSection";
 
 /**
  * BOUTIQUE — Warm, story-first. Wider columns, larger imagery, softer
@@ -15,7 +16,8 @@ import {
  */
 export async function BoutiqueLayout(props: TemplateProps) {
   const ctx = await getTenantContext();
-  const { page, site, products, categories, activeProduct } = props;
+  const { page, site, products, categories, activeProduct, featuredBlogPosts } =
+    props;
 
   return (
     <div data-template="boutique">
@@ -39,11 +41,12 @@ export async function BoutiqueLayout(props: TemplateProps) {
               </p>
             </div>
           </section>
-          <section style={{ padding: "3rem 0 5rem" }}>
+          <section style={{ padding: "3rem 0 3rem" }}>
             <div className="container">
               <ProductGrid products={products} columns={3} />
             </div>
           </section>
+          <FeaturedBlogSection posts={featuredBlogPosts ?? []} />
         </>
       )}
 

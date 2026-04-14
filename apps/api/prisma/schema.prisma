@@ -63,10 +63,10 @@ model Tenant {
   pipelines             Pipeline[]
   pipelineWorkflows     PipelineWorkflow[]
   workflowRuns          WorkflowRun[]
-  automationDefinitions   AutomationDefinition[]
-  automationEvents        AutomationEvent[]
-  automationRuns          AutomationRun[]
-  automationDelayedRuns   AutomationDelayedRun[]
+  automationDefinitions AutomationDefinition[]
+  automationEvents      AutomationEvent[]
+  automationRuns        AutomationRun[]
+  automationDelayedRuns AutomationDelayedRun[]
   workItems             WorkItem[]
   inventorySignals      InventorySignal[]
   deals                 Deal[]
@@ -86,6 +86,10 @@ model Tenant {
   domains    TenantDomain[]
   siteConfig SiteConfig?
 
+  // Blog relations
+  blogPosts      BlogPost[]
+  blogCategories BlogCategory[]
+
   @@map("tenants")
 }
 
@@ -94,17 +98,17 @@ model Tenant {
 // ============================================
 
 model TenantDomain {
-  id           String             @id @default(uuid())
-  tenantId     String             @map("tenant_id")
-  hostname     String             @unique // e.g. "www.acme.com", "ims.acme.com"
-  appType      TenantDomainApp    @map("app_type")
-  isPrimary    Boolean            @default(false) @map("is_primary")
-  verifyToken  String             @map("verify_token")
-  verifiedAt   DateTime?          @map("verified_at")
-  tlsStatus    TenantDomainTls    @default(PENDING) @map("tls_status")
-  tlsLastError String?            @map("tls_last_error")
-  createdAt    DateTime           @default(now()) @map("created_at")
-  updatedAt    DateTime           @updatedAt @map("updated_at")
+  id           String          @id @default(uuid())
+  tenantId     String          @map("tenant_id")
+  hostname     String          @unique // e.g. "www.acme.com", "ims.acme.com"
+  appType      TenantDomainApp @map("app_type")
+  isPrimary    Boolean         @default(false) @map("is_primary")
+  verifyToken  String          @map("verify_token")
+  verifiedAt   DateTime?       @map("verified_at")
+  tlsStatus    TenantDomainTls @default(PENDING) @map("tls_status")
+  tlsLastError String?         @map("tls_last_error")
+  createdAt    DateTime        @default(now()) @map("created_at")
+  updatedAt    DateTime        @updatedAt @map("updated_at")
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
@@ -126,25 +130,25 @@ enum TenantDomainTls {
 }
 
 model SiteConfig {
-  id          String   @id @default(uuid())
-  tenantId    String   @unique @map("tenant_id")
+  id             String   @id @default(uuid())
+  tenantId       String   @unique @map("tenant_id")
   /// Platform-level flag: this tenant is allowed to use the website feature.
   /// Toggled by platformAdmin; tenant admins cannot flip this.
   websiteEnabled Boolean  @default(false) @map("website_enabled")
   /// Which template (theme) this tenant picked. Null until first choice.
-  templateId  String?  @map("template_id")
+  templateId     String?  @map("template_id")
   /// Branding: { name, tagline, logoUrl, faviconUrl, colors: {...}, theme }
-  branding    Json?
+  branding       Json?
   /// Contact: { email, phone, address, mapUrl, socials: {...} }
-  contact     Json?
+  contact        Json?
   /// Feature flags: { showProducts, showArticles, showShowrooms, ... }
-  features    Json?
+  features       Json?
   /// SEO defaults: { title, description, ogImage, keywords }
-  seo         Json?
+  seo            Json?
   /// Tenant has clicked "publish" — only published sites are served publicly.
-  isPublished Boolean  @default(false) @map("is_published")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  isPublished    Boolean  @default(false) @map("is_published")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
 
   tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   template SiteTemplate? @relation(fields: [templateId], references: [id], onDelete: SetNull)
@@ -156,21 +160,21 @@ model SiteConfig {
 /// Catalog of website templates (minimal, luxury, standard, ...).
 /// Managed by platformAdmin; tenants pick one and customize via SiteConfig.
 model SiteTemplate {
-  id              String              @id @default(uuid())
-  slug            String              @unique // "minimal", "luxury", "standard"
-  name            String              // Display name: "Minimal", "Luxury"
+  id              String           @id @default(uuid())
+  slug            String           @unique // "minimal", "luxury", "standard"
+  name            String // Display name: "Minimal", "Luxury"
   description     String?
-  tier            SiteTemplateTier    @default(STANDARD)
-  previewImageUrl String?             @map("preview_image_url")
+  tier            SiteTemplateTier @default(STANDARD)
+  previewImageUrl String?          @map("preview_image_url")
   /// Default branding payload applied when a tenant first picks this template.
   /// Shape: { colors: {...}, theme, typography: {...} }
-  defaultBranding Json?               @map("default_branding")
+  defaultBranding Json?            @map("default_branding")
   /// Default section toggles: { hero, products, showrooms, articles, contact, ... }
-  defaultSections Json?               @map("default_sections")
-  isActive        Boolean             @default(true) @map("is_active")
-  sortOrder       Int                 @default(0) @map("sort_order")
-  createdAt       DateTime            @default(now()) @map("created_at")
-  updatedAt       DateTime            @updatedAt @map("updated_at")
+  defaultSections Json?            @map("default_sections")
+  isActive        Boolean          @default(true) @map("is_active")
+  sortOrder       Int              @default(0) @map("sort_order")
+  createdAt       DateTime         @default(now()) @map("created_at")
+  updatedAt       DateTime         @updatedAt @map("updated_at")
 
   siteConfigs SiteConfig[]
 
@@ -183,6 +187,62 @@ enum SiteTemplateTier {
   STANDARD
   LUXURY
   BOUTIQUE
+}
+
+// ============================================
+// BLOG
+// ============================================
+
+model BlogCategory {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  slug        String
+  name        String
+  description String?
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  posts  BlogPost[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("blog_categories")
+}
+
+model BlogPost {
+  id             String         @id @default(uuid())
+  tenantId       String         @map("tenant_id")
+  slug           String
+  title          String
+  excerpt        String?
+  bodyMarkdown   String         @map("body_markdown")
+  heroImageUrl   String?        @map("hero_image_url")
+  authorName     String?        @map("author_name")
+  status         BlogPostStatus @default(DRAFT)
+  publishedAt    DateTime?      @map("published_at")
+  categoryId     String?        @map("category_id")
+  tags           String[]       @default([])
+  seoTitle       String?        @map("seo_title")
+  seoDescription String?        @map("seo_description")
+  readingMinutes Int?           @map("reading_minutes")
+  createdAt      DateTime       @default(now()) @map("created_at")
+  updatedAt      DateTime       @updatedAt @map("updated_at")
+
+  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  category BlogCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId, status, publishedAt])
+  @@index([tenantId, categoryId])
+  @@map("blog_posts")
+}
+
+enum BlogPostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
 }
 
 enum PlanTier {
@@ -574,12 +634,12 @@ model ProductVariationAttribute {
 }
 
 model ProductSubVariation {
-  id          String   @id @default(uuid()) @map("sub_variation_id")
-  variationId String   @map("variation_id")
-  name        String   @db.VarChar(100)
-  lowStockThreshold Int? @map("low_stock_threshold")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id                String   @id @default(uuid()) @map("sub_variation_id")
+  variationId       String   @map("variation_id")
+  name              String   @db.VarChar(100)
+  lowStockThreshold Int?     @map("low_stock_threshold")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
 
   variation         ProductVariation    @relation(fields: [variationId], references: [id], onDelete: Cascade)
   locationInventory LocationInventory[]
@@ -755,7 +815,7 @@ model InventorySignal {
   recommendedSourceLocation Location?            @relation("InventorySignalRecommendedSource", fields: [recommendedSourceLocationId], references: [id], onDelete: SetNull)
   detectedBy                User?                @relation("InventorySignalDetector", fields: [detectedById], references: [id], onDelete: SetNull)
   workItemLinks             WorkItemLink[]
-  transfers                 Transfer[]            @relation("TransferSourceInventorySignal")
+  transfers                 Transfer[]           @relation("TransferSourceInventorySignal")
 
   @@index([tenantId, status])
   @@index([locationId, variationId, subVariationId])
@@ -767,30 +827,30 @@ model InventorySignal {
 // ============================================
 
 model Transfer {
-  id             String         @id @default(uuid()) @map("transfer_id")
-  tenantId       String         @map("tenant_id")
-  transferCode   String         @map("transfer_code") @db.VarChar(50)
-  fromLocationId String         @map("from_location_id")
-  toLocationId   String         @map("to_location_id")
-  status         TransferStatus @default(PENDING)
-  notes          String?        @db.Text
-  createdById    String         @map("created_by_id")
-  approvedById   String?        @map("approved_by_id")
-  sourceInventorySignalId String? @map("source_inventory_signal_id")
-  automationRunId String? @map("automation_run_id")
-  createdAt      DateTime       @default(now()) @map("created_at")
-  approvedAt     DateTime?      @map("approved_at")
-  completedAt    DateTime?      @map("completed_at")
+  id                      String         @id @default(uuid()) @map("transfer_id")
+  tenantId                String         @map("tenant_id")
+  transferCode            String         @map("transfer_code") @db.VarChar(50)
+  fromLocationId          String         @map("from_location_id")
+  toLocationId            String         @map("to_location_id")
+  status                  TransferStatus @default(PENDING)
+  notes                   String?        @db.Text
+  createdById             String         @map("created_by_id")
+  approvedById            String?        @map("approved_by_id")
+  sourceInventorySignalId String?        @map("source_inventory_signal_id")
+  automationRunId         String?        @map("automation_run_id")
+  createdAt               DateTime       @default(now()) @map("created_at")
+  approvedAt              DateTime?      @map("approved_at")
+  completedAt             DateTime?      @map("completed_at")
 
-  tenant       Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  fromLocation Location       @relation("TransferFrom", fields: [fromLocationId], references: [id], onDelete: Restrict)
-  toLocation   Location       @relation("TransferTo", fields: [toLocationId], references: [id], onDelete: Restrict)
-  createdBy    User           @relation("TransferCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  approvedBy   User?          @relation("TransferApprover", fields: [approvedById], references: [id], onDelete: Restrict)
+  tenant                Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  fromLocation          Location         @relation("TransferFrom", fields: [fromLocationId], references: [id], onDelete: Restrict)
+  toLocation            Location         @relation("TransferTo", fields: [toLocationId], references: [id], onDelete: Restrict)
+  createdBy             User             @relation("TransferCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  approvedBy            User?            @relation("TransferApprover", fields: [approvedById], references: [id], onDelete: Restrict)
   sourceInventorySignal InventorySignal? @relation("TransferSourceInventorySignal", fields: [sourceInventorySignalId], references: [id], onDelete: SetNull)
-  automationRun AutomationRun? @relation(fields: [automationRunId], references: [id], onDelete: SetNull)
-  items        TransferItem[]
-  logs         TransferLog[]
+  automationRun         AutomationRun?   @relation(fields: [automationRunId], references: [id], onDelete: SetNull)
+  items                 TransferItem[]
+  logs                  TransferLog[]
 
   @@unique([tenantId, transferCode])
   @@index([sourceInventorySignalId, status])
@@ -1497,28 +1557,28 @@ model WorkflowRun {
 }
 
 model AutomationDefinition {
-  id            String                  @id @default(uuid()) @map("automation_definition_id")
-  tenantId      String                  @map("tenant_id")
-  name          String                  @db.VarChar(255)
-  description   String?                 @db.VarChar(1000)
-  scopeType     AutomationScopeType     @map("scope_type")
-  scopeId       String?                 @map("scope_id")
-  status        AutomationStatus        @default(ACTIVE)
-  source        AutomationSource        @default(MANUAL)
-  executionMode AutomationExecutionMode @default(LIVE) @map("execution_mode")
-  suppressLegacyWorkflows Boolean       @default(false) @map("suppress_legacy_workflows")
-  version       Int                     @default(1)
+  id                      String                  @id @default(uuid()) @map("automation_definition_id")
+  tenantId                String                  @map("tenant_id")
+  name                    String                  @db.VarChar(255)
+  description             String?                 @db.VarChar(1000)
+  scopeType               AutomationScopeType     @map("scope_type")
+  scopeId                 String?                 @map("scope_id")
+  status                  AutomationStatus        @default(ACTIVE)
+  source                  AutomationSource        @default(MANUAL)
+  executionMode           AutomationExecutionMode @default(LIVE) @map("execution_mode")
+  suppressLegacyWorkflows Boolean                 @default(false) @map("suppress_legacy_workflows")
+  version                 Int                     @default(1)
   /// Phase 3 DAG body (JSON). When set, `steps` must be empty (BR-19).
-  flowGraph     Json?                   @map("flow_graph")
-  createdById   String                  @map("created_by_id")
-  updatedById   String?                 @map("updated_by_id")
-  publishedAt   DateTime?               @map("published_at")
-  createdAt     DateTime                @default(now()) @map("created_at")
-  updatedAt     DateTime                @updatedAt @map("updated_at")
+  flowGraph               Json?                   @map("flow_graph")
+  createdById             String                  @map("created_by_id")
+  updatedById             String?                 @map("updated_by_id")
+  publishedAt             DateTime?               @map("published_at")
+  createdAt               DateTime                @default(now()) @map("created_at")
+  updatedAt               DateTime                @updatedAt @map("updated_at")
 
-  tenant    Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  createdBy User                @relation("AutomationDefinitionCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  updatedBy User?               @relation("AutomationDefinitionUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdBy   User                   @relation("AutomationDefinitionCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  updatedBy   User?                  @relation("AutomationDefinitionUpdater", fields: [updatedById], references: [id], onDelete: SetNull)
   triggers    AutomationTrigger[]
   steps       AutomationStep[]
   runs        AutomationRun[]
@@ -1566,31 +1626,31 @@ model AutomationStep {
 }
 
 model AutomationEvent {
-  id           String                @id @default(uuid()) @map("automation_event_id")
-  tenantId     String                @map("tenant_id")
-  eventName    String                @map("event_name") @db.VarChar(120)
-  scopeType    AutomationScopeType?  @map("scope_type")
-  scopeId      String?               @map("scope_id")
-  entityType   String                @map("entity_type") @db.VarChar(100)
-  entityId     String                @map("entity_id")
-  actorUserId  String?               @map("actor_user_id")
-  dedupeKey    String?               @map("dedupe_key") @db.VarChar(255)
-  status       AutomationEventStatus @default(PENDING)
-  attempts     Int                   @default(0)
-  payload      Json
-  errorMessage String?               @map("error_message") @db.VarChar(2000)
-  occurredAt   DateTime              @map("occurred_at")
-  lastAttemptAt DateTime?            @map("last_attempt_at")
-  nextAttemptAt DateTime             @default(now()) @map("next_attempt_at")
-  processingStartedAt DateTime?      @map("processing_started_at")
-  processedAt  DateTime?             @map("processed_at")
-  createdAt    DateTime              @default(now()) @map("created_at")
-  updatedAt    DateTime              @updatedAt @map("updated_at")
+  id                  String                @id @default(uuid()) @map("automation_event_id")
+  tenantId            String                @map("tenant_id")
+  eventName           String                @map("event_name") @db.VarChar(120)
+  scopeType           AutomationScopeType?  @map("scope_type")
+  scopeId             String?               @map("scope_id")
+  entityType          String                @map("entity_type") @db.VarChar(100)
+  entityId            String                @map("entity_id")
+  actorUserId         String?               @map("actor_user_id")
+  dedupeKey           String?               @map("dedupe_key") @db.VarChar(255)
+  status              AutomationEventStatus @default(PENDING)
+  attempts            Int                   @default(0)
+  payload             Json
+  errorMessage        String?               @map("error_message") @db.VarChar(2000)
+  occurredAt          DateTime              @map("occurred_at")
+  lastAttemptAt       DateTime?             @map("last_attempt_at")
+  nextAttemptAt       DateTime              @default(now()) @map("next_attempt_at")
+  processingStartedAt DateTime?             @map("processing_started_at")
+  processedAt         DateTime?             @map("processed_at")
+  createdAt           DateTime              @default(now()) @map("created_at")
+  updatedAt           DateTime              @updatedAt @map("updated_at")
 
-  tenant Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actor        User?                  @relation("AutomationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
-  runs         AutomationRun[]
-  delayedRuns  AutomationDelayedRun[]
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actor       User?                  @relation("AutomationEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  runs        AutomationRun[]
+  delayedRuns AutomationDelayedRun[]
 
   @@unique([tenantId, dedupeKey])
   @@index([tenantId, status, nextAttemptAt])
@@ -1600,24 +1660,24 @@ model AutomationEvent {
 }
 
 model AutomationRun {
-  id                String              @id @default(uuid()) @map("automation_run_id")
-  tenantId          String              @map("tenant_id")
-  automationId      String              @map("automation_definition_id")
-  automationEventId String?             @map("automation_event_id")
+  id                String                  @id @default(uuid()) @map("automation_run_id")
+  tenantId          String                  @map("tenant_id")
+  automationId      String                  @map("automation_definition_id")
+  automationEventId String?                 @map("automation_event_id")
   status            AutomationRunStatus
   executionMode     AutomationExecutionMode @default(LIVE) @map("execution_mode")
-  eventName         String              @map("event_name") @db.VarChar(120)
-  entityType        String              @map("entity_type") @db.VarChar(100)
-  entityId          String              @map("entity_id")
-  dedupeKey         String?             @map("dedupe_key") @db.VarChar(255)
-  actorUserId       String?             @map("actor_user_id")
-  triggerPayload    Json                @map("trigger_payload")
+  eventName         String                  @map("event_name") @db.VarChar(120)
+  entityType        String                  @map("entity_type") @db.VarChar(100)
+  entityId          String                  @map("entity_id")
+  dedupeKey         String?                 @map("dedupe_key") @db.VarChar(255)
+  actorUserId       String?                 @map("actor_user_id")
+  triggerPayload    Json                    @map("trigger_payload")
   /// Phase 3: copy of `AutomationDefinition.flowGraph` at run start for resume (EC-12 / AT-RSU-004).
-  flowGraphSnapshot Json?               @map("flow_graph_snapshot")
-  stepOutput        Json?               @map("step_output")
-  errorMessage      String?             @map("error_message") @db.VarChar(2000)
-  startedAt         DateTime            @default(now()) @map("started_at")
-  completedAt       DateTime?           @map("completed_at")
+  flowGraphSnapshot Json?                   @map("flow_graph_snapshot")
+  stepOutput        Json?                   @map("step_output")
+  errorMessage      String?                 @map("error_message") @db.VarChar(2000)
+  startedAt         DateTime                @default(now()) @map("started_at")
+  completedAt       DateTime?               @map("completed_at")
 
   tenant     Tenant               @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   automation AutomationDefinition @relation(fields: [automationId], references: [id], onDelete: Cascade)
@@ -1658,7 +1718,7 @@ model AutomationDelayedRun {
   id                     String                     @id @default(uuid()) @map("automation_delayed_run_id")
   tenantId               String                     @map("tenant_id")
   automationEventId      String                     @map("automation_event_id")
-  automationDefinitionId String                   @map("automation_definition_id")
+  automationDefinitionId String                     @map("automation_definition_id")
   automationTriggerId    String                     @map("automation_trigger_id")
   fireAt                 DateTime                   @map("fire_at")
   status                 AutomationDelayedRunStatus @default(PENDING)
