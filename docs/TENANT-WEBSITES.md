@@ -2,6 +2,35 @@
 
 > **Audience:** You just cloned this repo and someone told you "we built multi-tenant websites." This document explains what that means, what got added, how it works end-to-end, and how to turn it on. No prior context assumed.
 
+**Last updated:** 2026-04-13 (post dev cutover)
+**Status:** Shipped on dev, soaking before prod rollout — see **§9 Rollout status**
+
+---
+
+## Table of contents
+
+1. [What problem does this solve?](#1-what-problem-does-this-solve)
+2. [The mental model](#2-the-mental-model)
+3. [What got added (high level)](#3-what-got-added-high-level)
+4. [The feature flag](#4-the-feature-flag)
+5. [End-to-end flow (the "magic" walkthrough)](#5-end-to-end-flow-the-magic-walkthrough)
+6. [File map — where everything lives](#6-file-map--where-everything-lives)
+7. [API reference (cheat sheet)](#7-api-reference-cheat-sheet)
+8. [How to enable it on your machine (step by step)](#8-how-to-enable-it-on-your-machine-step-by-step)
+9. [Rollout status by phase](#9-rollout-status-by-phase)
+10. [Testing summary](#10-testing-summary) — unit counts + **§10.1 E2E validation matrix**
+11. [Conventions followed](#11-conventions-followed)
+12. [Glossary](#12-glossary-if-any-of-the-above-was-jargon)
+13. [Infrastructure — how traffic actually reaches a tenant](#13-infrastructure--how-traffic-actually-reaches-a-tenant)
+14. [Runbooks](#14-runbooks) — cutover, rollback, smoke tests, **§14.7 template seed SQL**, **§14.8 E2E recipe**, **§14.9 runtime patch trick**
+15. [Glossary additions (from §13–§14)](#15-glossary-additions-from-1314)
+16. **[Dev cutover retrospective (2026-04-13)](#16-dev-cutover-retrospective-2026-04-13)** — the three hotfixes we hit in real life
+17. **[Lessons learned (for the next rollout like this)](#17-lessons-learned-for-the-next-rollout-like-this)**
+
+> **If you're trying to do the prod cutover:** start at **§14.5** then walk the checklist in **§16** for every gotcha we hit on dev.
+> **If you're onboarding and trying to understand what this is:** read **§1–§5** in order.
+> **If you're debugging a broken site:** start at **§14.6 Observability cheat sheet** then check **§16.2** (the Host header bug) if SSR is 404ing.
+
 ---
 
 ## 1. What problem does this solve?
@@ -260,21 +289,69 @@ apps/api/src/modules/
   │  ├─ sites.router.ts                 (admin/superAdmin only)
   │  └─ *.test.ts                       (40 tests)
   │
-  └─ public-site/
-     ├─ public-site.schema.ts           (pagination query)
-     ├─ public-site.repository.ts       (tenant-scoped prisma, read-only)
-     ├─ public-site.service.ts          (ensurePublished guard)
-     ├─ public-site.controller.ts       (reads req.tenant, not JWT)
-     ├─ public-site.router.ts           (mounts hostnameResolver)
-     └─ *.test.ts                       (30 tests)
+  ├─ public-site/
+  │  ├─ public-site.schema.ts           (pagination query)
+  │  ├─ public-site.repository.ts       (tenant-scoped prisma, read-only)
+  │  ├─ public-site.service.ts          (ensurePublished guard)
+  │  ├─ public-site.controller.ts       (reads req.tenant, not JWT)
+  │  ├─ public-site.router.ts           (mounts hostnameResolver)
+  │  └─ *.test.ts                       (30 tests)
+  │
+  └─ internal/                          (server-to-server only — added PR #349)
+     ├─ internal.schema.ts              (hostname Zod field reused for both endpoints)
+     ├─ internal.repository.ts          (single query: domain + tenant + site_config)
+     ├─ internal.service.ts              (DomainAllowedResult + ResolveHostResult discriminated unions)
+     ├─ internal.controller.ts          (thin shell; status-code based API for Caddy)
+     ├─ internal.router.ts              (mounted at /internal, before JWT chain)
+     └─ *.test.ts                       (29 tests)
 ```
 
-### Middleware
+### Middleware — API
 
 ```
 apps/api/src/middlewares/
-  ├─ hostnameResolver.ts                (NEW — Host→tenant resolver with cache)
-  └─ hostnameResolver.test.ts           (9 tests)
+  ├─ hostnameResolver.ts              (Host header → tenant via TenantDomain lookup + 60s cache)
+  ├─ hostnameResolver.test.ts         (13 tests including the 4 X-Forwarded-Host cases from PR #351)
+  ├─ requireInternalToken.ts          (shared-secret guard, accepts header OR ?_t= query param)
+  └─ requireInternalToken.test.ts     (9 tests)
+```
+
+### Tenant site renderer
+
+```
+apps/tenant-site/
+  ├─ Dockerfile                       (multi-stage, Node 20-alpine, standalone Next output)
+  ├─ next.config.js                   (output: standalone, security headers)
+  ├─ next-env.d.ts
+  ├─ env.d.ts                         (runtime env vars: API_INTERNAL_URL, INTERNAL_API_TOKEN, ...)
+  ├─ middleware.ts                    (reads Host → /internal/resolve-host, 60s in-memory cache)
+  ├─ lib/
+  │  ├─ api.ts                        (typed fetch of /public/* with next.tags + X-Forwarded-Host)
+  │  ├─ tenant.ts                     (getTenantContext() — reads injected x-tenant-id from headers())
+  │  └─ theme.ts                      (branding JSON → CSS custom properties)
+  ├─ components/templates/
+  │  ├─ types.ts                      (TemplateProps discriminated shape)
+  │  ├─ shared.tsx                    (SiteHeader, Hero, ProductGrid, ProductDetail, Footer)
+  │  ├─ MinimalLayout.tsx             (1 of 4 templates)
+  │  ├─ StandardLayout.tsx            (the default pick; built first)
+  │  ├─ LuxuryLayout.tsx              (dark editorial)
+  │  ├─ BoutiqueLayout.tsx            (warm, story-first)
+  │  └─ pickTemplate.ts               (slug → component, falls back to StandardLayout)
+  ├─ app/
+  │  ├─ layout.tsx                    (RootLayout — reads SiteConfig via headers())
+  │  ├─ globals.css
+  │  ├─ page.tsx                      (home — picks template, renders)
+  │  ├─ products/
+  │  │  ├─ page.tsx                   (product list)
+  │  │  └─ [id]/page.tsx              (PDP)
+  │  ├─ contact/page.tsx
+  │  ├─ not-found.tsx                 (global 404)
+  │  ├─ healthz/route.ts              (container healthcheck; bypasses middleware)
+  │  ├─ api/revalidate/route.ts       (cache-tag revalidation webhook — x-revalidate-secret auth)
+  │  ├─ robots.ts                     (static; not in middleware matcher)
+  │  └─ sitemap.ts                    (dynamic per-host)
+  └─ public/
+     └─ .gitkeep                      (added in PR #350 — git doesn't track empty dirs, COPY public would fail in Docker build)
 ```
 
 ### Route wiring
@@ -284,6 +361,7 @@ apps/api/src/config/router.config.ts
   ├─ /webhooks                          (unchanged)
   ├─ /auth                              (unchanged)
   ├─ /public     → publicSiteRouter     (NEW, before auth chain)
+  ├─ /internal   → internalRouter       (NEW, before auth chain — shared-secret only)
   ├─ verifyToken + resolveTenant        (existing chain)
   ├─ /platform   → platformRouter       (platform-domains + platform-websites routers mounted inside)
   └─ /sites      → sitesRouter          (NEW, under auth chain)
@@ -377,7 +455,7 @@ All routes are under `/api/v1` and require `TENANT_WEBSITES` flag to be enabled.
 | POST   | `/sites/publish`   | Publish (requires template picked)                                            |
 | POST   | `/sites/unpublish` | Unpublish                                                                     |
 
-### Public (no auth, tenant resolved from `Host` header)
+### Public (no auth, tenant resolved from `Host` or `X-Forwarded-Host` header)
 
 | Method | Path                   | Purpose                                                                       |
 | ------ | ---------------------- | ----------------------------------------------------------------------------- |
@@ -387,6 +465,19 @@ All routes are under `/api/v1` and require `TENANT_WEBSITES` flag to be enabled.
 | GET    | `/public/categories`   | Category list                                                                 |
 
 All `/public/*` endpoints return **404** if the resolved tenant's site is missing, not enabled, or not published. This is intentional — we don't leak existence.
+
+**Hostname resolution order:** `X-Forwarded-Host` is checked first, then `req.hostname`. The reason is that Node's `undici` fetch strips the `Host` request header (it's a "forbidden header name" per the WHATWG Fetch spec), so server-to-server callers like the tenant-site renderer need `X-Forwarded-Host` to propagate the customer-facing hostname. See **§16.2** for the full backstory.
+
+### Internal (server-to-server, shared-secret auth)
+
+| Method | Path                       | Purpose                                                                                                                                                                                                                     |
+| ------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GET    | `/internal/domain-allowed` | **Caddy on_demand_tls `ask` hook.** Returns 200 if the hostname is a verified, enabled, WEBSITE-type domain for an active tenant; 403 otherwise. Caddy uses the status to decide whether to issue an ACME cert.             |
+| GET    | `/internal/resolve-host`   | **tenant-site renderer middleware hook.** Resolves a `host` query param to `{ tenantId, tenantSlug, isPublished, ... }` or 404. Used by `apps/tenant-site/middleware.ts` to 404 unknown hosts before any page handler runs. |
+
+**Auth:** both endpoints require the `X-Internal-Token` header matching `INTERNAL_API_TOKEN` on the API. As a fallback for callers that can't inject custom headers (Caddy's `on_demand_tls { ask }` directive, specifically), the token is also accepted via `?_t=<token>` query param. Constant-time comparison, fail-closed if the env var is unset.
+
+**Gating:** like every other new route, these are wrapped in `enforceEnvFeature(EnvFeature.TENANT_WEBSITES)` so they 404 when the flag is off for the deployment.
 
 ---
 
@@ -462,28 +553,33 @@ FEATURE_FLAGS=CRM,SALES,PRODUCTS,SETTINGS
 
 ## 9. Rollout status by phase
 
-| #   | Piece                                                               | Status | Shipped in                     |
-| --- | ------------------------------------------------------------------- | ------ | ------------------------------ |
-| 1   | Data model + migrations                                             | ✅     | PR #348                        |
-| 2   | Platform admin domain + website management (API)                    | ✅     | PR #348                        |
-| 3   | Tenant-scoped `/sites/*` API                                        | ✅     | PR #348                        |
-| 4   | Public `/public/*` API + hostname resolver                          | ✅     | PR #348                        |
-| 5   | Platform admin UI (domains + website + template picker)             | ✅     | PR #348                        |
-| 6   | Tenant site editor UI (branding + contact + SEO)                    | ✅     | PR #348                        |
-| 7   | `/internal/*` endpoints (Caddy ask hook, tenant-site host resolver) | ✅     | PR #349                        |
-| 8   | Caddy edge proxy (containerized, on_demand_tls) — **dev only**      | ✅     | PR #349                        |
-| 9   | `apps/tenant-site` Next.js SSR renderer (4 templates)               | ✅     | PR #349                        |
-| 10  | Cache-tag revalidation (API → tenant-site webhook)                  | ✅     | PR #349                        |
-| 11  | Prod Caddy cutover                                                  | ⏳     | Separate PR after 72h dev soak |
-| 12  | HSTS preload submission                                             | ⏳     | After prod cutover             |
+| #   | Piece                                                                  | Status | Shipped in                              |
+| --- | ---------------------------------------------------------------------- | ------ | --------------------------------------- |
+| 1   | Data model + migrations                                                | ✅     | PR #348                                 |
+| 2   | Platform admin domain + website management (API)                       | ✅     | PR #348                                 |
+| 3   | Tenant-scoped `/sites/*` API                                           | ✅     | PR #348                                 |
+| 4   | Public `/public/*` API + hostname resolver                             | ✅     | PR #348                                 |
+| 5   | Platform admin UI (domains + website + template picker)                | ✅     | PR #348                                 |
+| 6   | Tenant site editor UI (branding + contact + SEO)                       | ✅     | PR #348                                 |
+| 7   | `/internal/*` endpoints (Caddy ask hook, tenant-site host resolver)    | ✅     | PR #349                                 |
+| 8   | Caddy edge proxy (containerized, on_demand_tls) — **dev only**         | ✅     | PR #349                                 |
+| 9   | `apps/tenant-site` Next.js SSR renderer (4 templates)                  | ✅     | PR #349                                 |
+| 10  | Cache-tag revalidation (API → tenant-site webhook)                     | ✅     | PR #349                                 |
+| 11  | CI build + push for `rpandox/dev-tenant-site-ims`                      | ✅     | PR #349                                 |
+| 12  | Tenant-site Docker build hotfixes (`public/`, Next 16 config)          | ✅     | PR #350                                 |
+| 13  | `hostnameResolver` reads `X-Forwarded-Host` (Node fetch gotcha)        | ✅     | PR #351                                 |
+| 14  | **Dev Caddy cutover live** — `stage-ims.*` + `stage-api.*` via Caddy   | ✅     | Manual runbook on `ims_dev`, 2026-04-13 |
+| 15  | **Full dev E2E validation** — renderer serves a test tenant end-to-end | ✅     | Manual E2E, 2026-04-13                  |
+| 16  | Prod Caddy cutover                                                     | ⏳     | Separate PR after 72h dev soak          |
+| 17  | HSTS preload submission                                                | ⏳     | After prod cutover                      |
 
-The remaining items are deliberately out of scope for the current PR. The dev soak window is the gating signal — we don't touch prod Caddy until dev has been serving tenant traffic without incident for 72+ hours. See **§14 Runbooks** for the prod cutover checklist when the time comes.
+**Dev soak started:** 2026-04-13. **Earliest prod cutover:** 2026-04-16. We don't touch prod until dev has been serving tenant traffic without incident for 72+ hours. See **§14 Runbooks** for the prod cutover checklist, **§16 Dev cutover retrospective** for what actually happened (and what broke) during the dev run, and **§17 Lessons learned** for the takeaways.
 
 ---
 
 ## 10. Testing summary
 
-The change ships with **255 new tests** across both apps:
+Cumulative unit test count after all four PRs (#348, #349, #350, #351) are merged:
 
 | Layer                                      | File count                    | Test count |
 | ------------------------------------------ | ----------------------------- | ---------- |
@@ -491,20 +587,46 @@ The change ships with **255 new tests** across both apps:
 | API — platform-websites                    | 3                             | 27         |
 | API — sites                                | 3                             | 40         |
 | API — public-site                          | 3                             | 30         |
-| API — hostnameResolver middleware          | 1                             | 9          |
+| API — internal (Caddy ask hook, renderer)  | 3                             | 29         |
+| API — hostnameResolver middleware          | 1                             | 13         |
+| API — requireInternalToken middleware      | 1                             | 9          |
 | Web — sites service                        | 1                             | 13         |
 | Web — tenant-site service                  | 1                             | 8          |
 | Web — tenant-site validation/serialization | 1                             | 17         |
-| **Total (new)**                            | **16**                        | **193**    |
+| **Total (new)**                            | **20**                        | **235**    |
 
-Plus **0 regressions**: before this change the api suite was at ~1205 / the web suite was at ~113. After, both are green at **1430/1430** and **163/163** respectively.
+Plus **0 regressions**: API suite is green at **1468/1468** (up from ~1205 baseline) and web suite is green at **163/163** (up from ~113). Tenant-site app ships with `tsc --noEmit` + Next production build verification but no unit tests yet — its logic lives in middleware and server components, which are better exercised by the end-to-end matrix in §14.8.
 
-To run just the new tests:
+### 10.1 End-to-end validation matrix (dev, 2026-04-13)
+
+After PRs #348–#351 merged and `setup-caddy.sh` cut dev over, all eight E2E checks passed on the first run after the runtime patch:
+
+| #   | Path                                    | Host                | Expected                 | Got     |
+| --- | --------------------------------------- | ------------------- | ------------------------ | ------- |
+| 1   | `GET /`                                 | `test.shaman.local` | 200, branded home render | **200** |
+| 2   | `GET /products`                         | `test.shaman.local` | 200, product grid        | **200** |
+| 3   | `GET /contact`                          | `test.shaman.local` | 200, contact block       | **200** |
+| 4   | `GET /products/:id`                     | `test.shaman.local` | 200, PDP                 | **200** |
+| 5   | `GET /`                                 | `phantom.example`   | 404, leak-free           | **404** |
+| 6   | `GET /healthz`                          | _(bypass)_          | 200                      | **200** |
+| 7   | `POST /api/revalidate` (no secret)      | —                   | 401                      | **401** |
+| 8   | `POST /api/revalidate` (correct secret) | —                   | 200                      | **200** |
+
+Response body spot-check on `/` contained all three expected markers: `Shaman Demo Store`, `Crafted with intention`, and `data-template="standard"` — confirming the full chain (Host → middleware → `/internal/resolve-host` → page.tsx → `/public/site` → API hostnameResolver via `X-Forwarded-Host` → `runWithTenant` → Prisma scoping → StandardLayout render) works end-to-end. See **§14.8** for the copy-paste recipe to reproduce.
+
+To run just the new unit tests:
 
 ```bash
 # API
 cd apps/api
-pnpm exec vitest run src/modules/platform-domains src/modules/platform-websites src/modules/sites src/modules/public-site src/middlewares/hostnameResolver
+pnpm exec vitest run \
+  src/modules/platform-domains \
+  src/modules/platform-websites \
+  src/modules/sites \
+  src/modules/public-site \
+  src/modules/internal \
+  src/middlewares/hostnameResolver \
+  src/middlewares/requireInternalToken
 
 # Web
 cd apps/web
@@ -696,7 +818,9 @@ openssl rand -hex 32
 **Cutover:**
 
 ```bash
-cd /home/ubuntu/projectX/deploy/dev
+# On the EC2 host, deploy/dev/ files are flattened into ~/deploy/
+ssh ims_dev
+cd ~/deploy
 ./setup-caddy.sh
 ```
 
@@ -783,14 +907,183 @@ Every option leaves `dev_api`, `dev_web`, `dev_db`, `dev_redis` untouched.
 
 ### 14.6 Observability cheat sheet
 
-| What                    | Where                                                   |
-| ----------------------- | ------------------------------------------------------- |
-| Caddy access logs       | `docker logs dev_caddy` (JSON)                          |
-| Caddy ACME activity     | `docker logs dev_caddy \| grep -i acme`                 |
-| Internal endpoint calls | `docker logs dev_api \| grep internal/`                 |
-| Revalidation hits       | `docker logs dev_tenant_site \| grep revalidate`        |
-| Tenant-site SSR errors  | `docker logs dev_tenant_site \| grep '\[tenant-site\]'` |
-| Prometheus counters     | `/metrics` on `dev_api:4000` (existing endpoint)        |
+| What                    | Where                                                                                                                                                                                                             |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Caddy access logs       | `docker logs dev_caddy` + `/var/log/caddy/access.log` inside the container (the global `log` block in the Caddyfile redirects the default logger there — `docker logs` only shows the first ~12 lines of startup) |
+| Caddy ACME activity     | `docker exec dev_caddy sh -c 'tail -f /var/log/caddy/access.log' \| grep -i acme`                                                                                                                                 |
+| Internal endpoint calls | `docker logs dev_api \| grep internal/`                                                                                                                                                                           |
+| Revalidation hits       | `docker logs dev_tenant_site \| grep revalidate`                                                                                                                                                                  |
+| Tenant-site SSR errors  | `docker logs dev_tenant_site \| grep '\[tenant-site\]'`                                                                                                                                                           |
+| Prometheus counters     | `/metrics` on `dev_api:4000` (existing endpoint)                                                                                                                                                                  |
+
+### 14.7 Seeding templates directly (when the Prisma seed hasn't run)
+
+The `site_templates` table is populated by `apps/api/prisma/seeds/01b-site-templates.seed.ts`, which runs as part of the full `pnpm seed` orchestrator. If a dev database was provisioned before the seed was added (or the seed was skipped), the table will be empty and the Website tab in the IMS will show an empty template gallery.
+
+Fastest fix: `INSERT` the four templates directly. Idempotent (keyed on `slug`).
+
+```sql
+-- Connect: docker exec -it dev_db psql -U postgres -d ims
+INSERT INTO site_templates (id, slug, name, description, tier, preview_image_url, default_branding, default_sections, is_active, sort_order, created_at, updated_at) VALUES
+  (gen_random_uuid(), 'minimal',  'Minimal',  'Clean, fast, type-forward.', 'MINIMAL',  NULL,
+    '{"colors":{"primary":"#111111","accent":"#F5F5F5","background":"#FFFFFF","text":"#111111"},"typography":{"heading":"Inter","body":"Inter"},"theme":"light"}'::jsonb,
+    '{"hero":true,"products":true,"contact":true}'::jsonb,
+    true, 10, NOW(), NOW()),
+  (gen_random_uuid(), 'standard', 'Standard', 'Balanced default template.',  'STANDARD', NULL,
+    '{"colors":{"primary":"#1E40AF","accent":"#F59E0B","background":"#FFFFFF","text":"#0F172A"},"typography":{"heading":"Poppins","body":"Inter"},"theme":"light"}'::jsonb,
+    '{"hero":true,"products":true,"categories":true,"contact":true}'::jsonb,
+    true, 20, NOW(), NOW()),
+  (gen_random_uuid(), 'luxury',   'Luxury',   'Dark, editorial layout.',     'LUXURY',   NULL,
+    '{"colors":{"primary":"#B8860B","accent":"#0A0A0A","background":"#0A0A0A","text":"#F5F5F5"},"typography":{"heading":"Playfair Display","body":"Inter"},"theme":"dark"}'::jsonb,
+    '{"hero":true,"products":true}'::jsonb,
+    true, 30, NOW(), NOW()),
+  (gen_random_uuid(), 'boutique', 'Boutique', 'Warm, story-driven.',         'BOUTIQUE', NULL,
+    '{"colors":{"primary":"#8B4513","accent":"#FFF5E6","background":"#FFF5E6","text":"#3E2723"},"typography":{"heading":"Cormorant Garamond","body":"Lora"},"theme":"light"}'::jsonb,
+    '{"hero":true,"story":true,"products":true}'::jsonb,
+    true, 40, NOW(), NOW())
+ON CONFLICT (slug) DO NOTHING;
+```
+
+Long-term, run the full seed instead: `pnpm --filter api seed` on the host (or a new `deploy/dev/seed-sites.sh` helper if you want just the site templates).
+
+### 14.8 End-to-end test with a fake hostname (no real DNS needed)
+
+You don't need a real DNS name to validate the full dev_caddy → dev_tenant_site → dev_api → dev_db → renderer pipeline. Caddy's TLS path requires real DNS (ACME needs to reach the server via HTTP-01), but every other layer can be exercised by directly curl-ing `dev_tenant_site:3100` from inside the docker network with a `Host:` header.
+
+**Setup (one-time per tenant, via SQL — idempotent upserts):**
+
+```sql
+-- Target tenant: demo (has 36 seeded products)
+-- 1. SiteConfig: enable website feature, pick 'standard', publish
+INSERT INTO site_configs (id, tenant_id, website_enabled, template_id, branding, contact, features, seo, is_published, created_at, updated_at)
+SELECT
+  gen_random_uuid(),
+  t.id,
+  true,
+  (SELECT id FROM site_templates WHERE slug='standard'),
+  '{"name":"Shaman Demo Store","tagline":"Crafted with intention since 1998","colors":{"primary":"#1E40AF","accent":"#F59E0B","background":"#FFFFFF","text":"#0F172A"},"theme":"light"}'::jsonb,
+  '{"email":"hello@shaman-demo.test","phone":"+977 98XXX XXXXX","address":"Kathmandu, Nepal"}'::jsonb,
+  '{"hero":true,"products":true,"categories":true,"contact":true}'::jsonb,
+  '{"title":"Shaman Demo Store — Handcrafted Furniture","description":"Test tenant site for end-to-end validation."}'::jsonb,
+  true,
+  NOW(), NOW()
+FROM tenants t WHERE t.slug='demo'
+ON CONFLICT (tenant_id) DO UPDATE SET
+  website_enabled = EXCLUDED.website_enabled,
+  template_id = EXCLUDED.template_id,
+  branding = EXCLUDED.branding,
+  is_published = EXCLUDED.is_published,
+  updated_at = NOW();
+
+-- 2. Pre-verified TenantDomain with a private-looking hostname
+INSERT INTO tenant_domains (id, tenant_id, hostname, app_type, is_primary, verify_token, verified_at, tls_status, created_at, updated_at)
+SELECT
+  gen_random_uuid(),
+  t.id,
+  'test.shaman.local',
+  'WEBSITE',
+  true,
+  'e2e-test-' || md5(random()::text),
+  NOW(),           -- pre-verified; skips the real DNS TXT flow
+  'PENDING',
+  NOW(), NOW()
+FROM tenants t WHERE t.slug='demo'
+ON CONFLICT (hostname) DO UPDATE SET verified_at = NOW(), updated_at = NOW();
+```
+
+**Test matrix** (run from the EC2 host; the helper `curl_in` routes through a throwaway curl container on the same docker network so it can resolve `dev_tenant_site` by name):
+
+```bash
+NET=$(docker network ls --format '{{.Name}}' | grep -E 'dev$|ims-dev' | head -1)
+curl_in() { docker run --rm --network "$NET" curlimages/curl:latest -sS "$@"; }
+
+# 1. Home page — expect HTTP 200 with branded HTML
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' \
+  -H 'Host: test.shaman.local' http://dev_tenant_site:3100/
+
+# 2. Products list — expect 200
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' \
+  -H 'Host: test.shaman.local' http://dev_tenant_site:3100/products
+
+# 3. Product detail — pick first product ID from the list page
+PID=$(curl_in -H 'Host: test.shaman.local' http://dev_tenant_site:3100/products \
+  | grep -oE 'href="/products/[a-f0-9-]+"' | head -1 \
+  | sed 's|href="/products/||;s|"||')
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' \
+  -H 'Host: test.shaman.local' "http://dev_tenant_site:3100/products/$PID"
+
+# 4. Contact page — expect 200
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' \
+  -H 'Host: test.shaman.local' http://dev_tenant_site:3100/contact
+
+# 5. Unknown host → expect 404 (middleware 404s before any page handler)
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' \
+  -H 'Host: phantom.example' http://dev_tenant_site:3100/
+
+# 6. /healthz and /robots.txt — middleware bypass, always 200
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' http://dev_tenant_site:3100/healthz
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' http://dev_tenant_site:3100/robots.txt
+
+# 7. /api/revalidate without secret → 401
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' \
+  -X POST -H 'content-type: application/json' \
+  -d '{"tags":["tenant:foo:site"]}' \
+  http://dev_tenant_site:3100/api/revalidate
+
+# 8. /api/revalidate with correct secret → 200
+SECRET=$(grep '^REVALIDATE_SECRET=' ~/deploy/.env | cut -d= -f2)
+curl_in -o /dev/null -w 'HTTP %{http_code}\n' \
+  -X POST -H 'content-type: application/json' \
+  -H "x-revalidate-secret: ${SECRET}" \
+  -d '{"tags":["tenant:foo:site"]}' \
+  http://dev_tenant_site:3100/api/revalidate
+```
+
+**Body check** — pull a snippet of the rendered home page and grep for markers that only show up if the full pipeline resolved the tenant, fetched SiteConfig, and picked the right template:
+
+```bash
+curl_in -H 'Host: test.shaman.local' http://dev_tenant_site:3100/ \
+  | grep -oE '(Shaman Demo Store|Crafted with intention|data-template="[a-z]+")' \
+  | sort -u
+# Expected:
+#   Crafted with intention
+#   Shaman Demo Store
+#   data-template="standard"
+```
+
+If all 8 status codes match and the body markers are present, the full renderer pipeline is validated **except** for Caddy's TLS/ACME path, which only reachs Let's Encrypt when a real DNS name is pointed at the host.
+
+### 14.9 Hotfixing a compiled artifact in a running container (runtime patch)
+
+When you need to validate a fix on the server **right now** — before waiting for CI to build + Watchtower to pull — you can patch the compiled `dist/` output inside the running container. The change is deliberately non-persistent; Watchtower's next image restart wipes it, at which point the proper source fix (merged via PR) takes over automatically.
+
+```bash
+# Example: the hostnameResolver.ts fix in PR #351, validated before Watchtower pulled
+ssh ims_dev
+docker exec -u 0 dev_api node -e '
+  const fs = require("fs");
+  const p = "./apps/api/dist/middlewares/hostnameResolver.js";
+  const src = fs.readFileSync(p, "utf8");
+  const old  = `const hostname = (req.hostname || "").toLowerCase();`;
+  const fresh = `const __xfh = req.headers ? req.headers["x-forwarded-host"] : undefined;` +
+                ` const __first = Array.isArray(__xfh) ? __xfh[0] : __xfh;` +
+                ` const __fromHeader = typeof __first === "string" && __first.length > 0 ? (__first.split(",")[0] || "").trim().split(":")[0] : "";` +
+                ` const hostname = (__fromHeader || req.hostname || "").toLowerCase();`;
+  if (!src.includes(old)) { console.error("marker not found — source drift?"); process.exit(1); }
+  fs.writeFileSync(p, src.replace(old, fresh));
+  console.log("patched");
+'
+
+# Restart the container so node reloads the module
+docker restart dev_api
+```
+
+**Rules:**
+
+- Always `-u 0` (root) because the compiled `dist/` is owned by the non-root runtime user in the multi-stage build.
+- Always match a **unique source marker** so the patch fails loud if the underlying code has drifted — don't blindly `sed`.
+- Always ship a real PR with the same fix afterward. The runtime patch is a validator, not a fix. If you forget to push the PR, Watchtower will silently replace it on the next image build.
+- Never do this on prod. If you're tempted to runtime-patch prod, the thing you actually want is a proper hotfix PR + release + Watchtower pull.
 
 ---
 
@@ -803,3 +1096,102 @@ Every option leaves `dev_api`, `dev_web`, `dev_db`, `dev_redis` untouched.
 - **docker-compose profile** — A way to mark services as "only started when a named profile is active." We use `profiles: ["websites"]` so `docker compose up` without `--profile websites` leaves the new services alone.
 - **Fail-closed** — A security posture where missing/invalid configuration causes requests to be denied rather than silently allowed. The `requireInternalToken` middleware is fail-closed.
 - **Stream passthrough (SNI routing)** — An nginx mode where TLS is terminated at the upstream (Caddy) instead of at nginx, with nginx just forwarding the TCP stream based on SNI. Not used in the current dev setup (we chose Caddy-at-:443 instead) but mentioned in §14.5 as a prod alternative.
+- **Forbidden header name** — A list defined by the WHATWG Fetch spec of HTTP request headers that browser `fetch()` and Node's `undici` are not allowed to set or override. Includes `Host`, `Content-Length`, `Connection`, and ~20 others. Attempting to set one via `headers: { host: '...' }` silently does nothing — the runtime uses the TCP-level hostname instead. Hit us in PR #351 (see §16.2).
+
+---
+
+## 16. Dev cutover retrospective (2026-04-13)
+
+The dev Caddy cutover went end-to-end green on the first serious attempt, but it took three unplanned hotfixes to get there. All three are documented below so the prod cutover doesn't step on the same mines.
+
+### 16.1 Hotfix #1 — tenant-site Docker build failed on first CI push (PR #350)
+
+**Symptom:** The first manual dispatch of `Build and Push (Staging)` with `stage=tenant-site` failed in the final stage:
+
+```
+COPY --from=builder --chown=nextjs:nodejs /repo/apps/tenant-site/public ./apps/tenant-site/public
+ERROR: failed to calculate checksum of ref ...: "/repo/apps/tenant-site/public": not found
+```
+
+**Root cause:** I created `apps/tenant-site/public/` in the scaffold but never added any files to it. Git doesn't track empty directories, so the directory simply didn't exist in the Docker build context, and `COPY public ./...` failed.
+
+**Additional cleanup in the same PR:**
+
+- **Next 16 dropped `experimental.trustHostHeader`.** I copied the option over from a Next 15 doc and Next 16 warned on startup:
+
+  ```
+  ⚠ Unrecognized key(s) in object: 'trustHostHeader' at "experimental"
+  ```
+
+  The behavior is now the default (incoming `Host` header reflects the customer-facing domain from Caddy automatically), so the option was pure noise. Removed.
+
+- **`next-env.d.ts` needed updating** — Next 16 auto-generates a `routes.d.ts` reference in it, which shows up as an uncommitted diff on every fresh build. Committed the regenerated file.
+
+**Fix:** PR #350 — `apps/tenant-site/public/.gitkeep`, drop the experimental flag, commit the regenerated `next-env.d.ts`. Local `pnpm --filter tenant-site build` then compiles cleanly.
+
+**Takeaway for prod:** None of the three issues are environment-specific, so once PR #350 is merged (it is) the same build Just Works on prod. But the class of bug — **empty directories not being in the build context** — is worth flagging for any future Dockerized Next.js app we add.
+
+### 16.2 Hotfix #2 — Node fetch silently drops the `Host` header (PR #351)
+
+**Symptom:** After the Caddy cutover succeeded and `/internal/*` endpoints smoke-tested clean, the actual tenant-site SSR render returned HTTP 404 for every request. Both known hosts (`test.shaman.local`) and unknown hosts (`phantom.example`) 404'd. The response body contained `NEXT_HTTP_ERROR_FALLBACK;404` — a Next.js synthetic 404 from a server component calling `notFound()`.
+
+**Debugging trail (captured here so future-you doesn't retrace it):**
+
+1. **Middleware appeared to work.** The RootLayout ran (the `<title>` reflected the tenant's SiteConfig), which meant `getTenantContext()` inside `app/layout.tsx` succeeded. So the middleware had resolved the host and attached the `x-tenant-id` / `x-host` headers correctly.
+2. **The 404 came from `page.tsx`.** That file calls `getSite()` a second time (the layout has its own call, and page re-fetches) and runs `if (!site) notFound()`. Something was making the second `getSite()` return `null`.
+3. **Direct `wget` from inside `dev_tenant_site` → `dev_api:4000/internal/resolve-host` worked.** Returned the correct tenantId. So the token, URL, and API were all fine.
+4. **Direct Node `fetch` from inside `dev_tenant_site` → `dev_api:4000/api/v1/public/site` with `headers: { host: "test.shaman.local" }` returned HTTP 404 with `{"message":"Unknown host dev_api"}`.** The API was seeing `req.hostname === "dev_api"` — the docker upstream name — instead of the customer-facing host we tried to pass.
+
+**Root cause:** The WHATWG Fetch specification lists `Host` as a **forbidden request header name**. Browser `fetch()` is required to drop it, and Node's `undici` fetch (the engine behind Node's built-in `fetch`) enforces the same rule. So `lib/api.ts`'s attempt to forward the customer's Host via:
+
+```ts
+await fetch(`${API}/public/site`, {
+  headers: { host: opts.host, "x-forwarded-host": opts.host },
+});
+```
+
+...silently dropped the `host` entry and only sent `x-forwarded-host`. The API's `hostnameResolver` middleware was reading `req.hostname` only (derived by Express from the TCP-level Host header, which was `dev_api`), so the header made no difference.
+
+**Fix:** PR #351 — `hostnameResolver.ts` now checks `X-Forwarded-Host` first, falls back to `req.hostname`. One file, ~15 lines, 4 new test cases. No tenant-site-side changes (it was already setting `X-Forwarded-Host`).
+
+**Runtime patch trick** (for future hotfixes): we couldn't wait for CI, so we patched `dist/middlewares/hostnameResolver.js` inside the running `dev_api` container with `docker exec -u 0 dev_api node -e '...'`, restarted the container, and validated end-to-end. Watchtower replaced the patch with the proper source fix once CI finished. See **§14.9** for the recipe.
+
+**Takeaway for prod:**
+
+- The fix is already merged. Prod will pick it up naturally when `rpandox/dev-api-ims:prod` gets rebuilt.
+- **Don't pass `host` as a `headers:` key in any Node `fetch()` call.** Use `X-Forwarded-Host` and make sure the receiver honors it. This applies to any future server-to-server call in the codebase, not just tenant-site.
+- **Lesson for unit tests:** our resolver tests mocked `req` as `{ hostname: "www.acme.com" }` without a `headers` field, so the X-Forwarded-Host code path was never exercised in unit tests — only E2E on dev surfaced it. We've added explicit header-presence test cases to cover this.
+
+### 16.3 Hotfix #3 — `site_templates` was empty on dev (manual SQL)
+
+**Symptom:** After the cutover, the `demo` tenant's Website tab in the IMS showed an empty template gallery, and any attempt to "Enable website" via the API returned 404 on `/platform/site-templates`.
+
+**Root cause:** The seed file `apps/api/prisma/seeds/01b-site-templates.seed.ts` was added in PR #348 but runs as part of the full orchestrated seed (`pnpm seed`), which is only executed manually on the deploy host. The dev DB was provisioned before that seed existed, and the orchestrated seed hadn't been re-run.
+
+**Fix:** Direct SQL insert of the four templates, idempotent on `ON CONFLICT (slug)`. See **§14.7** for the copy-paste SQL.
+
+**Takeaway for prod:**
+
+- Before running `setup-caddy.sh` on prod, **also run the template insert SQL** (or a fresh `pnpm seed`).
+- Longer term we should add a dedicated `deploy/prod/seed-sites.sh` helper that runs just the site templates seed without touching any other data. That avoids the "run a full seed on prod" footgun.
+
+### 16.4 What went right
+
+- **The `--profile websites` compose gate** meant none of these hotfixes affected the existing IMS / API / web stack. We could iterate on the Caddy + tenant-site pair without ever risking `dev_web`.
+- **Pre-flight smoke tests** (the curl matrix against `/internal/*` before stopping nginx) caught the auth flow but not the SSR bug — because the SSR bug only manifests when Node's `fetch` is the caller, not curl. Future runbooks should add a **tenant-site-initiated** smoke test to the pre-flight, not just direct-to-API.
+- **The TLS fallback** — Caddy's ACME picked up fresh Let's Encrypt certs for both platform hostnames on first startup (the certs from the previous nginx run went with nginx to `/etc/letsencrypt` which we didn't touch). First-request latency was sub-second after the handshake completed.
+
+---
+
+## 17. Lessons learned (for the next rollout like this)
+
+1. **Empty directories are invisible to Docker.** Every Dockerized Next.js app in this repo should have a tracked `apps/<name>/public/.gitkeep` (or equivalent) so the multi-stage `COPY public` step doesn't brick a first build. Consider adding a pre-commit check.
+2. **Node `fetch` drops `Host`, silently.** If you ever need to make a server-to-server call that the receiver will route by hostname, use `X-Forwarded-Host` and make sure the receiver's middleware reads it. Never rely on `headers: { host: '...' }` working in Node's `fetch`. Same for `Content-Length` (forbidden), `Connection` (forbidden), `Cookie` in some contexts, etc. — consult the Fetch spec's Forbidden Header List when in doubt.
+3. **Unit tests that mock request objects need real header shapes.** Our `hostnameResolver.test.ts` was mocking `{ hostname: "..." } as Request` — no `headers` field — which meant the X-Forwarded-Host branch was dead code in tests. Prefer mocking the full `{ hostname, headers }` shape, ideally via a shared `makeReq()` test helper.
+4. **Compose profiles are a good risk-management tool.** `profiles: ["websites"]` let us add `dev_caddy` + `dev_tenant_site` to the main `docker-compose.yml` without affecting the default stack. A single `--profile websites` opt-in turns it on; no opt-in needed leaves everything untouched. Much safer than a second compose file.
+5. **Runtime patching the compiled `dist/` output is faster than waiting for CI.** Use it to validate a fix before merging, never as a substitute for merging. Watchtower replaces it within 30 seconds of the next image build anyway.
+6. **Pre-flight smoke tests should exercise every caller, not just the one you know.** We had a curl-from-host test for `/internal/*`. That passed. The thing that failed was a Node-`fetch`-from-tenant-site call, which has different header-handling rules than curl. Future pre-flights should test the full caller matrix.
+7. **Let's Encrypt has a 50 certs per registered domain per week limit.** The `ask` hook is the only thing that keeps us from burning through that budget via `on_demand_tls` abuse. Test the ask hook rejection path (unknown host → 403) before opening `on_demand_tls` to real traffic.
+8. **Seed scripts that run only on full orchestrated `pnpm seed` calls are landmines.** They're correct locally, but deploys happen in an environment where `pnpm seed` is an explicit one-off. Any new seed needs a corresponding `deploy/<env>/seed-<thing>.sh` helper OR needs to be run as part of the migration pipeline. Otherwise the new table stays empty in every deployed environment until someone notices.
+9. **Docker Hub private repos aren't auto-created on push.** If your `DOCKERHUB_TOKEN` has namespace-wide write access and the existing repos are public, new repos are auto-created. If they're private, you must pre-create them in the Docker Hub UI. Check which flavor you're on before the first CI push.
+10. **Always confirm `req.headers` exists before reading a header.** My `resolveRequestHostname(req)` helper was initially `req.headers["x-forwarded-host"]`, which throws if `req.headers` is undefined. The existing unit tests all mocked `req` without a `headers` field. Switched to `req.headers?.["x-forwarded-host"]` and kept the tests passing without a rewrite.
