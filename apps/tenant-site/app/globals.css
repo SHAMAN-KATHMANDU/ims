@@ -1,15 +1,58 @@
+/*
+ * Global CSS variables for the tenant-site renderer.
+ *
+ * Every token emitted by lib/theme.ts has a safe default here so a tenant
+ * with a partially configured branding payload still renders cleanly.
+ * Templates that have not yet been rewritten to consume the new tokens
+ * still work because the Phase-A aliases (--primary, --accent, --bg,
+ * --text) are preserved alongside the new --color-* names.
+ */
+
 :root {
-  --primary: #111111;
-  --accent: #f5f5f5;
-  --bg: #ffffff;
-  --text: #111111;
-  --font-heading: system-ui, -apple-system, sans-serif;
-  --font-body: system-ui, -apple-system, sans-serif;
+  /* ---------- Colors (9 design tokens) ---------- */
+  --color-primary: #111111;
+  --color-secondary: #444444;
+  --color-accent: #f5f5f5;
+  --color-background: #ffffff;
+  --color-surface: #fafafa;
+  --color-text: #111111;
+  --color-muted: #6b7280;
+  --color-border: #e5e5e5;
+  --color-ring: #111111;
+
+  /* ---------- Phase-A back-compat aliases ----------
+     These short names are still read by MinimalLayout / StandardLayout /
+     LuxuryLayout / BoutiqueLayout until they are rewritten in Phase C.3. */
+  --primary: var(--color-primary);
+  --accent: var(--color-accent);
+  --bg: var(--color-background);
+  --text: var(--color-text);
+
+  /* ---------- Typography ---------- */
+  --font-heading: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-body: system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-display: var(--font-heading);
+  --type-scale: 1.25;
+  --type-base: 16px;
+
+  /* ---------- Spacing ---------- */
+  --space-unit: 4px;
+  --section-padding: 4rem;
+
+  /* ---------- Shape ---------- */
+  --radius: 6px;
 }
 
 [data-theme="dark"] {
-  --bg: #0a0a0a;
-  --text: #f5f5f5;
+  /* Dark-mode defaults — a tenant can still override any individual token
+     via branding.colors and the explicit value wins. */
+  --color-background: #0a0a0a;
+  --color-surface: #141414;
+  --color-text: #f5f5f5;
+  --color-muted: #9ca3af;
+  --color-border: #2a2a2a;
+  --bg: var(--color-background);
+  --text: var(--color-text);
 }
 
 * {
@@ -18,21 +61,30 @@
   padding: 0;
 }
 
+html {
+  font-size: var(--type-base);
+}
+
 html,
 body {
-  background: var(--bg);
-  color: var(--text);
+  background: var(--color-background);
+  color: var(--color-text);
   font-family: var(--font-body);
   line-height: 1.5;
   min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 h1,
 h2,
 h3,
-h4 {
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
   font-weight: 600;
+  color: var(--color-text);
 }
 
 a {
@@ -40,10 +92,19 @@ a {
   text-decoration: none;
 }
 
+a:hover {
+  text-decoration: underline;
+}
+
 img {
   max-width: 100%;
   height: auto;
   display: block;
+}
+
+hr {
+  border: 0;
+  border-top: 1px solid var(--color-border);
 }
 
 .container {
@@ -53,17 +114,66 @@ img {
 }
 
 .btn {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   padding: 0.75rem 1.5rem;
-  background: var(--primary);
-  color: var(--bg);
+  background: var(--color-primary);
+  color: var(--color-background);
   border: none;
-  border-radius: 4px;
+  border-radius: var(--radius);
   font-weight: 500;
   cursor: pointer;
-  transition: opacity 0.15s;
+  transition:
+    opacity 0.15s ease,
+    transform 0.15s ease;
 }
 
 .btn:hover {
   opacity: 0.9;
+  text-decoration: none;
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-outline {
+  background: transparent;
+  color: var(--color-primary);
+  border: 1px solid var(--color-primary);
+}
+
+.btn-outline:hover {
+  background: var(--color-primary);
+  color: var(--color-background);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--color-text);
+}
+
+.btn-ghost:hover {
+  background: var(--color-surface);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus ring — consumed by any tenant-site link/button that opts in via
+   the `:focus-visible` pseudo-class. Keeps the visual a11y consistent
+   across templates regardless of color palette. */
+:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
 }

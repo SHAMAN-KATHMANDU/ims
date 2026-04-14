@@ -5,6 +5,7 @@ import {
   brandingToCssVars,
   brandingDisplayName,
   brandingLogoUrl,
+  brandingTheme,
 } from "@/lib/theme";
 import "./globals.css";
 
@@ -34,11 +35,14 @@ export default async function RootLayout({
   const ctx = await getTenantContext();
   const site = await getSite(ctx.host, ctx.tenantId);
   const vars = brandingToCssVars(site?.branding ?? null);
-  const theme = (site?.branding as { theme?: string } | null)?.theme ?? "light";
+  const theme = brandingTheme(site?.branding ?? null);
 
+  // Inline the design tokens on <html> (not <body>) so the ":focus-visible"
+  // outline + anything using the tokens in the document root — including
+  // the scroll area before <body> fills out — still sees them.
   return (
-    <html lang="en" data-theme={theme}>
-      <body style={vars as React.CSSProperties}>{children}</body>
+    <html lang="en" data-theme={theme} style={vars as React.CSSProperties}>
+      <body>{children}</body>
     </html>
   );
 }
