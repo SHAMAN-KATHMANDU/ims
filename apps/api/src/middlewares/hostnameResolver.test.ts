@@ -177,4 +177,76 @@ describe("resolveTenantFromHostname", () => {
 
     expect(mockFindUnique).toHaveBeenCalledTimes(2);
   });
+
+  it("prefers X-Forwarded-Host over req.hostname", async () => {
+    mockFindUnique.mockResolvedValue(tenantDomain());
+    const mw = resolveTenantFromHostname();
+    const req = {
+      hostname: "dev_api",
+      headers: { "x-forwarded-host": "www.acme.com" },
+    } as unknown as Request;
+    const res = mockRes() as Response;
+    const next = vi.fn();
+
+    await mw(req, res, next);
+
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { hostname: "www.acme.com" },
+      include: { tenant: true },
+    });
+    expect(next).toHaveBeenCalled();
+  });
+
+  it("strips port suffix from X-Forwarded-Host", async () => {
+    mockFindUnique.mockResolvedValue(tenantDomain());
+    const mw = resolveTenantFromHostname();
+    const req = {
+      hostname: "dev_api",
+      headers: { "x-forwarded-host": "www.acme.com:8443" },
+    } as unknown as Request;
+    const res = mockRes() as Response;
+
+    await mw(req, res, vi.fn());
+
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { hostname: "www.acme.com" },
+      include: { tenant: true },
+    });
+  });
+
+  it("uses only the first entry from a comma-chained X-Forwarded-Host", async () => {
+    mockFindUnique.mockResolvedValue(tenantDomain());
+    const mw = resolveTenantFromHostname();
+    const req = {
+      hostname: "dev_api",
+      headers: {
+        "x-forwarded-host": "www.acme.com, proxy1.internal, edge.cdn",
+      },
+    } as unknown as Request;
+    const res = mockRes() as Response;
+
+    await mw(req, res, vi.fn());
+
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { hostname: "www.acme.com" },
+      include: { tenant: true },
+    });
+  });
+
+  it("falls back to req.hostname when X-Forwarded-Host is empty", async () => {
+    mockFindUnique.mockResolvedValue(tenantDomain());
+    const mw = resolveTenantFromHostname();
+    const req = {
+      hostname: "www.acme.com",
+      headers: { "x-forwarded-host": "" },
+    } as unknown as Request;
+    const res = mockRes() as Response;
+
+    await mw(req, res, vi.fn());
+
+    expect(mockFindUnique).toHaveBeenCalledWith({
+      where: { hostname: "www.acme.com" },
+      include: { tenant: true },
+    });
+  });
 });
