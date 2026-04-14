@@ -47,6 +47,7 @@ import type {
   BlogPost,
   CreateBlogPostData,
 } from "../services/tenant-blog.service";
+import { MediaPickerField } from "@/components/media/MediaPickerField";
 import { BlogMarkdownEditor } from "./BlogMarkdownEditor";
 import { BlogStatusBadge } from "./BlogStatusBadge";
 
@@ -357,16 +358,20 @@ export function BlogPostEditor({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="blog-hero">Hero image URL</Label>
-            <Input
-              id="blog-hero"
-              {...form.register("heroImageUrl")}
-              placeholder="https://cdn.example.com/hero.jpg"
+            <Label htmlFor="blog-hero">Hero image</Label>
+            <Controller
+              control={form.control}
+              name="heroImageUrl"
+              render={({ field }) => (
+                <MediaPickerField
+                  id="blog-hero"
+                  value={field.value ?? ""}
+                  onChange={(next) => field.onChange(next || undefined)}
+                  previewSize={96}
+                  helperText="Wide landscape photos work best (16:9 or 4:3)."
+                />
+              )}
             />
-            <p className="text-xs text-muted-foreground">
-              Paste any public image URL. In Phase B you&apos;ll be able to pick
-              from your media library.
-            </p>
             {form.formState.errors.heroImageUrl && (
               <p className="text-xs text-destructive">
                 {form.formState.errors.heroImageUrl.message}
