@@ -113,6 +113,13 @@ export interface PublicProductList {
   limit: number;
 }
 
+export interface PublicNavPage {
+  id: string;
+  slug: string;
+  title: string;
+  navOrder: number;
+}
+
 export interface PublicBlogCategory {
   id: string;
   slug: string;
@@ -217,6 +224,54 @@ export function getCategories(host: string, tenantId: string) {
       ? resp
       : ((resp as { categories: PublicCategory[] }).categories ?? []);
   });
+}
+
+// ============================================================================
+// Tenant custom pages (About, FAQ, ...)
+// ============================================================================
+
+export async function getNavPages(
+  host: string,
+  tenantId: string,
+): Promise<PublicNavPage[]> {
+  const resp = await publicFetch<{ pages: PublicNavPage[] }>(
+    "/public/pages?nav=1",
+    {
+      host,
+      tenantId,
+      // Header nav reads this list; any page mutation invalidates it via
+      // the tenant:<id>:pages + tenant:<id>:site tags in pages.revalidate.ts.
+      tags: [`tenant:${tenantId}:pages`, `tenant:${tenantId}:site`],
+    },
+  );
+  return resp?.pages ?? [];
+}
+
+export interface PublicTenantPage {
+  id: string;
+  slug: string;
+  title: string;
+  bodyMarkdown: string;
+  layoutVariant: "default" | "full-width" | "narrow" | string;
+  seoTitle: string | null;
+  seoDescription: string | null;
+  updatedAt: string;
+}
+
+export async function getTenantPageBySlug(
+  host: string,
+  tenantId: string,
+  slug: string,
+): Promise<PublicTenantPage | null> {
+  const resp = await publicFetch<{ page: PublicTenantPage }>(
+    `/public/pages/${encodeURIComponent(slug)}`,
+    {
+      host,
+      tenantId,
+      tags: [`tenant:${tenantId}:page:${slug}`, `tenant:${tenantId}:pages`],
+    },
+  );
+  return resp?.page ?? null;
 }
 
 // ============================================================================
