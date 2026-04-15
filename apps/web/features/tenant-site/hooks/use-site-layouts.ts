@@ -9,6 +9,7 @@ import {
   publishSiteLayout,
   deleteSiteLayout,
   getSiteLayoutPreviewUrl,
+  resetSiteLayoutFromTemplate,
 } from "../services/site-layouts.service";
 
 export const siteLayoutKeys = {
@@ -87,5 +88,22 @@ export function useSiteLayoutPreviewUrl(
     // Previews are short-lived (30min) — refetch occasionally.
     staleTime: 15 * 60 * 1000,
     enabled,
+  });
+}
+
+export function useResetSiteLayoutFromTemplate() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { scope: SiteLayoutScope; pageId?: string }) =>
+      resetSiteLayoutFromTemplate(input.scope, input.pageId),
+    onSuccess: (_row, variables) => {
+      qc.invalidateQueries({ queryKey: siteLayoutKeys.all });
+      qc.invalidateQueries({
+        queryKey: siteLayoutKeys.one(
+          variables.scope,
+          variables.pageId ?? undefined,
+        ),
+      });
+    },
   });
 }

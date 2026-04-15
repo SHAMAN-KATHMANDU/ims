@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Undo2, Redo2, Save, Upload, ArrowLeft } from "lucide-react";
+import { Undo2, Redo2, Save, Upload, ArrowLeft, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
 import type { BlockNode, SiteLayoutScope } from "@repo/shared";
@@ -33,7 +33,9 @@ import {
   useUpsertSiteLayoutDraft,
   usePublishSiteLayout,
   useSiteLayoutPreviewUrl,
+  useResetSiteLayoutFromTemplate,
 } from "../hooks/use-site-layouts";
+import { useSiteConfig } from "../hooks/use-tenant-site";
 import { useEditorStore, selectBlocks, selectDirty } from "./editor-store";
 import { BlockTreePanel } from "./BlockTreePanel";
 import { BlockInspector } from "./BlockInspector";
@@ -61,6 +63,9 @@ export function SiteEditorPage() {
   const previewUrlQuery = useSiteLayoutPreviewUrl(scope);
   const saveDraft = useUpsertSiteLayoutDraft();
   const publish = usePublishSiteLayout();
+  const resetFromTemplate = useResetSiteLayoutFromTemplate();
+  const configQuery = useSiteConfig();
+  const templateName = configQuery.data?.template?.name ?? null;
 
   const load = useEditorStore((s) => s.load);
   const undo = useEditorStore((s) => s.undo);
@@ -117,6 +122,40 @@ export function SiteEditorPage() {
     } catch (error) {
       toast({
         title: "Publish failed",
+        description:
+          error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResetFromTemplate = async () => {
+    if (
+      !confirm(
+        `Reset this ${scope} layout to the ${
+          templateName ?? "template"
+        } default? Any unsaved draft changes on this scope will be lost.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      const row = await resetFromTemplate.mutateAsync({ scope });
+      const source =
+        row?.draftBlocks && Array.isArray(row.draftBlocks)
+          ? (row.draftBlocks as BlockNode[])
+          : row?.blocks && Array.isArray(row.blocks)
+            ? (row.blocks as BlockNode[])
+            : [];
+      load(source);
+      setRefreshKey((k) => k + 1);
+      toast({
+        title: "Reset to template default",
+        description: `${scope} now matches the ${templateName ?? "template"} blueprint.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Reset failed",
         description:
           error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
@@ -204,6 +243,20 @@ export function SiteEditorPage() {
               aria-label="Redo"
             >
               <Redo2 className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleResetFromTemplate}
+              disabled={resetFromTemplate.isPending || !templateName}
+              title={
+                templateName
+                  ? `Reset this scope to the ${templateName} default`
+                  : "Pick a template first"
+              }
+            >
+              <RotateCcw className="mr-1 h-4 w-4" />
+              {resetFromTemplate.isPending ? "Resetting…" : "Reset"}
             </Button>
             <Button
               size="sm"

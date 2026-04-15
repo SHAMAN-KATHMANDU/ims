@@ -117,3 +117,19 @@ export async function getSiteLayoutPreviewUrl(
     handleApiError(error, "mint site layout preview URL");
   }
 }
+
+export async function resetSiteLayoutFromTemplate(
+  scope: SiteLayoutScope,
+  pageId?: string,
+): Promise<SiteLayoutRow> {
+  try {
+    const suffix = pageId ? `?pageId=${encodeURIComponent(pageId)}` : "";
+    const response = await api.post<{ layout: SiteLayoutRow }>(
+      `/site-layouts/${encodeURIComponent(scope)}/reset-from-template${suffix}`,
+      {},
+    );
+    return response.data.layout;
+  } catch (error) {
+    handleApiError(error, "reset site layout from template");
+  }
+}
