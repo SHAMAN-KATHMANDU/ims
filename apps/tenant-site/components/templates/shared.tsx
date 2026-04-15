@@ -150,6 +150,7 @@ export function SiteHeader({
         >
           <BrandMark site={site} host={host} />
           <nav
+            className="tpl-nav"
             style={{
               display: "flex",
               gap: "1.5rem",
@@ -175,7 +176,7 @@ export function SiteHeader({
     return (
       <header style={baseHeader}>
         <div
-          className="container"
+          className="container tpl-header-split"
           style={{
             display: "grid",
             gridTemplateColumns: "1fr auto 1fr",
@@ -183,7 +184,7 @@ export function SiteHeader({
             gap: "2rem",
           }}
         >
-          <nav style={{ display: "flex", gap: "1.5rem" }}>
+          <nav className="tpl-nav" style={{ display: "flex", gap: "1.5rem" }}>
             {left.map((l) => (
               <Link key={l.href} href={l.href} style={navLinkStyle}>
                 {l.label}
@@ -192,6 +193,7 @@ export function SiteHeader({
           </nav>
           <BrandMark site={site} host={host} />
           <nav
+            className="tpl-nav"
             style={{
               display: "flex",
               gap: "1.5rem",
@@ -218,15 +220,18 @@ export function SiteHeader({
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: "2rem",
+          gap: "1rem",
+          flexWrap: "wrap",
         }}
       >
         <BrandMark site={site} host={host} />
         <nav
+          className="tpl-nav"
           style={{
             display: "flex",
             gap: "1.75rem",
             alignItems: "center",
+            flexWrap: "wrap",
           }}
         >
           {links.map((l) => (
@@ -299,6 +304,7 @@ export function Hero({
 
   return (
     <section
+      className="tpl-hero"
       style={{
         padding,
         textAlign: "center",
@@ -855,9 +861,10 @@ export function CategoryTiles({
           {heading}
         </h2>
         <div
+          className="tpl-stack"
           style={{
             display: "grid",
-            gridTemplateColumns: `repeat(${columns}, 1fr)`,
+            gridTemplateColumns: `repeat(auto-fit, minmax(min(260px, 100%), 1fr))`,
             gap: "1.25rem",
           }}
         >
@@ -1055,6 +1062,7 @@ export function BentoShowcase({
           </div>
         )}
         <div
+          className="tpl-stack"
           style={{
             display: "grid",
             gridTemplateColumns: "2fr 1fr 1fr",
@@ -1298,7 +1306,7 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
   return (
     <section style={{ padding: "var(--section-padding) 0" }}>
       <div
-        className="container"
+        className="container tpl-stack"
         style={{
           display: "grid",
           gridTemplateColumns: "minmax(0, 1fr) minmax(0, 1fr)",

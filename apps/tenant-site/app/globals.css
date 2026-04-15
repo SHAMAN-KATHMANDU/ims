@@ -177,3 +177,106 @@ hr {
   outline: 2px solid var(--color-ring);
   outline-offset: 2px;
 }
+
+/* ============================================================================
+ * Mobile optimization utilities
+ *
+ * Every template primitive in shared.tsx uses inline styles (server-component
+ * friendly), but inline styles can't do media queries. These utility classes
+ * let a component opt into a media-query response without going client-side.
+ *
+ * Usage pattern:
+ *   <div className="tpl-row" style={{ display: "grid", ... }}>
+ * at mobile widths, `.tpl-row` collapses the grid to a single column regardless
+ * of the inline template.
+ * ==========================================================================*/
+
+/* Shrink section padding and base font size on small screens. A template
+   with `--section-padding: 6rem` (spacious preset) collapses to ~3rem on
+   phones, which turns an 8rem-tall luxury hero into something that fits on a
+   6" screen. */
+@media (max-width: 768px) {
+  :root {
+    --section-padding: 3rem;
+  }
+  html {
+    font-size: calc(var(--type-base, 16px) * 0.95);
+  }
+  .container {
+    padding: 0 1.25rem;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --section-padding: 2.25rem;
+  }
+  .container {
+    padding: 0 1rem;
+  }
+}
+
+/* `tpl-stack` — collapses any multi-column inline grid to a single column
+   on tablets and below. Works because the CSS selector has higher specificity
+   than the inline `gridTemplateColumns` on small-screen matches — we use
+   !important to win over the inline style cleanly. Inline styles on server
+   components are the only hook we have, so the override is intentional. */
+.tpl-stack {
+  /* no-op at wide widths; inline grid wins */
+}
+
+@media (max-width: 768px) {
+  .tpl-stack {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto !important;
+    gap: 1.5rem !important;
+  }
+  .tpl-stack > * {
+    grid-row: auto !important;
+    grid-column: auto !important;
+  }
+}
+
+/* `tpl-nav` — shrinks header nav spacing and wraps on mobile so links don't
+   spill off the edge. Used by SiteHeader. */
+@media (max-width: 768px) {
+  .tpl-nav {
+    gap: 1rem !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    font-size: 0.85rem !important;
+  }
+  .tpl-header-split {
+    grid-template-columns: 1fr !important;
+    gap: 0.75rem !important;
+    text-align: center;
+  }
+  .tpl-header-split > * {
+    justify-content: center !important;
+  }
+}
+
+/* `tpl-hero` — compresses hero padding on small screens. Templates that
+   want the default padding still get it at wide widths. */
+@media (max-width: 768px) {
+  .tpl-hero {
+    padding: 3rem 0 2.5rem !important;
+  }
+}
+
+/* `tpl-compact-on-mobile` — reduce a block's padding on mobile only.
+   Used by story/stat bands that have heavy padding by default. */
+@media (max-width: 768px) {
+  .tpl-compact-on-mobile {
+    padding-top: 2rem !important;
+    padding-bottom: 2rem !important;
+  }
+}
+
+/* Hide non-essential nav links on narrow screens. Templates can opt into
+   hiding the "Journal" and custom-page links when the header gets tight. */
+@media (max-width: 520px) {
+  .tpl-hide-on-narrow {
+    display: none !important;
+  }
+}

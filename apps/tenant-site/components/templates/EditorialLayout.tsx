@@ -111,6 +111,7 @@ export async function EditorialLayout(props: TemplateProps) {
                 </div>
 
                 <div
+                  className="tpl-stack"
                   style={{
                     display: "grid",
                     gridTemplateColumns: "2fr 1fr",
