@@ -13,7 +13,9 @@
 
 import { Prisma } from "@prisma/client";
 import sitesRepo from "@/modules/sites/sites.repository";
+import { env } from "@/config/env";
 import { createError } from "@/middlewares/errorHandler";
+import { signPreviewToken } from "@/modules/site-preview/preview-token";
 import defaultRepo, { type TenantPageListItem } from "./pages.repository";
 import type {
   CreateTenantPageInput,
@@ -175,6 +177,35 @@ export class PagesService {
     if (!existing) throw createError("Page not found", 404);
     await this.repo.deletePage(tenantId, id);
     await this.revalidate(tenantId, { slug: existing.slug });
+  }
+
+  /**
+   * Mint a short-lived preview URL the admin can drop into an iframe. The
+   * URL points at the tenant-site /preview/page/:id route with an HMAC
+   * token bound to (tenantId, pageId). In prod the URL uses the tenant's
+   * verified primary WEBSITE domain; in dev it falls back to
+   * TENANT_SITE_PUBLIC_URL.
+   */
+  async mintPreviewUrl(tenantId: string, id: string): Promise<{ url: string }> {
+    await this.assertEnabled(tenantId);
+    const page = await this.repo.getPageById(tenantId, id);
+    if (!page) throw createError("Page not found", 404);
+
+    const hostname = await this.repo.findPrimaryWebsiteHostname(tenantId);
+    const baseUrl = hostname ? `https://${hostname}` : env.tenantSitePublicUrl;
+    if (!baseUrl) {
+      throw createError(
+        "No preview target available: this tenant has no verified primary website domain and TENANT_SITE_PUBLIC_URL is not configured.",
+        503,
+      );
+    }
+
+    const token = signPreviewToken({ tenantId, pageId: id });
+    return {
+      url: `${baseUrl.replace(/\/+$/, "")}/preview/page/${id}?token=${encodeURIComponent(
+        token,
+      )}`,
+    };
   }
 
   async reorder(tenantId: string, input: ReorderPagesInput): Promise<void> {

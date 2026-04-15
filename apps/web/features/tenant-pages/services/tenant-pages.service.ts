@@ -149,6 +149,16 @@ export async function deleteTenantPage(id: string): Promise<void> {
   }
 }
 
+export async function getTenantPagePreviewUrl(id: string): Promise<string> {
+  if (!id) throw new Error("Page id is required");
+  try {
+    const response = await api.get<{ url: string }>(`/pages/${id}/preview-url`);
+    return response.data.url;
+  } catch (error) {
+    handleApiError(error, "get page preview url");
+  }
+}
+
 export async function reorderTenantPages(
   input: ReorderPagesInput,
 ): Promise<void> {

@@ -140,6 +140,20 @@ class PagesController {
     }
   };
 
+  getPreviewUrl = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const id = getParam(req, "id");
+      const result = await service.mintPreviewUrl(tenantId, id);
+      return res.status(200).json({ message: "OK", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Mint page preview URL error")
+      );
+    }
+  };
+
   reorderPages = async (req: Request, res: Response) => {
     try {
       const tenantId = getAuthContext(req).tenantId;

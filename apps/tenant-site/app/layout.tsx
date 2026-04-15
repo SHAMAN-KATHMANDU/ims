@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { headers } from "next/headers";
 import { getTenantContext } from "@/lib/tenant";
 import { getSite } from "@/lib/api";
 import {
@@ -10,8 +11,20 @@ import {
 import { CartProvider } from "@/components/cart/CartProvider";
 import "./globals.css";
 
+/**
+ * Some routes (e.g. /preview/*) bypass tenant middleware and don't carry
+ * tenant context — they apply their own branding inside the page. For those
+ * the root layout renders a minimal pass-through shell so layout doesn't
+ * throw on missing headers.
+ */
+async function hasTenantContext(): Promise<boolean> {
+  const h = await headers();
+  return !!h.get("x-tenant-id");
+}
+
 export async function generateMetadata() {
   try {
+    if (!(await hasTenantContext())) return { title: "Preview" };
     const ctx = await getTenantContext();
     const site = await getSite(ctx.host, ctx.tenantId);
     const seo = (site?.seo ?? {}) as { title?: string; description?: string };
@@ -33,6 +46,16 @@ export default async function RootLayout({
 }: {
   children: ReactNode;
 }) {
+  if (!(await hasTenantContext())) {
+    // Pass-through shell for token-gated routes (e.g. /preview/*). The page
+    // handler is responsible for applying branding tokens itself.
+    return (
+      <html lang="en">
+        <body>{children}</body>
+      </html>
+    );
+  }
+
   const ctx = await getTenantContext();
   const site = await getSite(ctx.host, ctx.tenantId);
   const vars = brandingToCssVars(site?.branding ?? null);

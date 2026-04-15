@@ -25,7 +25,10 @@ const cache = new Map<string, CacheEntry>();
 
 // Some paths are intentionally public and shouldn't need tenant resolution.
 // Healthchecks + the revalidation webhook are server-internal; static assets
-// are host-agnostic.
+// are host-agnostic. /preview/* is host-agnostic too: the tenant comes from
+// the HMAC token in the query string, not the Host header, so the admin can
+// embed the preview iframe at any reachable tenant-site URL (in dev that's
+// usually localhost). The preview page handler validates the token itself.
 const BYPASS_PATHS = [
   "/healthz",
   "/api/revalidate",
@@ -34,6 +37,7 @@ const BYPASS_PATHS = [
   "/favicon.ico",
   "/robots.txt",
   "/sitemap.xml",
+  "/preview/",
 ];
 
 async function resolveHost(host: string): Promise<CacheEntry> {
