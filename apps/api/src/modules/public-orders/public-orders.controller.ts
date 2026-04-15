@@ -16,6 +16,7 @@ import { ZodError } from "zod";
 import { sendControllerError } from "@/utils/controllerError";
 import { AppError } from "@/middlewares/errorHandler";
 import service from "@/modules/website-orders/website-orders.service";
+import { notifyNewOrder } from "@/modules/website-orders/website-orders.notify";
 import { CreateGuestOrderSchema } from "./public-orders.schema";
 
 function getTenantId(req: Request): string {
@@ -83,6 +84,11 @@ class PublicOrdersController {
             ? req.headers["user-agent"].slice(0, 500)
             : null,
       });
+
+      // Fire-and-forget in-app notification fan-out to tenant admins.
+      // Errors inside notifyNewOrder are logged and swallowed, so this
+      // await is safe and keeps ordering predictable in tests.
+      await notifyNewOrder(tenantId, order);
 
       return res.status(201).json({
         message: "Order received. We'll contact you to confirm.",

@@ -6,18 +6,23 @@ vi.mock("@/modules/website-orders/website-orders.service", () => ({
     createGuestOrder: vi.fn(),
   },
 }));
+vi.mock("@/modules/website-orders/website-orders.notify", () => ({
+  notifyNewOrder: vi.fn().mockResolvedValue(undefined),
+}));
 vi.mock("@/utils/controllerError", () => ({
   sendControllerError: vi.fn(),
 }));
-vi.mock("@/config/prisma", () => ({ default: {} }));
+vi.mock("@/config/prisma", () => ({ default: {}, basePrisma: {} }));
 
 import controller from "./public-orders.controller";
 import * as serviceModule from "@/modules/website-orders/website-orders.service";
+import * as notifyModule from "@/modules/website-orders/website-orders.notify";
 
 const mockService = serviceModule.default as unknown as Record<
   string,
   ReturnType<typeof vi.fn>
 >;
+const mockNotify = notifyModule.notifyNewOrder as ReturnType<typeof vi.fn>;
 
 function mockRes(): Partial<Response> {
   return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
@@ -65,10 +70,9 @@ describe("PublicOrdersController", () => {
     expect(res.status).toHaveBeenCalledWith(400);
   });
 
-  it("returns 201 with orderCode on success", async () => {
-    mockService.createGuestOrder.mockResolvedValue({
-      orderCode: "WO-2026-0001",
-    });
+  it("returns 201 with orderCode on success and fires the notify fan-out", async () => {
+    const createdOrder = { id: "o1", orderCode: "WO-2026-0001" };
+    mockService.createGuestOrder.mockResolvedValue(createdOrder);
     const res = mockRes() as Response;
     await controller.createOrder(makeReq({ body: validPayload }), res);
     expect(mockService.createGuestOrder).toHaveBeenCalledWith(
@@ -79,10 +83,21 @@ describe("PublicOrdersController", () => {
         sourceUserAgent: "TestAgent",
       }),
     );
+    expect(mockNotify).toHaveBeenCalledWith("t1", createdOrder);
     expect(res.status).toHaveBeenCalledWith(201);
     expect(res.json).toHaveBeenCalledWith(
       expect.objectContaining({ orderCode: "WO-2026-0001" }),
     );
+  });
+
+  it("does not fire notify when the service throws", async () => {
+    mockService.createGuestOrder.mockRejectedValue(
+      Object.assign(new Error("cart empty"), { statusCode: 400 }),
+    );
+    const res = mockRes() as Response;
+    await controller.createOrder(makeReq({ body: validPayload }), res);
+    expect(mockNotify).not.toHaveBeenCalled();
+    expect(res.status).toHaveBeenCalledWith(400);
   });
 
   it("uses X-Forwarded-For when set", async () => {
