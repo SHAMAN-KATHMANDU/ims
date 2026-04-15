@@ -48,6 +48,7 @@ jobs:
     outputs:
       api: ${{ steps.changes_filter.outputs.api || steps.fork_outputs.outputs.api }}
       web: ${{ steps.changes_filter.outputs.web || steps.fork_outputs.outputs.web }}
+      tenant_site: ${{ steps.changes_filter.outputs.tenant_site || steps.fork_outputs.outputs.tenant_site }}
       shared: ${{ steps.changes_filter.outputs.shared || steps.fork_outputs.outputs.shared }}
       any: ${{ steps.changes_filter.outputs.any || steps.fork_outputs.outputs.any }}
     steps:
@@ -64,11 +65,14 @@ jobs:
               - "apps/api/**"
             web:
               - "apps/web/**"
+            tenant_site:
+              - "apps/tenant-site/**"
             shared:
               - "packages/**"
             any:
               - "apps/api/**"
               - "apps/web/**"
+              - "apps/tenant-site/**"
               - "packages/**"
       - name: Set all changes for fork PR (no API access)
         id: fork_outputs
@@ -76,6 +80,7 @@ jobs:
         run: |
           echo "api=true" >> "$GITHUB_OUTPUT"
           echo "web=true" >> "$GITHUB_OUTPUT"
+          echo "tenant_site=true" >> "$GITHUB_OUTPUT"
           echo "shared=true" >> "$GITHUB_OUTPUT"
           echo "any=true" >> "$GITHUB_OUTPUT"
 
@@ -185,6 +190,51 @@ jobs:
       - name: Run Web tests
         run: pnpm --filter web test:unit
 
+  lint-tenant-site:
+    name: Lint tenant-site
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Lint tenant-site (and shared if needed)
+        run: pnpm run lint --filter=tenant-site --filter=@repo/shared
+
+  test-tenant-site:
+    name: Test tenant-site
+    runs-on: ubuntu-latest
+    needs: [changes]
+    if: needs.changes.outputs.tenant_site == 'true' || needs.changes.outputs.shared == 'true'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: ".nvmrc"
+          cache: "pnpm"
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Build shared package
+        run: pnpm --filter @repo/shared build
+      - name: Run tenant-site unit tests
+        run: pnpm --filter tenant-site test:run
+      - name: Build tenant-site
+        # Catches runtime errors that tsc --noEmit misses (e.g. Next.js route
+        # type generation drift, missing "use client" directives, etc.). Cheap
+        # after a warm pnpm cache.
+        run: pnpm --filter tenant-site build
+        env:
+          # Build-time stub — the renderer only needs the URL shape for
+          # next.config, the actual upstream is set at runtime on the host.
+          API_INTERNAL_URL: "http://api.internal/api/v1"
+
   test-shared:
     name: Test shared package
     runs-on: ubuntu-latest
@@ -206,6 +256,8 @@ jobs:
     name: Type check
     runs-on: ubuntu-latest
     needs: [changes]
+    # `any` includes tenant-site since Phase C.4, so a tenant-site-only change
+    # still triggers the global typecheck.
     if: needs.changes.outputs.any == 'true'
     steps:
       - uses: actions/checkout@v4
