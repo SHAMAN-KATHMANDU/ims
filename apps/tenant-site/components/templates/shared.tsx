@@ -25,6 +25,8 @@ import {
   brandingLogoUrl,
 } from "@/lib/theme";
 import Link from "next/link";
+import { CartBadge } from "@/components/cart/CartBadge";
+import { AddToCartButton } from "@/components/cart/AddToCartButton";
 
 // ============================================================================
 // Brand + header
@@ -156,6 +158,7 @@ export function SiteHeader({
               gap: "1.5rem",
               flexWrap: "wrap",
               justifyContent: "center",
+              alignItems: "center",
             }}
           >
             {links.map((l) => (
@@ -163,6 +166,7 @@ export function SiteHeader({
                 {l.label}
               </Link>
             ))}
+            <CartBadge />
           </nav>
         </div>
       </header>
@@ -198,6 +202,7 @@ export function SiteHeader({
               display: "flex",
               gap: "1.5rem",
               justifyContent: "flex-end",
+              alignItems: "center",
             }}
           >
             {right.map((l) => (
@@ -205,6 +210,7 @@ export function SiteHeader({
                 {l.label}
               </Link>
             ))}
+            <CartBadge />
           </nav>
         </div>
       </header>
@@ -239,6 +245,7 @@ export function SiteHeader({
               {l.label}
             </Link>
           ))}
+          <CartBadge />
         </nav>
       </div>
     </header>
@@ -1389,14 +1396,11 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
               {product.description}
             </p>
           )}
-          <a
-            href={`mailto:orders@${(product.id ?? "").slice(0, 4)}?subject=${encodeURIComponent(
-              product.name,
-            )}`}
-            className="btn"
-          >
-            Enquire about this piece
-          </a>
+          <AddToCartButton
+            productId={product.id}
+            productName={product.name}
+            unitPrice={Number(product.finalSp)}
+          />
         </div>
       </div>
     </section>
