@@ -10,6 +10,7 @@ import {
   unpublishTenantPage,
   deleteTenantPage,
   reorderTenantPages,
+  getTenantPagePreviewUrl,
   type ListTenantPagesQuery,
   type CreateTenantPageData,
   type UpdateTenantPageData,
@@ -21,7 +22,23 @@ export const tenantPagesKeys = {
   list: (query?: ListTenantPagesQuery) =>
     [...tenantPagesKeys.all, "list", query ?? {}] as const,
   page: (id: string) => [...tenantPagesKeys.all, "page", id] as const,
+  previewUrl: (id: string) =>
+    [...tenantPagesKeys.all, "preview-url", id] as const,
 };
+
+export function useTenantPagePreviewUrl(id: string | null) {
+  return useQuery({
+    queryKey: tenantPagesKeys.previewUrl(id ?? ""),
+    queryFn: () => {
+      if (!id) throw new Error("Page id is required");
+      return getTenantPagePreviewUrl(id);
+    },
+    enabled: !!id,
+    retry: false,
+    // Token expires after 30 min on the server; refresh well before then.
+    staleTime: 20 * 60 * 1000,
+  });
+}
 
 export function useTenantPages(query: ListTenantPagesQuery = {}) {
   return useQuery({

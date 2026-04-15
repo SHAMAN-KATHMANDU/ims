@@ -45,185 +45,18 @@ const DEFAULT_PAGES = {
   contact: true,
 };
 
+// The 4 Phase-A placeholder templates (minimal/standard/luxury/boutique) were
+// removed in favour of the 10 bespoke Phase-C.4 layouts below. The seed runner
+// repoints any SiteConfig pointing at a deprecated slug to `editorial` and
+// then deletes the SiteTemplate rows. See `cleanupDeprecatedTemplates` below.
+const DEPRECATED_TEMPLATE_SLUGS = [
+  "minimal",
+  "standard",
+  "luxury",
+  "boutique",
+] as const;
+
 const TEMPLATES: TemplateSeed[] = [
-  {
-    slug: "minimal",
-    name: "Minimal",
-    description:
-      "Clean, fast, type-forward. Best for stores that let product photos do the talking.",
-    category: "minimal",
-    previewImageUrl: null,
-    defaultBranding: {
-      colors: {
-        primary: "#111111",
-        secondary: "#444444",
-        accent: "#F5F5F5",
-        background: "#FFFFFF",
-        surface: "#FAFAFA",
-        text: "#111111",
-        muted: "#6B7280",
-        border: "#E5E5E5",
-        ring: "#111111",
-      },
-      typography: {
-        heading: "Inter",
-        body: "Inter",
-        display: "Inter",
-        scaleRatio: 1.2,
-        baseFontSize: 16,
-      },
-      spacing: { base: 4, sectionPadding: "spacious" },
-      radius: "sharp",
-      theme: "light",
-    },
-    defaultSections: {
-      hero: true,
-      products: true,
-      categories: false,
-      showrooms: true,
-      articles: false,
-      contact: true,
-      newsletter: false,
-    },
-    defaultPages: DEFAULT_PAGES,
-    sortOrder: 10,
-  },
-  {
-    slug: "standard",
-    name: "Standard",
-    description:
-      "Balanced default template with everything a tenant needs out of the box.",
-    category: "standard",
-    previewImageUrl: null,
-    defaultBranding: {
-      colors: {
-        primary: "#1E40AF",
-        secondary: "#3B82F6",
-        accent: "#F59E0B",
-        background: "#FFFFFF",
-        surface: "#F8FAFC",
-        text: "#0F172A",
-        muted: "#64748B",
-        border: "#E2E8F0",
-        ring: "#1E40AF",
-      },
-      typography: {
-        heading: "Poppins",
-        body: "Inter",
-        display: "Poppins",
-        scaleRatio: 1.25,
-        baseFontSize: 16,
-      },
-      spacing: { base: 4, sectionPadding: "balanced" },
-      radius: "soft",
-      theme: "light",
-    },
-    defaultSections: {
-      hero: true,
-      products: true,
-      categories: true,
-      showrooms: true,
-      articles: true,
-      contact: true,
-      newsletter: true,
-    },
-    defaultPages: DEFAULT_PAGES,
-    sortOrder: 20,
-  },
-  {
-    slug: "luxury",
-    name: "Luxury",
-    description:
-      "Dark, editorial layout with serif headings. Built for high-end brands and boutiques.",
-    category: "luxury",
-    previewImageUrl: null,
-    defaultBranding: {
-      colors: {
-        primary: "#B8860B",
-        secondary: "#8B6914",
-        accent: "#0A0A0A",
-        background: "#0A0A0A",
-        surface: "#141414",
-        text: "#F5F5F5",
-        muted: "#9CA3AF",
-        border: "#2A2A2A",
-        ring: "#B8860B",
-      },
-      typography: {
-        heading: "Playfair Display",
-        body: "Inter",
-        display: "Playfair Display",
-        scaleRatio: 1.333,
-        baseFontSize: 17,
-      },
-      spacing: { base: 5, sectionPadding: "spacious" },
-      radius: "sharp",
-      theme: "dark",
-    },
-    defaultSections: {
-      hero: true,
-      products: true,
-      categories: true,
-      showrooms: true,
-      articles: true,
-      contact: true,
-      newsletter: true,
-      lookbook: true,
-    },
-    defaultPages: DEFAULT_PAGES,
-    sortOrder: 30,
-  },
-  {
-    slug: "boutique",
-    name: "Boutique",
-    description:
-      "Warm, story-driven template with large imagery and slow reveal sections.",
-    category: "boutique",
-    previewImageUrl: null,
-    defaultBranding: {
-      colors: {
-        primary: "#8B4513",
-        secondary: "#A0522D",
-        accent: "#FFF5E6",
-        background: "#FFF5E6",
-        surface: "#FBF2E1",
-        text: "#3E2723",
-        muted: "#6B5B4D",
-        border: "#E8D9C2",
-        ring: "#8B4513",
-      },
-      typography: {
-        heading: "Cormorant Garamond",
-        body: "Lora",
-        display: "Cormorant Garamond",
-        scaleRatio: 1.25,
-        baseFontSize: 17,
-      },
-      spacing: { base: 4, sectionPadding: "balanced" },
-      radius: "soft",
-      theme: "light",
-    },
-    defaultSections: {
-      hero: true,
-      products: true,
-      categories: false,
-      showrooms: true,
-      articles: true,
-      contact: true,
-      newsletter: true,
-      story: true,
-    },
-    defaultPages: DEFAULT_PAGES,
-    sortOrder: 40,
-  },
-  // ==========================================================================
-  // Phase C.4 — 10 new bespoke layouts.
-  //
-  // Each template emits the full design-token shape (9 color tokens + type +
-  // spacing + radius + theme) plus a defaultSections blob tuned to the
-  // layout's visual rhythm. sortOrder leaves room at 11–14, 21–22, 31–32,
-  // 41–43 inside the existing category buckets.
-  // ==========================================================================
   {
     slug: "editorial",
     name: "Editorial",
@@ -646,6 +479,36 @@ const TEMPLATES: TemplateSeed[] = [
   },
 ];
 
+/**
+ * Repoint any SiteConfig still using a deprecated template slug to `editorial`
+ * (the new default), then delete the deprecated SiteTemplate rows. Idempotent:
+ * if the deprecated rows are already gone this is a no-op.
+ */
+async function cleanupDeprecatedTemplates(
+  prisma: PrismaClient,
+  editorialId: string,
+): Promise<void> {
+  const deprecated = await prisma.siteTemplate.findMany({
+    where: { slug: { in: [...DEPRECATED_TEMPLATE_SLUGS] } },
+    select: { id: true, slug: true },
+  });
+  if (deprecated.length === 0) return;
+
+  const deprecatedIds = deprecated.map((t) => t.id);
+  const repointed = await prisma.siteConfig.updateMany({
+    where: { templateId: { in: deprecatedIds } },
+    data: { templateId: editorialId },
+  });
+  await prisma.siteTemplate.deleteMany({
+    where: { id: { in: deprecatedIds } },
+  });
+  console.log(
+    `  ✓ Removed ${deprecated.length} deprecated templates (${deprecated
+      .map((t) => t.slug)
+      .join(", ")}); repointed ${repointed.count} site config(s) to editorial`,
+  );
+}
+
 export async function seedSiteTemplates(prisma: PrismaClient): Promise<void> {
   for (const t of TEMPLATES) {
     await prisma.siteTemplate.upsert({
@@ -674,5 +537,14 @@ export async function seedSiteTemplates(prisma: PrismaClient): Promise<void> {
       },
     });
   }
+
+  const editorial = await prisma.siteTemplate.findUnique({
+    where: { slug: "editorial" },
+    select: { id: true },
+  });
+  if (editorial) {
+    await cleanupDeprecatedTemplates(prisma, editorial.id);
+  }
+
   console.log(`  ✓ Site templates (${TEMPLATES.length})`);
 }
