@@ -280,3 +280,45 @@ hr {
     display: none !important;
   }
 }
+
+/* Phase 2 — mobile-drawer hamburger visibility. The button is hidden by
+   default and appears only below the mobile breakpoint; the desktop nav
+   items stay in place above the breakpoint. Templates can tune the cutoff
+   by redefining `.tpl-mobile-only` in their own CSS. */
+@media (max-width: 768px) {
+  .tpl-mobile-only {
+    display: inline-flex !important;
+  }
+  .tpl-nav > a,
+  .tpl-nav > .tpl-dropdown {
+    display: none !important;
+  }
+}
+
+/* Phase 2 — CSS-only dropdown panels used by the NavConfig header. Panels
+   are hidden by default and shown on hover/focus within the parent
+   `.tpl-dropdown`. The server-rendered markup works without JS. */
+.tpl-dropdown .tpl-dropdown-panel {
+  display: none;
+}
+.tpl-dropdown:hover .tpl-dropdown-panel,
+.tpl-dropdown:focus-within .tpl-dropdown-panel {
+  display: flex;
+}
+
+/* Phase 2 — per-block visibility toggles emitted by BlockRenderer. */
+@media (max-width: 640px) {
+  .tb-hide-mobile {
+    display: none !important;
+  }
+}
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tb-hide-tablet {
+    display: none !important;
+  }
+}
+@media (min-width: 1025px) {
+  .tb-hide-desktop {
+    display: none !important;
+  }
+}

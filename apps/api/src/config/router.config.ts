@@ -59,6 +59,11 @@ import websiteOrdersRouter from "@/modules/website-orders/website-orders.router"
 import publicOrdersRouter from "@/modules/public-orders/public-orders.router";
 import publicCartPingsRouter from "@/modules/public-cart-pings/public-cart-pings.router";
 import publicPagePreviewRouter from "@/modules/public-page-preview/public-page-preview.router";
+import publicSitePreviewRouter from "@/modules/public-site-preview/public-site-preview.router";
+import siteLayoutsRouter from "@/modules/site-layouts/site-layouts.router";
+import publicSiteLayoutsRouter from "@/modules/site-layouts/public-site-layouts.router";
+import navMenusRouter from "@/modules/nav-menus/nav-menus.router";
+import publicNavMenusRouter from "@/modules/nav-menus/public-nav-menus.router";
 import internalRouter from "@/modules/internal/internal.router";
 import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
 import mediaRouter from "@/modules/media/media.router";
@@ -94,9 +99,12 @@ router.use("/auth", authRouter);
 // passing through hostname resolution.
 // ============================================
 router.use("/public/preview/page", publicPagePreviewRouter);
+router.use("/public/preview/site", publicSitePreviewRouter);
 router.use("/public", publicSiteRouter);
 router.use("/public/blog", publicBlogRouter);
 router.use("/public/pages", publicPagesRouter);
+router.use("/public/site-layouts", publicSiteLayoutsRouter);
+router.use("/public/nav-menus", publicNavMenusRouter);
 router.use("/public/orders", publicOrdersRouter);
 router.use("/public/cart-pings", publicCartPingsRouter);
 
@@ -143,6 +151,8 @@ router.use("/tenant-settings", tenantSettingsRouter);
 router.use("/sites", sitesRouter);
 router.use("/blog", blogRouter);
 router.use("/pages", pagesRouter);
+router.use("/site-layouts", siteLayoutsRouter);
+router.use("/nav-menus", navMenusRouter);
 router.use("/website-orders", websiteOrdersRouter);
 router.use("/workflows", workflowRouter);
 router.use("/automation", automationRouter);

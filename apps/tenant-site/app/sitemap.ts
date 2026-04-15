@@ -1,10 +1,15 @@
 import { MetadataRoute } from "next";
 import { getTenantContext } from "@/lib/tenant";
-import { getBlogPosts, getBlogCategories } from "@/lib/api";
+import {
+  getBlogPosts,
+  getBlogCategories,
+  getProducts,
+  getNavPages,
+} from "@/lib/api";
 
-// Tenant-specific sitemap. Static top-level pages, plus every published blog
-// post and blog category. Product-level entries can be added later once we
-// decide on a URL strategy.
+// Tenant-specific sitemap. Static top-level pages, plus every published
+// product, blog post, blog category, and tenant custom page. Each section
+// is best-effort — a failure in one doesn't drop the others.
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   try {
     const ctx = await getTenantContext();
@@ -16,6 +21,45 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       { url: `${base}/contact`, changeFrequency: "monthly", priority: 0.5 },
       { url: `${base}/blog`, changeFrequency: "weekly", priority: 0.8 },
     ];
+
+    // Products — paginate until exhausted. API caps limit at 100.
+    try {
+      let page = 1;
+      const limit = 100;
+      while (true) {
+        const list = await getProducts(ctx.host, ctx.tenantId, {
+          page,
+          limit,
+        });
+        if (!list) break;
+        for (const p of list.products) {
+          entries.push({
+            url: `${base}/products/${p.id}`,
+            changeFrequency: "weekly",
+            priority: 0.7,
+          });
+        }
+        if (page * limit >= list.total || list.products.length === 0) break;
+        page += 1;
+        if (page > 50) break; // safety cap
+      }
+    } catch {
+      // swallow
+    }
+
+    // Tenant custom pages (About, FAQ, Shipping, ...).
+    try {
+      const pages = await getNavPages(ctx.host, ctx.tenantId);
+      for (const p of pages) {
+        entries.push({
+          url: `${base}/${p.slug}`,
+          changeFrequency: "monthly",
+          priority: 0.5,
+        });
+      }
+    } catch {
+      // swallow
+    }
 
     // Blog posts + categories. Failures here don't block the core sitemap —
     // we treat /blog as best-effort for SEO.

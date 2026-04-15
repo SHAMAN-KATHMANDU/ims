@@ -56,6 +56,7 @@ export class PublicSiteService {
       limit,
       categoryId: query.categoryId,
       search: query.search,
+      sort: query.sort,
     });
     return { products, total, page, limit };
   }

@@ -27,6 +27,9 @@ import {
 import Link from "next/link";
 import { CartBadge } from "@/components/cart/CartBadge";
 import { AddToCartButton } from "@/components/cart/AddToCartButton";
+import { loadHeaderNavConfig, loadNavItems, expandAutoItems } from "@/lib/nav";
+import type { NavConfig, NavItem } from "@repo/shared";
+import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
 
 // ============================================================================
 // Brand + header
@@ -106,7 +109,340 @@ function buildNavLinks(
   return links;
 }
 
-export function SiteHeader({
+// ---------------------------------------------------------------------------
+// NavConfig-driven header (Phase 2)
+// ---------------------------------------------------------------------------
+
+function NavCtaButton({
+  label,
+  href,
+  style,
+}: {
+  label: string;
+  href: string;
+  style: "primary" | "ghost" | "outline";
+}) {
+  const base: React.CSSProperties = {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "0.5rem 1.1rem",
+    fontSize: "0.85rem",
+    fontWeight: 600,
+    borderRadius: "var(--radius)",
+    textDecoration: "none",
+    whiteSpace: "nowrap",
+    transition: "opacity 0.15s ease",
+  };
+  const themed: Record<typeof style, React.CSSProperties> = {
+    primary: {
+      background: "var(--color-primary)",
+      color: "var(--color-on-primary, #fff)",
+      border: "1px solid var(--color-primary)",
+    },
+    outline: {
+      background: "transparent",
+      color: "var(--color-text)",
+      border: "1px solid var(--color-border)",
+    },
+    ghost: {
+      background: "transparent",
+      color: "var(--color-text)",
+      border: "1px solid transparent",
+    },
+  };
+  return (
+    <Link href={href} style={{ ...base, ...themed[style] }}>
+      {label}
+    </Link>
+  );
+}
+
+function NavItemView({ item }: { item: NavItem }) {
+  const linkStyle: React.CSSProperties = {
+    fontSize: "0.92rem",
+    color: "var(--color-text)",
+    opacity: 0.8,
+    transition: "opacity 0.15s ease",
+  };
+  if (item.kind === "link") {
+    return (
+      <Link
+        href={item.href}
+        style={linkStyle}
+        {...(item.openInNewTab
+          ? { target: "_blank", rel: "noopener noreferrer" }
+          : {})}
+      >
+        {item.label}
+      </Link>
+    );
+  }
+  if (item.kind === "cta") {
+    return (
+      <NavCtaButton label={item.label} href={item.href} style={item.style} />
+    );
+  }
+  if (item.kind === "dropdown") {
+    // Phase 2: a simple CSS hover dropdown. No JS, works server-rendered.
+    return (
+      <div className="tpl-dropdown" style={{ position: "relative" }}>
+        <span style={{ ...linkStyle, cursor: "pointer" }}>{item.label} ▾</span>
+        <div
+          className="tpl-dropdown-panel"
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            minWidth: 200,
+            padding: "0.75rem 0",
+            background: "var(--color-surface, var(--color-background))",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius)",
+            display: "flex",
+            flexDirection: "column",
+            gap: "0.4rem",
+            zIndex: 30,
+          }}
+        >
+          {item.items.map((sub, i) => (
+            <div key={i} style={{ padding: "0.25rem 1rem" }}>
+              <NavItemView item={sub} />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  if (item.kind === "mega-column") {
+    return (
+      <div className="tpl-dropdown" style={{ position: "relative" }}>
+        <span style={{ ...linkStyle, cursor: "pointer" }}>{item.label} ▾</span>
+        <div
+          className="tpl-dropdown-panel"
+          style={{
+            position: "absolute",
+            top: "100%",
+            left: 0,
+            padding: "1.25rem",
+            background: "var(--color-surface, var(--color-background))",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius)",
+            display: "grid",
+            gridTemplateColumns: `repeat(${item.columns.length}, minmax(160px, 1fr))`,
+            gap: "2rem",
+            zIndex: 30,
+          }}
+        >
+          {item.columns.map((col, ci) => (
+            <div key={ci}>
+              <div
+                style={{
+                  fontSize: "0.72rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.12em",
+                  color: "var(--color-muted)",
+                  marginBottom: "0.75rem",
+                  fontWeight: 600,
+                }}
+              >
+                {col.heading}
+              </div>
+              <div
+                style={{
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "0.4rem",
+                }}
+              >
+                {col.items.map((sub, i) => (
+                  <NavItemView key={i} item={sub} />
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  // `pages-auto` / `category-auto` should have been expanded before reaching
+  // this renderer. If one slipped through, render nothing.
+  return null;
+}
+
+function SiteHeaderFromConfig({
+  site,
+  host,
+  config,
+  navPages,
+}: {
+  site: PublicSite;
+  host: string;
+  config: NavConfig;
+  navPages: PublicNavPage[];
+}) {
+  const items = expandAutoItems(config.items, { navPages });
+
+  const position: React.CSSProperties["position"] =
+    config.behavior === "sticky" || config.behavior === "scroll-hide"
+      ? "sticky"
+      : "static";
+
+  const baseHeader: React.CSSProperties = {
+    borderBottom: "1px solid var(--color-border)",
+    padding: "1.25rem 0",
+    background:
+      config.behavior === "transparent-on-hero"
+        ? "transparent"
+        : "var(--color-background)",
+    position,
+    top: 0,
+    zIndex: 20,
+    backdropFilter: "saturate(140%) blur(6px)",
+  };
+
+  const renderNavList = (list: NavItem[]) =>
+    list.map((item, i) => <NavItemView key={i} item={item} />);
+
+  const Trailing = () => (
+    <>
+      {config.cta && (
+        <NavCtaButton
+          label={config.cta.label}
+          href={config.cta.href}
+          style={config.cta.style}
+        />
+      )}
+      {config.showCart && <CartBadge />}
+      <MobileNavDrawer items={items} drawerStyle={config.mobile.drawerStyle} />
+    </>
+  );
+
+  if (config.layout === "centered") {
+    return (
+      <header style={baseHeader}>
+        <div
+          className="container"
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            gap: "0.75rem",
+          }}
+        >
+          <BrandMark site={site} host={host} />
+          <nav
+            className="tpl-nav"
+            style={{
+              display: "flex",
+              gap: "1.5rem",
+              flexWrap: "wrap",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+          >
+            {renderNavList(items)}
+            <Trailing />
+          </nav>
+        </div>
+      </header>
+    );
+  }
+
+  if (config.layout === "split") {
+    const half = Math.ceil(items.length / 2);
+    const left = items.slice(0, half);
+    const right = items.slice(half);
+    return (
+      <header style={baseHeader}>
+        <div
+          className="container tpl-header-split"
+          style={{
+            display: "grid",
+            gridTemplateColumns: "1fr auto 1fr",
+            alignItems: "center",
+            gap: "2rem",
+          }}
+        >
+          <nav className="tpl-nav" style={{ display: "flex", gap: "1.5rem" }}>
+            {renderNavList(left)}
+          </nav>
+          <BrandMark site={site} host={host} />
+          <nav
+            className="tpl-nav"
+            style={{
+              display: "flex",
+              gap: "1.5rem",
+              justifyContent: "flex-end",
+              alignItems: "center",
+            }}
+          >
+            {renderNavList(right)}
+            <Trailing />
+          </nav>
+        </div>
+      </header>
+    );
+  }
+
+  if (config.layout === "minimal") {
+    return (
+      <header style={baseHeader}>
+        <div
+          className="container"
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: "1rem",
+          }}
+        >
+          <BrandMark site={site} host={host} />
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "1.25rem",
+            }}
+          >
+            <Trailing />
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  // Default: standard — brand left, links right.
+  return (
+    <header style={baseHeader}>
+      <div
+        className="container"
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: "1rem",
+          flexWrap: "wrap",
+        }}
+      >
+        <BrandMark site={site} host={host} />
+        <nav
+          className="tpl-nav"
+          style={{
+            display: "flex",
+            gap: "1.75rem",
+            alignItems: "center",
+            flexWrap: "wrap",
+          }}
+        >
+          {renderNavList(items)}
+          <Trailing />
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+export async function SiteHeader({
   site,
   host,
   categories,
@@ -119,6 +455,22 @@ export function SiteHeader({
   navPages: PublicNavPage[];
   variant?: NavVariant;
 }) {
+  // Phase 2: if the tenant has saved a NavMenu for "header-primary", render
+  // from it and ignore the per-template `variant`. Falling through to the
+  // hardcoded `buildNavLinks()` path preserves every existing tenant who
+  // hasn't touched the editor yet.
+  const navConfig = await loadHeaderNavConfig();
+  if (navConfig) {
+    return (
+      <SiteHeaderFromConfig
+        site={site}
+        host={host}
+        config={navConfig}
+        navPages={navPages}
+      />
+    );
+  }
+
   const links = buildNavLinks(navPages, categories.length > 0);
 
   const baseHeader: React.CSSProperties = {
@@ -617,7 +969,80 @@ export function ContactBlock({ site }: { site: PublicSite }) {
   );
 }
 
-export function SiteFooter({
+function FooterColumn({
+  heading,
+  items,
+  fallback,
+}: {
+  heading: string;
+  items: NavItem[] | null;
+  fallback?: React.ReactNode;
+}) {
+  const hasItems = items && items.length > 0;
+  return (
+    <div>
+      <h4
+        style={{
+          fontSize: "0.72rem",
+          textTransform: "uppercase",
+          letterSpacing: "0.12em",
+          color: "var(--color-muted)",
+          marginBottom: "1rem",
+          fontWeight: 600,
+        }}
+      >
+        {heading}
+      </h4>
+      <ul
+        style={{
+          listStyle: "none",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.5rem",
+          fontSize: "0.9rem",
+        }}
+      >
+        {hasItems
+          ? items!.map((item, i) => {
+              if (item.kind === "link") {
+                return (
+                  <li key={i}>
+                    <Link
+                      href={item.href}
+                      {...(item.openInNewTab
+                        ? { target: "_blank", rel: "noopener noreferrer" }
+                        : {})}
+                    >
+                      {item.label}
+                    </Link>
+                  </li>
+                );
+              }
+              if (item.kind === "cta") {
+                return (
+                  <li key={i}>
+                    <Link href={item.href}>{item.label}</Link>
+                  </li>
+                );
+              }
+              // Dropdowns/mega-menus collapse to the top-level label in the
+              // footer — Phase 2 keeps the footer flat.
+              if (item.kind === "dropdown" || item.kind === "mega-column") {
+                return (
+                  <li key={i}>
+                    <span>{item.label}</span>
+                  </li>
+                );
+              }
+              return null;
+            })
+          : fallback}
+      </ul>
+    </div>
+  );
+}
+
+export async function SiteFooter({
   site,
   host,
   navPages = [],
@@ -632,6 +1057,21 @@ export function SiteFooter({
     phone?: string;
     address?: string;
   };
+
+  // Phase 2: tenant-editable footer columns. `footer-1` replaces the built-in
+  // "Shop" column; `footer-2` replaces the "About" column (which today auto-
+  // derives from TenantPage nav entries). Either column falls through to its
+  // legacy hardcoded content when the NavMenu row is absent.
+  const [footer1Items, footer2Items] = await Promise.all([
+    loadNavItems("footer-1"),
+    loadNavItems("footer-2"),
+  ]);
+  const footer1 = footer1Items
+    ? expandAutoItems(footer1Items, { navPages })
+    : null;
+  const footer2 = footer2Items
+    ? expandAutoItems(footer2Items, { navPages })
+    : null;
 
   return (
     <footer
@@ -676,71 +1116,37 @@ export function SiteFooter({
           )}
         </div>
 
-        <div>
-          <h4
-            style={{
-              fontSize: "0.72rem",
-              textTransform: "uppercase",
-              letterSpacing: "0.12em",
-              color: "var(--color-muted)",
-              marginBottom: "1rem",
-              fontWeight: 600,
-            }}
-          >
-            Shop
-          </h4>
-          <ul
-            style={{
-              listStyle: "none",
-              display: "flex",
-              flexDirection: "column",
-              gap: "0.5rem",
-              fontSize: "0.9rem",
-            }}
-          >
-            <li>
-              <Link href="/products">All products</Link>
-            </li>
-            <li>
-              <Link href="/blog">Journal</Link>
-            </li>
-            <li>
-              <Link href="/contact">Contact</Link>
-            </li>
-          </ul>
-        </div>
+        <FooterColumn
+          heading="Shop"
+          items={footer1}
+          fallback={
+            <>
+              <li>
+                <Link href="/products">All products</Link>
+              </li>
+              <li>
+                <Link href="/blog">Journal</Link>
+              </li>
+              <li>
+                <Link href="/contact">Contact</Link>
+              </li>
+            </>
+          }
+        />
 
-        {navPages.length > 0 && (
-          <div>
-            <h4
-              style={{
-                fontSize: "0.72rem",
-                textTransform: "uppercase",
-                letterSpacing: "0.12em",
-                color: "var(--color-muted)",
-                marginBottom: "1rem",
-                fontWeight: 600,
-              }}
-            >
-              About
-            </h4>
-            <ul
-              style={{
-                listStyle: "none",
-                display: "flex",
-                flexDirection: "column",
-                gap: "0.5rem",
-                fontSize: "0.9rem",
-              }}
-            >
-              {navPages.map((p) => (
-                <li key={p.id}>
-                  <Link href={`/${p.slug}`}>{p.title}</Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {footer2 ? (
+          <FooterColumn heading="More" items={footer2} />
+        ) : navPages.length > 0 ? (
+          <FooterColumn
+            heading="About"
+            items={null}
+            fallback={navPages.map((p) => (
+              <li key={p.id}>
+                <Link href={`/${p.slug}`}>{p.title}</Link>
+              </li>
+            ))}
+          />
+        ) : null}
 
         {(contact.email || contact.phone || contact.address) && (
           <div>
