@@ -9,6 +9,7 @@ import { verifyS3Connectivity } from "@/lib/s3/s3Storage";
 import { startTrashCleanupCron } from "@/jobs/trashCleanup";
 import { startUploadCleanupCron } from "@/jobs/uploadCleanup";
 import { startRemarketingScheduler } from "@/modules/remarketing/remarketing.scheduler";
+import { startAbandonedCartScheduler } from "@/modules/abandoned-carts/abandoned-carts.scheduler";
 import { setupSocketIO } from "@/config/socket.config";
 
 // Import workers so they start processing jobs
@@ -105,6 +106,7 @@ const startServer = async () => {
       startTrashCleanupCron();
       startUploadCleanupCron();
       startRemarketingScheduler();
+      startAbandonedCartScheduler();
       logger.log("BullMQ workers started");
       logger.log("Server startup complete");
     });

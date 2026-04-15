@@ -94,6 +94,7 @@ const AUTOMATION_EVENT_GROUP_LABELS: Record<
   WORK_ITEMS: "Work items",
   VENDORS: "Vendors",
   LOCATIONS: "Locations",
+  STOREFRONT: "Storefront",
 };
 
 const SCOPE_LABELS = {

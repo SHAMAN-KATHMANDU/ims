@@ -319,6 +319,40 @@ export async function postGuestOrder(
   }
 }
 
+export interface CartPingPayload {
+  sessionKey: string;
+  items: GuestOrderCartItem[];
+  customerName?: string;
+  customerPhone?: string;
+  customerEmail?: string;
+}
+
+/**
+ * Fire-and-forget cart activity ping. Response is 204 on success.
+ * Never throws — the caller (CartProvider) treats any failure as a
+ * dropped heartbeat and the next mutation tries again.
+ */
+export async function postCartPing(
+  host: string,
+  body: CartPingPayload,
+): Promise<boolean> {
+  try {
+    const res = await fetch(`${API}/public/cart-pings`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "content-type": "application/json",
+        host,
+        "x-forwarded-host": host,
+      },
+      body: JSON.stringify(body),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function getNavPages(
   host: string,
   tenantId: string,

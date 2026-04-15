@@ -25,6 +25,35 @@ import {
   type CartItem,
   type CartState,
 } from "@/lib/cart";
+import { postCartPing } from "@/lib/api";
+
+/** localStorage key for the browser's stable cart session id. */
+const SESSION_KEY_STORAGE = "tenant-site:cart-session";
+
+/** Delay between the last cart mutation and the ping we send. */
+const PING_DEBOUNCE_MS = 2000;
+
+function generateSessionKey(): string {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
+    return crypto.randomUUID();
+  }
+  return `s-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
+function loadOrCreateSessionKey(): string {
+  try {
+    const existing = window.localStorage.getItem(SESSION_KEY_STORAGE);
+    if (existing && existing.length >= 8) return existing;
+    const fresh = generateSessionKey();
+    window.localStorage.setItem(SESSION_KEY_STORAGE, fresh);
+    return fresh;
+  } catch {
+    return generateSessionKey();
+  }
+}
 
 /**
  * CartProvider — the only piece of client state in the tenant-site.
@@ -61,26 +90,65 @@ const CartContext = createContext<CartContextValue | null>(null);
 
 export function CartProvider({
   tenantId,
+  host,
   children,
 }: {
   tenantId: string;
+  host: string;
   children: ReactNode;
 }) {
   const [cart, setCart] = useState<CartState>(EMPTY_CART);
   const [hydrated, setHydrated] = useState(false);
   const tenantIdRef = useRef(tenantId);
+  const hostRef = useRef(host);
+  const sessionKeyRef = useRef<string | null>(null);
+  const pingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Load from localStorage on mount (client only).
   useEffect(() => {
     tenantIdRef.current = tenantId;
+    hostRef.current = host;
     try {
       const raw = window.localStorage.getItem(storageKey(tenantId));
       setCart(deserialize(raw));
     } catch {
       setCart(EMPTY_CART);
     }
+    sessionKeyRef.current = loadOrCreateSessionKey();
     setHydrated(true);
-  }, [tenantId]);
+  }, [tenantId, host]);
+
+  // Debounced cart-abandoned ping. After every change (post-hydration)
+  // we schedule a POST to /public/cart-pings; rapid mutations collapse
+  // into one ping. Empty cart is also pinged — the server interprets
+  // that as a delete. Never throws (postCartPing swallows errors).
+  useEffect(() => {
+    if (!hydrated) return;
+    if (pingTimerRef.current) clearTimeout(pingTimerRef.current);
+    const sessionKey = sessionKeyRef.current;
+    if (!sessionKey) return;
+
+    pingTimerRef.current = setTimeout(() => {
+      const items = cart.items.map((i) => ({
+        productId: i.productId,
+        productName: i.productName,
+        unitPrice: i.unitPrice,
+        quantity: i.quantity,
+        lineTotal: i.unitPrice * i.quantity,
+      }));
+      void postCartPing(hostRef.current, {
+        sessionKey,
+        items,
+      });
+    }, PING_DEBOUNCE_MS);
+
+    return () => {
+      if (pingTimerRef.current) {
+        clearTimeout(pingTimerRef.current);
+        pingTimerRef.current = null;
+      }
+    };
+  }, [cart, hydrated]);
 
   // Persist every change after hydration. Skipping the pre-hydration
   // writes keeps the first render from clobbering the stored cart with
