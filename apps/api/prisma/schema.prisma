@@ -2085,6 +2085,7 @@ enum NotificationType {
   DEAL_STAGE_CHANGE
   LEAD_ASSIGNMENT
   NEW_MESSAGE
+  WEBSITE_ORDER_NEW
 }
 
 model Notification {
