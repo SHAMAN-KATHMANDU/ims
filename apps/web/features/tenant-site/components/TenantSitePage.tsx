@@ -20,6 +20,7 @@ import {
 import { SiteBrandingForm } from "./SiteBrandingForm";
 import { SiteContactForm } from "./SiteContactForm";
 import { SiteSeoForm } from "./SiteSeoForm";
+import { SiteSectionsPanel } from "./SiteSectionsPanel";
 import { SiteTemplatePicker } from "./SiteTemplatePicker";
 
 function isForbiddenError(error: unknown): boolean {
@@ -193,6 +194,7 @@ export function TenantSitePage() {
       <SiteTemplatePicker activeTemplateId={config.templateId} />
 
       <SiteBrandingForm branding={config.branding} />
+      <SiteSectionsPanel features={config.features} />
       <SiteContactForm contact={config.contact} />
       <SiteSeoForm seo={config.seo} />
     </div>
