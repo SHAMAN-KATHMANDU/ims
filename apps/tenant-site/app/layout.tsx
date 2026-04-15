@@ -7,6 +7,7 @@ import {
   brandingLogoUrl,
   brandingTheme,
 } from "@/lib/theme";
+import { CartProvider } from "@/components/cart/CartProvider";
 import "./globals.css";
 
 export async function generateMetadata() {
@@ -40,9 +41,16 @@ export default async function RootLayout({
   // Inline the design tokens on <html> (not <body>) so the ":focus-visible"
   // outline + anything using the tokens in the document root — including
   // the scroll area before <body> fills out — still sees them.
+  //
+  // CartProvider is a client boundary — only the cart state + the
+  // hooks that need it (AddToCartButton, CartBadge, CartPage,
+  // CheckoutForm) re-render when the cart mutates. The rest of the
+  // tree stays server-rendered.
   return (
     <html lang="en" data-theme={theme} style={vars as React.CSSProperties}>
-      <body>{children}</body>
+      <body>
+        <CartProvider tenantId={ctx.tenantId}>{children}</CartProvider>
+      </body>
     </html>
   );
 }

@@ -242,6 +242,71 @@ export function getCategories(host: string, tenantId: string) {
 // Tenant custom pages (About, FAQ, ...)
 // ============================================================================
 
+// ============================================================================
+// Guest orders (E.2 cart → E.1 backend)
+//
+// Unlike every other call in this file, checkout is a POST. It doesn't
+// go through publicFetch() because:
+//   - the response is never cached (no next.tags / revalidate)
+//   - failures need to bubble up to the form with a real error message
+//     instead of the publicFetch "return null, log and move on" posture
+// ============================================================================
+
+export type GuestOrderCartItem = {
+  productId: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+};
+
+export interface GuestOrderPayload {
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string;
+  customerNote?: string;
+  items: GuestOrderCartItem[];
+}
+
+export interface GuestOrderResponse {
+  message: string;
+  orderCode?: string;
+}
+
+export async function postGuestOrder(
+  host: string,
+  _tenantId: string,
+  body: GuestOrderPayload,
+): Promise<GuestOrderResponse | null> {
+  try {
+    const res = await fetch(`${API}/public/orders`, {
+      method: "POST",
+      cache: "no-store",
+      headers: {
+        "content-type": "application/json",
+        host,
+        "x-forwarded-host": host,
+      },
+      body: JSON.stringify(body),
+    });
+    const payload = (await res.json().catch(() => null)) as
+      | (GuestOrderResponse & { message?: string })
+      | null;
+    if (!res.ok) {
+      return {
+        message: payload?.message ?? `Checkout failed (${res.status})`,
+      };
+    }
+    return payload;
+  } catch (error) {
+    // eslint-disable-next-line no-console
+    console.error("[tenant-site] postGuestOrder threw", error);
+    return {
+      message: "Could not reach the checkout service. Please try again.",
+    };
+  }
+}
+
 export async function getNavPages(
   host: string,
   tenantId: string,
