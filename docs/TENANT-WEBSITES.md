@@ -28,6 +28,9 @@
 17. **[Lessons learned (for the next rollout like this)](#17-lessons-learned-for-the-next-rollout-like-this)**
 18. **[Blog system](#18-blog-system)** — Phase A: tenant-scoped blog with markdown editor + public rendering
 19. **[Media picker](#19-media-picker-phase-b)** — Phase B: S3 library picker wired into logo / favicon / blog hero / markdown editor
+20. **[Template catalog](#20-template-catalog-phase-c)** — Phase C.4: all 14 templates × category × visual hook × palette × when to use each
+21. **[Custom pages runbook](#21-custom-pages-runbook-phase-c)** — Phase C.1 + C.5: TenantPage model, editor UI, catch-all route, reserved-slug guard
+22. **[Phase C recap](#22-phase-c-recap)** — what the six C.x PRs shipped and how they fit together
 
 > **If you're trying to do the prod cutover:** start at **§14.5** then walk the checklist in **§16** for every gotcha we hit on dev.
 > **If you're onboarding and trying to understand what this is:** read **§1–§5** in order.
@@ -1493,3 +1496,229 @@ is strictly additive.
 - Drag-and-drop upload (would be a nice touch on top of the hidden file input)
 - TipTap integration — still Phase-C work; for now the markdown editor gets
   the Image button and that's enough
+
+---
+
+## 20. Template catalog (Phase C)
+
+Phase C turned the 4-template prototype into a proper catalog of 14 bespoke
+layouts, each consuming the full design-token system (9 color tokens +
+typography scale + spacing + radius + theme). Every template respects the
+same section toggles, renders the same built-in nav, and accepts the same
+tenant-authored custom pages — the difference is how it _feels_.
+
+**How to switch a tenant** between templates:
+
+```bash
+curl -X POST https://ims.<env>.shamankathmandu.com/api/v1/sites/template \
+  -H "Authorization: Bearer <admin JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{"templateSlug":"artisan","resetBranding":false}'
+```
+
+`resetBranding: true` overwrites the tenant's branding JSON with the
+template's `defaultBranding`. Default (false) keeps the tenant's
+customizations — so switching from Luxury to Dark keeps the hand-picked
+primary color and only swaps the layout.
+
+### 20.1 The 14 templates
+
+#### Phase A (the originals)
+
+| Slug       | Category | Palette                            | When to use                                                                                                                                                           |
+| ---------- | -------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `minimal`  | minimal  | `#111` / `#F5F5F5` on white        | Stores where product photos do the talking. Centered nav, bare product grid (no card borders), thin hero padding.                                                     |
+| `standard` | standard | `#1E40AF` / `#F59E0B` on white     | Safe default. Balanced nav, "Shop by category" chip strip, 4-column bordered grid, blog teaser. Pick this when unsure.                                                |
+| `luxury`   | luxury   | `#B8860B` (goldenrod) on `#0A0A0A` | High-end brands, editorial boutiques. Dark-first, serif display, taller hero, optional Lookbook band rendering products as large editorial tiles. Uses the split nav. |
+| `boutique` | boutique | `#8B4513` / `#FFF5E6` (warm cream) | Heritage brands, artisan shops. Centered nav, a tokenized "Our story" block above products, softer card-style grid.                                                   |
+
+#### Phase C (the 10 new ones)
+
+| Slug         | Category   | Palette                                    | Visual hook                                                                                                                                                                                                                                          |
+| ------------ | ---------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `editorial`  | editorial  | `#1A1A1A` + `#C8A45C` on cream             | Magazine-style: centered nav, serif italic headings, asymmetric **cover story grid** (big feature + 4 supporting entries), departments tile grid                                                                                                     |
+| `organic`    | organic    | `#4A6B3A` (moss) + `#E8D4A8` on `#FAF6EF`  | Warm earth tones, TrustStrip, story about slow making, seasonal newsletter. Natural / wellness / handcrafted brands.                                                                                                                                 |
+| `dark`       | dark       | `#00E5A0` (neon) + `#FF2E88` on `#0A0A0A`  | Pure dark mode with a **BentoShowcase** (big feature + 4 supporting tiles), StatsBand, drop-alert newsletter. Gaming / audio / streetwear / tech.                                                                                                    |
+| `brutalist`  | brutalist  | `#000` + `#FF4500` on `#F5F5F0`            | **Monospace everything.** 2px borders, build-number metadata, terminal eyebrows, uppercase hero. Zines, indie streetwear, people with strong opinions.                                                                                               |
+| `zen`        | zen        | `#2E2E2E` + `#A6947C` on `#F8F6F1`         | Japanese-inspired. Ultra-wide whitespace, thin display type, narrow 880px content column, 2-column bare product grid. Ceramics / tea / stationery / craft.                                                                                           |
+| `coastal`    | coastal    | `#2F5B7C` + `#F5C35C` on near-white        | Breezy italic serif, **3:4 aspect CategoryTiles**, Postcards newsletter. Linen / beachwear / resortwear / travel.                                                                                                                                    |
+| `retro`      | retro      | `#E63946` + `#FFD166` on `#FFF8EC`         | 70s/80s revival. Chunky uppercase hero, **rounded pills**, StatsBand, card grid. Vinyl / skate / kitsch / streetwear.                                                                                                                                |
+| `apothecary` | apothecary | `#3E5B4A` (sage) + `#E8D9B8` on cream      | Pharmacy-counter nostalgia. Trust-led, italic serif "preparations" eyebrow, formulary story split, monthly-bulletin newsletter. Skincare / candles / perfume / herbal goods.                                                                         |
+| `artisan`    | artisan    | `#3A7A1A` (green) + `#C9A75A` on `#FDFCF7` | **Densest layout.** Uses every C.4 primitive once: TrustStrip → CategoryTiles (1:1) → workshop grid → 25-year founder story → FeaturedBlog → newsletter. Heritage crafts, folk art, spiritual stores. Heavy riff on the shamanktm-website reference. |
+| `gallery`    | gallery    | `#1A1A1A` + `#D9B382` on `#F7F5F0`         | Product-as-art. Centered nav, exhibition-style year eyebrow + italic tagline, **BentoShowcase**, "N works" small-caps counter. Limited-run design / prints / fine art.                                                                               |
+
+### 20.2 Which primitives each template uses
+
+| Primitive                              | Templates that render it                                                                       |
+| -------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| `Hero` (multi-variant)                 | every template except Brutalist, Zen, Retro, Gallery (which use their own custom hero section) |
+| `TrustStrip`                           | organic, apothecary, artisan                                                                   |
+| `CategoryTiles`                        | editorial, coastal, artisan                                                                    |
+| `StorySplit`                           | editorial, organic, zen, apothecary, artisan                                                   |
+| `BentoShowcase`                        | dark, gallery                                                                                  |
+| `StatsBand`                            | dark, retro                                                                                    |
+| `NewsletterBand`                       | organic, coastal, apothecary, retro, dark, artisan                                             |
+| `ProductGrid` (bordered / bare / card) | every template, with each picking the variant that suits its vibe                              |
+
+### 20.3 Picking a template (rule of thumb)
+
+- **Minimal / Standard** — the safe defaults. Start here, switch later.
+- **Luxury / Dark / Gallery** — high-contrast, editorial, image-forward. Pick when the product photos are exceptional.
+- **Editorial** — magazine-style reads. Pick when you have real content (blog posts, founder essays).
+- **Boutique / Organic / Apothecary / Artisan** — warm, story-first. Pick when the brand has a _why_, not just a what.
+- **Brutalist / Retro** — loud, opinionated. Pick when the brand is the product.
+- **Zen** — quiet, sparse. Pick when fewer, better-photographed items beat a big catalog.
+- **Coastal** — breezy, airy. Pick for travel / resort / linen / summer.
+
+### 20.4 Template vs branding — what wins?
+
+Every template exposes its design choices via **CSS custom properties** that
+the tenant can override through the Branding editor (C.5). A tenant on
+Luxury can swap the goldenrod primary for rose pink without changing
+templates, because the Luxury layout reads `var(--color-primary)` instead
+of hard-coding the color.
+
+The hierarchy is:
+
+```
+tenant SiteConfig.branding.colors.primary
+  ↓ falls back to
+SiteTemplate.defaultBranding.colors.primary
+  ↓ falls back to
+:root { --color-primary: #111111 } in apps/tenant-site/app/globals.css
+```
+
+The same three-tier fallback applies to every token: colors, typography,
+spacing, radius, theme. Blank fields in the editor fall through cleanly —
+there's no "reset" required.
+
+---
+
+## 21. Custom pages runbook (Phase C)
+
+Tenants can now add their own pages — About, FAQ, Shipping & Returns,
+Lookbook, Careers, Press Kit, anything — without touching code or
+requesting support.
+
+### 21.1 Data model
+
+- `TenantPage` table (added in C.1, migration `20260416120000_tenant_pages_drop_tier_enum`)
+- `(tenantId, slug)` unique, so two tenants can both have `/about`
+- Fields: `title`, `bodyMarkdown`, `layoutVariant` (default / full-width / narrow), `showInNav`, `navOrder`, `isPublished`, `seoTitle`, `seoDescription`
+- Back-relation on `Tenant.tenantPages`
+- Index on `(tenantId, isPublished, navOrder)` — the hot path the header nav queries
+
+### 21.2 Reserved slugs
+
+The editor and the backend both refuse these slugs because the tenant-site
+already claims them:
+
+```
+"", home, index, products, contact, blog, api, public, static, images,
+admin, _next, healthz, robots.txt, sitemap.xml, favicon.ico
+```
+
+Both lists live in `apps/api/src/modules/pages/pages.schema.ts` and
+`apps/web/features/tenant-pages/validation.ts` — keep them in sync.
+
+### 21.3 Creating a page
+
+Editor path: **Settings → Website → Pages tab → New page**
+
+The editor covers:
+
+- Title + auto-slug from title (editable after first keystroke)
+- Markdown body with the same toolbar + live preview the blog editor uses
+- Layout variant: **default (820px)** / **narrow (640px)** / **full-width (1200px)** — maps to the content-column width on the tenant-site
+- `showInNav` toggle + `navOrder` (lower = earlier in the header)
+- SEO accordion with a live preview
+
+Saving creates a DRAFT. Publish is a separate button — tenants can save
+and revisit without going live.
+
+Programmatic equivalent:
+
+```bash
+curl -X POST https://ims.<env>.shamankathmandu.com/api/v1/pages \
+  -H "Authorization: Bearer <admin JWT>" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "slug": "about",
+    "title": "About us",
+    "bodyMarkdown": "# Our story\n\nWe started in 1998…",
+    "layoutVariant": "default",
+    "showInNav": true,
+    "navOrder": 0
+  }'
+
+curl -X POST https://ims.<env>.shamankathmandu.com/api/v1/pages/<page-id>/publish \
+  -H "Authorization: Bearer <admin JWT>"
+```
+
+### 21.4 How the tenant-site renders it
+
+Route: `apps/tenant-site/app/[slug]/page.tsx` (catch-all).
+
+Flow:
+
+1. Visitor hits `https://<tenant-host>/about`
+2. Next middleware resolves the tenant from the Host header (as for every other route)
+3. `app/[slug]/page.tsx` fetches `getTenantPageBySlug(host, tenantId, "about")` → hits `GET /api/v1/public/pages/about` → returns the published page or 404
+4. The page renders inside the same `SiteHeader` + `SiteFooter` chrome every template uses, with the body flowed through the same `MarkdownBody` renderer (`react-markdown` + `rehype-sanitize`) as blog posts
+5. Column width picks from `layoutVariant`: default = 820px, narrow = 640px, full-width = 1200px
+
+Unknown slugs 404. Unpublished pages 404 (same as unknown). Reserved slugs
+can never be created, so they never collide.
+
+### 21.5 Nav integration
+
+Every template's `SiteHeader` calls `getNavPages()` on every request and
+merges the published, nav-visible pages into the link list between "Shop"
+and "Contact", ordered by `navOrder`. Hiding a page from the nav doesn't
+unpublish it — the URL still works, it just won't show up in the header.
+
+### 21.6 Cache tags
+
+`pages.revalidate.ts` fires:
+
+- `tenant:<id>:pages` — the nav list (all `getNavPages()` responses)
+- `tenant:<id>:page:<slug>` — one specific page
+- `tenant:<id>:site` — the homepage (because its header reads the nav)
+
+Any mutation on a `TenantPage` flushes all three tags. Nav changes are
+visible within the ISR window (2s in practice).
+
+---
+
+## 22. Phase C recap
+
+Six PRs over the tail end of April 2026. Each one green on its own;
+each one stacked on the previous without waiting for merge.
+
+| PR      | Title                                                                   | What it added                                                                                                                                                                                                                                                                                                |
+| ------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **C.1** | `#355` feat(pages): tenant custom pages, drop tier enum                 | `TenantPage` model, `/pages` + `/public/pages` modules, drop `SiteTemplateTier` enum in favor of free-text `category`, expand seed default-branding shape to the full 9-token + typography + spacing + radius surface                                                                                        |
+| **C.2** | `#356` feat(theme): expand `brandingToCssVars` to full design-token set | 9 color tokens + typography scale + spacing + radius emitted as CSS custom properties, `brandingTheme()` helper, 24 unit tests                                                                                                                                                                               |
+| **C.3** | `#357` feat(templates): rewrite 4 layouts on tokens + section toggles   | `readSections()` helper, `getNavPages()` API wrapper, `TemplateProps` widened with `navPages` + `sections`, all four original templates rewritten to consume the tokens + respect per-tenant section toggles + render dynamic nav                                                                            |
+| **C.4** | `#359` feat(templates): 10 new bespoke layouts + section primitives     | Six new section primitives (TrustStrip / CategoryTiles / StorySplit / BentoShowcase / StatsBand / NewsletterBand), ten new layouts (editorial / organic / dark / brutalist / zen / coastal / apothecary / retro / artisan / gallery), 10 seed entries with full design-token defaultBranding                 |
+| **C.5** | `#360` feat(editor): editor UI + tenant page rendering                  | Tenant-site `/[slug]` catch-all route for `TenantPage` rendering, new `tenant-pages` admin feature (service + hooks + validation + list + editor + routes), `SiteBrandingForm` rewritten as a 4-tab editor (Identity / Colors / Typography / Layout), new `SiteSectionsPanel` for per-tenant section toggles |
+| **C.6** | this PR                                                                 | Docs §20 template catalog, §21 pages runbook, §22 recap, demo tenant seed pages                                                                                                                                                                                                                              |
+
+**Side PR (during C.3 → C.4):** `#358` ci: add tenant-site lint, test, and build jobs — closed the gap where tenant-site-only changes triggered no CI.
+
+**Side PR (after C.5):** `#361` feat(tenant-site): mobile optimization for all template primitives — added `.tpl-stack`, `.tpl-nav`, `.tpl-hero`, `.tpl-header-split` utility classes + breakpoint tweaks so every template collapses cleanly on phones.
+
+**Lines shipped across the C rollout**: ~8000 lines of layouts, primitives,
+editor UI, schema, backend modules, and docs.
+
+**Tests shipped**: ~100 new unit tests (schema, service, validation,
+serialization, sections, theme token emission, branding round-trip).
+
+### 22.1 What Phase C didn't ship (explicit Phase D / E work)
+
+- **TipTap WYSIWYG editor** — still markdown-only. Good candidate for Phase D once the blog + pages editors need richer content.
+- **Template preview images** — every `previewImageUrl` in the seed file is still `null`. The catalog above is text-only; C.6 could have added real screenshots but they need a rendering pipeline we don't have yet (per-template headless capture).
+- **Template-specific section primitives** — every primitive today is shared. If a template needs a really distinctive block (e.g. Gallery's bento could be parameterized further), the right move is adding a variant to the shared primitive, not a new file.
+- **Scheduled publishing** — `publishedAt` in the future is a manual operation. A cron could automate it.
+- **Drag-and-drop nav reorder** — the `/pages/reorder` endpoint exists and the UI shows `navOrder` as a number field, but there's no DnD polish yet.
+- **Template per-page overrides** — a custom page can't currently pick its own template. If a tenant wants their About page to render in a different layout than their product catalog, they'd need a new `templateId` field on `TenantPage`. Not done.
