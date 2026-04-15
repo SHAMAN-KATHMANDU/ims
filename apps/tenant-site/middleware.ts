@@ -29,9 +29,18 @@ const cache = new Map<string, CacheEntry>();
 // the HMAC token in the query string, not the Host header, so the admin can
 // embed the preview iframe at any reachable tenant-site URL (in dev that's
 // usually localhost). The preview page handler validates the token itself.
+//
+// /api/public/* are server-side proxy route handlers (checkout, cart-pings)
+// that forward to the backend API. They derive the customer host themselves
+// from `headers().get("host")` and pass it through, so they don't need the
+// middleware to resolve the tenant — and worse, they MUST NOT be 404'd by
+// the resolver before they get a chance to run, which is exactly what was
+// happening in production: the proxy was correct, the middleware was eating
+// the request first. Bypassing /api/public/* fixes the checkout end-to-end.
 const BYPASS_PATHS = [
   "/healthz",
   "/api/revalidate",
+  "/api/public/",
   "/_next/static",
   "/_next/image",
   "/favicon.ico",

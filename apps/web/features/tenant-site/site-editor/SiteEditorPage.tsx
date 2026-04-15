@@ -110,11 +110,12 @@ export function SiteEditorPage() {
 
   const handlePublish = async () => {
     try {
-      if (dirty) {
-        // Save before publishing so the published tree matches what the
-        // editor is showing.
-        await saveDraft.mutateAsync({ scope, blocks });
-      }
+      // Always save the current tree before publishing — even if `dirty`
+      // is false. The reason: if the tenant has never saved this scope
+      // (no SiteLayout row exists yet), publish would 404 with
+      // "Layout not found". Saving first guarantees a row exists and is
+      // idempotent when blocks haven't changed.
+      await saveDraft.mutateAsync({ scope, blocks });
       await publish.mutateAsync({ scope });
       markClean();
       setRefreshKey((k) => k + 1);

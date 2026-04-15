@@ -53,7 +53,14 @@ export function BrandMark({ site, host }: { site: PublicSite; host: string }) {
         <img
           src={logo}
           alt={name}
-          style={{ height: 36, width: "auto", display: "block" }}
+          // Responsive height: clamps between 28px (small phones) and 40px
+          // (wide desktops). Fixed pixel heights blow up the header on
+          // narrow viewports because `width: auto` keeps the aspect ratio.
+          style={{
+            height: "clamp(28px, 4vw, 40px)",
+            width: "auto",
+            display: "block",
+          }}
         />
         <span
           style={{

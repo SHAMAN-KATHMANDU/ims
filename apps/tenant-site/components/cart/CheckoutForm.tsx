@@ -198,6 +198,11 @@ export function CheckoutForm({
 
   return (
     <div
+      // tpl-stack collapses the 2-col grid to 1-col on ≤ 768px via the
+      // shared globals.css media query — fixes the mobile checkout where
+      // the form was wrapping awkwardly inside a 2-col layout that ignored
+      // viewport width.
+      className="tpl-stack"
       style={{
         display: "grid",
         gridTemplateColumns: "2fr 1fr",
