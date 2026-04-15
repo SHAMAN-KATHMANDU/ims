@@ -12,6 +12,7 @@ import {
   selectUserRole,
   selectTenant,
   selectToken,
+  selectTenantWebsiteEnabled,
 } from "@/store/auth-store";
 import {
   useSidebarStore,
@@ -364,10 +365,16 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
   }, [pathname, basePath]);
 
   const planFeatures = usePlanFeatures();
+  const tenantWebsiteEnabled = useAuthStore(selectTenantWebsiteEnabled);
   const appEnv = getAppEnv();
   const enabledEnvFlagsSet = useMemo(
     () => parseFeatureFlagsEnv(featureFlagsEnv),
     [],
+  );
+
+  const tenantFeatures = useMemo(
+    () => ({ websiteEnabled: tenantWebsiteEnabled }),
+    [tenantWebsiteEnabled],
   );
 
   const filteredSections = useMemo(
@@ -378,8 +385,16 @@ export function Sidebar({ isOpen, onToggle, basePath }: SidebarProps) {
         planFeatures,
         appEnv,
         enabledEnvFlagsSet,
+        tenantFeatures,
       }),
-    [userRole, detectedBasePath, planFeatures, appEnv, enabledEnvFlagsSet],
+    [
+      userRole,
+      detectedBasePath,
+      planFeatures,
+      appEnv,
+      enabledEnvFlagsSet,
+      tenantFeatures,
+    ],
   );
 
   const toggleSection = useCallback(

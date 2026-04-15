@@ -93,6 +93,10 @@ model Tenant {
   // Custom tenant pages (About, FAQ, Lookbook, ...)
   tenantPages TenantPage[]
 
+  // Block-based layouts + nav menus (Phase 1 of template overhaul)
+  siteLayouts SiteLayout[]
+  navMenus    NavMenu[]
+
   // Guest orders placed through the tenant-site cart
   websiteOrders WebsiteOrder[]
 
@@ -279,11 +283,62 @@ model TenantPage {
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  siteLayouts SiteLayout[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, isPublished, navOrder])
   @@map("tenant_pages")
+}
+
+// ============================================
+// SITE LAYOUTS & NAV MENUS (block-based templates)
+// ============================================
+
+/// Per-tenant block tree for one scope of the site. Scopes:
+///   "header" | "footer" | "home" | "products-index" | "product-detail"
+///   | "blog-index" | "blog-post" | "page" (requires pageId)
+///
+/// `blocks` holds the published tree the renderer serves; `draftBlocks` is
+/// the editor's working copy, promoted on publish. One row per
+/// (tenant, scope, pageId) — per-page overrides live under scope="page".
+model SiteLayout {
+  id          String   @id @default(uuid())
+  tenantId    String   @map("tenant_id")
+  scope       String   @db.VarChar(40)
+  pageId      String?  @map("page_id")
+  /// Published block tree (BlockNode[]) — see packages/shared/src/site-schema.
+  blocks      Json
+  /// Draft block tree, promoted to `blocks` on publish.
+  draftBlocks Json?    @map("draft_blocks")
+  version     Int      @default(1)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  page   TenantPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, scope, pageId])
+  @@index([tenantId])
+  @@map("site_layouts")
+}
+
+/// Per-tenant navigation menu. Slot identifies where the menu appears:
+///   "header-primary" | "footer-1" | "footer-2" | "mobile-drawer"
+/// `items` is a NavItem[] (see packages/shared/src/site-schema) — a
+/// recursive structure supporting links, CTAs, dropdowns and mega-menus.
+model NavMenu {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  slot      String   @db.VarChar(40)
+  items     Json
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slot])
+  @@map("nav_menus")
 }
 
 enum PlanTier {

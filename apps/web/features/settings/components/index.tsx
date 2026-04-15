@@ -29,7 +29,11 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { useEnvFeatureFlag, EnvFeature } from "@/features/flags";
-import { useAuthStore, selectUser } from "@/store/auth-store";
+import {
+  useAuthStore,
+  selectUser,
+  selectTenantWebsiteEnabled,
+} from "@/store/auth-store";
 import {
   useTenantPaymentMethods,
   useUpdateTenantPaymentMethods,
@@ -62,7 +66,13 @@ export function SettingsPage() {
   const currentUser = useAuthStore(selectUser);
   const params = useParams();
   const workspace = String(params.workspace ?? "");
-  const tenantWebsitesEnabled = useEnvFeatureFlag(EnvFeature.TENANT_WEBSITES);
+  const tenantWebsitesEnvEnabled = useEnvFeatureFlag(
+    EnvFeature.TENANT_WEBSITES,
+  );
+  const tenantWebsiteEnabled = useAuthStore(selectTenantWebsiteEnabled);
+  // Show the card only when the platform env flag is on AND the platform
+  // admin has explicitly enabled the website feature for this tenant.
+  const showWebsiteCard = tenantWebsitesEnvEnabled && tenantWebsiteEnabled;
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -282,8 +292,8 @@ export function SettingsPage() {
         </p>
       </div>
 
-      {/* Website editor entry — feature-flagged via TENANT_WEBSITES */}
-      {tenantWebsitesEnabled && (
+      {/* Website editor entry — platform env flag + per-tenant toggle. */}
+      {showWebsiteCard && (
         <Link
           href={`/${workspace}/settings/site`}
           className="block rounded-lg border bg-card p-4 shadow-sm transition-colors hover:bg-accent/50"

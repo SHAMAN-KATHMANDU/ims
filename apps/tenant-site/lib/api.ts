@@ -200,15 +200,25 @@ export function getSite(host: string, tenantId: string) {
   });
 }
 
+export type ProductSort = "newest" | "price-asc" | "price-desc" | "name-asc";
+
 export function getProducts(
   host: string,
   tenantId: string,
-  query: { page?: number; limit?: number; categoryId?: string } = {},
+  query: {
+    page?: number;
+    limit?: number;
+    categoryId?: string;
+    sort?: ProductSort;
+    search?: string;
+  } = {},
 ) {
   const params = new URLSearchParams();
   if (query.page) params.set("page", String(query.page));
   if (query.limit) params.set("limit", String(query.limit));
   if (query.categoryId) params.set("categoryId", query.categoryId);
+  if (query.sort) params.set("sort", query.sort);
+  if (query.search) params.set("search", query.search);
   const suffix = params.toString() ? `?${params.toString()}` : "";
 
   return publicFetch<PublicProductList>(`/public/products${suffix}`, {
@@ -379,6 +389,85 @@ export interface PublicTenantPage {
   seoTitle: string | null;
   seoDescription: string | null;
   updatedAt: string;
+}
+
+// ============================================================================
+// Site layouts (block-based templating — Phase 1)
+// ============================================================================
+
+export type PublicSiteLayoutScope =
+  | "header"
+  | "footer"
+  | "home"
+  | "products-index"
+  | "product-detail"
+  | "blog-index"
+  | "blog-post"
+  | "page";
+
+export interface PublicSiteLayout {
+  scope: PublicSiteLayoutScope | string;
+  pageId: string | null;
+  // The server validates the block tree shape; typed loosely here because
+  // the renderer (BlockRenderer) does its own per-block lookup and the
+  // editor is the writer of record.
+  blocks: unknown;
+  version: number;
+  updatedAt: string;
+}
+
+/**
+ * Fetch the published block tree for a given scope. Returns null if no
+ * layout exists for this tenant/scope — callers then fall back to the
+ * legacy `pickTemplate` / markdown rendering path.
+ */
+export async function getSiteLayout(
+  host: string,
+  tenantId: string,
+  scope: PublicSiteLayoutScope,
+  pageId?: string,
+): Promise<PublicSiteLayout | null> {
+  const suffix = pageId ? `?pageId=${encodeURIComponent(pageId)}` : "";
+  const tags = [
+    `tenant:${tenantId}:site`,
+    `tenant:${tenantId}:layout:${scope}`,
+  ];
+  const resp = await publicFetch<{ layout: PublicSiteLayout }>(
+    `/public/site-layouts/${scope}${suffix}`,
+    { host, tenantId, tags },
+  );
+  return resp?.layout ?? null;
+}
+
+// ============================================================================
+// Nav menus (Phase 2 — customizable header/footer/drawer)
+// ============================================================================
+
+export type PublicNavSlot =
+  | "header-primary"
+  | "footer-1"
+  | "footer-2"
+  | "mobile-drawer";
+
+export interface PublicNavMenu {
+  slot: PublicNavSlot | string;
+  /** Either a full NavConfig (header) or { items } (footer/drawer) — the
+   *  renderer decodes based on the slot. */
+  items: unknown;
+  updatedAt: string;
+}
+
+export async function getNavMenu(
+  host: string,
+  tenantId: string,
+  slot: PublicNavSlot,
+): Promise<PublicNavMenu | null> {
+  const tags = [`tenant:${tenantId}:site`, `tenant:${tenantId}:nav:${slot}`];
+  const resp = await publicFetch<{ menu: PublicNavMenu }>(
+    `/public/nav-menus/${slot}`,
+    { host, tenantId, tags },
+  );
+  return resp?.menu ?? null;
 }
 
 export async function getTenantPageBySlug(

@@ -95,6 +95,7 @@ export class PublicSiteRepository {
       limit: number;
       categoryId?: string;
       search?: string;
+      sort?: "newest" | "price-asc" | "price-desc" | "name-asc";
     },
   ): Promise<[PublicSiteProduct[], number]> {
     const where: Prisma.ProductWhereInput = {
@@ -106,10 +107,19 @@ export class PublicSiteRepository {
         : {}),
     };
 
+    const orderBy: Prisma.ProductOrderByWithRelationInput[] =
+      opts.sort === "price-asc"
+        ? [{ finalSp: "asc" }]
+        : opts.sort === "price-desc"
+          ? [{ finalSp: "desc" }]
+          : opts.sort === "name-asc"
+            ? [{ name: "asc" }]
+            : [{ dateCreated: "desc" }];
+
     const [rows, total] = await Promise.all([
       prisma.product.findMany({
         where,
-        orderBy: [{ dateCreated: "desc" }],
+        orderBy,
         skip: (opts.page - 1) * opts.limit,
         take: opts.limit,
         select: {

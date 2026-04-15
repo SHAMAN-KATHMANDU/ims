@@ -12,6 +12,12 @@ export class AuthRepository {
   async findTenantBySlug(slug: string) {
     return basePrisma.tenant.findUnique({
       where: { slug },
+      include: {
+        // Pull the per-tenant website feature flag alongside the tenant row
+        // so the login response can tell the UI whether to show the website
+        // settings at all. Absent SiteConfig => website is off.
+        siteConfig: { select: { websiteEnabled: true } },
+      },
     });
   }
 
@@ -88,6 +94,7 @@ export class AuthRepository {
         subscriptionStatus: true,
         planExpiresAt: true,
         trialEndsAt: true,
+        siteConfig: { select: { websiteEnabled: true } },
       },
     });
   }

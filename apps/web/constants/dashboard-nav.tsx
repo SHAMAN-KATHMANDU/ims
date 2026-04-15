@@ -46,6 +46,13 @@ import {
 } from "@repo/shared";
 import type { AppEnv } from "@repo/shared";
 
+/**
+ * Per-tenant feature flags that gate sidebar visibility. Currently only
+ * `websiteEnabled` — flipped by platform admins per tenant. Extending this
+ * map is the preferred path for new tenant-level nav gates.
+ */
+export type TenantFeatureKey = "websiteEnabled";
+
 export interface NavItem {
   path: string;
   label: string;
@@ -55,6 +62,8 @@ export interface NavItem {
   /** When set, the item is shown if any of these env features is enabled (ignores `envFeature`). */
   envFeaturesAny?: EnvFeature[];
   feature?: Feature;
+  /** Per-tenant feature flag gate. Hides the item when the flag is false. */
+  tenantFeature?: TenantFeatureKey;
   children?: NavItem[];
   href?: string;
 }
@@ -203,6 +212,7 @@ export const dashboardNavSections: NavSection[] = [
         icon: ShoppingBag,
         roles: ["admin", "superAdmin"],
         envFeature: EnvFeature.TENANT_WEBSITES,
+        tenantFeature: "websiteEnabled",
       },
     ],
   },
@@ -420,6 +430,12 @@ export interface FilterDashboardNavOptions {
   planFeatures: Record<Feature, boolean>;
   appEnv: AppEnv;
   enabledEnvFlagsSet: ReturnType<typeof parseFeatureFlagsEnv>;
+  /**
+   * Per-tenant feature flags. Missing entries are treated as false so
+   * tenant-gated items are hidden by default — the platform admin must
+   * opt in explicitly.
+   */
+  tenantFeatures?: Partial<Record<TenantFeatureKey, boolean>>;
 }
 
 /** Same visibility rules as the sidebar — single source for nav + command palette. */
@@ -431,6 +447,7 @@ export function filterDashboardNavSections(
     planFeatures,
     appEnv,
     enabledEnvFlagsSet,
+    tenantFeatures,
   }: FilterDashboardNavOptions,
 ): Array<{ title: string; items: NavItemWithHref[] }> {
   if (!userRole) return [];
@@ -451,6 +468,10 @@ export function filterDashboardNavSections(
           );
         })
         .filter((item) => !item.feature || planFeatures[item.feature] === true)
+        .filter((item) => {
+          if (!item.tenantFeature) return true;
+          return tenantFeatures?.[item.tenantFeature] === true;
+        })
         .map((item) => ({
           ...item,
           href: `${basePath}${item.path ? `/${item.path}` : ""}`,

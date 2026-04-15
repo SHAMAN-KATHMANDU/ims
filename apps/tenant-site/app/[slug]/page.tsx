@@ -5,10 +5,13 @@ import {
   getCategories,
   getNavPages,
   getTenantPageBySlug,
+  getSiteLayout,
 } from "@/lib/api";
 import { getTenantContext } from "@/lib/tenant";
 import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import { MarkdownBody } from "@/components/blog/MarkdownBody";
+import { BlockRenderer } from "@/components/blocks/BlockRenderer";
+import type { BlockNode } from "@repo/shared";
 
 /**
  * Catch-all route for tenant-authored custom pages (About, FAQ,
@@ -60,7 +63,26 @@ export default async function TenantCustomPage({ params }: Props) {
 
   if (!site || !page) notFound();
 
+  // Phase 1 block-renderer fallback: if a SiteLayout row exists for this
+  // page, render its block tree instead of the flat markdown body. When no
+  // layout row exists (the default for every existing tenant) we keep the
+  // legacy markdown path unchanged.
+  const layout = await getSiteLayout(ctx.host, ctx.tenantId, "page", page.id);
+
   const maxWidth = columnWidth(page.layoutVariant);
+
+  // Build a minimal data context for any blocks in a tenant custom page.
+  // Custom pages rarely use commerce blocks, so we keep product/blog
+  // fetches off the hot path — blocks that need them read empty arrays.
+  const dataContext = {
+    site,
+    host: ctx.host,
+    tenantId: ctx.tenantId,
+    categories,
+    navPages,
+    products: [],
+    featuredBlogPosts: [],
+  };
 
   return (
     <div data-page="tenant-custom">
@@ -90,7 +112,16 @@ export default async function TenantCustomPage({ params }: Props) {
           >
             {page.title}
           </h1>
-          <MarkdownBody source={page.bodyMarkdown} />
+          {layout &&
+          Array.isArray(layout.blocks) &&
+          layout.blocks.length > 0 ? (
+            <BlockRenderer
+              nodes={layout.blocks as BlockNode[]}
+              dataContext={dataContext}
+            />
+          ) : (
+            <MarkdownBody source={page.bodyMarkdown} />
+          )}
         </article>
       </main>
       <SiteFooter site={site} host={ctx.host} navPages={navPages} />
