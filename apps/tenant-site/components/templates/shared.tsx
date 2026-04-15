@@ -762,6 +762,535 @@ export function SiteFooter({
 }
 
 // ============================================================================
+// Section primitives (Phase C.4)
+//
+// Composable building blocks used by the 10 bespoke template layouts. Each
+// one reads from the design tokens, respects `--section-padding`, and is
+// intentionally style-light so individual templates can wrap them in
+// their own `data-template="..."` scope and recolor via CSS.
+// ============================================================================
+
+export function TrustStrip({
+  items,
+  dark = false,
+}: {
+  items: { label: string; value: string }[];
+  dark?: boolean;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section
+      style={{
+        padding: "2.5rem 0",
+        borderTop: "1px solid var(--color-border)",
+        borderBottom: "1px solid var(--color-border)",
+        background: dark ? "var(--color-text)" : "var(--color-surface)",
+        color: dark ? "var(--color-background)" : "var(--color-text)",
+      }}
+    >
+      <div
+        className="container"
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(auto-fit, minmax(160px, 1fr))`,
+          gap: "2rem",
+          textAlign: "center",
+        }}
+      >
+        {items.map((i) => (
+          <div key={i.label}>
+            <div
+              style={{
+                fontSize: "1.75rem",
+                fontWeight: 600,
+                letterSpacing: "-0.01em",
+                fontFamily: "var(--font-display)",
+                lineHeight: 1.1,
+              }}
+            >
+              {i.value}
+            </div>
+            <div
+              style={{
+                fontSize: "0.72rem",
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+                marginTop: "0.35rem",
+                opacity: 0.65,
+              }}
+            >
+              {i.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function CategoryTiles({
+  categories,
+  columns = 3,
+  aspectRatio = "4/5",
+  heading = "Shop by category",
+}: {
+  categories: PublicCategory[];
+  columns?: number;
+  aspectRatio?: string;
+  heading?: string;
+}) {
+  if (categories.length === 0) return null;
+  const shown = categories.slice(0, columns * 2);
+  return (
+    <section style={{ padding: "var(--section-padding) 0" }}>
+      <div className="container">
+        <h2
+          style={{
+            fontSize: "clamp(1.75rem, 2.5vw, 2.25rem)",
+            marginBottom: "2.5rem",
+            textAlign: "center",
+            fontFamily: "var(--font-heading)",
+          }}
+        >
+          {heading}
+        </h2>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: `repeat(${columns}, 1fr)`,
+            gap: "1.25rem",
+          }}
+        >
+          {shown.map((c) => (
+            <Link
+              key={c.id}
+              href={`/products?categoryId=${c.id}`}
+              style={{
+                position: "relative",
+                display: "block",
+                aspectRatio,
+                background:
+                  "linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.55) 100%), var(--color-surface)",
+                color: "white",
+                borderRadius: "var(--radius)",
+                overflow: "hidden",
+                border: "1px solid var(--color-border)",
+              }}
+            >
+              <div
+                style={{
+                  position: "absolute",
+                  left: "1.25rem",
+                  right: "1.25rem",
+                  bottom: "1.25rem",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: "1.35rem",
+                    fontFamily: "var(--font-heading)",
+                    fontWeight: 600,
+                    marginBottom: "0.25rem",
+                  }}
+                >
+                  {c.name}
+                </div>
+                {c.description && (
+                  <div
+                    style={{
+                      fontSize: "0.8rem",
+                      opacity: 0.85,
+                      lineHeight: 1.4,
+                    }}
+                  >
+                    {c.description}
+                  </div>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function StorySplit({
+  eyebrow,
+  title,
+  body,
+  imageSide = "left",
+  imageCaption,
+  cta,
+}: {
+  eyebrow?: string;
+  title: string;
+  body: string;
+  imageSide?: "left" | "right";
+  imageCaption?: string;
+  cta?: { href: string; label: string };
+}) {
+  const imageBlock = (
+    <div
+      style={{
+        aspectRatio: "4/5",
+        background:
+          "linear-gradient(135deg, var(--color-surface), var(--color-accent))",
+        borderRadius: "var(--radius)",
+        display: "flex",
+        alignItems: "flex-end",
+        padding: "1.5rem",
+        fontSize: "0.8rem",
+        color: "var(--color-muted)",
+        border: "1px solid var(--color-border)",
+      }}
+    >
+      {imageCaption ?? ""}
+    </div>
+  );
+  const textBlock = (
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.25rem" }}>
+      {eyebrow && (
+        <div
+          style={{
+            fontSize: "0.72rem",
+            letterSpacing: "0.15em",
+            textTransform: "uppercase",
+            color: "var(--color-muted)",
+          }}
+        >
+          {eyebrow}
+        </div>
+      )}
+      <h2
+        style={{
+          fontSize: "clamp(1.875rem, 3vw, 2.5rem)",
+          lineHeight: 1.2,
+          margin: 0,
+          fontFamily: "var(--font-display)",
+        }}
+      >
+        {title}
+      </h2>
+      <p
+        style={{
+          fontSize: "1.05rem",
+          lineHeight: 1.75,
+          color: "var(--color-muted)",
+          margin: 0,
+          whiteSpace: "pre-line",
+        }}
+      >
+        {body}
+      </p>
+      {cta && (
+        <div>
+          <Link href={cta.href} className="btn btn-outline">
+            {cta.label}
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+  return (
+    <section style={{ padding: "var(--section-padding) 0" }}>
+      <div
+        className="container"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))",
+          gap: "3rem",
+          alignItems: "center",
+        }}
+      >
+        {imageSide === "left" ? imageBlock : textBlock}
+        {imageSide === "left" ? textBlock : imageBlock}
+      </div>
+    </section>
+  );
+}
+
+export function BentoShowcase({
+  products,
+  heading,
+  eyebrow,
+}: {
+  products: PublicProduct[];
+  heading?: string;
+  eyebrow?: string;
+}) {
+  if (products.length === 0) return null;
+  const featured = products.slice(0, 5);
+  const [big, ...small] = featured;
+
+  return (
+    <section style={{ padding: "var(--section-padding) 0" }}>
+      <div className="container">
+        {(eyebrow || heading) && (
+          <div style={{ textAlign: "center", marginBottom: "2.5rem" }}>
+            {eyebrow && (
+              <div
+                style={{
+                  fontSize: "0.72rem",
+                  letterSpacing: "0.15em",
+                  textTransform: "uppercase",
+                  color: "var(--color-muted)",
+                  marginBottom: "0.5rem",
+                }}
+              >
+                {eyebrow}
+              </div>
+            )}
+            {heading && (
+              <h2
+                style={{
+                  fontSize: "clamp(1.75rem, 3vw, 2.5rem)",
+                  margin: 0,
+                  fontFamily: "var(--font-display)",
+                }}
+              >
+                {heading}
+              </h2>
+            )}
+          </div>
+        )}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr 1fr",
+            gridTemplateRows: "1fr 1fr",
+            gap: "1rem",
+            minHeight: 560,
+          }}
+        >
+          {big && (
+            <Link
+              href={`/products/${big.id}`}
+              style={{
+                gridRow: "span 2",
+                background:
+                  "linear-gradient(135deg, var(--color-surface), var(--color-accent))",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius)",
+                padding: "2rem",
+                display: "flex",
+                alignItems: "flex-end",
+                color: "var(--color-text)",
+                position: "relative",
+                overflow: "hidden",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.7rem",
+                    letterSpacing: "0.15em",
+                    textTransform: "uppercase",
+                    color: "var(--color-muted)",
+                    marginBottom: "0.5rem",
+                  }}
+                >
+                  Featured
+                </div>
+                <div
+                  style={{
+                    fontSize: "1.75rem",
+                    fontWeight: 600,
+                    fontFamily: "var(--font-display)",
+                    marginBottom: "0.35rem",
+                    lineHeight: 1.15,
+                  }}
+                >
+                  {big.name}
+                </div>
+                <div
+                  style={{
+                    fontSize: "0.9rem",
+                    color: "var(--color-muted)",
+                  }}
+                >
+                  ₹{Number(big.finalSp).toLocaleString("en-IN")}
+                </div>
+              </div>
+            </Link>
+          )}
+          {small.map((p) => (
+            <Link
+              key={p.id}
+              href={`/products/${p.id}`}
+              style={{
+                background: "var(--color-surface)",
+                border: "1px solid var(--color-border)",
+                borderRadius: "var(--radius)",
+                padding: "1.25rem",
+                display: "flex",
+                alignItems: "flex-end",
+                color: "var(--color-text)",
+              }}
+            >
+              <div>
+                <div
+                  style={{
+                    fontSize: "0.95rem",
+                    fontWeight: 500,
+                    marginBottom: "0.2rem",
+                  }}
+                >
+                  {p.name}
+                </div>
+                <div
+                  style={{
+                    fontSize: "0.8rem",
+                    color: "var(--color-muted)",
+                  }}
+                >
+                  ₹{Number(p.finalSp).toLocaleString("en-IN")}
+                </div>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function StatsBand({
+  items,
+  dark = false,
+}: {
+  items: { value: string; label: string }[];
+  dark?: boolean;
+}) {
+  if (items.length === 0) return null;
+  return (
+    <section
+      style={{
+        padding: "3.5rem 0",
+        background: dark ? "var(--color-text)" : "var(--color-surface)",
+        color: dark ? "var(--color-background)" : "var(--color-text)",
+      }}
+    >
+      <div
+        className="container"
+        style={{
+          display: "grid",
+          gridTemplateColumns: `repeat(auto-fit, minmax(180px, 1fr))`,
+          gap: "2rem",
+          textAlign: "center",
+        }}
+      >
+        {items.map((i) => (
+          <div key={i.label}>
+            <div
+              style={{
+                fontSize: "clamp(2rem, 4vw, 2.75rem)",
+                fontWeight: 700,
+                lineHeight: 1,
+                marginBottom: "0.6rem",
+                fontFamily: "var(--font-display)",
+              }}
+            >
+              {i.value}
+            </div>
+            <div
+              style={{
+                fontSize: "0.8rem",
+                opacity: 0.7,
+                textTransform: "uppercase",
+                letterSpacing: "0.12em",
+              }}
+            >
+              {i.label}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+export function NewsletterBand({
+  title = "Stay in the loop",
+  subtitle = "Occasional updates — no spam, ever.",
+  cta = "Subscribe",
+}: {
+  title?: string;
+  subtitle?: string;
+  cta?: string;
+}) {
+  return (
+    <section
+      style={{
+        padding: "var(--section-padding) 0",
+        background: "var(--color-surface)",
+        borderTop: "1px solid var(--color-border)",
+        borderBottom: "1px solid var(--color-border)",
+      }}
+    >
+      <div className="container" style={{ maxWidth: 580, textAlign: "center" }}>
+        <h2
+          style={{
+            fontSize: "clamp(1.5rem, 2.5vw, 2rem)",
+            marginBottom: "0.75rem",
+            fontFamily: "var(--font-display)",
+          }}
+        >
+          {title}
+        </h2>
+        <p
+          style={{
+            color: "var(--color-muted)",
+            marginBottom: "1.75rem",
+            lineHeight: 1.6,
+          }}
+        >
+          {subtitle}
+        </p>
+        {/*
+          Decorative form: real subscription wiring lands in a later phase.
+          No onSubmit handler so this stays server-compatible; form posts
+          back to the current URL and does nothing visible.
+        */}
+        <form
+          method="get"
+          action=""
+          style={{
+            display: "flex",
+            gap: "0.5rem",
+            maxWidth: 440,
+            margin: "0 auto",
+          }}
+        >
+          <label htmlFor="newsletter-email" className="sr-only">
+            Email address
+          </label>
+          <input
+            id="newsletter-email"
+            name="newsletter_email"
+            type="email"
+            placeholder="you@example.com"
+            style={{
+              flex: 1,
+              padding: "0.85rem 1.1rem",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius)",
+              fontSize: "0.95rem",
+              background: "var(--color-background)",
+              color: "var(--color-text)",
+              fontFamily: "inherit",
+            }}
+          />
+          <button type="submit" className="btn">
+            {cta}
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+// ============================================================================
 // Product detail
 // ============================================================================
 

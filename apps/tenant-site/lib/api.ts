@@ -60,10 +60,22 @@ async function publicFetch<T>(
 // ============================================================================
 
 export type SiteTemplateSlug =
+  // Phase A — original four
   | "minimal"
   | "standard"
   | "luxury"
   | "boutique"
+  // Phase C.4 — 10 new bespoke layouts
+  | "editorial"
+  | "organic"
+  | "dark"
+  | "brutalist"
+  | "zen"
+  | "coastal"
+  | "apothecary"
+  | "retro"
+  | "artisan"
+  | "gallery"
   | (string & {});
 
 export interface PublicTemplate {
