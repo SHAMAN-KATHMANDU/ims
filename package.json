@@ -7,7 +7,7 @@
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "check-types": "turbo run check-types",
-    "test:all": "pnpm --filter @repo/shared test && pnpm --filter api test:run && pnpm --filter web test:run",
+    "test:all": "pnpm --filter @repo/shared test && pnpm --filter api test:run && pnpm --filter web test:run && pnpm --filter tenant-site test:run",
     "prepare": "husky",
     "prisma:generate": "npx prisma generate",
     "prisma:migrate": "npx prisma migrate dev",
