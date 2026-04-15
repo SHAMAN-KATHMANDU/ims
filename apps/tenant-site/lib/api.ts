@@ -116,6 +116,18 @@ export interface PublicProduct {
   subCategory: string | null;
   dateCreated: string;
   category?: { id: string; name: string } | null;
+  /**
+   * Primary variation photo resolved server-side by the public-site
+   * repository. Null when the product has no active variation or no
+   * photos — templates fall back to an imsCode placeholder block.
+   */
+  photoUrl?: string | null;
+  /**
+   * Only populated on the product detail endpoint. Empty array = no
+   * photos. First entry is the primary photo (same as `photoUrl` on the
+   * list endpoint).
+   */
+  photoUrls?: string[];
 }
 
 export interface PublicProductList {
