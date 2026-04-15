@@ -31,6 +31,10 @@
 20. **[Template catalog](#20-template-catalog-phase-c)** — Phase C.4: all 14 templates × category × visual hook × palette × when to use each
 21. **[Custom pages runbook](#21-custom-pages-runbook-phase-c)** — Phase C.1 + C.5: TenantPage model, editor UI, catch-all route, reserved-slug guard
 22. **[Phase C recap](#22-phase-c-recap)** — what the six C.x PRs shipped and how they fit together
+23. **[Guest cart + website orders](#23-guest-cart--website-orders-phase-e)** — Phase E: localStorage cart, guest checkout, admin verify/reject/convert, state machine, runbook
+24. **[Product photos](#24-product-photos-phase-f1)** — Phase F.1: resolving the primary variation photo for the public endpoints + template integration
+25. **[Order notifications](#25-order-notifications-phase-f2)** — Phase F.2: in-app alerts to tenant admins when a guest order arrives
+26. **[Phase E + F recap](#26-phase-e--f-recap)** — orders end-to-end, PR-by-PR table, what didn't ship
 
 > **If you're trying to do the prod cutover:** start at **§14.5** then walk the checklist in **§16** for every gotcha we hit on dev.
 > **If you're onboarding and trying to understand what this is:** read **§1–§5** in order.
@@ -1722,3 +1726,324 @@ serialization, sections, theme token emission, branding round-trip).
 - **Scheduled publishing** — `publishedAt` in the future is a manual operation. A cron could automate it.
 - **Drag-and-drop nav reorder** — the `/pages/reorder` endpoint exists and the UI shows `navOrder` as a number field, but there's no DnD polish yet.
 - **Template per-page overrides** — a custom page can't currently pick its own template. If a tenant wants their About page to render in a different layout than their product catalog, they'd need a new `templateId` field on `TenantPage`. Not done.
+
+---
+
+## 23. Guest cart + website orders (Phase E)
+
+Phase E added a full guest checkout flow to the tenant-site — cart, checkout
+form, backend order model, and admin list/verify/convert UI — without
+introducing user accounts. The customer gives name + phone (+ optional
+email) and the tenant calls them to confirm.
+
+### 23.1 State machine
+
+```
+                  ┌───────────────────────┐
+   POST            │  PENDING_VERIFICATION │
+   /public/orders  │       (default)       │
+  ─────────────────┤                       │
+                  └──────┬─────────┬──────┘
+                         │         │
+           verify        │         │   reject (with reason)
+           (admin)       │         │    (admin)
+                         ▼         ▼
+              ┌──────────────┐  ┌──────────────┐
+              │   VERIFIED   │  │   REJECTED   │
+              └──────┬───────┘  └──────────────┘
+                     │                 ▲
+     convertToSale   │                 │  can reject from
+     (admin +        │                 │  VERIFIED too
+      location +     │                 │
+      payments)      │                 │
+                     ▼
+              ┌──────────────────┐
+              │ CONVERTED_TO_SALE│   terminal ─ linked to Sale
+              └──────────────────┘
+```
+
+Only two transitions are terminal: `REJECTED` can only be deleted, and
+`CONVERTED_TO_SALE` cannot be changed at all (the linked `Sale` is
+authoritative at that point). A rejected order is a footgun-safe
+re-delete-and-recreate path, not an "un-reject".
+
+### 23.2 Cart storage (tenant-site)
+
+The cart lives entirely in the visitor's browser — no cookies, no server
+session:
+
+- **Key**: `tenant-site:cart:<tenantId>` (scoped so dev across multiple
+  tenants doesn't leak carts)
+- **Value**: JSON
+  ```json
+  {
+    "items": [
+      {
+        "productId": "uuid",
+        "productName": "Lamp",
+        "unitPrice": 1000,
+        "quantity": 2,
+        "imageUrl": "https://cdn…/lamp.jpg"
+      }
+    ],
+    "currency": "NPR"
+  }
+  ```
+- **Caps**: 50 items max, 99 per line. Silent clamping beyond that.
+- **Hydration**: `CartProvider` (client component) reads on mount, swaps
+  from `EMPTY_CART` once `hydrated = true`. Cart-dependent UI (badge,
+  cart page) renders a placeholder pre-hydration to avoid the
+  flash-of-wrong-count on returning visitors.
+- **Cross-tab sync**: a `storage` event listener picks up mutations from
+  other tabs on the same origin.
+
+The core reducers live in `apps/tenant-site/lib/cart.ts` and are pure —
+no React, no DOM — so they're unit-tested without a renderer.
+
+### 23.3 Endpoints cheat sheet
+
+**Guest (unauthenticated, hostname-resolved):**
+
+| Method | Path             | Purpose                                                                        |
+| ------ | ---------------- | ------------------------------------------------------------------------------ |
+| `POST` | `/public/orders` | Place a new guest order. Body is the cart payload; response is `{ orderCode }` |
+
+**Admin (JWT, admin/superAdmin, `TENANT_WEBSITES` flag):**
+
+| Method   | Path                                           | Purpose                                                                 |
+| -------- | ---------------------------------------------- | ----------------------------------------------------------------------- |
+| `GET`    | `/website-orders?page=&limit=&status=&search=` | Paginated list                                                          |
+| `GET`    | `/website-orders/:id`                          | Full order (items + customer + audit)                                   |
+| `POST`   | `/website-orders/:id/verify`                   | Flip to `VERIFIED`                                                      |
+| `POST`   | `/website-orders/:id/reject`                   | Flip to `REJECTED` with a reason                                        |
+| `POST`   | `/website-orders/:id/convert`                  | Create a real `Sale` via `createSale`, then flip to `CONVERTED_TO_SALE` |
+| `DELETE` | `/website-orders/:id`                          | Delete (not allowed once converted)                                     |
+
+### 23.4 Order code format
+
+`WO-<year>-<4-digit seq>` — e.g. `WO-2026-0042`. Allocated server-side
+by counting this-year orders + 1, with a one-shot P2002 retry if two
+POSTs race. Unique per tenant (composite `(tenantId, orderCode)`).
+
+### 23.5 Conversion gotchas
+
+- **Missing product** — if a product in the cart has been deleted since
+  checkout, `convertToSale` returns 400 with a clear "Product X is no
+  longer available" message. Admin can either reject the order or pass
+  `itemOverrides` to pick a replacement variation.
+- **No active variation** — same error path. The cart stores a
+  `productId` snapshot, but the sale needs a `variationId`; conversion
+  picks the first active variation, and fails cleanly if none exist.
+- **Wrong location type** — `createSale` requires a `SHOWROOM`
+  location. The convert dialog filters `useActiveLocations()` to
+  showrooms only so warehouses don't appear as options.
+- **Payment totals** — for non-credit sales, payments must sum to the
+  subtotal (to within 0.01). The convert dialog shows live `remaining`
+  feedback with a destructive tint when totals don't balance.
+- **Credit sale** — check `isCreditSale: true` to skip payments
+  entirely. The sales module handles the rest.
+
+### 23.6 Reserved slugs
+
+`cart` and `checkout` are blocked in the admin Pages editor (both the
+backend zod schema and the web validation) so tenants can't accidentally
+shadow the built-in cart routes with a `TenantPage`. The full reserved
+list lives in two files — keep them in sync:
+
+- `apps/api/src/modules/pages/pages.schema.ts`
+- `apps/web/features/tenant-pages/validation.ts`
+
+### 23.7 Admin runbook
+
+Path: **Settings sidebar → Sales → Website Orders**.
+
+1. **Triage the Unverified tab** — sorted newest first. Click through
+   to the detail view to see customer info, items, and the subtotal.
+2. **Call the customer** (phone link on the detail page works as
+   `tel:`). Confirm items, delivery address, preferred time.
+3. **Mark verified** — flips to the Verified tab. Audit trail records
+   you + timestamp.
+4. **Convert to sale** — pick the receiving showroom, add a cash /
+   card / bank payment matching the total (or toggle credit sale),
+   click confirm. The system:
+   - runs `createSale` under your user id
+   - decrements inventory for each item's first active variation
+   - upserts a `Member` row from `customerPhone` if one doesn't exist
+   - links the new `Sale` back to the `WebsiteOrder`
+5. **The order now shows in the Converted tab**, terminal state, with
+   the linked sale id in the audit trail.
+
+For spam / fake orders: use **Reject** with a short reason. Deleted
+orders can't be undeleted — use reject for anything you might want to
+look at later.
+
+---
+
+## 24. Product photos (Phase F.1)
+
+The tenant-site renders real product photos in every template's product
+grid, detail page, bento showcase, and cart thumbnail — no schema
+change, no new admin flow. Phase F.1 was pure query expansion + renderer
+wiring.
+
+### 24.1 Where photos live
+
+Photos are attached to `ProductVariation`, not `Product` directly:
+
+```
+Product
+  └── variations: ProductVariation[]
+          └── photos: VariationPhoto[]  ← { photoUrl, isPrimary, uploadDate }
+```
+
+`VariationPhoto.photoUrl` is a **pre-rendered full URL** stored as
+`VARCHAR(500)` — the S3 upload pipeline writes the final CDN URL at
+upload time, so no runtime prefixing is needed.
+
+### 24.2 Resolution chain (public endpoint)
+
+`apps/api/src/modules/public-site/public-site.repository.ts`:
+
+```
+product
+  → variations (where: isActive, take: 1, orderBy: createdAt asc)
+  → photos (orderBy: [isPrimary desc, uploadDate asc], take: 1)
+  → photoUrl
+```
+
+The repository flattens this to a top-level `photoUrl: string | null` on
+the response shape so templates don't drill. `findProduct` also returns
+the full `photoUrls: string[]` for the detail page (gallery-ready, even
+though F.1 only uses `photoUrls[0]`).
+
+**Ordering** — `isPrimary DESC, uploadDate ASC` means:
+
+- A photo flagged `isPrimary: true` wins
+- Otherwise the oldest photo wins (stable across requests)
+
+### 24.3 Renderer integration
+
+`apps/tenant-site/components/templates/shared.tsx`:
+
+- **`ProductCard`** — `<img src={product.photoUrl}>` with
+  `object-fit: cover` and `loading="lazy"`. Falls back to the
+  `imsCode` placeholder block when `photoUrl` is null.
+- **`ProductDetail`** — hero image on the left with the same fallback.
+- **`BentoShowcase`** — big feature tile uses `photoUrl` as a
+  cover-sized background with a dark gradient overlay (`linear-gradient
+  - url(...)`). Text flips to white for legibility. Small tiles get
+    the same treatment. Min-heights added so photo-less tiles don't
+    collapse.
+- **`AddToCartButton`** — now takes `imageUrl` as a prop, passed from
+  `ProductDetail`. The existing `CartPage` / `CheckoutForm` already
+  read `item.imageUrl`, so cart thumbnails populate end-to-end with
+  no further wiring.
+
+No `next/image` optimization — tenant-site is multi-tenant and image
+origins vary, so we use plain `<img>` with `loading="lazy"`. CDN
+resizing is a follow-up.
+
+### 24.4 Fallback behavior
+
+Products without any active variation, or variations without photos,
+render the existing imsCode placeholder block (grey surface, monospace
+SKU). Templates never break for missing-photo products.
+
+---
+
+## 25. Order notifications (Phase F.2)
+
+When a guest places an order via `/public/orders`, every admin +
+superAdmin user on the tenant gets an in-app notification in the
+existing top-bar bell — within ~2s of the POST.
+
+### 25.1 Trigger
+
+`apps/api/src/modules/public-orders/public-orders.controller.ts` fires
+`notifyNewOrder(tenantId, order)` after a successful `createGuestOrder`.
+
+### 25.2 Fan-out helper
+
+`apps/api/src/modules/website-orders/website-orders.notify.ts`:
+
+- Uses `basePrisma` (cross-tenant client) to find every user in the
+  tenant with role `admin` or `superAdmin`. The guest flow runs without
+  an AsyncLocalStorage tenant context, so `basePrisma` + explicit
+  `tenantId` filter is the right client choice.
+- Creates one `Notification` row per admin via
+  `notificationRepository.create`. Per-user insert errors are caught
+  inside the loop — one bad row doesn't fail the whole batch.
+- Top-level errors (e.g. `findMany` itself) are caught at the function
+  boundary. **Never rethrows.** The guest checkout POST can never 500
+  because of a notification failure.
+
+### 25.3 Notification payload
+
+| Field          | Value                                                   |
+| -------------- | ------------------------------------------------------- |
+| `type`         | `WEBSITE_ORDER_NEW` (new enum variant)                  |
+| `title`        | `New order WO-YYYY-NNNN`                                |
+| `message`      | `<customer name> · <N> item(s) · <currency> <subtotal>` |
+| `resourceType` | `"website_order"`                                       |
+| `resourceId`   | `WebsiteOrder.id`                                       |
+
+The existing top-bar bell (`apps/web/components/layout/top-bar.tsx` →
+`NotificationsBell`) polls `GET /notifications/unread-count` + fetches
+the latest 5 via `GET /notifications`, so the new notifications show up
+with no bell-side changes.
+
+### 25.4 Disabling
+
+No per-tenant toggle yet. To silence the fan-out globally, remove the
+`await notifyNewOrder(...)` line in `public-orders.controller.ts` — or
+temporarily break the `findTenantAdmins` query so the loop short-circuits.
+A proper feature flag or SiteConfig preference is a follow-up when we
+add email notifications.
+
+### 25.5 What's deferred
+
+- **Email alerts** — the codebase has no mailer today. Selecting a
+  provider (Resend / SES / SMTP) is an ops decision that belongs in its
+  own PR. The in-app bell is the bigger value anyway: it's the thing
+  admins already watch.
+- **Customer confirmation on verify** — only useful when the customer
+  supplied an email (optional field). Needs the mailer first.
+- **Deep link from the bell** — `resourceType` + `resourceId` are
+  stored on the notification row, but the bell's generic click-through
+  doesn't route to `/sales/website-orders/:id` yet. A bell-UX follow-up.
+- **Rate limit on `/public/orders`** — the existing validation caps
+  items at 50 and phones need ≥ 6 chars, but a per-IP limit would cap
+  the notification fan-out if someone hammered the endpoint.
+
+---
+
+## 26. Phase E + F recap
+
+Six PRs across Phase E (guest orders) + Phase F (polish).
+
+| PR                | Title                       | What                                                                                                                                                                                                            |
+| ----------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **E.1** `#363`    | website orders backend      | `WebsiteOrder` model, website-orders + public-orders modules, safe conversion through `createSale`, `WO-YYYY-NNNN` codes                                                                                        |
+| **E.2** `#364`    | tenant-site cart + checkout | `lib/cart.ts` reducers, `CartProvider`, Add-to-cart button, `/cart` + `/checkout` routes, cart badge in header, reserved `cart`/`checkout` slugs                                                                |
+| **E.3** `#365`    | admin UI                    | `features/website-orders/` service + hooks + list + detail + reject/convert dialogs, sidebar entry under SALES                                                                                                  |
+| **F.1** `#366`    | product photos              | `public-site.repository` resolves primary variation photo, flat `photoUrl` + `photoUrls` on response, `ProductCard` / `ProductDetail` / `BentoShowcase` render real images, cart thumbnails populate end-to-end |
+| **F.2** `#367`    | in-app order notifications  | `WEBSITE_ORDER_NEW` enum, `notifyNewOrder` fan-out to tenant admins, wired into guest checkout                                                                                                                  |
+| **F.3** (this PR) | docs + demo seed            | §23–§26, 5 seeded orders on `demo` covering every state                                                                                                                                                         |
+
+**Total new tests** across Phases E + F: **~135**.
+
+### 26.1 What's still deferred (post-Phase-F)
+
+- **Email alerts** — mailer provider selection required first
+- **Customer order lookup page** — `/order/<code>?phone=...` so guests
+  can check their own status
+- **Inventory-aware stock badges** on product cards
+- **Multi-photo product galleries** on the detail page
+- **Payment capture at checkout** — intentionally absent; Phase E was
+  designed around "we call you, payment arranged at that time"
+- **Per-tenant SMTP config**
+- **Workflow/automation integration** on order events
+- **Rate limit on `/public/orders`** for notification-spam defense
+- **Deep link from the notification bell** to `/sales/website-orders/:id`
+- **SMS notifications** (Phase G territory — needs per-tenant SMS channel
+  config which is non-trivial)
