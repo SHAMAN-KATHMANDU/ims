@@ -58,10 +58,10 @@ function FeatureDisabledCard() {
 
 export function TenantBlogPage({
   newHref,
-  editHrefFor,
+  editHrefBase,
 }: {
   newHref: string;
-  editHrefFor: (id: string) => string;
+  editHrefBase: string;
 }) {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState<BlogPostStatus | "ALL">("ALL");
@@ -178,7 +178,7 @@ export function TenantBlogPage({
                   <BlogPostListRow
                     key={p.id}
                     post={p}
-                    editHref={editHrefFor(p.id)}
+                    editHref={`${editHrefBase}/${p.id}`}
                   />
                 ))}
               </TableBody>

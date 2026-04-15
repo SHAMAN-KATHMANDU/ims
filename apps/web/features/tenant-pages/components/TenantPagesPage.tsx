@@ -159,10 +159,10 @@ function PageRow({
 
 export function TenantPagesPage({
   newHref,
-  editHrefFor,
+  editHrefBase,
 }: {
   newHref: string;
-  editHrefFor: (id: string) => string;
+  editHrefBase: string;
 }) {
   const [search, setSearch] = useState("");
   const query = { page: 1, limit: 50 };
@@ -244,7 +244,7 @@ export function TenantPagesPage({
                   <PageRow
                     key={p.id}
                     page={p}
-                    editHref={editHrefFor(p.id)}
+                    editHref={`${editHrefBase}/${p.id}`}
                     onToggled={() => pagesQuery.refetch()}
                     onDeleted={() => pagesQuery.refetch()}
                   />
