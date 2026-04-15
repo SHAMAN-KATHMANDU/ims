@@ -1,6 +1,7 @@
 import { getTenantContext } from "@/lib/tenant";
-import { getSite, getProducts, getCategories } from "@/lib/api";
+import { getSite, getProducts, getCategories, getNavPages } from "@/lib/api";
 import { pickTemplate } from "@/components/templates/pickTemplate";
+import { readSections } from "@/lib/sections";
 import { notFound } from "next/navigation";
 
 interface PageProps {
@@ -12,7 +13,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
   const page = Number(params.page ?? "1") || 1;
 
   const ctx = await getTenantContext();
-  const [site, productList, categories] = await Promise.all([
+  const [site, productList, categories, navPages] = await Promise.all([
     getSite(ctx.host, ctx.tenantId),
     getProducts(ctx.host, ctx.tenantId, {
       page,
@@ -20,6 +21,7 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       categoryId: params.categoryId,
     }),
     getCategories(ctx.host, ctx.tenantId),
+    getNavPages(ctx.host, ctx.tenantId),
   ]);
 
   if (!site) notFound();
@@ -31,6 +33,8 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       site={site}
       products={productList?.products ?? []}
       categories={categories}
+      navPages={navPages}
+      sections={readSections(site.features)}
       pagination={
         productList
           ? {
