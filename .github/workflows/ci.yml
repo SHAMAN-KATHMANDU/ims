@@ -147,9 +147,24 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+      # Required for tests/integration/** files that import
+      # @/config/express.config — the automation publisher instantiates
+      # BullMQ queues at module load, which opens a connection to Redis.
+      # Without this service, ioredis reconnect storms cascade into the
+      # Prisma native query engine under coverage and crash Node.
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
       SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/ims_test?schema=public
+      REDIS_URL: redis://localhost:6379
       JWT_SECRET: test-jwt-secret-for-ci
     steps:
       - uses: actions/checkout@v4
