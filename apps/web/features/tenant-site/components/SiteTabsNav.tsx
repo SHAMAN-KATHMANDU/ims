@@ -7,12 +7,14 @@ import { cn } from "@/lib/utils";
 /**
  * Pill-style nav rendered above every /settings/site/* page.
  *
- * "Website" → /settings/site (branding, contact, template, publish)
- * "Blog"    → /settings/site/blog (posts + categories)
+ *   "Website" → /settings/site           (branding + sections + template + publish)
+ *   "Pages"   → /settings/site/pages     (custom About/FAQ/Shipping pages)
+ *   "Blog"    → /settings/site/blog      (posts + categories)
  *
- * Uses link-based navigation rather than shadcn <Tabs> because the two tabs
- * host entirely separate routes with their own URLs — visitors should be
- * able to deep-link to /settings/site/blog/new and land directly there.
+ * Uses link-based navigation rather than shadcn <Tabs> because the three
+ * tabs host entirely separate routes with their own URLs — visitors should
+ * be able to deep-link to /settings/site/blog/new or /settings/site/pages/new
+ * and land directly there.
  */
 export function SiteTabsNav() {
   const pathname = usePathname() ?? "";
@@ -21,9 +23,12 @@ export function SiteTabsNav() {
   const base = `/${workspace}/settings/site`;
 
   const isBlog = pathname.startsWith(`${base}/blog`);
+  const isPages = pathname.startsWith(`${base}/pages`);
+  const isWebsite = !isBlog && !isPages;
 
   const tabs = [
-    { href: base, label: "Website", active: !isBlog },
+    { href: base, label: "Website", active: isWebsite },
+    { href: `${base}/pages`, label: "Pages", active: isPages },
     { href: `${base}/blog`, label: "Blog", active: isBlog },
   ];
 

@@ -170,3 +170,165 @@ describe("seo serialization", () => {
     expect(result.title).toBe("");
   });
 });
+
+// ============================================
+// Phase C.5 — full design-token surface
+// ============================================
+
+describe("BrandingFormSchema — C.5 design tokens", () => {
+  it("accepts all 9 color tokens", () => {
+    const r = BrandingFormSchema.parse({
+      primaryColor: "#111",
+      secondaryColor: "#333",
+      accentColor: "#fa0",
+      backgroundColor: "#fff",
+      surfaceColor: "#fafafa",
+      textColor: "#000",
+      mutedColor: "#888",
+      borderColor: "#ddd",
+      ringColor: "#111",
+    });
+    expect(r.secondaryColor).toBe("#333");
+    expect(r.surfaceColor).toBe("#fafafa");
+    expect(r.ringColor).toBe("#111");
+  });
+
+  it("rejects non-hex color values", () => {
+    expect(() => BrandingFormSchema.parse({ surfaceColor: "red" })).toThrow();
+  });
+
+  it("accepts typography scale ratio and base font size", () => {
+    const r = BrandingFormSchema.parse({
+      headingFont: "Inter",
+      bodyFont: "Inter",
+      displayFont: "Playfair Display",
+      scaleRatio: 1.333,
+      baseFontSize: 17,
+    });
+    expect(r.scaleRatio).toBe(1.333);
+    expect(r.baseFontSize).toBe(17);
+  });
+
+  it("rejects scale ratio out of bounds", () => {
+    expect(() => BrandingFormSchema.parse({ scaleRatio: 0.5 })).toThrow();
+    expect(() => BrandingFormSchema.parse({ scaleRatio: 3 })).toThrow();
+  });
+
+  it("rejects base font size out of bounds", () => {
+    expect(() => BrandingFormSchema.parse({ baseFontSize: 8 })).toThrow();
+    expect(() => BrandingFormSchema.parse({ baseFontSize: 40 })).toThrow();
+  });
+
+  it("accepts the three spacing / radius presets", () => {
+    expect(
+      BrandingFormSchema.parse({ sectionPadding: "compact" }).sectionPadding,
+    ).toBe("compact");
+    expect(BrandingFormSchema.parse({ radius: "rounded" }).radius).toBe(
+      "rounded",
+    );
+  });
+});
+
+describe("brandingFromJson / brandingToJson — C.5 round-trip", () => {
+  it("reads the full design-token payload", () => {
+    const stored = {
+      name: "Acme",
+      theme: "dark" as const,
+      colors: {
+        primary: "#111",
+        secondary: "#333",
+        accent: "#fa0",
+        background: "#000",
+        surface: "#141414",
+        text: "#f5f5f5",
+        muted: "#888",
+        border: "#2a2a2a",
+        ring: "#00e5a0",
+      },
+      typography: {
+        heading: "Inter",
+        body: "Inter",
+        display: "Playfair Display",
+        scaleRatio: 1.333,
+        baseFontSize: 17,
+      },
+      spacing: { base: 4, sectionPadding: "spacious" as const },
+      radius: "soft" as const,
+    };
+    const form = brandingFromJson(stored);
+    expect(form.primaryColor).toBe("#111");
+    expect(form.secondaryColor).toBe("#333");
+    expect(form.surfaceColor).toBe("#141414");
+    expect(form.headingFont).toBe("Inter");
+    expect(form.displayFont).toBe("Playfair Display");
+    expect(form.scaleRatio).toBe(1.333);
+    expect(form.baseFontSize).toBe(17);
+    expect(form.spacingBase).toBe(4);
+    expect(form.sectionPadding).toBe("spacious");
+    expect(form.radius).toBe("soft");
+  });
+
+  it("writes the full design-token payload", () => {
+    const form = BrandingFormSchema.parse({
+      primaryColor: "#111",
+      secondaryColor: "#333",
+      accentColor: "#fa0",
+      surfaceColor: "#fafafa",
+      textColor: "#000",
+      headingFont: "Inter",
+      displayFont: "Playfair Display",
+      scaleRatio: 1.25,
+      baseFontSize: 16,
+      spacingBase: 4,
+      sectionPadding: "balanced" as const,
+      radius: "soft" as const,
+      theme: "light" as const,
+    });
+    const out = brandingToJson(form);
+    const colors = out.colors as Record<string, string>;
+    const typography = out.typography as Record<string, unknown>;
+    const spacing = out.spacing as Record<string, unknown>;
+    expect(colors.primary).toBe("#111");
+    expect(colors.secondary).toBe("#333");
+    expect(colors.surface).toBe("#fafafa");
+    expect(typography.heading).toBe("Inter");
+    expect(typography.display).toBe("Playfair Display");
+    expect(typography.scaleRatio).toBe(1.25);
+    expect(typography.baseFontSize).toBe(16);
+    expect(spacing.base).toBe(4);
+    expect(spacing.sectionPadding).toBe("balanced");
+    expect(out.radius).toBe("soft");
+    expect(out.theme).toBe("light");
+  });
+
+  it("brandingToJson omits empty typography/spacing objects", () => {
+    const out = brandingToJson({
+      name: "Acme",
+      tagline: "",
+      logoUrl: undefined,
+      faviconUrl: undefined,
+      primaryColor: "",
+      secondaryColor: "",
+      accentColor: "",
+      backgroundColor: "",
+      surfaceColor: "",
+      textColor: "",
+      mutedColor: "",
+      borderColor: "",
+      ringColor: "",
+      headingFont: "",
+      bodyFont: "",
+      displayFont: "",
+      scaleRatio: undefined,
+      baseFontSize: undefined,
+      spacingBase: undefined,
+      sectionPadding: undefined,
+      radius: undefined,
+      theme: "light",
+    });
+    expect(out.typography).toBeUndefined();
+    expect(out.spacing).toBeUndefined();
+    expect(out.colors).toBeUndefined();
+    expect(out.radius).toBeUndefined();
+  });
+});

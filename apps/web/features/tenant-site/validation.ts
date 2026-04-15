@@ -1,14 +1,28 @@
 /**
  * Zod schemas for the tenant site editor forms.
  *
- * These are UI-level types that the editor works with. They get serialized
- * to the free-form JSON payloads (`branding`, `contact`, `seo`) that the
- * backend stores on SiteConfig.
+ * These are UI-level types that the editor works with. They serialize to the
+ * free-form JSON payloads (`branding`, `contact`, `seo`) that the backend
+ * stores on SiteConfig.
+ *
+ * Phase C.5 widened `BrandingFormSchema` to cover the full design-token
+ * surface the renderer started consuming in C.2:
+ *
+ *   - 9 color tokens (primary / secondary / accent / background / surface /
+ *     text / muted / border / ring)
+ *   - Typography (heading, body, display, scale ratio, base font size)
+ *   - Spacing (base unit + section-padding preset)
+ *   - Shape (radius preset)
+ *
+ * Every field stays optional so older tenants with a partial payload keep
+ * working — `brandingFromJson` fills missing fields with empty strings, and
+ * `brandingToJson` only emits keys that are set.
  */
 
 import { z } from "zod";
 
 const hex = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+
 const optionalUrl = z
   .string()
   .trim()
@@ -16,27 +30,82 @@ const optionalUrl = z
   .optional()
   .or(z.literal("").transform(() => undefined));
 
+const optionalHex = z
+  .string()
+  .trim()
+  .regex(hex, "Use a hex color like #1E40AF")
+  .optional()
+  .or(z.literal(""));
+
+const optionalFont = z.string().trim().max(120).optional().or(z.literal(""));
+
+// ============================================
+// Branding — full design-token surface
+// ============================================
+
+export const SECTION_PADDING_VALUES = [
+  "compact",
+  "balanced",
+  "spacious",
+] as const;
+export const RADIUS_VALUES = ["sharp", "soft", "rounded"] as const;
+
 export const BrandingFormSchema = z.object({
+  // Identity
   name: z.string().trim().max(120).optional().or(z.literal("")),
   tagline: z.string().trim().max(200).optional().or(z.literal("")),
   logoUrl: optionalUrl,
   faviconUrl: optionalUrl,
-  primaryColor: z
-    .string()
-    .trim()
-    .regex(hex, "Use a hex color like #1E40AF")
+
+  // Colors — 9 tokens
+  primaryColor: optionalHex,
+  secondaryColor: optionalHex,
+  accentColor: optionalHex,
+  backgroundColor: optionalHex,
+  surfaceColor: optionalHex,
+  textColor: optionalHex,
+  mutedColor: optionalHex,
+  borderColor: optionalHex,
+  ringColor: optionalHex,
+
+  // Typography
+  headingFont: optionalFont,
+  bodyFont: optionalFont,
+  displayFont: optionalFont,
+  scaleRatio: z.coerce
+    .number()
+    .min(1.05)
+    .max(2)
     .optional()
-    .or(z.literal("")),
-  accentColor: z
-    .string()
-    .trim()
-    .regex(hex, "Use a hex color like #F59E0B")
+    .or(z.literal("").transform(() => undefined)),
+  baseFontSize: z.coerce
+    .number()
+    .int()
+    .min(12)
+    .max(24)
     .optional()
-    .or(z.literal("")),
+    .or(z.literal("").transform(() => undefined)),
+
+  // Spacing + shape
+  spacingBase: z.coerce
+    .number()
+    .int()
+    .min(2)
+    .max(12)
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  sectionPadding: z.enum(SECTION_PADDING_VALUES).optional(),
+  radius: z.enum(RADIUS_VALUES).optional(),
+
+  // Theme
   theme: z.enum(["light", "dark"]).optional(),
 });
 
 export type BrandingFormInput = z.infer<typeof BrandingFormSchema>;
+
+// ============================================
+// Contact
+// ============================================
 
 export const ContactFormSchema = z.object({
   email: z
@@ -52,6 +121,10 @@ export const ContactFormSchema = z.object({
 
 export type ContactFormInput = z.infer<typeof ContactFormSchema>;
 
+// ============================================
+// SEO
+// ============================================
+
 export const SeoFormSchema = z.object({
   title: z.string().trim().max(120).optional().or(z.literal("")),
   description: z.string().trim().max(300).optional().or(z.literal("")),
@@ -65,26 +138,76 @@ export type SeoFormInput = z.infer<typeof SeoFormSchema>;
 // Serialization helpers (form state <-> backend JSON)
 // ============================================
 
+type StoredBranding = {
+  name?: string;
+  tagline?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  theme?: "light" | "dark";
+  colors?: {
+    primary?: string;
+    secondary?: string;
+    accent?: string;
+    background?: string;
+    surface?: string;
+    text?: string;
+    muted?: string;
+    border?: string;
+    ring?: string;
+  };
+  typography?: {
+    heading?: string;
+    body?: string;
+    display?: string;
+    scaleRatio?: number;
+    baseFontSize?: number;
+  };
+  spacing?: {
+    base?: number;
+    sectionPadding?: (typeof SECTION_PADDING_VALUES)[number];
+  };
+  radius?: (typeof RADIUS_VALUES)[number];
+};
+
 export function brandingFromJson(
   json: Record<string, unknown> | null,
 ): BrandingFormInput {
-  const j = (json ?? {}) as {
-    name?: string;
-    tagline?: string;
-    logoUrl?: string;
-    faviconUrl?: string;
-    theme?: "light" | "dark";
-    colors?: { primary?: string; accent?: string };
-  };
+  const j = (json ?? {}) as StoredBranding;
+  const c = j.colors ?? {};
+  const t = j.typography ?? {};
+  const s = j.spacing ?? {};
   return {
     name: j.name ?? "",
     tagline: j.tagline ?? "",
     logoUrl: j.logoUrl ?? "",
     faviconUrl: j.faviconUrl ?? "",
-    primaryColor: j.colors?.primary ?? "",
-    accentColor: j.colors?.accent ?? "",
+
+    primaryColor: c.primary ?? "",
+    secondaryColor: c.secondary ?? "",
+    accentColor: c.accent ?? "",
+    backgroundColor: c.background ?? "",
+    surfaceColor: c.surface ?? "",
+    textColor: c.text ?? "",
+    mutedColor: c.muted ?? "",
+    borderColor: c.border ?? "",
+    ringColor: c.ring ?? "",
+
+    headingFont: t.heading ?? "",
+    bodyFont: t.body ?? "",
+    displayFont: t.display ?? "",
+    scaleRatio: t.scaleRatio,
+    baseFontSize: t.baseFontSize,
+
+    spacingBase: s.base,
+    sectionPadding: s.sectionPadding,
+    radius: j.radius,
+
     theme: j.theme ?? "light",
   };
+}
+
+function pick<T>(value: T | "" | undefined): T | undefined {
+  return value === "" || value === undefined ? undefined : value;
 }
 
 export function brandingToJson(
@@ -96,12 +219,37 @@ export function brandingToJson(
   if (form.logoUrl) out.logoUrl = form.logoUrl;
   if (form.faviconUrl) out.faviconUrl = form.faviconUrl;
   if (form.theme) out.theme = form.theme;
-  if (form.primaryColor || form.accentColor) {
-    out.colors = {
-      ...(form.primaryColor ? { primary: form.primaryColor } : {}),
-      ...(form.accentColor ? { accent: form.accentColor } : {}),
-    };
-  }
+
+  const colors: Record<string, string> = {};
+  if (form.primaryColor) colors.primary = form.primaryColor;
+  if (form.secondaryColor) colors.secondary = form.secondaryColor;
+  if (form.accentColor) colors.accent = form.accentColor;
+  if (form.backgroundColor) colors.background = form.backgroundColor;
+  if (form.surfaceColor) colors.surface = form.surfaceColor;
+  if (form.textColor) colors.text = form.textColor;
+  if (form.mutedColor) colors.muted = form.mutedColor;
+  if (form.borderColor) colors.border = form.borderColor;
+  if (form.ringColor) colors.ring = form.ringColor;
+  if (Object.keys(colors).length > 0) out.colors = colors;
+
+  const typography: Record<string, string | number> = {};
+  if (form.headingFont) typography.heading = form.headingFont;
+  if (form.bodyFont) typography.body = form.bodyFont;
+  if (form.displayFont) typography.display = form.displayFont;
+  const scaleRatio = pick(form.scaleRatio);
+  if (typeof scaleRatio === "number") typography.scaleRatio = scaleRatio;
+  const baseFontSize = pick(form.baseFontSize);
+  if (typeof baseFontSize === "number") typography.baseFontSize = baseFontSize;
+  if (Object.keys(typography).length > 0) out.typography = typography;
+
+  const spacing: Record<string, string | number> = {};
+  const spacingBase = pick(form.spacingBase);
+  if (typeof spacingBase === "number") spacing.base = spacingBase;
+  if (form.sectionPadding) spacing.sectionPadding = form.sectionPadding;
+  if (Object.keys(spacing).length > 0) out.spacing = spacing;
+
+  if (form.radius) out.radius = form.radius;
+
   return out;
 }
 
