@@ -84,13 +84,21 @@ router.use("/auth", authRouter);
 
 // ============================================
 // Public website routes (no JWT; tenant resolved from Host header)
+//
+// /public/preview/page is mounted FIRST because tenant context for that
+// route comes from the HMAC-signed token, not the Host header. The
+// publicSiteRouter (mounted at /public) applies resolveTenantFromHostname
+// as router-level middleware, so any /public/* request whose Host header
+// doesn't map to a known tenant 404s before reaching the next mount.
+// Putting the preview route first lets express match it directly without
+// passing through hostname resolution.
 // ============================================
+router.use("/public/preview/page", publicPagePreviewRouter);
 router.use("/public", publicSiteRouter);
 router.use("/public/blog", publicBlogRouter);
 router.use("/public/pages", publicPagesRouter);
 router.use("/public/orders", publicOrdersRouter);
 router.use("/public/cart-pings", publicCartPingsRouter);
-router.use("/public/preview/page", publicPagePreviewRouter);
 
 // ============================================
 // Internal server-to-server hooks (no JWT; shared-secret token)
