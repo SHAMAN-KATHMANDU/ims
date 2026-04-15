@@ -51,6 +51,22 @@ router.post("/reorder", asyncHandler(controller.reorderPages));
 
 /**
  * @swagger
+ * /pages/{id}/preview-url:
+ *   get:
+ *     summary: Mint a short-lived signed preview URL for the page
+ *     description: Returns an iframe-ready URL pointing at the tenant-site /preview/page/:id route with an HMAC token. URL expires after 30 minutes.
+ *     tags: [Pages]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200: { description: "{ url: string }" }
+ *       404: { description: Page not found }
+ *       503: { description: No preview target available (no verified domain and no TENANT_SITE_PUBLIC_URL) }
+ */
+router.get("/:id/preview-url", asyncHandler(controller.getPreviewUrl));
+
+/**
+ * @swagger
  * /pages/{id}:
  *   get:
  *     summary: Get one tenant page by id

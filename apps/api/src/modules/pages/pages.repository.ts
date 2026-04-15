@@ -84,6 +84,26 @@ export class PagesRepository {
   }
 
   /**
+   * Look up the verified primary WEBSITE hostname for a tenant. Used when
+   * minting preview URLs so the iframe points at the tenant's real domain.
+   * Returns null if no verified primary website domain is set (dev tenants
+   * typically fall back to TENANT_SITE_PUBLIC_URL).
+   */
+  findPrimaryWebsiteHostname(tenantId: string): Promise<string | null> {
+    return prisma.tenantDomain
+      .findFirst({
+        where: {
+          tenantId,
+          appType: "WEBSITE",
+          isPrimary: true,
+          verifiedAt: { not: null },
+        },
+        select: { hostname: true },
+      })
+      .then((d) => d?.hostname ?? null);
+  }
+
+  /**
    * Bulk-update nav order. Wrapped in a transaction so a partial failure
    * leaves the nav in a consistent state.
    */

@@ -1,9 +1,5 @@
 import type { SiteTemplateSlug } from "@/lib/api";
 import type { TemplateComponent } from "./types";
-import { MinimalLayout } from "./MinimalLayout";
-import { StandardLayout } from "./StandardLayout";
-import { LuxuryLayout } from "./LuxuryLayout";
-import { BoutiqueLayout } from "./BoutiqueLayout";
 import { EditorialLayout } from "./EditorialLayout";
 import { OrganicLayout } from "./OrganicLayout";
 import { DarkLayout } from "./DarkLayout";
@@ -16,12 +12,6 @@ import { ArtisanLayout } from "./ArtisanLayout";
 import { GalleryLayout } from "./GalleryLayout";
 
 const TEMPLATES: Record<string, TemplateComponent> = {
-  // Phase A — original four
-  minimal: MinimalLayout,
-  standard: StandardLayout,
-  luxury: LuxuryLayout,
-  boutique: BoutiqueLayout,
-  // Phase C.4 — 10 new bespoke layouts
   editorial: EditorialLayout,
   organic: OrganicLayout,
   dark: DarkLayout,
@@ -34,8 +24,8 @@ const TEMPLATES: Record<string, TemplateComponent> = {
   gallery: GalleryLayout,
 };
 
-/** Pick the template component for a given slug; fall back to Standard. */
+/** Pick the template component for a given slug; fall back to Editorial. */
 export function pickTemplate(slug: SiteTemplateSlug | null): TemplateComponent {
-  if (!slug) return StandardLayout;
-  return TEMPLATES[slug] ?? StandardLayout;
+  if (!slug) return EditorialLayout;
+  return TEMPLATES[slug] ?? EditorialLayout;
 }
