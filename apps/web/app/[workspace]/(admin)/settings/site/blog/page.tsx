@@ -9,10 +9,5 @@ type Props = {
 export default async function BlogListRoute({ params }: Props) {
   const { workspace } = await params;
   const base = `/${workspace}/settings/site/blog`;
-  return (
-    <TenantBlogPage
-      newHref={`${base}/new`}
-      editHrefFor={(id) => `${base}/${id}`}
-    />
-  );
+  return <TenantBlogPage newHref={`${base}/new`} editHrefBase={base} />;
 }
