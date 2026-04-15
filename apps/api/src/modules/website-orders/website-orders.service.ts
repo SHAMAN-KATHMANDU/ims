@@ -1,0 +1,342 @@
+/**
+ * WebsiteOrder service — tenant-admin side of the guest-cart flow.
+ *
+ * State machine:
+ *
+ *    PENDING_VERIFICATION  →  VERIFIED      (admin called the customer, order is real)
+ *    PENDING_VERIFICATION  →  REJECTED      (spam / fake / cancelled by customer)
+ *    VERIFIED              →  CONVERTED_TO_SALE  (admin picked a location + payments)
+ *
+ * The only terminal state is CONVERTED_TO_SALE, which freezes the order
+ * and links it to a real Sale row. Rejection is reversible via delete +
+ * re-create; we don't allow un-rejecting in place because that path is a
+ * footgun (admin accidentally rejects, un-rejects, then the cart already
+ * expired from the buyer's end).
+ *
+ * Conversion walks each item in the order's JSON snapshot, picks an
+ * active product variation, builds a SaleItemInput, and calls the
+ * existing `createSale` service — which handles inventory decrement,
+ * member upsert, audit logging, workflow runs. No custom sale-creation
+ * path here.
+ */
+
+import { Prisma, type WebsiteOrder } from "@prisma/client";
+import { createError } from "@/middlewares/errorHandler";
+import { createSale, type SaleItemInput } from "@/modules/sales/sale.service";
+import prisma from "@/config/prisma";
+import sitesRepo from "@/modules/sites/sites.repository";
+import defaultRepo, {
+  type WebsiteOrderListItem,
+} from "./website-orders.repository";
+import type {
+  ConvertOrderInput,
+  ListWebsiteOrdersQuery,
+  RejectOrderInput,
+} from "./website-orders.schema";
+
+type Repo = typeof defaultRepo;
+type SitesRepo = typeof sitesRepo;
+
+export interface CartItemSnapshot {
+  productId: string;
+  productName: string;
+  unitPrice: number;
+  quantity: number;
+  lineTotal: number;
+}
+
+export interface CreateOrderInput {
+  customerName: string;
+  customerPhone: string;
+  customerEmail?: string | null;
+  customerNote?: string | null;
+  items: CartItemSnapshot[];
+  sourceIp?: string | null;
+  sourceUserAgent?: string | null;
+}
+
+function pad4(n: number): string {
+  return n.toString().padStart(4, "0");
+}
+
+export class WebsiteOrdersService {
+  constructor(
+    private readonly repo: Repo = defaultRepo,
+    private readonly sites: SitesRepo = sitesRepo,
+  ) {}
+
+  private async assertEnabled(tenantId: string): Promise<void> {
+    const site = await this.sites.findConfig(tenantId);
+    if (!site) {
+      throw createError(
+        "Website feature is not enabled for this tenant. Contact your platform administrator.",
+        403,
+      );
+    }
+    if (!site.websiteEnabled) {
+      throw createError(
+        "Website feature is disabled for this tenant. Contact your platform administrator.",
+        403,
+      );
+    }
+  }
+
+  // ==================== Admin-side ====================
+
+  async listOrders(
+    tenantId: string,
+    query: ListWebsiteOrdersQuery,
+  ): Promise<{
+    orders: WebsiteOrderListItem[];
+    total: number;
+    page: number;
+    limit: number;
+  }> {
+    await this.assertEnabled(tenantId);
+    const [orders, total] = await this.repo.listOrders(tenantId, {
+      page: query.page,
+      limit: query.limit,
+      status: query.status,
+      search: query.search,
+    });
+    return { orders, total, page: query.page, limit: query.limit };
+  }
+
+  async getOrder(tenantId: string, id: string): Promise<WebsiteOrder> {
+    await this.assertEnabled(tenantId);
+    const order = await this.repo.getOrderById(tenantId, id);
+    if (!order) throw createError("Order not found", 404);
+    return order;
+  }
+
+  async verifyOrder(
+    tenantId: string,
+    id: string,
+    userId: string,
+  ): Promise<WebsiteOrder> {
+    await this.assertEnabled(tenantId);
+    const existing = await this.repo.getOrderById(tenantId, id);
+    if (!existing) throw createError("Order not found", 404);
+    if (existing.status === "REJECTED") {
+      throw createError("Cannot verify a rejected order", 400);
+    }
+    if (existing.status === "CONVERTED_TO_SALE") {
+      throw createError("Order has already been converted to a sale", 400);
+    }
+    return this.repo.updateOrder(tenantId, id, {
+      status: "VERIFIED",
+      verifiedAt: new Date(),
+      verifier: { connect: { id: userId } },
+    });
+  }
+
+  async rejectOrder(
+    tenantId: string,
+    id: string,
+    userId: string,
+    input: RejectOrderInput,
+  ): Promise<WebsiteOrder> {
+    await this.assertEnabled(tenantId);
+    const existing = await this.repo.getOrderById(tenantId, id);
+    if (!existing) throw createError("Order not found", 404);
+    if (existing.status === "CONVERTED_TO_SALE") {
+      throw createError("Cannot reject a converted order", 400);
+    }
+    return this.repo.updateOrder(tenantId, id, {
+      status: "REJECTED",
+      rejectedAt: new Date(),
+      rejecter: { connect: { id: userId } },
+      rejectionReason: input.reason,
+    });
+  }
+
+  async deleteOrder(tenantId: string, id: string): Promise<void> {
+    await this.assertEnabled(tenantId);
+    const existing = await this.repo.getOrderById(tenantId, id);
+    if (!existing) throw createError("Order not found", 404);
+    if (existing.status === "CONVERTED_TO_SALE") {
+      throw createError(
+        "Cannot delete a converted order — the linked sale is authoritative",
+        400,
+      );
+    }
+    await this.repo.deleteOrder(tenantId, id);
+  }
+
+  /**
+   * Convert a verified order to a real Sale.
+   *
+   * For each item in the order's JSON snapshot, we look up the product
+   * and pick the first active variation. If a product has no active
+   * variation OR no longer exists, the conversion fails with a clear
+   * error; the admin can either edit the order manually (itemOverrides)
+   * or reject it.
+   *
+   * The actual sale creation goes through the existing `createSale`
+   * service, which handles inventory decrement / member upsert /
+   * workflow runs. We pass the customer's name + phone so a Member row
+   * is auto-created if it doesn't exist.
+   */
+  async convertToSale(
+    tenantId: string,
+    id: string,
+    userId: string,
+    input: ConvertOrderInput,
+  ): Promise<WebsiteOrder> {
+    await this.assertEnabled(tenantId);
+    const order = await this.repo.getOrderById(tenantId, id);
+    if (!order) throw createError("Order not found", 404);
+    if (order.status !== "VERIFIED") {
+      throw createError("Only verified orders can be converted to sales", 400);
+    }
+
+    // Build the SaleItemInput list. If itemOverrides is supplied, trust
+    // the caller's (productId, variationId, quantity) triples. Otherwise
+    // walk the JSON snapshot and resolve variations on the fly.
+    const saleItems: SaleItemInput[] = [];
+
+    if (input.itemOverrides && input.itemOverrides.length > 0) {
+      for (const o of input.itemOverrides) {
+        saleItems.push({
+          variationId: o.variationId,
+          quantity: o.quantity,
+        });
+      }
+    } else {
+      const snapshot = order.items as unknown as CartItemSnapshot[];
+      if (!Array.isArray(snapshot) || snapshot.length === 0) {
+        throw createError("Order has no items to convert", 400);
+      }
+
+      for (const item of snapshot) {
+        const product = await prisma.product.findFirst({
+          where: { id: item.productId, tenantId, deletedAt: null },
+          include: {
+            variations: {
+              where: { isActive: true },
+              orderBy: { createdAt: "asc" },
+              take: 1,
+            },
+          },
+        });
+
+        if (!product) {
+          throw createError(
+            `Product "${item.productName}" (${item.productId}) is no longer available. Edit the order or reject it.`,
+            400,
+          );
+        }
+        const variation = product.variations[0];
+        if (!variation) {
+          throw createError(
+            `Product "${item.productName}" has no active variation. Edit the order or reject it.`,
+            400,
+          );
+        }
+        saleItems.push({
+          variationId: variation.id,
+          quantity: item.quantity,
+        });
+      }
+    }
+
+    // Call the existing sales service — this handles inventory,
+    // member upsert, workflow rules, audit logs, everything.
+    const payments = input.payments?.map((p) => ({
+      method: p.method,
+      amount: p.amount,
+    }));
+    const sale = await createSale(
+      { tenantId, userId },
+      {
+        locationId: input.locationId,
+        memberPhone: order.customerPhone,
+        memberName: order.customerName,
+        items: saleItems,
+        notes: `From website order ${order.orderCode}${
+          order.customerNote ? ` — customer note: ${order.customerNote}` : ""
+        }`,
+        payments,
+        isCreditSale: input.isCreditSale,
+      },
+    );
+
+    // Link the order to the sale and freeze it.
+    return this.repo.updateOrder(tenantId, id, {
+      status: "CONVERTED_TO_SALE",
+      convertedAt: new Date(),
+      converter: { connect: { id: userId } },
+      sale: { connect: { id: sale.id } },
+    });
+  }
+
+  // ==================== Public-facing (called from public-orders) ====================
+
+  /**
+   * Generate the next orderCode for this tenant: `WO-<year>-<4-digit seq>`.
+   * Collisions are caught by the unique (tenantId, orderCode) constraint;
+   * the caller retries.
+   */
+  async nextOrderCode(tenantId: string): Promise<string> {
+    const year = new Date().getFullYear();
+    const count = await this.repo.countThisYear(tenantId, year);
+    return `WO-${year}-${pad4(count + 1)}`;
+  }
+
+  /**
+   * Create a new guest order. Called from the public-orders router on
+   * every tenant-site checkout POST.
+   */
+  async createGuestOrder(
+    tenantId: string,
+    input: CreateOrderInput,
+  ): Promise<WebsiteOrder> {
+    await this.assertEnabled(tenantId);
+
+    if (input.items.length === 0) {
+      throw createError("Cart is empty", 400);
+    }
+
+    // Recompute the subtotal server-side from the snapshot so the client
+    // can't lie about the total.
+    const subtotal = input.items.reduce(
+      (sum, i) => sum + i.unitPrice * i.quantity,
+      0,
+    );
+    if (!Number.isFinite(subtotal) || subtotal < 0) {
+      throw createError("Invalid cart totals", 400);
+    }
+
+    // Two attempts to generate a unique orderCode in case of a race.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const orderCode = await this.nextOrderCode(tenantId);
+      try {
+        return await this.repo.createOrder(tenantId, {
+          orderCode,
+          customerName: input.customerName,
+          customerPhone: input.customerPhone,
+          customerEmail: input.customerEmail ?? null,
+          customerNote: input.customerNote ?? null,
+          items: input.items as unknown as Prisma.InputJsonValue,
+          subtotal: new Prisma.Decimal(subtotal.toFixed(2)),
+          sourceIp: input.sourceIp ?? null,
+          sourceUserAgent: input.sourceUserAgent ?? null,
+        });
+      } catch (err) {
+        if (
+          err instanceof Prisma.PrismaClientKnownRequestError &&
+          err.code === "P2002" &&
+          attempt === 0
+        ) {
+          // Unique constraint on (tenantId, orderCode) — retry once.
+          continue;
+        }
+        throw err;
+      }
+    }
+
+    throw createError("Failed to allocate order code", 500);
+  }
+}
+
+export default new WebsiteOrdersService();
