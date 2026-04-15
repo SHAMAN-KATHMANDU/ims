@@ -49,7 +49,9 @@ export default async function RootLayout({
   return (
     <html lang="en" data-theme={theme} style={vars as React.CSSProperties}>
       <body>
-        <CartProvider tenantId={ctx.tenantId}>{children}</CartProvider>
+        <CartProvider tenantId={ctx.tenantId} host={ctx.host}>
+          {children}
+        </CartProvider>
       </body>
     </html>
   );

@@ -96,6 +96,9 @@ model Tenant {
   // Guest orders placed through the tenant-site cart
   websiteOrders WebsiteOrder[]
 
+  // Abandoned cart snapshots (ping-driven, session-keyed)
+  abandonedCarts AbandonedCart[]
+
   @@map("tenants")
 }
 
@@ -1155,6 +1158,45 @@ enum WebsiteOrderStatus {
   VERIFIED
   REJECTED
   CONVERTED_TO_SALE
+}
+
+/// Abandoned cart snapshot — driven by /public/cart-pings from the
+/// tenant-site CartProvider. Keyed by (tenantId, sessionKey) where
+/// sessionKey is a UUID the browser generates and keeps in localStorage
+/// alongside the cart. Items is the same JSON shape as WebsiteOrder.items.
+///
+/// A periodic sweep (see abandoned-carts.scheduler.ts) finds rows with
+/// lastActivityAt older than the idle threshold and notifiedAt null, then
+/// publishes a `cart.abandoned` automation event and stamps notifiedAt so
+/// the same cart doesn't fire twice until the user touches it again.
+model AbandonedCart {
+  id         String @id @default(uuid())
+  tenantId   String @map("tenant_id")
+  sessionKey String @map("session_key") @db.VarChar(64)
+
+  items    Json
+  subtotal Decimal @db.Decimal(12, 2)
+  currency String  @default("NPR") @db.VarChar(8)
+
+  // Optional contact info — populated if the guest started typing into
+  // the checkout form before bailing. Nullable because most pings happen
+  // while the cart is anonymous.
+  customerName  String? @map("customer_name") @db.VarChar(200)
+  customerPhone String? @map("customer_phone") @db.VarChar(40)
+  customerEmail String? @map("customer_email") @db.VarChar(200)
+
+  lastActivityAt DateTime  @default(now()) @map("last_activity_at")
+  notifiedAt     DateTime? @map("notified_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, sessionKey])
+  @@index([tenantId, lastActivityAt])
+  @@index([notifiedAt, lastActivityAt])
+  @@map("abandoned_carts")
 }
 
 enum PromoEligibility {

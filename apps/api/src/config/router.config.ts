@@ -57,6 +57,7 @@ import pagesRouter from "@/modules/pages/pages.router";
 import publicPagesRouter from "@/modules/public-pages/public-pages.router";
 import websiteOrdersRouter from "@/modules/website-orders/website-orders.router";
 import publicOrdersRouter from "@/modules/public-orders/public-orders.router";
+import publicCartPingsRouter from "@/modules/public-cart-pings/public-cart-pings.router";
 import internalRouter from "@/modules/internal/internal.router";
 import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
 import mediaRouter from "@/modules/media/media.router";
@@ -87,6 +88,7 @@ router.use("/public", publicSiteRouter);
 router.use("/public/blog", publicBlogRouter);
 router.use("/public/pages", publicPagesRouter);
 router.use("/public/orders", publicOrdersRouter);
+router.use("/public/cart-pings", publicCartPingsRouter);
 
 // ============================================
 // Internal server-to-server hooks (no JWT; shared-secret token)

@@ -76,6 +76,7 @@ export const AUTOMATION_TRIGGER_EVENT_VALUES = [
   "members.member.status_changed",
   "workitems.created",
   "workitems.completed",
+  "cart.abandoned",
 ] as const;
 
 export type AutomationTriggerEventValue =

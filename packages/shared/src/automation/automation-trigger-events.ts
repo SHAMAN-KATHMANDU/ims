@@ -17,6 +17,7 @@ export const AUTOMATION_EVENT_GROUP_ORDER = [
   "WORK_ITEMS",
   "VENDORS",
   "LOCATIONS",
+  "STOREFRONT",
 ] as const;
 
 export type AutomationEventGroup =
@@ -32,6 +33,7 @@ const PREFIX_TO_GROUP: Record<string, AutomationEventGroup> = {
   workitems: "WORK_ITEMS",
   vendors: "VENDORS",
   locations: "LOCATIONS",
+  cart: "STOREFRONT",
 };
 
 export function getAutomationEventGroup(
@@ -194,6 +196,11 @@ export const AUTOMATION_TRIGGER_EVENT_CATALOG: Record<
   "workitems.completed": {
     label: "Work item completed",
     description: "When a work item is marked done.",
+  },
+  "cart.abandoned": {
+    label: "Cart abandoned",
+    description:
+      "When a guest cart on the tenant website has been idle long enough to count as abandoned.",
   },
 };
 
