@@ -30,4 +30,14 @@ export interface TenantInfo {
     | "CANCELLED";
   planExpiresAt: string | null;
   trialEndsAt: string | null;
+  /**
+   * Per-tenant website feature flag. Flipped by platform admins via
+   * /platform/tenants/:id/website/{enable|disable}. Defaults to false for
+   * every tenant — the website settings UI, sidebar entries, and routes
+   * stay hidden until a platform admin turns it on.
+   *
+   * Optional on the type so persisted sessions from before this field
+   * existed still deserialize cleanly; consumers treat undefined as false.
+   */
+  websiteEnabled?: boolean;
 }

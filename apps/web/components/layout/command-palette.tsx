@@ -17,7 +17,12 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { useAuthStore, selectUserRole, selectUser } from "@/store/auth-store";
+import {
+  useAuthStore,
+  selectUserRole,
+  selectUser,
+  selectTenantWebsiteEnabled,
+} from "@/store/auth-store";
 import { usePlanFeatures } from "@/features/flags";
 import { parseFeatureFlagsEnv } from "@repo/shared";
 import { getAppEnv, featureFlagsEnv } from "@/config/env";
@@ -110,6 +115,12 @@ export function CommandPalette(): React.ReactElement {
     [basePath],
   );
 
+  const tenantWebsiteEnabled = useAuthStore(selectTenantWebsiteEnabled);
+  const tenantFeatures = useMemo(
+    () => ({ websiteEnabled: tenantWebsiteEnabled }),
+    [tenantWebsiteEnabled],
+  );
+
   const filteredSections = useMemo(
     () =>
       filterDashboardNavSections(dashboardNavSections, {
@@ -118,8 +129,16 @@ export function CommandPalette(): React.ReactElement {
         planFeatures,
         appEnv,
         enabledEnvFlagsSet,
+        tenantFeatures,
       }),
-    [userRole, basePath, planFeatures, appEnv, enabledEnvFlagsSet],
+    [
+      userRole,
+      basePath,
+      planFeatures,
+      appEnv,
+      enabledEnvFlagsSet,
+      tenantFeatures,
+    ],
   );
 
   useEffect(() => {

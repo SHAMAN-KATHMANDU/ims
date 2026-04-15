@@ -31,6 +31,13 @@ export interface LoginResult {
     subscriptionStatus: string | null;
     planExpiresAt: Date | null;
     trialEndsAt: Date | null;
+    /**
+     * Per-tenant website feature flag. Platform admins flip this via
+     * /platform/tenants/:id/website/{enable|disable}. Default false for
+     * every new tenant — the website settings UI stays hidden until a
+     * platform admin turns it on.
+     */
+    websiteEnabled: boolean;
   };
 }
 
@@ -99,6 +106,7 @@ export class AuthService {
         subscriptionStatus: tenant.subscriptionStatus,
         planExpiresAt: tenant.planExpiresAt,
         trialEndsAt: tenant.trialEndsAt,
+        websiteEnabled: tenant.siteConfig?.websiteEnabled === true,
       },
     };
   }
@@ -119,7 +127,15 @@ export class AuthService {
       throw createError("Tenant not found", 404);
     }
 
-    return { user, tenant };
+    // Flatten the join so the wire shape matches the login response.
+    const { siteConfig, ...tenantRest } = tenant;
+    return {
+      user,
+      tenant: {
+        ...tenantRest,
+        websiteEnabled: siteConfig?.websiteEnabled === true,
+      },
+    };
   }
 
   async changePassword(

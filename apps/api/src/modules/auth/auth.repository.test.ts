@@ -47,7 +47,12 @@ describe("AuthRepository", () => {
 
       await authRepo.findTenantBySlug("acme");
 
-      expect(mockFindUnique).toHaveBeenCalledWith({ where: { slug: "acme" } });
+      expect(mockFindUnique).toHaveBeenCalledWith({
+        where: { slug: "acme" },
+        include: {
+          siteConfig: { select: { websiteEnabled: true } },
+        },
+      });
     });
   });
 

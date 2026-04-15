@@ -58,6 +58,8 @@ describe("AuthService", () => {
       subscriptionStatus: "active",
       planExpiresAt: null,
       trialEndsAt: null,
+      // Default off. Login flattens this join into tenant.websiteEnabled.
+      siteConfig: null,
     };
 
     const user = {
@@ -190,6 +192,7 @@ describe("AuthService", () => {
         subscriptionStatus: "active",
         planExpiresAt: null,
         trialEndsAt: null,
+        siteConfig: null,
       };
 
       (mockRepo.findUserById as ReturnType<typeof vi.fn>).mockResolvedValue(
@@ -202,7 +205,12 @@ describe("AuthService", () => {
       const result = await authService.getMe("u1");
 
       expect(result.user).toEqual(dbUser);
-      expect(result.tenant).toEqual(dbTenant);
+      // siteConfig is flattened into `websiteEnabled` in the returned shape.
+      const { siteConfig: _siteConfig, ...expectedTenant } = dbTenant;
+      expect(result.tenant).toEqual({
+        ...expectedTenant,
+        websiteEnabled: false,
+      });
       expect(mockRepo.findUserById).toHaveBeenCalledWith("u1");
       expect(mockRepo.findTenantById).toHaveBeenCalledWith("t1");
     });

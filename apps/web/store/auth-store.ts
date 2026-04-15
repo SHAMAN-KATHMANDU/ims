@@ -113,6 +113,9 @@ export const selectIsAuthenticated = (state: AuthState) => !!state.token;
 export const selectIsHydrated = (state: AuthState) => state.isHydrated;
 
 // Derived selectors
+export const selectTenantWebsiteEnabled = (state: AuthState) =>
+  state.tenant?.websiteEnabled === true;
+
 export const selectUserRole = (state: AuthState) => state.user?.role ?? null;
 export const selectIsAdmin = (state: AuthState) =>
   state.user?.role === "admin" || state.user?.role === "superAdmin";
