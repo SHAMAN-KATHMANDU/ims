@@ -397,18 +397,42 @@ export function ProductCard({
     >
       <div
         style={{
+          position: "relative",
           aspectRatio: "1 / 1",
           background: "var(--color-surface)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "0.75rem",
-          color: "var(--color-muted)",
-          fontFamily: "var(--font-heading)",
-          letterSpacing: "0.05em",
+          overflow: "hidden",
         }}
       >
-        {product.imsCode}
+        {product.photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={product.photoUrl}
+            alt={product.name}
+            loading="lazy"
+            style={{
+              width: "100%",
+              height: "100%",
+              objectFit: "cover",
+              display: "block",
+            }}
+          />
+        ) : (
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: "0.75rem",
+              color: "var(--color-muted)",
+              fontFamily: "var(--font-heading)",
+              letterSpacing: "0.05em",
+            }}
+          >
+            {product.imsCode}
+          </div>
+        )}
       </div>
       <div style={{ padding: "1rem 1.1rem 1.2rem" }}>
         <div
@@ -1083,16 +1107,18 @@ export function BentoShowcase({
               href={`/products/${big.id}`}
               style={{
                 gridRow: "span 2",
-                background:
-                  "linear-gradient(135deg, var(--color-surface), var(--color-accent))",
+                background: big.photoUrl
+                  ? `linear-gradient(180deg, rgba(0,0,0,0) 45%, rgba(0,0,0,0.65) 100%), url("${big.photoUrl}") center/cover no-repeat`
+                  : "linear-gradient(135deg, var(--color-surface), var(--color-accent))",
                 border: "1px solid var(--color-border)",
                 borderRadius: "var(--radius)",
                 padding: "2rem",
                 display: "flex",
                 alignItems: "flex-end",
-                color: "var(--color-text)",
+                color: big.photoUrl ? "white" : "var(--color-text)",
                 position: "relative",
                 overflow: "hidden",
+                minHeight: 280,
               }}
             >
               <div>
@@ -1101,7 +1127,7 @@ export function BentoShowcase({
                     fontSize: "0.7rem",
                     letterSpacing: "0.15em",
                     textTransform: "uppercase",
-                    color: "var(--color-muted)",
+                    opacity: 0.8,
                     marginBottom: "0.5rem",
                   }}
                 >
@@ -1121,7 +1147,7 @@ export function BentoShowcase({
                 <div
                   style={{
                     fontSize: "0.9rem",
-                    color: "var(--color-muted)",
+                    opacity: 0.85,
                   }}
                 >
                   ₹{Number(big.finalSp).toLocaleString("en-IN")}
@@ -1134,13 +1160,17 @@ export function BentoShowcase({
               key={p.id}
               href={`/products/${p.id}`}
               style={{
-                background: "var(--color-surface)",
+                background: p.photoUrl
+                  ? `linear-gradient(180deg, rgba(0,0,0,0) 50%, rgba(0,0,0,0.65) 100%), url("${p.photoUrl}") center/cover no-repeat`
+                  : "var(--color-surface)",
                 border: "1px solid var(--color-border)",
                 borderRadius: "var(--radius)",
                 padding: "1.25rem",
                 display: "flex",
                 alignItems: "flex-end",
-                color: "var(--color-text)",
+                color: p.photoUrl ? "white" : "var(--color-text)",
+                overflow: "hidden",
+                minHeight: 160,
               }}
             >
               <div>
@@ -1156,7 +1186,7 @@ export function BentoShowcase({
                 <div
                   style={{
                     fontSize: "0.8rem",
-                    color: "var(--color-muted)",
+                    opacity: 0.85,
                   }}
                 >
                   ₹{Number(p.finalSp).toLocaleString("en-IN")}
@@ -1323,18 +1353,41 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
       >
         <div
           style={{
+            position: "relative",
             aspectRatio: "1 / 1",
             background: "var(--color-surface)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            fontSize: "0.85rem",
-            color: "var(--color-muted)",
             borderRadius: "var(--radius)",
             border: "1px solid var(--color-border)",
+            overflow: "hidden",
           }}
         >
-          {product.imsCode}
+          {product.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={product.photoUrl}
+              alt={product.name}
+              style={{
+                width: "100%",
+                height: "100%",
+                objectFit: "cover",
+                display: "block",
+              }}
+            />
+          ) : (
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.85rem",
+                color: "var(--color-muted)",
+              }}
+            >
+              {product.imsCode}
+            </div>
+          )}
         </div>
         <div>
           {product.category && (
@@ -1400,6 +1453,7 @@ export function ProductDetail({ product }: { product: PublicProduct }) {
             productId={product.id}
             productName={product.name}
             unitPrice={Number(product.finalSp)}
+            imageUrl={product.photoUrl ?? null}
           />
         </div>
       </div>
