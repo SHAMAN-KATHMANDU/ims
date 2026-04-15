@@ -55,6 +55,8 @@ import publicBlogRouter from "@/modules/public-blog/public-blog.router";
 import blogRouter from "@/modules/blog/blog.router";
 import pagesRouter from "@/modules/pages/pages.router";
 import publicPagesRouter from "@/modules/public-pages/public-pages.router";
+import websiteOrdersRouter from "@/modules/website-orders/website-orders.router";
+import publicOrdersRouter from "@/modules/public-orders/public-orders.router";
 import internalRouter from "@/modules/internal/internal.router";
 import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
 import mediaRouter from "@/modules/media/media.router";
@@ -84,6 +86,7 @@ router.use("/auth", authRouter);
 router.use("/public", publicSiteRouter);
 router.use("/public/blog", publicBlogRouter);
 router.use("/public/pages", publicPagesRouter);
+router.use("/public/orders", publicOrdersRouter);
 
 // ============================================
 // Internal server-to-server hooks (no JWT; shared-secret token)
@@ -128,6 +131,7 @@ router.use("/tenant-settings", tenantSettingsRouter);
 router.use("/sites", sitesRouter);
 router.use("/blog", blogRouter);
 router.use("/pages", pagesRouter);
+router.use("/website-orders", websiteOrdersRouter);
 router.use("/workflows", workflowRouter);
 router.use("/automation", automationRouter);
 router.use("/trash", trashRouter);

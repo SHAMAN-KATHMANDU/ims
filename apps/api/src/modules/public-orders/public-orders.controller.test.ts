@@ -1,0 +1,115 @@
+import { describe, it, expect, vi, beforeEach } from "vitest";
+import { Request, Response } from "express";
+
+vi.mock("@/modules/website-orders/website-orders.service", () => ({
+  default: {
+    createGuestOrder: vi.fn(),
+  },
+}));
+vi.mock("@/utils/controllerError", () => ({
+  sendControllerError: vi.fn(),
+}));
+vi.mock("@/config/prisma", () => ({ default: {} }));
+
+import controller from "./public-orders.controller";
+import * as serviceModule from "@/modules/website-orders/website-orders.service";
+
+const mockService = serviceModule.default as unknown as Record<
+  string,
+  ReturnType<typeof vi.fn>
+>;
+
+function mockRes(): Partial<Response> {
+  return { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() };
+}
+
+function makeReq(overrides: Partial<Request> = {}): Request {
+  return {
+    tenant: { id: "t1", name: "Acme", slug: "acme", isActive: true },
+    params: {},
+    body: {},
+    headers: { "user-agent": "TestAgent" },
+    ...overrides,
+  } as unknown as Request;
+}
+
+const validPayload = {
+  customerName: "Ada",
+  customerPhone: "+977 98xxxxxxx",
+  items: [
+    {
+      productId: "11111111-1111-1111-1111-111111111111",
+      productName: "Lamp",
+      unitPrice: 1000,
+      quantity: 1,
+      lineTotal: 1000,
+    },
+  ],
+};
+
+describe("PublicOrdersController", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns 400 when host is not resolved", async () => {
+    const res = mockRes() as Response;
+    await controller.createOrder(
+      makeReq({ tenant: undefined } as unknown as Partial<Request>),
+      res,
+    );
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 400 on invalid body", async () => {
+    const res = mockRes() as Response;
+    await controller.createOrder(makeReq({ body: {} }), res);
+    expect(res.status).toHaveBeenCalledWith(400);
+  });
+
+  it("returns 201 with orderCode on success", async () => {
+    mockService.createGuestOrder.mockResolvedValue({
+      orderCode: "WO-2026-0001",
+    });
+    const res = mockRes() as Response;
+    await controller.createOrder(makeReq({ body: validPayload }), res);
+    expect(mockService.createGuestOrder).toHaveBeenCalledWith(
+      "t1",
+      expect.objectContaining({
+        customerName: "Ada",
+        customerPhone: "+977 98xxxxxxx",
+        sourceUserAgent: "TestAgent",
+      }),
+    );
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ orderCode: "WO-2026-0001" }),
+    );
+  });
+
+  it("uses X-Forwarded-For when set", async () => {
+    mockService.createGuestOrder.mockResolvedValue({
+      orderCode: "WO-2026-0002",
+    });
+    const res = mockRes() as Response;
+    await controller.createOrder(
+      makeReq({
+        body: validPayload,
+        headers: {
+          "user-agent": "TestAgent",
+          "x-forwarded-for": "203.0.113.1, 10.0.0.1",
+        },
+      }),
+      res,
+    );
+    const call = mockService.createGuestOrder.mock.calls[0][1];
+    expect(call.sourceIp).toBe("203.0.113.1");
+  });
+
+  it("maps AppError status code from service", async () => {
+    mockService.createGuestOrder.mockRejectedValue(
+      Object.assign(new Error("Website disabled"), { statusCode: 403 }),
+    );
+    const res = mockRes() as Response;
+    await controller.createOrder(makeReq({ body: validPayload }), res);
+    expect(res.status).toHaveBeenCalledWith(403);
+  });
+});

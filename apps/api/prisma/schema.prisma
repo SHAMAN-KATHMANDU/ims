@@ -93,6 +93,9 @@ model Tenant {
   // Custom tenant pages (About, FAQ, Lookbook, ...)
   tenantPages TenantPage[]
 
+  // Guest orders placed through the tenant-site cart
+  websiteOrders WebsiteOrder[]
+
   @@map("tenants")
 }
 
@@ -423,6 +426,9 @@ model User {
   salesDeleted                   Sale[]                 @relation("SaleDeletedBy")
   salesEdited                    Sale[]                 @relation("SaleEditedBy")
   saleItemsApprovedForDiscount   SaleItem[]             @relation("DiscountApprover")
+  websiteOrdersVerified          WebsiteOrder[]         @relation("WebsiteOrderVerifier")
+  websiteOrdersRejected          WebsiteOrder[]         @relation("WebsiteOrderRejecter")
+  websiteOrdersConverted         WebsiteOrder[]         @relation("WebsiteOrderConverter")
   auditLogs                      AuditLog[]
   errorReports                   ErrorReport[]
 
@@ -1005,17 +1011,21 @@ model Sale {
   editedById     String?   @map("edited_by_id")
   editedAt       DateTime? @map("edited_at")
 
-  tenant     Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  location   Location      @relation(fields: [locationId], references: [id], onDelete: Restrict)
-  member     Member?       @relation(fields: [memberId], references: [id], onDelete: Restrict)
-  contact    Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
-  createdBy  User          @relation("SaleCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  deletedBy  User?         @relation("SaleDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
-  editedBy   User?         @relation("SaleEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
-  parentSale Sale?         @relation("SaleRevisions", fields: [parentSaleId], references: [id], onDelete: SetNull)
-  revisions  Sale[]        @relation("SaleRevisions")
-  items      SaleItem[]
-  payments   SalePayment[]
+  tenant       Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  location     Location      @relation(fields: [locationId], references: [id], onDelete: Restrict)
+  member       Member?       @relation(fields: [memberId], references: [id], onDelete: Restrict)
+  contact      Contact?      @relation(fields: [contactId], references: [id], onDelete: SetNull)
+  createdBy    User          @relation("SaleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  deletedBy    User?         @relation("SaleDeletedBy", fields: [deletedById], references: [id], onDelete: SetNull)
+  editedBy     User?         @relation("SaleEditedBy", fields: [editedById], references: [id], onDelete: SetNull)
+  parentSale   Sale?         @relation("SaleRevisions", fields: [parentSaleId], references: [id], onDelete: SetNull)
+  revisions    Sale[]        @relation("SaleRevisions")
+  items        SaleItem[]
+  payments     SalePayment[]
+  /// Back-relation — a Sale that was created by converting a WebsiteOrder
+  /// knows which order it came from. One-to-one (a given WebsiteOrder
+  /// converts into at most one Sale).
+  websiteOrder WebsiteOrder?
 
   @@unique([tenantId, saleCode])
   @@map("sales")
@@ -1073,6 +1083,78 @@ model SalePayment {
   sale Sale @relation(fields: [saleId], references: [id], onDelete: Cascade)
 
   @@map("sale_payments")
+}
+
+// ============================================
+// WEBSITE ORDERS (Phase E — guest checkout)
+// ============================================
+
+/// A cart submission from the public tenant-site. No user account is
+/// required; the customer gives name / phone / optional email, admins
+/// verify the order (usually by calling the customer), then either
+/// reject it or convert it into a real Sale via the sales module.
+///
+/// `items` is a JSONB snapshot of the cart at submission time:
+/// `[{ productId, productName, unitPrice, quantity, lineTotal }]`.
+/// Prices are frozen at submission — changes to product prices after
+/// the order is placed don't affect the stored subtotal. At conversion
+/// time the backend looks up the product, picks an active variation,
+/// and calls `createSale` with the snapshotted prices.
+model WebsiteOrder {
+  id        String             @id @default(uuid())
+  tenantId  String             @map("tenant_id")
+  /// Human-readable order code: e.g. WO-2026-0001. Unique per tenant.
+  orderCode String             @map("order_code") @db.VarChar(40)
+  status    WebsiteOrderStatus @default(PENDING_VERIFICATION)
+
+  // Guest customer info (no user account required)
+  customerName  String  @map("customer_name") @db.VarChar(200)
+  customerPhone String  @map("customer_phone") @db.VarChar(40)
+  customerEmail String? @map("customer_email") @db.VarChar(200)
+  customerNote  String? @map("customer_note") @db.Text
+
+  // Items JSONB + snapshotted totals
+  items    Json
+  subtotal Decimal @db.Decimal(12, 2)
+  currency String  @default("NPR") @db.VarChar(8)
+
+  // Spam / debug metadata
+  sourceIp        String? @map("source_ip") @db.VarChar(64)
+  sourceUserAgent String? @map("source_user_agent") @db.VarChar(500)
+
+  // Verification audit
+  verifiedAt   DateTime? @map("verified_at")
+  verifiedById String?   @map("verified_by_id")
+
+  // Rejection audit
+  rejectedAt      DateTime? @map("rejected_at")
+  rejectedById    String?   @map("rejected_by_id")
+  rejectionReason String?   @map("rejection_reason") @db.VarChar(500)
+
+  // Conversion audit
+  convertedAt     DateTime? @map("converted_at")
+  convertedById   String?   @map("converted_by_id")
+  convertedSaleId String?   @unique @map("converted_sale_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  tenant    Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  verifier  User?  @relation("WebsiteOrderVerifier", fields: [verifiedById], references: [id], onDelete: SetNull)
+  rejecter  User?  @relation("WebsiteOrderRejecter", fields: [rejectedById], references: [id], onDelete: SetNull)
+  converter User?  @relation("WebsiteOrderConverter", fields: [convertedById], references: [id], onDelete: SetNull)
+  sale      Sale?  @relation(fields: [convertedSaleId], references: [id], onDelete: SetNull)
+
+  @@unique([tenantId, orderCode])
+  @@index([tenantId, status, createdAt(sort: Desc)])
+  @@map("website_orders")
+}
+
+enum WebsiteOrderStatus {
+  PENDING_VERIFICATION
+  VERIFIED
+  REJECTED
+  CONVERTED_TO_SALE
 }
 
 enum PromoEligibility {
