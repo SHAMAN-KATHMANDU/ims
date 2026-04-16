@@ -1,3 +1,4 @@
+// Cache-bust marker for Docker build time benchmark (mode=max vs min).
 import { SlugEntryForm } from "@/features/auth";
 import { ThemeToggle } from "@/components/theme-toggle";
 
