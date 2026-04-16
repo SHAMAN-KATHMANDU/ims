@@ -11,7 +11,7 @@
  */
 
 import { useMemo, useState } from "react";
-import { CheckCircle2, Search, X } from "lucide-react";
+import { CheckCircle2, Plus, Search, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -93,6 +93,7 @@ export function SiteTemplatePicker({
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return templates.filter((t) => {
+      if (t.slug === "blank") return false; // shown separately
       if (category && t.category !== category) return false;
       if (!q) return true;
       return (
@@ -217,6 +218,37 @@ export function SiteTemplatePicker({
                 </div>
               ) : (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  {/* Build Your Own card — appears before template options */}
+                  {templates.some((t) => t.slug === "blank") && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const blankTpl = templates.find(
+                          (t) => t.slug === "blank",
+                        );
+                        if (blankTpl) setConfirm(blankTpl);
+                      }}
+                      className={cn(
+                        "rounded-lg border-2 border-dashed p-6 text-center transition-colors hover:border-primary hover:bg-primary/5",
+                        activeTemplateId &&
+                          templates.find((t) => t.slug === "blank")?.id ===
+                            activeTemplateId
+                          ? "border-primary bg-primary/5"
+                          : "border-muted-foreground/25",
+                      )}
+                    >
+                      <div className="flex flex-col items-center gap-2">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
+                          <Plus className="h-6 w-6" />
+                        </div>
+                        <div className="font-semibold">Build Your Own</div>
+                        <div className="text-xs text-muted-foreground">
+                          Start from a blank canvas and design every section
+                          yourself
+                        </div>
+                      </div>
+                    </button>
+                  )}
                   {pageItems.map((t) => {
                     const isActive = activeTemplateId === t.id;
                     return (
