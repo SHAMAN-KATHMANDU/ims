@@ -18,7 +18,7 @@ export default async function WebsiteOrdersRoute({ params }: Props) {
         roles={["admin", "superAdmin"]}
         unauthorizedPath={WORKSPACE_ROOT}
       >
-        <WebsiteOrdersPage detailHref={(id) => `${base}/${id}`} />
+        <WebsiteOrdersPage detailHrefBase={base} />
       </AuthGuard>
     </EnvFeaturePageGuard>
   );
