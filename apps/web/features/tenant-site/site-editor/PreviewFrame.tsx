@@ -9,7 +9,7 @@
  * the new draft.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Monitor,
@@ -17,6 +17,7 @@ import {
   Tablet,
   RefreshCw,
   ExternalLink,
+  Grid3X3,
 } from "lucide-react";
 
 type DeviceWidth = "desktop" | "tablet" | "mobile";
@@ -44,13 +45,15 @@ export function PreviewFrame({
   device,
   onDeviceChange,
 }: Props) {
+  const [showGrid, setShowGrid] = useState(false);
+
   const src = useMemo(() => {
     if (!previewUrl) return null;
-    // Append a cache-buster so the iframe reloads on refreshKey bumps.
     const u = new URL(previewUrl);
     u.searchParams.set("_r", String(refreshKey));
+    if (showGrid) u.searchParams.set("grid", "1");
     return u.toString();
-  }, [previewUrl, refreshKey]);
+  }, [previewUrl, refreshKey, showGrid]);
 
   return (
     <div className="flex h-full flex-col">
@@ -76,6 +79,13 @@ export function PreviewFrame({
             label="Mobile"
           >
             <Smartphone className="h-4 w-4" />
+          </DeviceButton>
+          <DeviceButton
+            active={showGrid}
+            onClick={() => setShowGrid((v) => !v)}
+            label="Toggle grid overlay"
+          >
+            <Grid3X3 className="h-4 w-4" />
           </DeviceButton>
         </div>
         <div className="flex items-center gap-2">

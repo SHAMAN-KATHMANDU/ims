@@ -42,6 +42,7 @@ type Props = {
     token?: string | string[];
     productId?: string | string[];
     pageId?: string | string[];
+    grid?: string | string[];
   }>;
 };
 
@@ -155,6 +156,8 @@ export default async function SitePreviewRoute({
   const sp = await searchParams;
   const token = readString(sp.token);
   const productId = readString(sp.productId);
+  const showGrid =
+    sp.grid === "1" || (Array.isArray(sp.grid) && sp.grid[0] === "1");
 
   if (!token) {
     return <ErrorShell message="Missing preview token in URL." />;
@@ -198,6 +201,7 @@ export default async function SitePreviewRoute({
 
   return (
     <>
+      {showGrid && <GridOverlay />}
       <PreviewBanner scope={scope} />
       <SiteHeader
         site={site}
@@ -245,6 +249,45 @@ function EmptyState({ scope }: { scope: string }) {
         This scope (<code>{scope}</code>) has no block tree. Add your first
         block in the editor to see it here.
       </p>
+    </div>
+  );
+}
+
+function GridOverlay() {
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 9999,
+        pointerEvents: "none",
+        display: "flex",
+        justifyContent: "center",
+      }}
+    >
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 1200,
+          padding: "0 1.5rem",
+          display: "grid",
+          gridTemplateColumns: "repeat(12, 1fr)",
+          gap: "0",
+        }}
+      >
+        {Array.from({ length: 12 }).map((_, i) => (
+          <div
+            key={i}
+            style={{
+              background: "rgba(59, 130, 246, 0.06)",
+              borderLeft: "1px solid rgba(59, 130, 246, 0.12)",
+              borderRight:
+                i === 11 ? "1px solid rgba(59, 130, 246, 0.12)" : "none",
+              minHeight: "100vh",
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 }

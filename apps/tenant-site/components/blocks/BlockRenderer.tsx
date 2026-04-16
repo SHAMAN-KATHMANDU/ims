@@ -16,7 +16,11 @@
  *     read already-fetched site data without making their own round-trips.
  */
 
-import type { BlockNode, BlockStyleOverride } from "@repo/shared";
+import type {
+  BlockNode,
+  BlockResponsiveOverrides,
+  BlockStyleOverride,
+} from "@repo/shared";
 import { blockRegistry } from "./registry";
 import type { BlockDataContext } from "./data-context";
 
@@ -44,6 +48,30 @@ function styleVars(style: BlockStyleOverride | undefined): React.CSSProperties {
   return out;
 }
 
+/**
+ * Merge responsive overrides into base props. Returns the merged props
+ * for a specific device, or the base props if no override exists.
+ */
+function mergeResponsiveProps(
+  baseProps: unknown,
+  overrides: Record<string, unknown> | undefined,
+): unknown {
+  if (!overrides || Object.keys(overrides).length === 0) return baseProps;
+  return { ...(baseProps as Record<string, unknown>), ...overrides };
+}
+
+/**
+ * Check if a node has responsive overrides that differ from base props.
+ */
+function hasResponsiveOverrides(
+  responsive: BlockResponsiveOverrides | undefined,
+): boolean {
+  if (!responsive) return false;
+  const mobileKeys = Object.keys(responsive.mobile ?? {});
+  const tabletKeys = Object.keys(responsive.tablet ?? {});
+  return mobileKeys.length > 0 || tabletKeys.length > 0;
+}
+
 export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
   if (!nodes || nodes.length === 0) return null;
   return (
@@ -61,9 +89,78 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
         const className = visibilityClass(node);
         const wrapperStyle = styleVars(node.style);
 
-        // Container blocks render their own children (e.g. `section` wraps
-        // them in padding). Leaf blocks that don't use children get them
-        // auto-rendered below.
+        const childrenElement =
+          node.children && node.children.length > 0 ? (
+            <BlockRenderer nodes={node.children} dataContext={dataContext} />
+          ) : null;
+
+        // If the block has responsive overrides, render device-specific
+        // versions using CSS display toggling. The desktop version shows
+        // base props; mobile/tablet versions merge their overrides.
+        if (hasResponsiveOverrides(node.responsive)) {
+          const mobileProps = mergeResponsiveProps(
+            node.props,
+            node.responsive?.mobile,
+          );
+          const tabletProps = mergeResponsiveProps(
+            node.props,
+            node.responsive?.tablet,
+          );
+
+          return (
+            <div
+              key={node.id}
+              data-block-id={node.id}
+              data-block-kind={node.kind}
+            >
+              {/* Desktop version (hidden on mobile + tablet) */}
+              <div
+                className={`tb-hide-mobile tb-hide-tablet ${className ?? ""}`}
+                style={wrapperStyle}
+              >
+                <Component
+                  node={node}
+                  props={node.props}
+                  dataContext={dataContext}
+                >
+                  {childrenElement}
+                </Component>
+              </div>
+              {/* Tablet version (hidden on desktop + mobile) */}
+              {node.responsive?.tablet && (
+                <div
+                  className={`tb-hide-desktop tb-hide-mobile ${className ?? ""}`}
+                  style={wrapperStyle}
+                >
+                  <Component
+                    node={{ ...node, props: tabletProps as typeof node.props }}
+                    props={tabletProps}
+                    dataContext={dataContext}
+                  >
+                    {childrenElement}
+                  </Component>
+                </div>
+              )}
+              {/* Mobile version (hidden on desktop + tablet) */}
+              {node.responsive?.mobile && (
+                <div
+                  className={`tb-hide-desktop tb-hide-tablet ${className ?? ""}`}
+                  style={wrapperStyle}
+                >
+                  <Component
+                    node={{ ...node, props: mobileProps as typeof node.props }}
+                    props={mobileProps}
+                    dataContext={dataContext}
+                  >
+                    {childrenElement}
+                  </Component>
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // Standard rendering (no responsive overrides)
         return (
           <div
             key={node.id}
@@ -73,16 +170,8 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
             style={wrapperStyle}
           >
             <Component node={node} props={node.props} dataContext={dataContext}>
-              {node.children && node.children.length > 0 ? (
-                <BlockRenderer
-                  nodes={node.children}
-                  dataContext={dataContext}
-                />
-              ) : null}
+              {childrenElement}
             </Component>
-            {/* Non-container blocks that still have children (edge case)
-                — render them outside the component so composition still
-                works without every block forwarding `children`. */}
             {!entry.container && node.children && node.children.length > 0 ? (
               <BlockRenderer nodes={node.children} dataContext={dataContext} />
             ) : null}

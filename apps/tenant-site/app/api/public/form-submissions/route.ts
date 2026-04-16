@@ -39,15 +39,6 @@ export async function POST(req: Request) {
       body: JSON.stringify(body),
     });
 
-    if (upstream.status === 404) {
-      // Backend endpoint not deployed yet — return success stub so the
-      // form UX works during development. Remove this fallback once the
-      // FormSubmission Prisma model + API module are wired.
-      return NextResponse.json({
-        message: "Submission received (stub — backend pending)",
-      });
-    }
-
     const payload = await upstream.json().catch(() => null);
     return NextResponse.json(payload ?? {}, { status: upstream.status });
   } catch (error) {
