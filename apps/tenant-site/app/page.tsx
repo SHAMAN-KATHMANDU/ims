@@ -33,7 +33,7 @@ export default async function HomePage() {
   const [site, productList, categories, featuredBlogPosts, navPages, layout] =
     await Promise.all([
       getSite(ctx.host, ctx.tenantId),
-      getProducts(ctx.host, ctx.tenantId, { page: 1, limit: 12 }),
+      getProducts(ctx.host, ctx.tenantId, { page: 1, limit: 50 }),
       getCategories(ctx.host, ctx.tenantId),
       getFeaturedBlogPosts(ctx.host, ctx.tenantId, 3),
       getNavPages(ctx.host, ctx.tenantId),

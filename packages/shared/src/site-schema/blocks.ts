@@ -108,7 +108,14 @@ export interface HeroProps {
 }
 
 export interface ProductGridProps {
-  source: "featured" | "category" | "manual";
+  source:
+    | "featured"
+    | "category"
+    | "manual"
+    | "newest"
+    | "on-sale"
+    | "price-low"
+    | "price-high";
   categoryId?: string;
   productIds?: string[];
   limit: number;
@@ -538,7 +545,15 @@ export const BlockPropsSchemas = {
     .strict(),
   "product-grid": z
     .object({
-      source: z.enum(["featured", "category", "manual"]),
+      source: z.enum([
+        "featured",
+        "category",
+        "manual",
+        "newest",
+        "on-sale",
+        "price-low",
+        "price-high",
+      ]),
       categoryId: optStr(80),
       productIds: z.array(z.string().max(80)).max(50).optional(),
       limit: z.number().int().min(1).max(50),
