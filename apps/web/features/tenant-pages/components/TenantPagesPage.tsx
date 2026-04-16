@@ -22,6 +22,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
 import {
   useTenantPages,
@@ -73,6 +83,7 @@ function PageRow({
   const unpublishMutation = useUnpublishTenantPage();
   const deleteMutation = useDeleteTenantPage();
   const duplicateMutation = useDuplicateTenantPage();
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   const handleToggle = async () => {
     try {
@@ -94,8 +105,11 @@ function PageRow({
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Delete "${page.title}"? This cannot be undone.`)) return;
+  const handleDelete = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
     try {
       await deleteMutation.mutateAsync(page.id);
       toast({ title: "Page deleted" });
@@ -111,75 +125,98 @@ function PageRow({
   };
 
   return (
-    <TableRow>
-      <TableCell>
-        <Link href={editHref} className="font-medium hover:underline">
-          {page.title}
-        </Link>
-        <div className="text-xs text-muted-foreground">/{page.slug}</div>
-      </TableCell>
-      <TableCell>
-        <Badge variant={page.isPublished ? "default" : "secondary"}>
-          {page.isPublished ? "Published" : "Draft"}
-        </Badge>
-      </TableCell>
-      <TableCell className="text-sm">
-        {page.showInNav ? (
-          <span className="text-foreground">In nav · {page.navOrder}</span>
-        ) : (
-          <span className="text-muted-foreground">Hidden</span>
-        )}
-      </TableCell>
-      <TableCell className="text-sm text-muted-foreground">
-        {page.layoutVariant}
-      </TableCell>
-      <TableCell className="text-right">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleToggle}
-          disabled={publishMutation.isPending || unpublishMutation.isPending}
-          aria-label={page.isPublished ? "Unpublish" : "Publish"}
-        >
-          {page.isPublished ? (
-            <EyeOff className="h-4 w-4" />
+    <>
+      <TableRow>
+        <TableCell>
+          <Link href={editHref} className="font-medium hover:underline">
+            {page.title}
+          </Link>
+          <div className="text-xs text-muted-foreground">/{page.slug}</div>
+        </TableCell>
+        <TableCell>
+          <Badge variant={page.isPublished ? "default" : "secondary"}>
+            {page.isPublished ? "Published" : "Draft"}
+          </Badge>
+        </TableCell>
+        <TableCell className="text-sm">
+          {page.showInNav ? (
+            <span className="text-foreground">In nav · {page.navOrder}</span>
           ) : (
-            <Eye className="h-4 w-4" />
+            <span className="text-muted-foreground">Hidden</span>
           )}
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={async () => {
-            try {
-              await duplicateMutation.mutateAsync(page.id);
-              toast({ title: "Page duplicated" });
-              onDuplicated();
-            } catch (error) {
-              toast({
-                title: "Duplicate failed",
-                description:
-                  error instanceof Error ? error.message : "Please try again",
-                variant: "destructive",
-              });
-            }
-          }}
-          disabled={duplicateMutation.isPending}
-          aria-label={`Duplicate ${page.title}`}
-        >
-          <Copy className="h-4 w-4" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={handleDelete}
-          disabled={deleteMutation.isPending}
-          aria-label={`Delete ${page.title}`}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-      </TableCell>
-    </TableRow>
+        </TableCell>
+        <TableCell className="text-sm text-muted-foreground">
+          {page.layoutVariant}
+        </TableCell>
+        <TableCell className="text-right">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggle}
+            disabled={publishMutation.isPending || unpublishMutation.isPending}
+            aria-label={page.isPublished ? "Unpublish" : "Publish"}
+          >
+            {page.isPublished ? (
+              <EyeOff className="h-4 w-4" />
+            ) : (
+              <Eye className="h-4 w-4" />
+            )}
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={async () => {
+              try {
+                await duplicateMutation.mutateAsync(page.id);
+                toast({ title: "Page duplicated" });
+                onDuplicated();
+              } catch (error) {
+                toast({
+                  title: "Duplicate failed",
+                  description:
+                    error instanceof Error ? error.message : "Please try again",
+                  variant: "destructive",
+                });
+              }
+            }}
+            disabled={duplicateMutation.isPending}
+            aria-label={`Duplicate ${page.title}`}
+          >
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleDelete}
+            disabled={deleteMutation.isPending}
+            aria-label={`Delete ${page.title}`}
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </TableCell>
+      </TableRow>
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete &quot;{page.title}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

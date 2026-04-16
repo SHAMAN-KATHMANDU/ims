@@ -27,6 +27,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
 import { useTenant } from "@/features/tenants";
 import {
@@ -52,15 +62,19 @@ export function TenantDomainsPage() {
   const [verifyingDomain, setVerifyingDomain] = useState<TenantDomain | null>(
     null,
   );
+  const [domainToDelete, setDomainToDelete] = useState<{
+    id: string;
+    hostname: string;
+  } | null>(null);
 
-  const handleDelete = async (domain: TenantDomain) => {
-    if (
-      !confirm(`Delete domain "${domain.hostname}"? This cannot be undone.`)
-    ) {
-      return;
-    }
+  const handleDelete = (domain: TenantDomain) => {
+    setDomainToDelete({ id: domain.id, hostname: domain.hostname });
+  };
+
+  const confirmDeleteDomain = async () => {
+    if (!domainToDelete) return;
     try {
-      await deleteMutation.mutateAsync(domain.id);
+      await deleteMutation.mutateAsync(domainToDelete.id);
       toast({ title: "Domain deleted" });
     } catch (error) {
       toast({
@@ -68,6 +82,8 @@ export function TenantDomainsPage() {
         description: error instanceof Error ? error.message : "Please retry",
         variant: "destructive",
       });
+    } finally {
+      setDomainToDelete(null);
     }
   };
 
@@ -207,6 +223,30 @@ export function TenantDomainsPage() {
           if (!v) setVerifyingDomain(null);
         }}
       />
+
+      <AlertDialog
+        open={domainToDelete !== null}
+        onOpenChange={(v) => {
+          if (!v) setDomainToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete domain &quot;{domainToDelete?.hostname}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteDomain}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

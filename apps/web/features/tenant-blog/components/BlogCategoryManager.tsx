@@ -24,6 +24,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
 import {
   BlogCategoryFormSchema,
@@ -62,6 +72,10 @@ export function BlogCategoryManager({
 
   const [editing, setEditing] = useState<BlogCategory | null>(null);
   const [slugTouched, setSlugTouched] = useState(false);
+  const [catToDelete, setCatToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
 
   const form = useForm<BlogCategoryFormInput>({
     resolver: zodResolver(BlogCategoryFormSchema),
@@ -118,18 +132,16 @@ export function BlogCategoryManager({
     }
   });
 
-  const handleDelete = async (cat: BlogCategory) => {
-    if (
-      !confirm(
-        `Delete "${cat.name}"? Posts in this category will become uncategorized.`,
-      )
-    ) {
-      return;
-    }
+  const handleDelete = (cat: BlogCategory) => {
+    setCatToDelete({ id: cat.id, name: cat.name });
+  };
+
+  const confirmDeleteCategory = async () => {
+    if (!catToDelete) return;
     try {
-      await deleteMutation.mutateAsync(cat.id);
+      await deleteMutation.mutateAsync(catToDelete.id);
       toast({ title: "Category deleted" });
-      if (editing?.id === cat.id) setEditing(null);
+      if (editing?.id === catToDelete.id) setEditing(null);
     } catch (error) {
       toast({
         title: "Delete failed",
@@ -137,6 +149,8 @@ export function BlogCategoryManager({
           error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
       });
+    } finally {
+      setCatToDelete(null);
     }
   };
 
@@ -276,6 +290,30 @@ export function BlogCategoryManager({
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <AlertDialog
+        open={catToDelete !== null}
+        onOpenChange={(v) => {
+          if (!v) setCatToDelete(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Delete &quot;{catToDelete?.name}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Posts in this category will become uncategorized.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteCategory}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

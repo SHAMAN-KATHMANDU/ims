@@ -23,6 +23,7 @@
 import { Prisma, type WebsiteOrder } from "@prisma/client";
 import { createError } from "@/middlewares/errorHandler";
 import { createSale, type SaleItemInput } from "@/modules/sales/sale.service";
+import transferService from "@/modules/transfers/transfer.service";
 import prisma from "@/config/prisma";
 import sitesRepo from "@/modules/sites/sites.repository";
 import defaultRepo, {
@@ -163,6 +164,82 @@ export class WebsiteOrdersService {
     await this.repo.deleteOrder(tenantId, id);
   }
 
+  async checkOrderStock(
+    tenantId: string,
+    orderId: string,
+  ): Promise<
+    Array<{
+      productId: string;
+      productName: string;
+      variationId: string | null;
+      quantity: number;
+      stockByLocation: Array<{
+        locationId: string;
+        locationName: string;
+        available: number;
+      }>;
+    }>
+  > {
+    await this.assertEnabled(tenantId);
+    const order = await this.repo.getOrderById(tenantId, orderId);
+    if (!order) throw createError("Order not found", 404);
+
+    const snapshot = order.items as unknown as CartItemSnapshot[];
+    if (!Array.isArray(snapshot)) return [];
+
+    const results = [];
+    for (const item of snapshot) {
+      const product = await prisma.product.findFirst({
+        where: { id: item.productId, tenantId, deletedAt: null },
+        include: {
+          variations: {
+            where: { isActive: true },
+            orderBy: { createdAt: "asc" },
+            take: 1,
+            select: {
+              id: true,
+              locationInventory: {
+                select: {
+                  quantity: true,
+                  locationId: true,
+                  location: {
+                    select: {
+                      id: true,
+                      name: true,
+                      type: true,
+                      isActive: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      const variation = product?.variations[0];
+      const stockByLocation = (variation?.locationInventory ?? [])
+        .filter(
+          (inv) => inv.location.type === "SHOWROOM" && inv.location.isActive,
+        )
+        .map((inv) => ({
+          locationId: inv.location.id,
+          locationName: inv.location.name,
+          available: inv.quantity,
+        }));
+
+      results.push({
+        productId: item.productId,
+        productName: item.productName,
+        variationId: variation?.id ?? null,
+        quantity: item.quantity,
+        stockByLocation,
+      });
+    }
+
+    return results;
+  }
+
   /**
    * Convert a verified order to a real Sale.
    *
@@ -236,6 +313,38 @@ export class WebsiteOrdersService {
         saleItems.push({
           variationId: variation.id,
           quantity: item.quantity,
+        });
+      }
+    }
+
+    // Handle per-item location overrides — auto-transfer stock to the primary location
+    if (input.itemLocationOverrides && input.itemLocationOverrides.length > 0) {
+      const snapshot = order.items as unknown as CartItemSnapshot[];
+      for (const override of input.itemLocationOverrides) {
+        if (override.sourceLocationId === input.locationId) continue;
+
+        // Find the matching sale item
+        const snapshotItem = snapshot.find(
+          (s) => s.productId === override.productId,
+        );
+        const saleItem = saleItems.find((_si, idx) => {
+          const matchingSnapshot = snapshot[idx];
+          return matchingSnapshot?.productId === override.productId;
+        });
+
+        if (!saleItem || !snapshotItem) continue;
+
+        // Create an auto-transfer from source to primary location
+        await transferService.createAndComplete(tenantId, userId, {
+          fromLocationId: override.sourceLocationId,
+          toLocationId: input.locationId,
+          items: [
+            {
+              variationId: saleItem.variationId,
+              quantity: snapshotItem.quantity,
+            },
+          ],
+          notes: `Auto-transfer for website order ${order.orderCode}`,
         });
       }
     }

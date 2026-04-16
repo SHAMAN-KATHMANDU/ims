@@ -3,8 +3,17 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { NumericInput } from "@/components/ui/numeric-input";
+import { Input as TextInput } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Select,
   SelectContent,
@@ -65,6 +74,9 @@ export function VariationsTab({
   const { toast } = useToast();
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [libraryVariationIndex, setLibraryVariationIndex] = useState(0);
+  const [photoUrlDialogOpen, setPhotoUrlDialogOpen] = useState(false);
+  const [photoUrlInput, setPhotoUrlInput] = useState("");
+  const [photoUrlVariationIndex, setPhotoUrlVariationIndex] = useState(0);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const fileTargetIndexRef = useRef(0);
 
@@ -309,10 +321,9 @@ export function VariationsTab({
                       variant="ghost"
                       size="sm"
                       onClick={() => {
-                        const photoUrl = prompt("Enter photo URL:");
-                        if (photoUrl && photoUrl.trim()) {
-                          onAddPhoto(index, photoUrl.trim());
-                        }
+                        setPhotoUrlVariationIndex(index);
+                        setPhotoUrlInput("");
+                        setPhotoUrlDialogOpen(true);
                       }}
                       className="h-7 text-xs"
                     >
@@ -389,6 +400,48 @@ export function VariationsTab({
           onAddPhoto(libraryVariationIndex, publicUrl, fileName)
         }
       />
+      <Dialog open={photoUrlDialogOpen} onOpenChange={setPhotoUrlDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add photo URL</DialogTitle>
+            <DialogDescription>
+              Enter the URL of the image you want to add.
+            </DialogDescription>
+          </DialogHeader>
+          <TextInput
+            placeholder="https://example.com/photo.jpg"
+            value={photoUrlInput}
+            onChange={(e) => setPhotoUrlInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && photoUrlInput.trim()) {
+                onAddPhoto(photoUrlVariationIndex, photoUrlInput.trim());
+                setPhotoUrlDialogOpen(false);
+                setPhotoUrlInput("");
+              }
+            }}
+          />
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setPhotoUrlDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (photoUrlInput.trim()) {
+                  onAddPhoto(photoUrlVariationIndex, photoUrlInput.trim());
+                  setPhotoUrlDialogOpen(false);
+                  setPhotoUrlInput("");
+                }
+              }}
+              disabled={!photoUrlInput.trim()}
+            >
+              Add
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

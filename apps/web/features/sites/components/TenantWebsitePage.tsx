@@ -14,6 +14,16 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
 import { cn } from "@/lib/utils";
 import { useTenant } from "@/features/tenants";
@@ -95,6 +105,7 @@ export function TenantWebsitePage() {
   const disableMutation = useDisableTenantWebsite(tenantId);
 
   const [pendingSlug, setPendingSlug] = useState<string | null>(null);
+  const [disableDialogOpen, setDisableDialogOpen] = useState(false);
 
   const notEnabled =
     siteConfigQuery.isError && isNotFoundError(siteConfigQuery.error);
@@ -122,14 +133,11 @@ export function TenantWebsitePage() {
     }
   };
 
-  const handleDisable = async () => {
-    if (
-      !confirm(
-        `Disable the website feature for "${tenant?.name}"? Tenant content is preserved but no public traffic will be served.`,
-      )
-    ) {
-      return;
-    }
+  const handleDisable = () => {
+    setDisableDialogOpen(true);
+  };
+
+  const confirmDisable = async () => {
     try {
       await disableMutation.mutateAsync();
       toast({ title: "Website disabled" });
@@ -265,6 +273,27 @@ export function TenantWebsitePage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog open={disableDialogOpen} onOpenChange={setDisableDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disable website?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Disable the website feature for &quot;{tenant?.name}&quot;? Tenant
+              content is preserved but no public traffic will be served.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDisable}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Disable
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
