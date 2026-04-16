@@ -166,6 +166,8 @@ export function CartPage() {
                   <img
                     src={item.imageUrl}
                     alt={item.productName}
+                    loading="lazy"
+                    decoding="async"
                     style={{
                       width: "100%",
                       height: "100%",

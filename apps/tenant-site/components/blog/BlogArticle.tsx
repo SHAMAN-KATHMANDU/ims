@@ -100,6 +100,9 @@ export function BlogArticle({
         <img
           src={post.heroImageUrl}
           alt={post.title}
+          loading="lazy"
+          decoding="async"
+          sizes="(max-width: 768px) 100vw, 720px"
           style={{
             width: "100%",
             height: "auto",

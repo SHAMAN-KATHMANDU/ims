@@ -1,4 +1,10 @@
 import type { ReactNode } from "react";
+import type { Viewport } from "next";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+};
 import { headers } from "next/headers";
 import { getTenantContext } from "@/lib/tenant";
 import { getSite } from "@/lib/api";
