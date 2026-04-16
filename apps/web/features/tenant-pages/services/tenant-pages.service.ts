@@ -168,3 +168,44 @@ export async function reorderTenantPages(
     handleApiError(error, "reorder tenant pages");
   }
 }
+
+export type ConvertToBlocksMode = "convert" | "fresh";
+
+export interface ConvertToBlocksResponse {
+  layoutId: string;
+  blocks: unknown[];
+}
+
+/**
+ * Convert a markdown TenantPage into a block-based layout. Returns 409 if
+ * a block layout already exists for this page (callers should navigate to
+ * the editor instead of trying to recreate).
+ */
+export async function convertPageToBlocks(
+  id: string,
+  mode: ConvertToBlocksMode,
+): Promise<ConvertToBlocksResponse> {
+  if (!id) throw new Error("Page id is required");
+  try {
+    const response = await api.post<{
+      layoutId: string;
+      blocks: unknown[];
+    }>(`/pages/${id}/convert-to-blocks`, { mode });
+    return { layoutId: response.data.layoutId, blocks: response.data.blocks };
+  } catch (error) {
+    handleApiError(error, "convert page to blocks");
+  }
+}
+
+export async function duplicateTenantPage(id: string): Promise<TenantPage> {
+  if (!id) throw new Error("Page id is required");
+  try {
+    const response = await api.post<{ page: TenantPage }>(
+      `/pages/${id}/duplicate`,
+      {},
+    );
+    return response.data.page;
+  } catch (error) {
+    handleApiError(error, "duplicate tenant page");
+  }
+}

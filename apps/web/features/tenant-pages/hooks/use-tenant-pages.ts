@@ -11,10 +11,13 @@ import {
   deleteTenantPage,
   reorderTenantPages,
   getTenantPagePreviewUrl,
+  convertPageToBlocks,
+  duplicateTenantPage,
   type ListTenantPagesQuery,
   type CreateTenantPageData,
   type UpdateTenantPageData,
   type ReorderPagesInput,
+  type ConvertToBlocksMode,
 } from "../services/tenant-pages.service";
 
 export const tenantPagesKeys = {
@@ -116,6 +119,30 @@ export function useReorderTenantPages() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (input: ReorderPagesInput) => reorderTenantPages(input),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
+    },
+  });
+}
+
+export function useConvertPageToBlocks() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, mode }: { id: string; mode: ConvertToBlocksMode }) =>
+      convertPageToBlocks(id, mode),
+    onSuccess: () => {
+      // Invalidate both pages (the conversion publishes implicitly so the
+      // page row's metadata may shift) and site-layouts (a new row exists).
+      qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
+      qc.invalidateQueries({ queryKey: ["site-layouts"] });
+    },
+  });
+}
+
+export function useDuplicateTenantPage() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => duplicateTenantPage(id),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: tenantPagesKeys.all });
     },

@@ -6,9 +6,16 @@
  * Three panes (tree | preview | inspector) + a header with scope picker,
  * undo/redo, save, publish. Loads the selected scope's SiteLayout into the
  * Zustand store; mutations are local until the user hits "Save draft".
+ *
+ * The scope picker is dual-mode: built-in scopes (home, products-index, ...)
+ * AND custom-page scopes (page:<id>) populated dynamically from the
+ * tenant's TenantPage list. Initial scope+pageId can be passed via
+ * `?scope=page&pageId=...` so the pages list "Edit with blocks" button
+ * deep-links into the right document.
  */
 
 import { useEffect, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -36,13 +43,14 @@ import {
   useResetSiteLayoutFromTemplate,
 } from "../hooks/use-site-layouts";
 import { useSiteConfig } from "../hooks/use-tenant-site";
+import { useTenantPages } from "@/features/tenant-pages/hooks/use-tenant-pages";
 import { useEditorStore, selectBlocks, selectDirty } from "./editor-store";
 import { BlockTreePanel } from "./BlockTreePanel";
 import { BlockInspector } from "./BlockInspector";
 import { BlockPalette } from "./BlockPalette";
 import { PreviewFrame } from "./PreviewFrame";
 
-const EDITABLE_SCOPES: { value: SiteLayoutScope; label: string }[] = [
+const BUILT_IN_SCOPES: { value: SiteLayoutScope; label: string }[] = [
   { value: "home", label: "Home" },
   { value: "products-index", label: "Products index" },
   { value: "product-detail", label: "Product detail" },
@@ -52,20 +60,74 @@ const EDITABLE_SCOPES: { value: SiteLayoutScope; label: string }[] = [
 
 type DeviceWidth = "desktop" | "tablet" | "mobile";
 
+/**
+ * Editor target — what we're currently composing. Built-in scopes have
+ * `pageId === null`; custom-page edits use scope="page" + a real pageId.
+ * Encoded in the scope picker as either the bare scope string or
+ * "page:<pageId>" so the Select can carry both modes in one value.
+ */
+type EditorTarget = { scope: SiteLayoutScope; pageId: string | null };
+
+function encodeTarget(t: EditorTarget): string {
+  return t.scope === "page" && t.pageId ? `page:${t.pageId}` : t.scope;
+}
+
+function decodeTarget(value: string): EditorTarget {
+  if (value.startsWith("page:")) {
+    return { scope: "page", pageId: value.slice("page:".length) };
+  }
+  return { scope: value as SiteLayoutScope, pageId: null };
+}
+
 export function SiteEditorPage() {
   const { toast } = useToast();
-  const [scope, setScope] = useState<SiteLayoutScope>("home");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Initial target from URL search params so the "Edit with blocks"
+  // button on the pages list can deep-link.
+  const initialTarget: EditorTarget = (() => {
+    const rawScope = searchParams.get("scope");
+    const rawPageId = searchParams.get("pageId");
+    if (rawScope === "page" && rawPageId) {
+      return { scope: "page", pageId: rawPageId };
+    }
+    if (rawScope && BUILT_IN_SCOPES.some((s) => s.value === rawScope)) {
+      return { scope: rawScope as SiteLayoutScope, pageId: null };
+    }
+    return { scope: "home", pageId: null };
+  })();
+
+  const [target, setTarget] = useState<EditorTarget>(initialTarget);
+  const { scope, pageId } = target;
+
+  // Mirror target state to the URL so refresh + browser-back work.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("scope", scope);
+    if (pageId) {
+      params.set("pageId", pageId);
+    } else {
+      params.delete("pageId");
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, pageId]);
+
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [device, setDevice] = useState<DeviceWidth>("desktop");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const layoutQuery = useSiteLayout(scope);
-  const previewUrlQuery = useSiteLayoutPreviewUrl(scope);
+  const layoutQuery = useSiteLayout(scope, pageId ?? undefined);
+  const previewUrlQuery = useSiteLayoutPreviewUrl(scope, pageId ?? undefined);
   const saveDraft = useUpsertSiteLayoutDraft();
   const publish = usePublishSiteLayout();
   const resetFromTemplate = useResetSiteLayoutFromTemplate();
   const configQuery = useSiteConfig();
+  const pagesQuery = useTenantPages({ limit: 100 });
   const templateName = configQuery.data?.template?.name ?? null;
+  const customPages = pagesQuery.data?.pages ?? [];
 
   const load = useEditorStore((s) => s.load);
   const undo = useEditorStore((s) => s.undo);
@@ -94,7 +156,7 @@ export function SiteEditorPage() {
 
   const handleSaveDraft = async () => {
     try {
-      await saveDraft.mutateAsync({ scope, blocks });
+      await saveDraft.mutateAsync({ scope, pageId, blocks });
       markClean();
       setRefreshKey((k) => k + 1);
       toast({ title: "Draft saved" });
@@ -115,8 +177,11 @@ export function SiteEditorPage() {
       // (no SiteLayout row exists yet), publish would 404 with
       // "Layout not found". Saving first guarantees a row exists and is
       // idempotent when blocks haven't changed.
-      await saveDraft.mutateAsync({ scope, blocks });
-      await publish.mutateAsync({ scope });
+      await saveDraft.mutateAsync({ scope, pageId, blocks });
+      await publish.mutateAsync({
+        scope,
+        ...(pageId ? { pageId } : {}),
+      });
       markClean();
       setRefreshKey((k) => k + 1);
       toast({ title: "Layout published" });
@@ -131,6 +196,15 @@ export function SiteEditorPage() {
   };
 
   const handleResetFromTemplate = async () => {
+    if (scope === "page") {
+      toast({
+        title: "Custom pages have no template default",
+        description:
+          "Reset only applies to built-in scopes (home, products, ...).",
+        variant: "destructive",
+      });
+      return;
+    }
     if (
       !confirm(
         `Reset this ${scope} layout to the ${
@@ -213,18 +287,30 @@ export function SiteEditorPage() {
           </div>
           <div className="flex items-center gap-2">
             <Select
-              value={scope}
-              onValueChange={(v) => setScope(v as SiteLayoutScope)}
+              value={encodeTarget(target)}
+              onValueChange={(v) => setTarget(decodeTarget(v))}
             >
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-56">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {EDITABLE_SCOPES.map((s) => (
+                {BUILT_IN_SCOPES.map((s) => (
                   <SelectItem key={s.value} value={s.value}>
                     {s.label}
                   </SelectItem>
                 ))}
+                {customPages.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Custom pages
+                    </div>
+                    {customPages.map((p) => (
+                      <SelectItem key={p.id} value={`page:${p.id}`}>
+                        {p.title}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
             <Button
@@ -249,11 +335,15 @@ export function SiteEditorPage() {
               size="sm"
               variant="ghost"
               onClick={handleResetFromTemplate}
-              disabled={resetFromTemplate.isPending || !templateName}
+              disabled={
+                resetFromTemplate.isPending || !templateName || scope === "page"
+              }
               title={
-                templateName
-                  ? `Reset this scope to the ${templateName} default`
-                  : "Pick a template first"
+                scope === "page"
+                  ? "Custom pages have no template default to reset from"
+                  : templateName
+                    ? `Reset this scope to the ${templateName} default`
+                    : "Pick a template first"
               }
             >
               <RotateCcw className="mr-1 h-4 w-4" />
