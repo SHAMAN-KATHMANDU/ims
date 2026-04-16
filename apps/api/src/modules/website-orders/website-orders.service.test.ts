@@ -23,7 +23,7 @@ type SitesRepo = typeof sitesRepo;
 const mockRepo = {
   listOrders: vi.fn(),
   getOrderById: vi.fn(),
-  countThisYear: vi.fn(),
+  maxOrderSeqThisYear: vi.fn(),
   createOrder: vi.fn(),
   updateOrder: vi.fn(),
   deleteOrder: vi.fn(),
@@ -432,7 +432,9 @@ describe("WebsiteOrdersService", () => {
       (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         enabledSite(),
       );
-      (mockRepo.countThisYear as ReturnType<typeof vi.fn>).mockResolvedValue(1);
+      (
+        mockRepo.maxOrderSeqThisYear as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(1);
       (mockRepo.createOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
         order({
           id: "o2",
@@ -462,7 +464,9 @@ describe("WebsiteOrdersService", () => {
       (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         enabledSite(),
       );
-      (mockRepo.countThisYear as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+      (
+        mockRepo.maxOrderSeqThisYear as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(0);
       const items = Array.from({ length: 10 }, (_, i) => ({
         productId: `p${i}`,
         productName: `Product ${i}`,
@@ -498,7 +502,11 @@ describe("WebsiteOrdersService", () => {
       (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
         enabledSite(),
       );
-      (mockRepo.countThisYear as ReturnType<typeof vi.fn>).mockResolvedValue(5);
+      // Simulate a concurrent writer: max seq jumps from 5 to 6 between
+      // our two attempts, so the retry generates WO-2026-0007.
+      (mockRepo.maxOrderSeqThisYear as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce(5)
+        .mockResolvedValueOnce(6);
       const { Prisma } = await import("@prisma/client");
       const p2002 = new Prisma.PrismaClientKnownRequestError(
         "Unique constraint",
@@ -530,7 +538,9 @@ describe("WebsiteOrdersService", () => {
     });
 
     it("creates an order with a server-computed subtotal", async () => {
-      (mockRepo.countThisYear as ReturnType<typeof vi.fn>).mockResolvedValue(5);
+      (
+        mockRepo.maxOrderSeqThisYear as ReturnType<typeof vi.fn>
+      ).mockResolvedValue(5);
       (mockRepo.createOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
         order(),
       );
