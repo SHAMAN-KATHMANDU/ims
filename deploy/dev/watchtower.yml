@@ -1,6 +1,7 @@
 # Watchtower for dev EC2.
-# Watches dev_api and dev_web for new :dev images and restarts them automatically.
-# Run AFTER the app stack (docker-compose.yml) is already up so the ims-dev network exists.
+# Watches dev_api, dev_web, and dev_tenant_site for new :dev images and
+# restarts them automatically. Run AFTER the app stack (docker-compose.yml)
+# is already up so the ims-dev network exists.
 #
 # Usage (managed by up.sh / down.sh):
 #   docker compose -f watchtower.yml up -d
@@ -17,8 +18,10 @@ services:
       WATCHTOWER_POLL_INTERVAL: 30
       WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_WARN_ON_HEAD_FAILURE: "never"
-    # Only watch the app containers -- not the DB, Redis, or Watchtower itself
-    command: --interval 30 dev_web dev_api
+    # Only watch the app containers -- not the DB, Redis, or Watchtower itself.
+    # dev_tenant_site was missing here until Apr 2026, which is why it never
+    # auto-updated and stayed on stale builds for days.
+    command: --interval 30 dev_web dev_api dev_tenant_site
     networks:
       - dev
 
