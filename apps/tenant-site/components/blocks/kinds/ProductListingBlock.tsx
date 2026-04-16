@@ -14,6 +14,7 @@
 
 import Link from "next/link";
 import type { ProductListingProps } from "@repo/shared";
+import { SearchBar } from "@/components/search/SearchBar";
 import { ProductGrid } from "@/components/templates/shared";
 import type { BlockComponentProps } from "../registry";
 import type { ProductSort } from "@/lib/api";
@@ -57,15 +58,64 @@ export function ProductListingBlock({
             sortOptions={SORT_LABELS}
           />
         )}
-        <ProductGrid
-          products={dataContext.products}
-          columns={props.columns}
-          variant="bordered"
-          showCategory={props.showCategory}
-          showPrice={props.showPrice}
-          showDiscount={props.showDiscount}
-          cardAspectRatio={props.cardAspectRatio}
-        />
+        {total > 0 && (
+          <div
+            style={{
+              fontSize: "0.82rem",
+              color: "var(--color-muted)",
+              marginBottom: "1.25rem",
+            }}
+          >
+            Showing {dataContext.products.length} of {total} products
+          </div>
+        )}
+        {dataContext.products.length > 0 ? (
+          <ProductGrid
+            products={dataContext.products}
+            columns={props.columns}
+            variant="bordered"
+            showCategory={props.showCategory}
+            showPrice={props.showPrice}
+            showDiscount={props.showDiscount}
+            cardAspectRatio={props.cardAspectRatio}
+          />
+        ) : (
+          <div
+            style={{
+              textAlign: "center",
+              padding: "4rem 1rem",
+              color: "var(--color-muted)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: "clamp(1.25rem, 2.5vw, 1.75rem)",
+                fontFamily: "var(--font-display)",
+                fontWeight: 600,
+                color: "var(--color-text)",
+                marginBottom: "0.75rem",
+              }}
+            >
+              No products found
+            </div>
+            {typeof params.search === "string" && params.search && (
+              <p style={{ marginBottom: "1.5rem" }}>
+                No results for &ldquo;{params.search}&rdquo;. Try a different
+                search term.
+              </p>
+            )}
+            <Link
+              href="/products"
+              style={{
+                color: "var(--color-primary)",
+                textDecoration: "underline",
+                fontWeight: 500,
+              }}
+            >
+              Clear all filters
+            </Link>
+          </div>
+        )}
         {totalPages > 1 && (
           <Pagination
             currentPage={currentPage}

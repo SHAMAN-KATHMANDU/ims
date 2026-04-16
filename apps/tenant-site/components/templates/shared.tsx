@@ -30,6 +30,7 @@ import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { loadHeaderNavConfig, loadNavItems, expandAutoItems } from "@/lib/nav";
 import type { NavConfig, NavItem } from "@repo/shared";
 import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
+import { SearchBar } from "@/components/search/SearchBar";
 
 // ============================================================================
 // Brand + header
@@ -312,6 +313,11 @@ function SiteHeaderFromConfig({
 
   const Trailing = () => (
     <>
+      {config.showSearch && (
+        <span className="tpl-nav-search">
+          <SearchBar />
+        </span>
+      )}
       {config.cta && (
         <NavCtaButton
           label={config.cta.label}
@@ -604,6 +610,9 @@ export async function SiteHeader({
               {l.label}
             </Link>
           ))}
+          <span className="tpl-nav-search">
+            <SearchBar />
+          </span>
           <CartBadge />
         </nav>
       </div>
