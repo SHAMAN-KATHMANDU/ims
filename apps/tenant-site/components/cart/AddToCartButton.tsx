@@ -18,12 +18,14 @@ export function AddToCartButton({
   unitPrice,
   imageUrl,
   label = "Add to cart",
+  quantity,
 }: {
   productId: string;
   productName: string;
   unitPrice: number;
   imageUrl?: string | null;
   label?: string;
+  quantity?: number;
 }) {
   const { addItem, hydrated } = useCart();
   const [status, setStatus] = useState<"idle" | "added">("idle");
@@ -34,7 +36,7 @@ export function AddToCartButton({
       productName,
       unitPrice,
       imageUrl: imageUrl ?? null,
-      quantity: 1,
+      quantity: quantity ?? 1,
     });
     setStatus("added");
     window.setTimeout(() => setStatus("idle"), 1800);

@@ -22,6 +22,8 @@ interface PageProps {
     categoryId?: string;
     sort?: string;
     search?: string;
+    minPrice?: string;
+    maxPrice?: string;
   }>;
 }
 
@@ -51,6 +53,8 @@ export default async function ProductsPage({ searchParams }: PageProps) {
       categoryId: params.categoryId,
       sort,
       search: params.search,
+      minPrice: params.minPrice ? Number(params.minPrice) : undefined,
+      maxPrice: params.maxPrice ? Number(params.maxPrice) : undefined,
     }),
     getCategories(ctx.host, ctx.tenantId),
     getNavPages(ctx.host, ctx.tenantId),

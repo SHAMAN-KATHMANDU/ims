@@ -59,6 +59,8 @@ export class PublicSiteService {
       categoryId: query.categoryId,
       search: query.search,
       sort: query.sort,
+      minPrice: query.minPrice,
+      maxPrice: query.maxPrice,
     });
     return { products, total, page, limit };
   }

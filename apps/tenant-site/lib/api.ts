@@ -213,6 +213,8 @@ export function getProducts(
     categoryId?: string;
     sort?: ProductSort;
     search?: string;
+    minPrice?: number;
+    maxPrice?: number;
   } = {},
 ) {
   const params = new URLSearchParams();
@@ -221,6 +223,8 @@ export function getProducts(
   if (query.categoryId) params.set("categoryId", query.categoryId);
   if (query.sort) params.set("sort", query.sort);
   if (query.search) params.set("search", query.search);
+  if (query.minPrice != null) params.set("minPrice", String(query.minPrice));
+  if (query.maxPrice != null) params.set("maxPrice", String(query.maxPrice));
   const suffix = params.toString() ? `?${params.toString()}` : "";
 
   return publicFetch<PublicProductList>(`/public/products${suffix}`, {

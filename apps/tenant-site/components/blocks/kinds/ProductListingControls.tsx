@@ -10,7 +10,7 @@
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import type { PublicCategory, ProductSort } from "@/lib/api";
 
 type Props = {
@@ -61,6 +61,7 @@ export function ProductListingControls({
         marginBottom: "2rem",
       }}
     >
+      <PriceRangeFilter pushParam={pushParam} searchParams={searchParams} />
       {showCategoryFilter && categories.length > 0 && (
         <label
           style={{
@@ -113,6 +114,69 @@ export function ProductListingControls({
     </div>
   );
 }
+
+function PriceRangeFilter({
+  pushParam,
+  searchParams,
+}: {
+  pushParam: (key: string, value: string | null) => void;
+  searchParams: URLSearchParams;
+}) {
+  const [min, setMin] = useState(searchParams.get("minPrice") ?? "");
+  const [max, setMax] = useState(searchParams.get("maxPrice") ?? "");
+
+  const applyMin = () => pushParam("minPrice", min || null);
+  const applyMax = () => pushParam("maxPrice", max || null);
+
+  const handleKey = (e: React.KeyboardEvent, apply: () => void) => {
+    if (e.key === "Enter") apply();
+  };
+
+  return (
+    <label
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "0.5rem",
+        fontSize: "0.85rem",
+        color: "var(--color-muted)",
+      }}
+    >
+      Price range
+      <input
+        type="number"
+        min={0}
+        placeholder="Min"
+        value={min}
+        onChange={(e) => setMin(e.target.value)}
+        onBlur={applyMin}
+        onKeyDown={(e) => handleKey(e, applyMin)}
+        style={{ ...inputStyle, width: "5.5rem" }}
+      />
+      <span style={{ color: "var(--color-muted)" }}>&ndash;</span>
+      <input
+        type="number"
+        min={0}
+        placeholder="Max"
+        value={max}
+        onChange={(e) => setMax(e.target.value)}
+        onBlur={applyMax}
+        onKeyDown={(e) => handleKey(e, applyMax)}
+        style={{ ...inputStyle, width: "5.5rem" }}
+      />
+    </label>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  padding: "0.45rem 0.75rem",
+  borderRadius: "var(--radius)",
+  border: "1px solid var(--color-border)",
+  background: "var(--color-background)",
+  color: "var(--color-text)",
+  fontSize: "0.85rem",
+  fontFamily: "inherit",
+};
 
 const selectStyle: React.CSSProperties = {
   padding: "0.45rem 0.75rem",
