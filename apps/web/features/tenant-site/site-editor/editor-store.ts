@@ -59,6 +59,7 @@ interface EditorState {
     id: string,
     visibility: Partial<BlockVisibility>,
   ) => void;
+  updateBlockId: (oldId: string, newId: string) => void;
 
   // ---- history ----
   undo: () => void;
@@ -181,6 +182,16 @@ export const useEditorStore = create<EditorState>()((set, get) => {
         visibility: { ...(b.visibility ?? {}), ...visibility },
       }));
       commit({ blocks });
+    },
+
+    updateBlockId: (oldId, newId) => {
+      if (!newId.trim() || oldId === newId) return;
+      const { present, selectedId } = get();
+      const blocks = present.blocks.map((b) =>
+        b.id === oldId ? { ...b, id: newId } : b,
+      );
+      commit({ blocks });
+      if (selectedId === oldId) set({ selectedId: newId });
     },
 
     undo: () => {

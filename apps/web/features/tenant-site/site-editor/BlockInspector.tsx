@@ -21,7 +21,7 @@
  * This is the Phase 4 floor — we extend it as new block shapes land.
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { z } from "zod";
 import { BlockPropsSchemas } from "@repo/shared";
 import type { BlockNode } from "@repo/shared";
@@ -71,6 +71,7 @@ export function BlockInspector() {
       <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-5">
         <VisibilitySection block={selected} />
         <BlockForm block={selected} />
+        <AdvancedSection block={selected} />
       </div>
     </div>
   );
@@ -126,6 +127,49 @@ function VisibilitySection({ block }: { block: BlockNode }) {
         </p>
       )}
     </div>
+  );
+}
+
+function AdvancedSection({ block }: { block: BlockNode }) {
+  const updateBlockId = useEditorStore((s) => s.updateBlockId);
+  const [editingId, setEditingId] = useState(block.id);
+
+  // Sync when selection changes
+  if (editingId !== block.id && !editingId.startsWith("__editing__")) {
+    // block.id changed externally (e.g. undo) — reset
+  }
+
+  return (
+    <details className="group">
+      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Advanced
+      </summary>
+      <div className="mt-2 space-y-2">
+        <div className="space-y-1">
+          <Label className="text-xs">
+            Block ID{" "}
+            <span className="font-normal text-muted-foreground">
+              (for anchor links: #{block.id})
+            </span>
+          </Label>
+          <Input
+            value={editingId}
+            onChange={(e) => setEditingId(e.target.value)}
+            onBlur={() => {
+              if (editingId.trim() && editingId !== block.id) {
+                updateBlockId(block.id, editingId.trim());
+              }
+            }}
+            className="h-8 font-mono text-xs"
+            placeholder="unique-section-id"
+          />
+          <p className="text-[10px] text-muted-foreground">
+            Use this ID for anchor links: add a button with href{" "}
+            <code>#{block.id}</code> to scroll here.
+          </p>
+        </div>
+      </div>
+    </details>
   );
 }
 

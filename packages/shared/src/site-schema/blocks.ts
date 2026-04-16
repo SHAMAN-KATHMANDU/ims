@@ -211,6 +211,67 @@ export interface BreadcrumbsProps {
   scope: "product" | "category" | "page";
 }
 
+// Layer 2 blocks ---------------------------------------------------------------
+
+export interface EmbedProps {
+  src: string;
+  aspectRatio?: "16/9" | "4/3" | "1/1" | "auto";
+  allowFullscreen?: boolean;
+  caption?: string;
+}
+
+export interface VideoProps {
+  source: "youtube" | "vimeo" | "mp4";
+  url: string;
+  aspectRatio?: "16/9" | "4/3" | "1/1";
+  autoplay?: boolean;
+  loop?: boolean;
+  muted?: boolean;
+  caption?: string;
+}
+
+export interface AccordionProps {
+  items: { title: string; body: string }[];
+  allowMultiple?: boolean;
+  heading?: string;
+}
+
+export interface ColumnsProps {
+  count: 2 | 3 | 4;
+  gap?: "sm" | "md" | "lg";
+  verticalAlign?: "start" | "center" | "end";
+}
+
+export interface GalleryProps {
+  images: { src: string; alt: string; caption?: string }[];
+  layout: "grid" | "masonry" | "slideshow";
+  columns: 2 | 3 | 4;
+  lightbox?: boolean;
+  aspectRatio?: "1/1" | "4/3" | "3/4" | "16/9" | "auto";
+}
+
+export interface TabsProps {
+  tabs: { label: string; content: string }[];
+  defaultTab?: number;
+}
+
+export interface FormFieldDef {
+  kind: "text" | "email" | "textarea" | "phone" | "select";
+  label: string;
+  required?: boolean;
+  placeholder?: string;
+  options?: string[];
+}
+
+export interface FormBlockProps {
+  heading?: string;
+  description?: string;
+  fields: FormFieldDef[];
+  submitLabel?: string;
+  successMessage?: string;
+  submitTo: "email" | "crm-lead";
+}
+
 // ---------------------------------------------------------------------------
 // The full map
 // ---------------------------------------------------------------------------
@@ -248,6 +309,14 @@ export interface BlockPropsMap {
   "pdp-details": PdpDetailsProps;
   "pdp-related": PdpRelatedProps;
   breadcrumbs: BreadcrumbsProps;
+  // Layer 2
+  embed: EmbedProps;
+  video: VideoProps;
+  accordion: AccordionProps;
+  columns: ColumnsProps;
+  gallery: GalleryProps;
+  tabs: TabsProps;
+  form: FormBlockProps;
 }
 
 export type BlockKind = keyof BlockPropsMap;
@@ -505,6 +574,105 @@ export const BlockPropsSchemas = {
     .strict(),
   breadcrumbs: z
     .object({ scope: z.enum(["product", "category", "page"]) })
+    .strict(),
+  // Layer 2
+  embed: z
+    .object({
+      src: str(2000),
+      aspectRatio: z.enum(["16/9", "4/3", "1/1", "auto"]).optional(),
+      allowFullscreen: z.boolean().optional(),
+      caption: optStr(300),
+    })
+    .strict(),
+  video: z
+    .object({
+      source: z.enum(["youtube", "vimeo", "mp4"]),
+      url: str(2000),
+      aspectRatio: z.enum(["16/9", "4/3", "1/1"]).optional(),
+      autoplay: z.boolean().optional(),
+      loop: z.boolean().optional(),
+      muted: z.boolean().optional(),
+      caption: optStr(300),
+    })
+    .strict(),
+  accordion: z
+    .object({
+      items: z
+        .array(
+          z
+            .object({
+              title: str(300),
+              body: z.string().max(5000),
+            })
+            .strict(),
+        )
+        .max(50),
+      allowMultiple: z.boolean().optional(),
+      heading: optStr(200),
+    })
+    .strict(),
+  columns: z
+    .object({
+      count: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+      gap: z.enum(["sm", "md", "lg"]).optional(),
+      verticalAlign: z.enum(["start", "center", "end"]).optional(),
+    })
+    .strict(),
+  gallery: z
+    .object({
+      images: z
+        .array(
+          z
+            .object({
+              src: str(2000),
+              alt: str(200),
+              caption: optStr(300),
+            })
+            .strict(),
+        )
+        .max(50),
+      layout: z.enum(["grid", "masonry", "slideshow"]),
+      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+      lightbox: z.boolean().optional(),
+      aspectRatio: z.enum(["1/1", "4/3", "3/4", "16/9", "auto"]).optional(),
+    })
+    .strict(),
+  tabs: z
+    .object({
+      tabs: z
+        .array(
+          z
+            .object({
+              label: str(100),
+              content: z.string().max(50_000),
+            })
+            .strict(),
+        )
+        .max(20),
+      defaultTab: z.number().int().min(0).optional(),
+    })
+    .strict(),
+  form: z
+    .object({
+      heading: optStr(200),
+      description: optStr(500),
+      fields: z
+        .array(
+          z
+            .object({
+              kind: z.enum(["text", "email", "textarea", "phone", "select"]),
+              label: str(100),
+              required: z.boolean().optional(),
+              placeholder: optStr(200),
+              options: z.array(z.string().max(100)).max(50).optional(),
+            })
+            .strict(),
+        )
+        .max(30),
+      submitLabel: optStr(60),
+      successMessage: optStr(500),
+      submitTo: z.enum(["email", "crm-lead"]),
+    })
     .strict(),
 } satisfies Record<BlockKind, z.ZodType<unknown>>;
 
