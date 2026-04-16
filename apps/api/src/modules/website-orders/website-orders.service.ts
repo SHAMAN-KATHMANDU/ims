@@ -307,8 +307,9 @@ export class WebsiteOrdersService {
       throw createError("Invalid cart totals", 400);
     }
 
-    // Two attempts to generate a unique orderCode in case of a race.
-    for (let attempt = 0; attempt < 2; attempt++) {
+    // Up to 3 attempts to generate a unique orderCode in case of a race
+    // (concurrent checkouts can see the same count before either commits).
+    for (let attempt = 0; attempt < 3; attempt++) {
       const orderCode = await this.nextOrderCode(tenantId);
       try {
         return await this.repo.createOrder(tenantId, {
@@ -326,9 +327,8 @@ export class WebsiteOrdersService {
         if (
           err instanceof Prisma.PrismaClientKnownRequestError &&
           err.code === "P2002" &&
-          attempt === 0
+          attempt < 2
         ) {
-          // Unique constraint on (tenantId, orderCode) — retry once.
           continue;
         }
         throw err;
