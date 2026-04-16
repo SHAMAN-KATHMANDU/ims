@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import axios from "axios";
-import { Plus, Lock, Trash2, Eye, EyeOff } from "lucide-react";
+import { Plus, Lock, Trash2, Eye, EyeOff, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +28,7 @@ import {
   useDeleteTenantPage,
   usePublishTenantPage,
   useUnpublishTenantPage,
+  useDuplicateTenantPage,
 } from "../hooks/use-tenant-pages";
 import type { TenantPageListItem } from "../services/tenant-pages.service";
 
@@ -59,16 +60,19 @@ function PageRow({
   editHref,
   onToggled,
   onDeleted,
+  onDuplicated,
 }: {
   page: TenantPageListItem;
   editHref: string;
   onToggled: () => void;
   onDeleted: () => void;
+  onDuplicated: () => void;
 }) {
   const { toast } = useToast();
   const publishMutation = usePublishTenantPage();
   const unpublishMutation = useUnpublishTenantPage();
   const deleteMutation = useDeleteTenantPage();
+  const duplicateMutation = useDuplicateTenantPage();
 
   const handleToggle = async () => {
     try {
@@ -142,6 +146,28 @@ function PageRow({
           ) : (
             <Eye className="h-4 w-4" />
           )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={async () => {
+            try {
+              await duplicateMutation.mutateAsync(page.id);
+              toast({ title: "Page duplicated" });
+              onDuplicated();
+            } catch (error) {
+              toast({
+                title: "Duplicate failed",
+                description:
+                  error instanceof Error ? error.message : "Please try again",
+                variant: "destructive",
+              });
+            }
+          }}
+          disabled={duplicateMutation.isPending}
+          aria-label={`Duplicate ${page.title}`}
+        >
+          <Copy className="h-4 w-4" />
         </Button>
         <Button
           variant="ghost"
@@ -247,6 +273,7 @@ export function TenantPagesPage({
                     editHref={`${editHrefBase}/${p.id}`}
                     onToggled={() => pagesQuery.refetch()}
                     onDeleted={() => pagesQuery.refetch()}
+                    onDuplicated={() => pagesQuery.refetch()}
                   />
                 ))}
               </TableBody>

@@ -77,6 +77,20 @@ router.get("/:scope/preview-url", asyncHandler(controller.getPreviewUrl));
 
 /**
  * @swagger
+ * /site-layouts/{scope}/reset-from-template:
+ *   post:
+ *     summary: Replace the draft block tree with the template blueprint
+ *     tags: [SiteLayouts]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post(
+  "/:scope/reset-from-template",
+  asyncHandler(controller.resetFromTemplate),
+);
+
+/**
+ * @swagger
  * /site-layouts/{scope}:
  *   delete:
  *     summary: Delete a layout for a scope (optional pageId query for page scope)

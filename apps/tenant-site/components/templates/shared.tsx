@@ -53,7 +53,14 @@ export function BrandMark({ site, host }: { site: PublicSite; host: string }) {
         <img
           src={logo}
           alt={name}
-          style={{ height: 36, width: "auto", display: "block" }}
+          // Responsive height: clamps between 28px (small phones) and 40px
+          // (wide desktops). Fixed pixel heights blow up the header on
+          // narrow viewports because `width: auto` keeps the aspect ratio.
+          style={{
+            height: "clamp(28px, 4vw, 40px)",
+            width: "auto",
+            display: "block",
+          }}
         />
         <span
           style={{
@@ -631,30 +638,35 @@ export function Hero({
   const name = brandingDisplayName(site.branding, host);
   const tagline = brandingTagline(site.branding);
 
+  // Bigger, more editorial padding across the board — matches the Vercel
+  // Commerce / Shopify Dawn scale where the hero actually dominates the
+  // first viewport instead of feeling cramped.
   const padding =
     variant === "minimal"
-      ? "5rem 0 4rem"
+      ? "6rem 0 5rem"
       : variant === "luxury"
-        ? "8rem 0 7rem"
+        ? "10rem 0 8.5rem"
         : variant === "boutique"
-          ? "6rem 0 5rem"
+          ? "7.5rem 0 6rem"
           : variant === "editorial"
-            ? "7rem 0 5rem"
-            : "5.5rem 0 4.5rem";
+            ? "9rem 0 7rem"
+            : "7rem 0 5.5rem";
 
   const fontSize =
     variant === "luxury"
-      ? "clamp(3rem, 6vw, 4.5rem)"
+      ? "clamp(3.25rem, 7vw, 5.5rem)"
       : variant === "editorial"
-        ? "clamp(2.75rem, 5vw, 4rem)"
-        : "clamp(2.25rem, 4.5vw, 3.25rem)";
+        ? "clamp(3rem, 6vw, 5rem)"
+        : variant === "minimal"
+          ? "clamp(2.5rem, 5vw, 4rem)"
+          : "clamp(2.75rem, 5.5vw, 4.25rem)";
 
   const letterSpacing =
     variant === "minimal"
-      ? "-0.03em"
+      ? "-0.035em"
       : variant === "luxury"
-        ? "0.02em"
-        : "-0.01em";
+        ? "0.015em"
+        : "-0.02em";
 
   const fontWeight =
     variant === "minimal" ? 500 : variant === "luxury" ? 500 : 700;
@@ -670,15 +682,15 @@ export function Hero({
         background: "var(--color-background)",
       }}
     >
-      <div className="container" style={{ maxWidth: 900, margin: "0 auto" }}>
+      <div className="container" style={{ maxWidth: 960, margin: "0 auto" }}>
         <h1
           style={{
             fontSize,
-            marginBottom: "1.25rem",
+            marginBottom: "1.5rem",
             letterSpacing,
             fontWeight,
             fontFamily,
-            lineHeight: 1.1,
+            lineHeight: 1.05,
             color: "var(--color-text)",
           }}
         >
@@ -687,10 +699,10 @@ export function Hero({
         {tagline && (
           <p
             style={{
-              fontSize: "clamp(1rem, 1.5vw, 1.2rem)",
+              fontSize: "clamp(1.05rem, 1.6vw, 1.35rem)",
               color: "var(--color-muted)",
-              maxWidth: 560,
-              margin: "0 auto 2rem",
+              maxWidth: 620,
+              margin: "0 auto 2.5rem",
               lineHeight: 1.6,
             }}
           >
@@ -723,19 +735,23 @@ export function ProductCard({
     product.mrp &&
     Number(product.finalSp) < Number(product.mrp);
 
+  // Editorial Vercel-Commerce aesthetic: bigger photo surface, more
+  // breathing room in the text block, bolder name + price, hover lift
+  // instead of border-color wobble.
   const border =
     variant === "bare"
       ? "none"
       : variant === "card"
-        ? "none"
+        ? "1px solid var(--color-border)"
         : "1px solid var(--color-border)";
   const background =
-    variant === "card" ? "var(--color-surface)" : "transparent";
-  const boxShadow = variant === "card" ? "0 1px 2px rgba(0,0,0,0.04)" : "none";
+    variant === "card" ? "var(--color-surface)" : "var(--color-background)";
+  const boxShadow = variant === "card" ? "0 2px 14px rgba(0,0,0,0.06)" : "none";
 
   return (
     <Link
       href={`/products/${product.id}`}
+      className="tpl-product-card"
       style={{
         display: "block",
         borderRadius: "var(--radius)",
@@ -744,13 +760,15 @@ export function ProductCard({
         boxShadow,
         overflow: "hidden",
         color: "var(--color-text)",
-        transition: "transform 0.2s ease, box-shadow 0.2s ease",
+        textDecoration: "none",
+        transition:
+          "transform 0.25s ease, box-shadow 0.25s ease, border-color 0.2s ease",
       }}
     >
       <div
         style={{
           position: "relative",
-          aspectRatio: "1 / 1",
+          aspectRatio: "3 / 4",
           background: "var(--color-surface)",
           overflow: "hidden",
         }}
@@ -761,11 +779,13 @@ export function ProductCard({
             src={product.photoUrl}
             alt={product.name}
             loading="lazy"
+            className="tpl-product-card-img"
             style={{
               width: "100%",
               height: "100%",
               objectFit: "cover",
               display: "block",
+              transition: "transform 0.45s ease",
             }}
           />
         ) : (
@@ -776,23 +796,69 @@ export function ProductCard({
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              fontSize: "0.75rem",
+              fontSize: "0.78rem",
               color: "var(--color-muted)",
               fontFamily: "var(--font-heading)",
-              letterSpacing: "0.05em",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
             }}
           >
             {product.imsCode}
           </div>
         )}
+        {hasDiscount && (
+          <span
+            style={{
+              position: "absolute",
+              top: "0.85rem",
+              left: "0.85rem",
+              padding: "0.3rem 0.65rem",
+              background: "var(--color-text)",
+              color: "var(--color-background)",
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              borderRadius: 999,
+            }}
+          >
+            Sale
+          </span>
+        )}
       </div>
-      <div style={{ padding: "1rem 1.1rem 1.2rem" }}>
+      <div
+        style={{
+          padding: "1.25rem 1.35rem 1.5rem",
+          display: "flex",
+          flexDirection: "column",
+          gap: "0.4rem",
+        }}
+      >
+        {product.category && (
+          <div
+            style={{
+              fontSize: "0.66rem",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "var(--color-muted)",
+              fontWeight: 500,
+            }}
+          >
+            {product.category.name}
+          </div>
+        )}
         <div
           style={{
             fontWeight: 500,
-            marginBottom: "0.4rem",
-            fontSize: "0.98rem",
-            lineHeight: 1.35,
+            fontSize: "1.08rem",
+            lineHeight: 1.3,
+            color: "var(--color-text)",
+            fontFamily: "var(--font-heading)",
+            // Two-line clamp so long product names don't break the grid.
+            display: "-webkit-box",
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: "vertical",
+            overflow: "hidden",
           }}
         >
           {product.name}
@@ -801,14 +867,16 @@ export function ProductCard({
           style={{
             display: "flex",
             alignItems: "baseline",
-            gap: "0.6rem",
-            fontSize: "0.95rem",
+            gap: "0.65rem",
+            fontSize: "1.02rem",
+            marginTop: "0.25rem",
           }}
         >
           <span
             style={{
               fontWeight: 600,
               color: "var(--color-text)",
+              fontFamily: "var(--font-display)",
             }}
           >
             ₹{Number(product.finalSp).toLocaleString("en-IN")}
@@ -818,7 +886,7 @@ export function ProductCard({
               style={{
                 textDecoration: "line-through",
                 color: "var(--color-muted)",
-                fontSize: "0.85rem",
+                fontSize: "0.88rem",
               }}
             >
               ₹{Number(product.mrp).toLocaleString("en-IN")}
@@ -853,12 +921,17 @@ export function ProductGrid({
       </p>
     );
   }
+  // Larger minimum card width: 260px floor on 2-col grids, scaling up to
+  // ~320px on 3-col and ~380px on wider grids. This pushes toward the
+  // Vercel Commerce / Shopify Dawn aesthetic where cards dominate the
+  // viewport instead of shrinking into thumbnails.
+  const minWidth = Math.max(260, Math.floor(1280 / columns) - 28);
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: `repeat(auto-fit, minmax(${Math.max(180, Math.floor(1200 / columns) - 20)}px, 1fr))`,
-        gap: "1.75rem",
+        gridTemplateColumns: `repeat(auto-fit, minmax(${minWidth}px, 1fr))`,
+        gap: "2.25rem 1.75rem",
       }}
     >
       {products.map((p) => (

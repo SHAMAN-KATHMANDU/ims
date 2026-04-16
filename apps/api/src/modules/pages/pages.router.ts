@@ -111,6 +111,28 @@ router.post("/:id/unpublish", asyncHandler(controller.unpublishPage));
 
 /**
  * @swagger
+ * /pages/{id}/convert-to-blocks:
+ *   post:
+ *     summary: Convert a markdown TenantPage into a block-based SiteLayout
+ *     tags: [Pages]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/:id/convert-to-blocks", asyncHandler(controller.convertToBlocks));
+
+/**
+ * @swagger
+ * /pages/{id}/duplicate:
+ *   post:
+ *     summary: Clone a TenantPage (with auto-bumped slug) and any block layout
+ *     tags: [Pages]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.post("/:id/duplicate", asyncHandler(controller.duplicatePage));
+
+/**
+ * @swagger
  * /pages/{id}:
  *   delete:
  *     summary: Delete a tenant page

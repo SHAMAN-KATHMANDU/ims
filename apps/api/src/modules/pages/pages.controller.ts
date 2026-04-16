@@ -154,6 +154,39 @@ class PagesController {
     }
   };
 
+  convertToBlocks = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const id = getParam(req, "id");
+      const rawMode = (req.body as { mode?: string } | null)?.mode;
+      const mode: "convert" | "fresh" =
+        rawMode === "fresh" ? "fresh" : "convert";
+      const result = await service.convertToBlocks(tenantId, id, mode);
+      return res
+        .status(201)
+        .json({ message: "Page converted to block layout", ...result });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Convert page to blocks error")
+      );
+    }
+  };
+
+  duplicatePage = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const id = getParam(req, "id");
+      const page = await service.duplicatePage(tenantId, id);
+      return res.status(201).json({ message: "Page duplicated", page });
+    } catch (error) {
+      return (
+        handleAppError(res, error) ??
+        sendControllerError(req, res, error, "Duplicate tenant page error")
+      );
+    }
+  };
+
   reorderPages = async (req: Request, res: Response) => {
     try {
       const tenantId = getAuthContext(req).tenantId;

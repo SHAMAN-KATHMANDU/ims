@@ -16,6 +16,9 @@ import sitesRepo from "@/modules/sites/sites.repository";
 import { env } from "@/config/env";
 import { createError } from "@/middlewares/errorHandler";
 import { signPreviewToken } from "@/modules/site-preview/preview-token";
+import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
+import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revalidate";
+import type { BlockNode } from "@repo/shared";
 import defaultRepo, { type TenantPageListItem } from "./pages.repository";
 import type {
   CreateTenantPageInput,
@@ -206,6 +209,122 @@ export class PagesService {
         token,
       )}`,
     };
+  }
+
+  /**
+   * Convert a markdown-bodied TenantPage into a block-based layout.
+   *
+   * Modes:
+   *   - "convert" (default) — wrap the existing markdown body in a single
+   *     `markdown-body` block at the top of a new SiteLayout. Tenant keeps
+   *     all their content and can replace it with native blocks at their
+   *     own pace. Idempotent: no-op if a SiteLayout row already exists.
+   *   - "fresh" — create an empty SiteLayout row. The markdown body stays
+   *     on the TenantPage row but is no longer rendered (since the
+   *     SiteLayout takes precedence in apps/tenant-site/app/[slug]/page.tsx).
+   *     Effectively a "start from scratch" mode.
+   *
+   * Returns 409 if a layout row already exists for this page (caller should
+   * navigate to the editor instead of recreating).
+   */
+  async convertToBlocks(
+    tenantId: string,
+    pageId: string,
+    mode: "convert" | "fresh",
+  ): Promise<{ layoutId: string; blocks: BlockNode[] }> {
+    await this.assertEnabled(tenantId);
+    const page = await this.repo.getPageById(tenantId, pageId);
+    if (!page) throw createError("Page not found", 404);
+
+    const existing = await siteLayoutsRepo.findByKey(tenantId, {
+      scope: "page",
+      pageId,
+    });
+    if (existing) {
+      throw createError(
+        "Block layout already exists for this page — open it in the editor",
+        409,
+      );
+    }
+
+    const blocks: BlockNode[] =
+      mode === "convert" && page.bodyMarkdown.trim().length > 0
+        ? [
+            {
+              id: `mb-${pageId.slice(0, 8)}`,
+              kind: "markdown-body",
+              props: {
+                source: page.bodyMarkdown,
+                maxWidth: "default",
+              },
+            },
+          ]
+        : [];
+
+    const row = await siteLayoutsRepo.upsertDraft(
+      tenantId,
+      { scope: "page", pageId },
+      blocks as unknown as Prisma.InputJsonValue,
+    );
+    // Publish immediately so the live page picks up the new render path
+    // without forcing a separate Publish click in the editor.
+    await siteLayoutsRepo.publishDraft(tenantId, { scope: "page", pageId });
+    await revalidateSiteLayout(tenantId, "page");
+
+    return { layoutId: row.id, blocks };
+  }
+
+  /**
+   * Duplicate a TenantPage. Clones the row with a unique slug
+   * (`${slug}-copy`, then `-copy-2`, etc. on collision) and copies any
+   * associated SiteLayout{scope:"page",pageId} row so block-edited pages
+   * keep their layout.
+   */
+  async duplicatePage(tenantId: string, id: string) {
+    await this.assertEnabled(tenantId);
+    const original = await this.repo.getPageById(tenantId, id);
+    if (!original) throw createError("Page not found", 404);
+
+    // Find a unique slug. Cap attempts so a malicious slug-collision flood
+    // can't loop forever — 50 is plenty of headroom for normal use.
+    let slug = `${original.slug}-copy`;
+    for (let i = 0; i < 50; i++) {
+      const collision = await this.repo.findPageBySlug(tenantId, slug);
+      if (!collision) break;
+      slug = `${original.slug}-copy-${i + 2}`;
+    }
+
+    const copy = await this.repo.createPage(tenantId, {
+      slug,
+      title: `${original.title} (copy)`,
+      bodyMarkdown: original.bodyMarkdown,
+      layoutVariant: original.layoutVariant,
+      showInNav: false, // duplicate hidden by default to avoid surprise nav entries
+      navOrder: original.navOrder,
+      seoTitle: original.seoTitle ?? null,
+      seoDescription: original.seoDescription ?? null,
+    });
+
+    // Copy associated block layout if present.
+    const sourceLayout = await siteLayoutsRepo.findByKey(tenantId, {
+      scope: "page",
+      pageId: id,
+    });
+    if (sourceLayout) {
+      const blocks = sourceLayout.blocks as Prisma.InputJsonValue;
+      await siteLayoutsRepo.upsertDraft(
+        tenantId,
+        { scope: "page", pageId: copy.id },
+        blocks,
+      );
+      await siteLayoutsRepo.publishDraft(tenantId, {
+        scope: "page",
+        pageId: copy.id,
+      });
+    }
+
+    await this.revalidate(tenantId, { slug: copy.slug });
+    return copy;
   }
 
   async reorder(tenantId: string, input: ReorderPagesInput): Promise<void> {

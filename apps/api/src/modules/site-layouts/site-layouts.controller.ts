@@ -123,6 +123,26 @@ class SiteLayoutsController {
     }
   };
 
+  resetFromTemplate = async (req: Request, res: Response) => {
+    try {
+      const tenantId = getAuthContext(req).tenantId;
+      const key = parseScopeParam(req);
+      const layout = await service.resetScopeFromTemplate(tenantId, key);
+      return res.status(200).json({ message: "Reset from template", layout });
+    } catch (error) {
+      return (
+        handleZodError(res, error) ??
+        handleAppError(res, error) ??
+        sendControllerError(
+          req,
+          res,
+          error,
+          "Reset site layout from template error",
+        )
+      );
+    }
+  };
+
   remove = async (req: Request, res: Response) => {
     try {
       const tenantId = getAuthContext(req).tenantId;

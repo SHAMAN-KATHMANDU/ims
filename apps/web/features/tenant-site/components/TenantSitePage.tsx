@@ -52,6 +52,7 @@ import { SiteSectionsPanel } from "./SiteSectionsPanel";
 import { SiteTemplatePicker } from "./SiteTemplatePicker";
 import { NavMenuPanel } from "./NavMenuPanel";
 import { SiteOverviewTab } from "./SiteOverviewTab";
+import { ThemeTokensForm } from "./ThemeTokensForm";
 
 function isForbiddenError(error: unknown): boolean {
   return axios.isAxiosError(error) && error.response?.status === 403;
@@ -79,6 +80,7 @@ function FeatureDisabledCard() {
 const TABS = [
   { value: "overview", label: "Overview" },
   { value: "branding", label: "Branding" },
+  { value: "theme", label: "Theme" },
   { value: "navigation", label: "Navigation" },
   { value: "contact", label: "Contact" },
   { value: "seo", label: "SEO" },
@@ -258,6 +260,10 @@ export function TenantSitePage() {
         <TabsContent value="branding" className="space-y-6">
           <SiteTemplatePicker activeTemplateId={config.templateId} />
           <SiteBrandingForm branding={config.branding} />
+        </TabsContent>
+
+        <TabsContent value="theme">
+          <ThemeTokensForm themeTokens={config.themeTokens} />
         </TabsContent>
 
         <TabsContent value="navigation">
