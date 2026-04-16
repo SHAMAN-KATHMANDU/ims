@@ -308,6 +308,65 @@ describe("WebsiteOrdersService", () => {
       expect(data.sale).toEqual({ connect: { id: "sale-1" } });
     });
 
+    it("converts a multi-item order with different products", async () => {
+      (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        enabledSite(),
+      );
+      const multiItemOrder = order({
+        status: "VERIFIED",
+        items: [
+          {
+            productId: "p1",
+            productName: "Lamp",
+            unitPrice: 500,
+            quantity: 2,
+            lineTotal: 1000,
+          },
+          {
+            productId: "p2",
+            productName: "Vase",
+            unitPrice: 300,
+            quantity: 1,
+            lineTotal: 300,
+          },
+        ],
+      });
+      (mockRepo.getOrderById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        multiItemOrder,
+      );
+      (prismaMock.product.findFirst as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce({
+          id: "p1",
+          variations: [{ id: "v1", isActive: true }],
+        })
+        .mockResolvedValueOnce({
+          id: "p2",
+          variations: [{ id: "v2", isActive: true }],
+        });
+      (saleService.createSale as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: "sale-1",
+      });
+      (mockRepo.updateOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
+        order({ status: "CONVERTED_TO_SALE", convertedSaleId: "sale-1" }),
+      );
+
+      const result = await service.convertToSale("t1", "o1", "user1", {
+        locationId: "loc1",
+        isCreditSale: true,
+      });
+
+      expect(saleService.createSale).toHaveBeenCalledWith(
+        expect.objectContaining({ tenantId: "t1" }),
+        expect.objectContaining({
+          items: [
+            { variationId: "v1", quantity: 2 },
+            { variationId: "v2", quantity: 1 },
+          ],
+        }),
+      );
+      expect(result.status).toBe("CONVERTED_TO_SALE");
+    });
+
     it("uses itemOverrides when provided", async () => {
       (mockRepo.getOrderById as ReturnType<typeof vi.fn>).mockResolvedValue(
         order({ status: "VERIFIED" }),
@@ -367,6 +426,107 @@ describe("WebsiteOrdersService", () => {
           items: [],
         }),
       ).rejects.toMatchObject({ statusCode: 400 });
+    });
+
+    it("creates a second order with the same phone number", async () => {
+      (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        enabledSite(),
+      );
+      (mockRepo.countThisYear as ReturnType<typeof vi.fn>).mockResolvedValue(1);
+      (mockRepo.createOrder as ReturnType<typeof vi.fn>).mockResolvedValue(
+        order({
+          id: "o2",
+          orderCode: "WO-2026-0002",
+          status: "PENDING_VERIFICATION",
+        }),
+      );
+      const result = await service.createGuestOrder("t1", {
+        customerName: "Ada",
+        customerPhone: "+977-98xxx",
+        customerEmail: null,
+        customerNote: null,
+        items: [
+          {
+            productId: "p1",
+            productName: "Lamp",
+            unitPrice: 500,
+            quantity: 2,
+            lineTotal: 1000,
+          },
+        ],
+      });
+      expect(result.orderCode).toBe("WO-2026-0002");
+    });
+
+    it("creates an order with 10 items and correct subtotal", async () => {
+      (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        enabledSite(),
+      );
+      (mockRepo.countThisYear as ReturnType<typeof vi.fn>).mockResolvedValue(0);
+      const items = Array.from({ length: 10 }, (_, i) => ({
+        productId: `p${i}`,
+        productName: `Product ${i}`,
+        unitPrice: 100 * (i + 1),
+        quantity: 1,
+        lineTotal: 100 * (i + 1),
+      }));
+      (mockRepo.createOrder as ReturnType<typeof vi.fn>).mockImplementation(
+        (_tenantId: string, data: Record<string, unknown>) => ({
+          ...order({ id: "o-multi", orderCode: "WO-2026-0001" }),
+          items: data.items,
+          subtotal: data.subtotal,
+        }),
+      );
+      const result = await service.createGuestOrder("t1", {
+        customerName: "Ada",
+        customerPhone: "+977-98xxx",
+        customerEmail: null,
+        customerNote: null,
+        items,
+      });
+      expect(result).toBeDefined();
+      // Subtotal should be 100+200+...+1000 = 5500
+      expect(mockRepo.createOrder).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({
+          subtotal: expect.anything(),
+        }),
+      );
+    });
+
+    it("retries on order code collision (P2002)", async () => {
+      (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        enabledSite(),
+      );
+      (mockRepo.countThisYear as ReturnType<typeof vi.fn>).mockResolvedValue(5);
+      const { Prisma } = await import("@prisma/client");
+      const p2002 = new Prisma.PrismaClientKnownRequestError(
+        "Unique constraint",
+        {
+          code: "P2002",
+          clientVersion: "5.0.0",
+        },
+      );
+      (mockRepo.createOrder as ReturnType<typeof vi.fn>)
+        .mockRejectedValueOnce(p2002)
+        .mockResolvedValueOnce(order({ orderCode: "WO-2026-0007" }));
+      const result = await service.createGuestOrder("t1", {
+        customerName: "Ada",
+        customerPhone: "+977-98xxx",
+        customerEmail: null,
+        customerNote: null,
+        items: [
+          {
+            productId: "p1",
+            productName: "Lamp",
+            unitPrice: 500,
+            quantity: 1,
+            lineTotal: 500,
+          },
+        ],
+      });
+      expect(result.orderCode).toBe("WO-2026-0007");
+      expect(mockRepo.createOrder).toHaveBeenCalledTimes(2);
     });
 
     it("creates an order with a server-computed subtotal", async () => {

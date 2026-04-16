@@ -28,11 +28,17 @@ export function mapPrismaError(
         message: "The requested resource was not found.",
         statusCode: 404,
       };
-    case "P2002":
+    case "P2002": {
+      const fields = prismaError?.meta?.target;
+      const fieldHint =
+        Array.isArray(fields) && fields.length > 0
+          ? ` (${fields.join(", ")})`
+          : "";
       return {
-        message: "A record with this value already exists.",
+        message: `A record with this value already exists${fieldHint}.`,
         statusCode: 409,
       };
+    }
     case "P2003":
       return {
         message:

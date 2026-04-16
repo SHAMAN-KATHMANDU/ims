@@ -27,6 +27,15 @@ router.get("/", asyncHandler(controller.listOrders));
 
 /**
  * @swagger
+ * /website-orders/{id}/stock-check:
+ *   get:
+ *     summary: Check stock availability per item across locations
+ *     tags: [WebsiteOrders]
+ */
+router.get("/:id/stock-check", asyncHandler(controller.checkOrderStock));
+
+/**
+ * @swagger
  * /website-orders/{id}:
  *   get:
  *     summary: Get a single website order (full items snapshot)

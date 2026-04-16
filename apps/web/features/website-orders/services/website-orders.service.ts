@@ -81,6 +81,10 @@ export interface ConvertOrderData {
   locationId: string;
   isCreditSale?: boolean;
   payments?: ConvertOrderPaymentInput[];
+  itemLocationOverrides?: Array<{
+    productId: string;
+    sourceLocationId: string;
+  }>;
 }
 
 // ============================================
@@ -154,6 +158,30 @@ export async function convertWebsiteOrder(
     return response.data.order;
   } catch (error) {
     handleApiError(error, "convert website order");
+  }
+}
+
+export interface StockCheckItem {
+  productId: string;
+  productName: string;
+  variationId: string | null;
+  quantity: number;
+  stockByLocation: Array<{
+    locationId: string;
+    locationName: string;
+    available: number;
+  }>;
+}
+
+export async function checkOrderStock(id: string): Promise<StockCheckItem[]> {
+  if (!id) throw new Error("Order id is required");
+  try {
+    const response = await api.get<StockCheckItem[]>(
+      `/website-orders/${id}/stock-check`,
+    );
+    return response.data;
+  } catch (error) {
+    handleApiError(error, "check order stock");
   }
 }
 

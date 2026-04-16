@@ -20,11 +20,20 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Trash2, Plus } from "lucide-react";
+import {
+  Trash2,
+  Plus,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+} from "lucide-react";
 import { useToast } from "@/hooks/useToast";
 import { useActiveLocations } from "@/features/locations/hooks/use-locations";
 import { ConvertOrderFormSchema, formatMoney } from "../validation";
-import { useConvertWebsiteOrder } from "../hooks/use-website-orders";
+import {
+  useConvertWebsiteOrder,
+  useOrderStockCheck,
+} from "../hooks/use-website-orders";
 
 type PaymentRow = { method: string; amount: string };
 
@@ -68,6 +77,9 @@ export function ConvertOrderDialog({
     { method: "cash", amount: String(Number(subtotal)) },
   ]);
   const [error, setError] = useState<string | null>(null);
+  const [itemSources, setItemSources] = useState<Record<string, string>>({});
+
+  const stockCheck = useOrderStockCheck(open ? orderId : null);
 
   // Reset state every time the dialog opens so a previous failed attempt
   // doesn't linger.
@@ -77,8 +89,29 @@ export function ConvertOrderDialog({
       setIsCreditSale(false);
       setPayments([{ method: "cash", amount: String(Number(subtotal)) }]);
       setError(null);
+      setItemSources({});
     }
   }, [open, subtotal]);
+
+  // Auto-assign best source location per item when primary location changes
+  useEffect(() => {
+    if (!locationId || !stockCheck.data) return;
+    const sources: Record<string, string> = {};
+    for (const item of stockCheck.data) {
+      const atPrimary = item.stockByLocation.find(
+        (s) => s.locationId === locationId,
+      );
+      if (atPrimary && atPrimary.available >= item.quantity) {
+        sources[item.productId] = locationId;
+      } else {
+        const best = [...item.stockByLocation]
+          .sort((a, b) => b.available - a.available)
+          .find((s) => s.available >= item.quantity);
+        sources[item.productId] = best?.locationId ?? locationId;
+      }
+    }
+    setItemSources(sources);
+  }, [locationId, stockCheck.data]);
 
   // Only showrooms are valid conversion targets — the createSale service
   // rejects warehouses at runtime, so we filter here for a clean UX.
@@ -105,6 +138,13 @@ export function ConvertOrderDialog({
     if (!orderId) return;
     setError(null);
 
+    const overrides = Object.entries(itemSources)
+      .filter(([, srcId]) => srcId !== locationId)
+      .map(([productId, sourceLocationId]) => ({
+        productId,
+        sourceLocationId,
+      }));
+
     const parsed = ConvertOrderFormSchema.safeParse({
       locationId,
       isCreditSale,
@@ -114,6 +154,7 @@ export function ConvertOrderDialog({
             method: p.method,
             amount: Number(p.amount),
           })),
+      itemLocationOverrides: overrides.length > 0 ? overrides : undefined,
     });
     if (!parsed.success) {
       setError(parsed.error.errors[0]?.message ?? "Invalid conversion input");
@@ -191,6 +232,85 @@ export function ConvertOrderDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {locationId && stockCheck.data && stockCheck.data.length > 0 && (
+            <div className="space-y-2 rounded-md border border-border p-3">
+              <Label className="text-sm font-medium">
+                Item stock &amp; source locations
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Pick where each item&apos;s stock comes from. Items from other
+                locations will be auto-transferred to the primary showroom.
+              </p>
+              <div className="space-y-2 pt-1">
+                {stockCheck.data.map((item) => {
+                  const sourceId = itemSources[item.productId] ?? locationId;
+                  const sourceStock = item.stockByLocation.find(
+                    (s) => s.locationId === sourceId,
+                  );
+                  const hasSufficientStock =
+                    (sourceStock?.available ?? 0) >= item.quantity;
+                  const needsTransfer = sourceId !== locationId;
+                  return (
+                    <div
+                      key={item.productId}
+                      className="flex items-center gap-2 rounded border border-border p-2 text-sm"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">
+                          {item.productName}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Need: {item.quantity}
+                        </div>
+                      </div>
+                      <Select
+                        value={sourceId}
+                        onValueChange={(v) =>
+                          setItemSources((prev) => ({
+                            ...prev,
+                            [item.productId]: v,
+                          }))
+                        }
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {item.stockByLocation.map((loc) => (
+                            <SelectItem
+                              key={loc.locationId}
+                              value={loc.locationId}
+                            >
+                              {loc.locationName} ({loc.available} in stock)
+                            </SelectItem>
+                          ))}
+                          {item.stockByLocation.length === 0 && (
+                            <SelectItem value={locationId} disabled>
+                              No stock anywhere
+                            </SelectItem>
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <div className="flex shrink-0 items-center gap-1">
+                        {hasSufficientStock ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                        )}
+                        {needsTransfer && hasSufficientStock && (
+                          <span className="whitespace-nowrap text-[10px] text-muted-foreground">
+                            <ArrowRight className="mr-0.5 inline h-3 w-3" />
+                            transfer
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           <div className="flex items-start gap-3 rounded-md border border-border p-3">
             <Switch

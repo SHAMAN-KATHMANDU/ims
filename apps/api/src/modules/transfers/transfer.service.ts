@@ -189,6 +189,17 @@ export class TransferService {
     return transfer;
   }
 
+  async createAndComplete(
+    tenantId: string,
+    userId: string,
+    data: CreateTransferDto,
+  ): Promise<void> {
+    const transfer = await this.create(tenantId, userId, data);
+    await this.approve(tenantId, userId, transfer.id);
+    await this.startTransit(tenantId, userId, transfer.id);
+    await this.complete(tenantId, userId, transfer.id);
+  }
+
   async findAll(tenantId: string, query: GetAllTransfersQuery) {
     let orderBy: Prisma.TransferOrderByWithRelationInput = getPrismaOrderBy(
       query.sortBy,

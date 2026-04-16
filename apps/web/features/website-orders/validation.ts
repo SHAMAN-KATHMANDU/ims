@@ -30,6 +30,14 @@ export const ConvertOrderFormSchema = z
     locationId: z.string().uuid("Select a showroom"),
     isCreditSale: z.boolean().optional().default(false),
     payments: z.array(ConvertOrderPaymentSchema).optional(),
+    itemLocationOverrides: z
+      .array(
+        z.object({
+          productId: z.string().uuid(),
+          sourceLocationId: z.string().uuid(),
+        }),
+      )
+      .optional(),
   })
   .refine(
     (v) => {
