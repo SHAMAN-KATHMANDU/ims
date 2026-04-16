@@ -96,6 +96,8 @@ export interface PublicSite {
   contact: Record<string, unknown> | null;
   features: Record<string, unknown> | null;
   seo: Record<string, unknown> | null;
+  /** Structured design tokens (Phase 7+). Preferred over branding when set. */
+  themeTokens?: Record<string, unknown> | null;
   template: PublicTemplate | null;
 }
 

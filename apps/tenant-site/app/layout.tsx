@@ -8,6 +8,8 @@ import {
   brandingLogoUrl,
   brandingTheme,
 } from "@/lib/theme";
+import { ThemeTokensSchema, type ThemeTokens } from "@repo/shared";
+import { themeTokensToCssVars } from "@/lib/theme-tokens";
 import { CartProvider } from "@/components/cart/CartProvider";
 import "./globals.css";
 
@@ -58,8 +60,20 @@ export default async function RootLayout({
 
   const ctx = await getTenantContext();
   const site = await getSite(ctx.host, ctx.tenantId);
-  const vars = brandingToCssVars(site?.branding ?? null);
-  const theme = brandingTheme(site?.branding ?? null);
+
+  // Prefer structured themeTokens (Phase 7+) over legacy branding JSON.
+  // ThemeTokens are validated at parse time; if invalid we fall back to
+  // branding so a corrupted themeTokens payload doesn't blank the site.
+  let vars: Record<string, string>;
+  let theme: string;
+  const parsedTokens = ThemeTokensSchema.safeParse(site?.themeTokens);
+  if (parsedTokens.success) {
+    vars = themeTokensToCssVars(parsedTokens.data);
+    theme = parsedTokens.data.mode === "dark" ? "dark" : "light";
+  } else {
+    vars = brandingToCssVars(site?.branding ?? null);
+    theme = brandingTheme(site?.branding ?? null);
+  }
 
   // Inline the design tokens on <html> (not <body>) so the ":focus-visible"
   // outline + anything using the tokens in the document root — including

@@ -27,6 +27,7 @@ export class PublicSiteService {
     contact: unknown;
     features: unknown;
     seo: unknown;
+    themeTokens: unknown;
     template: PublicSiteConfig["template"];
   }> {
     const config = await this.ensurePublished(tenantId);
@@ -35,6 +36,7 @@ export class PublicSiteService {
       contact: config.contact,
       features: config.features,
       seo: config.seo,
+      themeTokens: config.themeTokens,
       template: config.template,
     };
   }

@@ -70,6 +70,8 @@ export class SitesService {
     if (input.contact !== undefined) data.contact = toJson(input.contact);
     if (input.features !== undefined) data.features = toJson(input.features);
     if (input.seo !== undefined) data.seo = toJson(input.seo);
+    if (input.themeTokens !== undefined)
+      data.themeTokens = toJson(input.themeTokens);
 
     const result = await this.repo.updateConfig(tenantId, data);
     await this.revalidate(tenantId);

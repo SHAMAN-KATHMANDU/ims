@@ -17,6 +17,7 @@ export const UpdateSiteConfigSchema = z
     contact: jsonObject,
     features: jsonObject,
     seo: jsonObject,
+    themeTokens: jsonObject,
   })
   .refine((v) => Object.keys(v).length > 0, {
     message: "At least one field must be provided",

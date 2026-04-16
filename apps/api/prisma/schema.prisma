@@ -158,6 +158,10 @@ model SiteConfig {
   features       Json?
   /// SEO defaults: { title, description, ogImage, keywords }
   seo            Json?
+  /// Structured design tokens (colors, typography, spacing, shape, motion).
+  /// Preferred by the renderer over the legacy `branding` JSON when set.
+  /// Shape: ThemeTokens from @repo/shared.
+  themeTokens    Json?    @map("theme_tokens")
   /// Tenant has clicked "publish" — only published sites are served publicly.
   isPublished    Boolean  @default(false) @map("is_published")
   createdAt      DateTime @default(now()) @map("created_at")
