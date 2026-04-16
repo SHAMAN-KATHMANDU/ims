@@ -31,6 +31,7 @@ import { loadHeaderNavConfig, loadNavItems, expandAutoItems } from "@/lib/nav";
 import type { NavConfig, NavItem } from "@repo/shared";
 import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
 import { SearchBar } from "@/components/search/SearchBar";
+import { QuickAddButton } from "@/components/cart/QuickAddButton";
 
 // ============================================================================
 // Brand + header
@@ -745,6 +746,15 @@ export function Hero({
           position: "relative",
         }}
       >
+        {/* Preload hint for above-the-fold hero background */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt=""
+          decoding="async"
+          fetchPriority="high"
+          style={{ display: "none" }}
+        />
         <div
           style={{
             position: "absolute",
@@ -771,6 +781,8 @@ export function Hero({
       <img
         src={imageUrl}
         alt=""
+        decoding="async"
+        fetchPriority="high"
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
       />
     );
@@ -890,6 +902,8 @@ export function ProductCard({
             src={product.photoUrl}
             alt={product.name}
             loading="lazy"
+            decoding="async"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="tpl-product-card-img"
             style={{
               width: "100%",
@@ -958,6 +972,12 @@ export function ProductCard({
             New
           </span>
         )}
+        <QuickAddButton
+          productId={product.id}
+          productName={product.name}
+          unitPrice={Number(product.finalSp)}
+          imageUrl={product.photoUrl ?? null}
+        />
       </div>
       <div
         style={{

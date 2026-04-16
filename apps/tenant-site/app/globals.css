@@ -318,10 +318,22 @@ hr {
 .tpl-product-card:hover .tpl-product-card-img {
   transform: scale(1.04);
 }
+.tpl-product-card:hover .tpl-quick-add {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
+}
 @media (prefers-reduced-motion: reduce) {
   .tpl-product-card:hover,
   .tpl-product-card:hover .tpl-product-card-img {
     transform: none !important;
+  }
+}
+
+/* Desktop-only visibility: hidden on mobile, shown on larger screens.
+   Mirrors the tpl-mobile-only pattern but inverted. */
+@media (max-width: 768px) {
+  .tpl-desktop-only {
+    display: none !important;
   }
 }
 

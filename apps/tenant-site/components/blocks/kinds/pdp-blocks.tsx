@@ -110,10 +110,19 @@ export function PdpDetailsBlock({
   dataContext,
 }: BlockComponentProps<PdpDetailsProps>) {
   const product = dataContext.activeProduct;
-  if (!product || !product.description) return null;
+  if (!product) return null;
+  if (!product.description) return null;
+
   if (props.tabs) {
+    const hasSpecs =
+      product.length != null ||
+      product.breadth != null ||
+      product.height != null ||
+      product.weight != null;
+
     return (
       <div style={{ marginTop: "2.5rem" }}>
+        {/* Description */}
         <details open>
           <summary
             style={{
@@ -138,9 +147,124 @@ export function PdpDetailsBlock({
             {product.description}
           </div>
         </details>
+
+        {/* Specifications */}
+        {hasSpecs && (
+          <details>
+            <summary
+              style={{
+                padding: "1rem 0",
+                fontWeight: 600,
+                cursor: "pointer",
+                borderBottom: "1px solid var(--color-border)",
+              }}
+            >
+              Specifications
+            </summary>
+            <div style={{ padding: "1.25rem 0" }}>
+              <table
+                style={{
+                  width: "100%",
+                  maxWidth: 400,
+                  borderCollapse: "collapse",
+                  fontSize: "0.9rem",
+                }}
+              >
+                <tbody>
+                  {product.length != null && (
+                    <tr>
+                      <td
+                        style={{
+                          padding: "0.4rem 1rem 0.4rem 0",
+                          color: "var(--color-muted)",
+                        }}
+                      >
+                        Length
+                      </td>
+                      <td style={{ padding: "0.4rem 0" }}>
+                        {product.length} cm
+                      </td>
+                    </tr>
+                  )}
+                  {product.breadth != null && (
+                    <tr>
+                      <td
+                        style={{
+                          padding: "0.4rem 1rem 0.4rem 0",
+                          color: "var(--color-muted)",
+                        }}
+                      >
+                        Breadth
+                      </td>
+                      <td style={{ padding: "0.4rem 0" }}>
+                        {product.breadth} cm
+                      </td>
+                    </tr>
+                  )}
+                  {product.height != null && (
+                    <tr>
+                      <td
+                        style={{
+                          padding: "0.4rem 1rem 0.4rem 0",
+                          color: "var(--color-muted)",
+                        }}
+                      >
+                        Height
+                      </td>
+                      <td style={{ padding: "0.4rem 0" }}>
+                        {product.height} cm
+                      </td>
+                    </tr>
+                  )}
+                  {product.weight != null && (
+                    <tr>
+                      <td
+                        style={{
+                          padding: "0.4rem 1rem 0.4rem 0",
+                          color: "var(--color-muted)",
+                        }}
+                      >
+                        Weight
+                      </td>
+                      <td style={{ padding: "0.4rem 0" }}>
+                        {product.weight} g
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </details>
+        )}
+
+        {/* Shipping & Returns */}
+        <details>
+          <summary
+            style={{
+              padding: "1rem 0",
+              fontWeight: 600,
+              cursor: "pointer",
+              borderBottom: "1px solid var(--color-border)",
+            }}
+          >
+            Shipping &amp; Returns
+          </summary>
+          <div
+            style={{
+              padding: "1.25rem 0",
+              lineHeight: 1.7,
+              color: "var(--color-text)",
+              opacity: 0.85,
+            }}
+          >
+            Free shipping on orders over ₹5,000. Returns accepted within 30 days
+            of delivery.
+          </div>
+        </details>
       </div>
     );
   }
+
   return (
     <div
       style={{

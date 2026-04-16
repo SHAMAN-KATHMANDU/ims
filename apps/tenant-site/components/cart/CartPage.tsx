@@ -304,6 +304,29 @@ export function CartPage() {
             {formatPrice(subtotal, cart.currency)}
           </span>
         </div>
+        {subtotal < 5000 ? (
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "var(--color-muted)",
+              marginBottom: "0.5rem",
+            }}
+          >
+            Add &#8377;{(5000 - subtotal).toLocaleString("en-IN")} more for free
+            shipping
+          </p>
+        ) : (
+          <p
+            style={{
+              fontSize: "0.75rem",
+              color: "#16a34a",
+              marginBottom: "0.5rem",
+              fontWeight: 500,
+            }}
+          >
+            Free shipping &#10003;
+          </p>
+        )}
         <p
           style={{
             fontSize: "0.75rem",

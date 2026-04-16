@@ -130,6 +130,11 @@ export interface PublicProduct {
    * list endpoint).
    */
   photoUrls?: string[];
+  /** Dimensions & weight — populated on the detail endpoint when present. */
+  length?: number | null;
+  breadth?: number | null;
+  height?: number | null;
+  weight?: number | null;
 }
 
 export interface PublicProductList {
