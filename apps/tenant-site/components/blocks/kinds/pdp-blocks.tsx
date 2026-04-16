@@ -15,8 +15,8 @@ import type {
   PdpDetailsProps,
   PdpRelatedProps,
 } from "@repo/shared";
-import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { ProductGrid } from "@/components/templates/shared";
+import { PdpBuyboxClient } from "./PdpBuyboxClient";
 import type { BlockComponentProps } from "../registry";
 
 // ---------- pdp-buybox ------------------------------------------------------
@@ -93,7 +93,7 @@ export function PdpBuyboxBlock({
           </span>
         )}
       </div>
-      <AddToCartButton
+      <PdpBuyboxClient
         productId={product.id}
         productName={product.name}
         unitPrice={Number(product.finalSp)}

@@ -841,6 +841,11 @@ export function ProductCard({
     product.mrp &&
     Number(product.finalSp) < Number(product.mrp);
 
+  const isNew =
+    product.dateCreated &&
+    new Date(product.dateCreated).getTime() >
+      Date.now() - 30 * 24 * 60 * 60 * 1000;
+
   // Editorial Vercel-Commerce aesthetic: bigger photo surface, more
   // breathing room in the text block, bolder name + price, hover lift
   // instead of border-color wobble.
@@ -928,7 +933,29 @@ export function ProductCard({
               borderRadius: 999,
             }}
           >
-            Sale
+            {Math.round(
+              (1 - Number(product.finalSp) / Number(product.mrp)) * 100,
+            )}
+            % OFF
+          </span>
+        )}
+        {isNew && (
+          <span
+            style={{
+              position: "absolute",
+              top: "0.85rem",
+              right: "0.85rem",
+              padding: "0.3rem 0.65rem",
+              background: "var(--color-primary)",
+              color: "var(--color-primary-foreground, #fff)",
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              borderRadius: 999,
+            }}
+          >
+            New
           </span>
         )}
       </div>

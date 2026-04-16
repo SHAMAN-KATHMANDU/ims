@@ -96,14 +96,23 @@ export class PublicSiteRepository {
       categoryId?: string;
       search?: string;
       sort?: "newest" | "price-asc" | "price-desc" | "name-asc";
+      minPrice?: number;
+      maxPrice?: number;
     },
   ): Promise<[PublicSiteProduct[], number]> {
+    const finalSpFilter: Record<string, number> = {};
+    if (opts.minPrice != null) finalSpFilter.gte = opts.minPrice;
+    if (opts.maxPrice != null) finalSpFilter.lte = opts.maxPrice;
+
     const where: Prisma.ProductWhereInput = {
       tenantId,
       deletedAt: null,
       ...(opts.categoryId ? { categoryId: opts.categoryId } : {}),
       ...(opts.search
         ? { name: { contains: opts.search, mode: "insensitive" } }
+        : {}),
+      ...(Object.keys(finalSpFilter).length > 0
+        ? { finalSp: finalSpFilter }
         : {}),
     };
 
