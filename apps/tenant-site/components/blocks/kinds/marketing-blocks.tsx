@@ -249,6 +249,8 @@ export function TestimonialsBlock({
 
 export function LogoCloudBlock({ props }: BlockComponentProps<LogoCloudProps>) {
   if (props.logos.length === 0) return null;
+  const height = props.logoHeight ?? 32;
+  const cols = props.columns ?? 4;
   return (
     <section
       style={{
@@ -273,9 +275,9 @@ export function LogoCloudBlock({ props }: BlockComponentProps<LogoCloudProps>) {
         )}
         <div
           style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "center",
+            display: "grid",
+            gridTemplateColumns: `repeat(${cols}, 1fr)`,
+            justifyItems: "center",
             alignItems: "center",
             gap: "2.5rem",
             opacity: 0.8,
@@ -288,10 +290,10 @@ export function LogoCloudBlock({ props }: BlockComponentProps<LogoCloudProps>) {
               src={l.src}
               alt={l.alt}
               style={{
-                height: 32,
+                height,
                 maxWidth: 160,
                 objectFit: "contain",
-                filter: "grayscale(100%)",
+                filter: props.grayscale !== false ? "grayscale(100%)" : "none",
               }}
               loading="lazy"
             />

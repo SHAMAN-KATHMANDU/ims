@@ -25,10 +25,6 @@ export function HeroBlock({
   props,
   dataContext,
 }: BlockComponentProps<HeroProps>) {
-  // The existing Hero primitive reads brand name + tagline from the site
-  // object, so passing props.title / props.subtitle as overrides is a
-  // Phase 8 enhancement. For Phase 3 we wire variant + CTA through, which
-  // is the 80% use case.
   return (
     <Hero
       site={dataContext.site}
@@ -36,6 +32,10 @@ export function HeroBlock({
       variant={props.variant as HeroVariant}
       ctaHref={props.ctaHref ?? "/products"}
       ctaLabel={props.ctaLabel ?? "Shop the collection"}
+      title={props.title}
+      subtitle={props.subtitle}
+      imageUrl={props.imageUrl}
+      heroLayout={props.heroLayout}
     />
   );
 }
@@ -112,6 +112,10 @@ export function ProductGridBlock({
           products={products}
           columns={props.columns}
           variant={props.cardVariant}
+          showCategory={props.showCategory}
+          showPrice={props.showPrice}
+          showDiscount={props.showDiscount}
+          cardAspectRatio={props.cardAspectRatio}
         />
       </div>
     </section>

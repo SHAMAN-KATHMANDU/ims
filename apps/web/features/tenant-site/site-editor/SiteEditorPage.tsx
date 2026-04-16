@@ -68,6 +68,7 @@ const BUILT_IN_SCOPES: {
   { value: "product-detail", label: "Product detail" },
   { value: "blog-index", label: "Blog index" },
   { value: "blog-post", label: "Blog post" },
+  { value: "contact", label: "Contact" },
   { value: "404", label: "404 page", group: "System" },
   { value: "landing", label: "Landing page", group: "System" },
 ];

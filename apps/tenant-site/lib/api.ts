@@ -408,6 +408,7 @@ export type PublicSiteLayoutScope =
   | "blog-index"
   | "blog-post"
   | "page"
+  | "contact"
   | "404"
   | "landing";
 

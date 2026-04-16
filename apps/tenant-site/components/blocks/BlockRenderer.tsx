@@ -45,6 +45,31 @@ function styleVars(style: BlockStyleOverride | undefined): React.CSSProperties {
   if (style.backgroundToken) out.background = `var(--${style.backgroundToken})`;
   if (style.textToken) out.color = `var(--${style.textToken})`;
   if (style.alignment) out.textAlign = style.alignment;
+  if (style.paddingY) {
+    const paddingMap: Record<
+      NonNullable<BlockStyleOverride["paddingY"]>,
+      string
+    > = {
+      none: "0",
+      compact: "2rem 0",
+      balanced: "var(--section-padding) 0",
+      spacious: "calc(var(--section-padding) * 1.75) 0",
+    };
+    out.padding = paddingMap[style.paddingY];
+  }
+  if (style.maxWidth) {
+    const widthMap: Record<
+      NonNullable<BlockStyleOverride["maxWidth"]>,
+      string
+    > = {
+      narrow: "640px",
+      default: "1200px",
+      wide: "1440px",
+      full: "100%",
+    };
+    out.maxWidth = widthMap[style.maxWidth];
+    if (style.maxWidth !== "full") out.marginInline = "auto";
+  }
   return out;
 }
 

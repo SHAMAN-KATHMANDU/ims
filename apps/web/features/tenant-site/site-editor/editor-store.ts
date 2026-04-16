@@ -16,6 +16,7 @@ import type {
   BlockKind,
   BlockNode,
   BlockPropsMap,
+  BlockStyleOverride,
   BlockVisibility,
 } from "@repo/shared";
 
@@ -60,6 +61,8 @@ interface EditorState {
     visibility: Partial<BlockVisibility>,
   ) => void;
   updateBlockId: (oldId: string, newId: string) => void;
+  updateBlockStyle: (id: string, style: Partial<BlockStyleOverride>) => void;
+  duplicateBlock: (id: string) => void;
   updateBlockResponsive: (
     id: string,
     device: "mobile" | "tablet",
@@ -197,6 +200,29 @@ export const useEditorStore = create<EditorState>()((set, get) => {
       );
       commit({ blocks });
       if (selectedId === oldId) set({ selectedId: newId });
+    },
+
+    updateBlockStyle: (id, style) => {
+      const { present } = get();
+      const blocks = mapBlocks(present.blocks, id, (b) => ({
+        ...b,
+        style: { ...(b.style ?? {}), ...style },
+      }));
+      commit({ blocks });
+    },
+
+    duplicateBlock: (id) => {
+      const { present } = get();
+      const idx = findIndexById(present.blocks, id);
+      if (idx === -1) return;
+      const source = present.blocks[idx]!;
+      const newId = `${source.kind}-${crypto.randomUUID().slice(0, 8)}`;
+      const clone: BlockNode = JSON.parse(JSON.stringify(source));
+      clone.id = newId;
+      const blocks = [...present.blocks];
+      blocks.splice(idx + 1, 0, clone);
+      commit({ blocks });
+      set({ selectedId: newId });
     },
 
     updateBlockResponsive: (id, device, overrides) => {

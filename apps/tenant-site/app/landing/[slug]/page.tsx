@@ -63,10 +63,18 @@ export default async function LandingPage({ params }: Props) {
   return (
     <main>
       {layout && Array.isArray(layout.blocks) && layout.blocks.length > 0 ? (
-        <BlockRenderer
-          nodes={layout.blocks as BlockNode[]}
-          dataContext={dataContext}
-        />
+        <div
+          style={{
+            maxWidth: "var(--container-width, 1200px)",
+            margin: "0 auto",
+            padding: "0 1rem",
+          }}
+        >
+          <BlockRenderer
+            nodes={layout.blocks as BlockNode[]}
+            dataContext={dataContext}
+          />
+        </div>
       ) : (
         <div
           style={{
