@@ -272,6 +272,13 @@ export interface FormBlockProps {
   submitTo: "email" | "crm-lead";
 }
 
+export interface CssGridProps {
+  /** Number of columns (1–12). */
+  columns: number;
+  gap?: "sm" | "md" | "lg";
+  minRowHeight?: string;
+}
+
 // ---------------------------------------------------------------------------
 // The full map
 // ---------------------------------------------------------------------------
@@ -317,9 +324,22 @@ export interface BlockPropsMap {
   gallery: GalleryProps;
   tabs: TabsProps;
   form: FormBlockProps;
+  // Layer 3
+  "css-grid": CssGridProps;
 }
 
 export type BlockKind = keyof BlockPropsMap;
+
+/**
+ * Per-device property overrides. When set, the renderer merges the
+ * override props over the base props at the matching breakpoint. This
+ * lets a tenant set a heading to level 1 on desktop but level 2 on
+ * mobile, or change columns from 4 on desktop to 2 on mobile, etc.
+ */
+export interface BlockResponsiveOverrides {
+  mobile?: Record<string, unknown>;
+  tablet?: Record<string, unknown>;
+}
 
 export interface BlockNode<K extends BlockKind = BlockKind> {
   id: string;
@@ -328,6 +348,8 @@ export interface BlockNode<K extends BlockKind = BlockKind> {
   children?: BlockNode[];
   visibility?: BlockVisibility;
   style?: BlockStyleOverride;
+  /** Per-device prop overrides (merged over base props at the breakpoint). */
+  responsive?: BlockResponsiveOverrides;
 }
 
 // ---------------------------------------------------------------------------
@@ -674,6 +696,14 @@ export const BlockPropsSchemas = {
       submitTo: z.enum(["email", "crm-lead"]),
     })
     .strict(),
+  // Layer 3
+  "css-grid": z
+    .object({
+      columns: z.number().int().min(1).max(12),
+      gap: z.enum(["sm", "md", "lg"]).optional(),
+      minRowHeight: z.string().max(20).optional(),
+    })
+    .strict(),
 } satisfies Record<BlockKind, z.ZodType<unknown>>;
 
 export const BlockNodeSchema: z.ZodType<BlockNode> = z.lazy(
@@ -686,6 +716,13 @@ export const BlockNodeSchema: z.ZodType<BlockNode> = z.lazy(
         children: z.array(BlockNodeSchema).optional(),
         visibility: BlockVisibilitySchema.optional(),
         style: BlockStyleOverrideSchema.optional(),
+        responsive: z
+          .object({
+            mobile: z.record(z.unknown()).optional(),
+            tablet: z.record(z.unknown()).optional(),
+          })
+          .strict()
+          .optional(),
       })
       .passthrough()
       .superRefine((val, ctx) => {
@@ -723,6 +760,8 @@ export const SITE_LAYOUT_SCOPES = [
   "blog-index",
   "blog-post",
   "page",
+  "404",
+  "landing",
 ] as const;
 
 export type SiteLayoutScope = (typeof SITE_LAYOUT_SCOPES)[number];

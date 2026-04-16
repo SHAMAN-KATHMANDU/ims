@@ -67,6 +67,7 @@ import {
   VideoBlock,
   AccordionBlock,
   ColumnsBlock,
+  CssGridBlock,
 } from "./kinds/layer2-blocks";
 import { GalleryBlock } from "./kinds/GalleryBlock";
 import { TabsBlock } from "./kinds/TabsBlock";
@@ -128,4 +129,6 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   gallery: { component: GalleryBlock },
   tabs: { component: TabsBlock },
   form: { component: FormBlock },
+  // Layer 3
+  "css-grid": { component: CssGridBlock, container: true },
 };

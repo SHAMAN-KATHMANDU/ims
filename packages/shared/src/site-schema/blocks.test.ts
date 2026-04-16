@@ -456,6 +456,29 @@ describe("BlockPropsSchemas", () => {
       });
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Layer 3 blocks
+  // ---------------------------------------------------------------------------
+
+  describe("css-grid", () => {
+    it("accepts valid 3-column grid", () => {
+      validatesAs("css-grid", { columns: 3 });
+    });
+    it("accepts 12-column with options", () => {
+      validatesAs("css-grid", {
+        columns: 12,
+        gap: "lg",
+        minRowHeight: "200px",
+      });
+    });
+    it("rejects 0 columns", () => {
+      rejectsAs("css-grid", { columns: 0 });
+    });
+    it("rejects 13 columns", () => {
+      rejectsAs("css-grid", { columns: 13 });
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -547,6 +570,6 @@ describe("schema completeness", () => {
     const schemaKeys = Object.keys(BlockPropsSchemas).sort();
     // The satisfies constraint catches this at compile time, but a runtime
     // check gives a better error message in the test runner.
-    expect(schemaKeys.length).toBeGreaterThanOrEqual(34);
+    expect(schemaKeys.length).toBeGreaterThanOrEqual(35);
   });
 });

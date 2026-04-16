@@ -58,12 +58,18 @@ import { BlockInspector } from "./BlockInspector";
 import { BlockPalette } from "./BlockPalette";
 import { PreviewFrame } from "./PreviewFrame";
 
-const BUILT_IN_SCOPES: { value: SiteLayoutScope; label: string }[] = [
+const BUILT_IN_SCOPES: {
+  value: SiteLayoutScope;
+  label: string;
+  group?: string;
+}[] = [
   { value: "home", label: "Home" },
   { value: "products-index", label: "Products index" },
   { value: "product-detail", label: "Product detail" },
   { value: "blog-index", label: "Blog index" },
   { value: "blog-post", label: "Blog post" },
+  { value: "404", label: "404 page", group: "System" },
+  { value: "landing", label: "Landing page", group: "System" },
 ];
 
 type DeviceWidth = "desktop" | "tablet" | "mobile";

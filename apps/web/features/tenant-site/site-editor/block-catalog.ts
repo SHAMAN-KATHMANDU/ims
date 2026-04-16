@@ -430,6 +430,18 @@ export const BLOCK_CATALOG: CatalogEntry[] = [
       submitTo: "email",
     }),
   },
+
+  // Layer 3
+  {
+    kind: "css-grid",
+    label: "CSS Grid",
+    description: "Advanced N-column grid layout (1–12 cols). Container block.",
+    category: "layout",
+    createDefaultProps: () => ({
+      columns: 3,
+      gap: "md",
+    }),
+  },
 ];
 
 const CATALOG_BY_KIND: Partial<Record<BlockKind, CatalogEntry>> =

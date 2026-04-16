@@ -9,6 +9,7 @@
 import type {
   AccordionProps,
   ColumnsProps,
+  CssGridProps,
   EmbedProps,
   VideoProps,
 } from "@repo/shared";
@@ -251,6 +252,28 @@ export function ColumnsBlock({
         gridTemplateColumns: `repeat(${props.count}, 1fr)`,
         gap,
         alignItems: props.verticalAlign ?? "start",
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ---------- css-grid --------------------------------------------------------
+
+export function CssGridBlock({
+  props,
+  children,
+}: BlockComponentProps<CssGridProps>) {
+  const gap = GAP_MAP[props.gap ?? "md"];
+  return (
+    <div
+      className="tpl-stack"
+      style={{
+        display: "grid",
+        gridTemplateColumns: `repeat(${Math.min(props.columns, 12)}, 1fr)`,
+        gap,
+        gridAutoRows: props.minRowHeight ?? "auto",
       }}
     >
       {children}

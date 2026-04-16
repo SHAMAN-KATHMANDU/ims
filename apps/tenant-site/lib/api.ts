@@ -407,7 +407,9 @@ export type PublicSiteLayoutScope =
   | "product-detail"
   | "blog-index"
   | "blog-post"
-  | "page";
+  | "page"
+  | "404"
+  | "landing";
 
 export interface PublicSiteLayout {
   scope: PublicSiteLayoutScope | string;
