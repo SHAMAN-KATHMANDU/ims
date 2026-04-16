@@ -509,6 +509,39 @@ describe("new optional fields", () => {
       cardAspectRatio: "1/1",
     });
   });
+  it("product-grid accepts on-sale source", () => {
+    validatesAs("product-grid", {
+      source: "on-sale",
+      limit: 6,
+      columns: 3,
+      cardVariant: "bordered",
+      heading: "Hot Deals",
+    });
+  });
+  it("product-grid accepts newest source", () => {
+    validatesAs("product-grid", {
+      source: "newest",
+      limit: 4,
+      columns: 4,
+      cardVariant: "card",
+    });
+  });
+  it("product-grid accepts price-low source", () => {
+    validatesAs("product-grid", {
+      source: "price-low",
+      limit: 8,
+      columns: 4,
+      cardVariant: "bare",
+    });
+  });
+  it("product-grid accepts price-high source", () => {
+    validatesAs("product-grid", {
+      source: "price-high",
+      limit: 4,
+      columns: 2,
+      cardVariant: "bordered",
+    });
+  });
   it("product-grid rejects invalid cardAspectRatio", () => {
     rejectsAs("product-grid", {
       source: "featured",

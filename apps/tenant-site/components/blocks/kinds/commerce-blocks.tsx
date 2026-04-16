@@ -57,9 +57,30 @@ function selectProducts(
       .filter((p) => p.categoryId === opts.categoryId)
       .slice(0, opts.limit);
   }
-  // "featured" — just take the first `limit` products from the current
-  // page's data context (products are typically ordered newest-first by
-  // the API).
+  if (source === "on-sale") {
+    return all
+      .filter((p) => p.finalSp && p.mrp && Number(p.finalSp) < Number(p.mrp))
+      .slice(0, opts.limit);
+  }
+  if (source === "newest") {
+    return [...all]
+      .sort(
+        (a, b) =>
+          new Date(b.dateCreated ?? 0).getTime() -
+          new Date(a.dateCreated ?? 0).getTime(),
+      )
+      .slice(0, opts.limit);
+  }
+  if (source === "price-low") {
+    return [...all]
+      .sort((a, b) => Number(a.finalSp) - Number(b.finalSp))
+      .slice(0, opts.limit);
+  }
+  if (source === "price-high") {
+    return [...all]
+      .sort((a, b) => Number(b.finalSp) - Number(a.finalSp))
+      .slice(0, opts.limit);
+  }
   return all.slice(0, opts.limit);
 }
 
