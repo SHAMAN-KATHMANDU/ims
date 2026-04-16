@@ -19,6 +19,8 @@ export type CatalogCategory =
   | "pdp";
 
 export interface CatalogEntry<K extends BlockKind = BlockKind> {
+  /** Unique palette id — defaults to `kind` but must differ when multiple entries share a kind. */
+  id?: string;
   kind: K;
   label: string;
   description: string;
@@ -145,6 +147,72 @@ export const BLOCK_CATALOG: CatalogEntry[] = [
       columns: 4,
       cardVariant: "bordered",
       heading: "Featured",
+    }),
+  },
+  {
+    id: "product-grid-new-arrivals",
+    kind: "product-grid",
+    label: "New Arrivals",
+    description: "Latest products, sorted by date added.",
+    category: "commerce",
+    scopes: ["home"],
+    createDefaultProps: () => ({
+      source: "newest",
+      limit: 8,
+      columns: 4,
+      cardVariant: "bordered",
+      heading: "New Arrivals",
+      eyebrow: "Just in",
+    }),
+  },
+  {
+    id: "product-grid-hot-deals",
+    kind: "product-grid",
+    label: "Hot Deals",
+    description: "Products currently on sale (discounted).",
+    category: "commerce",
+    scopes: ["home"],
+    createDefaultProps: () => ({
+      source: "on-sale",
+      limit: 8,
+      columns: 4,
+      cardVariant: "bordered",
+      heading: "Hot Deals",
+      eyebrow: "Limited time offers",
+    }),
+  },
+  {
+    id: "product-grid-staff-picks",
+    kind: "product-grid",
+    label: "Staff Picks",
+    description: "Hand-picked products — select from your catalog.",
+    category: "commerce",
+    scopes: ["home"],
+    createDefaultProps: () => ({
+      source: "manual",
+      limit: 8,
+      columns: 4,
+      cardVariant: "card",
+      heading: "Staff Picks",
+      eyebrow: "Curated for you",
+      productIds: [],
+    }),
+  },
+  {
+    id: "product-grid-trending",
+    kind: "product-grid",
+    label: "Trending Products",
+    description: "Hand-picked trending products for the homepage.",
+    category: "commerce",
+    scopes: ["home"],
+    createDefaultProps: () => ({
+      source: "manual",
+      limit: 6,
+      columns: 3,
+      cardVariant: "bordered",
+      heading: "Trending Now",
+      eyebrow: "Popular picks",
+      productIds: [],
     }),
   },
   {

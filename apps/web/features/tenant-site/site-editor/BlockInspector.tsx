@@ -44,6 +44,8 @@ import {
   selectSelectedId,
 } from "./editor-store";
 import { getCatalogEntry } from "./block-catalog";
+import { ProductPickerField } from "./ProductPickerField";
+import { CategoryPickerField } from "./CategoryPickerField";
 
 export function BlockInspector() {
   const selected = useEditorStore(selectSelectedBlock);
@@ -509,6 +511,14 @@ function FieldRenderer({
   const labelText = humanize(field.name);
 
   if (field.kind === "string") {
+    if (field.name === "categoryId") {
+      return (
+        <CategoryPickerField
+          value={(value as string | undefined) ?? ""}
+          onChange={(v) => onChange(v || undefined)}
+        />
+      );
+    }
     return (
       <div className="space-y-1">
         <Label>{labelText}</Label>
@@ -582,6 +592,14 @@ function FieldRenderer({
     );
   }
   if (field.kind === "array-of-strings") {
+    if (field.name === "productIds") {
+      return (
+        <ProductPickerField
+          value={value as string[] | undefined}
+          onChange={onChange}
+        />
+      );
+    }
     const arr = (value as string[] | undefined) ?? [];
     return (
       <div className="space-y-1">
