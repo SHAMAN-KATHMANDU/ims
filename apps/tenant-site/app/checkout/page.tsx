@@ -26,6 +26,7 @@ export default async function CheckoutRoute() {
         navPages={navPages}
       />
       <main
+        id="main-content"
         className="container"
         style={{ padding: "var(--section-padding) 0" }}
       >

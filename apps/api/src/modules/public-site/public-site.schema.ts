@@ -25,6 +25,8 @@ export const ListProductsQuerySchema = z.object({
   categoryId: z.string().uuid().optional(),
   search: z.string().trim().min(1).optional(),
   sort: z.enum(PRODUCT_SORTS).default("newest"),
+  minPrice: z.coerce.number().min(0).optional(),
+  maxPrice: z.coerce.number().min(0).optional(),
 });
 
 export type ListProductsQuery = z.infer<typeof ListProductsQuerySchema>;

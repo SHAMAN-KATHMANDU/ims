@@ -134,7 +134,7 @@ function GalleryWithThumbs({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
-              alt=""
+              alt={`Photo ${i + 1}`}
               style={{
                 width: "100%",
                 height: "100%",
@@ -152,12 +152,25 @@ function GalleryWithThumbs({
     <PhotoFrame src={main} alt={productName} enableZoom={enableZoom} />
   );
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      setActiveIdx((i) => (i > 0 ? i - 1 : photos.length - 1));
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      setActiveIdx((i) => (i < photos.length - 1 ? i + 1 : 0));
+    }
+  };
+
   return (
     <div
+      tabIndex={0}
+      onKeyDown={handleKeyDown}
       style={{
         display: "grid",
         gridTemplateColumns: thumbsLeft ? "auto 1fr" : "1fr",
         gap: "1rem",
+        outline: "none",
       }}
     >
       {thumbsLeft && thumbs}
@@ -180,20 +193,28 @@ function PhotoFrame({
   alt: string;
   enableZoom: boolean;
 }) {
+  const [origin, setOrigin] = useState("center center");
   const [zoomed, setZoomed] = useState(false);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!enableZoom) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width) * 100;
+    const y = ((e.clientY - rect.top) / rect.height) * 100;
+    setOrigin(`${x}% ${y}%`);
+    setZoomed(true);
+  };
+
   return (
-    <button
-      type="button"
-      onClick={() => enableZoom && setZoomed((v) => !v)}
-      aria-label={enableZoom ? (zoomed ? "Exit zoom" : "Zoom photo") : alt}
+    <div
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => setZoomed(false)}
       style={{
-        display: "block",
         width: "100%",
         border: "1px solid var(--color-border)",
         borderRadius: "var(--radius)",
         overflow: "hidden",
         background: "var(--color-surface)",
-        padding: 0,
         cursor: enableZoom ? "zoom-in" : "default",
       }}
     >
@@ -202,17 +223,19 @@ function PhotoFrame({
         <img
           src={src}
           alt={alt}
+          decoding="async"
+          sizes="(max-width: 768px) 100vw, 50vw"
           style={{
             width: "100%",
             height: "100%",
             objectFit: "cover",
             display: "block",
-            transform: zoomed ? "scale(1.6)" : "scale(1)",
-            transformOrigin: "center center",
-            transition: "transform 0.25s ease",
+            transform: zoomed ? "scale(2)" : "scale(1)",
+            transformOrigin: origin,
+            transition: zoomed ? "none" : "transform 0.25s ease",
           }}
         />
       </div>
-    </button>
+    </div>
   );
 }

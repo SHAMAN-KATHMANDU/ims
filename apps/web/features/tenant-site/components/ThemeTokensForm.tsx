@@ -65,6 +65,8 @@ const COLOR_FIELDS: Array<{
   { key: "onPrimary", label: "On primary" },
 ];
 
+const HEX_RE = /^#[0-9a-fA-F]{3}([0-9a-fA-F]{3})?$/;
+
 function parseTokens(
   raw: Record<string, unknown> | null | undefined,
 ): ThemeTokens {
@@ -154,14 +156,22 @@ export function ThemeTokensForm({
                     onChange={(e) => updateColor(key, e.target.value)}
                     disabled={disabled}
                     className="h-9 w-9 shrink-0 cursor-pointer rounded-md border border-border p-0.5"
+                    aria-label={label}
                   />
                   <div className="min-w-0 flex-1 space-y-0.5">
                     <Label className="text-xs">{label}</Label>
                     <Input
                       value={tokens.colors[key] ?? ""}
-                      onChange={(e) => updateColor(key, e.target.value)}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        if (HEX_RE.test(v) || v === "") updateColor(key, v);
+                      }}
                       disabled={disabled}
-                      className="h-8 font-mono text-xs"
+                      className={`h-8 font-mono text-xs ${
+                        tokens.colors[key] && !HEX_RE.test(tokens.colors[key]!)
+                          ? "border-red-500"
+                          : ""
+                      }`}
                       placeholder="#000000"
                     />
                   </div>
@@ -173,10 +183,9 @@ export function ThemeTokensForm({
               <Select
                 value={tokens.mode}
                 onValueChange={(v) => update("mode", v as ThemeTokens["mode"])}
-                disabled={disabled}
               >
-                <SelectTrigger className="w-40">
-                  <SelectValue />
+                <SelectTrigger className="w-40" disabled={disabled}>
+                  <SelectValue placeholder="Select mode" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="light">Light</SelectItem>
@@ -244,6 +253,7 @@ export function ThemeTokensForm({
                   }
                   disabled={disabled}
                   className="w-full"
+                  aria-label="Type scale ratio"
                 />
               </div>
               <div className="space-y-1">
@@ -298,10 +308,9 @@ export function ThemeTokensForm({
                       section: v as ThemeTokens["spacing"]["section"],
                     })
                   }
-                  disabled={disabled}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger disabled={disabled}>
+                    <SelectValue placeholder="Select padding" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="compact">Compact</SelectItem>
@@ -348,10 +357,9 @@ export function ThemeTokensForm({
                         : (v as "sharp" | "soft" | "rounded"),
                     });
                   }}
-                  disabled={disabled}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger disabled={disabled}>
+                    <SelectValue placeholder="Select radius" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="sharp">Sharp (0)</SelectItem>
@@ -370,10 +378,9 @@ export function ThemeTokensForm({
                       buttonStyle: v as ThemeTokens["shape"]["buttonStyle"],
                     })
                   }
-                  disabled={disabled}
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger disabled={disabled}>
+                    <SelectValue placeholder="Select style" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="solid">Solid</SelectItem>
@@ -395,6 +402,7 @@ export function ThemeTokensForm({
                   update("motion", { ...tokens.motion, enableAnimations: v })
                 }
                 disabled={disabled}
+                aria-label="Enable animations"
               />
             </div>
             <div className="space-y-1">
@@ -415,6 +423,7 @@ export function ThemeTokensForm({
                 }
                 disabled={disabled}
                 className="w-full"
+                aria-label="Animation duration"
               />
             </div>
           </TabsContent>

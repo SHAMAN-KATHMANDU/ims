@@ -29,7 +29,7 @@ export function FeaturedBlogSection({
             href="/blog"
             style={{
               fontSize: "0.85rem",
-              color: "rgba(0,0,0,0.6)",
+              color: "var(--color-muted)",
               textDecoration: "none",
             }}
           >
@@ -60,6 +60,9 @@ export function FeaturedBlogSection({
                 <img
                   src={p.heroImageUrl}
                   alt={p.title}
+                  loading="lazy"
+                  decoding="async"
+                  sizes="(max-width: 768px) 100vw, 33vw"
                   style={{
                     width: "100%",
                     aspectRatio: "4/3",
@@ -74,7 +77,7 @@ export function FeaturedBlogSection({
                     fontSize: "0.7rem",
                     textTransform: "uppercase",
                     letterSpacing: "0.05em",
-                    color: "rgba(0,0,0,0.55)",
+                    color: "var(--color-muted)",
                   }}
                 >
                   {p.category.name}

@@ -39,12 +39,14 @@ function siteConfig(overrides: Record<string, unknown> = {}) {
     features: null,
     seo: null,
     isPublished: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: FIXED_DATE,
+    updatedAt: FIXED_DATE,
     template: null,
     ...overrides,
   };
 }
+
+const FIXED_DATE = new Date("2026-01-01T00:00:00.000Z");
 
 function post(overrides: Record<string, unknown> = {}) {
   return {
@@ -63,8 +65,8 @@ function post(overrides: Record<string, unknown> = {}) {
     seoTitle: null,
     seoDescription: null,
     readingMinutes: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
+    createdAt: FIXED_DATE,
+    updatedAt: FIXED_DATE,
     category: null,
     ...overrides,
   };

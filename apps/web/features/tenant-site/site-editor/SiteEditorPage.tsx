@@ -32,6 +32,16 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Undo2,
   Redo2,
   Save,
@@ -133,6 +143,7 @@ export function SiteEditorPage() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [device, setDevice] = useState<DeviceWidth>("desktop");
   const [refreshKey, setRefreshKey] = useState(0);
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
 
   const layoutQuery = useSiteLayout(scope, pageId ?? undefined);
   const previewUrlQuery = useSiteLayoutPreviewUrl(scope, pageId ?? undefined);
@@ -212,8 +223,11 @@ export function SiteEditorPage() {
         });
       })
       .catch(() => {
-        // Swallow — autosave failures are non-critical; the user still
-        // has the dirty state in memory and can manually save.
+        toast({
+          title: "Autosave failed",
+          description: "Your changes are saved locally. Try saving manually.",
+          variant: "destructive",
+        });
       });
   }
 
@@ -268,15 +282,11 @@ export function SiteEditorPage() {
       });
       return;
     }
-    if (
-      !confirm(
-        `Reset this ${scope} layout to the ${
-          templateName ?? "template"
-        } default? Any unsaved draft changes on this scope will be lost.`,
-      )
-    ) {
-      return;
-    }
+    setResetDialogOpen(true);
+  };
+
+  const executeReset = async () => {
+    setResetDialogOpen(false);
     try {
       const row = await resetFromTemplate.mutateAsync({ scope });
       const source =
@@ -528,6 +538,23 @@ export function SiteEditorPage() {
         onOpenChange={setPaletteOpen}
         scope={scope}
       />
+
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset to template default?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reset the {scope} layout to the{" "}
+              {templateName ?? "template"} default. Any unsaved draft changes on
+              this scope will be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={executeReset}>Reset</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

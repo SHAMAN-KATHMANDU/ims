@@ -25,7 +25,7 @@ export function BlogList({
   if (posts.length === 0) {
     return (
       <div style={{ padding: "4rem 0", textAlign: "center" }}>
-        <p style={{ color: "rgba(0,0,0,0.6)" }}>
+        <p style={{ color: "var(--color-muted)" }}>
           No posts published yet. Check back soon.
         </p>
       </div>

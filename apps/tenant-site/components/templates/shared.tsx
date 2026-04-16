@@ -30,6 +30,8 @@ import { AddToCartButton } from "@/components/cart/AddToCartButton";
 import { loadHeaderNavConfig, loadNavItems, expandAutoItems } from "@/lib/nav";
 import type { NavConfig, NavItem } from "@repo/shared";
 import { MobileNavDrawer } from "@/components/nav/MobileNavDrawer";
+import { SearchBar } from "@/components/search/SearchBar";
+import { QuickAddButton } from "@/components/cart/QuickAddButton";
 
 // ============================================================================
 // Brand + header
@@ -312,6 +314,11 @@ function SiteHeaderFromConfig({
 
   const Trailing = () => (
     <>
+      {config.showSearch && (
+        <span className="tpl-nav-search">
+          <SearchBar />
+        </span>
+      )}
       {config.cta && (
         <NavCtaButton
           label={config.cta.label}
@@ -604,6 +611,9 @@ export async function SiteHeader({
               {l.label}
             </Link>
           ))}
+          <span className="tpl-nav-search">
+            <SearchBar />
+          </span>
           <CartBadge />
         </nav>
       </div>
@@ -736,6 +746,15 @@ export function Hero({
           position: "relative",
         }}
       >
+        {/* Preload hint for above-the-fold hero background */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={imageUrl}
+          alt="Hero banner"
+          decoding="async"
+          fetchPriority="high"
+          style={{ display: "none" }}
+        />
         <div
           style={{
             position: "absolute",
@@ -761,7 +780,9 @@ export function Hero({
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={imageUrl}
-        alt=""
+        alt="Hero banner"
+        decoding="async"
+        fetchPriority="high"
         style={{ width: "100%", height: "100%", objectFit: "cover" }}
       />
     );
@@ -832,6 +853,11 @@ export function ProductCard({
     product.mrp &&
     Number(product.finalSp) < Number(product.mrp);
 
+  const isNew =
+    product.dateCreated &&
+    new Date(product.dateCreated).getTime() >
+      Date.now() - 30 * 24 * 60 * 60 * 1000;
+
   // Editorial Vercel-Commerce aesthetic: bigger photo surface, more
   // breathing room in the text block, bolder name + price, hover lift
   // instead of border-color wobble.
@@ -876,6 +902,8 @@ export function ProductCard({
             src={product.photoUrl}
             alt={product.name}
             loading="lazy"
+            decoding="async"
+            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="tpl-product-card-img"
             style={{
               width: "100%",
@@ -919,9 +947,37 @@ export function ProductCard({
               borderRadius: 999,
             }}
           >
-            Sale
+            {Math.round(
+              (1 - Number(product.finalSp) / Number(product.mrp)) * 100,
+            )}
+            % OFF
           </span>
         )}
+        {isNew && (
+          <span
+            style={{
+              position: "absolute",
+              top: "0.85rem",
+              right: "0.85rem",
+              padding: "0.3rem 0.65rem",
+              background: "var(--color-primary)",
+              color: "var(--color-primary-foreground, #fff)",
+              fontSize: "0.68rem",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              borderRadius: 999,
+            }}
+          >
+            New
+          </span>
+        )}
+        <QuickAddButton
+          productId={product.id}
+          productName={product.name}
+          unitPrice={Number(product.finalSp)}
+          imageUrl={product.photoUrl ?? null}
+        />
       </div>
       <div
         style={{

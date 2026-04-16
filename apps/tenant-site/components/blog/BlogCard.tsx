@@ -27,7 +27,7 @@ export function BlogCard({
         display: "flex",
         flexDirection: "column",
         gap: "0.75rem",
-        borderBottom: "1px solid rgba(128,128,128,0.15)",
+        borderBottom: "1px solid var(--color-border)",
         paddingBottom: featured ? "2rem" : "1.5rem",
       }}
     >
@@ -37,6 +37,9 @@ export function BlogCard({
           <img
             src={post.heroImageUrl}
             alt={post.title}
+            loading="lazy"
+            decoding="async"
+            sizes="(max-width: 768px) 100vw, 33vw"
             style={{
               width: "100%",
               aspectRatio: featured ? "16/9" : "4/3",
@@ -53,7 +56,7 @@ export function BlogCard({
             textTransform: "uppercase",
             fontSize: "0.7rem",
             letterSpacing: "0.05em",
-            color: "rgba(0,0,0,0.55)",
+            color: "var(--color-muted)",
           }}
         >
           {post.category.name}

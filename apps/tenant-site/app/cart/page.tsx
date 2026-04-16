@@ -18,7 +18,7 @@ export default async function CartRoute() {
   if (!site) notFound();
 
   return (
-    <div data-page="cart">
+    <main id="main-content" data-page="cart">
       <SiteHeader
         site={site}
         host={ctx.host}
@@ -27,6 +27,6 @@ export default async function CartRoute() {
       />
       <CartPage />
       <SiteFooter site={site} host={ctx.host} navPages={navPages} />
-    </div>
+    </main>
   );
 }
