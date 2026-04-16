@@ -95,6 +95,13 @@ class PublicOrdersController {
         orderCode: order.orderCode,
       });
     } catch (error) {
+      const prismaErr = error as { code?: string };
+      if (prismaErr?.code === "P2002") {
+        return res.status(409).json({
+          message:
+            "Order could not be placed right now. Please try again in a moment.",
+        });
+      }
       return (
         handleZodError(res, error) ??
         handleAppError(res, error) ??

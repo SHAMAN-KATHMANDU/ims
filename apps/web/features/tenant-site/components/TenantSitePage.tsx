@@ -1,17 +1,17 @@
 "use client";
 
 /**
- * Tenant website settings — tabbed layout.
+ * Tenant website settings -- tabbed layout.
  *
  * The page is organized as a header card (status + primary actions) and a
  * horizontal tab strip. Each tab owns a single responsibility:
  *
- *   Overview   — at-a-glance stats, setup checklist, quick links
- *   Branding   — colors/typography/logo + template picker
- *   Navigation — header menu editor
- *   Contact    — email/phone/address used in the footer
- *   SEO        — metadata defaults
- *   Advanced   — legacy section toggles (kept for tenants still on the
+ *   Overview   -- at-a-glance stats, setup checklist, quick links
+ *   Branding   -- colors/typography/logo + template picker
+ *   Navigation -- header menu editor
+ *   Contact    -- email/phone/address used in the footer
+ *   SEO        -- metadata defaults
+ *   Advanced   -- legacy section toggles (kept for tenants still on the
  *                pickTemplate rendering path)
  *
  * The Design editor intentionally lives on its own route (site/design)
@@ -39,6 +39,16 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
 import {
   useSiteConfig,
@@ -96,6 +106,7 @@ export function TenantSitePage() {
   const unpublishMutation = useUnpublishSite();
 
   const [activeTab, setActiveTab] = useState<TabValue>("overview");
+  const [unpublishDialogOpen, setUnpublishDialogOpen] = useState(false);
 
   const config = configQuery.data;
   const disabled = configQuery.isError && isForbiddenError(configQuery.error);
@@ -114,14 +125,11 @@ export function TenantSitePage() {
     }
   };
 
-  const handleUnpublish = async () => {
-    if (
-      !confirm(
-        "Unpublish your site? Visitors will see a “site unavailable” page until you republish.",
-      )
-    ) {
-      return;
-    }
+  const handleUnpublish = () => {
+    setUnpublishDialogOpen(true);
+  };
+
+  const confirmUnpublish = async () => {
     try {
       await unpublishMutation.mutateAsync();
       toast({ title: "Site unpublished" });
@@ -141,7 +149,7 @@ export function TenantSitePage() {
     return (
       <div className="space-y-6">
         <PageHeading />
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading...</p>
       </div>
     );
   }
@@ -199,7 +207,7 @@ export function TenantSitePage() {
                 {config.isPublished
                   ? "Changes you save will go live within a few seconds."
                   : canPublish
-                    ? "Ready to publish — review your settings and hit Publish when ready."
+                    ? "Ready to publish -- review your settings and hit Publish when ready."
                     : "Pick a template in the Branding tab before publishing."}
               </CardDescription>
             </div>
@@ -218,7 +226,7 @@ export function TenantSitePage() {
                 disabled={unpublishMutation.isPending}
               >
                 <XCircle className="mr-1.5 h-4 w-4" />
-                {unpublishMutation.isPending ? "Unpublishing…" : "Unpublish"}
+                {unpublishMutation.isPending ? "Unpublishing..." : "Unpublish"}
               </Button>
             ) : (
               <Button
@@ -227,7 +235,7 @@ export function TenantSitePage() {
                 disabled={!canPublish || publishMutation.isPending}
               >
                 <CheckCircle2 className="mr-1.5 h-4 w-4" />
-                {publishMutation.isPending ? "Publishing…" : "Publish"}
+                {publishMutation.isPending ? "Publishing..." : "Publish"}
               </Button>
             )}
           </div>
@@ -283,6 +291,30 @@ export function TenantSitePage() {
           <SiteSectionsPanel features={config.features} />
         </TabsContent>
       </Tabs>
+
+      <AlertDialog
+        open={unpublishDialogOpen}
+        onOpenChange={setUnpublishDialogOpen}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unpublish your site?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Visitors will see a &quot;site unavailable&quot; page until you
+              republish.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmUnpublish}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Unpublish
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -292,7 +324,7 @@ function PageHeading() {
     <div>
       <h1 className="text-2xl font-semibold">Website</h1>
       <p className="text-sm text-muted-foreground">
-        Manage your public storefront — design, branding, navigation, and
+        Manage your public storefront -- design, branding, navigation, and
         publishing.
       </p>
     </div>

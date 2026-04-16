@@ -70,6 +70,9 @@ api.interceptors.request.use(
   (error) => Promise.reject(error),
 );
 
+// Guard against multiple concurrent 401s all triggering logout + redirect.
+let isHandling401 = false;
+
 // Response interceptor: Handle 401 globally; show toast for all other API errors
 api.interceptors.response.use(
   (response) => response,
@@ -82,7 +85,9 @@ api.interceptors.response.use(
 
     if (status === 401 || (status === 404 && isAuthMe)) {
       if (isLoginEndpoint) return Promise.reject(error);
+      if (isHandling401) return Promise.reject(error);
 
+      isHandling401 = true;
       const pathname =
         typeof window !== "undefined" ? window.location.pathname : "";
       const segments = pathname.split("/").filter(Boolean);
@@ -96,6 +101,9 @@ api.interceptors.response.use(
           window.location.href = loginPath;
         }
       }
+      setTimeout(() => {
+        isHandling401 = false;
+      }, 3000);
     } else {
       const skipToast = (
         error.config as { skipGlobalErrorToast?: boolean } | undefined

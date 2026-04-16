@@ -8,9 +8,11 @@ import {
   rejectWebsiteOrder,
   convertWebsiteOrder,
   deleteWebsiteOrder,
+  checkOrderStock,
   type ListWebsiteOrdersQuery,
   type RejectOrderData,
   type ConvertOrderData,
+  type StockCheckItem,
 } from "../services/website-orders.service";
 
 export const websiteOrdersKeys = {
@@ -72,6 +74,20 @@ export function useConvertWebsiteOrder() {
       qc.invalidateQueries({ queryKey: websiteOrdersKeys.all });
       qc.setQueryData(websiteOrdersKeys.order(order.id), order);
     },
+  });
+}
+
+export { type StockCheckItem };
+
+export function useOrderStockCheck(orderId: string | null) {
+  return useQuery({
+    queryKey: [...websiteOrdersKeys.all, "stock-check", orderId ?? ""],
+    queryFn: () => {
+      if (!orderId) throw new Error("Order id required");
+      return checkOrderStock(orderId);
+    },
+    enabled: !!orderId,
+    retry: false,
   });
 }
 

@@ -27,6 +27,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/useToast";
 import {
   useWebsiteOrder,
@@ -69,6 +79,7 @@ export function WebsiteOrderDetailPage({
 
   const [rejectOpen, setRejectOpen] = useState(false);
   const [convertOpen, setConvertOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
 
   if (orderQuery.isLoading) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
@@ -101,10 +112,11 @@ export function WebsiteOrderDetailPage({
     }
   };
 
-  const handleDelete = async () => {
-    if (!confirm(`Delete order ${order.orderCode}? This cannot be undone.`)) {
-      return;
-    }
+  const handleDelete = () => {
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmDelete = async () => {
     try {
       await deleteMutation.mutateAsync(order.id);
       toast({ title: "Order deleted" });
@@ -344,6 +356,26 @@ export function WebsiteOrderDetailPage({
         open={convertOpen}
         onOpenChange={setConvertOpen}
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete order {order.orderCode}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

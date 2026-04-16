@@ -32,6 +32,15 @@ export const ConvertOrderSchema = z.object({
       }),
     )
     .optional(),
+  /** Per-item source location overrides for multi-location auto-transfer. */
+  itemLocationOverrides: z
+    .array(
+      z.object({
+        productId: z.string().uuid(),
+        sourceLocationId: z.string().uuid(),
+      }),
+    )
+    .optional(),
   /** Payment split at conversion time. If omitted, the sale becomes credit. */
   payments: z
     .array(
