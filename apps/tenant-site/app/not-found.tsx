@@ -1,22 +1,23 @@
 /**
  * Custom 404 page — renders a block-based layout when a SiteLayout row
- * exists for scope "404", otherwise falls back to the static default.
+ * exists for scope "404", otherwise falls back to a branded default.
  *
- * The tenant composes their 404 in the design editor (scope picker shows
- * "404 page") so it matches their brand. The renderer wraps it in the
- * same SiteHeader/SiteFooter chrome as other pages.
+ * IMPORTANT: This page must NOT render SiteHeader/SiteFooter when there's
+ * no tenant context (CartProvider isn't in the tree when the middleware
+ * returned 404 for an unknown host). The guard at line ~28 returns early
+ * with a plain DefaultNotFound when headers are missing.
+ *
+ * When tenant context IS available (the middleware resolved the host but
+ * the page slug didn't match), we render the full branded 404 with
+ * header/footer.
  */
 
 import { getSite, getCategories, getNavPages, getSiteLayout } from "@/lib/api";
-import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
 
 export default async function NotFound() {
-  // not-found.tsx runs outside the normal route tree, so getTenantContext()
-  // may not have tenant headers (e.g. if middleware 404'd before setting
-  // them). We try to read the layout but fall back gracefully.
   try {
     const { headers } = await import("next/headers");
     const h = await headers();
@@ -28,46 +29,56 @@ export default async function NotFound() {
     }
 
     const [site, layout, categories, navPages] = await Promise.all([
-      getSite(host, tenantId),
+      getSite(host, tenantId).catch(() => null),
       getSiteLayout(host, tenantId, "404").catch(() => null),
-      getCategories(host, tenantId),
-      getNavPages(host, tenantId),
+      getCategories(host, tenantId).catch(() => []),
+      getNavPages(host, tenantId).catch(() => []),
     ]);
 
-    if (
-      !site ||
-      !layout ||
-      !Array.isArray(layout.blocks) ||
-      layout.blocks.length === 0
-    ) {
-      // No custom 404 layout — show the branded default with header/footer
-      if (site) {
-        return (
-          <>
-            <SiteHeader
-              site={site}
-              host={host}
-              categories={categories}
-              navPages={navPages}
-            />
-            <DefaultNotFound />
-            <SiteFooter site={site} host={host} navPages={navPages} />
-          </>
-        );
-      }
+    if (!site) {
       return <DefaultNotFound />;
     }
 
-    const dataContext: BlockDataContext = {
-      site,
-      host,
-      tenantId,
-      categories,
-      navPages,
-      products: [],
-      featuredBlogPosts: [],
-    };
+    // If the tenant has a custom 404 block layout, render it.
+    // We import SiteHeader/SiteFooter lazily to avoid the useCart crash
+    // when this module is loaded outside CartProvider.
+    const hasCustomLayout =
+      layout && Array.isArray(layout.blocks) && layout.blocks.length > 0;
 
+    const { SiteHeader, SiteFooter } =
+      await import("@/components/templates/shared");
+
+    if (hasCustomLayout) {
+      const dataContext: BlockDataContext = {
+        site,
+        host,
+        tenantId,
+        categories,
+        navPages,
+        products: [],
+        featuredBlogPosts: [],
+      };
+
+      return (
+        <>
+          <SiteHeader
+            site={site}
+            host={host}
+            categories={categories}
+            navPages={navPages}
+          />
+          <main>
+            <BlockRenderer
+              nodes={layout.blocks as BlockNode[]}
+              dataContext={dataContext}
+            />
+          </main>
+          <SiteFooter site={site} host={host} navPages={navPages} />
+        </>
+      );
+    }
+
+    // Branded default 404 with header/footer
     return (
       <>
         <SiteHeader
@@ -76,12 +87,7 @@ export default async function NotFound() {
           categories={categories}
           navPages={navPages}
         />
-        <main>
-          <BlockRenderer
-            nodes={layout.blocks as BlockNode[]}
-            dataContext={dataContext}
-          />
-        </main>
+        <DefaultNotFound />
         <SiteFooter site={site} host={host} navPages={navPages} />
       </>
     );
