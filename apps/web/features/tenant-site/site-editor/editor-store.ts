@@ -48,7 +48,9 @@ interface EditorState {
   // ---- tree mutations ----
   addBlock: (block: BlockNode, atIndex?: number) => void;
   removeBlock: (id: string) => void;
+  /** Move a block by ±1 delta or to an absolute target index. */
   moveBlock: (id: string, delta: -1 | 1) => void;
+  moveBlockTo: (id: string, toIndex: number) => void;
   updateBlockProps: <K extends BlockKind>(
     id: string,
     props: Partial<BlockPropsMap[K]>,
@@ -146,6 +148,17 @@ export const useEditorStore = create<EditorState>()((set, get) => {
       const blocks = [...present.blocks];
       const [item] = blocks.splice(idx, 1);
       blocks.splice(target, 0, item!);
+      commit({ blocks });
+    },
+
+    moveBlockTo: (id, toIndex) => {
+      const { present } = get();
+      const fromIndex = findIndexById(present.blocks, id);
+      if (fromIndex === -1 || fromIndex === toIndex) return;
+      const clamped = Math.max(0, Math.min(toIndex, present.blocks.length - 1));
+      const blocks = [...present.blocks];
+      const [item] = blocks.splice(fromIndex, 1);
+      blocks.splice(clamped, 0, item!);
       commit({ blocks });
     },
 

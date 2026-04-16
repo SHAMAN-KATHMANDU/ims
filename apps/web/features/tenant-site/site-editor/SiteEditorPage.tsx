@@ -31,7 +31,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Undo2, Redo2, Save, Upload, ArrowLeft, RotateCcw } from "lucide-react";
+import {
+  Undo2,
+  Redo2,
+  Save,
+  Upload,
+  ArrowLeft,
+  RotateCcw,
+  Plus,
+} from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
 import type { BlockNode, SiteLayoutScope } from "@repo/shared";
@@ -431,14 +439,16 @@ export function SiteEditorPage() {
         </CardHeader>
       </Card>
 
-      {/* Three-pane editor */}
-      <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_320px] gap-3">
+      {/* Editor panes — responsive:
+           ≥ 1280px: 3-pane grid (tree | preview | inspector)
+           768–1279px: 2-pane (tree | preview); inspector in a slide-over Sheet
+           < 768px: stacked with preview filling the viewport; tree + inspector in Sheets */}
+      <div className="hidden min-h-0 flex-1 gap-3 xl:grid xl:grid-cols-[260px_1fr_320px]">
         <Card className="overflow-hidden">
           <CardContent className="h-full p-0">
             <BlockTreePanel onOpenPalette={() => setPaletteOpen(true)} />
           </CardContent>
         </Card>
-
         <Card className="overflow-hidden">
           <CardContent className="h-full p-0">
             <PreviewFrame
@@ -451,10 +461,57 @@ export function SiteEditorPage() {
             />
           </CardContent>
         </Card>
-
         <Card className="overflow-hidden">
           <CardContent className="h-full p-0">
             <BlockInspector />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tablet: 2-pane with slide-over inspector */}
+      <div className="hidden min-h-0 flex-1 gap-3 md:grid md:grid-cols-[240px_1fr] xl:hidden">
+        <Card className="overflow-hidden">
+          <CardContent className="h-full p-0">
+            <BlockTreePanel onOpenPalette={() => setPaletteOpen(true)} />
+          </CardContent>
+        </Card>
+        <Card className="overflow-hidden">
+          <CardContent className="h-full p-0">
+            <PreviewFrame
+              previewUrl={previewUrl}
+              loading={previewLoading}
+              refreshKey={refreshKey}
+              onRefresh={() => setRefreshKey((k) => k + 1)}
+              device={device}
+              onDeviceChange={setDevice}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Mobile: preview fills, tree + inspector are accessible via buttons */}
+      <div className="flex min-h-0 flex-1 flex-col gap-2 md:hidden">
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={() => setPaletteOpen(true)}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            Add block
+          </Button>
+        </div>
+        <Card className="min-h-0 flex-1 overflow-hidden">
+          <CardContent className="h-full p-0">
+            <PreviewFrame
+              previewUrl={previewUrl}
+              loading={previewLoading}
+              refreshKey={refreshKey}
+              onRefresh={() => setRefreshKey((k) => k + 1)}
+              device={device}
+              onDeviceChange={setDevice}
+            />
           </CardContent>
         </Card>
       </div>
