@@ -299,7 +299,7 @@ describe("WebsiteOrdersService", () => {
           locationId: "loc-1",
           memberPhone: "+977-98xxx",
           memberName: "Ada",
-          items: [{ variationId: "var-1", quantity: 1 }],
+          items: [{ variationId: "var-1", quantity: 1, customUnitPrice: 1000 }],
         }),
       );
       const [, , data] = (mockRepo.updateOrder as ReturnType<typeof vi.fn>).mock
@@ -359,8 +359,8 @@ describe("WebsiteOrdersService", () => {
         expect.objectContaining({ tenantId: "t1" }),
         expect.objectContaining({
           items: [
-            { variationId: "v1", quantity: 2 },
-            { variationId: "v2", quantity: 1 },
+            { variationId: "v1", quantity: 2, customUnitPrice: 500 },
+            { variationId: "v2", quantity: 1, customUnitPrice: 300 },
           ],
         }),
       );

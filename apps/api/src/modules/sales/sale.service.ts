@@ -51,6 +51,13 @@ export interface SaleItemInput {
   manualDiscountPercent?: number;
   manualDiscountAmount?: number;
   discountReason?: string;
+  /**
+   * Locks the per-unit price for this line, bypassing catalog MRP and any
+   * auto-applied product discount / promo. Used by website-order conversion
+   * so the sale honors the unit price the customer agreed to at checkout,
+   * even if catalog pricing has moved since.
+   */
+  customUnitPrice?: number;
 }
 
 export interface ProcessedItem {
@@ -195,7 +202,11 @@ export async function calculateSaleItems(
 
     // ── Price & discount resolution ──────────────────────────────────
 
-    const unitPrice = Number(variation.product.mrp);
+    const hasCustomPrice =
+      typeof item.customUnitPrice === "number" && item.customUnitPrice >= 0;
+    const unitPrice = hasCustomPrice
+      ? (item.customUnitPrice as number)
+      : Number(variation.product.mrp);
     const itemSubtotal = unitPrice * item.quantity;
     let discountPercent = 0;
     let discountAmount = 0;
@@ -257,7 +268,7 @@ export async function calculateSaleItems(
     let promoOutcome: PromoOutcome = "none";
     let productDiscountMoneyBeforePromo = 0;
 
-    if (!hasManualPercent && !hasManualAmount) {
+    if (!hasManualPercent && !hasManualAmount && !hasCustomPrice) {
       type DiscountRow = (typeof variation.product.discounts)[number] & {
         discountType: { name: string };
       };

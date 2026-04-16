@@ -310,9 +310,13 @@ export class WebsiteOrdersService {
             400,
           );
         }
+        // Lock unit price to the snapshot so the sale total matches the
+        // order total the customer agreed to, even if catalog pricing has
+        // changed since checkout.
         saleItems.push({
           variationId: variation.id,
           quantity: item.quantity,
+          customUnitPrice: Number(item.unitPrice),
         });
       }
     }
