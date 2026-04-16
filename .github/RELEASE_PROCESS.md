@@ -1,17 +1,33 @@
 # Release Process
 
-Production releases are controlled by semantic version tags, triggered via GitHub Releases UI.
+Production releases are driven by **release-please** from conventional commits.
+The human trigger is merging the auto-generated release PR; Docker image
+builds are then kicked off via the Release (Production) workflow.
 
-## New Release
+## Automated flow (preferred)
 
-1. Go to **Releases** → **Draft a new release**.
-2. **Target:** Select `main` (or hotfix branch for patches).
-3. **Tag:** Create new tag (e.g. `v1.2.0`). Must match semver: `vMAJOR.MINOR.PATCH`.
-4. **Title:** Auto-filled from tag. Edit if needed.
-5. **Description:** Use "Generate release notes" or write manually.
-6. Click **Publish release**.
-7. The release workflow runs: builds API + Web images, pushes `:v1.2.0`, `:prod`, `:latest`.
-8. Watchtower on prod EC2 pulls `:prod` and restarts.
+1. Commits landing on `main` must follow the conventional-commit format
+   (`feat:`, `fix:`, `perf:`, etc.) — `commitlint.config.js` enforces this
+   on PR titles, and squash merges preserve that title as the commit.
+2. `.github/workflows/release-please.yml` watches `main`. On each push it
+   opens or updates a release PR that bumps `VERSION`, updates
+   `CHANGELOG.md`, and is ready to become the next tag.
+3. Review the release PR. When ready to ship, **merge it** — release-please
+   creates the git tag (e.g. `v1.2.0`) and a matching GitHub Release.
+4. Kick off **Actions → Release (Production)** with `release_type=new`,
+   `tag_strategy=manual`, `tag=v1.2.0`. That workflow builds + pushes
+   `:v1.2.0`, `:prod`, `:latest`.
+5. Watchtower on prod EC2 pulls `:prod` and restarts.
+
+## Manual release (fallback)
+
+If release-please is unavailable (e.g. cherry-pick hotfix that shouldn't
+go through the automated bump):
+
+1. Go to **Actions → Release (Production)**.
+2. Choose `release_type=new`, pick `tag_strategy` (auto_patch / auto_minor /
+   auto_major or `manual` with an explicit tag).
+3. The workflow creates + pushes the tag, builds images, and pushes them.
 
 ## Hotfix (Patch Release)
 

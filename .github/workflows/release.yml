@@ -149,6 +149,9 @@ jobs:
     name: Build API (prod)
     runs-on: ubuntu-latest
     needs: [resolve-tag]
+    # Gates on the `production` GitHub environment. Configure required
+    # reviewers in Settings → Environments → production.
+    environment: production
     permissions:
       contents: read
       packages: write
@@ -185,12 +188,13 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha,scope=release-api
-          cache-to: type=gha,mode=min,scope=release-api
+          cache-to: type=gha,mode=max,scope=release-api
 
   build-web:
     name: Build Web (prod)
     runs-on: ubuntu-latest
     needs: [resolve-tag]
+    environment: production
     permissions:
       contents: read
       packages: write
@@ -240,12 +244,13 @@ jobs:
             NEXT_PUBLIC_APP_ENV=${{ steps.prod_ui.outputs.next_public_app_env }}
             NEXT_PUBLIC_FEATURE_FLAGS=${{ steps.prod_ui.outputs.next_public_feature_flags }}
           cache-from: type=gha,scope=release-web
-          cache-to: type=gha,mode=min,scope=release-web
+          cache-to: type=gha,mode=max,scope=release-web
 
   build-tenant-site:
     name: Build Tenant Site (prod)
     runs-on: ubuntu-latest
     needs: [resolve-tag]
+    environment: production
     permissions:
       contents: read
       packages: write
@@ -279,7 +284,7 @@ jobs:
           push: true
           tags: ${{ steps.tags.outputs.tags }}
           cache-from: type=gha,scope=release-tenant-site
-          cache-to: type=gha,mode=min,scope=release-tenant-site
+          cache-to: type=gha,mode=max,scope=release-tenant-site
 
   create-release:
     name: Create GitHub Release

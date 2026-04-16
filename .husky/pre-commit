@@ -2,24 +2,10 @@
 
 echo "🔍 Running pre-commit checks..."
 
-# Format staged files
-echo "✨ Formatting staged files..."
+# Format + lint staged files only. Full lint/typecheck runs in CI.
 pnpm lint-staged
 
-# Run linting
-echo "🔎 Running linter..."
-pnpm lint
-
-# Generate Prisma client (required for API typecheck)
-echo "🔧 Generating Prisma client..."
+# Generate Prisma client so API types stay in sync with schema changes
 pnpm --filter api exec prisma generate
 
-# Run type checking
-echo "📝 Checking types..."
-pnpm check-types
-
-# # Security scan (CRITICAL/HIGH, vuln only for speed)
-# echo "🔒 Running Trivy security scan..."
-# pnpm trivy:quick
-
-echo "✅ All checks passed!"
+echo "✅ Pre-commit checks passed"

@@ -1939,7 +1939,6 @@ export async function processAutomationEventById(
 }
 
 declare global {
-  // eslint-disable-next-line no-var
   var __automationRetryWorkerStarted: boolean | undefined;
 }
 

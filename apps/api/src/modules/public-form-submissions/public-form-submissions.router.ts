@@ -105,7 +105,7 @@ router.post(
           });
         } catch (leadErr) {
           // Lead creation is best-effort — don't fail the form submission
-          // eslint-disable-next-line no-console
+
           console.error("[form-submissions] CRM lead creation failed", leadErr);
         }
       }
