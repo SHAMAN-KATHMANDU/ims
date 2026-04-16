@@ -1,6 +1,9 @@
 {
   "$schema": "https://turborepo.com/schema.json",
   "ui": "tui",
+  "remoteCache": {
+    "signature": true
+  },
   "tasks": {
     "build": {
       "dependsOn": ["^build", "^prisma:generate"],
@@ -19,6 +22,44 @@
         "E2E_USERNAME",
         "E2E_PASSWORD",
         "E2E_AUTOMATION_BRANCHING_OFF"
+      ]
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": ["coverage/**"],
+      "env": ["CI", "NODE_ENV"]
+    },
+    "test:run": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": ["coverage/**"],
+      "env": [
+        "CI",
+        "NODE_ENV",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "JWT_SECRET",
+        "VITEST_COVERAGE"
+      ]
+    },
+    "test:unit": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": ["coverage/**"],
+      "env": ["CI", "NODE_ENV"]
+    },
+    "test:coverage": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$"],
+      "outputs": ["coverage/**"],
+      "env": [
+        "CI",
+        "NODE_ENV",
+        "DATABASE_URL",
+        "REDIS_URL",
+        "JWT_SECRET",
+        "VITEST_COVERAGE"
       ]
     },
     "prisma:generate": {

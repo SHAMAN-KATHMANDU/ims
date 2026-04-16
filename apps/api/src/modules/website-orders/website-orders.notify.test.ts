@@ -57,7 +57,6 @@ function order(overrides: Record<string, unknown> = {}) {
     createdAt: new Date(),
     updatedAt: new Date(),
     ...overrides,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any;
 }
 

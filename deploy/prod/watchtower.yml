@@ -14,11 +14,16 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
-      WATCHTOWER_POLL_INTERVAL: 30
+      # 15s on prod so a manually-triggered release (`:prod` push) propagates
+      # quickly. Dev stays at 30s — staging pushes are higher-frequency so a
+      # longer interval cushions noisy auto-builds. Pushes to `:prod` are
+      # gated by the production GitHub environment approval, so there's no
+      # risk of an unapproved image getting pulled fast.
+      WATCHTOWER_POLL_INTERVAL: 15
       WATCHTOWER_CLEANUP: "true"
       WATCHTOWER_WARN_ON_HEAD_FAILURE: "never"
     # Only watch the app containers -- not the DB, Redis, backup service, or Watchtower itself
-    command: --interval 30 prod_web prod_api
+    command: --interval 15 prod_web prod_api
     networks:
       - prod
 

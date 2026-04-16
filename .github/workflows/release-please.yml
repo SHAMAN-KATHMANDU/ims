@@ -1,0 +1,29 @@
+# Automates version bumps + CHANGELOG from conventional commits.
+# Merging the PR it opens creates the git tag; release.yml still drives
+# the Docker image builds (triggered separately via workflow_dispatch or
+# by hooking into `release` events in a follow-up).
+
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          config-file: .github/release-please-config.json
+          manifest-file: .github/.release-please-manifest.json
