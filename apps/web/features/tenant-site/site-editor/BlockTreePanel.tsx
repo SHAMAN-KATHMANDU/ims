@@ -216,7 +216,9 @@ function TreeNode({
             )}
           </div>
           <div className="truncate text-[9px] uppercase tracking-wide text-muted-foreground">
-            {block.kind}
+            {block.kind === "product-grid"
+              ? `product-grid · ${(block.props as Record<string, unknown>).heading ?? (block.props as Record<string, unknown>).source ?? "featured"}`
+              : block.kind}
           </div>
         </button>
 

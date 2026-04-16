@@ -111,7 +111,7 @@ export function BlockPalette({ open, onOpenChange, scope }: Props) {
                 <div className="grid gap-2 sm:grid-cols-2">
                   {entries.map((entry) => (
                     <button
-                      key={entry.kind}
+                      key={entry.id ?? entry.kind}
                       type="button"
                       onClick={() => handleInsert(entry)}
                       className="rounded-md border border-border p-3 text-left transition hover:border-primary hover:bg-primary/5"
