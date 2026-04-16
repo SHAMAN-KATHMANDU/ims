@@ -213,12 +213,30 @@ export function CartProvider({
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>;
 }
 
+/**
+ * Returns the cart context. When called outside CartProvider (e.g. in the
+ * preview iframe or the 404 page which render SiteHeader without the full
+ * app layout), returns a safe stub so CartBadge renders an empty badge
+ * instead of crashing with a React context error.
+ */
 export function useCart(): CartContextValue {
   const ctx = useContext(CartContext);
   if (!ctx) {
-    throw new Error(
-      "useCart must be called inside <CartProvider>. Make sure the component tree is wrapped at the app layout level.",
-    );
+    // Return a safe stub — CartBadge will show 0 items, AddToCartButton
+    // will be inert. This is intentional: preview routes and not-found
+    // pages don't have a cart, and crashing the whole page is worse than
+    // showing a non-functional badge.
+    return {
+      cart: EMPTY_CART,
+      hydrated: false,
+      subtotal: 0,
+      itemCount: 0,
+      isEmpty: true,
+      addItem: () => {},
+      removeItem: () => {},
+      updateQty: () => {},
+      clearCart: () => {},
+    } as CartContextValue;
   }
   return ctx;
 }

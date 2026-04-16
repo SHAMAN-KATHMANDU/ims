@@ -61,6 +61,18 @@ import {
 } from "./kinds/pdp-blocks";
 import { PdpGalleryBlock } from "./kinds/PdpGalleryBlock";
 
+// Layer 2
+import {
+  EmbedBlock,
+  VideoBlock,
+  AccordionBlock,
+  ColumnsBlock,
+  CssGridBlock,
+} from "./kinds/layer2-blocks";
+import { GalleryBlock } from "./kinds/GalleryBlock";
+import { TabsBlock } from "./kinds/TabsBlock";
+import { FormBlock } from "./kinds/FormBlock";
+
 export type BlockComponentProps<P = unknown> = {
   node: BlockNode;
   props: P;
@@ -109,4 +121,14 @@ export const blockRegistry: Record<string, BlockRegistryEntry> = {
   "pdp-details": { component: PdpDetailsBlock },
   "pdp-related": { component: PdpRelatedBlock },
   breadcrumbs: { component: BreadcrumbsBlock },
+  // Layer 2
+  embed: { component: EmbedBlock },
+  video: { component: VideoBlock },
+  accordion: { component: AccordionBlock },
+  columns: { component: ColumnsBlock, container: true },
+  gallery: { component: GalleryBlock },
+  tabs: { component: TabsBlock },
+  form: { component: FormBlock },
+  // Layer 3
+  "css-grid": { component: CssGridBlock, container: true },
 };

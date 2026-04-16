@@ -59,6 +59,12 @@ interface EditorState {
     id: string,
     visibility: Partial<BlockVisibility>,
   ) => void;
+  updateBlockId: (oldId: string, newId: string) => void;
+  updateBlockResponsive: (
+    id: string,
+    device: "mobile" | "tablet",
+    overrides: Record<string, unknown> | undefined,
+  ) => void;
 
   // ---- history ----
   undo: () => void;
@@ -179,6 +185,28 @@ export const useEditorStore = create<EditorState>()((set, get) => {
       const blocks = mapBlocks(present.blocks, id, (b) => ({
         ...b,
         visibility: { ...(b.visibility ?? {}), ...visibility },
+      }));
+      commit({ blocks });
+    },
+
+    updateBlockId: (oldId, newId) => {
+      if (!newId.trim() || oldId === newId) return;
+      const { present, selectedId } = get();
+      const blocks = present.blocks.map((b) =>
+        b.id === oldId ? { ...b, id: newId } : b,
+      );
+      commit({ blocks });
+      if (selectedId === oldId) set({ selectedId: newId });
+    },
+
+    updateBlockResponsive: (id, device, overrides) => {
+      const { present } = get();
+      const blocks = mapBlocks(present.blocks, id, (b) => ({
+        ...b,
+        responsive: {
+          ...(b.responsive ?? {}),
+          [device]: overrides,
+        },
       }));
       commit({ blocks });
     },

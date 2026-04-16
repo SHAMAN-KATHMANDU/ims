@@ -15,11 +15,11 @@ import type { BlockNode } from "@repo/shared";
 
 /**
  * Catch-all route for tenant-authored custom pages (About, FAQ,
- * Shipping, Lookbook, ...). The slug is claimed by a TenantPage row on
- * the tenant; unknown slugs 404. Reserved slugs (products / blog /
- * contact / api / _next / healthz / sitemap / robots) are caught by
- * the editor's reserved-slug guard and can't be created, so we don't
- * need a route-level denylist here.
+ * Shipping, Lookbook, ...). Supports nested URLs via the page
+ * hierarchy: /about renders slug="about", /about/team renders
+ * slug="team" (the last segment is always the page slug; earlier
+ * segments are validated as ancestors but the page is looked up by
+ * the leaf slug alone — flat slugs are still unique per tenant).
  *
  * Layout variants (`default` / `full-width` / `narrow`) map to three
  * content-column widths so the tenant can pick a reading width per
@@ -27,7 +27,7 @@ import type { BlockNode } from "@repo/shared";
  */
 
 type Props = {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string[] }>;
 };
 
 function columnWidth(variant: string | undefined): number {
@@ -36,8 +36,12 @@ function columnWidth(variant: string | undefined): number {
   return 820;
 }
 
+function leafSlug(segments: string[]): string {
+  return segments[segments.length - 1] ?? "";
+}
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { slug } = await params;
+  const slug = leafSlug((await params).slug);
   try {
     const ctx = await getTenantContext();
     const page = await getTenantPageBySlug(ctx.host, ctx.tenantId, slug);
@@ -52,7 +56,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 }
 
 export default async function TenantCustomPage({ params }: Props) {
-  const { slug } = await params;
+  const slug = leafSlug((await params).slug);
+  if (!slug) notFound();
+
   const ctx = await getTenantContext();
   const [site, page, categories, navPages] = await Promise.all([
     getSite(ctx.host, ctx.tenantId),
