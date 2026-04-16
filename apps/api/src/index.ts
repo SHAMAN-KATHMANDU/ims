@@ -1,4 +1,3 @@
-// Cache-bust marker for Docker build time benchmark (mode=max vs min).
 import http from "http";
 import app from "@/config/express.config";
 import { basePrisma as prisma } from "@/config/prisma";
