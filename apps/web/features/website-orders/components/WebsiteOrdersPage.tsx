@@ -154,10 +154,12 @@ const TABS: Array<{ key: TabKey; label: string }> = [
 ];
 
 export function WebsiteOrdersPage({
-  detailHref,
+  detailHrefBase,
 }: {
-  detailHref: (id: string) => string;
+  /** Base path — the component appends /<id> to build detail links. */
+  detailHrefBase: string;
 }) {
+  const detailHref = (id: string) => `${detailHrefBase}/${id}`;
   const [tab, setTab] = useState<TabKey>("PENDING_VERIFICATION");
   const [search, setSearch] = useState("");
 
