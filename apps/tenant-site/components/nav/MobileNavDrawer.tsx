@@ -18,6 +18,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { NavItem } from "@repo/shared";
+import { SearchBar } from "@/components/search/SearchBar";
 
 type DrawerStyle = "slide-left" | "slide-right" | "fullscreen";
 
@@ -134,6 +135,9 @@ export function MobileNavDrawer({ items, drawerStyle }: Props) {
           >
             ×
           </button>
+        </div>
+        <div style={{ marginBottom: "1rem" }}>
+          <SearchBar />
         </div>
         <nav
           style={{
