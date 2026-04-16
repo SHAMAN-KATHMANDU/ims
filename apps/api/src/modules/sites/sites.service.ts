@@ -12,6 +12,13 @@ import { createError } from "@/middlewares/errorHandler";
 import defaultRepo, { type SiteConfigWithTemplate } from "./sites.repository";
 import type { UpdateSiteConfigInput, PickTemplateInput } from "./sites.schema";
 import { revalidateTenantSite as defaultRevalidate } from "./sites.revalidate";
+import siteLayoutsRepo from "@/modules/site-layouts/site-layouts.repository";
+import { revalidateSiteLayout } from "@/modules/site-layouts/site-layouts.revalidate";
+import {
+  getTemplateBlueprint,
+  BLUEPRINT_SCOPES,
+  type TemplateBlueprint,
+} from "./blueprints";
 
 type Repo = typeof defaultRepo;
 type Revalidate = (tenantId: string) => Promise<void>;
@@ -63,6 +70,8 @@ export class SitesService {
     if (input.contact !== undefined) data.contact = toJson(input.contact);
     if (input.features !== undefined) data.features = toJson(input.features);
     if (input.seo !== undefined) data.seo = toJson(input.seo);
+    if (input.themeTokens !== undefined)
+      data.themeTokens = toJson(input.themeTokens);
 
     const result = await this.repo.updateConfig(tenantId, data);
     await this.revalidate(tenantId);
@@ -103,8 +112,66 @@ export class SitesService {
     }
 
     const result = await this.repo.updateConfig(tenantId, data);
+
+    // Seed a SiteLayout row for every scope the blueprint covers. The
+    // repository's upsertDraft writes to `draftBlocks`, so on first pick
+    // the tenant opens the block editor and sees the template's starter
+    // layout as a draft they can edit + publish. Re-picking the same
+    // template updates the draft idempotently. Re-picking a DIFFERENT
+    // template overwrites drafts — we don't clobber published `blocks`
+    // unless the tenant explicitly asks via resetBranding (Phase 9+
+    // could add a `resetLayouts` flag; for now resetBranding implies it
+    // because it's the strongest "I want a clean slate" signal).
+    const blueprint = getTemplateBlueprint(input.templateSlug);
+    if (blueprint) {
+      await this.seedLayoutsFromBlueprint(
+        tenantId,
+        blueprint,
+        input.resetBranding === true,
+      );
+    }
+
     await this.revalidate(tenantId);
     return result;
+  }
+
+  /**
+   * Seed draft SiteLayout rows from a template blueprint. When
+   * `publishNow` is true (e.g. the tenant explicitly reset to defaults),
+   * the blueprint is written straight to `blocks` so the site reflects
+   * the new template on next page load; otherwise it lands in
+   * `draftBlocks` and the tenant has to hit Publish in the editor.
+   */
+  private async seedLayoutsFromBlueprint(
+    tenantId: string,
+    blueprint: TemplateBlueprint,
+    publishNow: boolean,
+  ): Promise<void> {
+    for (const scope of BLUEPRINT_SCOPES) {
+      const blocks = blueprint.layouts[scope];
+      if (!blocks || blocks.length === 0) continue;
+
+      const json = blocks as unknown as Prisma.InputJsonValue;
+
+      if (publishNow) {
+        // Write to both draft and published so the site reflects the new
+        // template immediately AND the editor opens on the same tree.
+        await siteLayoutsRepo.upsertDraft(
+          tenantId,
+          { scope, pageId: null },
+          json,
+        );
+        await siteLayoutsRepo.publishDraft(tenantId, { scope, pageId: null });
+      } else {
+        await siteLayoutsRepo.upsertDraft(
+          tenantId,
+          { scope, pageId: null },
+          json,
+        );
+      }
+
+      await revalidateSiteLayout(tenantId, scope);
+    }
   }
 
   async publish(tenantId: string): Promise<SiteConfigWithTemplate> {

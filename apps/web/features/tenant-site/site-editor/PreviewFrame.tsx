@@ -109,9 +109,12 @@ export function PreviewFrame({
             </div>
           )}
           {!loading && !src && (
-            <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-              Preview unavailable. Ensure your site has a verified domain or
-              TENANT_SITE_PUBLIC_URL is set.
+            <div className="flex h-full flex-col items-center justify-center gap-2 p-6 text-center text-sm text-muted-foreground">
+              <p>Preview unavailable.</p>
+              <p className="text-xs">
+                Ensure your site has a verified domain or{" "}
+                <code>TENANT_SITE_PUBLIC_URL</code> is set.
+              </p>
             </div>
           )}
           {!loading && src && (
@@ -121,9 +124,29 @@ export function PreviewFrame({
               title="Site preview"
               className="h-full w-full"
               style={{ border: "none", minHeight: "calc(100vh - 200px)" }}
+              // `allow-same-origin` lets the preview route set its own
+              // cookies (needed so the cart/hydration works in the iframe);
+              // `allow-scripts` lets client blocks run.
+              sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox"
             />
           )}
         </div>
+        {!loading && src && (
+          <div className="mx-auto mt-2 max-w-2xl text-center text-[11px] text-muted-foreground">
+            If the preview is blank, your tenant-site deployment may be behind
+            this branch or the frame ancestor allowlist hasn&apos;t been widened
+            —{" "}
+            <a
+              href={src}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-foreground"
+            >
+              open in a new tab
+            </a>{" "}
+            to verify the draft renders end-to-end.
+          </div>
+        )}
       </div>
     </div>
   );

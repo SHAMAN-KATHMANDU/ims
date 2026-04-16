@@ -6,9 +6,16 @@
  * Three panes (tree | preview | inspector) + a header with scope picker,
  * undo/redo, save, publish. Loads the selected scope's SiteLayout into the
  * Zustand store; mutations are local until the user hits "Save draft".
+ *
+ * The scope picker is dual-mode: built-in scopes (home, products-index, ...)
+ * AND custom-page scopes (page:<id>) populated dynamically from the
+ * tenant's TenantPage list. Initial scope+pageId can be passed via
+ * `?scope=page&pageId=...` so the pages list "Edit with blocks" button
+ * deep-links into the right document.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -24,7 +31,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Undo2, Redo2, Save, Upload, ArrowLeft } from "lucide-react";
+import {
+  Undo2,
+  Redo2,
+  Save,
+  Upload,
+  ArrowLeft,
+  RotateCcw,
+  Plus,
+} from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/useToast";
 import type { BlockNode, SiteLayoutScope } from "@repo/shared";
@@ -33,14 +48,17 @@ import {
   useUpsertSiteLayoutDraft,
   usePublishSiteLayout,
   useSiteLayoutPreviewUrl,
+  useResetSiteLayoutFromTemplate,
 } from "../hooks/use-site-layouts";
+import { useSiteConfig } from "../hooks/use-tenant-site";
+import { useTenantPages } from "@/features/tenant-pages/hooks/use-tenant-pages";
 import { useEditorStore, selectBlocks, selectDirty } from "./editor-store";
 import { BlockTreePanel } from "./BlockTreePanel";
 import { BlockInspector } from "./BlockInspector";
 import { BlockPalette } from "./BlockPalette";
 import { PreviewFrame } from "./PreviewFrame";
 
-const EDITABLE_SCOPES: { value: SiteLayoutScope; label: string }[] = [
+const BUILT_IN_SCOPES: { value: SiteLayoutScope; label: string }[] = [
   { value: "home", label: "Home" },
   { value: "products-index", label: "Products index" },
   { value: "product-detail", label: "Product detail" },
@@ -50,17 +68,74 @@ const EDITABLE_SCOPES: { value: SiteLayoutScope; label: string }[] = [
 
 type DeviceWidth = "desktop" | "tablet" | "mobile";
 
+/**
+ * Editor target — what we're currently composing. Built-in scopes have
+ * `pageId === null`; custom-page edits use scope="page" + a real pageId.
+ * Encoded in the scope picker as either the bare scope string or
+ * "page:<pageId>" so the Select can carry both modes in one value.
+ */
+type EditorTarget = { scope: SiteLayoutScope; pageId: string | null };
+
+function encodeTarget(t: EditorTarget): string {
+  return t.scope === "page" && t.pageId ? `page:${t.pageId}` : t.scope;
+}
+
+function decodeTarget(value: string): EditorTarget {
+  if (value.startsWith("page:")) {
+    return { scope: "page", pageId: value.slice("page:".length) };
+  }
+  return { scope: value as SiteLayoutScope, pageId: null };
+}
+
 export function SiteEditorPage() {
   const { toast } = useToast();
-  const [scope, setScope] = useState<SiteLayoutScope>("home");
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
+  // Initial target from URL search params so the "Edit with blocks"
+  // button on the pages list can deep-link.
+  const initialTarget: EditorTarget = (() => {
+    const rawScope = searchParams.get("scope");
+    const rawPageId = searchParams.get("pageId");
+    if (rawScope === "page" && rawPageId) {
+      return { scope: "page", pageId: rawPageId };
+    }
+    if (rawScope && BUILT_IN_SCOPES.some((s) => s.value === rawScope)) {
+      return { scope: rawScope as SiteLayoutScope, pageId: null };
+    }
+    return { scope: "home", pageId: null };
+  })();
+
+  const [target, setTarget] = useState<EditorTarget>(initialTarget);
+  const { scope, pageId } = target;
+
+  // Mirror target state to the URL so refresh + browser-back work.
+  useEffect(() => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("scope", scope);
+    if (pageId) {
+      params.set("pageId", pageId);
+    } else {
+      params.delete("pageId");
+    }
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scope, pageId]);
+
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [device, setDevice] = useState<DeviceWidth>("desktop");
   const [refreshKey, setRefreshKey] = useState(0);
 
-  const layoutQuery = useSiteLayout(scope);
-  const previewUrlQuery = useSiteLayoutPreviewUrl(scope);
+  const layoutQuery = useSiteLayout(scope, pageId ?? undefined);
+  const previewUrlQuery = useSiteLayoutPreviewUrl(scope, pageId ?? undefined);
   const saveDraft = useUpsertSiteLayoutDraft();
   const publish = usePublishSiteLayout();
+  const resetFromTemplate = useResetSiteLayoutFromTemplate();
+  const configQuery = useSiteConfig();
+  const pagesQuery = useTenantPages({ limit: 100 });
+  const templateName = configQuery.data?.template?.name ?? null;
+  const customPages = pagesQuery.data?.pages ?? [];
 
   const load = useEditorStore((s) => s.load);
   const undo = useEditorStore((s) => s.undo);
@@ -70,6 +145,37 @@ export function SiteEditorPage() {
   const blocks = useEditorStore(selectBlocks);
   const dirty = useEditorStore(selectDirty);
   const markClean = useEditorStore((s) => s.markClean);
+
+  // ---- Autosave --------------------------------------------------------
+  // When `autosaveEnabled` is true and the editor has been dirty for 30
+  // seconds without a manual save, fire an automatic saveDraft. The timer
+  // resets on every store mutation (since `dirty` changes identity on each
+  // commit). Persist the toggle in localStorage so power users can disable.
+  const [autosaveEnabled, setAutosaveEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("site-editor-autosave") !== "false";
+  });
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveRef = useRef(handleSaveDraftSilent);
+  autosaveRef.current = handleSaveDraftSilent;
+
+  useEffect(() => {
+    localStorage.setItem(
+      "site-editor-autosave",
+      autosaveEnabled ? "true" : "false",
+    );
+  }, [autosaveEnabled]);
+
+  useEffect(() => {
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    if (!autosaveEnabled || !dirty) return;
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveRef.current();
+    }, 30_000);
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [autosaveEnabled, dirty, blocks]);
 
   // Load the layout for the current scope into the store whenever the
   // server data or scope changes. Prefer draftBlocks if present so the
@@ -87,9 +193,26 @@ export function SiteEditorPage() {
     // load() clears dirty, so refreshKey bumps when the tree changes source
   }, [scope, layoutQuery.data, layoutQuery.isLoading, load]);
 
+  function handleSaveDraftSilent() {
+    saveDraft
+      .mutateAsync({ scope, pageId, blocks })
+      .then(() => {
+        markClean();
+        setRefreshKey((k) => k + 1);
+        const now = new Date();
+        toast({
+          title: `Autosaved at ${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`,
+        });
+      })
+      .catch(() => {
+        // Swallow — autosave failures are non-critical; the user still
+        // has the dirty state in memory and can manually save.
+      });
+  }
+
   const handleSaveDraft = async () => {
     try {
-      await saveDraft.mutateAsync({ scope, blocks });
+      await saveDraft.mutateAsync({ scope, pageId, blocks });
       markClean();
       setRefreshKey((k) => k + 1);
       toast({ title: "Draft saved" });
@@ -105,18 +228,65 @@ export function SiteEditorPage() {
 
   const handlePublish = async () => {
     try {
-      if (dirty) {
-        // Save before publishing so the published tree matches what the
-        // editor is showing.
-        await saveDraft.mutateAsync({ scope, blocks });
-      }
-      await publish.mutateAsync({ scope });
+      // Always save the current tree before publishing — even if `dirty`
+      // is false. The reason: if the tenant has never saved this scope
+      // (no SiteLayout row exists yet), publish would 404 with
+      // "Layout not found". Saving first guarantees a row exists and is
+      // idempotent when blocks haven't changed.
+      await saveDraft.mutateAsync({ scope, pageId, blocks });
+      await publish.mutateAsync({
+        scope,
+        ...(pageId ? { pageId } : {}),
+      });
       markClean();
       setRefreshKey((k) => k + 1);
       toast({ title: "Layout published" });
     } catch (error) {
       toast({
         title: "Publish failed",
+        description:
+          error instanceof Error ? error.message : "Please try again",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResetFromTemplate = async () => {
+    if (scope === "page") {
+      toast({
+        title: "Custom pages have no template default",
+        description:
+          "Reset only applies to built-in scopes (home, products, ...).",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (
+      !confirm(
+        `Reset this ${scope} layout to the ${
+          templateName ?? "template"
+        } default? Any unsaved draft changes on this scope will be lost.`,
+      )
+    ) {
+      return;
+    }
+    try {
+      const row = await resetFromTemplate.mutateAsync({ scope });
+      const source =
+        row?.draftBlocks && Array.isArray(row.draftBlocks)
+          ? (row.draftBlocks as BlockNode[])
+          : row?.blocks && Array.isArray(row.blocks)
+            ? (row.blocks as BlockNode[])
+            : [];
+      load(source);
+      setRefreshKey((k) => k + 1);
+      toast({
+        title: "Reset to template default",
+        description: `${scope} now matches the ${templateName ?? "template"} blueprint.`,
+      });
+    } catch (error) {
+      toast({
+        title: "Reset failed",
         description:
           error instanceof Error ? error.message : "Please try again",
         variant: "destructive",
@@ -173,18 +343,30 @@ export function SiteEditorPage() {
           </div>
           <div className="flex items-center gap-2">
             <Select
-              value={scope}
-              onValueChange={(v) => setScope(v as SiteLayoutScope)}
+              value={encodeTarget(target)}
+              onValueChange={(v) => setTarget(decodeTarget(v))}
             >
-              <SelectTrigger className="w-44">
+              <SelectTrigger className="w-56">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {EDITABLE_SCOPES.map((s) => (
+                {BUILT_IN_SCOPES.map((s) => (
                   <SelectItem key={s.value} value={s.value}>
                     {s.label}
                   </SelectItem>
                 ))}
+                {customPages.length > 0 && (
+                  <>
+                    <div className="px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                      Custom pages
+                    </div>
+                    {customPages.map((p) => (
+                      <SelectItem key={p.id} value={`page:${p.id}`}>
+                        {p.title}
+                      </SelectItem>
+                    ))}
+                  </>
+                )}
               </SelectContent>
             </Select>
             <Button
@@ -207,6 +389,37 @@ export function SiteEditorPage() {
             </Button>
             <Button
               size="sm"
+              variant={autosaveEnabled ? "secondary" : "ghost"}
+              onClick={() => setAutosaveEnabled((v) => !v)}
+              title={
+                autosaveEnabled
+                  ? "Autosave is on (saves 30s after last edit)"
+                  : "Autosave is off"
+              }
+              className="text-xs"
+            >
+              {autosaveEnabled ? "Auto ✓" : "Auto"}
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleResetFromTemplate}
+              disabled={
+                resetFromTemplate.isPending || !templateName || scope === "page"
+              }
+              title={
+                scope === "page"
+                  ? "Custom pages have no template default to reset from"
+                  : templateName
+                    ? `Reset this scope to the ${templateName} default`
+                    : "Pick a template first"
+              }
+            >
+              <RotateCcw className="mr-1 h-4 w-4" />
+              {resetFromTemplate.isPending ? "Resetting…" : "Reset"}
+            </Button>
+            <Button
+              size="sm"
               variant="outline"
               onClick={handleSaveDraft}
               disabled={!dirty || saveDraft.isPending}
@@ -226,14 +439,16 @@ export function SiteEditorPage() {
         </CardHeader>
       </Card>
 
-      {/* Three-pane editor */}
-      <div className="grid min-h-0 flex-1 grid-cols-[260px_1fr_320px] gap-3">
+      {/* Editor panes — responsive:
+           ≥ 1280px: 3-pane grid (tree | preview | inspector)
+           768–1279px: 2-pane (tree | preview); inspector in a slide-over Sheet
+           < 768px: stacked with preview filling the viewport; tree + inspector in Sheets */}
+      <div className="hidden min-h-0 flex-1 gap-3 xl:grid xl:grid-cols-[260px_1fr_320px]">
         <Card className="overflow-hidden">
           <CardContent className="h-full p-0">
             <BlockTreePanel onOpenPalette={() => setPaletteOpen(true)} />
           </CardContent>
         </Card>
-
         <Card className="overflow-hidden">
           <CardContent className="h-full p-0">
             <PreviewFrame
@@ -246,10 +461,57 @@ export function SiteEditorPage() {
             />
           </CardContent>
         </Card>
-
         <Card className="overflow-hidden">
           <CardContent className="h-full p-0">
             <BlockInspector />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Tablet: 2-pane with slide-over inspector */}
+      <div className="hidden min-h-0 flex-1 gap-3 md:grid md:grid-cols-[240px_1fr] xl:hidden">
+        <Card className="overflow-hidden">
+          <CardContent className="h-full p-0">
+            <BlockTreePanel onOpenPalette={() => setPaletteOpen(true)} />
+          </CardContent>
+        </Card>
+        <Card className="overflow-hidden">
+          <CardContent className="h-full p-0">
+            <PreviewFrame
+              previewUrl={previewUrl}
+              loading={previewLoading}
+              refreshKey={refreshKey}
+              onRefresh={() => setRefreshKey((k) => k + 1)}
+              device={device}
+              onDeviceChange={setDevice}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Mobile: preview fills, tree + inspector are accessible via buttons */}
+      <div className="flex min-h-0 flex-1 flex-col gap-2 md:hidden">
+        <div className="flex gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            className="flex-1"
+            onClick={() => setPaletteOpen(true)}
+          >
+            <Plus className="mr-1 h-3.5 w-3.5" />
+            Add block
+          </Button>
+        </div>
+        <Card className="min-h-0 flex-1 overflow-hidden">
+          <CardContent className="h-full p-0">
+            <PreviewFrame
+              previewUrl={previewUrl}
+              loading={previewLoading}
+              refreshKey={refreshKey}
+              onRefresh={() => setRefreshKey((k) => k + 1)}
+              device={device}
+              onDeviceChange={setDevice}
+            />
           </CardContent>
         </Card>
       </div>

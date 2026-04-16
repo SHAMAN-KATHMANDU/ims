@@ -68,9 +68,63 @@ export function BlockInspector() {
           {entry?.description}
         </div>
       </div>
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
+      <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-5">
+        <VisibilitySection block={selected} />
         <BlockForm block={selected} />
       </div>
+    </div>
+  );
+}
+
+function VisibilitySection({ block }: { block: BlockNode }) {
+  const updateBlockVisibility = useEditorStore((s) => s.updateBlockVisibility);
+  const vis = block.visibility ?? {};
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Device visibility
+      </Label>
+      <div className="grid grid-cols-3 gap-2">
+        {(
+          [
+            { key: "desktop", label: "Desktop" },
+            { key: "tablet", label: "Tablet" },
+            { key: "mobile", label: "Mobile" },
+          ] as const
+        ).map(({ key, label }) => {
+          const visible = vis[key] !== false;
+          return (
+            <div
+              key={key}
+              className="flex flex-col items-center gap-1 rounded-md border border-border p-2"
+            >
+              <Switch
+                checked={visible}
+                onCheckedChange={(v) =>
+                  updateBlockVisibility(block.id, {
+                    [key]: v ? undefined : false,
+                  })
+                }
+              />
+              <span className="text-[10px] text-muted-foreground">{label}</span>
+            </div>
+          );
+        })}
+      </div>
+      {(vis.mobile === false ||
+        vis.tablet === false ||
+        vis.desktop === false) && (
+        <p className="text-[10px] text-amber-600">
+          Hidden on{" "}
+          {[
+            vis.desktop === false && "desktop",
+            vis.tablet === false && "tablet",
+            vis.mobile === false && "mobile",
+          ]
+            .filter(Boolean)
+            .join(", ")}
+        </p>
+      )}
     </div>
   );
 }

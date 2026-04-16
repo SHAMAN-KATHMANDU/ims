@@ -19,6 +19,7 @@ import { env } from "@/config/env";
 import { BlockTreeSchema } from "@repo/shared";
 import { signSitePreviewToken } from "@/modules/site-preview/preview-token";
 import defaultPagesRepo from "@/modules/pages/pages.repository";
+import { getTemplateBlueprint } from "@/modules/sites/blueprints";
 import defaultRepo, { type SiteLayoutKey } from "./site-layouts.repository";
 import { revalidateSiteLayout as defaultRevalidate } from "./site-layouts.revalidate";
 import type { UpsertSiteLayoutInput } from "./site-layouts.schema";
@@ -138,6 +139,57 @@ export class SiteLayoutsService {
         key.scope,
       )}?token=${encodeURIComponent(token)}${pageSuffix}`,
     };
+  }
+
+  /**
+   * Reset a single scope's draftBlocks to the tenant's current template
+   * blueprint. Used by the editor's "Reset to template default" button —
+   * lets a tenant throw away their edits and start from the blueprint
+   * again without re-picking the whole template. The published `blocks`
+   * column is left alone; the tenant still has to hit Publish to promote.
+   *
+   * 400 if the tenant has no template picked; 404 if their template has
+   * no registered blueprint (unusual — a blueprint should exist for every
+   * shipping template).
+   */
+  async resetScopeFromTemplate(
+    tenantId: string,
+    key: SiteLayoutKey,
+  ): Promise<SiteLayout> {
+    await this.assertEnabled(tenantId);
+
+    const config = await sitesRepo.findConfig(tenantId);
+    if (!config?.template?.slug) {
+      throw createError(
+        "Pick a template first — there's no blueprint to reset from.",
+        400,
+      );
+    }
+
+    const blueprint = getTemplateBlueprint(config.template.slug);
+    if (!blueprint) {
+      throw createError(
+        `No blueprint registered for template "${config.template.slug}".`,
+        404,
+      );
+    }
+
+    const blocks =
+      blueprint.layouts[key.scope as keyof typeof blueprint.layouts];
+    if (!blocks || blocks.length === 0) {
+      throw createError(
+        `Template "${config.template.slug}" has no blueprint for scope "${key.scope}".`,
+        404,
+      );
+    }
+
+    const row = await this.repo.upsertDraft(
+      tenantId,
+      { scope: key.scope, pageId: key.pageId ?? null },
+      blocks as unknown as Prisma.InputJsonValue,
+    );
+    await this.revalidate(tenantId, key.scope);
+    return row;
   }
 }
 

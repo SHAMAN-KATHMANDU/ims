@@ -43,6 +43,7 @@ export interface SiteConfig {
   contact: Record<string, unknown> | null;
   features: Record<string, unknown> | null;
   seo: Record<string, unknown> | null;
+  themeTokens: Record<string, unknown> | null;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
@@ -54,6 +55,7 @@ export interface UpdateSiteConfigData {
   contact?: Record<string, unknown> | null;
   features?: Record<string, unknown> | null;
   seo?: Record<string, unknown> | null;
+  themeTokens?: Record<string, unknown> | null;
 }
 
 // ============================================

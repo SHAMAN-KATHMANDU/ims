@@ -96,6 +96,8 @@ export interface PublicSite {
   contact: Record<string, unknown> | null;
   features: Record<string, unknown> | null;
   seo: Record<string, unknown> | null;
+  /** Structured design tokens (Phase 7+). Preferred over branding when set. */
+  themeTokens?: Record<string, unknown> | null;
   template: PublicTemplate | null;
 }
 
@@ -296,19 +298,22 @@ export interface GuestOrderResponse {
 }
 
 export async function postGuestOrder(
-  host: string,
+  _host: string,
   _tenantId: string,
   body: GuestOrderPayload,
 ): Promise<GuestOrderResponse | null> {
+  // IMPORTANT: this runs in the browser from CheckoutForm.tsx (which is
+  // "use client"). We MUST NOT read `API_INTERNAL_URL` here — it's a
+  // server-only env var that Next.js strips from the client bundle, so
+  // the fetch would fall back to localhost:4000 and fail on the
+  // customer's device. Post to a same-origin relative path instead; the
+  // Next route handler at /app/api/public/orders/route.ts forwards to
+  // the backend server-to-server using the internal env var.
   try {
-    const res = await fetch(`${API}/public/orders`, {
+    const res = await fetch("/api/public/orders", {
       method: "POST",
       cache: "no-store",
-      headers: {
-        "content-type": "application/json",
-        host,
-        "x-forwarded-host": host,
-      },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
     const payload = (await res.json().catch(() => null)) as
@@ -341,20 +346,19 @@ export interface CartPingPayload {
  * Fire-and-forget cart activity ping. Response is 204 on success.
  * Never throws — the caller (CartProvider) treats any failure as a
  * dropped heartbeat and the next mutation tries again.
+ *
+ * See postGuestOrder for why we go through a same-origin Next route
+ * handler instead of hitting the API directly from the browser.
  */
 export async function postCartPing(
-  host: string,
+  _host: string,
   body: CartPingPayload,
 ): Promise<boolean> {
   try {
-    const res = await fetch(`${API}/public/cart-pings`, {
+    const res = await fetch("/api/public/cart-pings", {
       method: "POST",
       cache: "no-store",
-      headers: {
-        "content-type": "application/json",
-        host,
-        "x-forwarded-host": host,
-      },
+      headers: { "content-type": "application/json" },
       body: JSON.stringify(body),
     });
     return res.ok;
