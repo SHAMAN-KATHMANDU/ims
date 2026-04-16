@@ -103,6 +103,12 @@ model Tenant {
   // Abandoned cart snapshots (ping-driven, session-keyed)
   abandonedCarts AbandonedCart[]
 
+  // Form block submissions
+  formSubmissions FormSubmission[]
+
+  // Page translations (i18n)
+  pageTranslations TenantPageTranslation[]
+
   @@map("tenants")
 }
 
@@ -162,6 +168,10 @@ model SiteConfig {
   /// Preferred by the renderer over the legacy `branding` JSON when set.
   /// Shape: ThemeTokens from @repo/shared.
   themeTokens    Json?    @map("theme_tokens")
+  /// Supported locales: ["en", "ne", "hi"]. Empty = no i18n.
+  locales        String[] @default([])
+  /// Default locale code. Null = English implied.
+  defaultLocale  String?  @map("default_locale") @db.VarChar(10)
   /// Tenant has clicked "publish" — only published sites are served publicly.
   isPublished    Boolean  @default(false) @map("is_published")
   createdAt      DateTime @default(now()) @map("created_at")
@@ -282,17 +292,51 @@ model TenantPage {
   showInNav      Boolean  @default(true) @map("show_in_nav")
   navOrder       Int      @default(0) @map("nav_order")
   isPublished    Boolean  @default(false) @map("is_published")
+  /// Landing pages render without header/footer chrome at /landing/<slug>.
+  isLandingPage  Boolean  @default(false) @map("is_landing_page")
+  /// Parent page for nested URL structure (/parent/child). Null = top-level.
+  parentId       String?  @map("parent_id")
   seoTitle       String?  @map("seo_title") @db.VarChar(200)
   seoDescription String?  @map("seo_description")
   createdAt      DateTime @default(now()) @map("created_at")
   updatedAt      DateTime @updatedAt @map("updated_at")
 
-  tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  siteLayouts SiteLayout[]
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent       TenantPage?  @relation("PageHierarchy", fields: [parentId], references: [id], onDelete: SetNull)
+  children     TenantPage[] @relation("PageHierarchy")
+  siteLayouts  SiteLayout[]
+  translations TenantPageTranslation[]
 
   @@unique([tenantId, slug])
   @@index([tenantId, isPublished, navOrder])
+  @@index([tenantId, parentId])
   @@map("tenant_pages")
+}
+
+/// Translated version of a TenantPage. One row per (page, locale) pair.
+/// The renderer checks for a translation matching the active locale and
+/// falls back to the base TenantPage content when none exists.
+model TenantPageTranslation {
+  id           String   @id @default(uuid())
+  tenantId     String   @map("tenant_id")
+  pageId       String   @map("page_id")
+  locale       String   @db.VarChar(10)
+  title        String   @db.VarChar(200)
+  bodyMarkdown String   @map("body_markdown")
+  /// Translated block tree (overrides the base SiteLayout blocks for
+  /// this locale when present). Null = use the base tree unchanged.
+  blocks       Json?
+  seoTitle     String?  @map("seo_title") @db.VarChar(200)
+  seoDescription String? @map("seo_description")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  tenant Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  page   TenantPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([pageId, locale])
+  @@index([tenantId, locale])
+  @@map("tenant_page_translations")
 }
 
 // ============================================
@@ -343,6 +387,23 @@ model NavMenu {
 
   @@unique([tenantId, slot])
   @@map("nav_menus")
+}
+
+/// Form submissions from the tenant-site form block. Each row stores the
+/// field values as JSON. When `submitTo = "crm-lead"`, a Lead row is also
+/// created in the CRM module.
+model FormSubmission {
+  id        String   @id @default(uuid())
+  tenantId  String   @map("tenant_id")
+  fields    Json
+  submitTo  String   @default("email") @db.VarChar(20)
+  leadId    String?  @map("lead_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, createdAt])
+  @@map("form_submissions")
 }
 
 enum PlanTier {

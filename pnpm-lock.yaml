@@ -480,6 +480,9 @@ importers:
       react-hook-form:
         specifier: ^7.60.0
         version: 7.70.0(react@19.2.0)
+      react-image-crop:
+        specifier: ^11.0.10
+        version: 11.0.10(react@19.2.0)
       react-markdown:
         specifier: ^9.0.1
         version: 9.1.0(@types/react@19.2.2)(react@19.2.0)
@@ -11698,6 +11701,14 @@ packages:
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18 || ^19
 
+  react-image-crop@11.0.10:
+    resolution:
+      {
+        integrity: sha512-+5FfDXUgYLLqBh1Y/uQhIycpHCbXkI50a+nbfkB1C0xXXUTwkisHDo2QCB1SQJyHCqIuia4FeyReqXuMDKWQTQ==,
+      }
+    peerDependencies:
+      react: ">=16.13.1"
+
   react-is@16.13.1:
     resolution:
       {
@@ -21863,6 +21874,10 @@ snapshots:
       react: 19.2.0
 
   react-hook-form@7.70.0(react@19.2.0):
+    dependencies:
+      react: 19.2.0
+
+  react-image-crop@11.0.10(react@19.2.0):
     dependencies:
       react: 19.2.0
 

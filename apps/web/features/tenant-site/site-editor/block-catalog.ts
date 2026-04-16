@@ -341,6 +341,107 @@ export const BLOCK_CATALOG: CatalogEntry[] = [
     scopes: ["product-detail"],
     createDefaultProps: () => ({ scope: "product" }),
   },
+
+  // Layer 2
+  {
+    kind: "embed",
+    label: "Embed / iframe",
+    description: "Calendly, Google Forms, or any URL.",
+    category: "content",
+    createDefaultProps: () => ({
+      src: "https://example.com",
+      aspectRatio: "16/9",
+      allowFullscreen: true,
+    }),
+  },
+  {
+    kind: "video",
+    label: "Video",
+    description: "YouTube, Vimeo, or direct MP4.",
+    category: "content",
+    createDefaultProps: () => ({
+      source: "youtube",
+      url: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      aspectRatio: "16/9",
+    }),
+  },
+  {
+    kind: "accordion",
+    label: "Accordion",
+    description: "Collapsible content sections.",
+    category: "content",
+    createDefaultProps: () => ({
+      items: [
+        { title: "Section 1", body: "Content for section 1." },
+        { title: "Section 2", body: "Content for section 2." },
+      ],
+      allowMultiple: true,
+    }),
+  },
+  {
+    kind: "columns",
+    label: "Columns",
+    description: "2, 3, or 4-column layout for side-by-side content.",
+    category: "layout",
+    createDefaultProps: () => ({
+      count: 2,
+      gap: "md",
+      verticalAlign: "start",
+    }),
+  },
+  {
+    kind: "gallery",
+    label: "Image gallery",
+    description: "Grid, masonry, or slideshow with optional lightbox.",
+    category: "content",
+    createDefaultProps: () => ({
+      images: [],
+      layout: "grid",
+      columns: 3,
+      lightbox: true,
+    }),
+  },
+  {
+    kind: "tabs",
+    label: "Tabs",
+    description: "Tabbed content panels.",
+    category: "content",
+    createDefaultProps: () => ({
+      tabs: [
+        { label: "Tab 1", content: "Content for tab 1." },
+        { label: "Tab 2", content: "Content for tab 2." },
+      ],
+    }),
+  },
+  {
+    kind: "form",
+    label: "Form",
+    description: "Contact or lead-capture form.",
+    category: "marketing",
+    createDefaultProps: () => ({
+      heading: "Get in touch",
+      fields: [
+        { kind: "text", label: "Name", required: true },
+        { kind: "email", label: "Email", required: true },
+        { kind: "textarea", label: "Message", placeholder: "How can we help?" },
+      ],
+      submitLabel: "Send message",
+      successMessage: "Thanks! We'll be in touch.",
+      submitTo: "email",
+    }),
+  },
+
+  // Layer 3
+  {
+    kind: "css-grid",
+    label: "CSS Grid",
+    description: "Advanced N-column grid layout (1–12 cols). Container block.",
+    category: "layout",
+    createDefaultProps: () => ({
+      columns: 3,
+      gap: "md",
+    }),
+  },
 ];
 
 const CATALOG_BY_KIND: Partial<Record<BlockKind, CatalogEntry>> =

@@ -64,6 +64,7 @@ import siteLayoutsRouter from "@/modules/site-layouts/site-layouts.router";
 import publicSiteLayoutsRouter from "@/modules/site-layouts/public-site-layouts.router";
 import navMenusRouter from "@/modules/nav-menus/nav-menus.router";
 import publicNavMenusRouter from "@/modules/nav-menus/public-nav-menus.router";
+import publicFormSubmissionsRouter from "@/modules/public-form-submissions/public-form-submissions.router";
 import internalRouter from "@/modules/internal/internal.router";
 import aiSettingsRouter from "@/modules/ai-settings/ai-settings.router";
 import mediaRouter from "@/modules/media/media.router";
@@ -107,6 +108,7 @@ router.use("/public/site-layouts", publicSiteLayoutsRouter);
 router.use("/public/nav-menus", publicNavMenusRouter);
 router.use("/public/orders", publicOrdersRouter);
 router.use("/public/cart-pings", publicCartPingsRouter);
+router.use("/public/form-submissions", publicFormSubmissionsRouter);
 
 // ============================================
 // Internal server-to-server hooks (no JWT; shared-secret token)

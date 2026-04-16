@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/useToast";
 import { useS3DirectUpload } from "@/hooks/useS3DirectUpload";
 import { getApiErrorMessage } from "@/lib/api-error";
 import { MediaLibraryPickerDialog } from "./MediaLibraryPickerDialog";
+import { ImageCropDialog } from "./ImageCropDialog";
 
 /**
  * Field that combines three ways to set a media URL:
@@ -52,6 +53,7 @@ export function MediaPickerField({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [cropUrl, setCropUrl] = useState<string | null>(null);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -64,7 +66,11 @@ export function MediaPickerField({
         purpose: "library",
         registerInLibrary: true,
       });
-      onChange(result.publicUrl);
+      if (file.type.startsWith("image/")) {
+        setCropUrl(result.publicUrl);
+      } else {
+        onChange(result.publicUrl);
+      }
       toast({ title: "Uploaded" });
     } catch (err) {
       toast({
@@ -172,7 +178,25 @@ export function MediaPickerField({
           open={pickerOpen}
           onOpenChange={setPickerOpen}
           onPick={(asset) => {
-            onChange(asset.publicUrl);
+            if (asset.publicUrl.match(/\.(jpg|jpeg|png|gif|webp|avif)$/i)) {
+              setCropUrl(asset.publicUrl);
+            } else {
+              onChange(asset.publicUrl);
+            }
+          }}
+        />
+      )}
+
+      {cropUrl && (
+        <ImageCropDialog
+          open={!!cropUrl}
+          onOpenChange={(open) => {
+            if (!open) setCropUrl(null);
+          }}
+          imageUrl={cropUrl}
+          onComplete={(url) => {
+            onChange(url);
+            setCropUrl(null);
           }}
         />
       )}
