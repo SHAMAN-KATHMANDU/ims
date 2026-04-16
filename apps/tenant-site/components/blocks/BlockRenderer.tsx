@@ -23,6 +23,7 @@ import type {
 } from "@repo/shared";
 import { blockRegistry } from "./registry";
 import type { BlockDataContext } from "./data-context";
+import { BlockErrorBoundary } from "./BlockErrorBoundary";
 
 type BlockRendererProps = {
   nodes: BlockNode[] | null | undefined;
@@ -143,13 +144,15 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
                 className={`tb-hide-mobile tb-hide-tablet ${className ?? ""}`}
                 style={wrapperStyle}
               >
-                <Component
-                  node={node}
-                  props={node.props}
-                  dataContext={dataContext}
-                >
-                  {childrenElement}
-                </Component>
+                <BlockErrorBoundary>
+                  <Component
+                    node={node}
+                    props={node.props}
+                    dataContext={dataContext}
+                  >
+                    {childrenElement}
+                  </Component>
+                </BlockErrorBoundary>
               </div>
               {/* Tablet version (hidden on desktop + mobile) */}
               {node.responsive?.tablet && (
@@ -157,13 +160,18 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
                   className={`tb-hide-desktop tb-hide-mobile ${className ?? ""}`}
                   style={wrapperStyle}
                 >
-                  <Component
-                    node={{ ...node, props: tabletProps as typeof node.props }}
-                    props={tabletProps}
-                    dataContext={dataContext}
-                  >
-                    {childrenElement}
-                  </Component>
+                  <BlockErrorBoundary>
+                    <Component
+                      node={{
+                        ...node,
+                        props: tabletProps as typeof node.props,
+                      }}
+                      props={tabletProps}
+                      dataContext={dataContext}
+                    >
+                      {childrenElement}
+                    </Component>
+                  </BlockErrorBoundary>
                 </div>
               )}
               {/* Mobile version (hidden on desktop + tablet) */}
@@ -172,13 +180,18 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
                   className={`tb-hide-desktop tb-hide-tablet ${className ?? ""}`}
                   style={wrapperStyle}
                 >
-                  <Component
-                    node={{ ...node, props: mobileProps as typeof node.props }}
-                    props={mobileProps}
-                    dataContext={dataContext}
-                  >
-                    {childrenElement}
-                  </Component>
+                  <BlockErrorBoundary>
+                    <Component
+                      node={{
+                        ...node,
+                        props: mobileProps as typeof node.props,
+                      }}
+                      props={mobileProps}
+                      dataContext={dataContext}
+                    >
+                      {childrenElement}
+                    </Component>
+                  </BlockErrorBoundary>
                 </div>
               )}
             </div>
@@ -194,9 +207,15 @@ export function BlockRenderer({ nodes, dataContext }: BlockRendererProps) {
             className={className}
             style={wrapperStyle}
           >
-            <Component node={node} props={node.props} dataContext={dataContext}>
-              {childrenElement}
-            </Component>
+            <BlockErrorBoundary>
+              <Component
+                node={node}
+                props={node.props}
+                dataContext={dataContext}
+              >
+                {childrenElement}
+              </Component>
+            </BlockErrorBoundary>
             {!entry.container && node.children && node.children.length > 0 ? (
               <BlockRenderer nodes={node.children} dataContext={dataContext} />
             ) : null}

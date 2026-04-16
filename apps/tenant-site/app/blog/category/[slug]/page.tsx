@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { getTenantContext } from "@/lib/tenant";
 import { getBlogPosts, getBlogCategories } from "@/lib/api";
@@ -10,6 +11,24 @@ type Props = {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ page?: string }>;
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const ctx = await getTenantContext();
+  const categories = await getBlogCategories(ctx.host, ctx.tenantId);
+  const category = categories.find((c) => c.slug === slug);
+  const name = category?.name ?? slug;
+  return {
+    title: `${name} — Blog`,
+    description:
+      category?.description ?? `Browse posts in the ${name} category.`,
+    alternates: { canonical: `/blog/category/${slug}` },
+  };
+}
 
 export default async function BlogCategoryPage({
   params,
@@ -37,7 +56,7 @@ export default async function BlogCategoryPage({
       {category.description && (
         <p
           style={{
-            color: "rgba(0,0,0,0.6)",
+            color: "var(--color-muted)",
             marginBottom: "2.5rem",
           }}
         >

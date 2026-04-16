@@ -53,7 +53,23 @@ export default async function RootLayout({
     // handler is responsible for applying branding tokens itself.
     return (
       <html lang="en">
-        <body>{children}</body>
+        <body>
+          <a
+            href="#main-content"
+            className="skip-link"
+            style={{
+              position: "absolute",
+              left: "-9999px",
+              top: "auto",
+              width: "1px",
+              height: "1px",
+              overflow: "hidden",
+            }}
+          >
+            Skip to main content
+          </a>
+          {children}
+        </body>
       </html>
     );
   }
@@ -86,6 +102,20 @@ export default async function RootLayout({
   return (
     <html lang="en" data-theme={theme} style={vars as React.CSSProperties}>
       <body>
+        <a
+          href="#main-content"
+          className="skip-link"
+          style={{
+            position: "absolute",
+            left: "-9999px",
+            top: "auto",
+            width: "1px",
+            height: "1px",
+            overflow: "hidden",
+          }}
+        >
+          Skip to main content
+        </a>
         <CartProvider tenantId={ctx.tenantId} host={ctx.host}>
           {children}
         </CartProvider>

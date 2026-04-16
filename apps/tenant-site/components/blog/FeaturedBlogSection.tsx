@@ -29,7 +29,7 @@ export function FeaturedBlogSection({
             href="/blog"
             style={{
               fontSize: "0.85rem",
-              color: "rgba(0,0,0,0.6)",
+              color: "var(--color-muted)",
               textDecoration: "none",
             }}
           >

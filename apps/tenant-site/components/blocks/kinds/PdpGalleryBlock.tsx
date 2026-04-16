@@ -134,7 +134,7 @@ function GalleryWithThumbs({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={url}
-              alt=""
+              alt={`Photo ${i + 1}`}
               style={{
                 width: "100%",
                 height: "100%",

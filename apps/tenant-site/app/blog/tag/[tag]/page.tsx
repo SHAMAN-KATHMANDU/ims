@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
 import { getBlogPosts, getBlogCategories } from "@/lib/api";
 import { BlogPageShell } from "@/components/blog/BlogPageShell";
@@ -9,6 +10,20 @@ type Props = {
   params: Promise<{ tag: string }>;
   searchParams: Promise<{ page?: string }>;
 };
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ tag: string }>;
+}): Promise<Metadata> {
+  const { tag } = await params;
+  const decodedTag = decodeURIComponent(tag);
+  return {
+    title: `#${decodedTag} — Blog`,
+    description: `Posts tagged with ${decodedTag}.`,
+    alternates: { canonical: `/blog/tag/${tag}` },
+  };
+}
 
 export default async function BlogTagPage({ params, searchParams }: Props) {
   const { tag } = await params;
@@ -30,7 +45,7 @@ export default async function BlogTagPage({ params, searchParams }: Props) {
       </h1>
       <p
         style={{
-          color: "rgba(0,0,0,0.6)",
+          color: "var(--color-muted)",
           marginBottom: "2.5rem",
         }}
       >

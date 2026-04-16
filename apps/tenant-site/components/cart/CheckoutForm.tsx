@@ -240,6 +240,7 @@ export function CheckoutForm({
         </p>
 
         <label
+          htmlFor="checkout-name"
           style={{
             display: "flex",
             flexDirection: "column",
@@ -250,6 +251,7 @@ export function CheckoutForm({
             Name <span style={{ color: "var(--color-primary)" }}>*</span>
           </span>
           <input
+            id="checkout-name"
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -268,6 +270,7 @@ export function CheckoutForm({
         </label>
 
         <label
+          htmlFor="checkout-phone"
           style={{
             display: "flex",
             flexDirection: "column",
@@ -278,6 +281,7 @@ export function CheckoutForm({
             Phone <span style={{ color: "var(--color-primary)" }}>*</span>
           </span>
           <input
+            id="checkout-phone"
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
@@ -296,6 +300,7 @@ export function CheckoutForm({
         </label>
 
         <label
+          htmlFor="checkout-email"
           style={{
             display: "flex",
             flexDirection: "column",
@@ -309,6 +314,7 @@ export function CheckoutForm({
             </span>
           </span>
           <input
+            id="checkout-email"
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
@@ -326,6 +332,7 @@ export function CheckoutForm({
         </label>
 
         <label
+          htmlFor="checkout-note"
           style={{
             display: "flex",
             flexDirection: "column",
@@ -339,6 +346,7 @@ export function CheckoutForm({
             </span>
           </span>
           <textarea
+            id="checkout-note"
             value={note}
             onChange={(e) => setNote(e.target.value)}
             rows={3}
@@ -361,8 +369,8 @@ export function CheckoutForm({
             role="alert"
             style={{
               padding: "0.75rem 1rem",
-              background: "rgba(255, 80, 80, 0.08)",
-              border: "1px solid rgba(255, 80, 80, 0.3)",
+              background: "var(--color-error-bg)",
+              border: "1px solid var(--color-error-border)",
               borderRadius: "var(--radius)",
               color: "var(--color-text)",
               fontSize: "0.9rem",
@@ -376,7 +384,11 @@ export function CheckoutForm({
           type="submit"
           className="btn"
           disabled={submitting}
-          style={{ marginTop: "0.75rem", justifyContent: "center" }}
+          style={{
+            marginTop: "0.75rem",
+            justifyContent: "center",
+            ...(submitting ? { opacity: 0.5, cursor: "not-allowed" } : {}),
+          }}
         >
           {submitting ? "Sending…" : "Place order"}
         </button>

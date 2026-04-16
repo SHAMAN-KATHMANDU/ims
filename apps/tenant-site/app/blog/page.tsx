@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
 import {
   getBlogPosts,
@@ -15,6 +16,11 @@ import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Journal",
+  description: "Stories, craft notes, and updates from the team.",
+};
 
 export default async function BlogIndexPage({
   searchParams,
@@ -75,7 +81,7 @@ export default async function BlogIndexPage({
       <h1 style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>Journal</h1>
       <p
         style={{
-          color: "rgba(0,0,0,0.6)",
+          color: "var(--color-muted)",
           marginBottom: "2.5rem",
           fontSize: "1rem",
         }}

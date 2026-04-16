@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { getTenantContext } from "@/lib/tenant";
 import { getSite, getCategories, getNavPages, getSiteLayout } from "@/lib/api";
 import { pickTemplate } from "@/components/templates/pickTemplate";
@@ -7,6 +8,11 @@ import { BlockRenderer } from "@/components/blocks/BlockRenderer";
 import { SiteHeader, SiteFooter } from "@/components/templates/shared";
 import type { BlockDataContext } from "@/components/blocks/data-context";
 import type { BlockNode } from "@repo/shared";
+
+export const metadata: Metadata = {
+  title: "Contact",
+  description: "Get in touch with us.",
+};
 
 export default async function ContactPage() {
   const ctx = await getTenantContext();

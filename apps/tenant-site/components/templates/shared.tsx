@@ -750,7 +750,7 @@ export function Hero({
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageUrl}
-          alt=""
+          alt="Hero banner"
           decoding="async"
           fetchPriority="high"
           style={{ display: "none" }}
@@ -780,7 +780,7 @@ export function Hero({
       // eslint-disable-next-line @next/next/no-img-element
       <img
         src={imageUrl}
-        alt=""
+        alt="Hero banner"
         decoding="async"
         fetchPriority="high"
         style={{ width: "100%", height: "100%", objectFit: "cover" }}

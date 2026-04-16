@@ -20,6 +20,11 @@
   --color-border: #e5e5e5;
   --color-ring: #111111;
 
+  /* ---------- Error ---------- */
+  --color-error: #dc2626;
+  --color-error-bg: rgba(220, 38, 38, 0.08);
+  --color-error-border: rgba(220, 38, 38, 0.3);
+
   /* ---------- Phase-A back-compat aliases ----------
      These short names are still read by MinimalLayout / StandardLayout /
      LuxuryLayout / BoutiqueLayout until they are rewritten in Phase C.3. */
@@ -351,5 +356,31 @@ hr {
 @media (min-width: 1025px) {
   .tb-hide-desktop {
     display: none !important;
+  }
+}
+
+/* Skip-to-content link — visible only on :focus (keyboard users). */
+.skip-link:focus {
+  position: fixed !important;
+  top: 0;
+  left: 0;
+  width: auto !important;
+  height: auto !important;
+  z-index: 9999;
+  padding: 1rem;
+  background: var(--color-primary, #111);
+  color: var(--color-on-primary, #fff);
+  font-weight: 600;
+  overflow: visible !important;
+}
+
+/* Skeleton pulse animation for loading states. */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
   }
 }

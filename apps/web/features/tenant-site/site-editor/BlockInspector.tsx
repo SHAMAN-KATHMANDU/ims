@@ -109,6 +109,7 @@ function VisibilitySection({ block }: { block: BlockNode }) {
                     [key]: v ? undefined : false,
                   })
                 }
+                aria-label={`Show on ${label}`}
               />
               <span className="text-[10px] text-muted-foreground">{label}</span>
             </div>
