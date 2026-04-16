@@ -64,14 +64,6 @@ running.
 
 Retention: 7 daily + 4 weekly + 3 monthly (see `deploy/prod/docker-compose.yml:59-61`).
 
-## 4. Rollback a release-please version (reverting the tag itself)
-
-If release-please opened a bad release and you merged it:
-
-1. In GitHub UI, delete the git tag and the GitHub Release for the bad version.
-2. `git revert` the release-please merge commit on `main`. Push a PR, merge.
-3. release-please will open a fresh PR for the next version. Merge when ready.
-
 ## Smoke-check URLs
 
 Replace `<prod-host>` with your host:
