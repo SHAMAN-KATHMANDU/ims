@@ -169,6 +169,35 @@ describe("BlogService", () => {
       expect(mockRepo.createPost).not.toHaveBeenCalled();
     });
 
+    it("computes reading time for a large body (10K+ chars)", async () => {
+      (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        siteConfig(),
+      );
+      const longBody = "word ".repeat(3000); // ~3000 words ≈ 12-15 min
+      (mockRepo.createPost as ReturnType<typeof vi.fn>).mockImplementation(
+        (_tenantId: string, data: Record<string, unknown>) => ({
+          ...post({ bodyMarkdown: longBody }),
+          readingMinutes: data.readingMinutes,
+        }),
+      );
+      await service.createPost("t1", {
+        title: "Long article",
+        slug: "long-article",
+        bodyMarkdown: longBody,
+      });
+      expect(mockRepo.createPost).toHaveBeenCalledWith(
+        "t1",
+        expect.objectContaining({
+          readingMinutes: expect.any(Number),
+        }),
+      );
+      const call = (mockRepo.createPost as ReturnType<typeof vi.fn>).mock
+        .calls[0]!;
+      const minutes = (call[1] as Record<string, unknown>)
+        .readingMinutes as number;
+      expect(minutes).toBeGreaterThan(10);
+    });
+
     it("maps Prisma P2002 to 409 Conflict", async () => {
       const err = new Prisma.PrismaClientKnownRequestError("Unique", {
         code: "P2002",
@@ -273,6 +302,31 @@ describe("BlogService", () => {
       const [, , data] = (mockRepo.updatePost as ReturnType<typeof vi.fn>).mock
         .calls[0];
       expect(data.publishedAt).toBeUndefined();
+    });
+
+    it("preserves publishedAt across unpublish and republish", async () => {
+      (mockSites.findConfig as ReturnType<typeof vi.fn>).mockResolvedValue(
+        siteConfig(),
+      );
+      const originalDate = new Date("2026-01-15T10:00:00Z");
+      (mockRepo.getPostById as ReturnType<typeof vi.fn>).mockResolvedValue(
+        post({ status: "DRAFT", publishedAt: originalDate }),
+      );
+      (mockRepo.updatePost as ReturnType<typeof vi.fn>).mockImplementation(
+        (_tenantId: string, _id: string, data: Record<string, unknown>) => ({
+          ...post({
+            status: "PUBLISHED",
+            publishedAt: data.publishedAt ?? originalDate,
+          }),
+        }),
+      );
+      await service.publishPost("t1", "p1");
+      // The service should NOT overwrite an existing publishedAt
+      expect(mockRepo.updatePost).toHaveBeenCalledWith(
+        "t1",
+        "p1",
+        expect.not.objectContaining({ publishedAt: expect.any(Date) }),
+      );
     });
   });
 

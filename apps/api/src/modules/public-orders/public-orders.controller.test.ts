@@ -119,6 +119,73 @@ describe("PublicOrdersController", () => {
     expect(call.sourceIp).toBe("203.0.113.1");
   });
 
+  it("accepts a second order with the same phone number", async () => {
+    const req = makeReq({ body: validPayload });
+    const res = mockRes() as Response;
+    mockService.createGuestOrder.mockResolvedValue({
+      id: "o2",
+      orderCode: "WO-2026-0002",
+      customerPhone: validPayload.customerPhone,
+    });
+    await controller.createOrder(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+  });
+
+  it("accepts an order with 10 items", async () => {
+    const items = Array.from({ length: 10 }, (_, i) => ({
+      productId: `${"1".repeat(7)}${i}-1111-1111-1111-111111111111`.slice(
+        0,
+        36,
+      ),
+      productName: `Product ${i}`,
+      unitPrice: 100,
+      quantity: 1,
+      lineTotal: 100,
+    }));
+    const req = makeReq({
+      body: { ...validPayload, items },
+    });
+    const res = mockRes() as Response;
+    mockService.createGuestOrder.mockResolvedValue({
+      id: "o3",
+      orderCode: "WO-2026-0003",
+    });
+    await controller.createOrder(req, res);
+    expect(res.status).toHaveBeenCalledWith(201);
+    expect(mockService.createGuestOrder).toHaveBeenCalledWith(
+      "t1",
+      expect.objectContaining({
+        items: expect.arrayContaining([
+          expect.objectContaining({ productName: "Product 0" }),
+        ]),
+      }),
+    );
+  });
+
+  it("returns user-friendly message on P2002 collision", async () => {
+    const req = makeReq({ body: validPayload });
+    const res = mockRes() as Response;
+    const p2002Error = new Error("P2002") as Error & { code: string };
+    p2002Error.code = "P2002";
+    mockService.createGuestOrder.mockRejectedValue(p2002Error);
+    await controller.createOrder(req, res);
+    expect(res.status).toHaveBeenCalledWith(409);
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        message: expect.stringContaining("try again"),
+      }),
+    );
+  });
+
+  it("fires notification after successful order", async () => {
+    const req = makeReq({ body: validPayload });
+    const res = mockRes() as Response;
+    const createdOrder = { id: "o-notify", orderCode: "WO-2026-0010" };
+    mockService.createGuestOrder.mockResolvedValue(createdOrder);
+    await controller.createOrder(req, res);
+    expect(mockNotify).toHaveBeenCalledWith("t1", createdOrder);
+  });
+
   it("maps AppError status code from service", async () => {
     mockService.createGuestOrder.mockRejectedValue(
       Object.assign(new Error("Website disabled"), { statusCode: 403 }),
