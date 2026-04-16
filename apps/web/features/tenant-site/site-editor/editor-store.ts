@@ -12,7 +12,12 @@
  */
 
 import { create } from "zustand";
-import type { BlockKind, BlockNode, BlockPropsMap } from "@repo/shared";
+import type {
+  BlockKind,
+  BlockNode,
+  BlockPropsMap,
+  BlockVisibility,
+} from "@repo/shared";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -47,6 +52,10 @@ interface EditorState {
   updateBlockProps: <K extends BlockKind>(
     id: string,
     props: Partial<BlockPropsMap[K]>,
+  ) => void;
+  updateBlockVisibility: (
+    id: string,
+    visibility: Partial<BlockVisibility>,
   ) => void;
 
   // ---- history ----
@@ -148,6 +157,15 @@ export const useEditorStore = create<EditorState>()((set, get) => {
           ...(b.props as Record<string, unknown>),
           ...props,
         } as unknown as BlockNode["props"],
+      }));
+      commit({ blocks });
+    },
+
+    updateBlockVisibility: (id, visibility) => {
+      const { present } = get();
+      const blocks = mapBlocks(present.blocks, id, (b) => ({
+        ...b,
+        visibility: { ...(b.visibility ?? {}), ...visibility },
       }));
       commit({ blocks });
     },

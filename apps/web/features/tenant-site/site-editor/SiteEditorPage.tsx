@@ -14,7 +14,7 @@
  * deep-links into the right document.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import {
   Card,
@@ -138,6 +138,37 @@ export function SiteEditorPage() {
   const dirty = useEditorStore(selectDirty);
   const markClean = useEditorStore((s) => s.markClean);
 
+  // ---- Autosave --------------------------------------------------------
+  // When `autosaveEnabled` is true and the editor has been dirty for 30
+  // seconds without a manual save, fire an automatic saveDraft. The timer
+  // resets on every store mutation (since `dirty` changes identity on each
+  // commit). Persist the toggle in localStorage so power users can disable.
+  const [autosaveEnabled, setAutosaveEnabled] = useState<boolean>(() => {
+    if (typeof window === "undefined") return true;
+    return localStorage.getItem("site-editor-autosave") !== "false";
+  });
+  const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autosaveRef = useRef(handleSaveDraftSilent);
+  autosaveRef.current = handleSaveDraftSilent;
+
+  useEffect(() => {
+    localStorage.setItem(
+      "site-editor-autosave",
+      autosaveEnabled ? "true" : "false",
+    );
+  }, [autosaveEnabled]);
+
+  useEffect(() => {
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    if (!autosaveEnabled || !dirty) return;
+    autosaveTimerRef.current = setTimeout(() => {
+      autosaveRef.current();
+    }, 30_000);
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [autosaveEnabled, dirty, blocks]);
+
   // Load the layout for the current scope into the store whenever the
   // server data or scope changes. Prefer draftBlocks if present so the
   // editor always starts on the working copy.
@@ -153,6 +184,23 @@ export function SiteEditorPage() {
     load(source);
     // load() clears dirty, so refreshKey bumps when the tree changes source
   }, [scope, layoutQuery.data, layoutQuery.isLoading, load]);
+
+  function handleSaveDraftSilent() {
+    saveDraft
+      .mutateAsync({ scope, pageId, blocks })
+      .then(() => {
+        markClean();
+        setRefreshKey((k) => k + 1);
+        const now = new Date();
+        toast({
+          title: `Autosaved at ${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`,
+        });
+      })
+      .catch(() => {
+        // Swallow — autosave failures are non-critical; the user still
+        // has the dirty state in memory and can manually save.
+      });
+  }
 
   const handleSaveDraft = async () => {
     try {
@@ -330,6 +378,19 @@ export function SiteEditorPage() {
               aria-label="Redo"
             >
               <Redo2 className="h-4 w-4" />
+            </Button>
+            <Button
+              size="sm"
+              variant={autosaveEnabled ? "secondary" : "ghost"}
+              onClick={() => setAutosaveEnabled((v) => !v)}
+              title={
+                autosaveEnabled
+                  ? "Autosave is on (saves 30s after last edit)"
+                  : "Autosave is off"
+              }
+              className="text-xs"
+            >
+              {autosaveEnabled ? "Auto ✓" : "Auto"}
             </Button>
             <Button
               size="sm"
