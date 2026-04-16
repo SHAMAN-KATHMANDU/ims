@@ -61,6 +61,10 @@ export function ProductListingBlock({
           products={dataContext.products}
           columns={props.columns}
           variant="bordered"
+          showCategory={props.showCategory}
+          showPrice={props.showPrice}
+          showDiscount={props.showDiscount}
+          cardAspectRatio={props.cardAspectRatio}
         />
         {totalPages > 1 && (
           <Pagination

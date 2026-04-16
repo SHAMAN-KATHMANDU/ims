@@ -70,6 +70,7 @@ export function BlockInspector() {
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto p-4 space-y-5">
         <VisibilitySection block={selected} />
+        <StyleOverrideSection block={selected} />
         <BlockForm block={selected} />
         <AdvancedSection block={selected} />
       </div>
@@ -127,6 +128,145 @@ function VisibilitySection({ block }: { block: BlockNode }) {
         </p>
       )}
     </div>
+  );
+}
+
+const THEME_TOKEN_OPTIONS = [
+  { value: "", label: "Default" },
+  { value: "color-primary", label: "Primary" },
+  { value: "color-secondary", label: "Secondary" },
+  { value: "color-accent", label: "Accent" },
+  { value: "color-background", label: "Background" },
+  { value: "color-surface", label: "Surface" },
+  { value: "color-text", label: "Text" },
+  { value: "color-muted", label: "Muted" },
+];
+
+function StyleOverrideSection({ block }: { block: BlockNode }) {
+  const updateBlockStyle = useEditorStore((s) => s.updateBlockStyle);
+  const style = block.style ?? {};
+
+  return (
+    <details className="group" open>
+      <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        Style
+      </summary>
+      <div className="mt-2 space-y-3">
+        <div className="space-y-1">
+          <Label className="text-xs">Alignment</Label>
+          <Select
+            value={style.alignment ?? ""}
+            onValueChange={(v) =>
+              updateBlockStyle(block.id, {
+                alignment: (v || undefined) as typeof style.alignment,
+              })
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Default" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Default</SelectItem>
+              <SelectItem value="start">Left</SelectItem>
+              <SelectItem value="center">Center</SelectItem>
+              <SelectItem value="end">Right</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">Padding Y</Label>
+          <Select
+            value={style.paddingY ?? ""}
+            onValueChange={(v) =>
+              updateBlockStyle(block.id, {
+                paddingY: (v || undefined) as typeof style.paddingY,
+              })
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Default" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Default</SelectItem>
+              <SelectItem value="none">None</SelectItem>
+              <SelectItem value="compact">Compact</SelectItem>
+              <SelectItem value="balanced">Balanced</SelectItem>
+              <SelectItem value="spacious">Spacious</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">Max Width</Label>
+          <Select
+            value={style.maxWidth ?? ""}
+            onValueChange={(v) =>
+              updateBlockStyle(block.id, {
+                maxWidth: (v || undefined) as typeof style.maxWidth,
+              })
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Default" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="">Default</SelectItem>
+              <SelectItem value="narrow">Narrow (640px)</SelectItem>
+              <SelectItem value="default">Default (1200px)</SelectItem>
+              <SelectItem value="wide">Wide (1440px)</SelectItem>
+              <SelectItem value="full">Full width</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">Background</Label>
+          <Select
+            value={style.backgroundToken ?? ""}
+            onValueChange={(v) =>
+              updateBlockStyle(block.id, {
+                backgroundToken: v || undefined,
+              })
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Default" />
+            </SelectTrigger>
+            <SelectContent>
+              {THEME_TOKEN_OPTIONS.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1">
+          <Label className="text-xs">Text Color</Label>
+          <Select
+            value={style.textToken ?? ""}
+            onValueChange={(v) =>
+              updateBlockStyle(block.id, {
+                textToken: v || undefined,
+              })
+            }
+          >
+            <SelectTrigger className="h-8 text-xs">
+              <SelectValue placeholder="Default" />
+            </SelectTrigger>
+            <SelectContent>
+              {THEME_TOKEN_OPTIONS.map((t) => (
+                <SelectItem key={t.value} value={t.value}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </details>
   );
 }
 

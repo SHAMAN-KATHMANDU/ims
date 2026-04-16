@@ -68,10 +68,18 @@ export default async function NotFound() {
             navPages={navPages}
           />
           <main>
-            <BlockRenderer
-              nodes={layout.blocks as BlockNode[]}
-              dataContext={dataContext}
-            />
+            <div
+              style={{
+                maxWidth: "var(--container-width, 1200px)",
+                margin: "0 auto",
+                padding: "0 1rem",
+              }}
+            >
+              <BlockRenderer
+                nodes={layout.blocks as BlockNode[]}
+                dataContext={dataContext}
+              />
+            </div>
           </main>
           <SiteFooter site={site} host={host} navPages={navPages} />
         </>

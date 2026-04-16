@@ -59,8 +59,29 @@ export function SectionBlock({
   const background = SECTION_BG[props.background ?? "default"];
   const color =
     props.background === "inverted" ? "var(--color-background)" : undefined;
+  const hasBgImage = !!props.backgroundImage;
+  const overlayGradient =
+    props.backgroundOverlay === "dark"
+      ? "linear-gradient(rgba(0,0,0,0.55), rgba(0,0,0,0.55))"
+      : props.backgroundOverlay === "light"
+        ? "linear-gradient(rgba(255,255,255,0.65), rgba(255,255,255,0.65))"
+        : undefined;
+  const sectionStyle: React.CSSProperties = {
+    padding,
+    background: hasBgImage ? undefined : background,
+    color: hasBgImage && props.backgroundOverlay === "dark" ? "#fff" : color,
+    ...(hasBgImage
+      ? {
+          backgroundImage: overlayGradient
+            ? `${overlayGradient}, url(${props.backgroundImage})`
+            : `url(${props.backgroundImage})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }
+      : {}),
+  };
   return (
-    <section style={{ padding, background, color }}>
+    <section style={sectionStyle}>
       <div
         className="container"
         style={{
@@ -76,16 +97,39 @@ export function SectionBlock({
 
 // ---------- heading ---------------------------------------------------------
 
+const HEADING_SIZE_MAP: Record<string, string> = {
+  sm: "clamp(1rem, 2vw, 1.25rem)",
+  md: "clamp(1.4rem, 2.5vw, 1.85rem)",
+  lg: "clamp(2rem, 3.5vw, 2.75rem)",
+  xl: "clamp(2.5rem, 5vw, 3.5rem)",
+};
+
 export function HeadingBlock({ props }: BlockComponentProps<HeadingProps>) {
   const Tag = `h${props.level}` as "h1" | "h2" | "h3" | "h4";
-  const size =
-    props.level === 1
+  const size = props.size
+    ? HEADING_SIZE_MAP[props.size]
+    : props.level === 1
       ? "clamp(2.25rem, 4.5vw, 3.25rem)"
       : props.level === 2
         ? "clamp(1.75rem, 3vw, 2.5rem)"
         : props.level === 3
           ? "clamp(1.4rem, 2.25vw, 1.85rem)"
           : "1.15rem";
+  const decorationStyle: React.CSSProperties =
+    props.decoration === "underline"
+      ? {
+          borderBottom: "3px solid var(--color-primary)",
+          paddingBottom: "0.5rem",
+          display: "inline-block",
+        }
+      : props.decoration === "gradient"
+        ? {
+            backgroundImage:
+              "linear-gradient(135deg, var(--color-primary), var(--color-accent))",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+          }
+        : {};
   return (
     <div
       style={{
@@ -114,6 +158,7 @@ export function HeadingBlock({ props }: BlockComponentProps<HeadingProps>) {
           lineHeight: 1.15,
           color: "var(--color-text)",
           margin: 0,
+          ...decorationStyle,
         }}
       >
         {props.text}
@@ -161,23 +206,40 @@ export function RichTextBlock({ props }: BlockComponentProps<RichTextProps>) {
 
 // ---------- image -----------------------------------------------------------
 
+const IMAGE_SHADOW: Record<string, string> = {
+  none: "none",
+  sm: "0 1px 3px rgba(0,0,0,0.12)",
+  md: "0 4px 12px rgba(0,0,0,0.15)",
+  lg: "0 8px 28px rgba(0,0,0,0.2)",
+};
+
 export function ImageBlock({ props }: BlockComponentProps<ImageProps>) {
   const ar =
     props.aspectRatio && props.aspectRatio !== "auto"
       ? props.aspectRatio
       : undefined;
+  const shadow = IMAGE_SHADOW[props.shadow ?? "none"] ?? "none";
+  const hoverClass =
+    props.hoverEffect === "zoom"
+      ? "tpl-img-zoom"
+      : props.hoverEffect === "lift"
+        ? "tpl-img-lift"
+        : "";
   const body = (
     // eslint-disable-next-line @next/next/no-img-element
     <img
       src={props.src}
       alt={props.alt}
       loading="lazy"
+      className={hoverClass || undefined}
       style={{
         display: "block",
         width: "100%",
         height: ar ? "100%" : "auto",
         objectFit: "cover",
         borderRadius: props.rounded ? "var(--radius)" : 0,
+        boxShadow: shadow,
+        transition: "transform 0.3s ease, box-shadow 0.3s ease",
       }}
     />
   );
@@ -253,7 +315,16 @@ export function ButtonBlock({ props }: BlockComponentProps<ButtonProps>) {
         padding: "0.5rem 0",
       }}
     >
-      <Link href={props.href} style={{ ...base, ...themed[props.style] }}>
+      <Link
+        href={props.href}
+        style={{
+          ...base,
+          ...themed[props.style],
+          ...(props.fullWidth
+            ? { width: "100%", justifyContent: "center" }
+            : {}),
+        }}
+      >
         {props.label}
       </Link>
     </div>
@@ -271,7 +342,9 @@ const SPACER_SIZES: Record<SpacerProps["size"], string> = {
 };
 
 export function SpacerBlock({ props }: BlockComponentProps<SpacerProps>) {
-  return <div style={{ height: SPACER_SIZES[props.size] }} />;
+  const height =
+    props.customPx != null ? `${props.customPx}px` : SPACER_SIZES[props.size];
+  return <div style={{ height }} />;
 }
 
 // ---------- divider ---------------------------------------------------------
@@ -280,11 +353,14 @@ export function DividerBlock({ props }: BlockComponentProps<DividerProps>) {
   const variant = props.variant ?? "line";
   const borderStyle =
     variant === "dotted" ? "dotted" : variant === "dashed" ? "dashed" : "solid";
+  const color = props.colorToken
+    ? `var(--${props.colorToken})`
+    : "var(--color-border)";
   return (
     <hr
       style={{
         border: "none",
-        borderTop: `1px ${borderStyle} var(--color-border)`,
+        borderTop: `1px ${borderStyle} ${color}`,
         margin: props.inset ? "2rem 15%" : "2rem 0",
       }}
     />

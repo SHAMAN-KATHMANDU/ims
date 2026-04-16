@@ -32,7 +32,7 @@ export function EmbedBlock({ props }: BlockComponentProps<EmbedProps>) {
       >
         <iframe
           src={props.src}
-          title="Embedded content"
+          title={props.title ?? "Embedded content"}
           allowFullScreen={props.allowFullscreen !== false}
           loading="lazy"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
@@ -40,7 +40,7 @@ export function EmbedBlock({ props }: BlockComponentProps<EmbedProps>) {
             position: ar === "auto" ? "relative" : "absolute",
             inset: 0,
             width: "100%",
-            height: ar === "auto" ? 400 : "100%",
+            height: ar === "auto" ? (props.height ?? 400) : "100%",
             border: "none",
           }}
         />
@@ -88,11 +88,12 @@ export function VideoBlock({ props }: BlockComponentProps<VideoProps>) {
           loop={props.loop}
           muted={props.muted}
           playsInline
+          poster={props.posterUrl}
           style={{
             width: "100%",
             aspectRatio: ar,
             objectFit: "cover",
-            borderRadius: "var(--radius)",
+            borderRadius: props.rounded ? "var(--radius)" : "var(--radius)",
             background: "var(--color-surface)",
             display: "block",
           }}

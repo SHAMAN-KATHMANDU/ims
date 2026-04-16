@@ -16,6 +16,7 @@ import { useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
+  Copy,
   GripVertical,
   Plus,
   Trash2,
@@ -53,6 +54,7 @@ export function BlockTreePanel({ onOpenPalette }: Props) {
   const setSelected = useEditorStore((s) => s.setSelected);
   const moveBlockTo = useEditorStore((s) => s.moveBlockTo);
   const removeBlock = useEditorStore((s) => s.removeBlock);
+  const duplicateBlock = useEditorStore((s) => s.duplicateBlock);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -104,6 +106,7 @@ export function BlockTreePanel({ onOpenPalette }: Props) {
                     selectedId={selectedId}
                     onSelect={setSelected}
                     onRemove={removeBlock}
+                    onDuplicate={duplicateBlock}
                   />
                 ))}
               </ul>
@@ -121,12 +124,14 @@ function TreeNode({
   selectedId,
   onSelect,
   onRemove,
+  onDuplicate,
 }: {
   block: BlockNode;
   depth: number;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onRemove: (id: string) => void;
+  onDuplicate: (id: string) => void;
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const isContainer = CONTAINER_KINDS.has(block.kind);
@@ -219,6 +224,15 @@ function TreeNode({
           size="icon"
           variant="ghost"
           className="h-6 w-6 shrink-0"
+          onClick={() => onDuplicate(block.id)}
+          aria-label="Duplicate"
+        >
+          <Copy className="h-3 w-3" />
+        </Button>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-6 w-6 shrink-0"
           onClick={() => onRemove(block.id)}
           aria-label="Delete"
         >
@@ -236,6 +250,7 @@ function TreeNode({
               selectedId={selectedId}
               onSelect={onSelect}
               onRemove={onRemove}
+              onDuplicate={onDuplicate}
             />
           ))}
         </ul>

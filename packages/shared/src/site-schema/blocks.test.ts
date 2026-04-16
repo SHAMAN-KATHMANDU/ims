@@ -482,6 +482,281 @@ describe("BlockPropsSchemas", () => {
 });
 
 // ---------------------------------------------------------------------------
+// New field validation (Phase B–F additions)
+// ---------------------------------------------------------------------------
+
+describe("new optional fields", () => {
+  it("hero accepts imageUrl + heroLayout", () => {
+    validatesAs("hero", {
+      variant: "editorial",
+      imageUrl: "https://img.example.com/hero.jpg",
+      heroLayout: "split-right",
+    });
+  });
+  it("hero rejects invalid heroLayout", () => {
+    rejectsAs("hero", { variant: "standard", heroLayout: "mosaic" });
+  });
+
+  it("product-grid accepts card customization props", () => {
+    validatesAs("product-grid", {
+      source: "featured",
+      limit: 8,
+      columns: 4,
+      cardVariant: "card",
+      showCategory: false,
+      showPrice: true,
+      showDiscount: false,
+      cardAspectRatio: "1/1",
+    });
+  });
+  it("product-grid rejects invalid cardAspectRatio", () => {
+    rejectsAs("product-grid", {
+      source: "featured",
+      limit: 8,
+      columns: 4,
+      cardVariant: "bordered",
+      cardAspectRatio: "2/3",
+    });
+  });
+
+  it("product-listing accepts card customization", () => {
+    validatesAs("product-listing", {
+      pageSize: 24,
+      defaultSort: "newest",
+      showSort: true,
+      columns: 3,
+      categoryFilter: true,
+      showPrice: false,
+      cardAspectRatio: "4/5",
+    });
+  });
+
+  it("category-tiles accepts showProductCount and cardStyle", () => {
+    validatesAs("category-tiles", {
+      columns: 3,
+      showProductCount: false,
+      cardStyle: "overlay",
+    });
+  });
+
+  it("section accepts backgroundImage + overlay", () => {
+    validatesAs("section", {
+      backgroundImage: "https://img.example.com/bg.jpg",
+      backgroundOverlay: "dark",
+    });
+  });
+
+  it("heading accepts size and decoration", () => {
+    validatesAs("heading", {
+      text: "Hello",
+      level: 1,
+      size: "xl",
+      decoration: "gradient",
+    });
+  });
+
+  it("image accepts shadow and hoverEffect", () => {
+    validatesAs("image", {
+      src: "https://img.example.com/photo.jpg",
+      alt: "Photo",
+      shadow: "lg",
+      hoverEffect: "zoom",
+    });
+  });
+
+  it("button accepts fullWidth", () => {
+    validatesAs("button", {
+      label: "Buy now",
+      href: "/checkout",
+      style: "primary",
+      fullWidth: true,
+    });
+  });
+
+  it("spacer accepts customPx", () => {
+    validatesAs("spacer", { size: "md", customPx: 120 });
+  });
+  it("spacer rejects customPx > 500", () => {
+    rejectsAs("spacer", { size: "md", customPx: 600 });
+  });
+
+  it("divider accepts colorToken", () => {
+    validatesAs("divider", { colorToken: "color-primary" });
+  });
+
+  it("trust-strip accepts layout and columns", () => {
+    validatesAs("trust-strip", {
+      items: [{ label: "Stat", value: "100" }],
+      layout: "grid",
+      columns: 4,
+    });
+  });
+
+  it("story-split accepts mediaType and videoUrl", () => {
+    validatesAs("story-split", {
+      title: "Our story",
+      body: "We started...",
+      imageSide: "left",
+      mediaType: "video",
+      videoUrl: "https://youtube.com/watch?v=abc",
+    });
+  });
+
+  it("bento-showcase accepts columns + cardVariant", () => {
+    validatesAs("bento-showcase", {
+      source: "featured",
+      limit: 4,
+      columns: 2,
+      cardVariant: "card",
+      showPrice: false,
+    });
+  });
+
+  it("stats-band accepts alignment and valueSize", () => {
+    validatesAs("stats-band", {
+      items: [{ value: "99%", label: "Uptime" }],
+      alignment: "center",
+      valueSize: "xl",
+    });
+  });
+
+  it("newsletter accepts variant and dark", () => {
+    validatesAs("newsletter", { variant: "banner", dark: true });
+  });
+
+  it("contact-block accepts layout and showMap", () => {
+    validatesAs("contact-block", {
+      heading: "Get in touch",
+      layout: "split",
+      showMap: true,
+      showSocials: true,
+    });
+  });
+
+  it("faq accepts variant", () => {
+    validatesAs("faq", {
+      items: [{ question: "Q?", answer: "A." }],
+      variant: "card",
+    });
+  });
+
+  it("testimonials accepts layout and columns", () => {
+    validatesAs("testimonials", {
+      items: [{ quote: "Great!", author: "Jane" }],
+      layout: "carousel",
+      columns: 3,
+      showAvatar: true,
+    });
+  });
+
+  it("logo-cloud accepts logoHeight, grayscale, columns", () => {
+    validatesAs("logo-cloud", {
+      logos: [{ src: "https://x.com/logo.svg", alt: "Brand" }],
+      logoHeight: 48,
+      grayscale: false,
+      columns: 6,
+    });
+  });
+
+  it("blog-list accepts card customization", () => {
+    validatesAs("blog-list", {
+      limit: 6,
+      columns: 3,
+      cardVariant: "minimal",
+      showExcerpt: false,
+      showDate: true,
+      showCategory: false,
+      showImage: true,
+    });
+  });
+
+  it("pdp-gallery accepts aspectRatio", () => {
+    validatesAs("pdp-gallery", {
+      layout: "thumbs-below",
+      enableZoom: true,
+      aspectRatio: "3/4",
+    });
+  });
+
+  it("pdp-buybox accepts new toggle props", () => {
+    validatesAs("pdp-buybox", {
+      showAddToCart: false,
+      showDescription: true,
+      priceSize: "lg",
+    });
+  });
+
+  it("embed accepts title and height", () => {
+    validatesAs("embed", {
+      src: "https://example.com/widget",
+      title: "Widget",
+      height: 600,
+    });
+  });
+
+  it("video accepts posterUrl and rounded", () => {
+    validatesAs("video", {
+      source: "youtube",
+      url: "https://youtube.com/watch?v=abc",
+      posterUrl: "https://img.example.com/poster.jpg",
+      rounded: true,
+    });
+  });
+
+  it("accordion accepts icon and variant", () => {
+    validatesAs("accordion", {
+      items: [{ title: "Q", body: "A" }],
+      icon: "plus",
+      variant: "card",
+    });
+  });
+
+  it("columns accepts stackBelow", () => {
+    validatesAs("columns", { count: 3, stackBelow: "md" });
+  });
+
+  it("gallery accepts gap, hoverEffect, rounded", () => {
+    validatesAs("gallery", {
+      images: [{ src: "https://x.com/1.jpg", alt: "Photo" }],
+      layout: "grid",
+      columns: 3,
+      gap: "lg",
+      hoverEffect: "zoom",
+      rounded: true,
+    });
+  });
+
+  it("tabs accepts variant and alignment", () => {
+    validatesAs("tabs", {
+      tabs: [{ label: "Tab 1", content: "Content" }],
+      variant: "pills",
+      alignment: "center",
+    });
+  });
+
+  it("form accepts layout, buttonStyle, buttonAlignment, field width", () => {
+    validatesAs("form", {
+      fields: [
+        { kind: "text", label: "Name", width: "half" },
+        { kind: "email", label: "Email", width: "half" },
+      ],
+      submitTo: "email",
+      layout: "stacked",
+      buttonStyle: "outline",
+      buttonAlignment: "center",
+    });
+  });
+
+  it("css-grid accepts mobileColumns and tabletColumns", () => {
+    validatesAs("css-grid", {
+      columns: 4,
+      mobileColumns: 1,
+      tabletColumns: 2,
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
 // BlockNode + BlockTree validation
 // ---------------------------------------------------------------------------
 

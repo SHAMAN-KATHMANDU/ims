@@ -39,6 +39,8 @@ export interface SectionProps {
   background?: "default" | "surface" | "accent" | "inverted";
   paddingY?: "none" | "compact" | "balanced" | "spacious";
   maxWidth?: "narrow" | "default" | "wide" | "full";
+  backgroundImage?: string;
+  backgroundOverlay?: "none" | "light" | "dark";
 }
 
 export interface HeadingProps {
@@ -47,6 +49,8 @@ export interface HeadingProps {
   alignment?: "start" | "center" | "end";
   eyebrow?: string;
   subtitle?: string;
+  size?: "sm" | "md" | "lg" | "xl";
+  decoration?: "none" | "underline" | "gradient";
 }
 
 export interface RichTextProps {
@@ -62,6 +66,8 @@ export interface ImageProps {
   rounded?: boolean;
   caption?: string;
   link?: string;
+  shadow?: "none" | "sm" | "md" | "lg";
+  hoverEffect?: "none" | "zoom" | "lift";
 }
 
 export interface ButtonProps {
@@ -70,15 +76,18 @@ export interface ButtonProps {
   style: "primary" | "outline" | "ghost";
   size?: "sm" | "md" | "lg";
   alignment?: "start" | "center" | "end";
+  fullWidth?: boolean;
 }
 
 export interface SpacerProps {
   size: "xs" | "sm" | "md" | "lg" | "xl";
+  customPx?: number;
 }
 
 export interface DividerProps {
   variant?: "line" | "dotted" | "dashed";
   inset?: boolean;
+  colorToken?: string;
 }
 
 export interface MarkdownBodyProps {
@@ -94,6 +103,8 @@ export interface HeroProps {
   subtitle?: string;
   ctaLabel?: string;
   ctaHref?: string;
+  imageUrl?: string;
+  heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
 }
 
 export interface ProductGridProps {
@@ -105,12 +116,18 @@ export interface ProductGridProps {
   cardVariant: "bordered" | "bare" | "card";
   heading?: string;
   eyebrow?: string;
+  showCategory?: boolean;
+  showPrice?: boolean;
+  showDiscount?: boolean;
+  cardAspectRatio?: "1/1" | "3/4" | "4/5" | "16/9";
 }
 
 export interface CategoryTilesProps {
   heading?: string;
   columns: 2 | 3 | 4;
   aspectRatio?: "1/1" | "4/5" | "3/4" | "16/9";
+  showProductCount?: boolean;
+  cardStyle?: "overlay" | "below";
 }
 
 export interface ProductListingProps {
@@ -119,6 +136,10 @@ export interface ProductListingProps {
   showSort: boolean;
   columns: 2 | 3 | 4;
   categoryFilter: boolean;
+  showCategory?: boolean;
+  showPrice?: boolean;
+  showDiscount?: boolean;
+  cardAspectRatio?: "1/1" | "3/4" | "4/5" | "16/9";
 }
 
 // Marketing ------------------------------------------------------------------
@@ -126,6 +147,8 @@ export interface ProductListingProps {
 export interface TrustStripProps {
   items: { label: string; value: string }[];
   dark?: boolean;
+  layout?: "inline" | "grid";
+  columns?: 2 | 3 | 4 | 5;
 }
 
 export interface StorySplitProps {
@@ -137,6 +160,8 @@ export interface StorySplitProps {
   imageCaption?: string;
   ctaHref?: string;
   ctaLabel?: string;
+  mediaType?: "image" | "video";
+  videoUrl?: string;
 }
 
 export interface BentoShowcaseProps {
@@ -145,36 +170,53 @@ export interface BentoShowcaseProps {
   source: "featured" | "manual";
   productIds?: string[];
   limit: number;
+  columns?: 2 | 3 | 4;
+  cardVariant?: "bordered" | "bare" | "card";
+  showPrice?: boolean;
 }
 
 export interface StatsBandProps {
   items: { value: string; label: string }[];
   dark?: boolean;
+  alignment?: "start" | "center" | "end";
+  valueSize?: "sm" | "md" | "lg" | "xl";
 }
 
 export interface NewsletterProps {
   title?: string;
   subtitle?: string;
   cta?: string;
+  variant?: "inline" | "card" | "banner";
+  dark?: boolean;
 }
 
 export interface ContactBlockProps {
   heading?: string;
+  layout?: "centered" | "split";
+  showMap?: boolean;
+  showSocials?: boolean;
 }
 
 export interface FaqProps {
   heading?: string;
   items: { question: string; answer: string }[];
+  variant?: "bordered" | "minimal" | "card";
 }
 
 export interface TestimonialsProps {
   heading?: string;
   items: { quote: string; author: string; role?: string }[];
+  layout?: "grid" | "carousel" | "stacked";
+  columns?: 2 | 3;
+  showAvatar?: boolean;
 }
 
 export interface LogoCloudProps {
   heading?: string;
   logos: { src: string; alt: string }[];
+  logoHeight?: number;
+  grayscale?: boolean;
+  columns?: 3 | 4 | 5 | 6;
 }
 
 // Blog -----------------------------------------------------------------------
@@ -183,6 +225,11 @@ export interface BlogListProps {
   heading?: string;
   limit: number;
   columns: 2 | 3 | 4;
+  cardVariant?: "default" | "minimal" | "card";
+  showExcerpt?: boolean;
+  showDate?: boolean;
+  showCategory?: boolean;
+  showImage?: boolean;
 }
 
 // Product Detail -------------------------------------------------------------
@@ -190,11 +237,15 @@ export interface BlogListProps {
 export interface PdpGalleryProps {
   layout: "thumbs-below" | "thumbs-left" | "stacked";
   enableZoom: boolean;
+  aspectRatio?: "1/1" | "3/4" | "4/5" | "16/9";
 }
 
 export interface PdpBuyboxProps {
   showSku?: boolean;
   showCategory?: boolean;
+  showAddToCart?: boolean;
+  showDescription?: boolean;
+  priceSize?: "sm" | "md" | "lg";
 }
 
 export interface PdpDetailsProps {
@@ -218,6 +269,8 @@ export interface EmbedProps {
   aspectRatio?: "16/9" | "4/3" | "1/1" | "auto";
   allowFullscreen?: boolean;
   caption?: string;
+  title?: string;
+  height?: number;
 }
 
 export interface VideoProps {
@@ -228,18 +281,23 @@ export interface VideoProps {
   loop?: boolean;
   muted?: boolean;
   caption?: string;
+  posterUrl?: string;
+  rounded?: boolean;
 }
 
 export interface AccordionProps {
   items: { title: string; body: string }[];
   allowMultiple?: boolean;
   heading?: string;
+  icon?: "chevron" | "plus" | "arrow";
+  variant?: "bordered" | "minimal" | "card";
 }
 
 export interface ColumnsProps {
   count: 2 | 3 | 4;
   gap?: "sm" | "md" | "lg";
   verticalAlign?: "start" | "center" | "end";
+  stackBelow?: "sm" | "md" | "lg";
 }
 
 export interface GalleryProps {
@@ -248,11 +306,16 @@ export interface GalleryProps {
   columns: 2 | 3 | 4;
   lightbox?: boolean;
   aspectRatio?: "1/1" | "4/3" | "3/4" | "16/9" | "auto";
+  gap?: "sm" | "md" | "lg";
+  hoverEffect?: "none" | "zoom" | "caption";
+  rounded?: boolean;
 }
 
 export interface TabsProps {
   tabs: { label: string; content: string }[];
   defaultTab?: number;
+  variant?: "underline" | "pills" | "bordered";
+  alignment?: "start" | "center";
 }
 
 export interface FormFieldDef {
@@ -261,6 +324,7 @@ export interface FormFieldDef {
   required?: boolean;
   placeholder?: string;
   options?: string[];
+  width?: "full" | "half";
 }
 
 export interface FormBlockProps {
@@ -270,6 +334,9 @@ export interface FormBlockProps {
   submitLabel?: string;
   successMessage?: string;
   submitTo: "email" | "crm-lead";
+  layout?: "stacked" | "inline";
+  buttonStyle?: "primary" | "outline" | "ghost";
+  buttonAlignment?: "start" | "center" | "stretch";
 }
 
 export interface CssGridProps {
@@ -277,6 +344,8 @@ export interface CssGridProps {
   columns: number;
   gap?: "sm" | "md" | "lg";
   minRowHeight?: string;
+  mobileColumns?: number;
+  tabletColumns?: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -385,6 +454,8 @@ export const BlockPropsSchemas = {
         .optional(),
       paddingY: z.enum(["none", "compact", "balanced", "spacious"]).optional(),
       maxWidth: z.enum(["narrow", "default", "wide", "full"]).optional(),
+      backgroundImage: optStr(1000),
+      backgroundOverlay: z.enum(["none", "light", "dark"]).optional(),
     })
     .strict(),
   heading: z
@@ -394,6 +465,8 @@ export const BlockPropsSchemas = {
       alignment: z.enum(["start", "center", "end"]).optional(),
       eyebrow: optStr(100),
       subtitle: optStr(400),
+      size: z.enum(["sm", "md", "lg", "xl"]).optional(),
+      decoration: z.enum(["none", "underline", "gradient"]).optional(),
     })
     .strict(),
   "rich-text": z
@@ -411,6 +484,8 @@ export const BlockPropsSchemas = {
       rounded: z.boolean().optional(),
       caption: optStr(300),
       link: optStr(1000),
+      shadow: z.enum(["none", "sm", "md", "lg"]).optional(),
+      hoverEffect: z.enum(["none", "zoom", "lift"]).optional(),
     })
     .strict(),
   button: z
@@ -420,13 +495,20 @@ export const BlockPropsSchemas = {
       style: z.enum(["primary", "outline", "ghost"]),
       size: z.enum(["sm", "md", "lg"]).optional(),
       alignment: z.enum(["start", "center", "end"]).optional(),
+      fullWidth: z.boolean().optional(),
     })
     .strict(),
-  spacer: z.object({ size: z.enum(["xs", "sm", "md", "lg", "xl"]) }).strict(),
+  spacer: z
+    .object({
+      size: z.enum(["xs", "sm", "md", "lg", "xl"]),
+      customPx: z.number().int().min(0).max(500).optional(),
+    })
+    .strict(),
   divider: z
     .object({
       variant: z.enum(["line", "dotted", "dashed"]).optional(),
       inset: z.boolean().optional(),
+      colorToken: z.string().max(80).optional(),
     })
     .strict(),
   "markdown-body": z
@@ -448,6 +530,10 @@ export const BlockPropsSchemas = {
       subtitle: optStr(400),
       ctaLabel: optStr(60),
       ctaHref: optStr(1000),
+      imageUrl: optStr(1000),
+      heroLayout: z
+        .enum(["centered", "split-left", "split-right", "overlay"])
+        .optional(),
     })
     .strict(),
   "product-grid": z
@@ -465,6 +551,10 @@ export const BlockPropsSchemas = {
       cardVariant: z.enum(["bordered", "bare", "card"]),
       heading: optStr(200),
       eyebrow: optStr(100),
+      showCategory: z.boolean().optional(),
+      showPrice: z.boolean().optional(),
+      showDiscount: z.boolean().optional(),
+      cardAspectRatio: z.enum(["1/1", "3/4", "4/5", "16/9"]).optional(),
     })
     .strict(),
   "category-tiles": z
@@ -472,6 +562,8 @@ export const BlockPropsSchemas = {
       heading: optStr(200),
       columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
       aspectRatio: z.enum(["1/1", "4/5", "3/4", "16/9"]).optional(),
+      showProductCount: z.boolean().optional(),
+      cardStyle: z.enum(["overlay", "below"]).optional(),
     })
     .strict(),
   "product-listing": z
@@ -481,6 +573,10 @@ export const BlockPropsSchemas = {
       showSort: z.boolean(),
       columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
       categoryFilter: z.boolean(),
+      showCategory: z.boolean().optional(),
+      showPrice: z.boolean().optional(),
+      showDiscount: z.boolean().optional(),
+      cardAspectRatio: z.enum(["1/1", "3/4", "4/5", "16/9"]).optional(),
     })
     .strict(),
   "trust-strip": z
@@ -489,6 +585,10 @@ export const BlockPropsSchemas = {
         .array(z.object({ label: str(80), value: str(80) }).strict())
         .max(10),
       dark: z.boolean().optional(),
+      layout: z.enum(["inline", "grid"]).optional(),
+      columns: z
+        .union([z.literal(2), z.literal(3), z.literal(4), z.literal(5)])
+        .optional(),
     })
     .strict(),
   "story-split": z
@@ -501,6 +601,8 @@ export const BlockPropsSchemas = {
       imageCaption: optStr(200),
       ctaHref: optStr(1000),
       ctaLabel: optStr(60),
+      mediaType: z.enum(["image", "video"]).optional(),
+      videoUrl: optStr(2000),
     })
     .strict(),
   "bento-showcase": z
@@ -510,6 +612,9 @@ export const BlockPropsSchemas = {
       source: z.enum(["featured", "manual"]),
       productIds: z.array(z.string().max(80)).max(10).optional(),
       limit: z.number().int().min(1).max(10),
+      columns: z.union([z.literal(2), z.literal(3), z.literal(4)]).optional(),
+      cardVariant: z.enum(["bordered", "bare", "card"]).optional(),
+      showPrice: z.boolean().optional(),
     })
     .strict(),
   "stats-band": z
@@ -518,6 +623,8 @@ export const BlockPropsSchemas = {
         .array(z.object({ value: str(40), label: str(80) }).strict())
         .max(10),
       dark: z.boolean().optional(),
+      alignment: z.enum(["start", "center", "end"]).optional(),
+      valueSize: z.enum(["sm", "md", "lg", "xl"]).optional(),
     })
     .strict(),
   newsletter: z
@@ -525,9 +632,18 @@ export const BlockPropsSchemas = {
       title: optStr(200),
       subtitle: optStr(400),
       cta: optStr(40),
+      variant: z.enum(["inline", "card", "banner"]).optional(),
+      dark: z.boolean().optional(),
     })
     .strict(),
-  "contact-block": z.object({ heading: optStr(200) }).strict(),
+  "contact-block": z
+    .object({
+      heading: optStr(200),
+      layout: z.enum(["centered", "split"]).optional(),
+      showMap: z.boolean().optional(),
+      showSocials: z.boolean().optional(),
+    })
+    .strict(),
   faq: z
     .object({
       heading: optStr(200),
@@ -541,6 +657,7 @@ export const BlockPropsSchemas = {
             .strict(),
         )
         .max(50),
+      variant: z.enum(["bordered", "minimal", "card"]).optional(),
     })
     .strict(),
   testimonials: z
@@ -557,6 +674,9 @@ export const BlockPropsSchemas = {
             .strict(),
         )
         .max(20),
+      layout: z.enum(["grid", "carousel", "stacked"]).optional(),
+      columns: z.union([z.literal(2), z.literal(3)]).optional(),
+      showAvatar: z.boolean().optional(),
     })
     .strict(),
   "logo-cloud": z
@@ -565,6 +685,11 @@ export const BlockPropsSchemas = {
       logos: z
         .array(z.object({ src: str(1000), alt: str(200) }).strict())
         .max(24),
+      logoHeight: z.number().int().min(16).max(200).optional(),
+      grayscale: z.boolean().optional(),
+      columns: z
+        .union([z.literal(3), z.literal(4), z.literal(5), z.literal(6)])
+        .optional(),
     })
     .strict(),
   "blog-list": z
@@ -572,18 +697,27 @@ export const BlockPropsSchemas = {
       heading: optStr(200),
       limit: z.number().int().min(1).max(24),
       columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
+      cardVariant: z.enum(["default", "minimal", "card"]).optional(),
+      showExcerpt: z.boolean().optional(),
+      showDate: z.boolean().optional(),
+      showCategory: z.boolean().optional(),
+      showImage: z.boolean().optional(),
     })
     .strict(),
   "pdp-gallery": z
     .object({
       layout: z.enum(["thumbs-below", "thumbs-left", "stacked"]),
       enableZoom: z.boolean(),
+      aspectRatio: z.enum(["1/1", "3/4", "4/5", "16/9"]).optional(),
     })
     .strict(),
   "pdp-buybox": z
     .object({
       showSku: z.boolean().optional(),
       showCategory: z.boolean().optional(),
+      showAddToCart: z.boolean().optional(),
+      showDescription: z.boolean().optional(),
+      priceSize: z.enum(["sm", "md", "lg"]).optional(),
     })
     .strict(),
   "pdp-details": z.object({ tabs: z.boolean().optional() }).strict(),
@@ -604,6 +738,8 @@ export const BlockPropsSchemas = {
       aspectRatio: z.enum(["16/9", "4/3", "1/1", "auto"]).optional(),
       allowFullscreen: z.boolean().optional(),
       caption: optStr(300),
+      title: optStr(200),
+      height: z.number().int().min(50).max(2000).optional(),
     })
     .strict(),
   video: z
@@ -615,6 +751,8 @@ export const BlockPropsSchemas = {
       loop: z.boolean().optional(),
       muted: z.boolean().optional(),
       caption: optStr(300),
+      posterUrl: optStr(1000),
+      rounded: z.boolean().optional(),
     })
     .strict(),
   accordion: z
@@ -631,6 +769,8 @@ export const BlockPropsSchemas = {
         .max(50),
       allowMultiple: z.boolean().optional(),
       heading: optStr(200),
+      icon: z.enum(["chevron", "plus", "arrow"]).optional(),
+      variant: z.enum(["bordered", "minimal", "card"]).optional(),
     })
     .strict(),
   columns: z
@@ -638,6 +778,7 @@ export const BlockPropsSchemas = {
       count: z.union([z.literal(2), z.literal(3), z.literal(4)]),
       gap: z.enum(["sm", "md", "lg"]).optional(),
       verticalAlign: z.enum(["start", "center", "end"]).optional(),
+      stackBelow: z.enum(["sm", "md", "lg"]).optional(),
     })
     .strict(),
   gallery: z
@@ -657,6 +798,9 @@ export const BlockPropsSchemas = {
       columns: z.union([z.literal(2), z.literal(3), z.literal(4)]),
       lightbox: z.boolean().optional(),
       aspectRatio: z.enum(["1/1", "4/3", "3/4", "16/9", "auto"]).optional(),
+      gap: z.enum(["sm", "md", "lg"]).optional(),
+      hoverEffect: z.enum(["none", "zoom", "caption"]).optional(),
+      rounded: z.boolean().optional(),
     })
     .strict(),
   tabs: z
@@ -672,6 +816,8 @@ export const BlockPropsSchemas = {
         )
         .max(20),
       defaultTab: z.number().int().min(0).optional(),
+      variant: z.enum(["underline", "pills", "bordered"]).optional(),
+      alignment: z.enum(["start", "center"]).optional(),
     })
     .strict(),
   form: z
@@ -687,6 +833,7 @@ export const BlockPropsSchemas = {
               required: z.boolean().optional(),
               placeholder: optStr(200),
               options: z.array(z.string().max(100)).max(50).optional(),
+              width: z.enum(["full", "half"]).optional(),
             })
             .strict(),
         )
@@ -694,6 +841,9 @@ export const BlockPropsSchemas = {
       submitLabel: optStr(60),
       successMessage: optStr(500),
       submitTo: z.enum(["email", "crm-lead"]),
+      layout: z.enum(["stacked", "inline"]).optional(),
+      buttonStyle: z.enum(["primary", "outline", "ghost"]).optional(),
+      buttonAlignment: z.enum(["start", "center", "stretch"]).optional(),
     })
     .strict(),
   // Layer 3
@@ -702,6 +852,8 @@ export const BlockPropsSchemas = {
       columns: z.number().int().min(1).max(12),
       gap: z.enum(["sm", "md", "lg"]).optional(),
       minRowHeight: z.string().max(20).optional(),
+      mobileColumns: z.number().int().min(1).max(12).optional(),
+      tabletColumns: z.number().int().min(1).max(12).optional(),
     })
     .strict(),
 } satisfies Record<BlockKind, z.ZodType<unknown>>;
@@ -759,6 +911,7 @@ export const SITE_LAYOUT_SCOPES = [
   "product-detail",
   "blog-index",
   "blog-post",
+  "contact",
   "page",
   "404",
   "landing",

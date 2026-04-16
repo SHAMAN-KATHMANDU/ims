@@ -628,15 +628,23 @@ export function Hero({
   variant = "standard",
   ctaHref = "/products",
   ctaLabel = "Shop the collection",
+  title,
+  subtitle,
+  imageUrl,
+  heroLayout = "centered",
 }: {
   site: PublicSite;
   host: string;
   variant?: HeroVariant;
   ctaHref?: string;
   ctaLabel?: string;
+  title?: string;
+  subtitle?: string;
+  imageUrl?: string;
+  heroLayout?: "centered" | "split-left" | "split-right" | "overlay";
 }) {
-  const name = brandingDisplayName(site.branding, host);
-  const tagline = brandingTagline(site.branding);
+  const name = title ?? brandingDisplayName(site.branding, host);
+  const tagline = subtitle ?? brandingTagline(site.branding);
 
   // Bigger, more editorial padding across the board — matches the Vercel
   // Commerce / Shopify Dawn scale where the hero actually dominates the
@@ -673,6 +681,117 @@ export function Hero({
 
   const fontFamily = "var(--font-display)";
 
+  const textContent = (
+    <>
+      <h1
+        style={{
+          fontSize,
+          marginBottom: "1.5rem",
+          letterSpacing,
+          fontWeight,
+          fontFamily,
+          lineHeight: 1.05,
+          color: heroLayout === "overlay" ? "#fff" : "var(--color-text)",
+        }}
+      >
+        {name}
+      </h1>
+      {tagline && (
+        <p
+          style={{
+            fontSize: "clamp(1.05rem, 1.6vw, 1.35rem)",
+            color:
+              heroLayout === "overlay"
+                ? "rgba(255,255,255,0.85)"
+                : "var(--color-muted)",
+            maxWidth: 620,
+            margin:
+              heroLayout === "split-left" || heroLayout === "split-right"
+                ? "0 0 2.5rem"
+                : "0 auto 2.5rem",
+            lineHeight: 1.6,
+          }}
+        >
+          {tagline}
+        </p>
+      )}
+      <div>
+        <Link href={ctaHref} className="btn">
+          {ctaLabel}
+        </Link>
+      </div>
+    </>
+  );
+
+  if (heroLayout === "overlay" && imageUrl) {
+    return (
+      <section
+        className="tpl-hero"
+        style={{
+          padding,
+          textAlign: "center",
+          backgroundImage: `url(${imageUrl})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          position: "relative",
+        }}
+      >
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.6))",
+          }}
+        />
+        <div
+          className="container"
+          style={{ maxWidth: 960, margin: "0 auto", position: "relative" }}
+        >
+          {textContent}
+        </div>
+      </section>
+    );
+  }
+
+  if (
+    (heroLayout === "split-left" || heroLayout === "split-right") &&
+    imageUrl
+  ) {
+    const imageEl = (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={imageUrl}
+        alt=""
+        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+      />
+    );
+    return (
+      <section
+        className="tpl-hero tpl-hero-split"
+        style={{
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "3rem",
+          padding,
+          background: "var(--color-background)",
+          alignItems: "center",
+        }}
+      >
+        {heroLayout === "split-left" ? (
+          <>
+            <div>{imageEl}</div>
+            <div>{textContent}</div>
+          </>
+        ) : (
+          <>
+            <div>{textContent}</div>
+            <div>{imageEl}</div>
+          </>
+        )}
+      </section>
+    );
+  }
+
   return (
     <section
       className="tpl-hero"
@@ -683,37 +802,7 @@ export function Hero({
       }}
     >
       <div className="container" style={{ maxWidth: 960, margin: "0 auto" }}>
-        <h1
-          style={{
-            fontSize,
-            marginBottom: "1.5rem",
-            letterSpacing,
-            fontWeight,
-            fontFamily,
-            lineHeight: 1.05,
-            color: "var(--color-text)",
-          }}
-        >
-          {name}
-        </h1>
-        {tagline && (
-          <p
-            style={{
-              fontSize: "clamp(1.05rem, 1.6vw, 1.35rem)",
-              color: "var(--color-muted)",
-              maxWidth: 620,
-              margin: "0 auto 2.5rem",
-              lineHeight: 1.6,
-            }}
-          >
-            {tagline}
-          </p>
-        )}
-        <div>
-          <Link href={ctaHref} className="btn">
-            {ctaLabel}
-          </Link>
-        </div>
+        {textContent}
       </div>
     </section>
   );
@@ -726,9 +815,17 @@ export function Hero({
 export function ProductCard({
   product,
   variant = "bordered",
+  showCategory,
+  showPrice,
+  showDiscount,
+  aspectRatio = "3 / 4",
 }: {
   product: PublicProduct;
   variant?: "bordered" | "bare" | "card";
+  showCategory?: boolean;
+  showPrice?: boolean;
+  showDiscount?: boolean;
+  aspectRatio?: string;
 }) {
   const hasDiscount =
     product.finalSp &&
@@ -768,7 +865,7 @@ export function ProductCard({
       <div
         style={{
           position: "relative",
-          aspectRatio: "3 / 4",
+          aspectRatio,
           background: "var(--color-surface)",
           overflow: "hidden",
         }}
@@ -806,7 +903,7 @@ export function ProductCard({
             {product.imsCode}
           </div>
         )}
-        {hasDiscount && (
+        {showDiscount !== false && hasDiscount && (
           <span
             style={{
               position: "absolute",
@@ -834,7 +931,7 @@ export function ProductCard({
           gap: "0.4rem",
         }}
       >
-        {product.category && (
+        {showCategory !== false && product.category && (
           <div
             style={{
               fontSize: "0.66rem",
@@ -863,36 +960,38 @@ export function ProductCard({
         >
           {product.name}
         </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: "0.65rem",
-            fontSize: "1.02rem",
-            marginTop: "0.25rem",
-          }}
-        >
-          <span
+        {showPrice !== false && (
+          <div
             style={{
-              fontWeight: 600,
-              color: "var(--color-text)",
-              fontFamily: "var(--font-display)",
+              display: "flex",
+              alignItems: "baseline",
+              gap: "0.65rem",
+              fontSize: "1.02rem",
+              marginTop: "0.25rem",
             }}
           >
-            ₹{Number(product.finalSp).toLocaleString("en-IN")}
-          </span>
-          {hasDiscount && (
             <span
               style={{
-                textDecoration: "line-through",
-                color: "var(--color-muted)",
-                fontSize: "0.88rem",
+                fontWeight: 600,
+                color: "var(--color-text)",
+                fontFamily: "var(--font-display)",
               }}
             >
-              ₹{Number(product.mrp).toLocaleString("en-IN")}
+              ₹{Number(product.finalSp).toLocaleString("en-IN")}
             </span>
-          )}
-        </div>
+            {hasDiscount && (
+              <span
+                style={{
+                  textDecoration: "line-through",
+                  color: "var(--color-muted)",
+                  fontSize: "0.88rem",
+                }}
+              >
+                ₹{Number(product.mrp).toLocaleString("en-IN")}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -902,10 +1001,18 @@ export function ProductGrid({
   products,
   columns = 4,
   variant = "bordered",
+  showCategory,
+  showPrice,
+  showDiscount,
+  cardAspectRatio,
 }: {
   products: PublicProduct[];
   columns?: number;
   variant?: "bordered" | "bare" | "card";
+  showCategory?: boolean;
+  showPrice?: boolean;
+  showDiscount?: boolean;
+  cardAspectRatio?: string;
 }) {
   if (products.length === 0) {
     return (
@@ -935,7 +1042,15 @@ export function ProductGrid({
       }}
     >
       {products.map((p) => (
-        <ProductCard key={p.id} product={p} variant={variant} />
+        <ProductCard
+          key={p.id}
+          product={p}
+          variant={variant}
+          showCategory={showCategory}
+          showPrice={showPrice}
+          showDiscount={showDiscount}
+          aspectRatio={cardAspectRatio}
+        />
       ))}
     </div>
   );
