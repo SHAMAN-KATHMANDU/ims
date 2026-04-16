@@ -270,6 +270,7 @@ export async function calculateSaleItems(
       } else if (!item.discountId) {
         if (activeDiscounts && activeDiscounts.length > 0) {
           const eligible = activeDiscounts.filter((d) => {
+            if (!d.discountType) return false;
             const tn = d.discountType.name.toLowerCase();
             if (saleType === "MEMBER") {
               return tn.includes("member") || tn.includes("non-member");
@@ -278,6 +279,7 @@ export async function calculateSaleItems(
           });
           if (eligible.length > 0) {
             eligible.sort((a, b) => {
+              if (!a.discountType || !b.discountType) return 0;
               const aS =
                 a.discountType.name.toLowerCase() === "special" ? 1 : 0;
               const bS =
