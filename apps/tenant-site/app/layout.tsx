@@ -1,4 +1,3 @@
-// Cache-bust marker for Docker build time benchmark (mode=max vs min).
 import type { ReactNode } from "react";
 import type { Viewport } from "next";
 
