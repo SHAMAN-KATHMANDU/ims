@@ -111,6 +111,18 @@ export class SitesService {
           : (template.defaultSections as Prisma.InputJsonValue);
     }
 
+    const blueprint = getTemplateBlueprint(input.templateSlug);
+    if (blueprint?.defaultThemeTokens) {
+      const existingTokens = current?.themeTokens as Record<
+        string,
+        unknown
+      > | null;
+      if (!existingTokens || input.resetBranding) {
+        data.themeTokens =
+          blueprint.defaultThemeTokens as Prisma.InputJsonValue;
+      }
+    }
+
     const result = await this.repo.updateConfig(tenantId, data);
 
     // Seed a SiteLayout row for every scope the blueprint covers. The
@@ -122,7 +134,6 @@ export class SitesService {
     // unless the tenant explicitly asks via resetBranding (Phase 9+
     // could add a `resetLayouts` flag; for now resetBranding implies it
     // because it's the strongest "I want a clean slate" signal).
-    const blueprint = getTemplateBlueprint(input.templateSlug);
     if (blueprint) {
       await this.seedLayoutsFromBlueprint(
         tenantId,

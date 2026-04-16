@@ -78,7 +78,16 @@ export default async function BlogIndexPage({
 
   return (
     <BlogPageShell>
-      <h1 style={{ fontSize: "2.5rem", marginBottom: "0.5rem" }}>Journal</h1>
+      <h1
+        style={{
+          fontSize: "2.5rem",
+          marginBottom: "0.5rem",
+          fontFamily: "var(--font-display)",
+          color: "var(--color-text)",
+        }}
+      >
+        Journal
+      </h1>
       <p
         style={{
           color: "var(--color-muted)",

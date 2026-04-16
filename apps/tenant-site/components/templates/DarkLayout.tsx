@@ -39,6 +39,7 @@ export async function DarkLayout(props: TemplateProps) {
   return (
     <div
       data-template="dark"
+      data-theme="dark"
       style={{
         background: "var(--color-background)",
         color: "var(--color-text)",

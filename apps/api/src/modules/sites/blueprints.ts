@@ -30,6 +30,25 @@ type BlueprintScope = "home" | "products-index" | "product-detail";
 export interface TemplateBlueprint {
   slug: string;
   layouts: Partial<Record<BlueprintScope, BlockNode[]>>;
+  defaultThemeTokens?: {
+    mode?: "light" | "dark";
+    colors?: Record<string, string>;
+    typography?: {
+      heading?: { family: string };
+      body?: { family: string };
+      scaleRatio?: number;
+      baseSize?: number;
+    };
+    spacing?: {
+      unit?: number;
+      section?: "compact" | "balanced" | "spacious";
+      container?: number;
+    };
+    shape?: {
+      radius?: "sharp" | "soft" | "rounded";
+      buttonStyle?: "solid" | "outline" | "pill";
+    };
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -104,6 +123,7 @@ function editorialHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "editorial",
+      title: "Curated for the discerning eye",
       ctaLabel: "Shop the collection",
       ctaHref: "/products",
     }),
@@ -180,6 +200,8 @@ function organicHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "standard",
+      title: "Rooted in nature, crafted by hand",
+      subtitle: "Ethically sourced, thoughtfully made",
       ctaLabel: "Explore the collection",
       ctaHref: "/products",
     }),
@@ -224,6 +246,8 @@ function darkHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "editorial",
+      title: "Design that takes a position",
+      subtitle: "Bold choices, no compromise",
       ctaLabel: "Enter the collection",
       ctaHref: "/products",
     }),
@@ -235,7 +259,7 @@ function darkHome(): BlockNode[] {
     }),
     block("product-grid", {
       heading: "Latest",
-      source: "featured",
+      source: "newest",
       limit: 8,
       columns: 4,
       cardVariant: "card",
@@ -254,6 +278,7 @@ function darkHome(): BlockNode[] {
       body: "Every piece takes a position. We're not interested in the middle.",
       imageSide: "left",
     }),
+    block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Get notified",
       subtitle: "First access to every drop.",
@@ -267,6 +292,7 @@ function brutalistHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "minimal",
+      title: "No frills. Just product.",
       ctaLabel: "Browse",
       ctaHref: "/products",
     }),
@@ -282,6 +308,7 @@ function brutalistHome(): BlockNode[] {
       body: "We make things. You buy them. That's the arrangement.",
       imageSide: "right",
     }),
+    block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Updates",
       subtitle: "Infrequent, relevant.",
@@ -295,6 +322,8 @@ function zenHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "minimal",
+      title: "Less, but better",
+      subtitle: "Carefully chosen objects for a considered life",
       ctaLabel: "Begin",
       ctaHref: "/products",
     }),
@@ -319,6 +348,7 @@ function zenHome(): BlockNode[] {
         { value: "1", label: "Focus" },
       ],
     }),
+    block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Occasional notes",
       subtitle: "Once a season.",
@@ -332,6 +362,8 @@ function coastalHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "boutique",
+      title: "Made near the sea",
+      subtitle: "Light, easy, California-inspired",
       ctaLabel: "Shop the lookbook",
       ctaHref: "/products",
     }),
@@ -343,7 +375,7 @@ function coastalHome(): BlockNode[] {
     block("product-grid", {
       eyebrow: "Summer",
       heading: "Pieces for warmer days",
-      source: "featured",
+      source: "newest",
       limit: 8,
       columns: 4,
       cardVariant: "bordered",
@@ -359,6 +391,7 @@ function coastalHome(): BlockNode[] {
       source: "featured",
       limit: 5,
     }),
+    block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Summer notes",
       subtitle: "No more than one email a month.",
@@ -372,6 +405,8 @@ function apothecaryHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "standard",
+      title: "Nature's finest remedies",
+      subtitle: "Botanical formulas, handcrafted with care",
       ctaLabel: "Shop remedies",
       ctaHref: "/products",
     }),
@@ -434,6 +469,8 @@ function retroHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "standard",
+      title: "Classics never go out of style",
+      subtitle: "Timeless design, modern quality",
       ctaLabel: "Shop now",
       ctaHref: "/products",
     }),
@@ -447,7 +484,7 @@ function retroHome(): BlockNode[] {
     block("product-grid", {
       eyebrow: "Classics",
       heading: "The collection",
-      source: "featured",
+      source: "newest",
       limit: 12,
       columns: 4,
       cardVariant: "card",
@@ -464,6 +501,7 @@ function retroHome(): BlockNode[] {
         { label: "Secure", value: "Checkout" },
       ],
     }),
+    block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Don't miss a drop",
       subtitle: "Get new arrivals first.",
@@ -477,6 +515,7 @@ function artisanHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "luxury",
+      title: "From our workshop to your home",
       ctaLabel: "See the work",
       ctaHref: "/products",
     }),
@@ -535,6 +574,8 @@ function galleryHome(): BlockNode[] {
   return [
     block("hero", {
       variant: "editorial",
+      title: "Current collection",
+      subtitle: "An independent gallery, by appointment",
       ctaLabel: "View the collection",
       ctaHref: "/products",
     }),
@@ -562,10 +603,30 @@ function galleryHome(): BlockNode[] {
       body: "We show work by artists we know personally. The roster is small on purpose.",
       imageSide: "right",
     }),
+    block("blog-list", { heading: "From the journal", limit: 3, columns: 3 }),
     block("newsletter", {
       title: "Exhibition openings",
       subtitle: "One email per show.",
       cta: "Subscribe",
+    }),
+  ];
+}
+
+function blankHome(): BlockNode[] {
+  return [
+    block("hero", {
+      variant: "standard",
+      title: "Your Brand",
+      subtitle: "Start building your store",
+      ctaLabel: "Shop now",
+      ctaHref: "/products",
+    }),
+    block("product-grid", {
+      heading: "Featured products",
+      source: "featured",
+      limit: 4,
+      columns: 4,
+      cardVariant: "bordered",
     }),
   ];
 }
@@ -582,6 +643,28 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
     },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#1a1a2e",
+        secondary: "#4a4a6a",
+        accent: "#f0ebe3",
+        background: "#fdfcfa",
+        surface: "#f5f3ef",
+        text: "#1a1a2e",
+        muted: "#6b7280",
+        border: "#e5e0d8",
+        ring: "#1a1a2e",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: { family: "Georgia, 'Times New Roman', serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.25,
+        baseSize: 16,
+      },
+      shape: { radius: "soft", buttonStyle: "solid" },
+    },
   },
   organic: {
     slug: "organic",
@@ -589,6 +672,28 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       home: organicHome(),
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
+    },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#3d5a3d",
+        secondary: "#6b8e6b",
+        accent: "#f5f0e8",
+        background: "#faf8f3",
+        surface: "#f0ede5",
+        text: "#2d2d2d",
+        muted: "#7a7a6e",
+        border: "#e0dbd0",
+        ring: "#3d5a3d",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: { family: "Georgia, 'Times New Roman', serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.2,
+        baseSize: 16,
+      },
+      shape: { radius: "rounded", buttonStyle: "solid" },
     },
   },
   dark: {
@@ -598,6 +703,28 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
     },
+    defaultThemeTokens: {
+      mode: "dark",
+      colors: {
+        primary: "#e0e0e0",
+        secondary: "#888888",
+        accent: "#1a1a2e",
+        background: "#0a0a0a",
+        surface: "#141414",
+        text: "#e8e8e8",
+        muted: "#777777",
+        border: "#2a2a2a",
+        ring: "#e0e0e0",
+        onPrimary: "#0a0a0a",
+      },
+      typography: {
+        heading: { family: "system-ui, sans-serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.3,
+        baseSize: 16,
+      },
+      shape: { radius: "soft", buttonStyle: "solid" },
+    },
   },
   brutalist: {
     slug: "brutalist",
@@ -605,6 +732,32 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       home: brutalistHome(),
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
+    },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#000000",
+        secondary: "#333333",
+        accent: "#ffff00",
+        background: "#ffffff",
+        surface: "#f5f5f5",
+        text: "#000000",
+        muted: "#666666",
+        border: "#000000",
+        ring: "#000000",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: {
+          family: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace",
+        },
+        body: {
+          family: "ui-monospace, SFMono-Regular, 'SF Mono', Menlo, monospace",
+        },
+        scaleRatio: 1.2,
+        baseSize: 15,
+      },
+      shape: { radius: "sharp", buttonStyle: "outline" },
     },
   },
   zen: {
@@ -614,6 +767,29 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
     },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#4a4a4a",
+        secondary: "#8a8a8a",
+        accent: "#f5f2ed",
+        background: "#faf9f7",
+        surface: "#f2f0ec",
+        text: "#333333",
+        muted: "#999999",
+        border: "#e8e5e0",
+        ring: "#4a4a4a",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: { family: "Georgia, 'Times New Roman', serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.2,
+        baseSize: 16,
+      },
+      shape: { radius: "soft", buttonStyle: "solid" },
+      spacing: { section: "spacious" },
+    },
   },
   coastal: {
     slug: "coastal",
@@ -621,6 +797,28 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       home: coastalHome(),
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
+    },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#2563eb",
+        secondary: "#60a5fa",
+        accent: "#f0f7ff",
+        background: "#ffffff",
+        surface: "#f8fafc",
+        text: "#1e293b",
+        muted: "#64748b",
+        border: "#e2e8f0",
+        ring: "#2563eb",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: { family: "system-ui, sans-serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.25,
+        baseSize: 16,
+      },
+      shape: { radius: "rounded", buttonStyle: "solid" },
     },
   },
   apothecary: {
@@ -630,6 +828,28 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
     },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#5c6b4f",
+        secondary: "#8a9a7b",
+        accent: "#f5f0e0",
+        background: "#faf7f0",
+        surface: "#f0ece0",
+        text: "#3d3028",
+        muted: "#7a7060",
+        border: "#ddd5c5",
+        ring: "#5c6b4f",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: { family: "Georgia, 'Times New Roman', serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.25,
+        baseSize: 16,
+      },
+      shape: { radius: "soft", buttonStyle: "solid" },
+    },
   },
   retro: {
     slug: "retro",
@@ -637,6 +857,28 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       home: retroHome(),
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
+    },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#e63946",
+        secondary: "#f4a261",
+        accent: "#fff3e0",
+        background: "#fff8f0",
+        surface: "#ffecd2",
+        text: "#2d1810",
+        muted: "#8a6a5a",
+        border: "#e8d5c0",
+        ring: "#e63946",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: { family: "system-ui, sans-serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.3,
+        baseSize: 16,
+      },
+      shape: { radius: "rounded", buttonStyle: "pill" },
     },
   },
   artisan: {
@@ -646,11 +888,63 @@ export const TEMPLATE_BLUEPRINTS: Record<string, TemplateBlueprint> = {
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
     },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#6b4423",
+        secondary: "#a0784c",
+        accent: "#f5efe8",
+        background: "#fdfaf5",
+        surface: "#f5efe5",
+        text: "#2d1810",
+        muted: "#8a7060",
+        border: "#e0d5c8",
+        ring: "#6b4423",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: { family: "Georgia, 'Times New Roman', serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.25,
+        baseSize: 16,
+      },
+      shape: { radius: "soft", buttonStyle: "solid" },
+    },
   },
   gallery: {
     slug: "gallery",
     layouts: {
       home: galleryHome(),
+      "products-index": productsIndexLayout(),
+      "product-detail": productDetailLayout(),
+    },
+    defaultThemeTokens: {
+      mode: "light",
+      colors: {
+        primary: "#1a1a1a",
+        secondary: "#666666",
+        accent: "#f5f5f5",
+        background: "#ffffff",
+        surface: "#fafafa",
+        text: "#1a1a1a",
+        muted: "#888888",
+        border: "#eeeeee",
+        ring: "#1a1a1a",
+        onPrimary: "#ffffff",
+      },
+      typography: {
+        heading: { family: "system-ui, sans-serif" },
+        body: { family: "system-ui, sans-serif" },
+        scaleRatio: 1.2,
+        baseSize: 16,
+      },
+      shape: { radius: "sharp", buttonStyle: "solid" },
+    },
+  },
+  blank: {
+    slug: "blank",
+    layouts: {
+      home: blankHome(),
       "products-index": productsIndexLayout(),
       "product-detail": productDetailLayout(),
     },

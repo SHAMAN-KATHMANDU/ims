@@ -1964,19 +1964,35 @@ export function NewsletterBand({
             id="newsletter-email"
             name="newsletter_email"
             type="email"
-            placeholder="you@example.com"
+            placeholder="Enter your email"
             style={{
-              flex: 1,
-              padding: "0.85rem 1.1rem",
+              height: 44,
+              padding: "0 1rem",
               border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius)",
-              fontSize: "0.95rem",
+              borderRadius: "var(--radius, 6px)",
               background: "var(--color-background)",
               color: "var(--color-text)",
-              fontFamily: "inherit",
+              fontSize: "0.9rem",
+              flex: 1,
+              minWidth: 0,
+              outline: "none",
             }}
           />
-          <button type="submit" className="btn">
+          <button
+            type="submit"
+            style={{
+              height: 44,
+              padding: "0 1.5rem",
+              background: "var(--color-primary)",
+              color: "var(--color-on-primary, #fff)",
+              border: "none",
+              borderRadius: "var(--radius, 6px)",
+              fontWeight: 600,
+              fontSize: "0.9rem",
+              cursor: "pointer",
+              whiteSpace: "nowrap",
+            }}
+          >
             {cta}
           </button>
         </form>
