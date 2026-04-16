@@ -92,16 +92,21 @@ export class WebsiteOrdersRepository {
     return prisma.websiteOrder.findFirst({ where: { id, tenantId } });
   }
 
-  countThisYear(tenantId: string, year: number): Promise<number> {
-    return prisma.websiteOrder.count({
-      where: {
-        tenantId,
-        createdAt: {
-          gte: new Date(`${year}-01-01T00:00:00Z`),
-          lt: new Date(`${year + 1}-01-01T00:00:00Z`),
-        },
-      },
+  async maxOrderSeqThisYear(tenantId: string, year: number): Promise<number> {
+    // Parse the numeric suffix of the highest existing `WO-<year>-<nnnn>` code
+    // for this tenant. Using COUNT(*) instead drifts behind whenever an order
+    // is hard-deleted, which then hands the next caller a colliding code.
+    // Zero-padded 4-digit suffixes sort lexicographically, so ORDER BY on the
+    // string column is enough (valid up to 9999 per tenant per year).
+    const prefix = `WO-${year}-`;
+    const row = await prisma.websiteOrder.findFirst({
+      where: { tenantId, orderCode: { startsWith: prefix } },
+      orderBy: { orderCode: "desc" },
+      select: { orderCode: true },
     });
+    if (!row) return 0;
+    const n = parseInt(row.orderCode.slice(prefix.length), 10);
+    return Number.isFinite(n) ? n : 0;
   }
 
   createOrder(

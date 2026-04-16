@@ -388,8 +388,8 @@ export class WebsiteOrdersService {
    */
   async nextOrderCode(tenantId: string): Promise<string> {
     const year = new Date().getFullYear();
-    const count = await this.repo.countThisYear(tenantId, year);
-    return `WO-${year}-${pad4(count + 1)}`;
+    const maxSeq = await this.repo.maxOrderSeqThisYear(tenantId, year);
+    return `WO-${year}-${pad4(maxSeq + 1)}`;
   }
 
   /**
